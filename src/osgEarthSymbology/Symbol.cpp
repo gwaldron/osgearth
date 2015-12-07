@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,6 +74,13 @@ _script( StringExpression("{}") )
 {
     _uriContext = URIContext(conf.referrer());
     mergeConfig(conf);
+}
+
+Symbol::Symbol(const Symbol& rhs,const osg::CopyOp& copyop):
+osg::Object(rhs, copyop)
+{
+    _uriContext = rhs._uriContext;
+    _script = rhs._script;
 }
 
 void

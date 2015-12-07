@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -21,8 +24,10 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Shadowing>
 #include <osg/Texture2D>
 #include <osg/CullFace>
+#include <osg/ValueObject>
 #include <osgShadow/ConvexPolyhedron>
 
 #define LC "[ShadowCaster] "
@@ -30,21 +35,21 @@
 using namespace osgEarth::Util;
 
 
+
 ShadowCaster::ShadowCaster() :
-_size        ( 2048 ),
-_texImageUnit( 7 ),
-_blurFactor  ( 0.002f ),
-_color       ( osg::Vec4f(.4f, .4f, .4f, 1) )
+_size         ( 2048 ),
+_texImageUnit ( 7 ),
+_blurFactor   ( 0.002f ),
+_color        ( osg::Vec4f(0.4f, 0.4f, 0.4f, 1.0f) ),
+_traversalMask( ~0 )
 {
     _castingGroup = new osg::Group();
 
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        // defaults to 4 slices.
+        // default slices:
         _ranges.push_back(0.0f);
-        _ranges.push_back(100.0f);
-        _ranges.push_back(500.0f);
         _ranges.push_back(1750.0f);
         _ranges.push_back(5000.0f);
 
@@ -123,6 +128,7 @@ ShadowCaster::reinitialize()
     for(int i=0; i<numSlices; ++i)
     {
         osg::Camera* rtt = new osg::Camera();
+        Shadowing::setIsShadowCamera(rtt);
         rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
         rtt->setClearDepth( 1.0 );
         rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
@@ -143,6 +149,9 @@ ShadowCaster::reinitialize()
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
+    _rttStateSet->addUniform(new osg::Uniform("oe_isShadowCamera", true), osg::StateAttribute::OVERRIDE);
+
+
     _renderStateSet = new osg::StateSet();
     
     std::string vertex = Stringify() << 
@@ -157,14 +166,14 @@ ShadowCaster::reinitialize()
         "} \n";
 
     std::string fragment = Stringify() << 
-        "#version 120\n" //" GLSL_VERSION_STR "\n"
+        "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
 
         "uniform sampler2DArray oe_shadow_map; \n"
         "uniform vec4 oe_shadow_color; \n"
         "uniform float oe_shadow_blur; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
         //TODO-run a generator and rplace
@@ -207,7 +216,7 @@ ShadowCaster::reinitialize()
         "    const float b0 = 0.001; \n"
         "    const float b1 = 0.01; \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         "    float costheta = clamp(dot(L,N), 0.0, 1.0); \n"
         "    float bias = b0*tan(acos(costheta)); \n"
 
@@ -239,12 +248,14 @@ ShadowCaster::reinitialize()
     vp->setFunction(
         "oe_shadow_vertex", 
         vertex, 
-        ShaderComp::LOCATION_VERTEX_VIEW );
+        ShaderComp::LOCATION_VERTEX_VIEW,
+        0.9f );
 
     vp->setFunction(
         "oe_shadow_fragment",
         fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING, 10.0f);
+        ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+        0.9f );
 
     // the texture coord generator matrix array (from the caster):
     _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(
@@ -299,11 +310,16 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             osg::Vec3d lightVectorWorld( -lp4.x(), -lp4.y(), -lp4.z() );
             lightVectorWorld.normalize();
             osg::Vec3d lightPosWorld = osg::Vec3d(0,0,0) * inverseMV;
+            //osg::Vec3d lightPosWorld( lp4.x(), lp4.y(), lp4.z() ); // jitter..
 
             // construct the view matrix for the light. The up vector doesn't really
             // matter so we'll just use the camera's.
             osg::Matrix lightViewMat;
-            lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
+            osg::Vec3d lightUp(0,0,1);
+            osg::Vec3d side = lightVectorWorld ^ lightUp;
+            lightUp = side ^ lightVectorWorld;
+            lightUp.normalize();
+            lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, lightUp);
             
             //int i = nv.getFrameStamp()->getFrameNumber() % (_ranges.size()-1);
             int i;
@@ -315,7 +331,6 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 // take the camera's projection matrix and clamp it's near and far planes
                 // to our shadow map slice range.
                 osg::Matrix proj = _prevProjMatrix;
-                //cv->clampProjectionMatrix(proj, n, f);
                 double fovy,ar,zn,zf;
                 proj.getPerspective(fovy,ar,zn,zf);
                 proj.makePerspective(fovy,ar,std::max(n,zn),std::min(f,zf));
@@ -339,6 +354,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 osg::Matrix lightProjMat;
                 n = -std::max(bbox.zMin(), bbox.zMax());
                 f = -std::min(bbox.zMin(), bbox.zMax());
+                // TODO: consider extending "n" so that objects outside the main view can still cast shadows
                 lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
 
                 // configure the RTT camera for this slice:
@@ -357,6 +373,10 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 _shadowMapTexGenUniform->setElement(i, inverseMV * VPS);
             }
 
+            // install the shadow-casting traversal mask:
+            unsigned saveMask = cv->getTraversalMask();
+            cv->setTraversalMask( _traversalMask & saveMask );
+
             // render the shadow maps.
             cv->pushStateSet( _rttStateSet.get() );
             for(i=0; i < (int) _rttCameras.size(); ++i)
@@ -364,6 +384,9 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 _rttCameras[i]->accept( nv );
             }
             cv->popStateSet();
+
+            // restore the previous mask
+            cv->setTraversalMask( saveMask );
             
             // render the shadowed subgraph.
             cv->pushStateSet( _renderStateSet.get() );

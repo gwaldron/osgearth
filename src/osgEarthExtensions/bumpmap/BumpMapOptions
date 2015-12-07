@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_BUMPMAP_OPTIONS
+#define OSGEARTH_DRIVER_BUMPMAP_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+
+namespace osgEarth { namespace BumpMap
+{
+    using namespace osgEarth;
+
+    /**
+     * Options governing bump mapping of the terrain.
+     * A Bump Map is a repeating normal texture that modifies the
+     * existing normal vector per fragment.
+     */
+    class BumpMapOptions : public DriverConfigOptions // NO EXPORT; header only
+    {
+    public:
+        // bump map texture to load.
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
+
+        // Intensity of normal map effect.
+        optional<float>& intensity() { return _intensity; }
+        const optional<float>& intensity() const { return _intensity; }
+
+        // Scale factor for the normal map texture.
+        optional<float>& scale() { return _scale; }
+        const optional<float>& scale() const { return _scale; }
+
+        /** Number of times to proressively scale and multisample the bump map
+            based on camera range. Default is 1. */
+        optional<int>& octaves() { return _octaves; }
+        const optional<int>& octaves() const { return _octaves; }
+
+        /** Camera range at which to render one octave (outer range). */
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        /** LOD at which the bumpmap renders at a scale of 1.0. */
+        optional<unsigned>& baseLOD() { return _baseLOD; }
+        const optional<unsigned>& baseLOD() const { return _baseLOD; }
+
+    public:
+        BumpMapOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        {
+            setDriver( "bumpmap" );
+
+            // Defaults.
+            _intensity.init( 1.0f );
+            _scale.init    ( 1.0f );
+            _octaves.init  ( 1 );
+            _maxRange.init (25000.0f);
+            _baseLOD.init  ( 13u );
+
+            fromConfig( _conf );
+        }
+
+        virtual ~BumpMapOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.updateIfSet("image",     _imageURI);
+            conf.updateIfSet("intensity", _intensity);
+            conf.updateIfSet("scale",     _scale);
+            conf.updateIfSet("octaves",   _octaves);
+            conf.updateIfSet("max_range", _maxRange);
+            conf.updateIfSet("base_lod",  _baseLOD);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("image",     _imageURI);
+            conf.getIfSet("intensity", _intensity);
+            conf.getIfSet("scale",     _scale);
+            conf.getIfSet("octaves",   _octaves);
+            conf.getIfSet("max_range", _maxRange);
+            conf.getIfSet("base_lod",  _baseLOD);
+        }
+
+        optional<URI>      _imageURI;
+        optional<float>    _intensity;
+        optional<float>    _scale;
+        optional<int>      _octaves;
+        optional<float>    _maxRange;
+        optional<unsigned> _baseLOD;
+    };
+
+} } // namespace osgEarth::BumpMap
+
+#endif // OSGEARTH_DRIVER_BUMPMAP_OPTIONS
+

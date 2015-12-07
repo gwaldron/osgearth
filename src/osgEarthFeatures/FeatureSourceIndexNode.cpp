@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,25 +17,46 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osg/MatrixTransform>
+#include <osgEarth/Registry>
 #include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-#define LC "[FeatureSourceIndexNode] "
-
 // for testing:
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+namespace
+{
+    // nifty template to iterate over a map's keys
+    template<typename T>
+    struct KeyIter : public T::iterator
+    {
+        KeyIter() : T::iterator() { }
+        KeyIter(typename T::iterator i) : T::iterator(i) { }
+        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::iterator::operator->()->first); }
+        typename T::key_type operator*() { return T::iterator::operator*().first; }
+    };
+
+    template<typename T>
+    struct ConstKeyIter : public T::const_iterator
+    {
+        ConstKeyIter() : T::const_iterator() { }
+        ConstKeyIter(typename T::const_iterator i) : T::const_iterator(i) { }
+        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::const_iterator::operator->()->first); }
+        typename T::key_type operator*() { return T::const_iterator::operator*().first; }
+    };
+}
 
 //-----------------------------------------------------------------------------
 
 
 FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
+_enabled      ( true ),
 _embedFeatures( false )
 {
+    conf.getIfSet( "enabled",        _enabled );
     conf.getIfSet( "embed_features", _embedFeatures );
 }
 
@@ -43,235 +64,242 @@ Config
 FeatureSourceIndexOptions::getConfig() const
 {
     Config conf("feature_indexing");
+    conf.addIfSet( "enabled",        _enabled );
     conf.addIfSet( "embed_features", _embedFeatures );
     return conf;
 }
 
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[FeatureSourceIndexNode] "
+
+FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSourceIndex* index) :
+_index( index )
+{
+    if ( !index )
+    {
+        OE_WARN << LC << "INTERNAL ERROR: created a feature source index node with a NULL index.\n";
+    }
+}
+
+FeatureSourceIndexNode::~FeatureSourceIndexNode()
+{
+    if ( _index.valid() )
+    {
+        // must copy and clear the original list first to dereference the RefIDPair instances.
+        std::set<FeatureID> fidsToRemove;
+        fidsToRemove.insert( KeyIter<FIDMap>(_fids.begin()), KeyIter<FIDMap>(_fids.end()) );
+        _fids.clear();
+
+        OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
+        _index->removeFIDs( fidsToRemove.begin(), fidsToRemove.end() );
+    }
+}
+
+ObjectID
+FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
+{
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagDrawable( drawable, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
+}
+
+ObjectID
+FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, Feature* feature)
+{
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagAllDrawables( node, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
+}
+
+ObjectID
+FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
+{
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagNode( node, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
+}
+
+bool
+FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
+{
+    ConstKeyIter<FIDMap> start( _fids.begin() );
+    ConstKeyIter<FIDMap> end  ( _fids.end() );
+    for(ConstKeyIter<FIDMap> i = start; i != end; ++i )
+    {
+        output.push_back( *i );
+    }
+
+    return true;
+}
 
 //-----------------------------------------------------------------------------
 
-FeatureSourceIndexNode::Collect::Collect( FeatureIDDrawSetMap& index ) :
-osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_index          ( index ),
-_psets          ( 0 )
+#undef  LC
+#define LC "[FeatureSourceIndex] "
+
+FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource, 
+                                       ObjectIndex*   index,
+                                       const FeatureSourceIndexOptions& options) :
+_featureSource  ( featureSource ), 
+_masterIndex    ( index ),
+_options        ( options )
 {
-    _index.clear();
+    _embed = 
+        _options.embedFeatures() == true ||
+        featureSource == 0L ||
+        featureSource->supportsGetFeature() == false;
 }
 
-void
-FeatureSourceIndexNode::Collect::apply( osg::Node& node )
+FeatureSourceIndex::~FeatureSourceIndex()
 {
-    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node.getUserData() );
-    if ( fid )
+    if ( _masterIndex.valid() && !_oids.empty() )
     {
-        FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes().push_back( &node );
+        // remove all OIDs from the master index.
+        _masterIndex->remove( KeyIter<OIDMap>(_oids.begin()), KeyIter<OIDMap>(_oids.end()) );
     }
-    traverse(node);
+
+    _oids.clear();
+    _fids.clear();
+    _embeddedFeatures.clear();
 }
 
-void
-FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
+RefIDPair*
+FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
 {
-    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( geode.getUserData() );
-    if ( fid )
+    if ( !feature ) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
+
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
     {
-        FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes().push_back( &geode );
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagDrawable( drawable, oid );
+        p = f->second.get();
     }
     else
     {
-        for( unsigned i = 0; i < geode.getNumDrawables(); ++i )
+        ObjectID oid = _masterIndex->tagDrawable( drawable, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( _embed )
         {
-            osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
-            if ( geom )
-            {
-                osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
-                for( unsigned p = 0; p < psets.size(); ++p )
-                {
-                    osg::PrimitiveSet* pset = psets[p];
-                    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( pset->getUserData() );
-                    if ( fid )
-                    {
-                        FeatureDrawSet& drawSet = _index[*fid];
-                        drawSet.getOrCreateSlice(geom).push_back(pset);
-                        _psets++;
-                    }
-                }
-            }
+            _embeddedFeatures[fid] = feature;
         }
     }
 
-    // NO traverse.
+    return p;
 }
 
-//-----------------------------------------------------------------------------
-
-FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource*                   featureSource, 
-                                               const FeatureSourceIndexOptions& options) :
-_featureSource( featureSource ), 
-_options      ( options )
+RefIDPair*
+FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
 {
-    //nop
-}
+    if ( !feature ) return 0L;
 
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
 
-// Rebuilds the feature index based on all the tagged primitive sets found in a graph
-void
-FeatureSourceIndexNode::reindex()
-{
-    _drawSets.clear();
-
-    Collect c(_drawSets);
-    this->accept( c );
-
-    OE_DEBUG << LC << "Reindexed; draw sets = " << _drawSets.size() << std::endl;
-}
-
-
-// Tags all the primitive sets in a Drawable with the specified FeatureID
-void
-FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, Feature* feature) const
-{
-    if ( drawable == 0L )
-        return;
-
-    osg::Geometry* geom = drawable->asGeometry();
-    if ( !geom )
-        return;
-
-    RefFeatureID* rfid = 0L;
-
-    osg::Geometry::PrimitiveSetList& plist = geom->getPrimitiveSetList();
-    for( osg::Geometry::PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
     {
-        if ( !rfid )
-            rfid = new RefFeatureID(feature->getFID());
-
-        p->get()->setUserData( rfid );
-
-        if ( _options.embedFeatures() == true )
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagAllDrawables( node, oid );
+        p = f->second.get();
+    }
+    else
+    {
+        ObjectID oid = _masterIndex->tagAllDrawables( node, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( _embed )
         {
-            _features[feature->getFID()] = feature;
-        }
-    }
-}
-
-
-void
-FeatureSourceIndexNode::tagNode( osg::Node* node, Feature* feature ) const
-{
-    node->setUserData( new RefFeatureID(feature->getFID()) );
-
-    if ( _options.embedFeatures() == true )
-    {
-        _features[feature->getFID()] = feature;
-    }
-}
-
-
-bool
-FeatureSourceIndexNode::getFID(osg::PrimitiveSet* primSet, FeatureID& output) const
-{
-    const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( primSet->getUserData() );
-    if ( fid )
-    {
-        output = *fid;
-        return true;
-    }
-
-    OE_DEBUG << LC << "getFID failed b/c the primSet was not tagged with a RefFeatureID" << std::endl;
-    return false;
-}
-
-
-bool
-FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID& output) const
-{
-    if ( drawable == 0L || primIndex < 0 )
-        return false;
-
-    for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
-    {
-        const FeatureDrawSet& drawSet = i->second;
-        FeatureDrawSet::DrawableSlices::const_iterator d = drawSet.slice(drawable);
-        if ( d != drawSet.slices().end() )
-        {
-            const osg::Geometry* geom = drawable->asGeometry();
-            if ( geom )
-            {
-                const osg::Geometry::PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
-
-                unsigned encounteredPrims = 0;
-                for( osg::Geometry::PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
-                {
-                    const osg::PrimitiveSet* pset = p->get();
-                    unsigned numPrims = pset->getNumPrimitives();
-                    encounteredPrims += numPrims;
-
-                    if ( encounteredPrims > (unsigned)primIndex )
-                    {
-                        const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( pset->getUserData() );
-                        if ( fid )
-                        {
-                            output = *fid;
-                            return true;
-                        }
-                        else
-                        {
-                            OE_DEBUG << LC << "INTERNAL: found primset, but it's not tagged with a FID" << std::endl;
-                            return false;
-                        }
-                    }
-                }
-            }
+            _embeddedFeatures[fid] = feature;
         }
     }
 
-    // see if we have a node in the path
-    for( osg::Node* node = drawable->getParent(0); node != 0L; node = (node->getNumParents()>0?node->getParent(0):0L) )
+    return p;
+}
+
+RefIDPair*
+FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
+{
+    if ( !feature ) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
+    ObjectID oid;
+
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
     {
-        RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node->getUserData() );
-        if ( fid )
+        oid = f->second->_oid;
+        _masterIndex->tagNode( node, oid );
+        p = f->second.get();
+    }
+    else
+    {
+        oid = _masterIndex->tagNode( node, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( _embed )
         {
-            output = *fid;
-            return true;
+            _embeddedFeatures[fid] = feature;
         }
     }
 
-    return false;
+    OE_DEBUG << LC << "Tagging feature ID = " << fid << " => " << oid << " (" << feature->getString("name") << ")\n";
+
+    return p;
 }
 
-
-
-FeatureDrawSet&
-FeatureSourceIndexNode::getDrawSet(const FeatureID& fid )
+Feature*
+FeatureSourceIndex::getFeature(ObjectID oid) const
 {
-    static FeatureDrawSet s_empty;
-
-    FeatureIDDrawSetMap::iterator i = _drawSets.find(fid);
-    return i != _drawSets.end() ? i->second : s_empty;
-}
-
-
-bool
-FeatureSourceIndexNode::getFeature(const FeatureID& fid, const Feature*& output) const
-{
-    if ( _options.embedFeatures() == true )
+    Feature* feature = 0L;
+    Threading::ScopedMutexLock lock(_mutex);
+    OIDMap::const_iterator i = _oids.find( oid );
+    if ( i != _oids.end() )
     {
-        FeatureMap::const_iterator f = _features.find(fid);
+        FeatureID fid = i->second;
 
-        if(f != _features.end())
+        if ( _embed )
         {
-            output = f->second.get();
-            return output != 0L;
+            FeatureMap::const_iterator j = _embeddedFeatures.find( fid );
+            feature = j != _embeddedFeatures.end() ? j->second.get() : 0L;
+        }
+        else if ( _featureSource.valid() && _featureSource->supportsGetFeature() )
+        {
+            feature = _featureSource->getFeature( fid );
         }
     }
-    else if ( _featureSource.valid() )
-    {
-        output = _featureSource->getFeature( fid );
-        return output != 0L;
-    }
+    return feature;
+}
 
-    return false;
+ObjectID
+FeatureSourceIndex::getObjectID(FeatureID fid) const
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    FIDMap::const_iterator i = _fids.find(fid);
+    if ( i != _fids.end() )
+        return i->second->_oid;
+    else
+        return OSGEARTH_OBJECTID_EMPTY;
 }

@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_BumpMap_TERRAIN_EFFECT_H
+#define OSGEARTH_BumpMap_TERRAIN_EFFECT_H
+
+#include <osgEarth/TerrainEffect>
+#include <osgEarth/ImageLayer>
+#include <osg/Image>
+#include <osg/Uniform>
+#include <osg/Texture2D>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace BumpMap
+{
+    /**
+     * Effect that applies bump mapping to the terrain.
+     */
+    class BumpMapTerrainEffect : public TerrainEffect
+    {
+    public:
+        /** construct a new terrain effect. */
+        BumpMapTerrainEffect(const osgDB::Options* dbOptions);
+
+        /** Sets the image containing the normal offsets. */
+        void setBumpMapImage(osg::Image* image);
+
+        /** Sets the LOD at which the bumpmap renders with native scale */
+        void setBaseLOD(unsigned value) { _baseLOD = value; }
+
+        /** Sets the number of progressive octaves. */
+        void setOctaves(int value) { _octaves = value; }
+
+        /** Sets the range of the first octave. */
+        void setMaxRange(float value) { _maxRange = value; }
+
+        /** UNiform that controls intensity */
+        osg::Uniform* getIntensityUniform() const { return _intensityUniform.get(); }
+
+        /** Uniform that controls scale factor */
+        osg::Uniform* getScaleUniform() const { return _scaleUniform.get(); }
+
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+
+        void onUninstall(TerrainEngineNode* engine);
+
+
+    protected:
+        virtual ~BumpMapTerrainEffect() { }
+
+        bool  _ok;
+        int   _bumpMapUnit;
+        int   _octaves;
+        float _maxRange;
+        unsigned _baseLOD;
+        osg::ref_ptr<osg::Texture2D> _bumpMapTex;
+        osg::ref_ptr<osg::Uniform>   _bumpMapTexUniform;
+        osg::ref_ptr<osg::Uniform>   _scaleUniform;
+        osg::ref_ptr<osg::Uniform>   _intensityUniform;
+    };
+
+} } // namespace osgEarth::BumpMap
+
+#endif // OSGEARTH_BumpMap_TERRAIN_EFFECT_H

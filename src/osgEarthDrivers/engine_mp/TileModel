@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -94,6 +97,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 _neighbors.setNeighbor(xoffset, yoffset, hf);
             }
 
+            const HeightFieldNeighborhood& getNeighborhood() const 
+            {
+                return _neighbors;
+            }
+
             void setParent(osg::HeightField* hf)
             {
                 _parent = hf;
@@ -109,6 +117,58 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
             osg::ref_ptr<osg::HeightField> _parent;
+
+            HeightFieldNeighborhood _neighbors;
+        };
+
+        class NormalData
+        {
+        public:
+            NormalData() : _fallbackData(true) { }
+            NormalData(const NormalData& rhs);
+
+            virtual ~NormalData() { }
+
+            NormalData(
+                osg::HeightField* hf,
+                GeoLocator*       locator,
+                bool              fallbackData);
+
+            osg::HeightField* getHeightField() const { return _hf.get(); }
+            GeoLocator* getLocator() const { return _locator.get(); }
+            bool isFallbackData() const { return _fallbackData; }
+
+            void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
+            {
+                _neighbors.setNeighbor(xoffset, yoffset, hf);
+            }
+
+            void setParent(osg::HeightField* hf)
+            {
+                _parent = hf;
+            }
+
+            osg::HeightField* getParent() const
+            {
+                return _parent.get();
+            }
+
+            const HeightFieldNeighborhood& getNeighborhood() const 
+            {
+                return _neighbors;
+            }
+
+            int getUnit() const
+            {
+                return _unit;
+            }
+
+        public:
+            osg::ref_ptr<osg::HeightField> _hf;
+            osg::ref_ptr<GeoLocator>       _locator;
+            bool                           _fallbackData;
+            osg::ref_ptr<osg::HeightField> _parent;
+            int                            _unit;
 
             HeightFieldNeighborhood _neighbors;
         };
@@ -201,7 +261,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         TileModel( const osgEarth::Revision& mapModelRevision, const MapInfo& mapInfo )
-            : _revision(mapModelRevision), _mapInfo(mapInfo) { }
+            : _revision(mapModelRevision), _mapInfo(mapInfo), _useParentData(false) { }
         TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
 
@@ -224,16 +284,26 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
+        /** Whether there's a normal map */
+        bool hasNormalMap() const { return _normalData.getHeightField() != 0L; }
+
+        /** Whether to use parent data if it's available. */
+        bool useParentData() const { return _useParentData; }
+
         MapInfo                      _mapInfo;
         Revision                     _revision;
         TileKey                      _tileKey;
         osg::ref_ptr<GeoLocator>     _tileLocator;
         ColorDataByUID               _colorData;
         ElevationData                _elevationData;
+        NormalData                   _normalData;
         float                        _sampleRatio;
-        osg::ref_ptr<osg::StateSet>  _parentStateSet;
-        osg::observer_ptr<const TileModel> _parentModel;
         osg::ref_ptr<osg::Texture>   _elevationTexture;
+        osg::ref_ptr<osg::Texture>   _normalTexture;
+        bool                         _useParentData;
+        
+        osg::ref_ptr<osg::StateSet>        _parentStateSet;
+        osg::observer_ptr<const TileModel> _parentModel;
 
         // convenience funciton to pull out a layer by its UID.
         bool getColorData( UID layerUID, ColorData& out ) const {
@@ -250,6 +320,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void updateTraverse(osg::NodeVisitor&) const;
 
         void generateElevationTexture();
+
+        void generateNormalTexture();
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

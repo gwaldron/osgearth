@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,42 @@ using namespace osgEarth;
 
 #define LC "[MapFrame] "
 
+MapFrame::MapFrame() :
+_initialized    ( false ),
+_highestMinLevel( 0 ),
+_mapInfo       ( 0L )
+{
+    //nop
+}
 
-MapFrame::MapFrame( const Map* map, Map::ModelParts parts, const std::string& name ) :
+MapFrame::MapFrame(const MapFrame& rhs) :
+_initialized         ( rhs._initialized ),
+_map                 ( rhs._map.get() ),
+_mapInfo             ( rhs._mapInfo ),
+_parts               ( rhs._parts ),
+_highestMinLevel     ( rhs._highestMinLevel ),
+_mapDataModelRevision( rhs._mapDataModelRevision ),
+_imageLayers         ( rhs._imageLayers ),
+_elevationLayers     ( rhs._elevationLayers ),
+_modelLayers         ( rhs._modelLayers ),
+_maskLayers          ( rhs._maskLayers )
+{
+    //no sync required here; we copied the arrays etc
+}
+
+MapFrame::MapFrame(const Map* map) :
 _initialized    ( false ),
 _map            ( map ),
-_name           ( name ),
+_mapInfo        ( map ),
+_parts          ( Map::ENTIRE_MODEL ),
+_highestMinLevel( 0 )
+{
+    sync();
+}
+
+MapFrame::MapFrame(const Map* map, Map::ModelParts parts) :
+_initialized    ( false ),
+_map            ( map ),
 _mapInfo        ( map ),
 _parts          ( parts ),
 _highestMinLevel( 0 )
@@ -34,33 +65,39 @@ _highestMinLevel( 0 )
     sync();
 }
 
-
-MapFrame::MapFrame( const MapFrame& src, const std::string& name ) :
-_initialized         ( src._initialized ),
-_map                 ( src._map.get() ),
-_name                ( name ),
-_mapInfo             ( src._mapInfo ),
-_parts               ( src._parts ),
-_highestMinLevel     ( src._highestMinLevel ),
-_mapDataModelRevision( src._mapDataModelRevision ),
-_imageLayers         ( src._imageLayers ),
-_elevationLayers     ( src._elevationLayers ),
-_modelLayers         ( src._modelLayers ),
-_maskLayers          ( src._maskLayers )
+bool
+MapFrame::isValid() const
 {
-    //no sync required here; we copied the arrays etc
+    return _map.valid();
 }
 
+void
+MapFrame::setMap(const Map* map)
+{
+    _imageLayers.clear();
+    _elevationLayers.clear();
+    _modelLayers.clear();
+    _maskLayers.clear();
+
+    _map = map;
+    if ( map )
+        _mapInfo = MapInfo(map);
+
+    _initialized = false;
+    _highestMinLevel = 0;
+
+    sync();
+}
 
 bool
 MapFrame::sync()
 {
     bool changed = false;
 
-    if ( _map.valid() )
+    osg::ref_ptr<const Map> map;
+    if ( _map.lock(map) )
     {
         changed = _map->sync( *this );
-
         if ( changed )
         {
             refreshComputedValues();
@@ -81,15 +118,23 @@ MapFrame::sync()
 bool
 MapFrame::needsSync() const
 {
-    return
-        (_map.valid()) &&
-        (_map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
+    if ( !isValid() )
+        return false;
+
+    osg::ref_ptr<const Map> map;
+    return 
+        _map.lock(map) &&
+        (map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
 }
 
 UID
 MapFrame::getUID() const
 {
-    return _map.valid() ? _map->getUID() : (UID)0;
+    osg::ref_ptr<const Map> map;
+    if ( _map.lock(map) )
+        return map->getUID();
+    else
+        return (UID)0;
 }
 
 void
@@ -121,25 +166,29 @@ bool
 MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
                               const TileKey&                  key,
                               bool                            convertToHAE,
-                              ElevationSamplePolicy           samplePolicy,
                               ProgressCallback*               progress) const
 {
-    if ( !_map.valid() ) 
-        return false;
+    osg::ref_ptr<const Map> map;
+    if ( _map.lock(map) )
+    {        
+        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();    
 
-    ElevationInterpolation interp = _map->getMapOptions().elevationInterpolation().get();    
+        if ( !hf.valid() )
+        {
+            hf = map->createReferenceHeightField(key, convertToHAE);
+        }
 
-    if ( !hf.valid() )
-    {
-        hf = _map->createReferenceHeightField(key, convertToHAE);
+        return _elevationLayers.populateHeightField(
+            hf.get(),
+            key,
+            convertToHAE ? map->getProfileNoVDatum() : 0L,
+            interp,
+            progress );
     }
-
-    return _elevationLayers.populateHeightField(
-        hf.get(),
-        key,
-        convertToHAE ? _map->getProfileNoVDatum() : 0L,
-        interp,
-        progress );
+    else
+    {
+        return false;
+    }
 }
 
 
@@ -191,7 +240,7 @@ bool
 MapFrame::isCached( const TileKey& key ) const
 {
     // is there a map cache at all?
-    if ( _map->getCache() == 0L )
+    if ( _map.valid() && _map->getCache() == 0L )
         return false;
 
     //Check to see if the tile will load fast

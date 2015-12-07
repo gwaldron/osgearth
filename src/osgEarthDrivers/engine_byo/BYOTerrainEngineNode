@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,6 +35,8 @@ namespace osgEarth_engine_byo
 
     public: // TerrainEngineNode
 
+        UID getUID() const { return _uid; }
+
         // for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key) { return 0L; }
 
@@ -46,6 +48,8 @@ namespace osgEarth_engine_byo
     private:
         osgEarth::Drivers::BYOTerrainEngineOptions _terrainOptions;
         BYOTerrainEngineNode( const BYOTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+
+        UID _uid;
     };
 
 } // namespace osgEarth_engine_byo

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,7 +74,6 @@ namespace osgEarth { namespace Viewpoints
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;
-        std::vector<Viewpoint>               _viewpoints;
         osg::ref_ptr<osgGA::GUIEventHandler> _handler;
     };
 

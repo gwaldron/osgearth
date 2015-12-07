@@ -1,0 +1,75 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_PROXY_GEOMETRY
+#define OSGEARTH_DRIVERS_REX_TERRAIN_PROXY_GEOMETRY 1
+
+#include "Common"
+
+#include <osg/Geometry>
+#include <osg/Matrix>
+
+#include <osgEarth/TileKey>
+
+namespace osgEarth
+{
+    class MapInfo;
+}
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class IndexPool
+    {
+    public:
+        osg::DrawElements* getOrCreate(unsigned tileSize, bool swapOrientation);
+    private:
+        typedef std::map<unsigned, osg::ref_ptr<osg::DrawElements> > MapTileSizeToIndices;
+        MapTileSizeToIndices _mapIndices;
+    };
+
+    class ProxyGeometry : public osg::Geometry
+    {
+    public:
+        ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, const osg::Texture* elevationTexture);
+
+        const osg::Texture* getElevationTexture(void) const;
+
+        void accept(osg::PrimitiveFunctor& f) const ;
+        void accept(osg::PrimitiveIndexFunctor& f) const;
+
+    private:
+        void constructXReferenceFrame(void);
+        void constructEmptyGeometry(void);
+
+        void build(void);
+        void buildIfNecessary(void) const;
+        
+        void makeVertices(void);
+    private:
+        const TileKey  _key;
+        const unsigned _tileSize;
+        osg::ref_ptr<GeoLocator> _locator;
+
+        const osg::Texture* _elevationTexture;
+        osg::Matrix   _world2local;
+        osg::Matrix   _local2world;
+        static IndexPool _indexPool;
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+#endif

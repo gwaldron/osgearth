@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -52,21 +55,22 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0), app.gcolor);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER1), app.gnormal);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER2), app.gdepth);
+    rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING); 
 
     static const char* vertSource =
-        "varying float mrt_depth;\n"
+        "out float mrt_depth;\n"
         "void oe_mrt_vertex(inout vec4 vertexClip)\n"
         "{\n"
         "    mrt_depth = (vertexClip.z/vertexClip.w)*0.5+1.0;\n"
         "}\n";
 
     static const char* fragSource =
-        "varying float mrt_depth;\n"
-        "varying vec3 oe_Normal; \n"
+        "in float mrt_depth;\n"
+        "in vec3 vp_Normal; \n"
         "void oe_mrt_fragment(inout vec4 color)\n"
         "{\n"
         "    gl_FragData[0] = color; \n"
-        "    gl_FragData[1] = vec4((oe_Normal+1.0)/2.0,1.0);\n"
+        "    gl_FragData[1] = vec4((vp_Normal+1.0)/2.0,1.0);\n"
         "    gl_FragData[2] = vec4(mrt_depth,mrt_depth,mrt_depth,1.0); \n"
         "}\n";
 
@@ -129,7 +133,7 @@ createFramebufferPass(App& app)
         "}\n";
 
     static const char* fragSource =
-        "#version 120\n"
+        "#version " GLSL_VERSION_STR "\n"
         "#extension GL_ARB_texture_rectangle : enable\n"
         "uniform sampler2DRect gcolor;\n"
         "uniform sampler2DRect gnormal;\n"

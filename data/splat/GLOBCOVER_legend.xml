@@ -1,0 +1,104 @@
+<legend>
+	<name>GLOBCOVER 2009</name>
+	<source>GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</source>
+	<mappings>
+		<mapping value="11"
+			     class="cropland1"
+			     name="Post-flooding or irrigated croplands (or aquatic)" />
+			
+		<mapping value="14"
+			     class="cropland2"
+			     name="Rainfed croplands" />
+			
+		<mapping value="20"
+		         class="cropland3"
+				 name="Mosaic cropland (50-70%) / vegetation (grassland/shrubland/forest) (20-50%)"/>
+			
+		<mapping value="30"
+		         class="cropland4"
+				 name="Mosaic vegetation (grassland/shrubland/forest) (50-70%) / cropland (20-50%)"/>
+			
+		<mapping value="40"
+		         class="forest1"
+				 name="Closed to open (<15%) broadleaved evergreen or semi-deciduous forest (>5m)"/>
+			
+		<mapping value="50"
+		         class="forest2"
+				 name="Closed (>40%) broadleaved deciduous forest (>5m)"/>
+				 
+		<mapping value="60"
+		         class="forest3"
+				 name="Open (15-40%) broadleaved deciduous forest/woodland (>5m)"/>
+				 
+		<mapping value="70"
+		         class="forest4"
+				 name="Closed (>40%) needleleaved evergreen forest (>5m)"/>
+				 
+		<mapping value="90"
+		         class="forest"
+				 name="Open (15-40%) needleleaved deciduous or evergreen forest (>5m)"/>
+				 
+		<mapping value="100"
+		         class="forest"
+				 name="Closed to open (>15%) mixed broadleaved and needleleaved forest (>5m)"/>
+				 
+		<mapping value="110"
+		         class="grassland"
+				 name="Mosaic forest or shrubland (50-70%) / grassland (20-50%)"/>
+				 
+		<mapping value="120"
+		         class="grassland2"
+				 name="Mosaic grassland (50-70%) / forest or shrubland (20-50)"/>
+				 
+		<mapping value="130"
+		         class="savanna"
+				 name="Mosaic grassland (50-70%) / forest or shrubland (20-50)"/>
+				 
+		<mapping value="140"
+		         class="savanna"
+				 name="Closed to open (>15%) (broadleaved or needleleaved, evergreen or deciduous) shrubland (<5m)"/>
+				 
+		<mapping value="150"
+		         class="savanna"
+				 name="Sparse (<15%) vegetation"/>
+				 
+		<mapping value="160"
+		         class="swamp"
+				 name="Closed to open (>15%) broadleaved forest regularly flooded (semi-permanently or temporarily) - Fresh or brackish water"/>
+				 
+		<mapping value="170"
+		         class="swamp"
+				 name="Closed (>40%) broadleaved forest or shrubland permanently flooded - Saline or brackish water"/>
+				 
+		<mapping value="180"
+		         class="swamp"
+				 name="Closed to open (>15%) grassland or woody vegetation on regularly flooded or waterlogged soil - Fresh, brackish or saline water"/>
+				 
+		<mapping value="190"
+		         class="urban"
+				 name="Artificial surfaces and associated areas (Urban areas >50%)"/>
+				 
+		<mapping value="200"
+		         class="desert"
+				 name="Bare areas"/>
+				 
+		<mapping value="210"
+		         class="water"
+				 name="Water bodies"/>
+				 
+		<mapping value="220"
+		         class="tundra"
+				 name="Permanent snow and ice"/>
+				 
+		<mapping value="230"
+		         class="water"
+				 name="No data"/>
+				 
+		<mapping value="900"
+		         class="asphalt"
+				 name="Paved roads"/>
+
+                   
+	</mappings>
+</legend>
+

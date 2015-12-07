@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,11 @@
 #include <iostream>
 #include "KMLOptions"
 
+#include "rapidxml.hpp"
+#include "rapidxml_utils.hpp"
+
+using namespace rapidxml;
+
 namespace osgEarth_kml
 {
     using namespace osgEarth;
@@ -43,8 +48,8 @@ namespace osgEarth_kml
         /** Reads KML from a stream and returns a node */
         osg::Node* read( std::istream& in, const osgDB::Options* dbOptions ) ;
 
-        /** Reads KML from a Config object */
-        osg::Node* read( const Config& conf, const osgDB::Options* dbOptions );
+        /** Reads KML from an xml_document object */
+        osg::Node* read( xml_document<>& doc, const osgDB::Options* dbOptions );
 
     private:
         MapNode*          _mapNode;

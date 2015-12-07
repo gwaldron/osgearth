@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -65,6 +65,10 @@ namespace osgEarth { namespace Features
         /** Explicitly overrides profile information contained in the actual data source. */
         optional<ProfileOptions>& profile() { return _profile; }
         const optional<ProfileOptions>& profile() const { return _profile; }
+        
+        /** Interpolation type to use for geodetic points */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
@@ -80,11 +84,12 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        FeatureFilterList        _filters;
-        optional<std::string>    _name;
-        optional< bool >         _openWrite;
-        optional<ProfileOptions> _profile;
-        optional<CachePolicy>    _cachePolicy;
+        FeatureFilterList          _filters;
+        optional<std::string>      _name;
+        optional< bool >           _openWrite;
+        optional<ProfileOptions>   _profile;
+        optional<CachePolicy>      _cachePolicy;
+        optional<GeoInterpolation> _geoInterp;
     };
 
     /**
@@ -138,6 +143,12 @@ namespace osgEarth { namespace Features
          *      The number of features or -1 if the number of features cannot be determined.
          */
         virtual int getFeatureCount() const { return -1; }
+
+        /**
+         * Whether the source can look up a Feature by its ID.
+         * @return True or False
+         */
+        virtual bool supportsGetFeature() const { return false; }
 
         /**
          * Gets the Feature with the given FID

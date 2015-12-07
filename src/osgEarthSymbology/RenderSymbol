@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,10 +35,11 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT RenderSymbol : public Symbol
     {
     public:
-        META_Symbol(RenderSymbol);
+        META_Object(osgEarthSymbology, RenderSymbol);
 
         /** construct a render symbol */
         RenderSymbol(const Config& conf =Config());
+        RenderSymbol(const RenderSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
         /** whether to perform depth buffer testing */
         optional<bool>& depthTest() { return _depthTest; }
@@ -68,6 +69,10 @@ namespace osgEarth { namespace Symbology
         optional<float>& minAlpha() { return _minAlpha; }
         const optional<float>& minAlpha() const { return _minAlpha; }
 
+        /** hint to render in the transparent (depth-sorted) bin */
+        optional<bool>& transparent() { return _transparent; }
+        const optional<bool>& transparent() const { return _transparent; }
+
         /** render bin to use for sorting */
         optional<std::string>& renderBin() { return _renderBin; }
         const optional<std::string>& renderBin() const { return _renderBin; }
@@ -86,6 +91,7 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>           _clipPlane;
         optional<float>              _minAlpha;
         optional<std::string>        _renderBin;
+        optional<bool>               _transparent;
         
         /** dtor */
         virtual ~RenderSymbol() { }

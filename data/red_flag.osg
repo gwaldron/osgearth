@@ -35,8 +35,8 @@ Group {
       num_drawables 1
       Geometry {
         DataVariance STATIC
-        useDisplayList TRUE
-        useVertexBufferObjects FALSE
+        useDisplayList FALSE
+        useVertexBufferObjects TRUE
         PrimitiveSets 2
         {
           DrawArrays QUADS 0 32
@@ -163,8 +163,8 @@ Group {
       num_drawables 1
       Geometry {
         DataVariance STATIC
-        useDisplayList TRUE
-        useVertexBufferObjects FALSE
+        useDisplayList FALSE
+        useVertexBufferObjects TRUE
         PrimitiveSets 1
         {
           DrawArrays TRIANGLES 0 3

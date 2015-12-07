@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -71,6 +71,7 @@ namespace osgEarth
 
     //--------------------------------------------------------------------
 
+    class ColorFilterFactory;
 
     /**
      * Registry for ColorFilter serialization support.
@@ -96,7 +97,7 @@ namespace osgEarth
         /**
          * Adds a ColorFilter type to the registry
          */
-        void add( const std::string& key, class ColorFilterFactory* factory );
+        void add( const std::string& key, ColorFilterFactory* factory );
 
 
     public:

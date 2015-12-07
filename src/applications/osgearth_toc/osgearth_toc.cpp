@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -19,6 +22,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapModelChange>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
@@ -40,6 +44,7 @@ static Grid* s_imageBox;
 static Grid* s_elevationBox;
 static Grid* s_modelBox;
 static bool s_updateRequired = true;
+static MapModelChange::ActionType s_changeAction;
 
 //------------------------------------------------------------------------
 
@@ -47,6 +52,7 @@ struct MyMapListener : public MapCallback
 {
     void onMapModelChanged( const MapModelChange& change ) {
         s_updateRequired = true;
+        s_changeAction = change.getAction();
     }
 };
 
@@ -60,6 +66,30 @@ struct UpdateOperation : public osg::Operation
         {
             updateControlPanel();
             s_updateRequired = false;
+
+            if (s_changeAction == MapModelChange::ADD_ELEVATION_LAYER ||
+                s_changeAction == MapModelChange::REMOVE_ELEVATION_LAYER)
+            {
+                OE_NOTICE << "Dirtying model layers.\n";
+                dirtyModelLayers();
+            }
+        }
+    }
+
+    void dirtyModelLayers()
+    {
+        for(unsigned i=0; i<s_activeMap->getNumModelLayers(); ++i)
+        {
+            ModelSource* ms = s_activeMap->getModelLayerAt(i)->getModelSource();
+            if ( ms )
+            {
+                ms->dirty();
+            }
+            else
+            {
+                OE_NOTICE << s_activeMap->getModelLayerAt(i)->getName()
+                    << " has no model source.\n";
+            }
         }
     }
 };

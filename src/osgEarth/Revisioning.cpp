@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -78,9 +78,10 @@ DirtyNotifier::setDirty()
     {
         for( std::vector< osg::observer_ptr<DirtyCounter> >::iterator i = _parents.begin(); i != _parents.end(); )
         {
-            if ( i->valid() )
+            osg::ref_ptr<DirtyCounter> parent;
+            if ( i->lock(parent) )
             {
-                i->get()->_owner->setDirty();
+                parent->_owner->setDirty();
                 ++i;
             }
             else

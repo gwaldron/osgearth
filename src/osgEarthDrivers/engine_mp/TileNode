@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -26,35 +29,36 @@
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
-     * Marker that gives access to a TileNode.
-     */
-    class TileNodeContainer
-    {
-    public:
-        virtual class TileNode* getTileNode() = 0;
-    };
-
-    /**
      * Node that represents a single terrain tile that was compiled from
      * a TileModel (and corresponds to one TileKey). The matrixtransform
      * localizes the TileNode within the terrain.
      */
-    class TileNode : public osgEarth::TerrainTileNode, public TileNodeContainer
+    class TileNode : public osg::MatrixTransform,
+                     public osgEarth::TerrainTileNode
     {
-    public: // osgEarth::TileNode
+    public: // osgEarth::TerrainTileNode
         
         const TileKey& getKey() const { return _key; }
 
         osg::Texture* getElevationTexture() const;
 
-        osg::RefMatrix* getElevationTextureMatrix() const;
+        osg::RefMatrixf* getElevationTextureMatrix() const;
+
+        osg::Texture* getNormalTexture() const;
+
+        osg::RefMatrixf* getNormalTextureMatrix() const;
 
 
     public:
         /**
          * Constructs a new tile node
          */
-        TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix);
+        TileNode(const TileKey& key, TileModel* model, const osg::Matrixd& matrix);
+
+        /**
+         * Assigned the UID of the engine that created this tile.
+         */
+        void setEngineUID(UID uid) { _engineUID = uid; }
 
         /**
          * True if this is a valid tile node.
@@ -97,6 +101,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void setTerrainBoundingBox(const osg::BoundingBox& bbox) { _terrainBBox = bbox; }
         const osg::BoundingBox& getTerrainBoundingBox() const { return _terrainBBox; }
 
+    public:
+
+        // called by the TileNodeRegistry when a tilenode that this tile was waiting
+        // on has arrived.
+        void notifyOfArrival(TileNode* waitee);
+
 
     public: // TileNodeContainer
 
@@ -115,12 +125,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         virtual ~TileNode() { }
 
         TileKey                            _key;
-        osg::ref_ptr<const TileModel>      _model;
+        UID                                _engineUID;
+        osg::ref_ptr<TileModel>            _model;
         unsigned                           _lastTraversalFrame;
         Revision                           _maprevision;
         bool                               _outOfDate;
         bool                               _dirty;
-        osg::ref_ptr<osg::RefMatrix>       _elevTexMat;
+        osg::ref_ptr<osg::RefMatrixf>      _elevTexMat;
+        osg::ref_ptr<osg::RefMatrixf>      _normalTexMat;
         osg::BoundingBox                   _terrainBBox;
     };
 

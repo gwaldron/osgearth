@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -90,6 +93,7 @@ namespace osgEarth
               _inAnimTime           ( 0.40f ),
               _outAnimTime          ( 0.00f ),
               _sortByPriority       ( false ),
+              _snapToPixel          ( true ),
               _maxObjects           ( INT_MAX )
         {
             fromConfig(conf);
@@ -117,6 +121,11 @@ namespace osgEarth
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
+        /** Whether to always start rendering text on a pixel boundary, thereby 
+          * minimizing filtering artifacts. */
+        optional<bool>& snapToPixel() { return _snapToPixel; }
+        const optional<bool>& snapToPixel() const { return _snapToPixel; }
+
         /** Maximum number of objects to draw after sorting */
         optional<unsigned>& maxObjects() { return _maxObjects; }
         const optional<unsigned>& maxObjects() const { return _maxObjects; }
@@ -131,6 +140,7 @@ namespace osgEarth
         optional<float>    _inAnimTime;
         optional<float>    _outAnimTime;
         optional<bool>     _sortByPriority;
+        optional<bool>     _snapToPixel;
         optional<unsigned> _maxObjects;
 
         void fromConfig( const Config& conf );

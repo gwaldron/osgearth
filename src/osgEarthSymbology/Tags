@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,9 @@
 #define OSGEARTHSYMBOLOGY_TAGS_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/Config>
 #include <osgEarth/StringUtils>
+#include <osg/CopyOp>
 #include <vector>
 #include <set>
 #include <algorithm>
@@ -35,6 +37,16 @@ namespace osgEarth { namespace Symbology
     class Taggable : public T
     {
     public:
+        Taggable() { }
+
+        //Taggable(const osgEarth::Config& conf) : T(conf) { }
+        
+        Taggable(const Taggable& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+        T(rhs, copyop)
+        {
+            _tags = rhs._tags;
+        }
+
         void addTag( const std::string& tag ) {
             _tags.insert( normalize( tag ) );
         }

@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY
+#define OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY 1
+
+#include "Common"
+#include "GeometryPool"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include "MPTerrainEngineOptions"
+#include "RenderBindings"
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/MapFrame>
+#include <osgEarth/Progress>
+
+using namespace osgEarth;
+
+namespace osgEarth {
+    class TerrainEngine;
+}
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{    
+    class TileGroupFactory : public osg::Referenced
+    {
+    public:
+        TileGroupFactory(
+            const Map*                          map,
+            TerrainEngine*                      engine,
+            GeometryPool*                       geometryPool,
+            TileNodeRegistry*                   liveTiles,
+            TileNodeRegistry*                   deadTiles,
+            const RenderBindings&               renderBindings,
+            const MPTerrainEngineOptions&       options);
+
+
+        /**
+         * Creates a TileGroup corresponding to the TileKey.
+         *
+         * @param key           TileKey for which to create a new node
+         * @param accumulate    Whether to accumulate data from parent tiles if necessary
+         * @param setupChildren When true, build and include the necessary structures to
+         *                      page in subtiles if and when necessary. If false, you just get
+         *                      the tile alone with no paging support.
+         * @param progress      Callback for cancelation and progress reporting
+         */
+        osg::Node* createTileGroup(
+            const TileKey&    key, 
+            bool              accumulate,
+            bool              setupChildren,
+            ProgressCallback* progress );
+
+    protected:
+
+        virtual ~TileGroupFactory() { }
+
+        /** Creates the graph representing a single tile within the group. */
+        TileNode* createTileNodeGraph(
+            TerrainTileModel* model,
+            bool              setupChildrenIfNecessary,
+            ProgressCallback* progress);
+
+        /** Creates the TileNode, the parent of the terrain surface and subtile pager */
+        TileNode* createTileNode(
+            TerrainTileModel* model,
+            ProgressCallback* progress);
+
+    protected:
+
+        MapFrame                              _frame;
+        osg::ref_ptr<TileNodeRegistry>        _liveTiles;
+        osg::ref_ptr<TileNodeRegistry>        _deadTiles;
+        const MPTerrainEngineOptions&         _options;
+        const RenderBindings&                 _renderBindings;
+        TerrainEngine*                        _terrainEngine;
+        GeometryPool*                         _geometryPool;
+
+        unsigned getMinimumRequiredLevel();
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,24 +41,21 @@ namespace
         "uniform sampler2D ocean_data; \n"                 // heightfield encoded into 16 bit texture
         "uniform float ocean_seaLevel; \n"                 // sea level offset
 
-        "varying vec4 osg_FrontColor; \n"
         "varying vec4 ocean_surface_tex_coord; \n"
         "varying float ocean_v_msl; \n"                    // elevation (MSL) of camera
         "varying float ocean_v_range; \n"                  // distance from camera to current vertex
         "varying float ocean_v_enorm; \n"                  // normalized terrain height at vertex [0..1]
 
-        "varying vec3 oe_Normal; \n" 
+        "varying vec3 vp_Normal; \n" 
         "uniform sampler2D ocean_surface_tex; \n"        // surface texture
         "uniform bool ocean_has_surface_tex; \n"         // whether there's a surface texture
 
         "void oe_ocean_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "   osg_FrontColor = gl_Color; \n"
-
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in view space to preserve precision)
         "   vec4 mvVertex = VertexVIEW; \n"
-        "   vec3 mvNormal = oe_Normal; \n"
+        "   vec3 mvNormal = vp_Normal; \n"
         "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * ocean_seaLevel), mvVertex.w ); \n"
 
         "   VertexVIEW = mvVertex2; \n"
@@ -86,7 +83,7 @@ namespace
         "   if (ocean_has_surface_tex) { \n"
         "       vec4 t0 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.xy); \n"
         "       vec4 t1 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.zw); \n"
-        "       oe_Normal = normalize((3.0*t0.rgb*t1.rgb)*2.0-1.0); \n"
+        "       vp_Normal = normalize((3.0*t0.rgb*t1.rgb)*2.0-1.0); \n"
         "   } \n"
         "} \n";
 
@@ -169,7 +166,6 @@ namespace
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform float osg_FrameTime; \n"
         "uniform float ocean_seaLevel; \n"
-        "varying vec4 osg_FrontColor; \n"
         "varying vec4 ocean_mask_tex_coord; \n"
         "varying vec4 ocean_surface_tex_coord; \n"
         "varying float ocean_v_msl; \n"
@@ -177,8 +173,6 @@ namespace
 
         "void oe_ocean_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "   osg_FrontColor = gl_Color; \n"
-
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in modelview space to preserve precision)
         "   vec4 mvVertex = VertexMODEL; \n"

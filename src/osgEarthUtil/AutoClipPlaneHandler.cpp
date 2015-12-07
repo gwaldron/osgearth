@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -221,7 +221,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 CustomProjClamper* c = static_cast<CustomProjClamper*>(clamper.get());
 
                 osg::Vec3d eye, center, up;
-                cam->getViewMatrixAsLookAt( eye, center, up );
+                cv->getModelViewMatrix()->getLookAt( eye, center, up );
 
                 // clamp the far clipping plane to the approximate horizon distance
                 if ( _autoFarPlaneClamping )

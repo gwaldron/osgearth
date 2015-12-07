@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,19 +23,21 @@
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/SharedSARepo>
-#include <osgEarth/Units>
+#include <osgEarth/Containers>
+#include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
-#include <osgDB/ReaderWriter>
-#include <osgText/Font>
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
 
+namespace osgText {
+    class Font;
+}
 
 namespace osgEarth
 {    
@@ -47,6 +49,8 @@ namespace osgEarth
     class URIReadCallback;
     class ColorFilterRegistry;
     class StateSetCache;
+    class ObjectIndex;
+    class Units;
     
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
@@ -151,6 +155,12 @@ namespace osgEarth
         static ShaderGeneratorProxy shaderGenerator() { return instance()->getShaderGenerator(); }
 
         /**
+         * Global object index.
+         */
+        ObjectIndex* getObjectIndex() const;
+        static ObjectIndex* objectIndex() { return instance()->getObjectIndex(); }
+
+        /**
          * A default StateSetCache to use by any process that uses one.
          * A StateSetCache assist in stateset sharing across multiple nodes.
          * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
@@ -191,13 +201,13 @@ namespace osgEarth
         /**
          * Gets the default set of osgDB::Options to use.
          */
-        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+        const osgDB::Options* getDefaultOptions() const;
 
         /**
          * Clones an options structure (fixing the archive caching), or creates
          * a new one.
          */
-        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+        static osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L );
 
         /**
          * Registers a Units definition.
@@ -216,6 +226,7 @@ namespace osgEarth
          * For debugging - tracks activities in progress.
          */
         void startActivity(const std::string& name);
+        void startActivity(const std::string& name, const std::string& text);
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
@@ -236,6 +247,16 @@ namespace osgEarth
         optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
         const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
 
+        /**
+         * Adds a texture image unit number that osgEarth should never use.
+         */
+        void setTextureImageUnitOffLimits(int unit);
+        const std::set<int> getOffLimitsTextureImageUnits() const;
+
+        /** General purpose transient data store to support VisitorData in pre-osg 3.4 */
+        TransientUserDataStore& dataStore() { return _dataStore; }
+        const TransientUserDataStore& dataStore() const { return _dataStore; }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -250,7 +271,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        Threading::ReadWriteMutex _regMutex;  
+        mutable Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
 
         osg::ref_ptr<Cache> _cache;
@@ -289,12 +310,24 @@ namespace osgEarth
         std::string _terrainEngineDriver;
         std::string _cacheDriver;
 
-        std::set<std::string> _activities;
+        typedef std::pair<std::string,std::string> Activity;
+        struct ActivityLess {
+            bool operator()(const Activity& lhs, const Activity& rhs) const {
+                return lhs.first < rhs.first;
+            }
+        };
+        std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
         
         ProgramSharedRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;
+
+        osg::ref_ptr<ObjectIndex> _objectIndex;
+
+        std::set<int> _offLimitsTextureImageUnits;
+
+        TransientUserDataStore _dataStore;
     };
 }
 

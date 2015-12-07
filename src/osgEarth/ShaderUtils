@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,8 @@
 #include <osg/Light>
 #include <osg/Material>
 #include <osg/observer_ptr>
+#include <osgDB/Options>
+#include <map>
 
 namespace osgEarth
 {
@@ -39,7 +41,6 @@ namespace osgEarth
         SHADERPOLICY_GENERATE,
         SHADERPOLICY_INHERIT
     };
-
 
     /**
     * Container for light uniforms
@@ -219,6 +220,20 @@ namespace osgEarth
     public:
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
+    };
+
+    struct GLSLChunk {
+        std::string glsl_chunk_text;
+        enum GLSL_CHUNK_TYPE { STATEMENT, DIRECTIVE, FUNCTION, COMMENT };
+        GLSL_CHUNK_TYPE glsl_chunk_type;
+    };
+    typedef std::vector<GLSLChunk> GLSLChunks;
+
+    class OSGEARTH_EXPORT GLSLChunker
+    {
+    public:
+        void read(const std::string& input, GLSLChunks& output) const;
+        void write(const GLSLChunks& input, std::string& output) const;
     };
 }
 

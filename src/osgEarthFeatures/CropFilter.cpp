@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,6 +62,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     {
                         keepFeature = true;
                         newExtent.expandToInclude( bounds.xMin(), bounds.yMin() );
+                        newExtent.expandToInclude( bounds.xMax(), bounds.yMax() );
                     }
                 }
             }

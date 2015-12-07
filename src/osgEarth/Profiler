@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2015 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROFILER_H
+#define OSGEARTH_PROFILER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+
+namespace osgEarth
+{
+    /**
+    * Poor man's profiler.
+    */
+    class OSGEARTH_EXPORT Profiler
+    {
+    public:
+        /**
+        * Starts a task with the given name.
+        */
+        static void start(const std::string& name);
+
+        /**
+        * Ends a task with the given name.
+        */
+        static void end(const std::string& name);
+
+        /**
+        * Dumps the stats to the console.
+        */
+        static void dump();
+    };
+
+    class /*OSGEARTH_EXPORT*/ ScopedProfiler
+    {
+    public:
+        ScopedProfiler(const std::string& name) :
+            _name(name)
+        {
+            Profiler::start(_name);
+        }
+
+        ~ScopedProfiler()
+        {
+            Profiler::end(_name);
+        }
+
+        std::string _name;
+    };
+}
+
+#endif // OSGEARTH_UNITS_H

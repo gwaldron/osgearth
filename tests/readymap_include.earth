@@ -1,0 +1,12 @@
+<!--
+osgEarth Sample - xi:include.
+
+Shows how to include external XML documents to simplify your earth file.
+
+-->
+<map name="readymap.org" type="geocentric">
+    
+    <xi:include href="readymap_imagery.xml"/>
+    <xi:include href="readymap_elevation.xml"/>
+   
+</map>

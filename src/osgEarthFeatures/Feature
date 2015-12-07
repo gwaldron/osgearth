@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -47,13 +47,12 @@ namespace osgEarth { namespace Features
         virtual ~FeatureProfile() { }
 
         /** Gets the spatial extents of the features in this profile. */
-        const GeoExtent& getExtent() const {
-            return _extent; }
+        const GeoExtent& getExtent() const { return _extent; }
 
         /** Gets the spatial reference system of feature shapes in this class. */
-        const SpatialReference* getSRS() const {
-            return _extent.getSRS(); }
+        const SpatialReference* getSRS() const { return _extent.getSRS(); }
 
+        /** Whether the feature data is pre-tiled */
         bool getTiled() const;
         void setTiled(bool tiled);
 
@@ -66,12 +65,17 @@ namespace osgEarth { namespace Features
         const osgEarth::Profile* getProfile() const;
         void setProfile( const osgEarth::Profile* profile );
 
+        /** Interpolation method for geodetic data */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
+
     protected:
         osg::ref_ptr< const osgEarth::Profile > _profile;
         GeoExtent _extent;
         bool _tiled;
         int _firstLevel;
         int _maxLevel;
+        optional<GeoInterpolation> _geoInterp;
     };
 
     struct AttributeValueUnion
@@ -101,8 +105,8 @@ namespace osgEarth { namespace Features
         int getInt( int defaultValue =0 ) const;
         bool getBool( bool defaultValue =false ) const;              
     };
-
-    typedef std::map<std::string, AttributeValue> AttributeTable;
+    
+    typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
 
     typedef unsigned long FeatureID;
 
@@ -174,6 +178,13 @@ namespace osgEarth { namespace Features
          * intersecting the feature with the terrain graph.
          */
         bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
+
+        /** 
+         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+         * world coordinates covered by the given bounding sphere. This is useful for roughly
+         * intersecting features with the terrain graph.
+         */
+        static bool getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope );
 
 
         const AttributeTable& getAttrs() const { return _attrs; }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,13 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/URI>
 #include <osg/ComputeBoundsVisitor>
+#include <osgDB/FileUtils>
 #include <list>
 
 using namespace osgEarth;
@@ -130,12 +133,13 @@ namespace
     }
 }
 
-//------------------------------------------------------------------------
+#undef LC
+#define LC "[ShaderUtils] "
 
 namespace
 {
     // Code borrowed from osg::State.cpp
-    static bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
+    bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
     {
         bool replacedStr = false;
         std::string::size_type pos = 0;
@@ -161,26 +165,109 @@ namespace
         return replacedStr;
     }
 
-    static void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
+    bool replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
     {
-        if (replace(source, originalStr, newStr))
+        bool yes = replace(source, originalStr, newStr);
+        if ( yes )
         {
             source.insert(declPos, declarationPrefix + newStr + declarationSuffix + std::string(";\n"));
         }
+        return yes;
+    }
+
+    bool replaceAndInsertLiteral(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& lit)
+    {
+        bool yes = replace(source, originalStr, newStr);
+        if ( yes )
+        {
+            source.insert(declPos, lit);
+        }
+        return yes;
+    }
+
+    int replaceVarying(GLSLChunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
+    {
+        std::stringstream buf;
+        buf << "#pragma vp_varying";
+        if ( !prefix.empty() )
+            buf << " " << prefix;
+
+        for(int i=offset; i<tokens.size(); ++i)
+        {
+            if ( !tokens[i].empty() )
+            {
+                int len = tokens[i].length();
+                if ( tokens[i].at(len-1) == ';' )
+                    buf << " " << tokens[i].substr(0, len-1); // strip semicolon
+                else
+                    buf << " " << tokens[i];
+            }
+        }
+        
+        chunks[index].glsl_chunk_text = buf.str();
+        chunks[index].glsl_chunk_type = GLSLChunk::DIRECTIVE;
+
+        std::stringstream buf2;
+        for(int i=offset; i<tokens.size(); ++i)
+            buf2 << (i==offset?"":" ") << tokens[i];
+
+        GLSLChunk newChunk;
+        newChunk.glsl_chunk_type = GLSLChunk::STATEMENT;
+        newChunk.glsl_chunk_text = buf2.str();
+        chunks.insert( chunks.begin()+index, newChunk );
+
+        return index+1;
+    }
+
+    bool replaceVaryings(osg::Shader::Type type, GLSLChunks& chunks)
+    {
+        bool madeChanges = false;
+
+        for(int i=0; i<chunks.size(); ++i)
+        {
+            if ( chunks[i].glsl_chunk_type == GLSLChunk::STATEMENT )
+            {
+                std::string replacement;
+                StringVector tokens;
+                StringTokenizer(chunks[i].glsl_chunk_text, tokens, " \t\n", "", false, true);
+                if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
+                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                else if ( tokens.size() > 1 && tokens[0] == "in" && type != osg::Shader::VERTEX )
+                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+                else if ( tokens.size() > 2 && tokens[0] == "varying" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
+                    i = replaceVarying(chunks, i, tokens, 2, ""), madeChanges = true;
+                else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "out" && type != osg::Shader::FRAGMENT )
+                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                else if ( tokens.size() > 2 && tokens[0] == "flat" && tokens[1] == "in" && type != osg::Shader::VERTEX )
+                    i = replaceVarying(chunks, i, tokens, 2, "flat"), madeChanges = true;
+                else if ( tokens.size() > 1 && tokens[0] == "varying" )
+                    i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
+            }
+        }
+
+        return madeChanges;
     }
 }
 
 void
 ShaderPreProcessor::run(osg::Shader* shader)
 {
-    // only runs for non-FFP (GLES, GL3+, etc.)
-
-    if ( s_NO_FFP && shader )
+    if ( shader )
     {
+        bool dirty = false;
+
+        // only runs for non-FFP (GLES, GL3+, etc.)
         std::string source = shader->getShaderSource();
 
+        // First replace any quotes with spaces. Quotes are illegal.
+        if ( source.find('\"') != std::string::npos )
+        {
+            osgEarth::replaceIn(source, "\"", " ");
+            dirty = true;
+        }
+
         // find the first legal insertion point for replacement declarations. GLSL requires that nothing
-        // precede a "#verson" compiler directive, so we must insert new declarations after it.
+        // precede a "#version" compiler directive, so we must insert new declarations after it.
         std::string::size_type declPos = source.rfind( "#version " );
         if ( declPos != std::string::npos )
         {
@@ -193,28 +280,71 @@ ShaderPreProcessor::run(osg::Shader* shader)
             declPos = 0;
         }
 
-        int maxLights = Registry::capabilities().getMaxLights();
-
-        for( int i=0; i<maxLights; ++i )
+        // Perform the no-FFP replacements:
+        if ( s_NO_FFP )
         {
-            replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_LightSource[" << i << "]",
-                Stringify() << "osg_LightSource" << i,
-                Stringify() 
-                    << osg_LightSourceParameters::glslDefinition() << "\n"
-                    << "uniform osg_LightSourceParameters " );
+            int maxLights = Registry::capabilities().getMaxLights();
 
-            replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_FrontLightProduct[" << i << "]", 
-                Stringify() << "osg_FrontLightProduct" << i,
-                Stringify()
-                    << osg_LightProducts::glslDefinition() << "\n"
-                    << "uniform osg_LightProducts " );
+            for( int i=0; i<maxLights; ++i )
+            {
+                if ( replaceAndInsertDeclaration(
+                    source, declPos,
+                    Stringify() << "gl_LightSource[" << i << "]",
+                    Stringify() << "osg_LightSource" << i,
+                    Stringify() 
+                        << osg_LightSourceParameters::glslDefinition() << "\n"
+                        << "uniform osg_LightSourceParameters " ) )
+                {
+                    dirty = true;
+                }
+
+                if ( replaceAndInsertDeclaration(
+                    source, declPos,
+                    Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                    Stringify() << "osg_FrontLightProduct" << i,
+                    Stringify()
+                        << osg_LightProducts::glslDefinition() << "\n"
+                        << "uniform osg_LightProducts " ) )
+                {
+                    dirty = true;
+                }
+            }
         }
 
-        shader->setShaderSource( source );
+#if 1
+        // Chunk the shader.
+        GLSLChunker chunker;
+        GLSLChunks chunks;
+        chunker.read( source, chunks );
+        dirty = replaceVaryings( shader->getType(), chunks );
+        if ( dirty )
+            chunker.write( chunks, source );
+
+#else
+
+        // Perform shader composition adjustments on ins and outs.        
+        std::vector<Varying> v;
+        collectVaryings( shader->getType(), source, v );
+        for(std::vector<Varying>::iterator i = v.begin(); i != v.end(); ++i)
+        {
+            if (replaceAndInsertLiteral(
+                source,
+                declPos,
+                i->original,
+                i->definition,
+                Stringify() << "#pragma vp_varying " << i->qualifier << i->definition << "\n" ))
+            {
+                dirty = true;
+            }
+
+            OE_DEBUG << "Replaced \"" << i->original << "\" with \"" << i->definition << "\"\n";
+        }
+#endif
+
+        if ( dirty )
+        {
+            shader->setShaderSource( source );
+        }
     }
 }
 
@@ -313,6 +443,22 @@ void osg_LightSourceParameters::setUniformsFromOsgLight(const osg::Light* light,
                                                       light->getSpecular().z() * frontSpecular.z(),
                                                       light->getSpecular().w() * frontSpecular.w()));
         }
+        else {
+            _frontLightProduct.ambient->set(osg::Vec4(light->getAmbient().x(),
+                                                      light->getAmbient().y(),
+                                                      light->getAmbient().z(),
+                                                      light->getAmbient().w()));
+            
+            _frontLightProduct.diffuse->set(osg::Vec4(light->getDiffuse().x(),
+                                                      light->getDiffuse().y(),
+                                                      light->getDiffuse().z(),
+                                                      light->getDiffuse().w()));
+            
+            _frontLightProduct.specular->set(osg::Vec4(light->getSpecular().x(),
+                                                      light->getSpecular().y(),
+                                                      light->getSpecular().z(),
+                                                      light->getSpecular().w()));
+        }
     }
 }
 
@@ -385,7 +531,7 @@ UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 void
 UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* nv )
 {
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
     if ( cv )
     {
         StateSetStack stateSetStack;
@@ -762,15 +908,10 @@ RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 //------------------------------------------------------------------------
 
-namespace
-{
-    
-}
-
 void
 DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
 {
-    if ( ss && minAlpha < 1.0f )
+    if ( ss && minAlpha < 1.0f && Registry::capabilities().supportsGLSL() )
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         if ( vp )
@@ -785,7 +926,7 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
                 "oe_discardalpha_frag",
                 code,
                 ShaderComp::LOCATION_FRAGMENT_COLORING,
-                0L, 2.0f);
+                0L, 0.95f);
         }
     }
 }
@@ -801,4 +942,206 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
             vp->removeShader("oe_discardalpha_frag");
         }
     }
+}
+
+//.........................................................................
+
+void
+GLSLChunker::read(const std::string& input, GLSLChunks& output) const
+{
+    char break_char = ';';
+    char ch;
+    int line_number =1;
+    int chunck_number =1;
+
+    std::istringstream file_in(input);
+
+    //skips whitespace until the first line of the program
+    ch = file_in.peek(); 
+    if ((!isalpha(ch) || !ispunct(ch) )){
+        while (file_in >> std::noskipws >> ch) {
+            if (isalpha(ch) || ispunct(ch)){
+                break;
+            }
+
+        }
+    }
+
+    //glslChunk_type holds chuck text and chunk type
+    GLSLChunk *new_chunk = new GLSLChunk;
+    //set the initial type and save first character 
+    if (ch == '#'){
+        new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
+        new_chunk->glsl_chunk_text = ch;
+    } else {
+        if (ch == '/'){
+            new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+            new_chunk->glsl_chunk_text = ch;
+        } else {
+            new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
+            new_chunk->glsl_chunk_text = ch;
+        }
+    }
+
+
+    //loop over file
+    while (file_in >> std::noskipws >> ch)
+    {
+        int brace_count =0;
+        int comment_block =0;
+        if ((new_chunk->glsl_chunk_type==GLSLChunk::DIRECTIVE)||(new_chunk->glsl_chunk_type==GLSLChunk::COMMENT))
+        {
+            break_char='\n';
+        }else{
+            break_char = ';';
+        }
+        //for a directive, drop the last character, otherwise add it to the string
+        if (ch != '\n')
+            new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+
+        //if the first two chars are /* set block comment, otherwise block comment is caught later too
+        if ((ch == '/')&&(file_in.peek()=='*')){
+            comment_block =1;
+        }
+        //loop until it finds a break caracter
+        while (file_in >> std::noskipws >> ch) {
+            //check for directive or comment
+            if ((ch == '#') || ((ch == '/')&&(file_in.peek()=='/'))){
+                if (brace_count == 0)
+                    new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
+                break_char='\n';
+            }
+            //check for start of block comment outside of function
+            if ((ch == '/')&&(file_in.peek()=='*')&&(brace_count==0)){
+                new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
+                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+                //use * as break but still need to read / as same chunk
+                break_char='*';
+                file_in >> std::noskipws >> ch;
+                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+                file_in >> std::noskipws >> ch;
+                comment_block =1;
+            }
+
+            //now check for end of chunks
+
+            //End of chunk is at the break character, correct number of end braces, and not in comment block
+            if ((ch == break_char) && (brace_count == 0) && (comment_block==0)) {
+                line_number++;
+                //don't save the newline but do save semi colon and right brace end characters
+                if (ch != '\n')
+                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+
+                // try to find a / and then check if there is a following / to set type to comment
+                std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
+                if ((found != -1)&&(new_chunk->glsl_chunk_text.at(found+1)=='/')){
+                    new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                }
+
+
+                //push into vector and clear text for next chunk
+                output.push_back(*new_chunk);
+                new_chunk->glsl_chunk_text = "";
+                chunck_number++;
+
+                //peek ahead to the next line to set initial chunk type and break
+                char ch_next = file_in.peek();
+                if (ch_next == '#'){
+                    new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
+
+                } else {
+                    if (ch_next == '/'){
+                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                    } else {
+                        new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
+                    }
+                }
+                break;
+
+                //Not at the end of a chunk so check for function
+            } else {
+                if (ch == '{'){
+                    //found a left brace but check if part of a comment
+                    std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
+                    if ((found != -1)&&((new_chunk->glsl_chunk_text.at(found+1)=='/')||(new_chunk->glsl_chunk_text.at(found+1)=='*'))){
+                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                    } else {
+                        //function found so change break character and chunk type
+                        break_char='}';
+                        brace_count++;
+                        new_chunk->glsl_chunk_type=GLSLChunk::FUNCTION;
+                    }
+                }
+                //keep track of right braces to make sure chunk has all nested statements
+                if (ch == '}'){
+                    //found a right brace but check if part of a comment
+                    std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
+                    if ((found != -1)&&((new_chunk->glsl_chunk_text.at(found+1)=='/')||(new_chunk->glsl_chunk_text.at(found+1)=='*'))){
+                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                    } else {
+                        brace_count--;
+                        if (brace_count == 0){
+                            //Found end of function, save right brace and push entry
+                            new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+                            output.push_back(*new_chunk);
+                            new_chunk->glsl_chunk_text = "";
+                            new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
+                            chunck_number++;
+                            break;
+                        }
+                    }
+                }
+
+
+                //checking for * as break char isn't sufficient so peek ahead and see if it is an * or */ outside of func
+                char ch_next = file_in.peek();
+                if ((ch == '*') && (ch_next == '/') && (brace_count==0)){
+                    comment_block=0;
+                    //end of block comment found so save * and /
+                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+
+                    file_in >> std::noskipws >> ch;
+                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+                    new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                    output.push_back(*new_chunk);
+                    //init new chunk
+                    new_chunk->glsl_chunk_text = "";
+                    new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
+                    chunck_number++;
+                    break;
+                }
+                //if the program does not end on a newline, comments or directives will not end on break character so 
+                //check if next char is EOF
+                if (ch_next == EOF){
+                    //next char is EOF before break character was found so end chunk
+                    //try to find comments by skipping whitespace at beginning of chunk
+                    std::size_t found = new_chunk->glsl_chunk_text.find_first_not_of(" ");
+                    if (found != std::string::npos && new_chunk->glsl_chunk_text.at(found) == '/') {
+                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
+                    }
+                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+                    output.push_back(*new_chunk);
+                    new_chunk->glsl_chunk_text = "";
+                    chunck_number++;
+                    break;
+                }
+
+                //character is not a break character so save it
+                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
+            }
+        }
+    }
+
+    delete new_chunk;
+}
+
+void
+GLSLChunker::write(const GLSLChunks& input, std::string& output) const
+{
+    std::stringstream buf;
+    for(int i=0; i<input.size(); ++i)
+    {
+        buf << input[i].glsl_chunk_text << "\n";
+    }
+    output = buf.str();
 }

@@ -1,0 +1,227 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_LOADER
+#define OSGEARTH_REX_LOADER 1
+
+#include "Common"
+
+#include <osgEarth/IOTypes>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/TileKey>
+
+#include <osg/ref_ptr>
+#include <osg/Group>
+
+#include <osgDB/Options>
+#include <set>
+
+namespace osgEarth {
+    class TerrainEngine;
+}
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class TileNodeRegistry; // for UnloaderGroup
+
+
+    /** Interface for a utility to satifies loading requests. */
+    class Loader
+    {
+    public:
+        class Handler;
+
+        class Request : public osg::Referenced
+        {
+        public:
+            typedef std::vector<osg::Node*> ChangeSet;
+
+        public:
+            Request();
+
+            /** Name the request */
+            void setName(const std::string& name) { _name = name; }
+            const std::string& getName() const { return _name; }
+
+            /** TileKey associated with this request */
+            void setTileKey(const TileKey& key) { _key = key; }
+            const TileKey& getTileKey() const { return _key; }
+
+            /** Invoke the operation - not safe to alter the graph */
+            virtual void invoke() { }
+
+            /** Apply the results of the invoke operation - runs safely in update stage */
+            virtual void apply(const osg::FrameStamp*) { }
+
+            /** Request apply() should call this to mark a node as "changed" */
+            void addToChangeSet(osg::Node* Node);
+            
+            /** Loader calls this to process and reset the change set */
+            ChangeSet& getChangeSet() { return _nodesChanged; }
+
+            bool operator()(const Request& lhs, const Request& rhs) const {
+                return lhs._uid < rhs._uid;
+            }
+
+            UID getUID() const { return _uid; }
+
+            /** Access the stateset that holds optional GL-compilable objects. */
+            osg::StateSet* getStateSet();
+
+            void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
+            unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
+
+            enum State {
+                IDLE,
+                RUNNING,
+                MERGING,
+                FINISHED
+            };
+
+            void setState(State value) {
+                _state = value;
+                if ( _state == IDLE )
+                    _loadCount = 0;
+            }
+
+            bool isIdle() const { return _state == IDLE; }
+            bool isRunning() const { return _state == RUNNING; }
+            bool isMerging() const { return _state == MERGING; }
+            bool isFinished() const { return _state == FINISHED; }
+
+            UID                           _uid;
+            std::string                   _name;
+            TileKey                       _key;
+            State                         _state;
+            float                         _priority;
+            osg::ref_ptr<osg::Referenced> _internalHandle;
+            unsigned                      _lastFrameSubmitted;
+            osg::Timer_t                  _lastTick;
+            osg::ref_ptr<osg::StateSet>   _stateSet;
+            mutable Threading::Mutex      _lock;
+            int                           _loadCount;
+
+            void lock() { _lock.lock(); }
+            void unlock() { _lock.unlock(); }
+
+            ChangeSet                     _nodesChanged;
+        };
+
+        class Handler : public osg::Referenced
+        {
+        public:
+            virtual void operator()(Request* request) =0;
+        };
+
+        /** Start or continue loading a request. */
+        virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
+
+        /** Clear out all pending requests. */
+        virtual void clear() =0;
+    };
+
+
+    class LoaderGroup : public osg::Group, public Loader
+    {
+    public: // Loader
+        void setFrameStamp(const osg::FrameStamp* fs) { _frameStamp = fs; }
+        const osg::FrameStamp* getFrameStamp() const { return _frameStamp.get(); }
+
+    protected:
+        osg::ref_ptr<const osg::FrameStamp> _frameStamp;
+    };
+
+
+    /** Loader that immediately invokes and applies synchronously. */
+    class SimpleLoader : public LoaderGroup
+    {
+    public:
+        SimpleLoader();
+
+    public: // Loader
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        void clear();
+    };
+
+
+    /** Loader that uses the OSG database pager to run requests in the background. */
+    class PagerLoader : public LoaderGroup
+    {
+    public:
+        PagerLoader(TerrainEngine* engine); //UID engineUID);
+
+        /** Sets the maximum number of requests to merge per frame. 0=infinity */
+        void setMergesPerFrame(int);
+
+    public: // Loader
+
+        /** Asks the loader to begin or continue loading something.
+            Returns true if a NEW request was scheduled; false if an existing request was updated. */
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        /** Cancel all pending requests. */
+        void clear();
+
+    public: // osg::Group
+
+        bool addChild(osg::Node*);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    public:
+
+        /** Internal method to invoke a request that was previously queued with load(). */
+        Request* invokeAndRelease(UID requestUID);
+
+        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
+        TileKey getTileKeyForRequest(UID requestUID) const;
+
+    protected:
+        
+        void processChangeSet(Loader::Request* req);
+
+        typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
+
+        typedef osg::ref_ptr<Loader::Request> RefRequest;
+
+        struct SortRequest {
+            bool operator()(const RefRequest& lhs, const RefRequest& rhs) const {
+                return lhs->_priority > rhs->_priority;
+            }
+        };
+
+        //typedef std::set<RefRequest, SortRequest> MergeQueue;
+        typedef std::multiset<RefRequest, SortRequest> MergeQueue;
+
+        UID              _engineUID;
+        osg::NodePath    _myNodePath;
+        Requests         _requests;
+        MergeQueue       _mergeQueue;  
+        osg::Timer_t     _checkpoint;
+        int              _mergesPerFrame;
+        unsigned         _frameNumber;
+
+        osg::ref_ptr<osgDB::Options> _dboptions;
+        mutable Threading::Mutex     _requestsMutex;
+    };
+
+} } }
+
+
+#endif // OSGEARTH_REX_LOADER

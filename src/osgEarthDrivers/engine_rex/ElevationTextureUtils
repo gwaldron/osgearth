@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVERS_REX_ELEVATION_TEXTURE_UTILS_H
+#define OSGEARTH_DRIVERS_REX_ELEVATION_TEXTURE_UTILS_H 1
+
+#include <osg/Matrix>
+#include <osgEarth/ImageUtils>
+
+namespace osg
+{
+    class Texture;
+    class Image;
+}
+namespace osgEarth
+{
+    class TileKey;
+}
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class ElevationImageReader
+    {
+    public:
+        ElevationImageReader(const osg::Image* image, const osg::Matrix& matrixScaleBias);
+        ElevationImageReader(const osg::Image* image);
+
+        bool valid(void) const {return _valid;}
+
+        int startCol(void) const {return _startCol;}
+        int startRow(void) const {return _startRow;}
+
+        int endCol(void) const {return _endCol;}
+        int endRow(void) const {return _endRow;}
+
+        float elevationN(float s, float t);
+
+        float elevation(int col, int row) const
+        {
+            return _pixelReader(col, row).r();
+        }
+    private:
+        ImageUtils::PixelReader _pixelReader;
+        bool _valid;
+
+        int _startCol, _startRow;
+        int _endCol, _endRow;
+
+        void init(const osg::Image* image, const osg::Matrix& matrixScaleBias);
+    };
+
+    class ElevationTexureUtils
+    {
+    public:
+        static bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& matrixScaleBias, const TileKey& tileKey, osg::Vec2f& output);
+    };
+}}}
+#endif

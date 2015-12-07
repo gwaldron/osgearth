@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -50,6 +50,8 @@ FeatureSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "name",         _name );
     conf.getObjIfSet( "profile",      _profile );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 
     const ConfigSet& children = conf.children();
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -95,6 +97,8 @@ FeatureSourceOptions::getConfig() const
     conf.updateIfSet   ( "name",         _name );
     conf.updateObjIfSet( "profile",      _profile );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
     {

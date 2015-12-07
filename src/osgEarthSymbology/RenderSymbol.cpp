@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,20 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(render, RenderSymbol);
 
+RenderSymbol::RenderSymbol(const RenderSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_depthTest(rhs._depthTest),
+_lighting(rhs._lighting),
+_depthOffset(rhs._depthOffset),
+_backfaceCulling(rhs._backfaceCulling),
+_order(rhs._order),
+_clipPlane(rhs._clipPlane),
+_minAlpha(rhs._minAlpha),
+_renderBin(rhs._renderBin),
+_transparent(rhs._transparent)
+{
+}
+
 RenderSymbol::RenderSymbol(const Config& conf) :
 Symbol          ( conf ),
 _depthTest      ( true ),
@@ -31,7 +45,8 @@ _lighting       ( true ),
 _backfaceCulling( true ),
 _order          ( 0 ),
 _clipPlane      ( 0 ),
-_minAlpha       ( 0.0f )
+_minAlpha       ( 0.0f ),
+_transparent    ( false )
 {
     mergeConfig(conf);
 }
@@ -49,6 +64,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "clip_plane",       _clipPlane );
     conf.addIfSet   ( "min_alpha",        _minAlpha );
     conf.addIfSet   ( "render_bin",       _renderBin );
+    conf.addIfSet   ( "transparent",      _transparent );
     return conf;
 }
 
@@ -63,6 +79,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "clip_plane",       _clipPlane );
     conf.getIfSet   ( "min_alpha",        _minAlpha );
     conf.getIfSet   ( "render_bin",       _renderBin );
+    conf.getIfSet   ( "transparent",      _transparent );
 }
 
 void
@@ -109,5 +126,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-bin") ) {
         style.getOrCreate<RenderSymbol>()->renderBin() = c.value();
+    }
+    else if ( match(c.key(), "render-transparent") ) {
+        style.getOrCreate<RenderSymbol>()->transparent() = as<bool>(c.value(), *defaults.transparent() );
     }
 }

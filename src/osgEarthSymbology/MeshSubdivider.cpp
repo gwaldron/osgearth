@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -851,6 +851,9 @@ namespace
         const osg::Matrixd&  L2W, // local=>world xform
         unsigned int         maxElementsPerEBO )
     {
+        if ( geom.getNumPrimitiveSets() == 0 )
+            return;
+
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
         if ( mode == GL_POINTS )

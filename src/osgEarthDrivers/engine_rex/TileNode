@@ -1,0 +1,158 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE
+#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE 1
+
+#include "Common"
+#include "RenderBindings"
+#include "Loader"
+#include "MaskGenerator"
+#include "MPTexture"
+#include "ProxySurfaceNode"
+
+#include <OpenThreads/Atomic>
+#include <osgEarth/TerrainTileNode>
+#include <vector>
+
+namespace osg {
+    class CullStack;
+}
+namespace osgUtil {
+    class CullVisitor;
+}
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class EngineContext;
+    class SurfaceNode;
+    class ProxySurfaceNode;
+    class SelectionInfo;
+
+    /**
+     * TileNode represents a single tile. TileNode has 5 children:
+     * one SurfaceNode that renders the actual tile content under a MatrixTransform;
+     * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
+     */
+    class TileNode : public osg::Group
+    {
+    public:
+        TileNode();
+
+        /** TileKey of the key representing the data in this node. */
+        const TileKey& getTileKey() const { return _key; }
+
+        /** Sets the map revision that this tile should be using. */
+        void setMapRevision(Revision rev) { } // nyi - check for need
+
+        /** Tells this tile that it needs to request data. */
+        void setDirty(bool value);
+
+        /** Creates the geometry and state for this tilenode. */
+        void create(const TileKey& key, EngineContext* context);
+
+        /** Whether this node has enough data to traverse. */
+        bool isReadyToTraverse() const;
+
+        /** Whether the tile is expired; i.e. has not been visited in some time. */
+        bool isDormant(const osg::FrameStamp*) const;
+
+        /** Whether all the subtiles are this tile are dormant (have not been visited recently) */
+        bool areSubTilesDormant(const osg::FrameStamp*) const;
+
+        /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
+        void removeSubTiles();
+
+        /** Whether the tile drawables are visible */
+        bool isVisible(osg::CullStack* cs) const;
+
+        /** Load (or continue loading) content for the tiles in this quad. */
+        void load(osg::NodeVisitor& nv);
+
+        /** Notifies this tile that another tile has come into existence. */
+        void notifyOfArrival(TileNode* that) { } // nyi - todo
+
+        /** Set inheritance matrices as necessary. Return true is changed were made. */
+        bool inheritState(EngineContext* context);
+
+        /** Returns the tile's parent; convenience function */
+        TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
+        
+        /** merge in new stuff from a state set. */
+        void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
+
+        /** Access to the multipass texture attribute */
+        MPTexture* getMPTexture() const { return _mptex.get(); }
+
+        /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
+        void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
+
+        // access to subtiles
+        TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
+        const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
+
+    public: // osg::Node
+
+        osg::BoundingSphere computeBound() const;
+
+        void traverse(osg::NodeVisitor& nv);
+
+        void releaseGLObjects(osg::State* state) const;
+
+    protected:
+        TileKey                            _key;
+        osg::ref_ptr<SurfaceNode>          _surface;
+        osg::ref_ptr<SurfaceNode>          _patch;
+        osg::ref_ptr<Loader::Request>      _loadRequest;
+        osg::ref_ptr<Loader::Request>      _expireRequest;
+        Threading::Mutex                   _mutex;
+        bool                               _dirty;
+        OpenThreads::Atomic                _lastTraversalFrame;
+        unsigned                           _count;
+        osg::ref_ptr<MPTexture>            _mptex;
+        osg::ref_ptr<osg::StateSet>        _payloadStateSet;
+
+    private:
+
+        void createChildren(EngineContext* context);
+
+        void cull(osg::NodeVisitor& nv);
+
+        void cull_stealth(osg::NodeVisitor& nv);
+
+        // returns true if any surface geometry was added (visible).
+        bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
+
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
+        float getVisibilityRangeHint(EngineContext*) const;
+
+        void updateTileUniforms(const SelectionInfo& selectionInfo);
+        void createTileUniforms();
+
+        osg::ref_ptr<osg::Uniform> _tileKeyUniform;
+        osg::ref_ptr<osg::Uniform> _tileMorphUniform;
+        osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
+    };
+
+    typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE

@@ -1,0 +1,61 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarthSymbology/Expression>
+#include <osgEarthSymbology/Symbol>
+#include <osg/Referenced>
+#include <vector>
+
+namespace osgEarth { namespace Symbology
+{
+    /** 
+     * Symbol that contains coverage encoding information
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT CoverageSymbol : public Symbol
+    {
+    public:
+        META_Object(osgEarthSymbology, CoverageSymbol);
+
+        /** construct a symbol */
+        CoverageSymbol(const Config& conf =Config());
+        CoverageSymbol(const CoverageSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+
+        /** coverage value expression; resolves to a 32-bit floating point number. */
+        optional<NumericExpression>& valueExpression() { return _valueExpr; }
+        const optional<NumericExpression>& valueExpression() const { return _valueExpr; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<NumericExpression> _valueExpr;
+        
+        /** dtor */
+        virtual ~CoverageSymbol() { }
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_COVERAGE_SYMBOL_H

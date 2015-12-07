@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,113 +28,152 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Geometry::build( const Config& parentConf, KMLContext& cx, Style& style)
+KML_Geometry::build( xml_node<>* parent, KMLContext& cx, Style& style)
 {
-    const ConfigSet& children = parentConf.children();
-    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-    {
-        buildChild( *i, cx, style );
-    }
+	for (xml_node<>* node = parent->first_node(); node; node = node->next_sibling())
+	{
+		buildChild(node, cx, style);
+	}
 }
 
 void
-KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
+KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
 {
-    if ( conf.key() == "point" )
+	std::string name = toLower(node->name());
+    if ( name == "point" )
     {
         KML_Point g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
+        g.parseStyle(node, cx, style);
     }
-    else if ( conf.key() == "linestring" )
+    else if (name == "linestring" )
     {
         KML_LineString g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
+        g.parseStyle(node, cx, style);
     }
-    else if ( conf.key() == "linearring" || conf.key() == "gx:latlonquad" )
+    else if ( name == "linearring" || name == "gx:latlonquad" )
     {
         KML_LinearRing g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
+        g.parseStyle(node, cx, style);
     }
-    else if ( conf.key() == "polygon" )
+    else if ( name == "polygon" )
     {
         KML_Polygon g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
+        g.parseStyle(node, cx, style);
     }
-    else if ( conf.key() == "multigeometry" )
+    else if ( name == "multigeometry" )
     {
         KML_MultiGeometry g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
-        const ConfigSet& mgChildren = conf.children();
         
-        for( ConfigSet::const_iterator i = mgChildren.begin(); i != mgChildren.end(); ++i )
+        for( xml_node<>* n = node->first_node(); n; n = n->next_sibling())
         {
-            const Config& mgChild = *i;
-            Style subStyle = style;
             KML_Geometry subGeom;
-            subGeom.parseStyle( mgChild, cx, subStyle );
-            subGeom.buildChild( mgChild, cx, style );
+            subGeom.buildChild( n, cx, style ); //use single style for all subgeometries
             if ( subGeom._geom.valid() )
                 dynamic_cast<MultiGeometry*>(g._geom.get())->getComponents().push_back( subGeom._geom.get() );
         }
     }
-    else if ( conf.key() == "model" )
+    else if ( name == "model" )
     {
         KML_Model g;
-        g.parseCoords(conf, cx);
+        g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(conf, cx, style);
+        g.parseStyle(node, cx, style);
     }
 }
 
 void
-KML_Geometry::parseCoords( const Config& conf, KMLContext& cx )
+KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
 {
-    const Config& coords = conf.child("coordinates");
-    StringVector tuples;
-    StringTokenizer( coords.value(), tuples, " ", "", false, true );
-    for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
+    xml_node<>* coords = node->first_node("coordinates", 0, false);
+    if ( coords )
     {
-        StringVector parts;
-        StringTokenizer( *s, parts, ",", "", false, true );
-        if ( parts.size() >= 2 )
+        StringVector tuples;
+        StringTokenizer( coords->value(), tuples, " \n", "", false, true );
+        for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
         {
-            osg::Vec3d point;
-            point.x() = as<double>( parts[0], 0.0 );
-            point.y() = as<double>( parts[1], 0.0 );
-            if ( parts.size() >= 3 ) {
-                point.z() = as<double>( parts[2], 0.0 );
+            StringVector parts;
+            StringTokenizer( *s, parts, ",", "", false, true );
+            if ( parts.size() >= 2 )
+            {
+                osg::Vec3d point;
+                point.x() = as<double>( parts[0], 0.0 );
+                point.y() = as<double>( parts[1], 0.0 );
+                if ( parts.size() >= 3 ) {
+                    point.z() = as<double>( parts[2], 0.0 );
+                }
+                _geom->push_back(point);
             }
-            _geom->push_back(point);
         }
     }
 }
 
 void
-KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
+KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
 {
-    _extrude = conf.value("extrude") == "1";
-    _tessellate = conf.value("tessellate") == "1";
+    _extrude = getValue(node, "extrude") == "1";
+    _tessellate = getValue(node, "tessellate") == "1";
 
-    std::string am = conf.value("altitudemode");
+    std::string am = getValue(node, "altitudemode");
     if ( am.empty() )
         am = "clampToGround"; // default.
 
-    bool isPoly = _geom->getComponentType() == Geometry::TYPE_POLYGON;
+    bool isPoly = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_POLYGON;
 
     // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
     // technique will depend on the geometry's type and setup.
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
+
+
+    // Compute some info about the geometry
+
+    // Are all of the elevations zero?
+    bool zeroElev = true;
+    // Are all of the the elevations the same?
+    bool sameElev = true;
+
+    double maxElevation = -DBL_MAX;
+
+    //if ( isPoly ) //compute maxElevation also for line strings for extrusion height
+    {
+        bool first = true;
+        double e = 0.0;
+        ConstGeometryIterator gi( _geom.get(), false );
+        while(gi.hasMore() )
+        {
+            const Geometry* g = gi.next();
+            for( Geometry::const_iterator ji = g->begin(); ji != g->end(); ++ji )
+            {
+                if ( !osg::equivalent(ji->z(), 0.0) )
+                    zeroElev = false;
+
+                if (first)
+                {
+                    first = false;
+                    e = ji->z();
+                }
+                else
+                {
+                    if (!osg::equivalent(e, ji->z()))
+                    {
+                        sameElev = false;
+                    }
+                }
+
+                if (ji->z() > maxElevation) maxElevation = ji->z();
+            }
+        }
+    }
 
     // clamp to ground mode:
     if ( am == "clampToGround" )
@@ -163,27 +202,22 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     {
         alt->clamping() = alt->CLAMP_RELATIVE_TO_TERRAIN;
 
-        if ( _extrude )
+        if (isPoly)
         {
-            alt->technique() = alt->TECHNIQUE_MAP;
-        }
-        else
-        {
-            alt->technique() = alt->TECHNIQUE_SCENE;
-
-            if ( isPoly )
+            // If all of the verts have the same elevation then assume that it should be clamped at the centroid and not per vertex.
+            if (sameElev)
             {
-                bool zeroElev = true;
-                ConstGeometryIterator gi( _geom.get(), false );
-                while( zeroElev == true && gi.hasMore() )
-                {
-                    const Geometry* g = gi.next();
-                    for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
-                    {
-                        if ( !osg::equivalent(ji->z(), 0.0) )
-                            zeroElev = false;
-                    }
-                }
+                alt->binding() = AltitudeSymbol::BINDING_CENTROID;
+            }
+
+            if ( _extrude )
+            {
+                alt->technique() = alt->TECHNIQUE_MAP;
+            }
+            else
+            {
+                alt->technique() = alt->TECHNIQUE_SCENE;
+
                 if ( zeroElev )
                 {
                     alt->clamping()  = alt->CLAMP_TO_TERRAIN;
@@ -196,21 +230,19 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
-        if ( _extrude )
-        {
-            alt->clamping() = alt->CLAMP_ABSOLUTE;
-            alt->technique() = alt->TECHNIQUE_MAP;
-        }
-        else
-        {
-            alt->clamping() = AltitudeSymbol::CLAMP_NONE;
-        }
+        alt->clamping() = AltitudeSymbol::CLAMP_NONE;
     }
 
     if ( _extrude )
     {
         ExtrusionSymbol* es = style.getOrCreate<ExtrusionSymbol>();
         es->flatten() = false;
+        if (*alt->clamping() == AltitudeSymbol::CLAMP_NONE)
+        {
+            // Set the height to the max elevation + the approx depth of the mariana trench so that it will extend low enough to be always go to the surface of the earth.
+            // This lets us avoid clamping absolute absolute extruded polygons completely.
+            es->height() = -(maxElevation + 11100.0);
+        }
     }
     else
     {

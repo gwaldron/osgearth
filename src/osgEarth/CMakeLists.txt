@@ -10,7 +10,9 @@ MARK_AS_ADVANCED(CURL_IS_STATIC)
 ADD_DEFINITIONS(-DTIXML_USE_STL)
 
 IF(WIN32)
-    SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    IF(MSVC)
+        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    ENDIF(MSVC)
     IF(CURL_IS_STATIC)
         ADD_DEFINITIONS(-DCURL_STATICLIB)
         SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
@@ -19,7 +21,28 @@ ENDIF(WIN32)
 
 SET(LIB_NAME osgEarth)
 
+set(TARGET_GLSL
+    AlphaEffect.frag.glsl
+    DepthOffset.vert.glsl
+    Draping.vert.glsl
+    Draping.frag.glsl
+    GPUClamping.vert.glsl
+    GPUClamping.vert.lib.glsl
+    GPUClamping.frag.glsl
+    Instancing.vert.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+set(TARGET_IN
+    Shaders.cpp.in)
+
+configure_shaders(
+    Shaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
+
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+
 SET(LIB_PUBLIC_HEADERS
     AlphaEffect
     AutoScale
@@ -30,6 +53,7 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    Clamping
     ClampableNode
     ClampingTechnique
     ColorFilter
@@ -40,11 +64,12 @@ SET(LIB_PUBLIC_HEADERS
     Cube
     CullingUtils
     DateTime
+	DateTimeRange
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
-    Draggers
     DrapeableNode
+    DrapingCullSet
     DrapingTechnique
     DrawInstanced
     ECEF
@@ -62,6 +87,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
 	GeoTransform
     HeightFieldUtils
+    Horizon
     HTTPClient
     ImageLayer
     ImageMosaic
@@ -88,24 +114,31 @@ SET(LIB_PUBLIC_HEADERS
     MemCache
     ModelLayer
     ModelSource
+    NativeProgramAdapter
     NodeUtils
     Notify
     optional
+    ObjectIndex
     OverlayDecorator
     OverlayNode
 	PhongLightingEffect
-    Pickers
+    Picker
+    IntersectionPicker
     PrimitiveIntersector
     Profile
+    Profiler
     Progress
+	QuadTree
     Random
     Registry
     Revisioning
+    Shaders
     ShaderFactory
     ShaderGenerator
+    ShaderLoader
     ShaderUtils
+    Shadowing
 	SharedSARepo
-    SparseTexture2DArray
     SpatialReference
     StateSetCache
 	StateSetLOD
@@ -116,7 +149,12 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
+    TerrainEngineRequirements
+    TerrainTileModel
+    TerrainTileModelFactory
     TerrainTileNode
+    TileKeyDataStore
+    TilePatchCallback
     Tessellator
     TextureCompositor
     TileKey
@@ -168,11 +206,7 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")	
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
-
-ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
-    ${LIB_PUBLIC_HEADERS}
-    ${TINYXML_SRC}
-    ${VERSION_GIT_SOURCE}
+set(TARGET_SRC
     AlphaEffect.cpp
     AutoScale.cpp
     Bounds.cpp
@@ -181,6 +215,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
     ColorFilter.cpp
@@ -189,11 +224,12 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Cube.cpp
     CullingUtils.cpp
     DateTime.cpp
+	DateTimeRange.cpp
     Decluttering.cpp
     DepthOffset.cpp
-    Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrapingCullSet.cpp
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
@@ -209,6 +245,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeoMath.cpp
 	GeoTransform.cpp
     HeightFieldUtils.cpp
+    Horizon.cpp
     HTTPClient.cpp
     ImageLayer.cpp
     ImageMosaic.cpp
@@ -235,20 +272,24 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ModelSource.cpp
     NodeUtils.cpp
     Notify.cpp
+    ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
 	PhongLightingEffect.cpp
-    Pickers.cpp
+    IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
+    Profiler.cpp
     Progress.cpp
+	QuadTree.cpp
     Random.cpp
     Registry.cpp
     Revisioning.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
+    ShaderLoader.cpp
     ShaderUtils.cpp
-    SparseTexture2DArray.cpp
+    Shadowing.cpp
     SpatialReference.cpp
     StateSetCache.cpp
 	StateSetLOD.cpp
@@ -258,10 +299,13 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainTileModel.cpp
+    TerrainTileModelFactory.cpp
     Tessellator.cpp
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
+    TilePatchCallback.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp
@@ -275,7 +319,17 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Viewpoint.cpp
     VirtualProgram.cpp
     XmlUtils.cpp
-)
+    ${SHADERS_CPP} )
+
+
+ADD_LIBRARY(
+	${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+    ${LIB_PUBLIC_HEADERS}
+    ${TINYXML_SRC}
+    ${VERSION_GIT_SOURCE}
+	${TARGET_SRC}
+    ${TARGET_GLSL}
+    ${TARGET_IN} )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
 

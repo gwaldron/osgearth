@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -56,6 +56,8 @@ _dbOptions     ( dbOptions )
     // geometry created under this session takes advantage of it. That's reasonable since
     // tiles in a particular "layer" will tend to share state.
     _stateSetCache = new StateSetCache();
+
+    _name = "Session (unnamed)";
 }
 
 Session::~Session()

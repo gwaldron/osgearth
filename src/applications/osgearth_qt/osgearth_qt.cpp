@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,16 +8,20 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
 #include <osg/Notify>
+#include <osg/Version>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/MapNode>
 #include <osgEarthAnnotation/AnnotationData>
@@ -178,7 +182,7 @@ TrackNode* createTrack(TrackNodeFieldSchema& schema, osg::Image* image, const st
 
   AnnotationData* data = new AnnotationData();
   data->setName(name);
-  data->setViewpoint(osgEarth::Viewpoint(center, 0.0, -90.0, 1e5));
+  data->setViewpoint(osgEarth::Viewpoint(0L, center.x(), center.y(), center.z(), 0.0, -90.0, 1e5));
   track->setAnnotationData( data );
 
   trackSims.push_back(new TrackSim(track, center, radius, time, mapNode));
@@ -261,6 +265,11 @@ main(int argc, char** argv)
         // tests: implicity creating a viewer.
         viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
     }
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,2)
+    // Enable touch events on the viewer
+    viewerWidget->getGraphicsWindow()->setTouchEventsEnabled(true);
+#endif
 
     //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
     //viewerWidget->setGeometry(50, 50, 1024, 768);

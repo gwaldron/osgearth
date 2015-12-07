@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -27,14 +30,17 @@
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
+#include <osg/buffered_value>
 #include <string>
 #include <map>
 
 #ifdef OSG_GLES2_AVAILABLE
+#    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
 #    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
 #else
-#    define GLSL_VERSION_STR             "110" 
+#    define GLSL_VERSION                 330
+#    define GLSL_VERSION_STR             "330 compatibility" 
 #    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif
 
@@ -46,23 +52,35 @@ namespace osgEarth
         enum FunctionLocation
         {
             // vertex is in model space (equivalent to gl_Vertex).
-            LOCATION_VERTEX_MODEL = 0,
+            LOCATION_VERTEX_MODEL,
 
             // vertex is in view(aka eye) coordinates, with the camera at 0,0,0 
             // looking down the -Z axis.
-            LOCATION_VERTEX_VIEW = 1,
+            LOCATION_VERTEX_VIEW,
 
             // vertex is in post-perspective coordinates; [-w..w] along each axis
-            LOCATION_VERTEX_CLIP = 2,
+            LOCATION_VERTEX_CLIP,
+
+            // tessellation control shader; model space
+            LOCATION_TESS_CONTROL,
+
+            // tessellation evalulation shader; model space
+            LOCATION_TESS_EVALUATION,
+
+            // geometry shader; inputs are in model space.
+            LOCATION_GEOMETRY,
 
             // fragment is being colored.
-            LOCATION_FRAGMENT_COLORING = 3,
+            LOCATION_FRAGMENT_COLORING,
 
             // fragment is being lit.
-            LOCATION_FRAGMENT_LIGHTING = 4,
+            LOCATION_FRAGMENT_LIGHTING,
 
             // fragment output is being assigned.
-            LOCATION_FRAGMENT_OUTPUT = 5
+            LOCATION_FRAGMENT_OUTPUT,
+
+            // not defined.
+            LOCATION_UNDEFINED
         };
 
         /**
@@ -98,7 +116,91 @@ namespace osgEarth
 
         // user function sets, categorized by function location.
         typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+        // Mask values that represents which stages a composed shader contains.
+        enum StageMaskValues
+        {
+            STAGE_VERTEX          = 1 << 0,
+            STAGE_TESSCONTROL     = 1 << 1,
+            STAGE_TESSEVALUATION  = 1 << 2,
+            STAGE_GEOMETRY        = 1 << 3,
+            STAGE_FRAGMENT        = 1 << 4,
+            STAGE_COMPUTE         = 1 << 5
+        };
+        typedef unsigned StageMask;
     }
+
+
+    /**
+     * A Shader that can compile into different stages of the program pipeline
+     * depending on which stages are in use. For example, you may designate a
+     * VP component to run in the "VERTEX_CLIP" location. But if a geometry shader
+     * is present, this function must be moved to the end of the GEOMETRY stage
+     * instead. PolyShader supports this. It also preserves the original shader
+     * source in case someone wants to access it via VirtualProgram::getShaders
+     * (for example, to call VP components from an external shader program).
+     */
+    class OSGEARTH_EXPORT PolyShader : public osg::Referenced
+    {
+    public:
+        /** Construct a polyshader */
+        PolyShader();
+
+        /** Construct a polyshader */
+        PolyShader(osg::Shader* shader);
+
+        /** Name of the polyshader */
+        void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
+
+        /** Nominal stage at which this shader would run */
+        void setLocation(ShaderComp::FunctionLocation loc);
+        ShaderComp::FunctionLocation getLocation() const { return _location; }
+
+        /** Shader source code (unprocessed) */
+        void setShaderSource(const std::string& source);
+        const std::string& getShaderSource() const { return _source; }
+
+        /** Given a mask of all available stages, return the shader that will run
+            this polyshader in the appropriate stage. */
+        osg::Shader* getShader(ShaderComp::StageMask mask) const;
+
+        /** The shader in its named stage. */
+        osg::Shader* getNominalShader() const { return _nominalShader.get(); }
+
+        /** Generates the shaders. */
+        void prepare();
+
+        /** Called from the draw context to resize shader buffers as necessary (OSG) */
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+
+    protected:
+        virtual ~PolyShader() { }
+
+        std::string                  _name;
+        std::string                  _source;
+        ShaderComp::FunctionLocation _location;
+
+        // Originally specified stage for this shader
+        osg::Shader::Type            _nominalType;
+
+        // The shader built for the nominal program stage (nominalType)
+        osg::ref_ptr<osg::Shader>    _nominalShader;
+
+        // Same shader, but set up for injection into a different stage
+        osg::ref_ptr<osg::Shader>    _geomShader;
+        osg::ref_ptr<osg::Shader>    _tessevalShader;
+
+        // shader source before running thru the preprocessor. Keep this around so that
+        // someone can call VirtualProgram::getShaders and have access to code that has
+        // not been set up for ShaderFactory.
+        //std::string                  _originalSource;
+
+        bool                         _dirty;
+    };
+
+    typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
 
 
     /**
@@ -205,7 +307,7 @@ namespace osgEarth
         META_StateAttribute( osgEarth, VirtualProgram, SA_TYPE);
 
         /** dtor */
-        virtual ~VirtualProgram() { }
+        virtual ~VirtualProgram();
 
         /** 
          * Compare this program against another (used for state-sorting)
@@ -222,7 +324,7 @@ namespace osgEarth
         /**
          * Gets a shader by its ID.
          */
-        osg::Shader* getShader( const std::string& shaderID ) const;
+        PolyShader* getPolyShader( const std::string& shaderID ) const;
 
         /** 
          * Adds a shader to this VP's shader table.
@@ -255,9 +357,17 @@ namespace osgEarth
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
 
+        /** Enable logging to the console, for debugging. */
         void setShaderLogging( bool log );
+
+        /** Enable logging to a file, for deugging. */
         void setShaderLogging( bool log, const std::string& filepath );
 
+        /** Gets whether the accept callbacks vary per frame */
+        bool getAcceptCallbacksVaryPerFrame() const;
+
+        /** Sets whether the accept callbacks vary per frame */
+        void setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame);
 
     public: // StateAttribute
         virtual void compileGLObjects(osg::State& state) const;
@@ -271,12 +381,13 @@ namespace osgEarth
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
-    public:
+    public:        
         struct ShaderEntry
         {
             ShaderEntry();
             bool accept(const osg::State& state) const;
-            osg::ref_ptr<osg::Shader>                _shader;
+            //osg::ref_ptr<osg::Shader>                _shader;
+            osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
             bool operator < (const ShaderEntry& rhs) const;
@@ -288,28 +399,45 @@ namespace osgEarth
             unsigned                   _frameLastUsed;
         };
 
-        typedef std::map< std::string, ShaderEntry > ShaderMap;
-        typedef std::map< std::string, std::string > AttribAliasMap;
+        typedef unsigned                              ShaderID;
+        typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
+        typedef std::map< std::string, std::string >  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
-        typedef std::vector< AttribAlias > AttribAliasVector;
-        //typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
-        typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
+        typedef std::vector< AttribAlias >            AttribAliasVector;
+
+        //typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
+        typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
+        typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
+        typedef std::vector< AttributePair > AttrStack;
 
     public:
         /**
          * Populates the output collection with all the osg::Shader objects that
          * are applicable for the given State.
+         * Returns the size of the output collection.
          */
-        static void getShaders(
+        static int getShaders(
+            const osg::State&                         state,
+            std::vector<osg::ref_ptr<osg::Shader> >&  output);
+        
+        /**
+         * Populates the output collection with all the PolyShaders that are applicable
+         * for the given state. Information about the stage mask is not returned (TODO?)
+         * Returns the size of the output collection.
+         */
+        static int getPolyShaders(
             const osg::State&                        state,
-            std::vector<osg::ref_ptr<osg::Shader> >& output);
+            std::vector<osg::ref_ptr<PolyShader> >&  output);
 
     protected:
         // thread-safe functions map getter
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
 
-        // thread-safe shader map getter
+        // thread-safe shader map copy
         void getShaderMap( ShaderMap& out ) const;
+
+        // thread-safe shader accumulator
+        void addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap, const osg::State& state) const;
 
     protected:
         // holds "template" data that should be installed in every auto-generated
@@ -328,14 +456,24 @@ namespace osgEarth
         // _dataModelMutex protects access to this member.
         ShaderMap _shaderMap;
 
+        // per-context cached shader map for thread-safe reuse without constant reallocation.
+        struct ApplyVars
+        {
+            ShaderMap         accumShaderMap;
+            ProgramKey        programKey;
+            AttribBindingList accumAttribBindings;
+            AttribAliasMap    accumAttribAliases;
+        };
+        mutable osg::buffered_object<ApplyVars> _apply;
+
         // protects access to the data members, which may be accessed by other VPs in the state stack.
-        mutable Threading::ReadWriteMutex _dataModelMutex;
+        mutable Threading::Mutex _dataModelMutex;
 
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        mutable ProgramMap                _programCache;
-        mutable Threading::ReadWriteMutex _programCacheMutex;
+        mutable ProgramMap       _programCache;
+        mutable Threading::Mutex _programCacheMutex;
 
         mutable optional<bool> _active;
         bool _inherit;
@@ -344,9 +482,33 @@ namespace osgEarth
         bool _logShaders;
         std::string _logPath;
 
+        // whether to use the "attribute stack memory" feature. default = true.
+        // see below.
+        bool _useStackMemory;
+
+        bool _acceptCallbacksVaryPerFrame;
+
+        // Mechnism for remembering whether a VP has been applied during the same frame
+        // and with the same attribute stack.
+        struct AttrStackMemory
+        {
+            void remember(const osg::State& state, const AttrStack& rhs, osg::Program* p);
+            osg::Program* recall(const osg::State& state, const AttrStack& rhs);
+
+            struct Item
+            {
+                int frameNumber;
+                AttrStack attrStack;
+                osg::ref_ptr<osg::Program> program;
+            };
+            osg::buffered_object<Item> _item;
+        };
+        mutable AttrStackMemory _vpStackMemory;
+
         bool hasLocalFunctions() const;
 
-        void accumulateFunctions(            const osg::State&                state,
+        void accumulateFunctions(            
+            const osg::State&                state,
             ShaderComp::FunctionLocationMap& result ) const;
 
         const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
@@ -357,10 +519,11 @@ namespace osgEarth
             unsigned           mask,
             ShaderMap&         accumShaderMap,
             AttribBindingList& accumAttribBindings,
-            AttribAliasMap&    accumAttribAliases);
+            AttribAliasMap&    accumAttribAliases,
+            bool&              acceptCallbacksPresent);
         
         bool readProgramCache(
-            const ShaderVector& vec,
+            const ProgramKey& key,
             unsigned frameNumber,
             osg::ref_ptr<osg::Program>& program);
 

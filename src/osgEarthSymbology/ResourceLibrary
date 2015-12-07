@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,9 +35,6 @@ namespace osgEarth { namespace Symbology
     /** 
      * ResourceLibrary manages a collection of external resources that a
      * build system can use the construct geometries.
-     *
-     * TODO: This class PROBABLY NEEDS the ability to share a mutex with
-     * whatever session is using it... like in osgGIS...
      */
     class OSGEARTHSYMBOLOGY_EXPORT ResourceLibrary : public osg::Referenced
     {

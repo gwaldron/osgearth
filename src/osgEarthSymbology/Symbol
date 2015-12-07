@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,11 +27,6 @@
 #include <osg/Referenced>
 #include <vector>
 
-#define META_Symbol(name) \
-    virtual bool isSameKindAs(const Symbol* rhs) const { return dynamic_cast<const name *>(rhs)!=NULL; } \
-    virtual const char* className() const { return #name; }
-
-
 namespace osgEarth { namespace Symbology
 {
     class Style;
@@ -39,7 +34,7 @@ namespace osgEarth { namespace Symbology
     /**
      * Abstract base class for all Symbol types.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
+    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Object
     {
     public:
         /** Script expression, optionally implemented by symbolizers. */
@@ -49,11 +44,13 @@ namespace osgEarth { namespace Symbology
         /** URI context (relative paths, etc) associated wtih this symbol */
         const URIContext& uriContext() const { return _uriContext; }
 
-        virtual Config getConfig() const;
+        virtual Config getConfig() const;   
 
-    public: // META_Symbol methods
-        virtual bool isSameKindAs(const Symbol* sym) const =0;
-        virtual const char* className() const =0;        
+    public:
+        /* methods required by osg::Object */
+        META_Object(osgEarthSymbology, Symbol);
+
+        Symbol(const Symbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
     protected:
         URIContext _uriContext;
@@ -67,6 +64,8 @@ namespace osgEarth { namespace Symbology
 
         virtual ~Symbol() { }
     };
+
+    typedef std::vector<osg::ref_ptr<Symbol> > SymbolVector;
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 
 

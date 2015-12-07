@@ -18,6 +18,7 @@ set(LIB_PUBLIC_HEADERS
     CircleNode
     Common
     Decoration
+    Draggers
     EllipseNode
     Export
     FeatureNode
@@ -45,6 +46,7 @@ set(LIB_COMMON_FILES
     AnnotationUtils.cpp
     CircleNode.cpp
     Decoration.cpp
+    Draggers.cpp
     EllipseNode.cpp
     FeatureNode.cpp
     FeatureEditing.cpp

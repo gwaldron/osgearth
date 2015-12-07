@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -99,10 +99,10 @@ namespace osgEarth { namespace Features
             osg::Geometry*          osgGeom,
             const osg::Matrixd      &world2local);
 
-        osg::Geode* processPolygons        (FeatureList& input, const FilterContext& cx);
-        osg::Geode* processLines           (FeatureList& input, const FilterContext& cx);
-        osg::Geode* processPolygonizedLines(FeatureList& input, bool twosided, const FilterContext& cx);
-        osg::Geode* processPoints          (FeatureList& input, const FilterContext& cx);
+        osg::Geode* processPolygons        (FeatureList& input, FilterContext& cx);
+        osg::Geode* processLines           (FeatureList& input, FilterContext& cx);
+        osg::Geode* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx);
+        osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
     };
 
 } } // namespace osgEarth::Features

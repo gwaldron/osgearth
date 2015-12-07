@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "TritonContext"
 #include <Triton.h>
+#include "TritonContext"
 #include <osg/GLExtensions>
+#include <osg/Math>
 #include <osgEarth/SpatialReference>
 
 #define LC "[TritonContext] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers::Triton;
+using namespace osgEarth::Triton;
 
 
 TritonContext::TritonContext(const TritonOptions& options) :
@@ -39,9 +39,21 @@ _ocean                ( 0L )
 }
 
 void
-TritonContext::setSRS(const SpatialReference* srs)
+TritonContext::setSRS(const osgEarth::SpatialReference* srs)
 {
     _srs = srs;
+}
+
+bool
+TritonContext::passHeightMapToTriton() const
+{
+    return _options.useHeightMap() == true;
+}
+
+int
+TritonContext::getHeightMapSize() const
+{
+    return osg::clampBetween(_options.heightMapSize().get(), 64, 2048);
 }
 
 void
@@ -124,7 +136,8 @@ TritonContext::update(double simTime)
 {
     if ( _ocean )
     {
-        _ocean->UpdateSimulation( simTime );
+        // fmod requires b/c CUDA is limited to single-precision values
+        _ocean->UpdateSimulation( fmod(simTime, 86400.0) );
     }
 }
 

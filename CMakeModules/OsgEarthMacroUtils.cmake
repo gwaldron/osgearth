@@ -6,7 +6,11 @@ MACRO(DETECT_OSG_VERSION)
     OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 	
     # detect if osgversion can be found
-    FIND_PROGRAM(OSG_VERSION_EXE NAMES osgversion)
+    FIND_PROGRAM(OSG_VERSION_EXE NAMES
+        osgversion
+        ${OSG_DIR}/bin/osgversion
+        ${OSG_DIR}/bin/osgversiond)
+        
     IF(OSG_VERSION_EXE AND NOT OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION AND NOT OPENSCENEGRAPH_PATCH_VERSION)
         #MESSAGE("OSGVERSION IS AT ${OSG_VERSION_EXE}")
         # get parameters out of the osgversion
@@ -88,7 +92,11 @@ ENDMACRO(DETECT_OSG_VERSION)
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
         IF(${varname}_DEBUG)
-            TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
+            IF(${varname})
+                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
+            ELSE(${varname})
+                TARGET_LINK_LIBRARIES(${TRGTNAME} debug "${${varname}_DEBUG}")
+            ENDIF(${varname})
         ELSE(${varname}_DEBUG)
             TARGET_LINK_LIBRARIES(${TRGTNAME} "${${varname}}" )
         ENDIF(${varname}_DEBUG)
@@ -193,7 +201,9 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 
     #MESSAGE("in -->SETUP_PLUGIN<-- ${TARGET_NAME}-->${TARGET_SRC} <--> ${TARGET_H}<--")
     
-    SOURCE_GROUP( "Header Files" FILES ${TARGET_H} )
+    SOURCE_GROUP( "Header Files"   FILES ${TARGET_H} )
+    SOURCE_GROUP( "Shader Files"   FILES ${TARGET_GLSL} )
+    SOURCe_GROUP( "Template Files" FILES ${TARGET_IN} )
 
     ## we have set up the target label and targetname by taking into account global prfix (osgdb_)
 
@@ -207,9 +217,9 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 # here we use the command to generate the library
 
     IF   (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ELSE (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ENDIF(DYNAMIC_OSGEARTH)
 
     #not sure if needed, but for plugins only msvc need the d suffix
@@ -240,6 +250,13 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ENDIF(WIN32)
+
+    # install the shader source files
+    if(OSGEARTH_INSTALL_SHADERS)
+        INSTALL(
+            FILES ${TARGET_GLSL} 
+            DESTINATION resources/shaders )
+    endif(OSGEARTH_INSTALL_SHADERS)
     
 #finally, set up the solution folder -gw
     SET_PROPERTY(TARGET ${TARGET_TARGETNAME} PROPERTY FOLDER "Plugins")    
@@ -256,9 +273,11 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 
     #MESSAGE("in -->SETUP_EXTENSION<-- ${TARGET_NAME}-->${TARGET_SRC} <--> ${TARGET_H}<--")
     
-    SOURCE_GROUP( "Header Files" FILES ${TARGET_H} )
+    SOURCE_GROUP( "Header Files"   FILES ${TARGET_H} )
+    SOURCE_GROUP( "Shader Files"   FILES ${TARGET_GLSL} )
+    SOURCe_GROUP( "Template Files" FILES ${TARGET_IN} )
 
-    ## we have set up the target label and targetname by taking into account global prfix (osgdb_)
+    ## we have set up the target label and targetname by taking into account global prefix (osgdb_)
 
     IF(NOT TARGET_TARGETNAME)
             SET(TARGET_TARGETNAME "${TARGET_DEFAULT_PREFIX}${TARGET_NAME}")
@@ -270,9 +289,9 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 # here we use the command to generate the library
 
     IF   (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ELSE (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ENDIF(DYNAMIC_OSGEARTH)
 
     #not sure if needed, but for plugins only msvc need the d suffix
@@ -287,22 +306,43 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 
 #the installation path are differentiated for win32 that install in bib versus other architecture that install in lib${LIB_POSTFIX}/${VPB_PLUGINS}
     IF(WIN32)
-        INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib/${OSG_PLUGINS} LIBRARY DESTINATION bin/${OSG_PLUGINS} )
+        INSTALL(
+            TARGETS ${TARGET_TARGETNAME}
+            RUNTIME DESTINATION bin
+            ARCHIVE DESTINATION lib/${OSG_PLUGINS}
+            LIBRARY DESTINATION bin/${OSG_PLUGINS} )
 	    
 		#Install to the OSG_DIR as well
 		IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
-		  INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION ${OSG_DIR}/bin/${OSG_PLUGINS} LIBRARY DESTINATION ${OSG_DIR}/bin/${OSG_PLUGINS} )
+		    INSTALL(
+                TARGETS ${TARGET_TARGETNAME} 
+                RUNTIME DESTINATION ${OSG_DIR}/bin/${OSG_PLUGINS}
+                LIBRARY DESTINATION ${OSG_DIR}/bin/${OSG_PLUGINS} )
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ELSE(WIN32)
-        INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib${LIB_POSTFIX}/${OSG_PLUGINS} LIBRARY DESTINATION lib${LIB_POSTFIX}/${OSG_PLUGINS} )
+        INSTALL(
+            TARGETS ${TARGET_TARGETNAME} 
+            RUNTIME DESTINATION bin 
+            ARCHIVE DESTINATION lib${LIB_POSTFIX}/${OSG_PLUGINS} 
+            LIBRARY DESTINATION lib${LIB_POSTFIX}/${OSG_PLUGINS} )
 
 		#Install to the OSG_DIR as well
 		IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
-		  INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION ${OSG_DIR}/bin LIBRARY DESTINATION lib${LIB_POSTFIX}/bin)
+		    INSTALL(
+                TARGETS ${TARGET_TARGETNAME}
+                RUNTIME DESTINATION ${OSG_DIR}/bin
+                LIBRARY DESTINATION lib${LIB_POSTFIX}/bin )
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ENDIF(WIN32)
+    
+    # install the shader source files
+    if(OSGEARTH_INSTALL_SHADERS)
+        INSTALL(
+            FILES ${TARGET_GLSL} 
+            DESTINATION resources/shaders )
+    endif(OSGEARTH_INSTALL_SHADERS)
     
 #finally, set up the solution folder -gw
     SET_PROPERTY(TARGET ${TARGET_TARGETNAME} PROPERTY FOLDER "Extensions")    
@@ -438,3 +478,50 @@ MACRO(SETUP_COMMANDLINE_EXAMPLE EXAMPLE_NAME)
     SETUP_EXAMPLE(${EXAMPLE_NAME} 1)
 
 ENDMACRO(SETUP_COMMANDLINE_EXAMPLE)
+
+
+# -----------------------------------------------------------------------
+# configure_shaders -gw
+#
+# Bakes GLSL shaders to make into a CPP file at runtime.
+# Example:
+#
+#   configure_shaders( MyTemplate.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/AutoGen.cpp file1.glsl file2.glsl )
+#
+macro(configure_shaders templateFile autoGenCppFile)
+	
+	# set up configure variables:
+	set(TEMPLATE_FILE   ${templateFile} )
+	set(GLSL_FILES      ${ARGN} )
+	set(OUTPUT_CPP_FILE ${autoGenCppFile})
+	
+	# generate the build-time script that will create out cpp file with inline shaders:
+	configure_file(
+		"${CMAKE_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in"
+		"${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+		@ONLY)
+	
+	# add the custom build-time command to run the script:
+	add_custom_command(
+		OUTPUT
+			"${autoGenCppFile}"
+		COMMAND
+			"${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+		DEPENDS
+			${GLSL_FILES}
+			"${TEMPLATE_FILE}"
+			"${CMAKE_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in" )
+	
+endmacro(configure_shaders)
+
+# http://stackoverflow.com/questions/7787823/cmake-how-to-get-the-name-of-all-subdirectories-of-a-directory
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+        LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,16 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(model, ModelSymbol);
+
+ModelSymbol::ModelSymbol(const ModelSymbol& rhs,const osg::CopyOp& copyop):
+InstanceSymbol(rhs, copyop),
+_heading(rhs._heading),
+_pitch(rhs._pitch),
+_roll(rhs._roll),
+_autoScale(rhs._autoScale),
+_node(rhs._node)
+{
+}
 
 ModelSymbol::ModelSymbol( const Config& conf ) :
 InstanceSymbol( conf ),
@@ -78,7 +88,7 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<ModelSymbol>()->url()->setURIContext( c.referrer() );
     }    
     else if ( match(c.key(),"model-library") ) {
-        style.getOrCreate<ModelSymbol>()->libraryName() = StringExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->library() = StringExpression(c.value());
     }
     else if ( match(c.key(), "model-placement") ) {
         if      ( match(c.value(), "vertex") )   

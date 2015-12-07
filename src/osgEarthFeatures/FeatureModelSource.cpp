@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/DrapeableNode>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -37,7 +38,6 @@ FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& optio
 ModelSourceOptions ( options ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
-_mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _backfaceCulling   ( true ),
 _alphaBlending     ( true ),
@@ -62,7 +62,6 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
 
     conf.getIfSet( "lighting",         _lit );
     conf.getIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
@@ -89,7 +88,6 @@ FeatureModelSourceOptions::getConfig() const
 
     conf.updateIfSet( "lighting",         _lit );
     conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
@@ -168,9 +166,8 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 }
 
 osg::Node*
-FeatureModelSource::createNodeImplementation(const Map*            map,
-                                             const osgDB::Options* dbOptions,
-                                             ProgressCallback*     progress )
+FeatureModelSource::createNodeImplementation(const Map*        map,
+                                             ProgressCallback* progress )
 {
     // user must provide a valid map.
     if ( !map )
@@ -195,15 +192,25 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
     }
 
     // Session holds data that's shared across the life of the FMG
-    Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
+    Session* session = new Session( 
+        map, 
+        _options.styles().get(), 
+        _features.get(), 
+        _dbOptions.get() );
+
+    // Name the session (for debugging purposes)
+    session->setName( this->getName() );
 
     // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
        session,
        _options,
        factory,
+       this,
        _preMergeOps.get(),
        _postMergeOps.get() );
+
+    graph->setName( session->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );
@@ -220,7 +227,22 @@ osg::Group*
 FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                                           Session*     session)
 {
-    osg::Group* group = new osg::Group();
+    osg::Group* group = 0L;
+
+    // If we're draping, the style group will be a DrapeableNode.
+    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+    if (alt &&
+        alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN &&
+        alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE )
+    {
+        group = new DrapeableNode();
+    }
+
+    // Otherwise, a normal group.
+    if ( !group )
+    {
+        group = new osg::Group();
+    }
 
     // apply necessary render styles.
     const RenderSymbol* render = style.get<RenderSymbol>();
@@ -255,11 +277,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
+#ifndef OSG_GLES2_AVAILABLE
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
             group->getOrCreateStateSet()->setMode(mode, 1);
         }
+#endif
 
         if ( render->minAlpha().isSet() )
         {

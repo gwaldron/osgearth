@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,21 +49,28 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 
 XmlElement::XmlElement( const Config& conf )
 {
-    name = conf.key();
-
-    if ( !conf.value().empty() )
+    if (!conf.externalRef().empty())
     {
-        children.push_back( new XmlText(conf.value()) );
+        attrs["href"] = conf.externalRef();
+        name = "xi:include";
     }
-
-    for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+    else
     {
-        if ( j->isSimple() )
+
+        name = conf.key();
+
+        if ( !conf.value().empty() )
         {
-            attrs[j->key()] = j->value();
+            children.push_back( new XmlText(conf.value()) );
         }
-        else if ( j->children().size() > 0 )
+
+        for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
         {
+            //if ( j->isSimple() )
+            //{
+            //    attrs[j->key()] = j->value();
+            //}
+
             children.push_back( new XmlElement(*j) );
         }
     }
@@ -127,6 +134,47 @@ XmlElement::getSubElement( const std::string& name ) const
     return NULL;
 }
 
+const XmlElement*
+XmlElement::findElement(const std::string& name) const
+{
+    const XmlElement* result = 0L;
+
+    if ( this->getName() == name )
+    {
+        result = this;
+    }
+    else
+    {
+        // first check the subelements (breadth first search)
+        for(XmlNodeList::const_iterator i = getChildren().begin();
+            i != getChildren().end() && result == 0L;
+            i++ )
+        {
+            if ( i->get()->isElement() )
+            {
+                XmlElement* e = (XmlElement*)i->get();
+                if (osgEarth::ciEquals(name, e->getName()))
+                {
+                    result = e;
+                }
+            }
+        }
+
+        // not found? traverse the subelements.
+        if ( result == 0L )
+        {
+            for(XmlNodeList::const_iterator i = getChildren().begin();
+                i != getChildren().end() && result == 0L;
+                i++ )
+            {
+                XmlElement* e = (XmlElement*)i->get();
+                result = e->findElement( name );
+            }
+        }
+    }
+
+    return result;
+}
 
 std::string
 XmlElement::getText() const
@@ -193,26 +241,59 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 }
 
 Config
-XmlElement::getConfig() const
+XmlElement::getConfig(const std::string& referrer) const
 {
-    Config conf( name );
+	if (isInclude())
+	{
+		std::string href = getAttr("href");
 
-    for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
-    {
-        conf.set( a->first, a->second );
-    }
+        if (href.empty())
+        {
+            OE_WARN << "Missing href with xi:include" << std::endl;
+            return Config();
+        }
 
-    for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
-    {
-        XmlNode* n = c->get();
-        if ( n->isElement() )
-            conf.add( static_cast<const XmlElement*>(n)->getConfig() );
-    }
+        URIContext uriContext(referrer);
+        URI uri(href, uriContext);
+        std::string fullURI = uri.full();
+        OE_INFO << "Loading href from " << fullURI << std::endl;
 
-    conf.value() = getText();
-        //else 
-        //    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
-    return conf;
+        osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
+        if (doc && doc->getChildren().size() > 0)
+        {
+            Config conf = static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
+            conf.setExternalRef( href ); //fullURI );
+            conf.setReferrer( fullURI );
+            return conf;
+        }
+        else
+        {
+            OE_WARN << "Failed to load xi:include from " << fullURI << std::endl;
+            return Config();
+        }        
+	}
+	else
+	{
+		Config conf( name );
+        conf.setReferrer( referrer );
+
+		for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
+		{
+			conf.set( a->first, a->second );
+		}
+
+		for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
+		{
+			XmlNode* n = c->get();
+			if ( n->isElement() )
+				conf.add( static_cast<const XmlElement*>(n)->getConfig(referrer) );
+		}
+
+		conf.value() = getText();
+		//else 
+		//    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
+		return conf;
+	}
 }
 
 XmlText::XmlText( const std::string& _value )
@@ -279,7 +360,6 @@ namespace
                     attrs[name] = value;
                     attr = attr->Next();
                 }
-
                 //All the element to the stack
                 new_element = new XmlElement( tag, attrs );
                 parent->getChildren().push_back( new_element );
@@ -354,9 +434,12 @@ XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
     if ( r.succeeded() )
     {
         std::stringstream buf( r.getString() );
-        result = load( buf );
+        URIContext context( uri.full() );
+        result = load( buf, context );
         if ( result )
+        {
             result->_sourceURI = uri;
+        }
     }
 
     return result;
@@ -402,7 +485,7 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
 Config
 XmlDocument::getConfig() const
 {
-    Config conf = XmlElement::getConfig();
+    Config conf = XmlElement::getConfig(_sourceURI.full());
     conf.setReferrer( _sourceURI.full() );
     return conf;
 }

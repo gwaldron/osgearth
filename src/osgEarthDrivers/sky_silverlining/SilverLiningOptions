@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,19 +21,16 @@
 
 #include <osgEarthUtil/Sky>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
-    using namespace osgEarth;
-    using namespace osgEarth::Util;
-
     /**
      * Options for creating a SilverLining environment node
      */
-    class SilverLiningOptions : public SkyOptions
+    class SilverLiningOptions : public osgEarth::Util::SkyOptions
     {
     public:
-        SilverLiningOptions(const SkyOptions& options =SkyOptions()) :
-          SkyOptions(options),
+        SilverLiningOptions(const osgEarth::Util::SkyOptions& options =osgEarth::Util::SkyOptions()) :
+          osgEarth::Util::SkyOptions(options),
           _drawClouds(false),
           _cloudsMaxAltitude(20000)
         {
@@ -65,8 +62,8 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 		const optional<double>& cloudsMaxAltitude() const { return _cloudsMaxAltitude; }
 
     public:
-        Config getConfig() const {
-            Config conf = SkyOptions::getConfig();
+        osgEarth::Config getConfig() const {
+            osgEarth::Config conf = osgEarth::Util::SkyOptions::getConfig();
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
@@ -76,13 +73,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         }
 
     protected:
-        void mergeConfig( const Config& conf ) {
-            SkyOptions::mergeConfig( conf );
+        void mergeConfig( const osgEarth::Config& conf ) {
+            osgEarth::Util::SkyOptions::mergeConfig( conf );
             fromConfig(conf);
         }
 
     private:
-        void fromConfig( const Config& conf ) {
+        void fromConfig( const osgEarth::Config& conf ) {
             conf.getIfSet("user", _user);
             conf.getIfSet("license_code", _licenseCode);
             conf.getIfSet("resource_path", _resourcePath);
@@ -90,15 +87,15 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 			conf.getIfSet("clouds_max_altitude", _cloudsMaxAltitude);
         }
 
-        optional<std::string> _user;
-        optional<std::string> _licenseCode;
-        optional<std::string> _resourcePath;
-        optional<bool>        _drawClouds;
-		optional<double>      _cloudsMaxAltitude;
-		int                   _lastCullFrameNumber;
+        osgEarth::optional<std::string> _user;
+        osgEarth::optional<std::string> _licenseCode;
+        osgEarth::optional<std::string> _resourcePath;
+        osgEarth::optional<bool>        _drawClouds;
+		osgEarth::optional<double>      _cloudsMaxAltitude;
+		int                             _lastCullFrameNumber;
     };
 
-} } } // namespace osgEarth::Drivers::SilverLiningPlugin
+} } // namespace osgEarth::SilverLiningPlugin
 
 #endif // OSGEARTH_DRIVER_SILVERLINING_OPTIONS
 

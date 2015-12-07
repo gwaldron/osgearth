@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -34,6 +37,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/SpatialReference>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -149,6 +153,26 @@ MapNode::load(osg::ArgumentParser& args)
         if ( args[i] && endsWith(args[i], ".earth") )
         {
             ReadResult r = URI(args[i]).readNode();
+            if ( r.succeeded() )
+            {
+                return r.release<MapNode>();
+            }
+        }
+    }    
+    return 0L;
+}
+
+MapNode*
+MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
+{
+    for( int i=1; i<args.argc(); ++i )
+    {
+        if ( args[i] && endsWith(args[i], ".earth") )
+        {
+            osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
+            std::string optionsJSON = defaults.getConfig().toJSON();
+            dbo->setPluginStringData( "osgEarth.defaultOptions", optionsJSON );
+            ReadResult r = URI(args[i]).readNode( dbo.get() );
             if ( r.succeeded() )
             {
                 return r.release<MapNode>();
@@ -294,11 +318,11 @@ MapNode::init()
     // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
+    //_models->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
     addChild( _models.get() );
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
 
     // install the Draping technique for overlays:
     {
@@ -319,6 +343,7 @@ MapNode::init()
         if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
             draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
 
+        draping->reestablish( getTerrainEngine() );
         _overlayDecorator->addTechnique( draping );
     }
 
@@ -344,6 +369,7 @@ MapNode::init()
     _map->addMapCallback( _mapCallback.get()  );
 
     osg::StateSet* stateset = getOrCreateStateSet();
+
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
         stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
@@ -354,6 +380,27 @@ MapNode::init()
             GL_LIGHTING, 
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
+
+    // Add in some global uniforms
+    stateset->addUniform( new osg::Uniform("oe_isGeocentric", _map->isGeocentric()) );
+    if ( _map->isGeocentric() )
+    {
+        OE_INFO << LC << "Adding ellipsoid uniforms.\n";
+
+        // for a geocentric map, use an ellipsoid unit-frame transform and its inverse:
+        osg::Vec3d ellipFrameInverse(
+            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+            _map->getSRS()->getEllipsoid()->getRadiusPolar());
+        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f(ellipFrameInverse)) );
+
+        osg::Vec3d ellipFrame = osg::componentDivide(osg::Vec3d(1.0,1.0,1.0), ellipFrameInverse);
+        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f(ellipFrame)) );
+    }
+
+    // install the default rendermode uniform:
+    stateset->addUniform( new osg::Uniform("oe_isPickCamera", false) );
+    stateset->addUniform( new osg::Uniform("oe_isShadowCamera", false) );
 
     dirtyBound();
 
@@ -510,6 +557,12 @@ MapNode::findMapNode( osg::Node* graph, unsigned travmask )
     return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
+//MapNode*
+//MapNode::get(osg::NodeVisitor& nv)
+//{
+//    return VisitorData::fetch<MapNode>(nv, "osgEarth.MapNode");
+//}
+
 bool
 MapNode::isGeocentric() const
 {
@@ -533,7 +586,8 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     }
 
     // create the scene graph:
-    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
+    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
+    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
 
     if ( node )
     {
@@ -563,8 +617,17 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 // enfore a rendering bin if necessary:
                 if ( ms->getOptions().renderOrder().isSet() )
                 {
-                    node->getOrCreateStateSet()->setRenderBinDetails(
-                        ms->getOptions().renderOrder().value(), "RenderBin" );
+                    osg::StateSet* mss = node->getOrCreateStateSet();
+                    mss->setRenderBinDetails(
+                        ms->getOptions().renderOrder().value(),
+                        mss->getBinName().empty() ? "DepthSortedBin" : mss->getBinName());
+                }
+                if ( ms->getOptions().renderBin().isSet() )
+                {
+                    osg::StateSet* mss = node->getOrCreateStateSet();
+                    mss->setRenderBinDetails(
+                        mss->getBinNumber(),
+                        ms->getOptions().renderBin().get() );
                 }
             }
 
@@ -693,74 +756,16 @@ MapNode::traverse( osg::NodeVisitor& nv )
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
-    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-        if ( cv )
-        {
-            // insert traversal data for this camera:
-            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
-            MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
-            cv->setUserData( cullData );
-
-            cullData->_mapNode = this;
-
-            // calculate altitude:
-            osg::Vec3d eye = cv->getViewPoint();
-            const SpatialReference* srs = getMapSRS();
-            if ( srs && !srs->isProjected() )
-            {
-                GeoPoint lla;
-                lla.fromWorld( srs, eye );
-                cullData->_cameraAltitude = lla.alt();
-                cullData->_cameraAltitudeUniform->set( (float)lla.alt() );
-                //OE_INFO << lla.alt() << std::endl;
-            }
-            else
-            {
-                cullData->_cameraAltitude = eye.z();
-                cullData->_cameraAltitudeUniform->set( (float)eye.z() );
-            }
-
-            // window matrix:
-            cullData->_windowMatrixUniform->set( cv->getWindowMatrix() );
-
-            // traverse:
-            cv->pushStateSet( cullData->_stateSet.get() );
-            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-            cv->popStateSet();
-
-            // restore:
-            cv->setUserData( oldUserData.get() );
-        }
+        osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
+        nv.setUserData( this );
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+        nv.setUserData( oldUserData.get() );
     }
 
     else
     {
         osg::Group::traverse( nv );
-    }
-}
-
-MapNodeCullData*
-MapNode::getCullData(osg::Camera* key) const
-{
-    // first look it up:
-    {
-        Threading::ScopedReadLock shared( _cullDataMutex );
-        CullDataMap::const_iterator i = _cullData.find( key );
-        if ( i != _cullData.end() )
-            return i->second.get();
-    }
-    // if it's not there, make it, but double-check.
-    {
-        Threading::ScopedWriteLock exclusive( _cullDataMutex );
-        
-        CullDataMap::const_iterator i = _cullData.find( key );
-        if ( i != _cullData.end() )
-            return i->second.get();
-
-        MapNodeCullData* cullData = new MapNodeCullData();
-        _cullData[key] = cullData;
-        return cullData;
     }
 }

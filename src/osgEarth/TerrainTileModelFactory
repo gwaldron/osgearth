@@ -1,0 +1,127 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H
+#define OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H 1
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/TerrainOptions>
+#include <osgEarth/TerrainEngineRequirements>
+#include <osgEarth/MapFrame>
+#include <osgEarth/Progress>
+
+namespace osgEarth
+{
+    /**
+     * Builds a TerrainTileModel from a map frame.
+     */
+    class OSGEARTH_EXPORT TerrainTileModelFactory : public osg::Referenced
+    {
+    public:
+        /** Constructor */
+        TerrainTileModelFactory(
+            const TerrainOptions& options);
+
+        /**
+         * Creates a tile model and populates it with data from the map.
+         *
+         * @param frame       Map frame from which to read source data
+         * @param key         Tile key for which to create the model
+         * @param modelStore  Access to other tile models; if set, the factory
+         *                    will be able to access parent and neighbor data
+         *                    where appropriate
+         * @param progress    Progress tracking callback
+         */
+        virtual TerrainTileModel* createTileModel(
+            const MapFrame&                  frame,
+            const TileKey&                   key,
+            const TerrainEngineRequirements* requirements,
+            ProgressCallback*                progress);
+
+    protected:
+
+        virtual void addImageLayers(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
+        virtual void addElevation(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
+        virtual void addNormalMap(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
+    protected:
+
+        /** Find a heightfield in the cache, or fetch it from the source. */
+        bool getOrCreateHeightField(
+            const MapFrame&                 frame,
+            const TileKey&                  key,
+            ElevationSamplePolicy           samplePolicy,
+            ElevationInterpolation          interpolation,
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            ProgressCallback*               progress);
+
+        osg::Texture* createImageTexture(
+            osg::Image*       image,
+            const ImageLayer* layer) const;
+
+        osg::Texture* createCoverageTexture(
+            osg::Image*       image,
+            const ImageLayer* layer) const;
+
+        osg::Texture* createElevationTexture(
+            osg::Image* image) const;
+
+        osg::Texture* createNormalTexture(
+            osg::Image* image) const;
+
+        const TerrainOptions& _options;
+        
+
+        /** Key into the height field cache */
+        struct HFCacheKey 
+        {
+            TileKey               _key;
+            Revision              _revision;
+            ElevationSamplePolicy _samplePolicy;
+
+            bool operator < (const HFCacheKey& rhs) const {
+                if ( _key < rhs._key ) return true;
+                if ( rhs._key < _key ) return false;
+                if ( _revision < rhs._revision ) return true;
+                if ( _revision > rhs._revision ) return false;
+                return _samplePolicy < rhs._samplePolicy;
+            }
+        };
+
+        typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
+        typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
+        HFCache _heightFieldCache;
+    };
+}
+
+#endif // OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H

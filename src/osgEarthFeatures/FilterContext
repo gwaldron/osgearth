@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osg/Matrix>
 #include <list>
+#include <vector>
 
 namespace osgEarth { namespace Features
 {
@@ -35,7 +36,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
     class Session;
     class FeatureProfile;
-    class FeatureSourceIndex;
+    class FeatureIndexBuilder;
 
     /**
      * Context within which a chain of filters is executed.
@@ -47,7 +48,7 @@ namespace osgEarth { namespace Features
             Session*              session       =0L,
             const FeatureProfile* profile       =0L,
             const GeoExtent&      workingExtent =GeoExtent::INVALID,
-            FeatureSourceIndex*   index         =0L);
+            FeatureIndexBuilder*  index         =0L);
 
         FilterContext( const FilterContext& rhs );
         
@@ -58,11 +59,6 @@ namespace osgEarth { namespace Features
          * don't assign one.
          */
         void setResourceCache( ResourceCache* value ) { _resourceCache = value; }
-
-        /**
-         * Sets the feature index that the filter chain should populate
-         */
-        void setFeatureIndex( FeatureSourceIndex* value ) { _index = value; }
 
         /**
          * Sets the profile (SRS etc) of the feature data
@@ -97,8 +93,8 @@ namespace osgEarth { namespace Features
         /**
          * The feature index
          */
-        FeatureSourceIndex* featureIndex() { return _index; }
-        const FeatureSourceIndex* featureIndex() const { return _index; }
+        FeatureIndexBuilder* featureIndex() { return _index; }
+        const FeatureIndexBuilder* featureIndex() const { return _index; }
 
         /**
          * Whether this context has a non-identity reference frame
@@ -177,6 +173,13 @@ namespace osgEarth { namespace Features
          */
         const osgDB::Options* getDBOptions() const;
 
+        /**
+         * Gets a "history" string for debugging purposes
+         */
+        std::string getHistory() const;
+
+        void pushHistory(const std::string& value) { _history.push_back(value); }
+
     protected:
         osg::ref_ptr<Session>              _session;
         osg::ref_ptr<const FeatureProfile> _profile;
@@ -185,8 +188,9 @@ namespace osgEarth { namespace Features
         osg::Matrixd                       _referenceFrame;
         osg::Matrixd                       _inverseReferenceFrame;
         osg::ref_ptr<ResourceCache>        _resourceCache;
-        FeatureSourceIndex*                _index;
+        FeatureIndexBuilder*               _index;
         optional<ShaderPolicy>             _shaderPolicy;
+        std::vector<std::string>           _history;
     };
 
 } } // namespace osgEarth::Features

@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVERS_MP_RENDER_BINDINGS_H
+#define OSGEARTH_DRIVERS_MP_RENDER_BINDINGS_H 1
+
+#include "Common"
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    class SamplerBinding
+    {
+    public:
+        SamplerBinding() : _unit(-1) { }
+
+        int& unit() { return _unit; }
+        const int& unit() const { return _unit; }
+
+        std::string& samplerName() { return _samplerName; }
+        const std::string& samplerName() const { return _samplerName; }
+
+        std::string& matrixName() { return _matrixName; }
+        const std::string& matrixName() const { return _matrixName; }
+
+    private:
+        int         _unit;
+        std::string _samplerName;
+        std::string _matrixName;
+    };
+
+    class RenderBindings
+    {
+    public:
+        SamplerBinding& color() { return _colorBinding; }
+        const SamplerBinding& color() const { return _colorBinding; }
+
+        SamplerBinding& parentColor() { return _parentColorBinding; }
+        const SamplerBinding& parentColor() const { return _parentColorBinding; }
+
+        SamplerBinding& elevation() { return _elevationBinding; }
+        const SamplerBinding& elevation() const { return _elevationBinding; }
+
+        SamplerBinding& parentElevation() { return _parentElevationBinding; }
+        const SamplerBinding& parentElevation() const { return _parentElevationBinding; }
+
+    private:
+        SamplerBinding _colorBinding;
+        SamplerBinding _parentColorBinding;
+        SamplerBinding _elevationBinding;
+        SamplerBinding _parentElevationBinding;
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_RENDER_BINDINGS_H

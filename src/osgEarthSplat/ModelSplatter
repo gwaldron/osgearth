@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPLAT_MODEL_SPLATTER
+#define OSGEARTH_SPLAT_MODEL_SPLATTER 1
+
+#include "SplatExport"
+#include "SplatOptions"
+#include <osgEarth/TileKey>
+#include <osgEarth/TerrainEngineNode>
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+
+    /**
+     * Extension for loading the splatting effect on demand.
+     */
+    class ModelSplatter : public TerrainEngine::NodeCallback
+    {
+    public:
+        ModelSplatter();
+
+        /**
+         * Sets the model to splat
+         */
+        void setModel(osg::Node* node);
+
+        void setNumInstances(unsigned num);
+
+        void setMinLOD(unsigned lod);
+
+
+    public: // TileNodeCallback
+
+        // Attaches the model splatter to a new tile node
+        void operator()(const TileKey& key, osg::Node* tileNode);
+
+    protected:
+        virtual ~ModelSplatter();
+
+    private:
+        osg::ref_ptr<osg::Node> _model;
+        Threading::Mutex        _modelMutex;
+        unsigned                _count;
+        unsigned                _minLOD;
+        bool                    _dirty;
+
+        void establish();
+        osg::Node* makeChild(int delta);
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_MODEL_SPLATTER

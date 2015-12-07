@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,22 +29,22 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Root::scan( const Config& conf, KMLContext& cx )
+KML_Root::scan( xml_node<>* node, KMLContext& cx )
 {
-    for_features( scan, conf, cx );
-    for_one( NetworkLinkControl, scan, conf, cx );
+    for_features( scan, node, cx );
+    for_one( NetworkLinkControl, scan, node, cx );
 }
 
 void
-KML_Root::scan2( const Config& conf, KMLContext& cx )
+KML_Root::scan2( xml_node<>* node, KMLContext& cx )
 {
-    for_features( scan2, conf, cx );
-    for_one( NetworkLinkControl, scan2, conf, cx );
+    for_features( scan2, node, cx );
+    for_one( NetworkLinkControl, scan2, node, cx );
 }
 
 void
-KML_Root::build( const Config& conf, KMLContext& cx )
+KML_Root::build( xml_node<>* node, KMLContext& cx )
 {
-    for_features( build, conf, cx );
-    for_one( NetworkLink, build, conf, cx );
+    for_features( build, node, cx );
+    for_one( NetworkLink, build, node, cx );
 }

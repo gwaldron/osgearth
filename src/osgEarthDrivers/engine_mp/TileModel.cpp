@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -97,13 +100,13 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
     osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  west.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  (float&)west.z(), interp))
         west.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  east.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  (float&)east.z(), interp))
         east.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), south.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), (float&)south.z(), interp))
         south.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), north.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), (float&)north.z(), interp))
         north.z() = centerHeight;
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
@@ -116,6 +119,31 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     output.normalize();
 
     return true;
+}
+
+//------------------------------------------------------------------
+
+
+TileModel::NormalData::NormalData(osg::HeightField* hf,
+                                  GeoLocator*       locator,
+                                  bool              fallbackData) :
+_hf          ( hf ),
+_locator     ( locator ),
+_fallbackData( fallbackData )
+{
+    _neighbors._center = hf;
+}
+
+TileModel::NormalData::NormalData(const TileModel::NormalData& rhs) :
+_hf          ( rhs._hf.get() ),
+_locator     ( rhs._locator.get() ),
+_fallbackData( rhs._fallbackData ),
+_parent      ( rhs._parent ),
+_unit        ( rhs._unit )
+{
+    _neighbors._center = rhs._neighbors._center.get();
+    for(unsigned i=0; i<8; ++i)
+        _neighbors._neighbors[i] = rhs._neighbors._neighbors[i];
 }
 
 //------------------------------------------------------------------
@@ -177,10 +205,14 @@ _fallbackData( fallbackData )
         _texture = tex;
     }
 
-
+    // First check the unref globel policy:
     const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
     if ( unRefPolicy.isSet() )
         _texture->setUnRefImageDataAfterApply( unRefPolicy.get() );
+
+    // dynamic layer? Need to keep it around
+    if ( layer->isDynamic() )
+        _texture->setUnRefImageDataAfterApply( false );
 
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
@@ -190,12 +222,8 @@ _fallbackData( fallbackData )
     {
         // coverages: no filtering or compression allowed.
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        //_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_NEAREST);
         _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
         _texture->setMaxAnisotropy( 1.0f );
-
-        // testing: to support upsampling.
-        //_texture->setUnRefImageDataAfterApply( false );
     }
     else
     {
@@ -255,7 +283,8 @@ _tileLocator     ( rhs._tileLocator.get() ),
 _colorData       ( rhs._colorData ),
 _elevationData   ( rhs._elevationData ),
 _sampleRatio     ( rhs._sampleRatio ),
-_parentStateSet  ( rhs._parentStateSet )
+_parentStateSet  ( rhs._parentStateSet ),
+_useParentData   ( rhs._useParentData )
 {
     //nop
 }
@@ -364,6 +393,28 @@ TileModel::generateElevationTexture()
 }
 
 void
+TileModel::generateNormalTexture()
+{
+    osg::Image* image = HeightFieldUtils::convertToNormalMap(
+        _normalData.getNeighborhood(),
+        _tileKey.getProfile()->getSRS() );
+
+    _normalTexture = new osg::Texture2D( image );
+
+    _normalTexture->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+    _normalTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    //_normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setResizeNonPowerOfTwoHint( false );
+    _normalTexture->setMaxAnisotropy( 1.0f );
+
+    // So the engine can automatically normalize across tiles.
+    _normalTexture->setUnRefImageDataAfterApply( false );
+}
+
+void
 TileModel::resizeGLObjectBuffers(unsigned maxSize)
 {
     for(ColorDataByUID::iterator i = _colorData.begin(); i != _colorData.end(); ++i )
@@ -375,4 +426,10 @@ TileModel::releaseGLObjects(osg::State* state) const
 {
     for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
         i->second.releaseGLObjects( state );
+
+    if (_normalTexture.valid() && _normalTexture->referenceCount() == 1)
+        _normalTexture->releaseGLObjects(state);
+
+    if (_elevationTexture.valid() && _elevationTexture->referenceCount() == 1)
+        _elevationTexture->releaseGLObjects(state);
 }

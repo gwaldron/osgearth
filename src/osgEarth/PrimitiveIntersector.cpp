@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@ namespace
 {
 struct PrimitiveIntersection
 {
-    PrimitiveIntersection(unsigned int index, const osg::Vec3d& normal, float r1, const osg::Vec3d* v1, float r2, const osg::Vec3d* v2, float r3, const osg::Vec3d* v3):
+    PrimitiveIntersection(unsigned int index, const osg::Vec3d& normal, float r1, const osg::Vec3* v1, float r2, const osg::Vec3* v2, float r3, const osg::Vec3* v3):
         _index(index),
         _normal(normal),
         _r1(r1),
@@ -44,13 +44,13 @@ struct PrimitiveIntersection
         _v3(v3) {}
 
     unsigned int        _index;
-    const osg::Vec3d     _normal;
+    const osg::Vec3d    _normal;
     float               _r1;
-    const osg::Vec3d*    _v1;
+    const osg::Vec3*    _v1;
     float               _r2;
-    const osg::Vec3d*    _v2;
+    const osg::Vec3*    _v2;
     float               _r3;
-    const osg::Vec3d*    _v3;
+    const osg::Vec3*    _v3;
 
 protected:
 
@@ -97,7 +97,7 @@ struct PrimitiveIntersectorFunctor
     }
 
     //POINT
-    inline void operator () (const osg::Vec3d& p, bool treatVertexDataAsTemporary)
+    inline void operator () (const osg::Vec3& p, bool treatVertexDataAsTemporary)
     {
         if (_limitOneIntersection && _hit) return;
 
@@ -108,14 +108,13 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d v3 = p - _thickness;
         osg::Vec3d v4 = p + n;
 
-        //this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
-        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1, v2, v3, &p, 0L, 0L, treatVertexDataAsTemporary);
         --_index;
-        this->triNoBuffer(v1, v3, v4, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1, v3, v4, &p, 0L, 0L, treatVertexDataAsTemporary);
     }
 
     //LINE
-    inline void operator () (const osg::Vec3d& v1, const osg::Vec3d& v2, bool treatVertexDataAsTemporary)
+    inline void operator () (const osg::Vec3& v1, const osg::Vec3& v2, bool treatVertexDataAsTemporary)
      {
         if (_limitOneIntersection && _hit) return;
 
@@ -129,17 +128,17 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d vq3 = v2 - ln*thickness;
         osg::Vec3d vq4 = v1 - ln*thickness;
 
-        //this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
-        this->triNoBuffer(vq1, vq2, vq3, treatVertexDataAsTemporary);
-        if (_limitOneIntersection && _hit) return;
+        this->triNoBuffer(vq1, vq2, vq3, &v1, &v2, 0L, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit)
+            return;
 
         --_index;
-        this->triNoBuffer(vq1, vq3, vq4, treatVertexDataAsTemporary);
+        this->triNoBuffer(vq1, vq3, vq4, &v1, &v2, 0L, treatVertexDataAsTemporary);
     }
 
     //QUAD
     inline void operator () (
-        const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, const osg::Vec3d& v4, bool treatVertexDataAsTemporary
+        const osg::Vec3d& v1, const osg::Vec3& v2, const osg::Vec3& v3, const osg::Vec3& v4, bool treatVertexDataAsTemporary
         )
     {
         if (_limitOneIntersection && _hit) return;
@@ -153,48 +152,52 @@ struct PrimitiveIntersectorFunctor
 
     //TRIANGLE (buffered)
     inline void operator () (
-        const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary
+        const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary
         )
     {
         if (_limitOneIntersection && _hit) return;
 
         // first do a simple test against the unbuffered triangle:
-        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1, v2, v3, &v1, &v2, &v3, treatVertexDataAsTemporary);
         if (_limitOneIntersection && _hit) return;
 
+#if 0
         // now buffer each edge and test against that.
         float thickness = _thickness.length();
         osg::Vec3d ln, buf;
 
         osg::Vec3d v12 = v2-v1; ln = _d ^ v12; ln.normalize(); buf = ln*thickness;
         --_index;
-        this->triNoBuffer(v1+buf, v2+buf, v2-buf, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1+buf, v2+buf, v2-buf, &v1, &v2, &v3, treatVertexDataAsTemporary);
         if (_limitOneIntersection && _hit) return;
 
         --_index;
-        this->triNoBuffer(v1+buf, v3-buf, v1-buf, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1+buf, v3-buf, v1-buf, &v1, &v2, &v3, treatVertexDataAsTemporary);
         if (_limitOneIntersection && _hit) return;
 
         osg::Vec3d v23 = v3-v1; ln = _d ^ v23; ln.normalize(); buf = ln*thickness;
         --_index;
-        this->triNoBuffer(v2+buf, v3+buf, v3-buf, treatVertexDataAsTemporary );
+        this->triNoBuffer(v2+buf, v3+buf, v3-buf, &v1, &v2, &v3, treatVertexDataAsTemporary );
         if (_limitOneIntersection && _hit) return;
 
         --_index;
-        this->triNoBuffer(v2+buf, v3-buf, v2-buf, treatVertexDataAsTemporary );
+        this->triNoBuffer(v2+buf, v3-buf, v2-buf, &v1, &v2, &v3, treatVertexDataAsTemporary );
         if (_limitOneIntersection && _hit) return;
 
         osg::Vec3d v31 = v1-v3; ln = _d ^ v31; ln.normalize(); buf = ln*thickness;
         --_index;
-        this->triNoBuffer(v3+buf, v1+buf, v1-buf, treatVertexDataAsTemporary);
+        this->triNoBuffer(v3+buf, v1+buf, v1-buf, &v1, &v2, &v3, treatVertexDataAsTemporary);
         if (_limitOneIntersection && _hit) return;
 
         --_index;
-        this->triNoBuffer(v3+buf, v1-buf, v3-buf, treatVertexDataAsTemporary);
+        this->triNoBuffer(v3+buf, v1-buf, v3-buf, &v1, &v2, &v3, treatVertexDataAsTemporary);
+#endif
     }
 
     //TRIANGLE (no buffer applied)
-    inline void triNoBuffer(const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary)
+    inline void triNoBuffer(const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, 
+                            const osg::Vec3* v1Ptr, const osg::Vec3* v2Ptr, const osg::Vec3* v3Ptr,
+                            bool treatVertexDataAsTemporary)
     {
         ++_index;
 
@@ -297,7 +300,7 @@ struct PrimitiveIntersectorFunctor
         }
         else
         {
-            _intersections.insert(std::pair<const float,PrimitiveIntersection>(r,PrimitiveIntersection(_index-1,normal,r1,&v1,r2,&v2,r3,&v3)));
+            _intersections.insert(std::pair<const float,PrimitiveIntersection>(r,PrimitiveIntersection(_index-1,normal,r1,v1Ptr,r2,v2Ptr,r3,v3Ptr)));
         }
         _hit = true;
     }
@@ -493,10 +496,10 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
 
             if (geometry)
             {
-                osg::Vec3dArray* vertices = dynamic_cast<osg::Vec3dArray*>(geometry->getVertexArray());
+                osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
                 if (vertices)
                 {
-                    osg::Vec3d* first = &(vertices->front());
+                    osg::Vec3* first = &(vertices->front());
                     if (triHit._v1)
                     {
                         hit.indexList.push_back(triHit._v1-first);

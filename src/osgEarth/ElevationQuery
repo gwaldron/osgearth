@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -37,7 +37,11 @@ namespace osgEarth
 
             void pruneUnusedDatabaseCache();
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
+            virtual osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename);
+#else
             virtual osg::Node* readNodeFile(const std::string& filename);
+#endif
 
         protected:
 
@@ -51,7 +55,7 @@ namespace osgEarth
 
     /**
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
-     * 
+     *
      * Rather than intersecting with a loaded scene graph, EQ uses the osgEarth
      * engine to directly access the best terrain tile for elevation query. You
      * give it the DEM resolution at which you want an elevation point, and it will
@@ -74,7 +78,7 @@ namespace osgEarth
          *      Map against which to perform elevation queries.
          */
         ElevationQuery( const Map* map );
-        
+
         /**
          * Constructs a new elevation manager.
          *
@@ -98,16 +102,16 @@ namespace osgEarth
          *      Pass in 0 (zero) to use the best available resolution.
          * @param out_resolution
          *      Resolution of the resulting elevation value (if the method returns true).
-         * 
+         *
          * @return True if the query succeeded, false upon failure.
          */
         bool getElevation(
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution    =0.0,
-            double*         out_actualResolution =0L );      
+            double*         out_actualResolution =0L );
 
-        /** 
+        /**
          * Gets elevations for a whole array of points, storing the result in the
          * "z" element. If "ignoreZ" is false, the new Z value will be offset by
          * the original Z value.
@@ -129,6 +133,13 @@ namespace osgEarth
             double                         desiredResolution = 0.0 );
 
         /**
+         * Whether a query should fall back on lower resolution data if no results
+         * are available at the requested resolution. Default is true.
+         */
+        void setFallBackOnNoData(bool value) { _fallBackOnNoData = value; }
+        bool getFallBackOnNoData() const { return _fallBackOnNoData; }
+
+        /**
          * Sets the maximum cache size for elevation tiles.
          */
         void setMaxTilesToCache( int value );
@@ -137,7 +148,7 @@ namespace osgEarth
          * Gets the maximum cache size for elevation tiles.
          */
         int getMaxTilesToCache() const;
-        
+
         /**
         * Sets the maximum level override for elevation queries.
         * A value of -1 turns off the override.
@@ -158,8 +169,9 @@ namespace osgEarth
          * Gets the maximum level of data available at the given point.  If the layers have DataExtents provided they
          * will be queried.  This allows certain areas on the earth to have higher levels of detail
          * than others and avoids unnecessary queries where there isn't high resolution data available.
+         * Negative return value means there was no data available at the location.
          */
-        unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile ) const;
+        int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const;
 
         /** Clear the database cache.*/
         void clearDatabaseCache() { if (_eqcrc.valid()) _eqcrc->clearDatabaseCache(); }
@@ -175,8 +187,9 @@ namespace osgEarth
     private:
         MapFrame     _mapf;
         unsigned     _maxCacheSize;
-        int          _tileSize;        
-        int          _maxLevelOverride;        
+        int          _tileSize;
+        int          _maxLevelOverride;
+        bool         _fallBackOnNoData;
 
         typedef LRUCache< TileKey, GeoHeightField > TileCache;
         TileCache _cache;
@@ -192,7 +205,7 @@ namespace osgEarth
         void sync();
         void gatherPatchLayers();
 
-        bool getElevationImpl(            
+        bool getElevationImpl(
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution,

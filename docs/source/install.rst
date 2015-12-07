@@ -1,5 +1,5 @@
 Building osgEarth
-===============
+=================
 osgEarth is a cross-platform library. It uses the  CMake cross-platform build system, version 2.8 or newer. This is the same build system that  OpenSceneGraph uses.
 
 Get the source code
@@ -17,7 +17,7 @@ To download a tarball, visit http://github.com/gwaldron/osgearth/tags and select
 
 
 Get the dependencies
--------------
+--------------------
 Words can have *emphasis in italics* or be **bold** and you can define
 code samples with back quotes, like when you talk about a command: ``sudo`` 
 gives you super user powers! 

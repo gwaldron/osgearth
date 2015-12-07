@@ -2,7 +2,7 @@ OGR
 ===
 This plugin reads vector data from any of the formats supported by the
 `OGR Simple Feature Library`_ (which is quite a lot). Most common among
-these includes ESRI Shapefiles and GML.
+these includes ESRI Shapefiles, GML, and PostGIS.
 
 Example usage::
 
@@ -26,6 +26,18 @@ Properties:
     :layer:                 Some datasets require an addition layer identifier for sub-datasets;
                             Set that here (integer).
 
+*Special Note on PostGIS usage:*
+
+PostGIS uses a ``connection`` string instead of a ``url`` to make its database connection.
+It is common to include a tables reference such as ``table=something``. In this driver,
+however, that can lead to problems; instead specify your table in the ``layer`` property.
+For example::
+
+    <features driver="ogr">
+        <connection>PG:dbname=mydb host=127.0.0.1 ...</connection>
+        <layer>myTableName</layer>
+    </features>
+   
 
 .. _OGR Simple Feature Library:  http://www.gdal.org/ogr
 .. _OGR driver:                  http://www.gdal.org/ogr/ogr_formats.html

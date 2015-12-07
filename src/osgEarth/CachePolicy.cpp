@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -144,6 +144,13 @@ CachePolicy::usageString() const
     if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
     if ( _usage == USAGE_NO_CACHE)    return "no-cache";
     return "unknown";
+}
+
+bool
+CachePolicy::empty() const
+{
+    bool isSet = _usage.isSet() || _maxAge.isSet() || _minTime.isSet();
+    return !isSet;
 }
 
 void

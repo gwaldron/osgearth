@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Horizon>
 #include <osg/NodeCallback>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
@@ -75,7 +76,12 @@ namespace osgEarth
         /**
          * Creates a cluster culling callback with the standard parameters.
          */
-        static osg::NodeCallback* create(const osg::Vec3& controlPoint, const osg::Vec3& normal, float deviation, float radius);
+        static osg::NodeCallback* create(const osg::Vec3& controlPoint, const osg::Vec3& normal, float deviation, float radius);        
+
+        /**
+         * Creates a cluster culling callback based on an extent (for geocentric tiles).
+         */
+        static osg::NodeCallback* create(const class GeoExtent& extent);
     };
 
     
@@ -94,25 +100,6 @@ namespace osgEarth
         bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
             return nv && nv->getEyePoint() * _normal <= 0;
         }
-    };
-
-    /**
-     * Culler that tests whether the line-of-sight vector between the camera
-     * and the node intersects the Ellipsoid, and if so, culls the node.
-     */
-    struct OSGEARTH_EXPORT CullNodeByEllipsoid : public osg::NodeCallback {
-        double _minRadius;
-        CullNodeByEllipsoid( const osg::EllipsoidModel* model );
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-    };
-
-    struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
-        osg::observer_ptr<osg::MatrixTransform> _xform;
-        osg::Vec3d _world;
-        double _r, _r2;
-        CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
-        CullNodeByHorizon( osg::MatrixTransform* xform, const osg::EllipsoidModel* model );
-        void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };
 
     struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
@@ -185,15 +172,6 @@ namespace osgEarth
     {
         static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor* nv);
         static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor& nv) { return asCullVisitor(&nv); }
-
-        /** General user data to calculate once and pass down with a CullVisitor. */
-        struct CullUserData : public osg::Referenced
-        {
-            optional<double> _cameraAltitude;
-        };
-
-        static CullUserData* getCullUserData(osgUtil::CullVisitor* cv) {
-            return cv ? dynamic_cast<CullUserData*>(cv->getUserData()) : 0L; }
     };
 
     /**
@@ -274,8 +252,10 @@ namespace osgEarth
 
 
     
-    // Cull callback that figures out where the visible horizon is
-    // based on the eyepoint.
+    /**
+     * Cull callback that sets a clip plane at the visible horizon
+     * of the Ellipsoid.
+     */
     class OSGEARTH_EXPORT ClipToGeocentricHorizon : public osg::NodeCallback
     {
     public:
@@ -286,8 +266,14 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
     protected:
-        double _radius;
+        osg::ref_ptr<Horizon>             _horizon;
         osg::observer_ptr<osg::ClipPlane> _clipPlane;
+    };
+
+
+    struct OSGEARTH_EXPORT CullDebugger
+    {
+        Config dumpRenderBin(osgUtil::RenderBin* bin) const;
     };
 }
 

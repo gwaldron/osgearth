@@ -1,5 +1,6 @@
+/* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -82,12 +83,6 @@ namespace osgEarth
         const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
         
         /**
-         * Whether LOD blending is enabled for this layer
-         */
-        optional<bool>& lodBlending() { return _lodBlending; }
-        const optional<bool>& lodBlending() const { return _lodBlending; }
-
-        /**
          * Filters attached to this layer.
          */
         ColorFilterChain& colorFilters() { return _colorFilters; }
@@ -136,6 +131,14 @@ namespace osgEarth
         optional<osg::Texture::InternalFormatMode>& textureCompression() { return _texcomp; }
         const optional<osg::Texture::InternalFormatMode>& textureCompression() const { return _texcomp; }
 
+        /** For shared layer, name of hte texture sampler uniform. */
+        optional<std::string>& shareTexUniformName() { return _shareTexUniformName; }
+        const optional<std::string>& shareTexUniformName() const { return _shareTexUniformName; }
+
+        /** For shared layer, name of hte texture sampler matrix uniform. */
+        optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
+        const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -151,7 +154,6 @@ namespace osgEarth
         optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
         optional<URI>         _noDataImageFilename;
-        optional<bool>        _lodBlending;
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
         optional<bool>        _coverage;
@@ -159,6 +161,8 @@ namespace osgEarth
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::InternalFormatMode> _texcomp;
+        optional<std::string> _shareTexUniformName;
+        optional<std::string> _shareTexMatUniformName;
     };
 
     //--------------------------------------------------------------------
@@ -271,9 +275,6 @@ namespace osgEarth
 
         float getOpacity() const { return *_runtimeOptions.opacity(); }
 
-        void disableLODBlending();
-        bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
-
         float getMinVisibleRange() const { return *_runtimeOptions.minVisibleRange();}
         void setMinVisibleRange( float minVisibleRange );
 
@@ -297,6 +298,13 @@ namespace osgEarth
          */
         optional<int>& shareImageUnit() { return _shareImageUnit; }
         const optional<int>& shareImageUnit() const { return _shareImageUnit; }
+
+        /**
+         * When isShared() == true, this will return the name of the uniform holding the
+         * image's texture. 
+         */
+        optional<std::string>& shareTexUniformName() { return _shareTexUniformName; }
+        const optional<std::string>& shareTexUniformName() const { return _shareTexUniformName; }
 
         /**
          * When isShared() == true, this will return the name of the uniform holding the
@@ -329,7 +337,6 @@ namespace osgEarth
 
         CacheBin* getCacheBin( const Profile* profile );
 
-
     protected:
 
         // Creates an image that's in the same profile as the provided key.
@@ -345,21 +352,22 @@ namespace osgEarth
         GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
 
-        virtual void initTileSource();
-
     protected:
         ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+        Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
+        optional<std::string>                    _shareTexUniformName;
         optional<std::string>                    _shareTexMatUniformName;
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
         void init();
-        void initPreCacheOp();
+
+        TileSource::ImageOperation* getOrCreatePreCacheOp();
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

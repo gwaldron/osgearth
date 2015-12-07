@@ -1,0 +1,41 @@
+<!--
+osgEarth Sample - Graticule Extension.
+
+-->
+<map name="Graticule demo" type="geocentric">
+    
+    <options>
+        <terrain first_lod="1"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <extensions>
+        <graticule>
+            <!-- The approximate number of grid lines that you would like to see in your view extent.
+                 This number, along with the resolutions list, will be used to select a resolution on each view.
+             -->
+            <grid_lines>10</grid_lines>
+
+            <!-- The grid resolutions, in degrees that you want to see, all separated by a space and sorted from lowest resolution to highest -->
+            <!--
+            <resolutions>10 5 2.5 1.25</resolutions>
+             -->
+
+            <!-- The grid line color -->
+            <color>#f7a73f70</color>
+            
+            <!-- The label color -->
+            <label_color>#ffff00ff</label_color>
+            
+            <!-- Specify the line width -->
+            <line_width>2</line_width>
+        </graticule>
+    </extensions>
+</map>

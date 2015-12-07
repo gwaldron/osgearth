@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,16 +27,17 @@ using namespace osgEarth;
 
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
 DriverConfigOptions( options ),
+_tileSize( 17 ),
 _verticalScale( 1.0f ),
 _verticalOffset( 0.0f ),
 _heightFieldSampleRatio( 1.0f ),
-_minTileRangeFactor( 6.0 ),
+_minTileRangeFactor( 7.0 ),
 _combineLayers( true ),
 _maxLOD( 23 ),
 _minLOD( 0 ),
 _firstLOD( 0 ),
 _enableLighting( false ),
-_attenuationDistance( 1000000 ),
+_attenuationDistance( 0.0f ),
 _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
@@ -44,8 +45,8 @@ _enableBlending( true ),
 _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
-_primaryTraversalMask  ( 0xFFFFFFFF ),
-_secondaryTraversalMask( 0x80000000 ),
+_minNormalMapLOD( 0u ),
+_gpuTessellation( false ),
 _debug( false )
 {
     fromConfig( _conf );
@@ -62,6 +63,7 @@ TerrainOptions::getConfig() const
     else
         conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
 
+    conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "vertical_scale", _verticalScale );
     conf.updateIfSet( "vertical_offset", _verticalOffset );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
@@ -75,8 +77,8 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "cluster_culling", _clusterCulling );
     conf.updateIfSet( "blending", _enableBlending );
     conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
-    conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
-    conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
+    conf.updateIfSet( "min_normal_map_lod", _minNormalMapLOD );
+    conf.updateIfSet( "gpu_tessellation", _gpuTessellation );
     conf.updateIfSet( "debug", _debug );
 
     //Save the filter settings
@@ -104,6 +106,7 @@ TerrainOptions::fromConfig( const Config& conf )
     else
         conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
 
+    conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "vertical_scale", _verticalScale );
     conf.getIfSet( "vertical_offset", _verticalOffset );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
@@ -117,8 +120,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
-    conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
-    conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
+    conf.getIfSet( "min_normal_map_lod", _minNormalMapLOD );
+    conf.getIfSet( "gpu_tessellation", _gpuTessellation );
     conf.getIfSet( "debug", _debug );
 
     //Load the filter settings

@@ -1,0 +1,159 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PROCEDURAL_SIMPLEX_NOISE_H
+#define OSGEARTH_PROCEDURAL_SIMPLEX_NOISE_H 1
+
+#include <osgEarthProcedural/Common>
+
+namespace osgEarth { namespace Procedural
+{
+    /**
+     * Simplex Noise Generator.
+     * Adapted from https://github.com/Taywee/Noise
+     */
+    class OSGEARTHPROCEDURAL_EXPORT SimplexNoise
+    {
+    public:
+        SimplexNoise();
+        virtual ~SimplexNoise() { }
+
+        static const double DefaultFrequency;
+        static const double DefaultPersistence;
+        static const double DefaultLacunarity;
+        static const double DefaultRangeLow;
+        static const double DefaultRangeHigh;
+        static const unsigned DefaultOctaves;
+
+        /**
+         * Frequency is how often the noise pattern resets to zero across
+         * the input domain. For example, if your input range from 
+         * -100 < x < 100, a frequency of 1/200 will cause the noise function to
+         * reset every 200 units, i.e., the extent of the input domain. (It will
+         * be zero at -100 and zero again at 100. It may cross zero in between,
+         * but that is not guaranteed.)
+         *
+         * In mapping terms, say your map is 100000m wide. A frequency of 1/100000
+         * will result in a pattern that resets (and wraps around) every 100000m.
+         *
+         * Default = 1.0.
+         */ 
+        void setFrequency(double freq) { _freq = freq; }
+        double getFrequency() const { return _freq; }
+
+        /**
+         * Persietence is the factor by which the noise function's amplitude
+         * decreases with each successive octave.
+         *   i.e.: Amp(Oct2) = Amp(Oct1) * Persistance.
+         * Default = 0.5.
+         * Effect: Higher persistence: noisiness persists as you get more detail;
+         *         Lower persistence: data smooths out faster as you get more detail.
+         */
+        void setPersistence(double pers) { _pers = pers; }
+        double getPersistence() const { return _pers; }
+
+        /**
+         * Lacunarity is the factor by which the noise function's frequency
+         * increases with each successive octave.
+         *   i.e.: Freq(Oct2) = Freq(Oct1) * Lacunarity.
+         * Default = 2.0.
+         * Effect: Higher lacunarity: more "plateaus" in the output;
+         *         Lower lacunarity:  more "chopiness" in the output.
+         */
+        void setLacunarity(double lac) { _lacunarity = lac; }
+        double getLacunarity() const { return _lacunarity; }
+
+        /**
+         * The output range for noise data.
+         * Default = [-1..1].
+         */
+        void setRange(double low, double high) { _low = low, _high = high; }
+        double getRangeLow() const { return _low; }
+        double getRangeHigh() const { return _high; }
+
+        /**
+         * Number of iterations over which to generate noise. The frequency starts
+         * where you set it, and over each successive iteration, it is scaled by
+         * the persistence. This lets you control the rate at which the "noisiness"
+         * decreases with each octave.
+         * Default = 1.
+         */
+        void setOctaves(unsigned octaves) { _octaves = octaves; }
+        unsigned getOctaves() const { return _octaves; }
+
+        /**
+         * Generates 2D simplex Noise
+         */
+        double getValue(double xin, double yin) const;
+
+        /**
+         * Generates 3D simplex Noise
+         */
+        double getValue(double xin, double yin, double zin) const;
+
+        /**
+         * Generates 4D simplex Noise
+         */
+        double getValue(double x, double y, double z, double w) const;
+
+    private:
+        // Inner class to speed up gradient computations
+        // (array access is a lot slower than member access)
+        struct Grad
+        {
+            Grad(double x, double y, double z);
+            Grad(double x, double y, double z, double w);
+            double x, y, z, w;
+        };
+
+        const static Grad grad3[12];
+        const static Grad grad4[32];
+        const static unsigned char perm[512];
+
+        // Skewing and unskewing factors for 2, 3, and 4 dimensions
+        static double const F2;
+        static double const G2;
+        static double const F3;
+        static double const G3;
+        static double const F4;
+        static double const G4;
+
+        unsigned char permMod12[512];
+        bool permMod12Computed;
+        void ComputePermMod12();
+
+        // This method is a *lot* faster than using (int)Math.floor(x)
+        inline static int FastFloor(double x);
+        static double Dot(Grad const & g, double x, double y);
+        static double Dot(Grad const & g, double x, double y, double z);
+        static double Dot(Grad const & g, double x, double y, double z, double w);
+
+        double Noise(double x, double y) const;
+        double Noise(double x, double y, double z) const;
+        double Noise(double x, double y, double z, double w) const;
+
+        double _freq;
+        double _pers;
+        double _lacunarity;
+        double _low, _high;
+        unsigned _octaves;
+    };
+
+} } // namespace osgEarth::Procedural
+
+#endif //OSGEARTH_PROCEDURAL_SIMPLEX_NOISE_H

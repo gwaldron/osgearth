@@ -26,7 +26,7 @@ using namespace osgEarth;
 
 struct KML_NetworkLink : public KML_Object
 {
-    virtual void build( const Config& conf, KMLContext& cx );
+    virtual void build( xml_node<>* node, KMLContext& cx );
 };
 
 #endif // OSGEARTH_DRIVER_KML_KML_NETWORKLINK

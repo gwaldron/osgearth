@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -26,11 +29,15 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Containers>
+#include <osgEarth/Horizon>
+
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[SingleKeyNodeFactory] "
+
 
 
 SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
@@ -39,16 +46,14 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileNodeRegistry*             liveTiles,
                                            TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           UID                           engineUID,
-                                           TerrainTileNodeBroker*        tileNodeBroker ) :
+                                           TerrainEngine*                engine ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-_engineUID       ( engineUID ),
-_tileNodeBroker  ( tileNodeBroker )
+_engine          ( engine )
 {
     //nop
 }
@@ -96,6 +101,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
 #else
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile(model, _frame, progress);
+    tileNode->setEngineUID( _engine->getUID() );
 #endif
 
     // see if this tile might have children.
@@ -108,21 +114,41 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
     if ( prepareForChildren )
     {
         osg::BoundingSphere bs = tileNode->getBound();
-        TilePagedLOD* plod = new TilePagedLOD( _engineUID, _liveTiles, _deadTiles );
+        TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles, _deadTiles );
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
-        plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
+        plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
 
         if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
             //Compute the min range based on the 2D size of the tile
             GeoExtent extent = model->_tileKey.getExtent();
-            GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-            GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-            osg::Vec3d ll, ur;
-            lowerLeft.toWorld( ll );
-            upperRight.toWorld( ur );
-            double radius = (ur - ll).length() / 2.0;
+            double radius = 0.0;
+            
+#if 0
+            // Test code to use the equitorial radius so that all of the tiles at the same level
+            // have the same range.  This will make the poles page in more appropriately.
+            if (_frame.getMapInfo().isGeocentric())
+            {
+                GeoExtent equatorialExtent(
+                extent.getSRS(),
+                extent.west(),
+                -extent.height()/2.0,
+                extent.east(),
+                extent.height()/2.0 );
+                radius = equatorialExtent.getBoundingGeoCircle().getRadius();
+            }
+            else
+#endif
+            {
+                GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+                GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+                osg::Vec3d ll, ur;
+                lowerLeft.toWorld( ll );
+                upperRight.toWorld( ur );
+                radius = (ur - ll).length() / 2.0;
+            }
+          
             float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
             plod->setRange( 0, minRange, FLT_MAX );
@@ -131,8 +157,10 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         }
         else
         {
-            plod->setRange( 0, 0.0f, _options.tilePixelSize().value() );
-            plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
+            // the *2 is because we page in 4-tile sets, not individual tiles.
+            float size = 2.0f * _options.tilePixelSize().value();
+            plod->setRange( 0, 0.0f, size );
+            plod->setRange( 1, size, FLT_MAX );
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
         
@@ -250,7 +278,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     {
         if ( _options.incrementalUpdate() == true )
         {
-            quad = new TileGroup(key, _engineUID, _liveTiles.get(), _deadTiles.get());
+            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _deadTiles.get());
         }
         else
         {
@@ -260,7 +288,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
         for( unsigned q=0; q<4; ++q )
         {
             osg::ref_ptr<osg::Node> tile = createTile(model[q].get(), setupChildren, progress);
-            _tileNodeBroker->notifyOfTerrainTileNodeCreation( model[q]->_tileKey, tile.get() );
+            _engine->notifyOfTerrainTileNodeCreation( model[q]->_tileKey, tile.get() );
             quad->addChild( tile.get() );
         }
     }

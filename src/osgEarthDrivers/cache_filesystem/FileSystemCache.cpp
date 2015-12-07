@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -216,7 +216,11 @@ namespace
     bool
     FileSystemCacheBin::binValidForReading(bool silent)
     {
-        if ( !_binPathExists )
+        if ( !_rw.valid() )
+        {
+            _ok = false;
+        }
+        else if ( !_binPathExists )
         {
             if ( osgDB::fileExists(_binPath) )
             {
@@ -241,7 +245,11 @@ namespace
     bool
     FileSystemCacheBin::binValidForWriting(bool silent)
     {
-        if ( !_binPathExists )
+        if ( !_rw.valid() )
+        {
+            _ok = false;
+        }
+        else if ( !_binPathExists )
         {
             osgEarth::makeDirectoryForFile( _metaPath );
 

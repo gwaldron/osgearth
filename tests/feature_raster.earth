@@ -1,0 +1,119 @@
+<!--
+osgEarth Sample - Raster to feature example.
+-->
+
+<map name="readymap.org" type="geocentric">
+    
+    <options>        
+        <terrain skirt_ratio="0.01" />
+    </options>
+  
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        <cache_policy usage="none"/>
+        <images>
+            <image name="ESA" driver="gdal" coverage="true">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <warp>0.01</warp>
+            </image>
+        </images>
+        <shared_sampler> landUseTex       </shared_sampler>
+        <shared_matrix>  landUseTexMatrix </shared_matrix>
+    </image>
+  
+    <model name="trees" driver="feature_geom" enabled="true">
+
+        <features name="trees" driver="raster">
+            <layer>CLASSMAP</layer>
+            <level>12</level>
+        </features>
+
+         <instancing>true</instancing>
+
+       <styles>                
+            <style type="text/css">
+                forest {
+                   model:               "../data/tree.ive";
+                   model-placement:     random;
+                   model-density:       1000;
+                   model-scale:         2.0;
+                   altitude-clamping:   terrain;
+                                                            
+                }  
+
+                yellow {
+                   stroke:             #ffff00;
+                   stroke-width:       5px;
+                  
+                }
+
+                red {
+                   stroke:             #ff0000;
+                   stroke-width:       5px;
+                  
+                }  
+
+            </style>
+            
+            <selector name="default" style_expr="selectStyle()"/>
+            
+            <script language="javascript">
+              <![CDATA[
+                rotator = 0;
+                function selectStyle() {
+                    var value = parseFloat(feature.properties.value);
+                    if (value >= 40.0 && value <= 100.0) return "forest";
+                    return null;                    
+                }
+              ]]>
+            </script>
+        </styles>  
+
+    </model>
+
+    <extensions> 
+      
+         <splat>        
+            <coverage>
+                <layer> CLASSMAP </layer>
+                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            </coverage>
+            
+            <zones>
+                <zone name="default" doc="Default Climate Zone">            
+                    <surface>
+                        <catalog>../data/splat/splat_catalog.xml</catalog>
+                    </surface>
+                </zone>                
+            </zones>
+            
+        </splat>
+
+        <viewpoints>            
+            <viewpoint name="Trees 1">
+              <heading>-66.2945</heading>
+              <pitch>-14.0905</pitch>
+              <range>3408.89m</range>
+              <long>-121.7544800272052</long>
+              <lat>46.7792209225515</lat>
+              <height>1445.844014885835</height>
+            </viewpoint>
+            
+            <viewpoint name="Trees 2">              
+              <heading>12.2384</heading>
+              <pitch>-4.26323</pitch>
+              <range>1421.77m</range>
+              <long>-121.8282019325911</long>
+              <lat>46.65132101133439</lat>
+              <height>1128.989560711198</height>
+            </viewpoint>
+        </viewpoints>
+               
+    </extensions>
+</map>

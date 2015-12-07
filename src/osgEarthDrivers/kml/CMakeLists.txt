@@ -2,7 +2,9 @@ OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
 IF(WIN32)
-    SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    IF(MSVC)
+        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    ENDIF(MSVC)
     IF(CURL_IS_STATIC)
         ADD_DEFINITIONS(-DCURL_STATICLIB)
         SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm)
@@ -15,12 +17,6 @@ set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil
     osgEarthAnnotation
 )
-
-IF( MINIZIP_FOUND )
-    SET(TARGET_LIBRARIES_VARS ZLIB_LIBRARY MINIZIP_LIBRARY )
-    INCLUDE_DIRECTORIES( ${ZLIB_INCLUDE_DIR} ${MINIZIP_INCLUDE_DIR} )
-    ADD_DEFINITIONS(-DOSGEARTH_HAVE_ZLIB -DOSGEARTH_HAVE_MINIZIP )
-ENDIF( MINIZIP_FOUND )
 
 SET(TARGET_H
     KML
@@ -40,9 +36,11 @@ SET(TARGET_H
     KML_LineStyle
     KML_Model
     KML_MultiGeometry
+    KML_NetworkLink
     KML_NetworkLinkControl
     KML_Object
     KML_Overlay
+    KML_Placemark
     KML_PhotoOverlay
     KML_Point
     KML_Polygon
@@ -54,12 +52,12 @@ SET(TARGET_H
     KML_StyleMap
     KML_StyleSelector
     KMZArchive
+    rapidxml_ext.hpp
 )
 
 SET(TARGET_SRC
     ReaderWriterKML.cpp
     KMLReader.cpp
-    
     KML_Document.cpp
     KML_Feature.cpp
     KML_Folder.cpp

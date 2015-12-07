@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
-#define LC "[ReaderWriterEarth] "
+#define LC "[Earth Plugin] "
 
 // Macros to determine the filename for dependent libs.
 #define Q2(x) #x
@@ -56,6 +56,38 @@ using namespace osgEarth;
 #       define LIBNAME_UTIL_EXTENSION ".so"
 #   endif
 #endif
+
+
+// OSG OPTIONS
+
+// By default the writer will re-write relative pathnames so they are relative to the new
+// save location. This option will disable that.
+#define EARTH_DO_NOT_REWRITE_PATHS   "DoNotRewritePaths"
+
+// By default the writer will skip absolute paths and leave them as-is. This option will
+// cause the writer to try making absolute paths relative to the new save location.
+#define EARTH_REWRITE_ABSOLUTE_PATHS "RewriteAbsolutePaths"
+
+
+namespace
+{
+    void recursiveUniqueKeyMerge(Config& lhs, const Config& rhs)
+    {
+        if ( rhs.value() != lhs.value() )
+        {
+            lhs.value() = rhs.value();
+        }
+
+        for(ConfigSet::const_iterator rhsChild = rhs.children().begin(); rhsChild != rhs.children().end(); ++rhsChild)
+        {
+            Config* lhsChild = lhs.mutable_child(rhsChild->key());
+            if ( lhsChild )
+                recursiveUniqueKeyMerge( *lhsChild, *rhsChild );
+            else
+                lhs.add( *rhsChild );
+        }
+    }
+}
 
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
@@ -97,7 +129,12 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             std::ofstream out( fileName.c_str());
             if ( out.is_open() )
-                return writeNode( node, out, options );
+            {
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                URIContext( fileName ).apply( myOptions.get() );
+
+                return writeNode( node, out, myOptions.get() );
+            }
 
             return WriteResult::ERROR_IN_WRITING_FILE;            
         }
@@ -108,10 +145,32 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             MapNode* mapNode = MapNode::findMapNode( searchNode );
             if ( !mapNode )
                 return WriteResult::ERROR_IN_WRITING_FILE; // i.e., no MapNode found in the graph.
+            
+            // decode the context from the options (might be there, might not)
+            URIContext uriContext( options );
 
             // serialize the map node to a generic Config object:
             EarthFileSerializer2 ser;
-            Config conf = ser.serialize( mapNode );
+
+            // check for writer options
+            if ( options )
+            {
+                std::string ostr = osgEarth::toLower(options->getOptionString());
+
+                if ( ostr.find(toLower(EARTH_DO_NOT_REWRITE_PATHS)) != std::string::npos )
+                {
+                    OE_INFO << LC << "path re-writing disabled\n";
+                    ser.setRewritePaths( false );
+                }
+
+                if ( ostr.find(toLower(EARTH_REWRITE_ABSOLUTE_PATHS)) != std::string::npos )
+                {
+                    OE_INFO << LC << "absolute path re-writing enabled\n";
+                    ser.setRewriteAbsolutePaths( true );
+                }
+            }
+
+            Config conf = ser.serialize( mapNode, uriContext.referrer() );
 
             // dump that Config out as XML.
             osg::ref_ptr<XmlDocument> xml = new XmlDocument( conf );
@@ -137,13 +196,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( fileName == "__globe.earth" )
             {
                 return ReadResult( new MapNode() );
-            }
-
-            else if ( fileName == "__cube.earth" )
-            {
-                MapOptions options;
-                options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
-                return ReadResult( new MapNode( new Map(options) ) );
             }
 
             else
@@ -205,7 +257,32 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 else
                 {
                     if ( conf.value("version") != "2" )
-                        OE_INFO << LC << "No valid earth file version; assuming version='2'" << std::endl;
+                        OE_DEBUG << LC << "No valid earth file version; assuming version='2'" << std::endl;
+
+                    // attempt to parse a "default options" JSON string:
+                    std::string defaultConfStr;
+                    if ( options )
+                    {
+                        defaultConfStr = options->getPluginStringData("osgEarth.defaultOptions");
+                        if ( !defaultConfStr.empty() )
+                        {
+                            Config optionsConf("options");
+                            if (optionsConf.fromJSON(defaultConfStr))
+                            {
+                                //OE_NOTICE << "\n\nOriginal = \n" << conf.toJSON(true) << "\n";
+                                Config* original = conf.mutable_child("options");
+                                if ( original )
+                                {
+                                    recursiveUniqueKeyMerge(optionsConf, *original);
+                                }
+                                if ( !optionsConf.empty() )
+                                {
+                                    conf.set("options", optionsConf);
+                                }
+                                //OE_NOTICE << "\n\nMerged = \n" << conf.toJSON(true) << "\n";
+                            }
+                        }
+                    }
 
                     EarthFileSerializer2 ser;
                     mapNode = ser.deserialize( conf, refURI );

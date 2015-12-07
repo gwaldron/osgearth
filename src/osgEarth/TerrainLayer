@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -305,20 +305,13 @@ namespace osgEarth
         /**
          * Convenience function to check for cache_only mode
          */
-        bool isCacheOnly() const {
-            return 
-                _runtimeOptions->cachePolicy().isSet() &&
-                _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY;
-        }
+        bool isCacheOnly() const;
         
         /**
          * Convenience check for no-cache mode.
          */
-        bool isNoCache() const {
-            return 
-                _runtimeOptions->cachePolicy().isSet() &&
-                _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE;
-        }
+        bool isNoCache() const;
+
 
     public: // Layer interface
 
@@ -403,7 +396,8 @@ namespace osgEarth
 
     protected:
 
-        virtual void initTileSource();
+        /** Creates the driver the supplies the actual data. Internal function. */
+        virtual TileSource* createTileSource();
 
         void applyProfileOverrides();
 
@@ -411,10 +405,9 @@ namespace osgEarth
 
     protected:
 
-        osg::ref_ptr<TileSource>       _tileSource;
         osg::ref_ptr<const Profile>    _targetProfileHint;
-        bool                           _tileSourceInitAttempted;
-        bool                           _tileSourceInitFailed;
+        mutable bool                   _tileSourceInitAttempted;
+        //bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
         osg::ref_ptr<MemCache>         _memCache;
@@ -433,9 +426,15 @@ namespace osgEarth
         std::string                    _referenceURI;
         TerrainLayerOptions            _initOptions;
         TerrainLayerOptions*           _runtimeOptions;
+
         mutable Threading::Mutex       _initTileSourceMutex;
+        osg::ref_ptr<TileSource>       _tileSource;
 
         osg::ref_ptr<Cache>            _cache;
+        
+        // cache policy that may be automatically set by the layer and will 
+        // override the runtime options policy if set.
+        optional<CachePolicy>          _effectiveCachePolicy;
 
         // maps profile signature to cache bin pointer.
         struct CacheBinInfo
@@ -465,7 +464,7 @@ namespace osgEarth
         void setCache( Cache* cache );
 
         // read the tile source's cache policy hint and apply as necessary
-        void refreshTileSourceCachePolicyHint();
+        void refreshTileSourceCachePolicyHint(TileSource*);
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

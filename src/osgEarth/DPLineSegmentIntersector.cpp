@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +18,9 @@
  */
 #include <osgEarth/DPLineSegmentIntersector>
 #include <osgEarth/Utils>
-#include <osg/KdTree>
 #include <osg/TriangleFunctor>
+#include <osg/KdTree>
+#include <osgEarth/QuadTree>
 
 using namespace osgEarth;
 
@@ -253,7 +254,130 @@ DPLineSegmentIntersector::clone(osgUtil::IntersectionVisitor& iv)
     lsi->_intersectionLimit = this->_intersectionLimit;
     return lsi.release();
 }
+
+void intersectWithKdTree(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable
+    , const osg::Vec3d s, const osg::Vec3d e
+    , const osg::Vec3d _start, const osg::Vec3d _end
+    , osg::KdTree* kdTree
+    , DPLineSegmentIntersector& intersector)
+{
+    osg::KdTree::LineSegmentIntersections intersections;
+    intersections.reserve(4);
+    if (kdTree->intersect(s,e,intersections))
+    {
+        // OSG_NOTICE<<"Got KdTree intersections"<<std::endl;
+        for(osg::KdTree::LineSegmentIntersections::iterator itr = intersections.begin();
+            itr != intersections.end();
+            ++itr)
+        {
+            osg::KdTree::LineSegmentIntersection& lsi = *(itr);
+
+            // get ratio in s,e range
+            double ratio = lsi.ratio;
+
+            // remap ratio into _start, _end range
+            double remap_ratio = ((s-_start).length() + ratio * (e-s).length() )/(_end-_start).length();
+
+
+            osgUtil::LineSegmentIntersector::Intersection hit;
+            hit.ratio = remap_ratio;
+            hit.matrix = iv.getModelMatrix();
+            hit.nodePath = iv.getNodePath();
+            hit.drawable = drawable;
+            hit.primitiveIndex = lsi.primitiveIndex;
+
+            hit.localIntersectionPoint = _start*(1.0-remap_ratio) + _end*remap_ratio;
+
+            // OSG_NOTICE<<"KdTree: ratio="<<hit.ratio<<" ("<<hit.localIntersectionPoint<<")"<<std::endl;
+
+            hit.localIntersectionNormal = lsi.intersectionNormal;
+
+            hit.indexList.reserve(3);
+            hit.ratioList.reserve(3);
+            if (lsi.r0!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p0);
+                hit.ratioList.push_back(lsi.r0);
+            }
+
+            if (lsi.r1!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p1);
+                hit.ratioList.push_back(lsi.r1);
+            }
+
+            if (lsi.r2!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p2);
+                hit.ratioList.push_back(lsi.r2);
+            }
+
+            intersector.insertIntersection(hit);
+        }
+    }
+}
         
+void intersectWithQuadTree(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable
+    , const osg::Vec3d s, const osg::Vec3d e
+    , const osg::Vec3d _start, const osg::Vec3d _end
+    , QuadTree* quadTree
+    , DPLineSegmentIntersector& intersector)
+{
+    QuadTree::LineSegmentIntersections intersections;
+    intersections.reserve(4);
+    if (quadTree->intersect(s,e,intersections))
+    {
+        // OSG_NOTICE<<"Got QuadTree intersections"<<std::endl;
+        for(QuadTree::LineSegmentIntersections::iterator itr = intersections.begin();
+            itr != intersections.end();
+            ++itr)
+        {
+            QuadTree::LineSegmentIntersection& lsi = *(itr);
+
+            // get ratio in s,e range
+            double ratio = lsi.ratio;
+
+            // remap ratio into _start, _end range
+            double remap_ratio = ((s-_start).length() + ratio * (e-s).length() )/(_end-_start).length();
+
+
+            osgUtil::LineSegmentIntersector::Intersection hit;
+            hit.ratio = remap_ratio;
+            hit.matrix = iv.getModelMatrix();
+            hit.nodePath = iv.getNodePath();
+            hit.drawable = drawable;
+            hit.primitiveIndex = lsi.primitiveIndex;
+
+            hit.localIntersectionPoint = _start*(1.0-remap_ratio) + _end*remap_ratio;
+
+            // OSG_NOTICE<<"QuadTree: ratio="<<hit.ratio<<" ("<<hit.localIntersectionPoint<<")"<<std::endl;
+
+            hit.localIntersectionNormal = lsi.intersectionNormal;
+
+            hit.indexList.reserve(3);
+            hit.ratioList.reserve(3);
+            if (lsi.r0!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p0);
+                hit.ratioList.push_back(lsi.r0);
+            }
+
+            if (lsi.r1!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p1);
+                hit.ratioList.push_back(lsi.r1);
+            }
+
+            if (lsi.r2!=0.0f)
+            {
+                hit.indexList.push_back(lsi.p2);
+                hit.ratioList.push_back(lsi.r2);
+            }
+
+            intersector.insertIntersection(hit);
+        }
+    }
+}
 void
 DPLineSegmentIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable)
 {
@@ -267,61 +391,14 @@ DPLineSegmentIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawa
     osg::KdTree* kdTree = iv.getUseKdTreeWhenAvailable() ? dynamic_cast<osg::KdTree*>(drawable->getShape()) : 0;
     if (kdTree)
     {
-        osg::KdTree::LineSegmentIntersections intersections;
-        intersections.reserve(4);
-        if (kdTree->intersect(s,e,intersections))
-        {
-            // OSG_NOTICE<<"Got KdTree intersections"<<std::endl;
-            for(osg::KdTree::LineSegmentIntersections::iterator itr = intersections.begin();
-                itr != intersections.end();
-                ++itr)
-            {
-                osg::KdTree::LineSegmentIntersection& lsi = *(itr);
+        intersectWithKdTree(iv, drawable, s, e, _start, _end, kdTree, *this);
+        return;
+    }
 
-                // get ratio in s,e range
-                double ratio = lsi.ratio;
-
-                // remap ratio into _start, _end range
-                double remap_ratio = ((s-_start).length() + ratio * (e-s).length() )/(_end-_start).length();
-
-
-                Intersection hit;
-                hit.ratio = remap_ratio;
-                hit.matrix = iv.getModelMatrix();
-                hit.nodePath = iv.getNodePath();
-                hit.drawable = drawable;
-                hit.primitiveIndex = lsi.primitiveIndex;
-
-                hit.localIntersectionPoint = _start*(1.0-remap_ratio) + _end*remap_ratio;
-
-                // OSG_NOTICE<<"KdTree: ratio="<<hit.ratio<<" ("<<hit.localIntersectionPoint<<")"<<std::endl;
-
-                hit.localIntersectionNormal = lsi.intersectionNormal;
-
-                hit.indexList.reserve(3);
-                hit.ratioList.reserve(3);
-                if (lsi.r0!=0.0f)
-                {
-                    hit.indexList.push_back(lsi.p0);
-                    hit.ratioList.push_back(lsi.r0);
-                }
-
-                if (lsi.r1!=0.0f)
-                {
-                    hit.indexList.push_back(lsi.p1);
-                    hit.ratioList.push_back(lsi.r1);
-                }
-
-                if (lsi.r2!=0.0f)
-                {
-                    hit.indexList.push_back(lsi.p2);
-                    hit.ratioList.push_back(lsi.r2);
-                }
-
-                insertIntersection(hit);
-            }
-        }
-
+    QuadTree* quadTree = iv.getUseKdTreeWhenAvailable() ? dynamic_cast<QuadTree*>(drawable->getShape()) : 0;
+    if (quadTree)
+    {
+        intersectWithQuadTree(iv, drawable, s, e, _start, _end, quadTree, *this);
         return;
     }
 

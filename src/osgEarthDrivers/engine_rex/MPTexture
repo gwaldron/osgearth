@@ -1,0 +1,106 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_REX_MPTEXTURE
+#define OSGEARTH_REX_MPTEXTURE 1
+
+#include "Common"
+#include <osg/Texture2D>
+#include <osgEarth/ImageLayer>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * MPTexture is a multipass texture attribute that holds one or more Texture2D
+     * objects each with associated texture matrix.
+     *
+     * We don't actually store it in the TileNode's stateSet. The reason it is a 
+     * StateAttribute (and subclassed from Texture2D) is so that OSG's GL object
+     * pre-compile visitors will find it and process it.
+     */
+    class MPTexture : public osg::Texture2D
+    {
+    public:
+        /** A single color layer pass. */
+        struct Pass
+        {
+            Pass() : _ownsTexture(false), _order(0) { }
+
+            Pass(const Pass& rhs) {
+                _layer = rhs._layer.get();
+                _order = rhs._order;
+                _texture = rhs._texture.get();
+                _textureMatrix = rhs._textureMatrix;
+                _ownsTexture = false; //rhs._ownsTexture;
+                _parentTexture = rhs._parentTexture.get();
+                _parentTextureMatrix = rhs._parentTextureMatrix;
+            }
+
+            osg::ref_ptr<const ImageLayer> _layer;          // source image layer
+            int                            _order;          // rendering order
+            osg::ref_ptr<osg::Texture>     _texture;        // texture object
+            osg::Matrixf                   _textureMatrix;  // scale bias matrix for inherited textures.
+            bool                           _ownsTexture;    // whether this key/pass owns this texture.
+
+            osg::ref_ptr<osg::Texture>     _parentTexture;
+            osg::Matrixf                   _parentTextureMatrix;
+        };
+
+        typedef std::vector<Pass> Passes;
+
+    public:
+        /** ctor */
+        MPTexture();
+
+        /** Sets or adds an image layer and associated texture object as a pass. */
+        void setLayer(const ImageLayer* layer, osg::Texture* tex, int order);
+
+        /** Passes to be drawn for this object. */
+        const Passes& getPasses() const { return _passes; }
+
+        /** Merge the contents of "rhs" into this object. */
+        void merge(MPTexture* rhs);
+
+        /** Inherit pass information from another MPTexture with scale/bias information. */
+        void inheritState(MPTexture* parent, const osg::Matrixf& scaleBias);
+
+    public: // osg::Texture
+
+        // override an nullify apply; functionality happens manually in TileDrawable
+        void apply(osg::State& state) const { }
+
+        // support GL pre-compilation, etc.
+        void compileGLObjects(osg::State& state) const;
+        void resizeGLObjectBuffers(unsigned int maxSize);
+        void releaseGLObjects(osg::State* state=0) const;
+
+    protected:
+        virtual ~MPTexture() { }
+
+        Passes _passes;
+        
+    private:
+        /** copy ctor - disabled */
+        MPTexture(const MPTexture& rhs) { }
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_REX_MPTEXTURE

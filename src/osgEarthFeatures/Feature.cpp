@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -310,7 +310,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
       {
         val = ai->second.getDouble(0.0);
       }
-      else if (context)
+      else if (context && context->getSession())
       {
         //No attr found, look for script
         ScriptEngine* engine = context->getSession()->getScriptEngine();
@@ -343,7 +343,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
       {
         val = ai->second.getString();
       }
-      else if (context)
+      else if (context && context->getSession())
       {
         //No attr found, look for script
         ScriptEngine* engine = context->getSession()->getScriptEngine();
@@ -404,6 +404,15 @@ Feature::getWorldBoundingPolytope(const SpatialReference* srs,
 {
     osg::BoundingSphered bs;
     if ( getWorldBound(srs, bs) && bs.valid() )
+    {
+        return getWorldBoundingPolytope( bs, srs, out_polytope );
+    }
+    return false;
+}
+
+bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope )
+{
+    if ( bs.valid() )
     {
         out_polytope.clear();
 

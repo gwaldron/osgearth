@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -186,6 +186,24 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 }
 
 SpatialReference*
+SpatialReference::createFromUserInput( const std::string& input, const std::string& name )
+{
+    osg::ref_ptr<SpatialReference> result;
+    GDAL_SCOPED_LOCK;
+    void* handle = OSRNewSpatialReference( NULL );
+    if ( OSRSetFromUserInput( handle, input.c_str() ) == OGRERR_NONE )
+    {
+        result = new SpatialReference( handle, "UserInput" );
+    }
+    else 
+    {
+        OE_WARN << LC << "Unable to create spatial reference from user input: " << input << std::endl;
+        OSRDestroySpatialReference( handle );
+    }
+    return result.release();
+}
+
+SpatialReference*
 SpatialReference::create( const std::string& horiz, const std::string& vert )
 {
     return create( Key(horiz, vert), true );
@@ -260,6 +278,7 @@ SpatialReference::create( const Key& key, bool useCache )
             "WGS84" );
 
         srs->_is_plate_carre = true;
+        srs->_is_geographic  = false;
     }
 
     // custom srs for the unified cube
@@ -275,12 +294,19 @@ SpatialReference::create( const Key& key, bool useCache )
     else if (key.horizLower.find( "epsg:" )  == 0 ||
              key.horizLower.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( std::string("+init=") + key.horiz, key.horiz );
+        srs = createFromPROJ4( std::string("+init=") + key.horizLower, key.horiz );
     }
     else if (key.horizLower.find( "projcs" ) == 0 || 
              key.horizLower.find( "geogcs" ) == 0 )
     {
         srs = createFromWKT( key.horiz, key.horiz );
+    }
+    else
+    {
+        // Try to set it from the user input.  This will handle things like CRS:84
+        // createFromUserInput will actually handle all valid inputs from GDAL, so we might be able to
+        // simplify this function and just call createFromUserInput.
+        srs = createFromUserInput( key.horiz, key.horiz );
     }
 
     // bail out if no SRS exists by this point
@@ -782,12 +808,10 @@ SpatialReference::createUTMFromLonLat( const Angular& lon, const Angular& lat ) 
     return create( horiz, getVertInitString() );
 }
 
-const SpatialReference* 
-SpatialReference::createPlateCarreGeographicSRS() const
+const SpatialReference*
+SpatialReference::createEquirectangularSRS() const
 {
-    SpatialReference* pc = create( getKey(), false );
-    if ( pc ) pc->_is_plate_carre = true;
-    return pc;
+    return SpatialReference::create("+proj=eqc +units=m +no_defs", getVertInitString());
 }
 
 bool
@@ -946,17 +970,12 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
     }
     else
     {
-        // convert MSL to HAE if necessary:
-        osg::Vec3d geodetic;
-        if ( !transform(xyz, getGeodeticSRS(), geodetic) )
-            return false;
-
-        // then to ECEF:
+        // convert to ECEF:
         osg::Vec3d ecef;
-        if ( !transform(geodetic, getGeodeticSRS()->getECEF(), ecef) )
+        if ( !transform(xyz, getECEF(), ecef) )
             return false;
 
-        //out_local2world = ECEF::createLocalToWorld(ecef);        
+        // and create the matrix.
         _ellipsoid->computeLocalToWorldTransformFromXYZ(ecef.x(), ecef.y(), ecef.z(), out_local2world);
     }
     return true;
@@ -1317,6 +1336,29 @@ SpatialReference::transformUnits(double                  input,
     }
 }
 
+double
+SpatialReference::transformUnits(const Distance&         distance,
+                                 const SpatialReference* outSRS,
+                                 double                  latitude)
+{
+    if ( distance.getUnits().isLinear() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = distance.as(Units::METERS) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( distance.getUnits().isAngular() && outSRS->isProjected() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputMeters = distance.as(Units::DEGREES) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else // both projected or both geographic.
+    {
+        return distance.as( outSRS->getUnits() );
+    }
+}
+
 bool
 SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                        double&                 in_out_xmin,
@@ -1335,7 +1377,6 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
-
     if ( transform(v, to_srs) )
     {
         in_out_xmin = std::min( v[0].x(), v[1].x() );
@@ -1476,7 +1517,7 @@ SpatialReference::_init()
     _is_user_defined = false; 
     _is_contiguous = true;
     _is_cube = false;
-    if ( _is_ecef )
+    if ( _is_ecef || _is_plate_carre )
         _is_geographic = false;
     else
         _is_geographic = OSRIsGeographic( _handle ) != 0;

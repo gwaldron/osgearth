@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,60 +27,86 @@ using namespace osgEarth_kml;
 using namespace osgEarth;
 
 void
-KML_Feature::scan( const Config& conf, KMLContext& cx )
+KML_Feature::scan( xml_node<>* node, KMLContext& cx )
 {
-    KML_Object::scan(conf, cx);
-    for_many( Style, scan, conf, cx );
-    for_many( StyleMap, scan, conf, cx );
+    KML_Object::scan(node, cx);
+    for_many( Style, scan, node, cx );
+    for_many( StyleMap, scan, node, cx );
 }
 
 void
-KML_Feature::scan2( const Config& conf, KMLContext& cx )
+KML_Feature::scan2( xml_node<>* node, KMLContext& cx )
 {
-    KML_Object::scan2(conf, cx);
-    for_many( Style, scan2, conf, cx );
-    for_many( StyleMap, scan2, conf, cx );
+    KML_Object::scan2(node, cx);
+    for_many( Style, scan2, node, cx );
+    for_many( StyleMap, scan2, node, cx );
 }
 
 void
-KML_Feature::build( const Config& conf, KMLContext& cx, osg::Node* working )
+KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
 {
-    KML_Object::build(conf, cx, working);
+    KML_Object::build(node, cx, working);
 
     // subclass feature is built; now add feature level data if available
     if ( working )
     {
         // parse the visibility to show/hide the item by default:
-        if ( conf.hasValue("visibility") )
-            working->setNodeMask( conf.value<int>("visibility", 1) == 1 ? ~0 : 0 );
+		std::string visibility = getValue(node, "visibility");
+        if ( !visibility.empty() )
+            working->setNodeMask( as<int>(visibility, 1) == 1 ? ~0 : 0 );
 
         // parse a "LookAt" element (stores a viewpoint)
         AnnotationData* anno = getOrCreateAnnotationData(working);
         
-        anno->setName( conf.value("name") );
-        anno->setDescription( conf.value("description") );
+        anno->setName( getValue(node, "name") );
+        anno->setDescription( getValue(node, "description") );
 
-        const Config& lookat = conf.child("lookat");
-        if ( !lookat.empty() )
+        xml_node<>* lookat = node->first_node("lookat", 0, false);
+        if ( lookat )
         {
-            Viewpoint vp(
-                lookat.value<double>("longitude", 0.0),
-                lookat.value<double>("latitude", 0.0),
-                lookat.value<double>("altitude", 0.0),
-                lookat.value<double>("heading", 0.0),
-                -lookat.value<double>("tilt", 45.0),
-                lookat.value<double>("range", 10000.0) );
+            Viewpoint vp;
+
+            vp.focalPoint() = GeoPoint(
+                cx._srs.get(),
+				as<double>(getValue(lookat, "longitude"), 0.0),
+				as<double>(getValue(lookat, "latitude"), 0.0),
+				as<double>(getValue(lookat, "altitude"), 0.0),
+                ALTMODE_ABSOLUTE );
+
+            vp.heading() =  as<double>(getValue(lookat, "heading"), 0.0);
+            vp.pitch()   = -as<double>(getValue(lookat, "tilt"), 45.0),
+            vp.range()   =  as<double>(getValue(lookat, "range"), 10000.0);
 
             anno->setViewpoint( vp );
         }
 
-        const Config& extdata = conf.child("extendeddata");
-        if ( !extdata.empty() )
+        xml_node<>* timespan = node->first_node("timespan", 0, false);
+        if ( timespan )
         {
-            ConfigSet innerConfs = extdata.children("data");
-            for( ConfigSet::const_iterator i = innerConfs.begin(); i != innerConfs.end(); ++i )
+            DateTimeRange range;
+
+            std::string begin = getValue(timespan, "begin");
+            if ( !begin.empty() )
             {
-                working->setUserValue(i->value("name"), i->value("value"));
+                range.begin() = DateTime(begin);
+            }
+
+            std::string end = getValue(timespan, "end");
+            if ( !end.empty() )
+            {
+                range.end() = DateTime(end);
+            }
+
+            anno->setDateTimeRange( range );
+        }
+
+        xml_node<>* extdata = node->first_node("extendeddata", 0, false);
+        if ( extdata )
+        {
+            xml_node<>* data = extdata->first_node("data", 0, false);
+            if ( data )
+            {
+                working->setUserValue(getValue(data, "name"), getValue(data, "value"));			    
             }
         }
     }

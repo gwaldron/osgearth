@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -79,6 +79,13 @@ namespace osgEarth
         XmlElement* getSubElement( const std::string& name ) const;
         
         XmlNodeList getSubElements( const std::string& name ) const;
+
+        /**
+         * Finds the first element matching the name. This will match the
+         * current element (this), or the first matching element in this
+         * nodes subhierarchy.
+         */
+        const XmlElement* findElement(const std::string& name) const;
         
         std::string getText() const;
         
@@ -88,12 +95,14 @@ namespace osgEarth
 
         void addSubElement(const std::string& tag, const Properties& attrs, const std::string& text);
 
-        virtual Config getConfig() const;
+        virtual Config getConfig(const std::string& sourceURI) const;
 
     public: // XmlNode
         virtual bool isElement() const { return true; }
 
         virtual bool isText() const { return false; }
+
+        virtual bool isInclude() const { return toLower(name) == "xi:include"; }
 
     private:
         std::string name;

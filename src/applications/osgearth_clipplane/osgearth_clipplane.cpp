@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -53,7 +56,7 @@ usage(const char* name)
 
 // Vertex shader to activate clip planes in GLSL:
 const char* clipvs =
-    "#version 110 \n"
+    "#version " GLSL_VERSION_STR "\n"
     "void oe_clip_vert(inout vec4 vertex_view) { \n"
     "   gl_ClipVertex = vertex_view; \n"
     "}\n";
@@ -107,7 +110,7 @@ main(int argc, char** argv)
 
         // We also need a shader that will activate clipping in GLSL.
         VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());
-        vp->setFunction("oe_clip_vert", clipvs, ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction("oe_clip_vert", clipvs, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
 
         // Now everything is set up. The last thing to do is: anywhere in your
         // scene graph that you want to activate the clipping plane, set the 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,15 +39,28 @@ namespace osgEarth
         virtual ~TextureCompositor() { }
 
         /**
-         * Requests a texture image unit that is not in use, and marks is as reserved. You can release
-         * the reserved texture image unit by calling releaseTextureImageUnit().
+         * Requests a texture image unit that is not in use, and marks is as reserved.
+         * You can release the reserved texture image unit by calling releaseTextureImageUnit().
+         * @param out_unit  Reserved unit is written to this variable.
+         * @param requestor Optional requestor string (for information purposes only)
          */
-        bool reserveTextureImageUnit(int& out_unit);
+        bool reserveTextureImageUnit(
+            int&        out_unit,
+            const char* requestor =0L );
 
         /**
          * Releases a reserved texture image unit previously returned by reserveTextureImageUnit.
          */
         void releaseTextureImageUnit(int unit);
+
+        /**
+         * Marks a specific texture image as reserved. Only call this if your application
+         * is known to use a particular texture image unit and you don't want osgEarth
+         * touching it.
+         *
+         * Returns true upon success, and false if the unit has already been reserved.
+         */
+        bool setTextureImageUnitOffLimits(int unit);
 
     private:
         Threading::Mutex _reservedUnitsMutex;

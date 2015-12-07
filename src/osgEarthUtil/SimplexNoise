@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -39,6 +42,7 @@ namespace osgEarth { namespace Util
         static const double DefaultRangeLow;
         static const double DefaultRangeHigh;
         static const unsigned DefaultOctaves;
+        static const bool   DefaultNormalize;
 
         /**
          * Frequency is how often the noise pattern resets to zero across
@@ -87,6 +91,13 @@ namespace osgEarth { namespace Util
         double getRangeHigh() const { return _high; }
 
         /**
+         * Whether to normalize output values within the limits set by
+         * setRange().
+         */
+        void setNormalize(bool value) { _normalize = value; }
+        bool getNormalize() const { return _normalize; }
+        
+        /**
          * Number of iterations over which to generate noise. The frequency starts
          * where you set it, and over each successive iteration, it is scaled by
          * the persistence. This lets you control the rate at which the "noisiness"
@@ -110,6 +121,13 @@ namespace osgEarth { namespace Util
          * Generates 4D simplex Noise
          */
         double getValue(double x, double y, double z, double w) const;
+
+        /**
+         * Generates tilable 2D noise for x[0..1), y[0..1).
+         */
+        double getTiledValue(double x, double y) const;
+        
+        double getTiledValueWithTurbulence(double x, double y, double F) const;
 
     private:
         // Inner class to speed up gradient computations
@@ -152,6 +170,7 @@ namespace osgEarth { namespace Util
         double _lacunarity;
         double _low, _high;
         unsigned _octaves;
+        bool _normalize;
     };
 
 } } // namespace osgEarth::Util

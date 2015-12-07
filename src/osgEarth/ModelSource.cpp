@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,6 +33,7 @@ DriverConfigOptions( options ),
 _minRange          ( 0.0f ),
 _maxRange          ( FLT_MAX ),
 _renderOrder       ( 11 ),
+_renderBin         ( "DepthSortedBin" ),
 _depthTestEnabled  ( true )
 { 
     fromConfig(_conf);
@@ -48,6 +49,7 @@ ModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet<float>( "min_range", _minRange );
     conf.getIfSet<float>( "max_range", _maxRange );
     conf.getIfSet<int>( "render_order", _renderOrder );
+    conf.getIfSet("render_bin", _renderBin );
     conf.getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
 }
 
@@ -65,6 +67,7 @@ ModelSourceOptions::getConfig() const
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "render_order", _renderOrder );
+    conf.updateIfSet( "render_bin", _renderBin );
     conf.updateIfSet( "depth_test_enabled", _depthTestEnabled );
     return conf;
 }
@@ -85,11 +88,10 @@ ModelSource::~ModelSource()
 
 
 osg::Node* 
-ModelSource::createNode(const Map*            map,
-                        const osgDB::Options* dbOptions,
-                        ProgressCallback*     progress )
+ModelSource::createNode(const Map*        map,
+                        ProgressCallback* progress )
 {
-    osg::Node* node = createNodeImplementation(map, dbOptions, progress);
+    osg::Node* node = createNodeImplementation(map, progress);
     if ( node )
     {
         firePostProcessors( node );

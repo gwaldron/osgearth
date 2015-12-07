@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,6 +46,8 @@
 namespace osgEarth
 {
     class ProgressCallback;
+    class Map;
+    class MapFrame;
 
     /**
      * Configuration options for a tile source driver.
@@ -91,6 +93,14 @@ namespace osgEarth
         optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
 
+        /** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
+
+        /** osgDB::Options option string to pass through to osgDB reader/writers. */
+        optional<std::string>& osgOptionString() { return _osgOptionString; }
+        const optional<std::string>& osgOptionString() const { return _osgOptionString; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -124,6 +134,8 @@ namespace osgEarth
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
+        optional<bool>           _coverage;
+        optional<std::string>    _osgOptionString;
     };
 
 
@@ -265,6 +277,17 @@ namespace osgEarth
         DataExtentList& getDataExtents() { return _dataExtents; }
 
         /**
+         * Call when you modify the data extents list.
+         */
+        void dirtyDataExtents();
+
+        /**
+         * Gets the union of all the data extents
+         */
+        const GeoExtent& getDataExtentsUnion() const;
+
+
+        /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
          */
@@ -329,16 +352,16 @@ namespace osgEarth
             return _options.noDataValue().value(); }
 
         /**
-         * Gets the nodata min value
+         * Gets the minimum valid value. Any value below this is treated as "nodata"
          */
-        virtual float getNoDataMinValue() {
-            return _options.noDataMinValue().value(); }
+        virtual float getMinValidValue() {
+            return _options.minValidValue().value(); }
 
         /**
-         * Gets the nodata max value
+         * Gets the maximum valid value. Any value above this is considered "nodata"
          */
-        virtual float getNoDataMaxValue() {
-            return _options.noDataMaxValue().value(); }
+        virtual float getMaxValidValue() {
+            return _options.maxValidValue().value(); }
 
         /**
          * Gets the preferred extension for this TileSource
@@ -372,6 +395,32 @@ namespace osgEarth
          * Whether the tile source can generate data within the specified extent
          */
         virtual bool hasDataInExtent( const GeoExtent& extent ) const;
+
+        /**
+         * Whether the tile source has data at the given location
+         * @param location
+         *     The location to check
+         * @param exact
+         *     If true, check all the data extents for this TileSource.  If false, just do a quick check of the union of all the data extents.
+         */
+        virtual bool hasDataAt( const GeoPoint& location, bool exact = false) const;
+
+        /**
+         * Returns (in "output") the TileKey of the best available data that intersects
+         * the input TileKey (according to the DataExtents). For example, if the highest
+         * DataExtent reports an LOD of 9, and the input TileKey is LOD 13, the function
+         * will return the LOD 9 ancestor of the input TileKey IF they intersect.
+         *
+         * If you DataExtents or LOD information is available, the function copies the
+         * input to the output and returns true.
+         *
+         * @param key    TileKey to test
+         * @param output Corresponding ancestor written here if available
+         * @return True if an intersecting key was found; false if not.
+         */
+        virtual bool getBestAvailableTileKey(
+            const osgEarth::TileKey& key,
+            osgEarth::TileKey&       output) const;
 
         /**
          * Whether this TileSource produces tiles whose data can change after
@@ -465,6 +514,12 @@ namespace osgEarth
          */
         void setStatus( Status status );
 
+        /**
+         * Accesses the map frame that synchronizes with a map if one is set.
+         * Note; the map frame might be empty/invalid.
+         */
+        MapFrame& getMapFrame() const;
+
 
     protected: // deprecated
 
@@ -495,8 +550,11 @@ namespace osgEarth
         osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
+        GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
+
+        mutable Threading::Mutex _mutex;
     };
 
 

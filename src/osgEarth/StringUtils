@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -57,6 +57,11 @@ namespace osgEarth
     extern OSGEARTH_EXPORT std::string trim( const std::string& in );
 
     /**
+     * Trims whitespace from the ends of a string; in-place modification on the string to reduce string copies.
+     */
+    extern OSGEARTH_EXPORT void trim2( std::string& str );
+
+    /**
      * True is "ref" starts with "pattern"
      */
     extern OSGEARTH_EXPORT bool startsWith( 
@@ -81,6 +86,13 @@ namespace osgEarth
         const std::string& lhs,
         const std::string& rhs,
         const std::locale& local = std::locale() );
+
+    /**
+     * Case-insensitive STL comparator
+     */
+    struct OSGEARTH_EXPORT CIStringComp {
+        bool operator()(const std::string& lhs, const std::string& rhs) const;
+    };
 
 
     extern OSGEARTH_EXPORT std::string joinStrings( const StringVector& input, char delim );

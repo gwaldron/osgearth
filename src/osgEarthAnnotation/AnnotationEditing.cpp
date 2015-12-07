@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -43,6 +46,16 @@ public:
       LocalizedNode* _node;
       LocalizedNodeEditor* _editor;
 };
+
+/**********************************************************************/
+AnnotationEditor::AnnotationEditor() :
+osg::Group()
+{
+    // editor geometry should always be visible.
+    osg::StateSet* stateSet = this->getOrCreateStateSet();
+    stateSet->setMode(GL_DEPTH_TEST, 0);
+    stateSet->setRenderBinDetails(99, "RenderBin");
+}
 
 /**********************************************************************/
 LocalizedNodeEditor::LocalizedNodeEditor(LocalizedNode* node):
@@ -208,6 +221,7 @@ public:
 
           //Figure out the distance between the center of the circle and this new location
           GeoPoint center = _node->getPosition();
+
           double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
                                               osg::DegreesToRadians( position.y() ), osg::DegreesToRadians( position.x() ),
                                               em->getRadiusEquator());
@@ -219,13 +233,13 @@ public:
           //Compute the new angular rotation based on how they moved the point
           if (_major)
           {
-              _node->setRotationAngle( Angular( -bearing, Units::RADIANS ) );
-              _node->setRadiusMajor( Linear(distance, Units::METERS ) );
+              _node->setRotationAngle( Angle( bearing-osg::PI_2, Units::RADIANS ) );
+              _node->setRadiusMajor( Distance(distance, Units::METERS ) );
           }
-          else
+          else // minor
           {
-              _node->setRotationAngle( Angular( osg::PI_2 - bearing, Units::RADIANS ) );
-              _node->setRadiusMinor( Linear(distance, Units::METERS ) );
+              _node->setRotationAngle( Angle( bearing, Units::RADIANS ) );
+              _node->setRadiusMinor( Distance(distance, Units::METERS ) );
           }
           _editor->updateDraggers();
      }
@@ -281,15 +295,30 @@ EllipseNodeEditor::updateDraggers()
 
         double rotation = ellipse->getRotationAngle().as( Units::RADIANS );
 
-        double lat, lon;
-        GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
+        double latRad, lonRad;
 
-        GeoPoint minorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        // minor dragger: end of the rotated +Y axis:
+        GeoMath::destination(
+            osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), 
+            rotation, 
+            minorR, 
+            latRad, lonRad, 
+            em->getRadiusEquator());        
+
+        GeoPoint minorLocation(location.getSRS(), osg::RadiansToDegrees( lonRad ), osg::RadiansToDegrees( latRad ));
         minorLocation.z() = 0;       
-        _minorDragger->setPosition( minorLocation, false);
+        _minorDragger->setPosition( minorLocation, false );
 
-        GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        GeoPoint majorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        // major dragger: end of the rotated +X axis
+        GeoMath::destination(
+            osg::DegreesToRadians( location.y() ), 
+            osg::DegreesToRadians( location.x() ), 
+            rotation + osg::PI_2, 
+            majorR, 
+            latRad, lonRad, 
+            em->getRadiusEquator());                
+
+        GeoPoint majorLocation(location.getSRS(), osg::RadiansToDegrees( lonRad ), osg::RadiansToDegrees( latRad ));
         majorLocation.z() = 0;
         _majorDragger->setPosition( majorLocation, false);
     }

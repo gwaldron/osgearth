@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/Export>
 #include <osgEarth/Notify>
 #include <osg/Version>
+#include <osg/ref_ptr>
 
 // define the OSG Version checks for older OSG versions
 
@@ -34,11 +35,28 @@
 #  define OSG_VERSION_GREATER_OR_EQUAL(MAJOR, MINOR, PATCH) ((OPENSCENEGRAPH_MAJOR_VERSION>MAJOR) || (OPENSCENEGRAPH_MAJOR_VERSION==MAJOR && (OPENSCENEGRAPH_MINOR_VERSION>MINOR || (OPENSCENEGRAPH_MINOR_VERSION==MINOR && OPENSCENEGRAPH_PATCH_VERSION>=PATCH))))
 #endif
 
+// text inlining macro
+#define OE_MULTILINE(...) #__VA_ARGS__
+
 /** osgEarth core */
 namespace osgEarth
 {
     // application-wide unique ID.
     typedef int UID;
+
+    // reference counted unique UID.
+    struct OSGEARTH_EXPORT RefUID : public osg::Referenced {
+        RefUID() : _uid(0) { }
+        RefUID(UID uid) : _uid(uid) { }
+        operator UID() const { return _uid; }
+        UID _uid;
+    };
 }
+
+#ifdef _MSC_VER
+// VS ignores
+#pragma warning (disable: 4224)
+#pragma warning (disable: 4180)
+#endif
 
 #endif // OSGEARTH_COMMON_H

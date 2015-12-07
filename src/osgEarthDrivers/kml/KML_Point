@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,7 +27,7 @@ namespace osgEarth_kml
 
     struct KML_Point : public KML_Geometry
     {
-        virtual void parseCoords( const Config& conf, KMLContext& cx );
+        virtual void parseCoords( xml_node<>* node, KMLContext& cx );
     };
 
 } // namespace osgEarth_kml

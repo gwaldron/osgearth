@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,11 @@
 
 namespace osgEarth
 {
+    /**
+     * Converts a filename to an absolute path.
+     */
+    extern OSGEARTH_EXPORT std::string getAbsolutePath(const std::string& input);
+
     /**
      * Determines whether a given filename is a relative path
      */

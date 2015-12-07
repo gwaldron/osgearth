@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,17 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
+
+IconSymbol::IconSymbol(const IconSymbol& rhs,const osg::CopyOp& copyop):
+InstanceSymbol(rhs, copyop),
+_alignment(rhs._alignment),
+_heading(rhs._heading),
+_declutter(rhs._declutter),
+_image(rhs._image),
+_occlusionCull(rhs._occlusionCull),
+_occlusionCullAltitude(rhs._occlusionCullAltitude)
+{
+}
 
 IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol        ( conf ),
@@ -101,7 +112,7 @@ IconSymbol::getImage( unsigned maxSize ) const
         {
             osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
             dbOptions->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
-            _image = URI(_url->eval(), _url->uriContext()).getImage( dbOptions.get() );
+            _image = _url->evalURI().getImage( dbOptions.get() );
             if ( _image.valid() && (maxSize < (unsigned int)_image->s() || maxSize < (unsigned int)_image->t()) )
             {
                 unsigned new_s, new_t;
@@ -143,7 +154,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
     }
     else if ( match(c.key(),"icon-library") ) {
-        style.getOrCreate<IconSymbol>()->libraryName() = StringExpression(c.value());
+        style.getOrCreate<IconSymbol>()->library() = StringExpression(c.value());
     }
     else if ( match(c.key(), "icon-placement") ) {
         if      ( match(c.value(), "vertex") )   

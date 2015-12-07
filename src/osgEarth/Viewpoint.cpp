@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,122 +23,77 @@ using namespace osgEarth;
 
 
 Viewpoint::Viewpoint() :
-_is_valid( false ),
-_heading_deg(0.0),
-_pitch_deg(0.0),
-_range(1.0)
-{
-    //NOP
-}
-
-Viewpoint::Viewpoint(const osg::Vec3d& focal_point,
-                     double heading_deg,
-                     double pitch_deg, 
-                     double range,
-                     const osgEarth::SpatialReference* srs ) :
-_focal_point( focal_point ),
-_heading_deg( heading_deg ),
-_pitch_deg( pitch_deg ),
-_range( range ),
-_srs( srs ),
-_is_valid( true )
-{
-    //NOP
-}
-Viewpoint::Viewpoint(double x, double y, double z,
-                     double heading_deg,
-                     double pitch_deg, 
-                     double range,
-                     const osgEarth::SpatialReference* srs ) :
-_focal_point( x, y, z ),
-_heading_deg( heading_deg ),
-_pitch_deg( pitch_deg ),
-_range( range ),
-_srs( srs ),
-_is_valid( true )
-{
-    //NOP
-}
-
-Viewpoint::Viewpoint(const std::string& name,
-                     const osg::Vec3d& focal_point,
-                     double heading_deg,
-                     double pitch_deg, 
-                     double range,
-                     const osgEarth::SpatialReference* srs ) :
-_name( name ),
-_focal_point( focal_point ),
-_heading_deg( heading_deg ),
-_pitch_deg( pitch_deg ),
-_range( range ),
-_srs( srs ),
-_is_valid( true )
-{
-    //NOP
-}
-
-Viewpoint::Viewpoint(const std::string& name,
-                     double x, double y, double z,
-                     double heading_deg,
-                     double pitch_deg, 
-                     double range,
-                     const osgEarth::SpatialReference* srs ) :
-_name( name ),
-_focal_point( x, y, z ),
-_heading_deg( heading_deg ),
-_pitch_deg( pitch_deg ),
-_range( range ),
-_srs( srs ),
-_is_valid( true )
+_heading( Angle(       0.0, Units::DEGREES) ),
+_pitch  ( Angle(     -30.0, Units::DEGREES) ),
+_range  ( Distance(10000.0, Units::METERS)  )
 {
     //NOP
 }
 
 Viewpoint::Viewpoint( const Viewpoint& rhs ) :
-_name( rhs._name ),
-_focal_point( rhs._focal_point ),
-_heading_deg( rhs._heading_deg ),
-_pitch_deg( rhs._pitch_deg ),
-_range( rhs._range ),
-_srs( rhs._srs.get() ),
-_is_valid( rhs._is_valid )
+_name     ( rhs._name ),
+_point    ( rhs._point ),
+_heading  ( rhs._heading ),
+_pitch    ( rhs._pitch ),
+_range    ( rhs._range ),
+_posOffset( rhs._posOffset),
+_node     ( rhs._node.get() )
 {
     //NOP
 }
 
-Viewpoint::Viewpoint( const Config& conf )
+Viewpoint::Viewpoint(const char* name, double lon, double lat, double z, double h, double p, double range)
 {
-    _name = conf.value("name");
+    if (name) _name = name;
+    _point->set( SpatialReference::get("wgs84"), lon, lat, z, ALTMODE_ABSOLUTE );
+    _heading->set( h, Units::DEGREES );
+    _pitch->set( p, Units::DEGREES );
+    _range->set( range, Units::METERS );
+}
 
+Viewpoint::Viewpoint(const Config& conf)
+{
+    conf.getIfSet( "name",    _name );
+    conf.getIfSet( "heading", _heading );
+    conf.getIfSet( "pitch",   _pitch );
+    conf.getIfSet( "range",   _range );
+
+    // piecewise point.
+    std::string horiz = conf.value("srs");
+    if ( horiz.empty() )
+        horiz = "wgs84";
+
+    const std::string vert = conf.value("vdatum");
+
+    // try to parse an SRS, defaulting to WGS84 if not able to do so
+    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create(horiz, vert);
+
+    // try x/y/z variant:
     if ( conf.hasValue("x") )
     {
-        _focal_point.set(
+        _point = GeoPoint(
+            srs.get(),
             conf.value<double>("x", 0.0),
             conf.value<double>("y", 0.0),
-            conf.value<double>("z", 0.0) );
+            conf.value<double>("z", 0.0),
+            ALTMODE_ABSOLUTE );
     }
     else if ( conf.hasValue("lat") )
     {
-        _focal_point.set(
-            conf.value<double>("long", 0.0),
-            conf.value<double>("lat", 0.0),
-            conf.value<double>("height", 0.0) );
-
-        if ( !conf.hasValue("srs") )
-            _srs = SpatialReference::create("wgs84");
+        _point = GeoPoint(
+            srs.get(),
+            conf.value<double>("long",   0.0),
+            conf.value<double>("lat",    0.0),
+            conf.value<double>("height", 0.0),
+            ALTMODE_ABSOLUTE );
     }
 
-    _heading_deg = conf.value<double>("heading", 0.0);
-    _pitch_deg   = conf.value<double>("pitch",   0.0);
-    _range       = conf.value<double>("range",   0.0);
-    _is_valid    = _range > 0.0;
-
-    const std::string horiz = conf.value("srs");
-    const std::string vert  = conf.value("vdatum");
-
-    if ( !horiz.empty() )
+    double xOffset = conf.value("x_offset", 0.0);
+    double yOffset = conf.value("y_offset", 0.0);
+    double zOffset = conf.value("z_offset", 0.0);
+    if ( xOffset != 0.0 || yOffset != 0.0 || zOffset != 0.0 )
     {
-        _srs = SpatialReference::create(horiz, vert);
+        _posOffset->set(xOffset, yOffset, zOffset);
     }
 }
 
@@ -149,137 +104,75 @@ Viewpoint::getConfig() const
 {
     Config conf( "viewpoint" );
 
-    if ( _is_valid )
+    conf.addIfSet( "name",    _name );
+    conf.addIfSet( "heading", _heading );
+    conf.addIfSet( "pitch",   _pitch );
+    conf.addIfSet( "range",   _range );
+    
+    if ( _point.isSet() )
     {
-        if ( !_name.empty() )
-            conf.set("name", _name);
-
-        if ( getSRS() && getSRS()->isGeographic() )
+        if ( _point->getSRS()->isGeographic() )
         {
-            conf.set("lat",    _focal_point.y());
-            conf.set("long",   _focal_point.x());
-            conf.set("height", _focal_point.z());
+            conf.set("long",   _point->x());
+            conf.set("lat",    _point->y());
+            conf.set("height", _point->z());
         }
         else
         {
-            conf.set("x", _focal_point.x());
-            conf.set("y", _focal_point.y());
-            conf.set("z", _focal_point.z());
+            conf.set("x", _point->x());
+            conf.set("y", _point->y());
+            conf.set("z", _point->z());
         }
 
-        conf.set("heading", _heading_deg);
-        conf.set("pitch",   _pitch_deg);
-        conf.set("range",   _range);
+        conf.set("srs", _point->getSRS()->getHorizInitString());
 
-        if ( _srs.valid() )
-        {
-            conf.set("srs", _srs->getHorizInitString());
-            if ( _srs->getVerticalDatum() )
-                conf.set("vdatum", _srs->getVertInitString());
-        }
+        if ( _point->getSRS()->getVerticalDatum() )
+            conf.set("vdatum", _point->getSRS()->getVertInitString());
+    }
+
+    if ( _posOffset.isSet() )
+    {
+        conf.set("x_offset", _posOffset->x());
+        conf.set("y_offset", _posOffset->y());
+        conf.set("z_offset", _posOffset->z());
     }
 
     return conf;
 }
 
 bool
-Viewpoint::isValid() const {
-    return _is_valid;
-}
-
-const std::string&
-Viewpoint::getName() const {
-    return _name;
-}
-
-void
-Viewpoint::setName( const std::string& name ) {
-    _name = name;
-}
-
-const osg::Vec3d&
-Viewpoint::getFocalPoint() const {
-    return _focal_point;
-}
-
-void
-Viewpoint::setFocalPoint( const osg::Vec3d& value ) {
-    _focal_point = value;
-}
-
-double
-Viewpoint::x() const {
-    return _focal_point.x();
-}
-
-double&
-Viewpoint::x() {
-    return _focal_point.x();
-}
-
-double
-Viewpoint::y() const {
-    return _focal_point.y();
-}
-
-double&
-Viewpoint::y() {
-    return _focal_point.y();
-}
-
-double
-Viewpoint::z() const {
-    return _focal_point.z();
-}
-
-double&
-Viewpoint::z() {
-    return _focal_point.z();
-}
-
-double
-Viewpoint::getHeading() const {
-    return _heading_deg;
-}
-
-void
-Viewpoint::setHeading( double value ) {
-    _heading_deg = value;
-}
-
-double
-Viewpoint::getPitch() const {
-    return _pitch_deg;
-}
-
-void
-Viewpoint::setPitch( double value ) {
-    _pitch_deg = value;
-}
-
-double
-Viewpoint::getRange() const {
-    return _range;
-}
-
-void
-Viewpoint::setRange( double value ) {
-    _range = value;
-}
-
-const SpatialReference*
-Viewpoint::getSRS() const {
-    return _srs.get();
+Viewpoint::isValid() const
+{
+    return
+        (_point.isSet() && _point->isValid()) ||
+        (_node.valid());
 }
 
 std::string
 Viewpoint::toString() const
 {
-    return Stringify()
-        << "x=" << _focal_point.x()
-        << ", y=" << _focal_point.y()
-        << ", z=" << _focal_point.z()
-        << ", h=" << _heading_deg
-        << ", p=" << _pitch_deg
-        << ", d=" << _range;
+    if ( _point.isSet() )
+    {
+        return Stringify()
+            << "x="   << _point->x()
+            << ", y=" << _point->y()
+            << ", z=" << _point->z()
+            << ", h=" << _heading->to(Units::DEGREES).asParseableString()
+            << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
+            << ", d=" << _range->asParseableString()
+            << ", xo=" << _posOffset->x()
+            << ", yo=" << _posOffset->y()
+            << ", zo=" << _posOffset->z();
+    }
+    else
+    {
+        return Stringify()
+            << "attached to node; "
+            << ", h=" << _heading->to(Units::DEGREES).asParseableString()
+            << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
+            << ", d=" << _range->asParseableString()
+            << ", xo=" << _posOffset->x()
+            << ", yo=" << _posOffset->y()
+            << ", zo=" << _posOffset->z();
+    }
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,18 +21,25 @@
 using namespace osgEarth_kml;
 
 void 
-KML_LineStyle::scan( const Config& conf, Style& style, KMLContext& cx )
+KML_LineStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
-    if ( !conf.empty() )
+    if ( node )
     {
         LineSymbol* line = style.getOrCreate<LineSymbol>();
-        if ( conf.hasValue("color") )
+		std::string color = getValue(node, "color");
+        if ( !color.empty() )
         {
-            line->stroke()->color() = Color( Stringify() << "#" << conf.value("color"), Color::ABGR );
+            line->stroke()->color() = Color( Stringify() << "#" << color, Color::ABGR );
         }
-        if ( conf.hasValue("width") )
+		std::string width = getValue(node, "width");
+        if ( !width.empty() )
         {
-            line->stroke()->width() = as<float>( conf.value("width"), 1.0f );
+            line->stroke()->width() = as<float>( width, 1.0f );
+
+            if ( line->stroke()->width() == 0.0f )
+            {
+                line->stroke()->width() = 1.0f;
+            }
         }
     }
 }

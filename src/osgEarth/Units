@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <ostream>
 
 namespace osgEarth
 {
@@ -180,9 +181,7 @@ namespace osgEarth
         static void registerAll(class Registry* registry);
         friend class Registry;
     };
-
-    struct Linear;
-
+    
     template<typename T>
     class qualified_double
     {
@@ -191,10 +190,18 @@ namespace osgEarth
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
+        // parses the qualified number from a parseable string (e.g., "123km")
+        qualified_double<T>(const std::string& parseable, const Units& defaultUnits) {
+            Units::parse( parseable, _value, _units, defaultUnits );
+        }
+
+        // loads the qualified number from an old-school config (e.g., { value="123" units="km" } )
         qualified_double<T>( const Config& conf, const Units& defaultUnits ) {
-            _value = conf.value<double>("value", 0.0);
-            if ( !Units::parse( conf.value("units"), _units ) )
-                _units = defaultUnits;
+            if ( conf.hasValue("value") ) {
+                _value = conf.value<double>("value", 0.0);
+                if ( !Units::parse( conf.value("units"), _units ) )
+                    _units = defaultUnits;
+            }
         }
 
         void set( double value, const Units& units ) {
@@ -255,6 +262,11 @@ namespace osgEarth
             return _units.convertTo( convertTo, _value );
         }
 
+        T to(const Units& convertTo) const {
+            return T( as(convertTo), convertTo );
+        }
+
+        double       getValue() const { return _value; }
         const Units& getUnits() const { return _units; }
 
         Config getConfig() const {
@@ -264,40 +276,56 @@ namespace osgEarth
             return conf;
         }
 
-    private:
+        std::string asString() const {
+            return Stringify() << _value << _units.getAbbr();
+        }
+
+        virtual std::string asParseableString() const {
+            return asString();
+        }
+
+    protected:
         double _value;
         Units  _units;
     };
 
-    struct Linear : public qualified_double<Linear> {
-        Linear() : qualified_double<Linear>(0, Units::METERS) { }
-        Linear(double value ) : qualified_double<Linear>(value, Units::METERS) { }
-        Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
-        Linear(const Config& conf) : qualified_double<Linear>(conf, Units::METERS) { }
+    struct Distance : public qualified_double<Distance> {
+        Distance() : qualified_double<Distance>(0, Units::METERS) { }
+        Distance(double value ) : qualified_double<Distance>(value, Units::METERS) { }
+        Distance(double value, const Units& units) : qualified_double<Distance>(value, units) { }
+        Distance(const Config& conf) : qualified_double<Distance>(conf, Units::METERS) { } 
+        Distance(const std::string& str) : qualified_double<Distance>(str, Units::METERS) { }
     };
-    typedef Linear Distance;
+    typedef Distance Linear; // backwards compat
 
-    struct Angular : public qualified_double<Angular> {
-        Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
-        Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
-        Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
-        Angular(const Config& conf) : qualified_double<Angular>(conf, Units::DEGREES) { }
+    struct Angle : public qualified_double<Angle> {
+        Angle() : qualified_double<Angle>(0, Units::DEGREES) { }
+        Angle(double value) : qualified_double<Angle>(value, Units::DEGREES) { }
+        Angle(double value, const Units& units) : qualified_double<Angle>(value, units) { }
+        Angle(const Config& conf) : qualified_double<Angle>(conf, Units::DEGREES) { }
+        Angle(const std::string& str) : qualified_double<Angle>(str, Units::DEGREES) { }
+        std::string asParseableString() const {
+            if ( _units == Units::DEGREES ) return Stringify() << _value;
+            else return asString();
+        }
     };
-    typedef Angular Angle;
+    typedef Angle Angular; // backwards compat
 
-    struct Temporal : public qualified_double<Temporal> {
-        Temporal() : qualified_double<Temporal>(0, Units::SECONDS) { }
-        Temporal(double value) : qualified_double<Temporal>(value, Units::SECONDS) { }
-        Temporal(double value, const Units& units) : qualified_double<Temporal>(value, units) { }
-        Temporal(const Config& conf) : qualified_double<Temporal>(conf, Units::SECONDS) { }
+    struct Duration : public qualified_double<Duration> {
+        Duration() : qualified_double<Duration>(0, Units::SECONDS) { }
+        Duration(double value) : qualified_double<Duration>(value, Units::SECONDS) { }
+        Duration(double value, const Units& units) : qualified_double<Duration>(value, units) { }
+        Duration(const Config& conf) : qualified_double<Duration>(conf, Units::SECONDS) { }
+        Duration(const std::string& str) : qualified_double<Duration>(str, Units::SECONDS) { }
     };
-    typedef Temporal Duration;
+    typedef Duration Temporal; // backwards compat
 
     struct Speed : public qualified_double<Speed> {
         Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
         Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
         Speed(const Config& conf) : qualified_double<Speed>(conf, Units::METERS_PER_SECOND) { }
+        Speed(const std::string& str) : qualified_double<Speed>(str, Units::METERS_PER_SECOND) { }
     };
 
     struct ScreenSize : public qualified_double<ScreenSize> {
@@ -305,8 +333,133 @@ namespace osgEarth
         ScreenSize(double value) : qualified_double<ScreenSize>(value, Units::PIXELS) { }
         ScreenSize(double value, const Units& units) : qualified_double<ScreenSize>(value, units) { }
         ScreenSize(const Config& conf) : qualified_double<ScreenSize>(conf, Units::PIXELS) { }
+        ScreenSize(const std::string& str) : qualified_double<ScreenSize>(str, Units::PIXELS) { }
     };
+    
 
+    // Config specializations:
+
+    template <> inline
+    void Config::addIfSet<Distance>( const std::string& key, const optional<Distance>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+    template<> inline
+    void Config::updateIfSet<Distance>( const std::string& key, const optional<Distance>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+    template<> inline
+    bool Config::getIfSet<Distance>( const std::string& key, optional<Distance>& output ) const {
+        if ( hasValue(key) ) { output = Distance(value(key)); return true; }
+        else return false;
+    }
+    template<> inline
+    Distance as( const std::string& str, const Distance& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::METERS) )
+            return Distance(val, units);
+        else
+            return default_value;
+    }
+    
+
+    template <> inline
+    void Config::addIfSet<Angle>( const std::string& key, const optional<Angle>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+    template<> inline
+    void Config::updateIfSet<Angle>( const std::string& key, const optional<Angle>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+    template<> inline
+    bool Config::getIfSet<Angle>( const std::string& key, optional<Angle>& output ) const {
+        if ( hasValue(key) ) { output = Angle(value(key)); return true; }
+        else return false;
+    }
+    template<> inline
+    Angle as( const std::string& str, const Angle& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::DEGREES) )
+            return Angle(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<Duration>( const std::string& key, const optional<Duration>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<Duration>( const std::string& key, const optional<Duration>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<Duration>( const std::string& key, optional<Duration>& output ) const {
+        if ( hasValue(key) ) { output = Duration(value(key)); return true; }
+        else return false;
+    }
+    template<> inline
+    Duration as( const std::string& str, const Duration& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::SECONDS) )
+            return Duration(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<Speed>( const std::string& key, const optional<Speed>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<Speed>( const std::string& key, const optional<Speed>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<Speed>( const std::string& key, optional<Speed>& output ) const {
+        if ( hasValue(key) ) { output = Speed(value(key)); return true; }
+        else return false;
+    }
+    template<> inline
+    Speed as( const std::string& str, const Speed& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::METERS_PER_SECOND) )
+            return Speed(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<ScreenSize>( const std::string& key, optional<ScreenSize>& output ) const {
+        if ( hasValue(key) ) { output = ScreenSize(value(key)); return true; }
+        else return false;
+    }
+    template<> inline
+    ScreenSize as( const std::string& str, const ScreenSize& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::PIXELS) )
+            return ScreenSize(val, units);
+        else
+            return default_value;
+    }
 }
 
 #endif // OSGEARTH_UNITS_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -29,6 +32,8 @@
 
 using namespace osgEarth;
 
+#define LC "[Config] "
+
 Config::~Config()
 {
 }
@@ -36,23 +41,42 @@ Config::~Config()
 void
 Config::setReferrer( const std::string& referrer )
 {
-    _referrer = referrer;
+    if ( referrer.empty() )
+        return;
+
+    std::string absReferrer;
+    if( !osgDB::containsServerAddress( referrer ) ) {
+        absReferrer = osgEarth::getAbsolutePath( referrer );
+
+        if( osgEarth::isRelativePath( absReferrer ) )
+        {
+            OE_WARN << LC << "ILLEGAL: call to setReferrer with relative path:  "
+                "key=" << key() << "; referrer=" << referrer << "\n";
+            return;
+        }
+    }
+    else {
+        absReferrer = referrer;
+    }
+
+    // Don't overwrite an existing referrer:
+    if ( _referrer.empty() )
+    {
+        _referrer = absReferrer;
+    }
+
     for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ )
     { 
-        i->setReferrer( osgEarth::getFullPath(_referrer, i->_referrer) );
+        i->setReferrer( absReferrer );
     }
 }
 
 void
 Config::inheritReferrer( const std::string& referrer )
 {
-    if ( _referrer.empty() || !osgEarth::isRelativePath(referrer) )
+    if ( !referrer.empty() )
     {
         setReferrer( referrer );
-    }
-    else if ( !referrer.empty() )
-    {
-        setReferrer( osgDB::concatPaths(_referrer, referrer) );
     }
 }
 
@@ -360,6 +384,14 @@ Config::fromJSON( const std::string& input )
             << std::endl;
     }
     return false;
+}
+
+Config
+Config::readJSON(const std::string& json)
+{
+    Config conf;
+    conf.fromJSON(json);
+    return conf;
 }
 
 Config

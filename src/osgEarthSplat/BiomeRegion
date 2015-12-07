@@ -1,0 +1,84 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPLAT_BIOME_H
+#define OSGEARTH_SPLAT_BIOME_H 1
+
+#include "Export"
+#include "SplatCatalog"
+#include <osgEarth/GeoData>
+#include <vector>
+
+namespace osgEarth { namespace Splat
+{
+    /**
+     * Defines a set of geospatial extents under which to apply a particular
+     * procedural catalog.
+     */
+    class OSGEARTHSPLAT_EXPORT BiomeRegion
+    {
+    public: // types        
+        struct Region
+        {
+            GeoExtent extent;
+            double    zmin, zmin2;
+            double    zmax, zmax2;
+            double    meanRadius2;
+            osg::Polytope tope;
+        };
+
+    public:
+        /** Construct an empty biome. */
+        BiomeRegion();
+
+        /** Get the list of bounding boxes enclosing this biome. */
+        std::vector<Region>& getRegions() { return _regions; }
+        const std::vector<Region>& getRegions() const { return _regions; }
+
+        /** Name of this biome. */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        /** URI of the catalog mapped to this biome */
+        optional<URI>& catalogURI() { return _catalogURI; }
+        const optional<URI>& catalogURI() const { return _catalogURI; }
+
+        /** The catalog to apply for this biome. */
+        void setCatalog(SplatCatalog* catalog) { _catalog = catalog; }
+        SplatCatalog* getCatalog() const { return _catalog.get(); }
+
+
+    public:
+        /** Serialize this biome's primitive members. */
+        Config getConfig() const;
+
+        bool configure(const Config& conf);
+
+    protected:
+
+        optional<std::string>      _name;
+        optional<URI>              _catalogURI;
+        std::vector<Region>        _regions;
+        osg::ref_ptr<SplatCatalog> _catalog;
+    };
+
+    typedef std::vector<BiomeRegion> BiomeRegionVector;
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_BIOME_H

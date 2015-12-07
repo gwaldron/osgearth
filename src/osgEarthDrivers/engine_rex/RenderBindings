@@ -1,0 +1,97 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H
+#define OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H 1
+
+#include "Common"
+#include <osgEarth/Common>
+#include <osgEarth/optional>
+#include <vector>
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class SamplerBinding
+    {
+    public:
+        enum Usage
+        {
+            COLOR,
+            ELEVATION,
+            NORMAL,
+            MATERIAL,
+            COLOR_PARENT
+        };
+
+    public:
+        SamplerBinding() : _unit(-1) { }
+
+        /** Optional UID of the source (usually a layer) to which this binding applies */
+        optional<osgEarth::UID>& sourceUID()             { return _sourceUID; }
+        const optional<osgEarth::UID>& sourceUID() const { return _sourceUID; }
+
+        /** Optional usage hint */
+        optional<Usage>& usage()             { return _usage; }
+        const optional<Usage>& usage() const { return _usage; }
+
+        /** Texture image unit of the sampler */
+        int& unit() { return _unit; }
+        const int& unit() const { return _unit; }
+
+        /** Uniform name of the sampler */
+        std::string& samplerName() { return _samplerName; }
+        const std::string& samplerName() const { return _samplerName; }
+
+        /** Uniform name of the sampler matrix */
+        std::string& matrixName() { return _matrixName; }
+        const std::string& matrixName() const { return _matrixName; }
+
+    public:
+        bool isActive() const { return _unit >= 0; }
+
+    private:
+        optional<UID>   _sourceUID;
+        optional<Usage> _usage;
+        int             _unit;
+        std::string     _samplerName;
+        std::string     _matrixName;
+
+    public:
+        static const SamplerBinding* findUsage(const std::vector<SamplerBinding>& v, Usage usage) {
+            for(int i=0; i<v.size(); ++i) {
+                if ( v[i].usage().isSetTo(usage) )
+                    return &v[i];
+            }
+            return 0L;
+        }
+        
+        static const SamplerBinding* findUID(const std::vector<SamplerBinding>& v, UID uid) {
+            for(int i=0; i<v.size(); ++i) {
+                if ( v[i].sourceUID().isSetTo(uid) )
+                    return &v[i];
+            }
+            return 0L;
+        }
+    };
+
+    typedef std::vector<SamplerBinding> RenderBindings;
+
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H

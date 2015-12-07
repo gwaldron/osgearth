@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -30,6 +33,10 @@ using namespace osgEarth;
 
 //#define OE_TEST OE_INFO
 #define OE_TEST OE_NULL
+
+// whether a camera with an ABSOLUTE_RF_INHERIT_VIEWPOINT reference frame can trigger tile subdivision.
+// NOTE: this causes issues with some of the RTT cameras like GPU clamping and draping.
+//#define INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE 1
 
 namespace
 {
@@ -101,7 +108,8 @@ TilePagedLOD::TilePagedLOD(const UID&        engineUID,
 osg::PagedLOD(),
 _engineUID( engineUID ),
 _live     ( live ),
-_dead     ( dead )
+_dead     ( dead ),
+_debug    ( false )
 {
     if ( live )
     {
@@ -183,6 +191,11 @@ TilePagedLOD::addChild(osg::Node* node)
         if ( tilenode && _live.get() )
         {
             _live->add( tilenode );
+
+            // Listen for out east and south neighbors.
+            const TileKey& key = tilenode->getKey();
+            _live->listenFor( key.createNeighborKey(1, 0), tilenode );
+            _live->listenFor( key.createNeighborKey(0, 1), tilenode );
         }
 
         return osg::PagedLOD::addChild( node );
@@ -190,35 +203,6 @@ TilePagedLOD::addChild(osg::Node* node)
 
     return false;
 }
-
-#if 0
-void
-TilePagedLOD::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        if (_progress.valid() && nv.getFrameStamp())
-        {
-            _progress->update( nv.getFrameStamp()->getFrameNumber() );
-        }
-
-        if (_childBBox.valid())
-        {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            osg::Polytope p = cv->getCurrentCullingSet().getFrustum();
-            p.transform( _childBBoxMatrix );            
-            if ( !p.contains(_childBBox) )
-            {
-                getChild(0)->accept(nv);
-                return;
-            }                
-        }
-    }
-    
-    osg::PagedLOD::traverse(nv);
-}
-
-#endif
 
 
 // MOST of this is copied and pasted from OSG's osg::PagedLOD::traverse,
@@ -297,6 +281,16 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                     }
                 }
             }
+
+#ifdef INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE
+            // Prevents an INHERIT_VIEWPOINT camera from invoking tile subdivision
+            if (needToLoadChild)
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+                if ( cv && cv->getCurrentCamera() && cv->getCurrentCamera()->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+                    needToLoadChild = false;
+            }
+#endif
 
             if (needToLoadChild)
             {
@@ -404,7 +398,20 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             ExpirationCollector collector( _live.get(), _dead.get() );
             nodeToRemove->accept( collector );
 
-            OE_DEBUG << LC << "Expired " << collector._count << std::endl;
+            if ( _debug )
+            {
+                TileNode* tileNode = getTileNode();
+                std::string key = tileNode ? tileNode->getKey().str() : "unk";
+                OE_NOTICE 
+                    << LC << "Tile " << key << " : expiring " << collector._count << " children; "
+                    << "TS = " << _perRangeDataList[cindex]._timeStamp
+                    << ", MET = " << minExpiryTime
+                    << ", ET = " << expiryTime
+                    << "; FN = " << _perRangeDataList[cindex]._frameNumber
+                    << ", MEF = " << minExpiryFrames
+                    << ", EF = " << expiryFrame
+                    << "\n";
+            }
 
             return Group::removeChildren(cindex,1);
         }

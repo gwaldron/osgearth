@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_BILLBOARD_OPTIONS
+#define OSGEARTH_DRIVER_BILLBOARD_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Billboard
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Options governing the classification splatting engine.
+     */
+    class /*header-only*/ BillboardOptions : public DriverConfigOptions
+    {
+    public:
+        /** URI of the billboard image file */
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
+        
+        /** scale  */
+        optional<float>& scale() { return _scale; }
+        const optional<float>& scale() const { return _scale; }
+
+        /** width and height */
+        optional<float>& width() { return _width; }
+        const optional<float>& width() const { return _width; }
+
+        optional<float>& height() { return _height; }
+        const optional<float>& height() const { return _height; }
+
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
+
+        /** Feature source from which to read the feature data */
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+
+    public:
+        BillboardOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        {
+            setDriver( "billboard" );
+            _scale.init(1.0f);
+            _density.init(100.0f);
+            fromConfig( _conf );
+        }
+
+        virtual ~BillboardOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.updateIfSet("image",  _imageURI);
+            conf.updateIfSet("scale",  _scale);
+            conf.updateIfSet("width",  _width);
+            conf.updateIfSet("height",  _height);
+            conf.updateIfSet("density", _density);
+            conf.updateObjIfSet( "features", _featureOptions );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("image",  _imageURI);
+            conf.getIfSet("scale",  _scale);
+            conf.getIfSet("width",  _width);
+            conf.getIfSet("height",  _height);
+            conf.getIfSet("density", _density);
+
+            if ( conf.hasChild("features") )
+                _featureOptions->merge( conf.child("features") );
+        }
+
+        optional<URI>                   _imageURI;
+        optional<float>                 _scale;
+        optional<float>                 _width;
+        optional<float>                 _height;
+        optional<float>                 _density;
+        optional<FeatureSourceOptions>  _featureOptions;
+    };
+
+} } // namespace osgEarth::Billboard
+
+#endif // OSGEARTH_DRIVER_BILLBOARD_OPTIONS

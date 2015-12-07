@@ -1,0 +1,170 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SHADER_LOADER_H
+#define OSGEARTH_SHADER_LOADER_H 1
+
+#include <osgEarth/Common>
+#include <osgDB/Options>
+#include <map>
+#include <set>
+
+namespace osgEarth
+{
+    class VirtualProgram;
+
+    /**
+     * Functions to help load shader code.
+     */
+    class OSGEARTH_EXPORT ShaderPackage
+    {
+    public:
+        /**
+         * Adds a function from this package to the VirtualProgram.
+         */
+        bool load(
+            VirtualProgram*       vp,
+            const std::string&    filename,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes a function loaded by load from the VirtualProgram.
+         */
+        bool unload(
+            VirtualProgram*       vp,
+            const std::string&    filename,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Adds all the functions in this package to the VirtualProgram.
+         */
+        bool loadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes all the functions in this package from the VirtualProgram.
+         */
+        bool unloadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Defs or undefs a GLSL #define proprocessor macro.
+         * Don't include the "#" in the defineName.
+         */
+        void define(
+            const std::string& defineName,
+            bool               defOrUndef);
+
+        /**
+         * Replaces the specified string with another string in the loaded
+         * shader source. Nested replacements are not supported.
+         */
+        void replace(
+            const std::string& pattern,
+            const std::string& value);
+
+        /**
+         * Add a file/source to the package. If you only have inline source, just
+         * set the filename to a unique description string.
+         */
+        void add(const std::string& filename, const std::string& inlineSource)
+        {
+            _sources[filename] = inlineSource;
+        }
+
+    public:
+        typedef std::map<std::string, std::string> SourceMap;
+        typedef std::map<std::string, std::string> ReplaceMap;
+        typedef std::map<std::string, bool>        DefineMap;
+
+        const SourceMap& context() const { return _sources; }
+
+
+    protected:        
+        SourceMap _sources;
+        DefineMap _defines;
+        ReplaceMap _replaces;
+        friend class ShaderLoader;
+    };
+
+    /**
+     * Base class for local shader file/source pairs.
+     */
+    class OSGEARTH_EXPORT ShaderLoader
+    {
+    public:
+        /**
+         * Loads shader source from the specified filename, and calls 
+         * setFunction() on the virtual program to install the shader.
+         * The shader much include #pragma definitions for both its
+         * entry point and its location, e.g.:
+         *
+         *   #pragma vp_entryPoint oe_my_shader
+         *   #pargma vp_location   VERTEX_VIEW
+         */
+        static bool load(
+            VirtualProgram*       vp,
+            const std::string&    filename,
+            const ShaderPackage&  package,
+            const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Removes a function loaded by load from the VirtualProgram.
+         */
+        static bool unload(
+            VirtualProgram*       vp,
+            const std::string&    filename,
+            const ShaderPackage&  package,
+            const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Loads shader source from the specified filename. If the
+         * file can't be found in the OSG file path, use the source
+         * provided in backupSource.
+         */
+        static std::string load(
+            const std::string&    filename,
+            const std::string&    backupSource,
+            const osgDB::Options* dbOptions =0L );
+
+        static std::string load(
+            const std::string&    filename,
+            const ShaderPackage&  package,
+            const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Utility function that returns the value of #pragma; e.g.,
+         * #pragma vp_something You are here
+         * returns "You are here" (without the quotes).
+         */
+        static std::string getPragmaValue(
+            const std::string& source,
+            const std::string& key);
+
+        static void getAllPragmaValues(
+            const std::string&     source,
+            const std::string&     key,
+            std::set<std::string>& output);
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_SHADER_LOADER
+

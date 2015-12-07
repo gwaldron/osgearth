@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,15 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "SilverLiningContext"
 #include <SilverLining.h> // SilverLinking SDK
+#include "SilverLiningContext"
 #include <osg/Light>
 #include <osgEarth/SpatialReference>
 
 #define LC "[SilverLiningContext] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
 
 
 SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
@@ -33,7 +32,8 @@ _initAttempted        ( false ),
 _initFailed           ( false ),
 _maxAmbientLightingAlt( -1.0 ),
 _atmosphere           ( 0L ),
-_clouds               ( 0L )
+_clouds               ( 0L ),
+_minAmbient           ( 0,0,0,0 )
 {
     // Create a SL atmosphere (the main SL object).
     // TODO: plug in the username + license key.
@@ -57,9 +57,15 @@ SilverLiningContext::setLight(osg::Light* light)
 }
 
 void
-SilverLiningContext::setSRS(const SpatialReference* srs)
+SilverLiningContext::setSRS(const osgEarth::SpatialReference* srs)
 {
     _srs = srs;
+}
+
+void
+SilverLiningContext::setMinimumAmbient(const osg::Vec4f& value)
+{
+    _minAmbient = value;
 }
 
 void
@@ -172,7 +178,13 @@ SilverLiningContext::updateLight()
     osg::Vec3 direction(x, y, z);
     direction.normalize();
 
-    _light->setAmbient( osg::Vec4(ra, ga, ba, 1.0f) );
+    osg::Vec4 ambient(
+        osg::clampAbove(ra, _minAmbient.r()),
+        osg::clampAbove(ba, _minAmbient.g()),
+        osg::clampAbove(ga, _minAmbient.b()),
+        1.0);
+
+    _light->setAmbient( ambient );
     _light->setDiffuse( osg::Vec4(rd, gd, bd, 1.0f) );
     _light->setPosition( osg::Vec4(direction, 0.0f) ); //w=0 means "at infinity"
 }
@@ -208,11 +220,12 @@ SilverLiningContext::updateLocation()
 
         ::SilverLining::Location loc;
         loc.SetAltitude ( latLonAlt.z() );
-        loc.SetLongitude( osg::DegreesToRadians(latLonAlt.x()) );
-        loc.SetLatitude ( osg::DegreesToRadians(latLonAlt.y()) );
+        loc.SetLongitude( latLonAlt.x() ); //osg::DegreesToRadians(latLonAlt.x()) );
+        loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
 
         _atmosphere->GetConditions()->SetLocation( loc );
 
+#if 0
         if ( _clouds )
         {
 #if 1 //TODO: figure out why we need to call this a couple times before
@@ -223,6 +236,7 @@ SilverLiningContext::updateLocation()
                 _clouds->SetLayerPosition(0, 0);
             }
         }
+#endif
 #endif
     }
 }

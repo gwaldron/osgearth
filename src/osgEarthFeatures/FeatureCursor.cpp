@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,16 +66,17 @@ _geom( geom )
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
                                              const FeatureProfile* fp,
-                                             const FeatureFilterList& filters ) :
-_geom( geom ),
+                                             const FeatureFilterList& filters) :
+_geom          ( geom ),
 _featureProfile( fp ),
-_filters( filters )
+_filters       ( filters )
 {
     //nop
 }
 
 bool
-GeometryFeatureCursor::hasMore() const {
+GeometryFeatureCursor::hasMore() const
+{
     return _geom.valid();
 }
 
@@ -85,11 +86,16 @@ GeometryFeatureCursor::nextFeature()
     if ( hasMore() )
     {        
         _lastFeature = new Feature( _geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
+
+        if ( _featureProfile && _featureProfile->geoInterp().isSet() )
+            _lastFeature->geoInterp() = _featureProfile->geoInterp().get();
+
         FilterContext cx;
         cx.setProfile( _featureProfile.get() );
         FeatureList list;
         list.push_back( _lastFeature.get() );
-        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i ) {
+        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+        {
             cx = i->get()->push( list, cx );
         }
         _geom = 0L;

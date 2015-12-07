@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -127,6 +127,13 @@
 
 
 using namespace osgEarth;
+
+
+std::string
+osgEarth::getAbsolutePath(const std::string& path)
+{
+    return osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(path) );
+}
 
 bool osgEarth::isRelativePath(const std::string& fileName)
 {

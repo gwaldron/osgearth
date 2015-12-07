@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -92,6 +92,11 @@ ResampleFilter::push( Feature* input, FilterContext& context )
         if ( part->size() < 2 ) continue;
 
         unsigned int origSize = part->size();
+
+        // whether to resample the virtual segment that closes an open ring:
+        bool loop =
+            part->getComponentType() == Geometry::TYPE_RING &&
+            static_cast<Ring*>(part)->isOpen();
 
         // copy the original part to a linked list. use a std::list since insert/erase
         // will not invalidate iterators.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -91,7 +91,6 @@ namespace osgEarth { namespace Features
         InstanceCache _instanceCache;
         
         bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
-        bool cluster(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
         
         bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -87,17 +90,21 @@ namespace osgEarth
         ReadResult( Code code =RESULT_NOT_FOUND )
             : _code(code), _fromCache(false), _lmt(0) { }
 
-        /** Construct a successful result */
+        /** Construct a result with code and data */
+        ReadResult( Code code, osg::Object* result )
+            : _code(code), _result(result), _fromCache(false), _lmt(0) { }
+
+        /** Construct a result with data, possible with an error code */
+        ReadResult( Code code, osg::Object* result, const Config& meta )
+            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
+
+        /** Construct a successful result (implicit OK code) */
         ReadResult( osg::Object* result )
             : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
             : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
-
-        /** Construct a result with data, possible with an error code */
-        ReadResult( Code code, osg::Object* result, const Config& meta )
-            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
@@ -107,16 +114,16 @@ namespace osgEarth
         virtual ~ReadResult() { }
 
         /** Whether the read operation succeeded */
-        bool succeeded() const
-        {
-            return _code == RESULT_OK && _result.valid();
-        }
+        bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
 
         /** Whether the read operation failed */
         bool failed() const { return _code != RESULT_OK; }
 
         /** Whether the result contains an object */
         bool empty() const { return !_result.valid(); }
+
+        /** Detail message, sometimes set upon error */
+        const std::string& errorDetail() const { return _detail; }
 
         /** The result code */
         const Code& code() const { return _code; }
@@ -166,7 +173,7 @@ namespace osgEarth
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
                 code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
-                "Unknown error";
+                                                 "Unknown error";
         }
 
         std::string getResultCodeString() const
@@ -181,6 +188,10 @@ namespace osgEarth
 
         void setDuration(double s) { _duration_s = s; }
 
+        void setMetadata(const Config& meta) { _meta = meta; }
+
+        void setErrorDetail(const std::string& value) { _detail = value; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
@@ -190,6 +201,7 @@ namespace osgEarth
         bool                      _fromCache;
         TimeStamp                 _lmt;
         double                    _duration_s;
+        std::string               _detail;
     };
 
 //--------------------------------------------------------------------

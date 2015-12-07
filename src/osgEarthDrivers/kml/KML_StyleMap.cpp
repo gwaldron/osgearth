@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,19 +21,19 @@
 using namespace osgEarth_kml;
 
 void
-KML_StyleMap::scan2( const Config& conf, KMLContext& cx )
+KML_StyleMap::scan2( xml_node<>* node, KMLContext& cx )
 {
-    const Config& pair = conf.child("pair");
-    if ( !pair.empty() )
+    xml_node<>* pair = node->first_node("pair", 0, false);
+    if ( pair )
     {
-        const std::string& url = pair.value("styleurl" );
+        const std::string& url = getValue(pair, "styleurl");
         if ( !url.empty() )
         {
             const Style* style = cx._sheet->getStyle( url );
             if ( style )
             {
                 Style aliasStyle = *style;
-                aliasStyle.setName( conf.value("id") );
+                aliasStyle.setName( getValue(node, "id") );
                 cx._sheet->addStyle( aliasStyle );
             }
         }

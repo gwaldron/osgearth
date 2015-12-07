@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -65,6 +68,7 @@ static osg::ref_ptr< osg::Node > s_editor;
 static osg::ref_ptr< FeatureNode > s_featureNode;
 static osgViewer::Viewer* s_viewer;
 static osg::ref_ptr< osg::Group > s_root;
+static osg::ref_ptr< osg::Group > s_editorsRoot;
 static osg::ref_ptr< MapNode > s_mapNode;
 
 Grid* createToolBar()
@@ -91,7 +95,7 @@ struct AddVertsModeHandler : public ControlEventHandler
         //remove the editor if it's valid
         if (s_editor.valid())
         {
-            s_root->removeChild( s_editor.get() );
+            s_editorsRoot->removeChild( s_editor.get() );
             s_editor = NULL;
 
             // Unset the stipple on the line
@@ -131,7 +135,7 @@ struct EditModeHandler : public ControlEventHandler
             style.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x00FF;            
             s_featureNode->setStyle( style );            
             s_editor = new FeatureEditor( s_featureNode );
-            s_root->addChild( s_editor.get() );            
+            s_editorsRoot->addChild( s_editor.get() );            
         }
     }    
 };
@@ -211,11 +215,14 @@ int main(int argc, char** argv)
     Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
     s_featureNode = new FeatureNode( s_mapNode, feature );    
     s_featureNode->setStyle( style );
-  
+    
+    s_editorsRoot = new osg::Group;
+
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
+    s_root->addChild( s_featureNode.get() );
+    s_root->addChild( s_editorsRoot.get() );
 
-    s_root->addChild( s_featureNode );
 
     //Setup the controls
     ControlCanvas* canvas = ControlCanvas::getOrCreate( &viewer );

@@ -8,15 +8,19 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/ContourMap>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
@@ -27,43 +31,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-namespace
-{
-    const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "attribute vec4 oe_terrain_attr; \n"
-        "uniform float oe_contour_min; \n"
-        "uniform float oe_contour_range; \n"
-        "varying float oe_contour_lookup; \n"
-
-        "void oe_contour_vertex(inout vec4 VertexModel) \n"
-        "{ \n"
-        "    float height = oe_terrain_attr[3]; \n"
-        "    float height_normalized = (height-oe_contour_min)/oe_contour_range; \n"
-        "    oe_contour_lookup = clamp( height_normalized, 0.0, 1.0 ); \n"
-        "} \n";
-
-
-    const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "uniform sampler1D oe_contour_xfer; \n"
-        "uniform float oe_contour_opacity; \n"
-        "varying float oe_contour_lookup; \n"
-
-        "void oe_contour_fragment( inout vec4 color ) \n"
-        "{ \n"
-        "    vec4 texel = texture1D( oe_contour_xfer, oe_contour_lookup ); \n"
-        "    color.rgb = mix(color.rgb, texel.rgb, texel.a * oe_contour_opacity); \n"
-        "} \n";
-}
-
 
 ContourMap::ContourMap() :
-TerrainEffect()
+TerrainEffect(), _grayscale(false)
 {
     init();
 }
@@ -100,15 +70,29 @@ ContourMap::init()
     // TODO: think about scale/bias controls.
     osg::TransferFunction1D* xfer = new osg::TransferFunction1D();
     float s = 2500.0f;
-    xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
-    xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
-    xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
-    xfer->setColor(  0.0062 * s, osg::Vec4f(.84,.84,.25,1), false);
-    //xfer->setColor(  0.0625 * s, osg::Vec4f(.94,.94,.25,1), false);
-    xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
-    xfer->setColor(  0.3250 * s, osg::Vec4f(.80,.70,.47,1), false);
-    xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
-    xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+
+    if ( _grayscale == true )
+    {
+        xfer->setColor( -1.0000 * s, osg::Vec4f(.125,.125,.125, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(.25,.25,.25, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(.375,.375,.375, 1), false);
+        xfer->setColor(  0.0062 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.625,.625,.625,1), false);
+        xfer->setColor(  0.3250 * s, osg::Vec4f(.75,.75,.75,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.875,.875,.875,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+    }
+    else
+    {
+        xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
+        xfer->setColor(  0.0062 * s, osg::Vec4f(.84,.84,.25,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
+        xfer->setColor(  0.3250 * s, osg::Vec4f(.80,.70,.47,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+    }
     xfer->updateImage();
     this->setTransferFunction( xfer );
 }
@@ -144,7 +128,7 @@ ContourMap::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
-        if ( !engine->getTextureCompositor()->reserveTextureImageUnit(_unit) )
+        if ( !engine->getResources()->reserveTextureImageUnit(_unit, "ContourMap") )
         {
             OE_WARN << LC << "Failed to reserve a texture image unit; disabled." << std::endl;
             return;
@@ -162,8 +146,9 @@ ContourMap::onInstall(TerrainEngineNode* engine)
         // before the terrain's layers.)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
-        vp->setFunction( "oe_contour_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL);
-        vp->setFunction( "oe_contour_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING ); //, -1.0);
+        Shaders pkg;
+        //pkg.load(vp, pkg.ContourMap_Vertex);
+        pkg.load(vp, pkg.ContourMap_Fragment);
 
         // Install some uniforms that tell the shader the height range of the color map.
         stateset->addUniform( _xferMin.get() );
@@ -195,14 +180,15 @@ ContourMap::onUninstall(TerrainEngineNode* engine)
             VirtualProgram* vp = VirtualProgram::get(stateset);
             if ( vp )
             {
-                vp->removeShader( "oe_contour_vertex" );
-                vp->removeShader( "oe_contour_fragment" );
+                Shaders pkg;
+                pkg.unload(vp, pkg.ContourMap_Vertex);
+                pkg.unload(vp, pkg.ContourMap_Fragment);
             }
         }
 
         if ( _unit >= 0 )
         {
-            engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
+            engine->getResources()->releaseTextureImageUnit( _unit );
             _unit = -1;
         }
     }
@@ -215,6 +201,7 @@ void
 ContourMap::mergeConfig(const Config& conf)
 {
     conf.getIfSet("opacity", _opacity);
+    conf.getIfSet("grayscale", _grayscale);
 }
 
 Config
@@ -222,5 +209,6 @@ ContourMap::getConfig() const
 {
     Config conf("contour_map");
     conf.addIfSet("opacity", _opacity);
+    conf.addIfSet("grayscale", _grayscale);
     return conf;
 }

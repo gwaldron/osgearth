@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "KMZArchive"
-#ifdef SUPPORT_KMZ
 
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
@@ -25,6 +24,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
+#include <fstream>
 
 #define LC "[KMZArchive] "
 
@@ -69,10 +69,8 @@ namespace
 
 //------------------------------------------------------------------------
 
-KMZArchive::KMZArchive( const URI& archiveURI ) :
-_archiveURI( archiveURI ),
-_buf( 0L ),
-_bufsize( 1024000 )
+KMZArchive::KMZArchive(const URI& archiveURI, const osgDB::Options* dbOptions) :
+_archiveURI( archiveURI )
 {
     supportsExtension( "kmz", "KMZ" );
 
@@ -83,20 +81,51 @@ _bufsize( 1024000 )
         localURI = downloadToCache( archiveURI );
     }
 
-    _uf = unzOpen( localURI.full().c_str() );
-    _buf = (void*)new char[_bufsize];
+    osg::ref_ptr<osgDB::ReaderWriter> zipRW = osgDB::Registry::instance()->getReaderWriterForExtension("zip");
+    if ( zipRW.valid() )
+    {
+        std::ifstream fin(localURI.full().c_str(), std::ios::binary|std::ios::in);
+        if ( fin.is_open() )
+        {
+            //std::string str(
+            //    (std::istreambuf_iterator<char>(fin)),
+            //    std::istreambuf_iterator<char>());
+
+            //std::istringstream in(str);
+
+            ReadResult r = zipRW->openArchive( fin, dbOptions );
+            if ( r.success() )
+            {
+                _zip = r.takeArchive();
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to open archive at \"" << localURI.full() << "\"\n";
+                OE_WARN << LC << "Message = " << r.message() << "\n";
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to read archive from \"" << localURI.full() << "\"\n";
+        }
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to locate OSG ZIP plugin\n";
+    }
 }
 
 KMZArchive::~KMZArchive()
 {
-    if ( _buf )
-        delete [] _buf;
 }
 
 void 
 KMZArchive::close()
 {
-    _uf = 0;
+    if ( _zip.valid() )
+    {
+        _zip->close();
+    }
 }
 
 /** Get the file name which represents the archived file.*/
@@ -117,22 +146,21 @@ KMZArchive::getMasterFileName() const
 bool
 KMZArchive::fileExists(const std::string& filename) const
 {
-    //todo
-    return false;
+    return _zip.valid() ? _zip->fileExists(filename) : false;
 }
 
 /** return type of file. */
 osgDB::FileType
 KMZArchive::getFileType(const std::string& filename) const
 {
-    return osgDB::REGULAR_FILE;
+    return _zip.valid() ? _zip->getFileType(filename) : osgDB::REGULAR_FILE;
 }
 
 /** Get the full list of file names available in the archive.*/
 bool 
 KMZArchive::getFileNames(FileNameList& fileNames) const
 {
-    return false;
+    return _zip.valid() ? _zip->getFileNames(fileNames) : false;
 }
 
 /** return the contents of a directory.
@@ -140,195 +168,23 @@ KMZArchive::getFileNames(FileNameList& fileNames) const
 osgDB::DirectoryContents 
 KMZArchive::getDirectoryContents(const std::string& dirName) const
 {
-    return osgDB::DirectoryContents();
-}
-
-/** reads a file from the archive into an io buffer. */
-bool 
-KMZArchive::readToBuffer( const std::string& fileInZip, std::ostream& iobuf ) const
-{
-    // help from:
-    // http://bytes.com/topic/c/answers/764381-reading-contents-zip-files
-
-
-    //OE_INFO << LC << "Attempting to read \"" << fileInZip << "\" from \"" << _archiveURI.base() << "\"" << std::endl;
-
-
-    int err = UNZ_OK;
-    unz_file_info file_info;
-    char filename_inzip[2048];
-    bool got_file_info = false;
-
-    if ( _uf == 0 )
-    {
-        OE_WARN << LC << "Archive is not open." << std::endl;
-        return false;
-    }
-
-    if ( fileInZip == ".kml" )
-    {
-        // special case; first try the master file (doc.kml), then failing that, look
-        // for the first KML file in the archive.
-        if ( unzLocateFile( _uf, "doc.kml", 0 ) != 0 )
-        {
-            if ( unzGoToFirstFile( _uf ) != UNZ_OK )
-            {
-                OE_WARN << LC << "Archive is empty" << std::endl;
-                return false;
-            }
-
-            while( err == UNZ_OK )
-            {
-                if ( unzGetCurrentFileInfo( _uf, &file_info, filename_inzip, sizeof(filename_inzip), 0L, 0, 0L, 0) )
-                {
-                    OE_WARN << LC << "Error with zipfile " << _archiveURI.base() << std::endl;
-                    return false;
-                }
-
-                got_file_info = true;
-                std::string lc = osgEarth::toLower( std::string(filename_inzip) );
-                if ( endsWith( lc, ".kml" ) )
-                {
-                    break;
-                }
-
-                err = unzGoToNextFile( _uf );
-            }
-
-            if ( err != UNZ_OK )
-            {
-                OE_WARN << LC << "No KML file found in archive" << std::endl;
-                return false;
-            }
-        }
-    }
-
-    else if ( unzLocateFile( _uf, fileInZip.c_str(), 0 ) )
-    {
-        OE_WARN << LC << "Failed to locate '" << fileInZip << "' in '" << _archiveURI.base() << "'" << std::endl;
-        return false;
-    }
-
-    if ( !got_file_info )
-    {
-        if ( unzGetCurrentFileInfo( _uf, &file_info, filename_inzip, sizeof(filename_inzip), 0L, 0, 0L, 0) )
-        {
-            OE_WARN << LC << "Error with zipfile " << _archiveURI.base() << std::endl;
-            return false;
-        }
-    }
-
-    err = unzOpenCurrentFilePassword( _uf, 0L );
-    if ( err != UNZ_OK )
-    {
-        OE_WARN << LC << "unzOpenCurrentFilePassword failed" << std::endl;
-        return false;
-    }
-
-    do
-    {
-        err = unzReadCurrentFile( _uf, _buf, _bufsize );
-        if ( err < 0 )
-        {
-            OE_WARN << LC << "Error in unzReadCurrentFile" << std::endl;
-            break;
-        }
-        if ( err > 0 )
-        {
-            for( unsigned i=0; i<(unsigned)err; ++i )
-            {
-                iobuf.put( *(((char*)_buf)+i) );
-            }
-        }
-    }
-    while( err > 0 );
-
-    err = unzCloseCurrentFile( _uf );
-    if ( err != UNZ_OK )
-    {
-        //ignore it...
-    }
-
-    return true;
-}
-
-bool
-KMZArchive::isAcceptable(const std::string& filename, const osgDB::Options* options) const
-{
-    if (!options ||
-        options->getDatabasePathList().size() == 0 ||
-        options->getDatabasePathList()[0] != _archiveURI.full() )
-    {
-        //OE_INFO << "Rejected: " << filename << std::endl;
-        return false;
-    }
-    return true;
+    return _zip.valid() ? _zip->getDirectoryContents(dirName) : osgDB::DirectoryContents();
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readImage(const std::string& filename, const osgDB::Options* options) const
 {
-    if ( isAcceptable(filename, options) )
-    {
-        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-            osgDB::getLowerCaseFileExtension( filename ) );
-        if ( rw )
-        {
-            std::stringstream iobuf;
-            if ( readToBuffer( filename, iobuf ) )
-            {
-                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
-                return rw->readImage( iobuf, myOptions.get() );
-            }
-            else return ReadResult::ERROR_IN_READING_FILE;
-        }
-    }
-    return ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readImage(filename, options) : ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readNode(const std::string& filename, const osgDB::Options* options) const
 {
-    if ( isAcceptable(filename, options) )
-    {
-        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-            osgDB::getLowerCaseFileExtension( filename ) );
-        if ( rw )
-        {
-            std::stringstream iobuf;
-            if ( readToBuffer( filename, iobuf ) )
-            {
-                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
-                return rw->readNode( iobuf, myOptions.get() );
-            }
-            else return ReadResult::ERROR_IN_READING_FILE;
-        }
-    }
-    return ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readNode(filename, options) : ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readObject(const std::string& filename, const osgDB::Options* options) const
 {
-    if ( isAcceptable(filename, options) )
-    {
-        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-            osgDB::getLowerCaseFileExtension( filename ) );
-        if ( rw )
-        {
-            std::stringstream iobuf;
-            if ( readToBuffer( filename, iobuf ) )
-            {
-                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
-                return rw->readObject( iobuf, myOptions.get() );
-            }
-            else return ReadResult::ERROR_IN_READING_FILE;
-        }
-    }
-    return ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readObject(filename, options) : ReadResult::FILE_NOT_HANDLED;
 }
-
-#endif // SUPPORT_KMZ

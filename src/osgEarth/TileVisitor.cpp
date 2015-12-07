@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -245,7 +245,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 {                   
     // Start up the task service
     OE_INFO << "Starting " << _numThreads << std::endl;
-    _taskService = new TaskService( "MTTileHandler", _numThreads, 100000 );
+    _taskService = new TaskService( "MTTileHandler", _numThreads, 1000 );
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
@@ -360,7 +360,7 @@ void MultiprocessTileVisitor::setBatchSize( unsigned int batchSize )
 void MultiprocessTileVisitor::run(const Profile* mapProfile)
 {                             
     // Start up the task service          
-    _taskService = new TaskService( "MPTileHandler", _numProcesses, 100000 );
+    _taskService = new TaskService( "MPTileHandler", _numProcesses, 1000 );
     
     // Produce the tiles
     TileVisitor::run( mapProfile );

@@ -1,0 +1,130 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_MP_SURFACE_NODE_FACTORY
+#define OSGEARTH_DRIVERS_MP_SURFACE_NODE_FACTORY 1
+
+#include "Common"
+#include "SurfaceNode"
+#include "MPTerrainEngineOptions"
+#include "MaskGenerator"
+#include "GeometryPool"
+#include "TileDrawable"
+#include "RenderBindings"
+#include "MPGeometry"
+#include <osg/Geode>
+
+// forward declares
+namespace osgEarth {
+    class MapFrame;
+    class TerrainTileModel;
+    class ProgressCallback;
+}
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    using namespace osgEarth;
+    class MPGeometry;
+
+    /**
+     * Interface for an object that can build a SurfaceNode from a
+     * TerrainTileModel.
+     */
+    class SurfaceNodeFactory : public osg::Referenced
+    {
+    public:
+        SurfaceNodeFactory(
+            const TerrainTileModel*       model,
+            const MapFrame&               frame,
+            const RenderBindings&         bindings,
+            GeometryPool*                 geometryPool,
+            unsigned                      tileSize,
+            const MPTerrainEngineOptions& options);
+
+        /**
+         * Uses a TerrainTileModel to build a new SurfaceNode from data
+         * in a MapFrame.
+         */
+        virtual SurfaceNode* createSurfaceNode();
+
+    protected:
+        /** Creates a new empty surface mesh in the context. */
+        void addSurfaceMesh();
+
+        /** Adds a skirt mesh to the existing geometry */
+        void addSkirtMesh();
+
+        /** Sets up the MP geometry with the color layers to render. */
+        void installColorLayers();
+
+        /** Adds a surface and mesh skirt from the geometry pool.
+            Will not work with masked tiles. */
+        void addSharedMeshes();
+        
+    protected:
+        /** Convert unit [0..1] to world coords. */
+        osg::Vec3d unitToWorld(const osg::Vec3d& input) const;
+
+        /** Convert unit [0..1] to tile local tangent plane coords. */
+        osg::Vec3d unitToLocal(const osg::Vec3d& input) const;
+
+        /** Whether the vertex at the corresponding index is marked for masking. */
+        bool vertIsMasked(unsigned index) const;
+
+        /** Allocates a new DrawElements based on the size of the geometry. */
+        osg::DrawElements* newDrawElements(GLenum mode) const;
+
+        void addSkirtDataForIndex(
+            unsigned index,
+            float    skirtHeight );
+
+        void addSkirtTriangles(
+            unsigned index0,
+            unsigned index1,
+            osg::DrawElements* elements);
+
+        /** Computes a bounding box to use for the new surface node, taking into
+            account things like elevation textures */
+        osg::BoundingBox computeBoundingBox() const;
+
+    protected:
+        const TerrainTileModel*       _model;
+        const MapFrame&               _frame;
+        osg::ref_ptr<GeoLocator>      _locator;
+        osg::Matrix                   _world2local, _local2world;
+        const MPTerrainEngineOptions& _options;
+        unsigned                      _tileSize;
+        MaskGenerator                 _maskSet;
+        osg::ref_ptr<osg::Geode>      _geode;
+        osg::ref_ptr<TileDrawable>    _tileDrawable;
+        osg::ref_ptr<MPGeometry>      _surfaceGeom;
+        osg::DrawElements*            _surfacePrimSet;
+        osg::Vec3Array*               _verts;
+        osg::Vec3Array*               _normals;
+        osg::Vec3Array*               _texCoords;
+        bool                          _requireUInt;
+        bool                          _createSkirt;
+        unsigned                      _numVerts;
+        osg::BoundingSphere           _tileBound;
+        const RenderBindings          _bindings;
+        osg::ref_ptr<GeometryPool>    _geometryPool;
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_SURFACE_NODE_FACTORY

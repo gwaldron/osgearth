@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,18 @@ _verticalScale     ( NumericExpression(1.0) ),
 _verticalOffset    ( NumericExpression(0.0) )
 {
     mergeConfig( conf );
+}
+
+AltitudeSymbol::AltitudeSymbol(const AltitudeSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_clamping(rhs._clamping),
+_technique(rhs._technique),
+_binding(rhs._binding),
+_resolution(rhs._resolution),
+_verticalOffset(rhs._verticalOffset),
+_verticalScale(rhs._verticalScale)
+{
+
 }
 
 Config 

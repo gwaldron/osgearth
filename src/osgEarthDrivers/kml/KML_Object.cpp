@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 using namespace osgEarth_kml;
 
 void
-KML_Object::build( const Config& conf, KMLContext& cx, osg::Node* working )
+KML_Object::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
 {
     //todo - read ID
 }

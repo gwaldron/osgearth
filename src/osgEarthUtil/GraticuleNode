@@ -1,0 +1,117 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2015 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_GRATICULE_NODE
+#define OSGEARTH_GRATICULE_NODE 1
+
+#include "GraticuleOptions"
+#include "GraticuleTerrainEffect"
+#include "Export"
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/MapNode>
+#include <osgEarthAnnotation/LabelNode>
+
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
+
+
+    /**
+    * Node that manges the graticule resolution and labels
+    */
+    class OSGEARTHUTIL_EXPORT GraticuleNode : public osg::Group
+    {
+    public:
+
+        GraticuleNode(MapNode* mapNode, const GraticuleOptions& options = GraticuleOptions() );
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+        /**
+         * Gets whether the graticule is visible.
+         */
+        bool getVisible() const;
+
+        /**
+         * Sets whether the graticule is visible or not.
+         */
+        void setVisible(bool visible);
+
+        /**
+         * Gets the center offset for the labels in pixels.
+         */
+        const osg::Vec2f& getCenterOffset() const;
+
+        /**
+         * Sets the center offset for the labels in pixels.  Use this to attempt to offset the label placement so it's not at the center of the screen.
+         */
+        void setCenterOffset(const osg::Vec2f& offset);
+
+        /**
+         * Gets the list of resolutions to display in the graticule
+         */
+        std::vector< double >& getResolutions();
+
+    protected:
+        // DTOR
+        virtual ~GraticuleNode();
+
+        
+    private:
+
+        osgEarth::GeoExtent getViewExtent(osgUtil::CullVisitor* cullVisitor);
+
+        double getResolution() const;
+        void setResolution(double resolution);
+
+        void initLabelPool();
+
+        void updateLabels();
+
+        std::string getText(const GeoPoint& location, bool lat);
+
+
+        osg::observer_ptr< MapNode > _mapNode;
+        osg::ref_ptr< GraticuleTerrainEffect > _effect;
+        osg::ref_ptr< LatLongFormatter > _formatter;
+        osg::ref_ptr< osg::Uniform > _resolutionUniform;
+        float _resolution;
+        double _lon;
+        double _lat;
+        
+        osg::Vec2f _centerOffset;
+
+        GeoExtent _viewExtent;
+        osg::Vec3d _focalPoint;
+        std::vector< osg::ref_ptr< LabelNode > > _labelPool;
+        const GraticuleOptions _options;
+        bool _visible;
+        double _metersPerPixel;
+
+        std::vector< double > _resolutions;
+
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_GRATICULE_NODE

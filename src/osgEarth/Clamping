@@ -54,6 +54,12 @@ namespace osgEarth
         // Name of the uniform used to apply an altitude offset to clamped geometry
         static const char* AltitudeOffsetUniformName;
 
+        // GLSL attribute binding location for clamping vertex heights
+        static const int HeightsAttrLocation;
+
+        // Name of the clamping heights array attribute
+        static const char* HeightsAttrName;
+
         // When setting clamping vertex attributes, use these constants in
         // the alpha channel to indicate whether the vertex is to be clamped
         // to the reference vertex in the attribute data, or to the ground.
@@ -72,6 +78,10 @@ namespace osgEarth
         static void applyDefaultClampingAttrs(
             osg::Geometry* geom,
             float          verticalOffset =0.0f);
+
+        static void setHeights(
+            osg::Geometry*   geom,
+            osg::FloatArray* heights );
     };
 }
 

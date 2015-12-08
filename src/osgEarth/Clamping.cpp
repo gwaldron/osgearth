@@ -32,6 +32,9 @@ const char* Clamping::AnchorAttrName            = "oe_clamp_attrs";
 const char* Clamping::HasAttrsUniformName       = "oe_clamp_hasAttrs";
 const char* Clamping::AltitudeOffsetUniformName = "oe_clamp_altitudeOffset";
 
+const int   Clamping::HeightsAttrLocation       = osg::Drawable::FOG_COORDS;
+const char* Clamping::HeightsAttrName           = "oe_clamp_height";
+
 const float Clamping::ClampToAnchor = 1.0f;
 const float Clamping::ClampToGround = 0.0f;
 
@@ -106,5 +109,16 @@ Clamping::installHasAttrsUniform(osg::StateSet* stateset)
     if ( stateset )
     {
         stateset->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );
+    }
+}
+
+void
+Clamping::setHeights(osg::Geometry* geom, osg::FloatArray* hats)
+{
+    if ( geom )
+    {
+        geom->setVertexAttribArray( HeightsAttrLocation, hats );
+        geom->setVertexAttribBinding( HeightsAttrLocation, geom->BIND_PER_VERTEX );
+        geom->setVertexAttribNormalize( HeightsAttrLocation, false );
     }
 }

@@ -359,6 +359,9 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->addBindAttribLocation( Clamping::AnchorAttrName, Clamping::AnchorAttrLocation );
     local->_groupStateSet->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, false) );
 
+    // Bind clamping heights location.
+    vp->addBindAttribLocation( Clamping::HeightsAttrName, Clamping::HeightsAttrLocation );
+
     osgEarth::Shaders pkg;
     pkg.load(vp, pkg.GPUClampingVertex);
     pkg.load(vp, pkg.GPUClampingFragment);

@@ -141,7 +141,7 @@ BillboardExtension::connect(MapNode* mapNode)
                 GeometryIterator iter(f->getGeometry());
                 while(iter.hasMore()) {
                     const Geometry* geom = iter.next();
-                    osg::ref_ptr<osg::Vec3dArray> fVerts = geom->toVec3dArray();
+                    osg::ref_ptr<osg::Vec3dArray> fVerts = geom->createVec3dArray();
                     verts->insert(verts->end(), fVerts->begin(), fVerts->end());
                 }
             }

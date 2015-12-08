@@ -77,9 +77,9 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         _altitude.valid() &&
         _altitude->technique() == _altitude->TECHNIQUE_GPU;
 
-    bool gpuClampingRelativeToTerrain =
-        gpuClamping &&
-        _altitude->clamping() == _altitude->CLAMP_RELATIVE_TO_TERRAIN;
+    bool ignoreZ =
+        gpuClamping && 
+        _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN;
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
@@ -109,11 +109,9 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
             Geometry* geom = gi.next();
             for( Geometry::iterator g = geom->begin(); g != geom->end(); ++g )
             {
-                // GPU clamping requires a vertical offset. So if the symbology doesn't
-                // specify one, get it instead from the first point.
-                if ( gpuClampingRelativeToTerrain && !offsetZ.isSet() )
+                if ( ignoreZ )
                 {
-                    offsetZ = g->z();
+                    g->z() = 0.0;
                 }
 
                 if ( !gpuClamping )
@@ -183,7 +181,6 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     // whether the SRS's have a compatible vertical datum.
     bool vertEquiv =
         featureSRS->isVertEquivalentTo( mapSRS );
-
 
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )

@@ -163,7 +163,7 @@ ModelNode::init()
                     this->setLocalRotation( rot.getRotate() );
                 }
 
-                this->applyGeneralSymbology( _style );
+                this->applyRenderSymbology( _style );
             }
             else
             {

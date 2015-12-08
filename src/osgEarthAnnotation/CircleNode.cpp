@@ -174,7 +174,7 @@ CircleNode::rebuild()
             this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
-        applyGeneralSymbology( _style );
+        applyRenderSymbology( _style );
         setLightingIfNotSet( false );
     }
 

@@ -117,7 +117,7 @@ to extruded buildings.
                     model:             "../data/streetlight.osgb";
                     model-script:      positionAlongSegments();
 					model-heading:     feature.properties.heading;
-                    altitude-clamping: terrain-gpu;                    
+                    altitude-clamping: terrain;                    
                     render-depth-offset:    false;
                 }
             </style>
@@ -148,7 +148,7 @@ to extruded buildings.
                    model-placement:        random;
                    model-density:          3000;
 				   model-heading:          Math.random() * 360.0;
-                   altitude-clamping:      terrain-gpu;
+                   altitude-clamping:      terrain;
 				   render-min-alpha:       0.15;
                    render-depth-offset:    false;
                 }

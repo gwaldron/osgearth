@@ -247,7 +247,7 @@ typedef struct duk_hbuffer_dynamic duk_hbuffer_dynamic;
 typedef struct duk_propaccessor duk_propaccessor;
 typedef union duk_propvalue duk_propvalue;
 typedef struct duk_propdesc duk_propdesc;
- 
+
 typedef struct duk_heap duk_heap;
 
 typedef struct duk_activation duk_activation;
@@ -273,7 +273,7 @@ typedef struct duk_compiler_ctx duk_compiler_ctx;
 
 typedef struct duk_re_matcher_ctx duk_re_matcher_ctx;
 typedef struct duk_re_compiler_ctx duk_re_compiler_ctx;
-	
+
 #endif  /* DUK_FORWDECL_H_INCLUDED */
 #line 1 "duk_builtins.h"
 /*
@@ -3780,7 +3780,7 @@ extern const char *duk_str_func_limit;
  *
  *  Note: macro naming is a bit misleading, e.g. "ABC" in macro name but
  *  the field layout is logically "CBA".
- */ 
+ */
 
 typedef duk_uint32_t duk_instr_t;
 
@@ -3827,7 +3827,7 @@ typedef duk_uint32_t duk_instr_t;
 #define DUK_BC_EXTRAOP_MIN          DUK_BC_A_MIN
 #define DUK_BC_EXTRAOP_MAX          DUK_BC_A_MAX
 
-#define DUK_OP_LDREG                0 
+#define DUK_OP_LDREG                0
 #define DUK_OP_STREG                1
 #define DUK_OP_LDCONST              2
 #define DUK_OP_LDINT                3
@@ -5471,7 +5471,7 @@ duk_ucodepoint_t duk_hstring_char_code_at_raw(duk_hthread *thr, duk_hstring *h, 
  *       abandoned and moved to the 'entry part'.
  *
  *    3. An optional 'hash part' is used to optimize lookups of the entry
- *       part; it is used only for objects with sufficiently many properties 
+ *       part; it is used only for objects with sufficiently many properties
  *       and can be abandoned without loss of information.
  *
  *  These three conceptual parts are stored in a single memory allocated area.
@@ -5906,7 +5906,7 @@ duk_ucodepoint_t duk_hstring_char_code_at_raw(duk_hthread *thr, duk_hstring *h, 
 
 /*
  *  Macros for property handling
- */		
+ */
 
 /* note: this updates refcounts */
 #define DUK_HOBJECT_SET_PROTOTYPE_UPDREF(thr,h,p)       duk_hobject_set_prototype((thr),(h),(p))
@@ -6133,7 +6133,7 @@ duk_bool_t duk_hobject_object_ownprop_helper(duk_context *ctx, duk_small_uint_t 
 duk_bool_t duk_hobject_get_internal_value(duk_heap *heap, duk_hobject *obj, duk_tval *tv);
 duk_hstring *duk_hobject_get_internal_value_string(duk_heap *heap, duk_hobject *obj);
 duk_hbuffer *duk_hobject_get_internal_value_buffer(duk_heap *heap, duk_hobject *obj);
-	
+
 /* hobject management functions */
 void duk_hobject_compact_props(duk_hthread *thr, duk_hobject *obj);
 
@@ -6159,7 +6159,7 @@ void duk_hobject_pc2line_pack(duk_hthread *thr, duk_compiler_instr *instrs, duk_
 duk_uint_fast32_t duk_hobject_pc2line_query(duk_context *ctx, duk_idx_t idx_func, duk_uint_fast32_t pc);
 #endif
 
-/* misc */	
+/* misc */
 duk_bool_t duk_hobject_prototype_chain_contains(duk_hthread *thr, duk_hobject *h, duk_hobject *p);
 
 #endif  /* DUK_HOBJECT_H_INCLUDED */
@@ -6944,9 +6944,9 @@ void duk_hbuffer_append_slice(duk_hthread *thr, duk_hbuffer_dynamic *buf, duk_si
  */
 
 #if defined(DUK_USE_DEEP_C_STACK)
-#define DUK_HEAP_DEFAULT_CALL_RECURSION_LIMIT             1000  /* assuming 0.5 kB between calls, about 500kB of stack */ 
+#define DUK_HEAP_DEFAULT_CALL_RECURSION_LIMIT             1000  /* assuming 0.5 kB between calls, about 500kB of stack */
 #else
-#define DUK_HEAP_DEFAULT_CALL_RECURSION_LIMIT             60    /* assuming 0.5 kB between calls, about 30kB of stack */ 
+#define DUK_HEAP_DEFAULT_CALL_RECURSION_LIMIT             60    /* assuming 0.5 kB between calls, about 30kB of stack */
 #endif
 
 /* Mark-and-sweep C recursion depth for marking phase; if reached,
@@ -7055,7 +7055,7 @@ void duk_hbuffer_append_slice(duk_hthread *thr, duk_hbuffer_dynamic *buf, duk_si
  *
  *    - DUK_FREE() is required to ignore NULL and any other possible return
  *      value of a zero-sized alloc/realloc (same as ANSI C free()).
- * 
+ *
  *    - There is no DUK_REALLOC_ZEROED (and checked variant) because we don't
  *      assume to know the old size.  Caller must zero the reallocated memory.
  *
@@ -7413,13 +7413,13 @@ duk_uint32_t duk_heap_hashstring(duk_heap *heap, duk_uint8_t *str, duk_size_t le
 #ifdef DUK_USE_DDPRINT
 #define DUK_DDPRINT  DUK__DEBUG_STASH(DUK_LEVEL_DDEBUG), (void) duk_debug_log  /* args go here in parens */
 #else
-#define DUK_DDPRINT  0 && 
+#define DUK_DDPRINT  0 &&
 #endif
 
 #ifdef DUK_USE_DDDPRINT
 #define DUK_DDDPRINT  DUK__DEBUG_STASH(DUK_LEVEL_DDDEBUG), (void) duk_debug_log  /* args go here in parens */
 #else
-#define DUK_DDDPRINT  0 && 
+#define DUK_DDDPRINT  0 &&
 #endif
 
 #endif  /* DUK_USE_VARIADIC_MACROS */
@@ -7478,8 +7478,8 @@ duk_uint32_t duk_heap_hashstring(duk_heap *heap, duk_uint8_t *str, duk_size_t le
 #else  /* DUK_USE_VARIADIC_MACROS */
 
 #define DUK_DPRINT    0 && /* args go here as a comma expression in parens */
-#define DUK_DDPRINT   0 && 
-#define DUK_DDDPRINT  0 && 
+#define DUK_DDPRINT   0 &&
+#define DUK_DDDPRINT  0 &&
 
 #endif  /* DUK_USE_VARIADIC_MACROS */
 
@@ -7584,7 +7584,7 @@ extern duk_int_t duk_debug_summary_idx;
  *  Normal error is thrown with a longjmp() through the current setjmp()
  *  catchpoint record in the duk_heap.  The 'curr_thread' of the duk_heap
  *  identifies the throwing thread.
- * 
+ *
  *  Error formatting is not always necessary but there are no separate calls
  *  (to minimize code size).  Error object creation will consume a considerable
  *  amount of time, compared to which formatting is probably trivial.  Note
@@ -9831,7 +9831,7 @@ void *duk_require_buffer(duk_context *ctx, duk_idx_t index, duk_size_t *out_size
 	/* Note: here we must be wary of the fact that a data pointer may
 	 * be a NULL for a zero-size buffer.
 	 */
-	
+
 	tv = duk_get_tval(ctx, index);
 	if (tv && DUK_TVAL_IS_BUFFER(tv)) {
 		duk_hbuffer *h = DUK_TVAL_GET_BUFFER(tv);
@@ -9986,7 +9986,7 @@ duk_c_function duk_get_c_function(duk_context *ctx, duk_idx_t index) {
 	}
 	h = DUK_TVAL_GET_OBJECT(tv);
 	DUK_ASSERT(h != NULL);
-	
+
 	if (!DUK_HOBJECT_IS_NATIVEFUNCTION(h)) {
 		return NULL;
 	}
@@ -11648,7 +11648,7 @@ duk_idx_t duk_push_c_function(duk_context *ctx, duk_c_function func, duk_int_t n
 	        DUK_HOBJECT_FLAG_NOTAIL |
 	        DUK_HOBJECT_FLAG_EXOTIC_DUKFUNC |
 	        DUK_HOBJECT_CLASS_AS_FLAGS(DUK_HOBJECT_CLASS_FUNCTION);
-	
+
 	return duk__push_c_function_raw(ctx, func, nargs, flags);
 }
 
@@ -11662,7 +11662,7 @@ void duk_push_c_function_noexotic(duk_context *ctx, duk_c_function func, duk_int
 	        DUK_HOBJECT_FLAG_STRICT |
 	        DUK_HOBJECT_FLAG_NOTAIL |
 	        DUK_HOBJECT_CLASS_AS_FLAGS(DUK_HOBJECT_CLASS_FUNCTION);
-	
+
 	(void) duk__push_c_function_raw(ctx, func, nargs, flags);
 }
 
@@ -11675,7 +11675,7 @@ void duk_push_c_function_noconstruct_noexotic(duk_context *ctx, duk_c_function f
 	        DUK_HOBJECT_FLAG_STRICT |
 	        DUK_HOBJECT_FLAG_NOTAIL |
 	        DUK_HOBJECT_CLASS_AS_FLAGS(DUK_HOBJECT_CLASS_FUNCTION);
-	
+
 	(void) duk__push_c_function_raw(ctx, func, nargs, flags);
 }
 
@@ -11871,7 +11871,7 @@ void duk_pop_n(duk_context *ctx, duk_idx_t count) {
 	 * refzero queueing but no refzero algorithm run (= no pointer
 	 * instability), inline code.
 	 */
-	
+
 #ifdef DUK_USE_REFERENCE_COUNTING
 	while (count > 0) {
 		duk_tval tv_tmp;
@@ -14753,7 +14753,7 @@ static void duk__array_qsort(duk_context *ctx, duk_int_t lo, duk_int_t hi) {
 
 	/* move pivot to its final place */
 	DUK_DDD(DUK_DDDPRINT("before final pivot swap: %!T", (duk_tval *) duk_get_tval(ctx, 1)));
-	duk__array_sort_swap(ctx, lo, r);	
+	duk__array_sort_swap(ctx, lo, r);
 
 #if defined(DUK_USE_DDDPRINT)
 	duk__debuglog_qsort_state(ctx, lo, hi, r);
@@ -16540,7 +16540,7 @@ static duk_double_t duk__make_day(duk_double_t year, duk_double_t month, duk_dou
 	if (!DUK_ISFINITE(year) || !DUK_ISFINITE(month)) {
 		return DUK_DOUBLE_NAN;
 	}
-	
+
 	year += DUK_FLOOR(month / 12.0);
 
 	month = DUK_FMOD(month, 12.0);
@@ -16710,7 +16710,7 @@ static duk_double_t duk__get_timeval_from_dparts(duk_double_t *dparts, duk_small
 	 * particular problem (annoyingly, also adding debug prints or
 	 * running the executable under valgrind hides it).
 	 */
-	
+
 	/* MakeTime */
 	tmp_time = 0.0;
 	tmp_time += dparts[DUK__IDX_HOUR] * ((duk_double_t) DUK__MS_HOUR);
@@ -17764,7 +17764,7 @@ duk_ret_t duk_bi_error_constructor_shared(duk_context *ctx) {
 	/* same for both error and each subclass like TypeError */
 	duk_uint_t flags_and_class = DUK_HOBJECT_FLAG_EXTENSIBLE |
 	                             DUK_HOBJECT_CLASS_AS_FLAGS(DUK_HOBJECT_CLASS_ERROR);
-	
+
 	DUK_UNREF(thr);
 
 	duk_push_object_helper(ctx, flags_and_class, bidx_prototype);
@@ -18281,7 +18281,7 @@ duk_ret_t duk_bi_function_prototype_apply(duk_context *ctx) {
 	DUK_ASSERT_TOP(ctx, 2 + len);
 
 	/* [ func thisArg arg1 ... argN ] */
-	
+
 	DUK_DDD(DUK_DDDPRINT("apply, func=%!iT, thisArg=%!iT, len=%ld",
 	                     (duk_tval *) duk_get_tval(ctx, 0),
 	                     (duk_tval *) duk_get_tval(ctx, 1),
@@ -18320,7 +18320,7 @@ duk_ret_t duk_bi_function_prototype_call(duk_context *ctx) {
 	                     (duk_tval *) duk_get_tval(ctx, 1),
 	                     (long) (nargs - 1),
 	                     (long) duk_get_top(ctx)));
-	duk_call_method(ctx, nargs - 1);	
+	duk_call_method(ctx, nargs - 1);
 	return 1;
 }
 
@@ -18874,7 +18874,7 @@ duk_ret_t duk_bi_global_object_eval(duk_context *ctx) {
 	/* E5 Section 10.4.2 */
 	DUK_ASSERT(thr->callstack_top >= 1);
 	act = thr->callstack + thr->callstack_top - 1;  /* this function */
-	if (act->flags & DUK_ACT_FLAG_DIRECT_EVAL) {	
+	if (act->flags & DUK_ACT_FLAG_DIRECT_EVAL) {
 		DUK_ASSERT(thr->callstack_top >= 2);
 		act = thr->callstack + thr->callstack_top - 2;  /* caller */
 		if (act->lex_env == NULL) {
@@ -21520,7 +21520,7 @@ void duk_bi_json_stringify_helper(duk_context *ctx,
 	                     (duk_heaphdr *) js_ctx->h_gap,
 	                     (duk_heaphdr *) js_ctx->h_indent,
 	                     (duk_tval *) duk_get_tval(ctx, -1)));
-	
+
 	/* serialize the wrapper with empty string key */
 
 	duk_push_hstring_stridx(ctx, DUK_STRIDX_EMPTY_STRING);
@@ -22268,7 +22268,7 @@ static duk_double_t duk__push_this_number_plain(duk_context *ctx) {
 		goto done;
 	}
 	h = duk_get_hobject(ctx, -1);
-	if (!h || 
+	if (!h ||
 	    (DUK_HOBJECT_GET_CLASS_NUMBER(h) != DUK_HOBJECT_CLASS_NUMBER)) {
 		DUK_DDD(DUK_DDDPRINT("unacceptable this value: %!T", (duk_tval *) duk_get_tval(ctx, -1)));
 		DUK_ERROR((duk_hthread *) ctx, DUK_ERR_TYPE_ERROR, "expected a number");
@@ -22710,7 +22710,7 @@ duk_ret_t duk_bi_object_constructor_prevent_extensions(duk_context *ctx) {
 	 * so this is a good time to compact.
 	 */
 	duk_hobject_compact_props(thr, h);
-	
+
 	return 1;
 }
 
@@ -26019,7 +26019,7 @@ static void duk__dump_strcache(duk_heap *heap) {
 			DUK_D(DUK_DPRINT("  [%ld]: bidx=%ld cidx=%ld str=%s",
 			                 (long) i, (long) c->bidx, (long) c->cidx, (const char *) buf));
 		}
-	} 
+	}
 }
 
 void duk_debug_dump_heap(duk_heap *heap) {
@@ -27528,7 +27528,7 @@ duk_int_t duk_debug_vsnprintf(char *str, duk_size_t size, const char *format, va
 	const char *p = format;
 	const char *p_end = p + DUK_STRLEN(format);
 	duk_int_t retval;
-	
+
 	DUK_MEMZERO(&fb, sizeof(fb));
 	fb.buffer = (duk_uint8_t *) str;
 	fb.length = size;
@@ -27741,7 +27741,7 @@ void duk_debug_format_funcptr(char *buf, duk_size_t buf_size, duk_uint8_t *fptr,
 		ch = fptr[fptr_size - 1 - i];
 #endif
 		p += DUK_SNPRINTF((char *) p, left, "%02lx", (unsigned long) ch);
-	}	
+	}
 }
 
 #endif  /* DUK_USE_DEBUG */
@@ -28321,7 +28321,7 @@ void duk_default_panic_handler(duk_errcode_t code, const char *msg) {
 	            "segfaulting on purpose"
 #else
 #error no DUK_USE_PANIC_xxx macro defined
-#endif	
+#endif
 	            ")\n", (long) code, (const char *) (msg ? msg : "null"));
 	DUK_FFLUSH(DUK_STDERR);
 #else
@@ -29497,7 +29497,7 @@ static int duk__init_heap_strings(duk_heap *heap) {
 
 static int duk__init_heap_thread(duk_heap *heap) {
 	duk_hthread *thr;
-	
+
 	DUK_DD(DUK_DDPRINT("heap init: alloc heap thread"));
 	thr = duk_hthread_alloc(heap,
 	                        DUK_HOBJECT_FLAG_EXTENSIBLE |
@@ -29944,7 +29944,7 @@ duk_uint32_t duk_heap_hashstring(duk_heap *heap, duk_uint8_t *str, duk_size_t le
 	 *  case that all long strings have certain offset ranges that are never
 	 *  sampled.
 	 */
-	
+
 	/* note: mixing len into seed improves hashing when skipping */
 	duk_uint32_t str_seed = heap->hash_seed ^ len;
 
@@ -30159,7 +30159,7 @@ static void duk__mark_tval(duk_heap *heap, duk_tval *tv) {
 		return;
 	}
 	if (DUK_TVAL_IS_HEAP_ALLOCATED(tv)) {
-		duk__mark_heaphdr(heap, DUK_TVAL_GET_HEAPHDR(tv)); 
+		duk__mark_heaphdr(heap, DUK_TVAL_GET_HEAPHDR(tv));
 	}
 }
 
@@ -30722,7 +30722,7 @@ static void duk__compact_object_list(duk_heap *heap, duk_hthread *thr, duk_heaph
 		DUK_DDD(DUK_DDDPRINT("mark-and-sweep compact: %p", (void *) curr));
 
 		if (DUK_HEAPHDR_GET_TYPE(curr) != DUK_HTYPE_OBJECT) {
-			goto next;	
+			goto next;
 		}
 		obj = (duk_hobject *) curr;
 
@@ -31397,7 +31397,7 @@ void *duk_heap_mem_realloc_indirect(duk_heap *heap, duk_mem_getptr cb, void *ud,
 			                   (void *) ptr_pre, (void *) ptr_post));
 		}
 #endif
-	
+
 		/* Note: key issue here is to re-lookup the base pointer on every attempt.
 		 * The pointer being reallocated may change after every mark-and-sweep.
 		 */
@@ -31921,7 +31921,7 @@ static void duk__refzero_free_pending(duk_hthread *thr) {
  *
  *  Decref may trigger immediate refzero handling, which may free and finalize
  *  an arbitrary number of objects.
- *  
+ *
  */
 
 void duk_heap_tval_incref(duk_tval *tv) {
@@ -32324,7 +32324,7 @@ duk_uint_fast32_t duk_heap_strcache_offset_char2byte(duk_hthread *thr, duk_hstri
 	 *  Update cache entry (allocating if necessary), and move the
 	 *  cache entry to the first place (in an "LRU" policy).
 	 */
-	
+
 	if (use_cache) {
 		/* update entry, allocating if necessary */
 		if (!sce) {
@@ -32465,10 +32465,10 @@ static void duk__insert_hstring(duk_heap *heap, duk_hstring **entries, duk_uint3
 	DUK_ASSERT(size > 0);
 
 	i = DUK__HASH_INITIAL(DUK_HSTRING_GET_HASH(h), size);
-	step = DUK__HASH_PROBE_STEP(DUK_HSTRING_GET_HASH(h)); 
+	step = DUK__HASH_PROBE_STEP(DUK_HSTRING_GET_HASH(h));
 	for (;;) {
 		duk_hstring *e;
-		
+
 		e = entries[i];
 		if (e == NULL) {
 			DUK_DDD(DUK_DDDPRINT("insert hit (null): %ld", (long) i));
@@ -32667,7 +32667,7 @@ static duk_bool_t duk__resize_strtab(duk_heap *heap) {
 
 	/* rehash even if old and new sizes are the same to get rid of
 	 * DELETED entries.
-	*/ 
+	*/
 
 	ret = duk__resize_strtab_raw(heap, new_size);
 
@@ -33166,7 +33166,7 @@ static void duk__sort_array_indices(duk_hobject *h_obj) {
 		DUK_DDD(DUK_DDDPRINT("p_curr=%p, p_end=%p, val_highest=%ld, val_curr=%ld -> "
 		                     "needs to be inserted",
 		                     (void *) p_curr, (void *) p_end, (long) val_highest, (long) val_curr));
-	
+
 		/* Needs to be inserted; scan backwards, since we optimize
 		 * for the case where elements are nearly in order.
 		 */
@@ -34480,7 +34480,7 @@ static void duk__realloc_props(duk_hthread *thr,
 	DUK_ASSERT(obj->p != NULL || (obj->e_size == 0 && obj->a_size == 0));
 	DUK_ASSERT(new_h_size == 0 || new_h_size >= new_e_size);  /* required to guarantee success of rehashing,
 	                                                           * intentionally use unadjusted new_e_size
-	                                                           */	
+	                                                           */
 	DUK_ASSERT_VALSTACK_SPACE(thr, DUK__VALSTACK_SPACE);
 
 	/*
@@ -35256,7 +35256,7 @@ static duk_bool_t duk__alloc_entry_checked(duk_hthread *thr, duk_hobject *obj, d
 /*
  *  Object internal value
  *
- *  Returned value is guaranteed to be reachable / incref'd, caller does not need 
+ *  Returned value is guaranteed to be reachable / incref'd, caller does not need
  *  to incref OR decref.  No proxies or accessors are invoked, no prototype walk.
  */
 
@@ -35351,7 +35351,7 @@ static duk_bool_t duk__lookup_arguments_map(duk_hthread *thr,
 	map = duk_require_hobject(ctx, -1);
 	DUK_ASSERT(map != NULL);
 	duk_pop(ctx);  /* map is reachable through obj */
-	
+
 	if (!duk__get_own_property_desc(thr, map, key, temp_desc, 1)) {  /* push_value = 1 */
 		DUK_DDD(DUK_DDDPRINT("-> 'map' exists, but key not in map"));
 		return 0;
@@ -35478,7 +35478,7 @@ static void duk__check_arguments_map_for_delete(duk_hthread *thr, duk_hobject *o
 	map = duk_require_hobject(ctx, -1);
 	DUK_ASSERT(map != NULL);
 	duk_pop(ctx);  /* map is reachable through obj */
-	
+
 	DUK_DDD(DUK_DDDPRINT("-> have 'map', delete key %!O from map (if exists)); ignore result",
 	                     (duk_heaphdr *) key));
 
@@ -37470,7 +37470,7 @@ duk_bool_t duk_hobject_putprop(duk_hthread *thr, duk_tval *tv_obj, duk_tval *tv_
 	/*
 	 *  Possible pending array length update, which must only be done
 	 *  if the actual entry write succeeded.
-	 */	
+	 */
 
 	if (new_array_length > 0) {
 		/*
@@ -37567,7 +37567,7 @@ duk_bool_t duk_hobject_putprop(duk_hthread *thr, duk_tval *tv_obj, duk_tval *tv_
 	}
 	duk_pop(ctx);  /* remove key */
 	return 0;
-	
+
  fail_not_writable:
 	DUK_DDD(DUK_DDDPRINT("result: error, not writable"));
 	if (throw_flag) {
@@ -37697,7 +37697,7 @@ duk_bool_t duk_hobject_delprop_raw(duk_hthread *thr, duk_hobject *obj, duk_hstri
 	}
 
 	DUK_UNREACHABLE();
-	
+
  success:
 	/*
 	 *  Argument exotic [[Delete]] behavior (E5 Section 10.6) is
@@ -37977,7 +37977,7 @@ void duk_hobject_define_property_internal(duk_hthread *thr, duk_hobject *obj, du
 
 			DUK_ASSERT(arr_idx < obj->a_size);
 			tv1 = DUK_HOBJECT_A_GET_VALUE_PTR(obj, arr_idx);
-			goto write_value;			
+			goto write_value;
 		}
 	}
 
@@ -38500,7 +38500,7 @@ duk_ret_t duk_hobject_object_define_property(duk_context *ctx) {
 			DUK_DDD(DUK_DDDPRINT("exotic array behavior for 'length', but no value in descriptor -> normal behavior"));
 			goto skip_array_exotic;
 		}
-	
+
 		DUK_DDD(DUK_DDDPRINT("exotic array behavior for 'length', value present in descriptor -> exotic behavior"));
 
 		/*
@@ -38715,7 +38715,7 @@ duk_ret_t duk_hobject_object_define_property(duk_context *ctx) {
 	if (has_value) {
 		duk_tval *tmp1;
 		duk_tval *tmp2;
-	
+
 		/* attempt to change from accessor to data property */
 		if (curr.flags & DUK_PROPDESC_FLAG_ACCESSOR) {
 			goto need_check;
@@ -39252,7 +39252,7 @@ duk_ret_t duk_hobject_object_define_properties(duk_context *ctx) {
 		/* [hobject props descriptors enum(props) key desc] */
 
 		duk__normalize_property_descriptor(ctx);
-		
+
 		/* [hobject props descriptors enum(props) key desc_norm] */
 
 		duk_put_prop(ctx, 2);
@@ -39313,7 +39313,7 @@ duk_ret_t duk_hobject_object_define_properties(duk_context *ctx) {
 	/* [hobject props descriptors enum(descriptors)] */
 
 	duk_dup(ctx, 0);
-	
+
 	/* [hobject props descriptors enum(descriptors) hobject] */
 
 	return 1;
@@ -39345,7 +39345,7 @@ duk_bool_t duk_hobject_object_ownprop_helper(duk_context *ctx, duk_small_uint_t 
 
 /*
  *  Object.seal() and Object.freeze()  (E5 Sections 15.2.3.8 and 15.2.3.9)
- * 
+ *
  *  Since the algorithms are similar, a helper provides both functions.
  *  Freezing is essentially sealing + making plain properties non-writable.
  *
@@ -39834,7 +39834,7 @@ void duk_hthread_create_builtin_objects(duk_hthread *thr) {
 		if (t != DUK__NO_BIDX_MARKER) {
 			/* 'constructor' property for all built-in objects (which have it) has attributes:
 			 *  [[Writable]] = true,
-			 *  [[Enumerable]] = false,	
+			 *  [[Enumerable]] = false,
 			 *  [[Configurable]] = true
 			 */
 			DUK_DDD(DUK_DDDPRINT("set external constructor: built-in %ld", (long) t));
@@ -40171,7 +40171,7 @@ void duk_hthread_create_builtin_objects(duk_hthread *thr) {
 		                   (long) i, (duk_heaphdr *) thr->builtins[i]));
 	}
 #endif
-	
+
 #ifdef DUK_USE_DDDPRINT /*XXX:incorrect*/
 	for (i = 0; i < DUK_NUM_BUILTINS; i++) {
 		DUK_DDD(DUK_DDDPRINT("built-in object %ld after initialization and compacting", (long) i));
@@ -41012,7 +41012,7 @@ static void duk__handle_bound_chain_for_call(duk_hthread *thr,
 	func = *p_func;
 
 	sanity = DUK_HOBJECT_BOUND_CHAIN_SANITY;
-	do {	
+	do {
 		duk_idx_t i, len;
 
 		if (!DUK_HOBJECT_HAS_BOUND(func)) {
@@ -41560,7 +41560,7 @@ duk_int_t duk_handle_call(duk_hthread *thr,
 
 	if (call_flags & DUK_CALL_FLAG_IGNORE_RECLIMIT) {
 		DUK_DD(DUK_DDPRINT("ignoring reclimit for this call (probably an errhandler call)"));
-	} else {	
+	} else {
 		if (thr->heap->call_recursion_depth >= thr->heap->call_recursion_limit) {
 			/* XXX: error message is a bit misleading: we reached a recursion
 			 * limit which is also essentially the same as a C callstack limit
@@ -41777,7 +41777,7 @@ duk_int_t duk_handle_call(duk_hthread *thr,
 	/* third arg: absolute index (to entire valstack) of idx_bottom of new activation */
 	env = duk_create_activation_environment_record(thr, func, act->idx_bottom);
 	DUK_ASSERT(env != NULL);
-	
+
 	/* [... func this arg1 ... argN envobj] */
 
 	DUK_ASSERT(DUK_HOBJECT_HAS_CREATEARGS(func));
@@ -41914,7 +41914,7 @@ duk_int_t duk_handle_call(duk_hthread *thr,
 	 */
 
 	retval = DUK_EXEC_SUCCESS;
-	goto shrink_and_finished;	
+	goto shrink_and_finished;
 
 	/*
 	 *  Ecmascript call
@@ -41991,7 +41991,7 @@ duk_int_t duk_handle_call(duk_hthread *thr,
 	 */
 
 	retval = DUK_EXEC_SUCCESS;
-	goto shrink_and_finished;	
+	goto shrink_and_finished;
 
  shrink_and_finished:
 	/* these are "soft" shrink checks, whose failures are ignored */
@@ -42036,7 +42036,7 @@ duk_int_t duk_handle_call(duk_hthread *thr,
 	DUK_ASSERT((thr->state == DUK_HTHREAD_STATE_INACTIVE && thr->heap->curr_thread == NULL) ||  /* first call */
 	           (thr->state == DUK_HTHREAD_STATE_INACTIVE && thr->heap->curr_thread != NULL) ||  /* other call */
 	           (thr->state == DUK_HTHREAD_STATE_RUNNING && thr->heap->curr_thread == thr));     /* current thread */
-	
+
 	thr->heap->call_recursion_depth = entry_call_recursion_depth;
 
 	return retval;
@@ -42711,7 +42711,7 @@ void duk_handle_ecma_call_setup(duk_hthread *thr,
 		DUK_TVAL_SET_TVAL(tv1, tv2);
 		DUK_TVAL_INCREF(thr, tv1);
 		DUK_TVAL_DECREF(thr, &tv_tmp);  /* side effects */
-		
+
 		for (i_arg = 0; i_arg < idx_args; i_arg++) {
 			/* XXX: block removal API primitive */
 			/* Note: 'func' is popped from valstack here, but it is
@@ -43942,7 +43942,7 @@ static void duk__emit_a_b_c(duk_compiler_ctx *comp_ctx, duk_small_uint_t op_flag
 
 	DUK_DDD(DUK_DDDPRINT("emit: op_flags=%04lx, a=%ld, b=%ld, c=%ld",
 	                     (unsigned long) op_flags, (long) a, (long) b, (long) c));
-	
+
 	/* We could rely on max temp/const checks: if they don't exceed BC
 	 * limit, nothing here can either (just asserts would be enough).
 	 * Currently we check for the limits, which provides additional
@@ -44417,7 +44417,7 @@ static void duk__peephole_optimize_bytecode(duk_compiler_ctx *comp_ctx) {
 			if (DUK_DEC_OP(ins) != DUK_OP_JUMP) {
 				continue;
 			}
-	
+
 			target_pc1 = i + 1 + DUK_DEC_ABC(ins) - DUK_BC_JUMP_BIAS;
 			DUK_DDD(DUK_DDDPRINT("consider jump at pc %ld; target_pc=%ld", (long) i, (long) target_pc1));
 			DUK_ASSERT(target_pc1 >= 0);
@@ -45337,7 +45337,7 @@ static void duk__nud_array_literal(duk_compiler_ctx *comp_ctx, duk_ivalue *res) 
 
 	reg_obj = DUK__ALLOCTEMP(comp_ctx);
 	duk__emit_extraop_b_c(comp_ctx,
-	                      DUK_EXTRAOP_NEWARR | DUK__EMIT_FLAG_B_IS_TARGET, 
+	                      DUK_EXTRAOP_NEWARR | DUK__EMIT_FLAG_B_IS_TARGET,
 	                      reg_obj,
 	                      0);  /* XXX: patch initial size afterwards? */
  	temp_start = DUK__GETTEMP(comp_ctx);
@@ -45435,7 +45435,7 @@ static void duk__nud_array_literal(duk_compiler_ctx *comp_ctx, duk_ivalue *res) 
 			init_idx = start_idx + num_values;
 
 			/* num_values and temp_start reset at top of outer loop */
-		}	
+		}
 	}
 
 	DUK_ASSERT(comp_ctx->curr_token.t == DUK_TOK_RBRACKET);
@@ -45592,7 +45592,7 @@ static void duk__nud_object_literal(duk_compiler_ctx *comp_ctx, duk_ivalue *res)
 			 *  a string constant) even for numeric keys (e.g. "{1:'foo'}").
 			 *  These could be emitted using e.g. LDINT, but that seems hardly
 			 *  worth the effort and would increase code size.
-			 */ 
+			 */
 
 			DUK_DDD(DUK_DDDPRINT("object literal inner loop, curr_token->t = %ld",
 			                     (long) comp_ctx->curr_token.t));
@@ -45619,7 +45619,7 @@ static void duk__nud_object_literal(duk_compiler_ctx *comp_ctx, duk_ivalue *res)
 				}
 			}
 
-			/* advance to get one step of lookup */		
+			/* advance to get one step of lookup */
 			duk__advance(comp_ctx);
 
 			/* NOTE: "get" and "set" are not officially ReservedWords and the lexer
@@ -46505,7 +46505,7 @@ static void duk__expr_led(duk_compiler_ctx *comp_ctx, duk_ivalue *left, duk_ival
 			}
 		} else if (left->t == DUK_IVAL_PROP) {
 			DUK_DDD(DUK_DDDPRINT("function call with property base"));
-			
+
 			duk__ispec_toforcedreg(comp_ctx, &left->x1, reg_cs + 0);  /* base */
 			duk__ispec_toforcedreg(comp_ctx, &left->x2, reg_cs + 1);  /* key */
 			duk__emit_a_b_c(comp_ctx,
@@ -46997,7 +46997,7 @@ static void duk__expr_led(duk_compiler_ctx *comp_ctx, duk_ivalue *left, duk_ival
 
 			reg_obj = duk__ispec_toregconst_raw(comp_ctx, &left->x1, -1 /*forced_reg*/, 0 /*flags*/);  /* don't allow const */
 			rc_key = duk__ispec_toregconst_raw(comp_ctx, &left->x2, -1 /*forced_reg*/, DUK__IVAL_FLAG_ALLOW_CONST /*flags*/);
-	
+
 			if (args_op == DUK_OP_INVALID) {
 				rc_res = res->x1.regconst;
 			} else {
@@ -47043,7 +47043,7 @@ static void duk__expr_led(duk_compiler_ctx *comp_ctx, duk_ivalue *left, duk_ival
 
 			/* then evaluate RHS fully (its value becomes the expression value too) */
 			rc_res = duk__expr_toregconst(comp_ctx, res, args_rbp /*rbp_flags*/);
-	
+
 			duk__emit_extraop_only(comp_ctx,
 			                       DUK_EXTRAOP_INVLHS);
 
@@ -47132,7 +47132,7 @@ static void duk__expr_led(duk_compiler_ctx *comp_ctx, duk_ivalue *left, duk_ival
 			reg_obj = duk__ispec_toregconst_raw(comp_ctx, &left->x1, -1 /*forced_reg*/, 0 /*flags*/);  /* don't allow const */
 			rc_key = duk__ispec_toregconst_raw(comp_ctx, &left->x2, -1 /*forced_reg*/, DUK__IVAL_FLAG_ALLOW_CONST /*flags*/);
 			duk__emit_a_b_c(comp_ctx,
-			                DUK_OP_GETPROP, 
+			                DUK_OP_GETPROP,
 			                (duk_regconst_t) reg_res,
 			                (duk_regconst_t) reg_obj,
 			                rc_key);
@@ -47513,7 +47513,7 @@ static void duk__parse_var_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res) {
 			break;
 		}
 		duk__advance(comp_ctx);
-	} 
+	}
 }
 
 static void duk__parse_for_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk_int_t pc_label_site) {
@@ -47549,7 +47549,7 @@ static void duk__parse_for_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk
 	 *  See doc/compiler.txt for a detailed discussion of control flow
 	 *  issues, evaluation order issues, etc.
 	 */
-	
+
 	duk__advance(comp_ctx);  /* eat 'for' */
 	duk__advance_expect(comp_ctx, DUK_TOK_LPAREN);
 
@@ -47861,7 +47861,7 @@ static void duk__parse_for_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk
 	DUK_DDD(DUK_DDDPRINT("end parsing a for/for-in statement"));
 	return;
 
- syntax_error:		
+ syntax_error:
 	DUK_ERROR(thr, DUK_ERR_SYNTAX_ERROR, DUK_STR_INVALID_FOR);
 }
 
@@ -47886,7 +47886,7 @@ static void duk__parse_switch_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, 
 	 *    - Case selectors are expressions, not values, and may thus e.g. throw
 	 *      exceptions (which causes evaluation order concerns)
 	 *
-	 *    - Evaluation semantics of case selectors and default clause need to be 
+	 *    - Evaluation semantics of case selectors and default clause need to be
 	 *      carefully implemented to provide correct behavior even with case value
 	 *      side effects
 	 *
@@ -48632,6 +48632,7 @@ static void duk__parse_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk_boo
 	duk_small_uint_t stmt_flags = 0;
 	duk_int_t label_id = -1;
 	duk_small_uint_t tok;
+  int check_allow_source_elem;
 
 	DUK__RECURSION_INCREASE(comp_ctx, thr);
 
@@ -48702,12 +48703,12 @@ static void duk__parse_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk_boo
 		/* Lenient: allow function declarations outside top level in
 		 * non-strict mode but reject them in strict mode.
 		 */
-		if (allow_source_elem || !comp_ctx->curr_func.is_strict)
+    check_allow_source_elem = (allow_source_elem || !comp_ctx->curr_func.is_strict);
 #else  /* DUK_USE_NONSTD_FUNC_STMT */
 		/* Strict: never allow function declarations outside top level. */
-		if (allow_source_elem)
+    check_allow_source_elem = (allow_source_elem);
 #endif  /* DUK_USE_NONSTD_FUNC_STMT */
-		{
+		if (check_allow_source_elem){
 			/* FunctionDeclaration: not strictly a statement but handled as such.
 			 *
 		 	 * O(depth^2) parse count for inner functions is handled by recording a
@@ -48945,7 +48946,7 @@ static void duk__parse_stmt(duk_compiler_ctx *comp_ctx, duk_ivalue *res, duk_boo
 			               h_lab,
 			               pc_at_entry /*pc_label*/,
 			               label_id);
-	
+
 			/* a statement following a label cannot be a source element
 			 * (a function declaration).
 			 */
@@ -49187,7 +49188,7 @@ static void duk__parse_stmts(duk_compiler_ctx *comp_ctx, duk_bool_t allow_source
  *
  *  Some bindings in E5 are not configurable (= deletable) and almost all
  *  are mutable (writable).  Exceptions are:
- * 
+ *
  *    - The 'arguments' binding, established only if no shadowing argument
  *      or function declaration exists.  We handle 'arguments' creation
  *      and binding through an explicit slow path environment record.
@@ -49196,7 +49197,7 @@ static void duk__parse_stmts(duk_compiler_ctx *comp_ctx, duk_bool_t allow_source
  *      handled through an explicit slow path environment record.
  */
 
-/* XXX: add support for variables to not be register bound always, to 
+/* XXX: add support for variables to not be register bound always, to
  * handle cases with a very large number of variables?
  */
 
@@ -49996,7 +49997,7 @@ static duk_int_t duk__parse_func_like_fnum(duk_compiler_ctx *comp_ctx, duk_bool_
 	/*
 	 *  Cleanup: restore original function, restore valstack state.
 	 */
-	
+
 	DUK_MEMCPY((void *) &comp_ctx->curr_func, (void *) &old_func, sizeof(duk_compiler_func));
 	duk_set_top(ctx, entry_top);
 
@@ -50238,7 +50239,7 @@ static duk_hobject *duk__find_nonbound_function(duk_hthread *thr, duk_hobject *f
 	DUK_ASSERT(DUK_HOBJECT_HAS_BOUND(func));
 
 	sanity = DUK_HOBJECT_BOUND_CHAIN_SANITY;
-	do {	
+	do {
 		if (!DUK_HOBJECT_HAS_BOUND(func)) {
 			break;
 		}
@@ -50434,7 +50435,7 @@ static void duk__vm_arith_binary_op(duk_hthread *thr, duk_tval *tv_x, duk_tval *
 	/* important to use normalized NaN with 8-byte tagged types */
 	DUK_DBLUNION_NORMALIZE_NAN_CHECK(&du);
 	DUK_ASSERT(DUK_DBLUNION_IS_NORMALIZED(&du));
-	
+
 	tv_z = thr->valstack_bottom + idx_z;
 	DUK_TVAL_SET_TVAL(&tv_tmp, tv_z);
 	DUK_TVAL_SET_NUMBER(tv_z, du.d);
@@ -50698,7 +50699,7 @@ static void duk__reconfig_valstack(duk_hthread *thr, duk_size_t act_idx, duk_sma
 	/* clamp so that retval is at the top (retval_count == 1) or register just before
 	 * intended retval is at the top (retval_count == 0, happens e.g. with 'finally').
 	 */
-	duk_set_top((duk_context *) thr, 
+	duk_set_top((duk_context *) thr,
 	            (duk_idx_t) (thr->callstack[act_idx].idx_retval -
 	                         thr->callstack[act_idx].idx_bottom +
 	                         retval_count));
@@ -50995,7 +50996,7 @@ static duk_small_uint_t duk__handle_longjmp(duk_hthread *thr,
 
 			resumee->resumer = thr;
 			resumee->state = DUK_HTHREAD_STATE_RUNNING;
-			thr->state = DUK_HTHREAD_STATE_RESUMED;	
+			thr->state = DUK_HTHREAD_STATE_RESUMED;
 			DUK_HEAP_SWITCH_THREAD(thr->heap, resumee);
 			thr = resumee;
 
@@ -51236,7 +51237,7 @@ static duk_small_uint_t duk__handle_longjmp(duk_hthread *thr,
 			retval = DUK__LONGJMP_RESTART;
 			goto wipe_and_return;
 		}
-	
+
 		DUK_DD(DUK_DDPRINT("no calling activation, thread finishes (similar to yield)"));
 
 		DUK_ASSERT(thr->resumer != NULL);
@@ -51274,7 +51275,7 @@ static duk_small_uint_t duk__handle_longjmp(duk_hthread *thr,
 		/*
 		 *  Find a matching label catcher or 'finally' catcher in
 		 *  the same function.
-		 *  
+		 *
 		 *  A label catcher must always exist and will match unless
 		 *  a 'finally' captures the break/continue first.  It is the
 		 *  compiler's responsibility to ensure that labels are used
@@ -52891,7 +52892,7 @@ void duk_js_execute_bytecode(duk_hthread *entry_thread) {
 			 *  This overhead only affects bound functions (in particular, helper
 			 *  functions should not be called if the immediate target function is
 			 *  not bound).
-			 * 
+			 *
 			 *  Even so, this awkward solution could be avoided by e.g. replicating
 			 *  final, non-bound target function flags to the bound function objects
 			 *  (so that a bound function would e.g. have both a "BOUND" flag and
@@ -53427,7 +53428,7 @@ void duk_js_execute_bytecode(duk_hthread *entry_thread) {
 					DUK_ASSERT(duk_is_null(ctx, (duk_idx_t) c));
 					DUK_DDD(DUK_DDDPRINT("enum is null, execute jump slot"));
 				}
-				break;				
+				break;
 			}
 
 			case DUK_EXTRAOP_INITSET:
@@ -53515,7 +53516,7 @@ void duk_js_execute_bytecode(duk_hthread *entry_thread) {
 
 				if (DUK_CAT_HAS_FINALLY_ENABLED(cat)) {
 					DUK_DDD(DUK_DDDPRINT("ENDTRY: finally part is active, jump through 2nd jump slot with 'normal continuation'"));
-			
+
 					tv1 = thr->valstack + cat->idx_base;
 					DUK_ASSERT(tv1 >= thr->valstack && tv1 < thr->valstack_top);
 					DUK_TVAL_SET_TVAL(&tv_tmp, tv1);
@@ -53571,7 +53572,7 @@ void duk_js_execute_bytecode(duk_hthread *entry_thread) {
 
 				if (DUK_CAT_HAS_FINALLY_ENABLED(cat)) {
 					DUK_DDD(DUK_DDDPRINT("ENDCATCH: finally part is active, jump through 2nd jump slot with 'normal continuation'"));
-			
+
 					tv1 = thr->valstack + cat->idx_base;
 					DUK_ASSERT(tv1 >= thr->valstack && tv1 < thr->valstack_top);
 					DUK_TVAL_SET_TVAL(&tv_tmp, tv1);
@@ -53888,7 +53889,7 @@ duk_bool_t duk_js_toboolean(duk_tval *tv) {
  *
  *    - Unlike source code literals, ToNumber() coerces empty strings
  *      and strings with only whitespace to zero (not NaN).
- */	
+ */
 
 /* E5 Section 9.3.1 */
 static duk_double_t duk__tonumber_string_raw(duk_hthread *thr) {
@@ -54024,7 +54025,7 @@ duk_double_t duk_js_tointeger(duk_hthread *thr, duk_tval *tv) {
  *  ToInt32(), ToUint32(), ToUint16()  (E5 Sections 9.5, 9.6, 9.7)
  */
 
-/* combined algorithm matching E5 Sections 9.5 and 9.6 */	
+/* combined algorithm matching E5 Sections 9.5 and 9.6 */
 static duk_double_t duk__toint32_touint32_helper(duk_double_t x, duk_bool_t is_toint32) {
 	duk_small_int_t c = (duk_small_int_t) DUK_FPCLASSIFY(x);
 	duk_small_int_t s;
@@ -54040,7 +54041,7 @@ static duk_double_t duk__toint32_touint32_helper(duk_double_t x, duk_bool_t is_t
 	if (s) {
 		x = -x;
 	}
-	
+
 	/* NOTE: fmod(x) result sign is same as sign of x, which
 	 * differs from what Javascript wants (see Section 9.6).
 	 */
@@ -54794,7 +54795,7 @@ duk_bool_t duk_js_instanceof(duk_hthread *thr, duk_tval *tv_x, duk_tval *tv_y) {
  *
  *  Basically just a property existence check using [[HasProperty]].
  */
-	
+
 duk_bool_t duk_js_in(duk_hthread *thr, duk_tval *tv_x, duk_tval *tv_y) {
 	duk_context *ctx = (duk_context *) thr;
 	duk_bool_t retval;
@@ -54937,7 +54938,7 @@ duk_small_int_t duk_js_to_arrayindex_raw_string(duk_uint8_t *str, duk_uint32_t b
  parse_fail:
 	*out_idx = DUK_HSTRING_NO_ARRAY_INDEX;
 	return 0;
-}	
+}
 
 /* Called by duk_hstring.h macros */
 duk_uarridx_t duk_js_to_arrayindex_string_helper(duk_hstring *h) {
@@ -55066,7 +55067,7 @@ static const duk_uint16_t duk__closure_copy_proplist[] = {
 	DUK_STRIDX_FILE_NAME,
 	DUK_STRIDX_INT_SOURCE
 };
-	
+
 void duk_js_push_closure(duk_hthread *thr,
                          duk_hcompiledfunction *fun_temp,
                          duk_hobject *outer_var_env,
@@ -55400,7 +55401,7 @@ void duk_js_push_closure(duk_hthread *thr,
 	/*
 	 *  Finish
 	 */
-	
+
 	/* [ ... closure template ] */
 
 	DUK_DDD(DUK_DDDPRINT("created function instance: template=%!iT -> closure=%!iT",
@@ -56292,7 +56293,7 @@ static void duk__putvar_helper(duk_hthread *thr,
 
 		return;
 	}
-	
+
 	/*
 	 *  Not found: write to global object (non-strict) or ReferenceError
 	 *  (strict); see E5 Section 8.7.2, step 3.
@@ -56401,7 +56402,7 @@ duk_bool_t duk_js_delvar_envrec(duk_hthread *thr,
                                 duk_hstring *name) {
 	return duk__delvar_helper(thr, env, NULL, name);
 }
-	
+
 duk_bool_t duk_js_delvar_activation(duk_hthread *thr,
                                     duk_activation *act,
                                     duk_hstring *name) {
@@ -56745,7 +56746,7 @@ duk_bool_t duk_js_declvar_activation(duk_hthread *thr,
  *  perform multiple character lookups efficiently and with few sanity
  *  checks (such as access outside the end of the input), which keeps the
  *  tokenization code small at the cost of performance.
- * 
+ *
  *  Character data in tokens (such as identifier names and string literals)
  *  is encoded into CESU-8 format on-the-fly while parsing the token in
  *  question.  The string data is made reachable to garbage collection by
@@ -56882,7 +56883,7 @@ duk_bool_t duk_js_declvar_activation(duk_hthread *thr,
  *
  *    * Reject other invalid Unicode sequences (see Wikipedia entry for examples)
  *      in strict UTF-8 mode.
- * 
+ *
  *    * Size optimize.  An attempt to use a 16-byte lookup table for the first
  *      byte resulted in a code increase though.
  *
@@ -57385,7 +57386,7 @@ static void duk__parse_input_element_raw(duk_lexer_ctx *lex_ctx,
 			 *          '4'			RegularExpressionNonTerminator
 			 *
 			 *      and the escape itself is then parsed by the regexp engine.
-			 *      This is the current implementation. 
+			 *      This is the current implementation.
 			 *
 			 *  Minor spec inconsistency:
 			 *
@@ -57396,9 +57397,9 @@ static void duk__parse_input_element_raw(duk_lexer_ctx *lex_ctx,
 			 *      while Section A.1 RegularExpressionBackslashSequence is:
 			 *
 			 *         \ NonTerminator
-			 * 
+			 *
 			 *      The latter is not normative and a typo.
-			 * 
+			 *
 			 */
 
 			/* first, parse regexp body roughly */
@@ -57762,7 +57763,7 @@ static void duk__parse_input_element_raw(duk_lexer_ctx *lex_ctx,
 			 * OctalIntegerLiteral is the only valid NumericLiteral
 			 * alternative at this point (even if y is, say, '9').
 			 */
-	
+
 			DUK__APPENDBUFFER(lex_ctx, x);
 			DUK__ADVANCE(lex_ctx, 1);
 			int_only = 1;
@@ -57938,7 +57939,7 @@ static void duk__parse_input_element_raw(duk_lexer_ctx *lex_ctx,
 					} else if (((DUK__ISDIGIT03(x) && !DUK__ISDIGIT(DUK__L3())) || DUK__ISDIGIT47(x)) &&
 					           DUK__ISOCTDIGIT(y)) {
 						/* Two digit octal escape, digits validated.
-						 * 
+						 *
 						 * The if-condition is a bit tricky.  We could catch e.g.
 						 * '\039' in the three-digit escape and fail it there (by
 					         * validating the digits), but we want to avoid extra
@@ -58096,7 +58097,7 @@ void duk_lexer_parse_re_token(duk_lexer_ctx *lex_ctx, duk_re_token *out_token) {
 	}
 	case '?': {
 		out_token->qmin = 0;
-		out_token->qmax = 1;	
+		out_token->qmax = 1;
 		if (y == '?') {
 			advtok = DUK__ADVTOK(2, DUK_RETOK_QUANTIFIER);
 			out_token->greedy = 0;
@@ -58698,7 +58699,7 @@ static void duk__bi_print(const char *name, duk__bigint *x) {
 
 #ifdef DUK_USE_ASSERTIONS
 static duk_small_int_t duk__bi_is_valid(duk__bigint *x) {
-	return (duk_small_int_t) 
+	return (duk_small_int_t)
 	       ( ((x->n >= 0) && (x->n <= DUK__BI_MAX_PARTS)) /* is valid size */ &&
 	         ((x->n == 0) || (x->v[x->n - 1] != 0)) /* is normalized */ );
 }
@@ -59891,7 +59892,7 @@ static void duk__dragon4_convert_and_push(duk__numconv_stringify_ctx *nc_ctx,
 			dig = nc_ctx->digits[k - pos];
 			DUK_ASSERT(dig >= 0 && dig < nc_ctx->B);
 			*q++ = (duk_uint8_t) DUK__DIGITCHAR(dig);
-		} 
+		}
 
 		pos--;
 	}
@@ -60305,7 +60306,7 @@ void duk_numconv_stringify(duk_context *ctx, duk_small_int_t radix, duk_small_in
 			 */
 			roundpos = -digits;  /* absolute position for digit considered for rounding */
 			roundpos = nc_ctx->k - roundpos;
-			
+
 		} else {
 			roundpos = digits;
 		}
@@ -60509,7 +60510,7 @@ void duk_numconv_parse(duk_context *ctx, duk_small_int_t radix, duk_small_uint_t
 	 *     Parsing whole part      dig_frac < 0 AND dig_exp < 0
 	 *     Parsing fraction part   dig_frac >= 0 AND dig_exp < 0
 	 *     Parsing exponent part   dig_exp >= 0   (dig_frac may be < 0 or >= 0)
-	 * 
+	 *
 	 *  Note: in case we hit an implementation limit (like exponent range),
 	 *  we should throw an error, NOT return NaN or Infinity.  Even with
 	 *  very large exponent (or significand) values the final result may be
@@ -60643,7 +60644,7 @@ void duk_numconv_parse(duk_context *ctx, duk_small_int_t radix, duk_small_uint_t
 				 */
 				exp_adj++;
 			}
-	
+
 			if (dig_frac >= 0) {
 				dig_frac++;
 				exp_adj--;
@@ -61874,7 +61875,7 @@ void duk_regexp_compile(duk_hthread *thr) {
  *  Input stack:  [ escaped_source bytecode ]  (both as strings)
  *  Output stack: [ RegExp ]
  */
- 
+
 void duk_regexp_create_instance(duk_hthread *thr) {
 	duk_context *ctx = (duk_context *) thr;
 	duk_hobject *h;
@@ -62064,7 +62065,7 @@ static duk_codepoint_t duk__inp_get_prev_cp(duk_re_matcher_ctx *re_ctx, duk_uint
 	(void) duk__inp_backtrack(re_ctx, &sp, (duk_uint_fast32_t) 1);
 	return duk__inp_get_cp(re_ctx, &sp);
 }
-	
+
 /*
  *  Regexp recursive matching function.
  *
@@ -62150,7 +62151,7 @@ static duk_uint8_t *duk__match_regexp(duk_re_matcher_ctx *re_ctx, duk_uint8_t *p
 			duk_uint32_t n;
 			duk_codepoint_t c;
 			duk_small_int_t match;
-	
+
 			n = duk__bc_get_u32(re_ctx, &pc);
 			if (sp >= re_ctx->input_end) {
 				goto fail;
@@ -63474,7 +63475,7 @@ duk_small_int_t duk_unicode_encode_cesu8(duk_ucodepoint_t cp, duk_uint8_t *out) 
 		 *  See: http://en.wikipedia.org/wiki/Surrogate_pair
 		 *
 		 *  20-bit codepoint, 10 bits (A and B) per surrogate pair:
-		 * 
+		 *
 		 *    x = 0b00000000 0000AAAA AAAAAABB BBBBBBBB
 		 *  sp1 = 0b110110AA AAAAAAAA  (0xd800 + ((x >> 10) & 0x3ff))
 		 *  sp2 = 0b110111BB BBBBBBBB  (0xdc00 + (x & 0x3ff))
@@ -63704,7 +63705,7 @@ duk_small_int_t duk_unicode_is_whitespace(duk_codepoint_t cp) {
 	 *  It also specifies any Unicode category 'Zs' characters as white
 	 *  space.  These can be extracted with the "src/extract_chars.py" script.
 	 *  Current result:
-	 *  
+	 *
 	 *    RAW OUTPUT:
 	 *    ===========
 	 *    0020;SPACE;Zs;0;WS;;;;;N;;;;;
@@ -63725,7 +63726,7 @@ duk_small_int_t duk_unicode_is_whitespace(duk_codepoint_t cp) {
 	 *    202F;NARROW NO-BREAK SPACE;Zs;0;CS;<noBreak> 0020;;;;N;;;;;
 	 *    205F;MEDIUM MATHEMATICAL SPACE;Zs;0;WS;<compat> 0020;;;;N;;;;;
 	 *    3000;IDEOGRAPHIC SPACE;Zs;0;WS;<wide> 0020;;;;N;;;;;
-	 *  
+	 *
 	 *    RANGES:
 	 *    =======
 	 *    0x0020
@@ -64017,7 +64018,7 @@ duk_small_int_t duk_unicode_is_letter(duk_codepoint_t cp) {
  *  is very slow because it runs through the conversion data in a linear
  *  fashion to save space (which is why ASCII characters have a special
  *  fast path before arriving here).
- * 
+ *
  *  The particular bit counts etc have been determined experimentally to
  *  be small but still sufficient, and must match the Python script
  *  (src/extract_caseconv.py).
@@ -65020,4 +65021,3 @@ duk_double_t duk_util_tinyrandom_get_double(duk_hthread *thr) {
 
 	return t;
 }
-

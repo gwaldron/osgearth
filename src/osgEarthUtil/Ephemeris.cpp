@@ -232,6 +232,7 @@ namespace
         }
 
         // Math: http://www.stjarnhimlen.se/comp/ppcomp.html
+        // More: http://www.stjarnhimlen.se/comp/tutorial.html#7
         // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
         osg::Vec3d getRaDeclRange(int year, int month, int date, double hoursUTC ) const
         {

@@ -277,8 +277,48 @@ namespace
             double zh = r * ( sin(v+w) * sin(i) );
 
             // calculate the ecliptic latitude and longitude here
-            double lonEcl = atan2 (yh, xh);
+            double lonEcl = atan2(yh, xh);
             double latEcl = atan2(zh, sqrt(xh*xh + yh*yh));
+
+            //Just use the average distance from the earth
+            double rg = 6378137.0 * a;
+
+#if 1
+            // add in the more significant perturbations.
+            double Mm = M;
+            double Ms = osg::DegreesToRadians(356.0470 + 0.9856002585 * d); nrad2(Ms); // mean anomaly of the sun
+            double ws = osg::DegreesToRadians(282.9404 + 4.70935E-5   * d); nrad2(ws); // sun's longitude of perihelion
+            double Ls = ws + Ms;    nrad2(Ls);
+            double Lm = N + w + Mm; nrad2(Lm);
+            double D = Lm - Ls;     nrad2(D);
+            double F = Lm - N;      nrad2(F);
+
+            lonEcl = lonEcl
+                + osg::DegreesToRadians(-1.274) * sin(Mm - 2*D)   // (Evection)
+                + osg::DegreesToRadians(+0.658) * sin(2*D)         //(Variation)
+                + osg::DegreesToRadians(-0.186) * sin(Ms)         // (Yearly equation)
+                + osg::DegreesToRadians(-0.059) * sin(2*Mm - 2*D)
+                + osg::DegreesToRadians(-0.057) * sin(Mm - 2*D + Ms)
+                + osg::DegreesToRadians(+0.053) * sin(Mm + 2*D)
+                + osg::DegreesToRadians(+0.046) * sin(2*D - Ms)
+                + osg::DegreesToRadians(+0.041) * sin(Mm - Ms)
+                + osg::DegreesToRadians(-0.035) * sin(D)           // (Parallactic equation)
+                + osg::DegreesToRadians(-0.031) * sin(Mm + Ms)
+                + osg::DegreesToRadians(-0.015) * sin(2*F - 2*D)
+                + osg::DegreesToRadians(+0.011) * sin(Mm - 4*D);
+
+            latEcl = latEcl
+                + osg::DegreesToRadians(-0.173) * sin(F - 2*D)
+                + osg::DegreesToRadians(-0.055) * sin(Mm - F - 2*D)
+                + osg::DegreesToRadians(-0.046) * sin(Mm + F - 2*D)
+                + osg::DegreesToRadians(+0.033) * sin(F + 2*D)
+                + osg::DegreesToRadians(+0.017) * sin(2*Mm + F);
+
+            rg = rg +
+                -0.58 * cos(Mm - 2*D)
+                -0.46 * cos(2*D);
+
+#endif
 
             // convert to elliptic geocentric:
             double xg = r * cos(lonEcl) * cos(latEcl);
@@ -292,9 +332,6 @@ namespace
 
             double RA  = atan2(ye, xe);
             double Dec = atan2(ze, sqrt(xe*xe + ye*ye));
-
-            //Just use the average distance from the earth
-            double rg = 6378137.0 * a;
             
             // finally, adjust for the time of day (rotation of the earth)
             double moon_r = RA/TWO_PI; // convert to 0..1
@@ -338,8 +375,8 @@ osg::Vec3d
 Ephemeris::getMoonPositionECEF(const DateTime& date) const
 {
     Moon moon;
-    //osg::Vec3d rdr = moon.getRaDeclRange(date.year(), date.month(), date.day(), date.hours());
-    //OE_NOTICE << "Moon: Y=" << date.year() << ", M=" << date.month() << ", D=" << date.day() << ", H=" << date.hours() << ": RA=" << osg::RadiansToDegrees(rdr.x()) << "; Decl=" << osg::RadiansToDegrees(rdr.y()) << "; Range=" << rdr.z() << std::endl;
+    osg::Vec3d rdr = moon.getRaDeclRange(date.year(), date.month(), date.day(), date.hours());
+    OE_NOTICE << "Moon: Y=" << date.year() << ", M=" << date.month() << ", D=" << date.day() << ", H=" << date.hours() << ": RA=" << osg::RadiansToDegrees(rdr.x()) << "; Decl=" << osg::RadiansToDegrees(rdr.y()) << "; Range=" << rdr.z() << std::endl;
     return moon.getECEF( date.year(), date.month(), date.day(), date.hours() );
 }
 

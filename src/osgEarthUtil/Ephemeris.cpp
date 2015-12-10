@@ -231,24 +231,39 @@ namespace
             return buf.str();
         }
 
-        // From http://www.stjarnhimlen.se/comp/ppcomp.html
-        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
+        // Math: http://www.stjarnhimlen.se/comp/ppcomp.html
+        // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
+        osg::Vec3d getRaDeclRange(int year, int month, int date, double hoursUTC ) const
         {
-            //double julianDate = getJulianDate( year, month, date );
-            //julianDate += hoursUTC /24.0;
-            double d = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-            d += (hoursUTC / 24.0);                     
+            int di = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
+            double d = (double)di;
+            double time_r = hoursUTC/24.0; // 0..1            
+            d += time_r;
 
-            double ecl = osg::DegreesToRadians(23.4393 - 3.563E-7 * d);
+            // the obliquity of the elliptic, i.e., the tilt of the earth
+            double ecl = osg::DegreesToRadians(23.4393 - 3.563E-7 * d); nrad2(ecl);
 
-            double N = osg::DegreesToRadians(125.1228 - 0.0529538083 * d);
-            double i = osg::DegreesToRadians(5.1454);
-            double w = osg::DegreesToRadians(318.0634 + 0.1643573223 * d);
+            double N = osg::DegreesToRadians(125.1228 - 0.0529538083 * d); nrad2(N);
+            double i = osg::DegreesToRadians(5.1454); nrad2(i);
+            double w = osg::DegreesToRadians(318.0634 + 0.1643573223 * d); nrad2(w);
             double a = 60.2666;//  (Earth radii)
             double e = 0.054900;
-            double M = osg::DegreesToRadians(115.3654 + 13.0649929509 * d);
+            double M = osg::DegreesToRadians(115.3654 + 13.0649929509 * d); nrad2(M);
 
-            double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
+            //double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
+            double E = M + e * sin(M) * ( 1.0 + e * cos(M) );
+            double E0 = E, E1 = 0.0;
+            double epsilon = osg::DegreesToRadians(0.001);
+            int count = 0;
+            do {
+                E1 = E0 - (E0 - e*sin(E0) - M) / (1.0 - e*cos(E0) );
+                E = E1;
+                std::swap(E0, E1);
+                ++count;
+            }
+            while( fabs(E1-E0) > epsilon && count < 10 );
+            
+            E = E - (E - e*sin(E) - M) / (1.0 - e*cos(E) );
             
             double xv = a * ( cos(E) - e );
             double yv = a * ( sqrt(1.0 - e*e) * sin(E) );
@@ -265,33 +280,41 @@ namespace
             double lonEcl = atan2 (yh, xh);
             double latEcl = atan2(zh, sqrt(xh*xh + yh*yh));
 
+            // convert to elliptic geocentric:
             double xg = r * cos(lonEcl) * cos(latEcl);
             double yg = r * sin(lonEcl) * cos(latEcl);
             double zg = r * sin(latEcl);
 
+            // convert to equatorial geocentric:
             double xe = xg;
-            double ye = yg * cos(ecl) -zg * sin(ecl);
-            double ze = yg * sin(ecl) +zg * cos(ecl);
+            double ye = yg * cos(ecl) - zg * sin(ecl);
+            double ze = yg * sin(ecl) + zg * cos(ecl);
 
-            double RA    = atan2(ye, xe);
+            double RA  = atan2(ye, xe);
             double Dec = atan2(ze, sqrt(xe*xe + ye*ye));
 
-            //Just use the average distance from the earth            
-            double rg = 6378137.0 + 384400000.0;
+            //Just use the average distance from the earth
+            double rg = 6378137.0 * a;
             
             // finally, adjust for the time of day (rotation of the earth)
-            double time_r = hoursUTC/24.0; // 0..1            
             double moon_r = RA/TWO_PI; // convert to 0..1
 
             // rotational difference between UTC and current time
             double diff_r = moon_r - time_r;
             double diff_lon = TWO_PI * diff_r;
 
-            RA -= diff_lon;
+            //RA -= diff_lon;
 
             nrad2(RA);
 
-            return getPositionFromRADecl( RA, Dec, rg );
+            return osg::Vec3d(RA, Dec, rg);
+        }
+
+        osg::Vec3d getECEF(int year, int month, int date, double hoursUTC) const
+        {
+            
+            osg::Vec3d r = getRaDeclRange(year, month, date, hoursUTC);
+            return getPositionFromRADecl( r.x(), r.y(), r.z() );
         }
     };
 }
@@ -315,7 +338,9 @@ osg::Vec3d
 Ephemeris::getMoonPositionECEF(const DateTime& date) const
 {
     Moon moon;
-    return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
+    //osg::Vec3d rdr = moon.getRaDeclRange(date.year(), date.month(), date.day(), date.hours());
+    //OE_NOTICE << "Moon: Y=" << date.year() << ", M=" << date.month() << ", D=" << date.day() << ", H=" << date.hours() << ": RA=" << osg::RadiansToDegrees(rdr.x()) << "; Decl=" << osg::RadiansToDegrees(rdr.y()) << "; Range=" << rdr.z() << std::endl;
+    return moon.getECEF( date.year(), date.month(), date.day(), date.hours() );
 }
 
 osg::Vec3d

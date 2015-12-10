@@ -143,9 +143,14 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                                 // Generate the coverage acceptor shader
                                 osg::Shader* covTest = layer->createPredicateShader( getCoverage() );
-                                //covTest->setType( osg::Shader::TESSCONTROL );
+                                covTest->setName( covTest->getName() + "_GEOMETRY" );
                                 covTest->setType( osg::Shader::GEOMETRY );
                                 vp->setShader( covTest );
+
+                                osg::Shader* covTest2 = layer->createPredicateShader( getCoverage() );
+                                covTest->setName( covTest->getName() + "_TESSCONTROL" );
+                                covTest2->setType( osg::Shader::TESSCONTROL );
+                                vp->setShader( covTest2 );
 
                                 osg::ref_ptr<osg::Shader> layerShader = layer->createShader();
                                 layerShader->setType( osg::Shader::GEOMETRY );

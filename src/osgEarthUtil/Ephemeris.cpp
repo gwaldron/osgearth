@@ -242,19 +242,19 @@ namespace
             d += time_r;
 
             // the obliquity of the elliptic, i.e., the tilt of the earth
-            double ecl = osg::DegreesToRadians(23.4393 - 3.563E-7 * d); nrad2(ecl);
+            double ecl = d2r(23.4393 - 3.563E-7 * d); nrad2(ecl);
 
-            double N = osg::DegreesToRadians(125.1228 - 0.0529538083 * d); nrad2(N);
-            double i = osg::DegreesToRadians(5.1454); nrad2(i);
-            double w = osg::DegreesToRadians(318.0634 + 0.1643573223 * d); nrad2(w);
+            double N = d2r(125.1228 - 0.0529538083 * d); nrad2(N);
+            double i = d2r(5.1454); nrad2(i);
+            double w = d2r(318.0634 + 0.1643573223 * d); nrad2(w);
             double a = 60.2666;//  (Earth radii)
             double e = 0.054900;
-            double M = osg::DegreesToRadians(115.3654 + 13.0649929509 * d); nrad2(M);
+            double M = d2r(115.3654 + 13.0649929509 * d); nrad2(M);
 
             //double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
             double E = M + e * sin(M) * ( 1.0 + e * cos(M) );
             double E0 = E, E1 = 0.0;
-            double epsilon = osg::DegreesToRadians(0.001);
+            double epsilon = d2r(0.001);
             int count = 0;
             do {
                 E1 = E0 - (E0 - e*sin(E0) - M) / (1.0 - e*cos(E0) );
@@ -295,25 +295,25 @@ namespace
             double F = Lm - N;      nrad2(F);
 
             lonEcl = lonEcl
-                + osg::DegreesToRadians(-1.274) * sin(Mm - 2*D)   // (Evection)
-                + osg::DegreesToRadians(+0.658) * sin(2*D)         //(Variation)
-                + osg::DegreesToRadians(-0.186) * sin(Ms)         // (Yearly equation)
-                + osg::DegreesToRadians(-0.059) * sin(2*Mm - 2*D)
-                + osg::DegreesToRadians(-0.057) * sin(Mm - 2*D + Ms)
-                + osg::DegreesToRadians(+0.053) * sin(Mm + 2*D)
-                + osg::DegreesToRadians(+0.046) * sin(2*D - Ms)
-                + osg::DegreesToRadians(+0.041) * sin(Mm - Ms)
-                + osg::DegreesToRadians(-0.035) * sin(D)           // (Parallactic equation)
-                + osg::DegreesToRadians(-0.031) * sin(Mm + Ms)
-                + osg::DegreesToRadians(-0.015) * sin(2*F - 2*D)
-                + osg::DegreesToRadians(+0.011) * sin(Mm - 4*D);
+                + d2r(-1.274) * sin(Mm - 2*D)   // (Evection)
+                + d2r(+0.658) * sin(2*D)         //(Variation)
+                + d2r(-0.186) * sin(Ms)         // (Yearly equation)
+                + d2r(-0.059) * sin(2*Mm - 2*D)
+                + d2r(-0.057) * sin(Mm - 2*D + Ms)
+                + d2r(+0.053) * sin(Mm + 2*D)
+                + d2r(+0.046) * sin(2*D - Ms)
+                + d2r(+0.041) * sin(Mm - Ms)
+                + d2r(-0.035) * sin(D)           // (Parallactic equation)
+                + d2r(-0.031) * sin(Mm + Ms)
+                + d2r(-0.015) * sin(2*F - 2*D)
+                + d2r(+0.011) * sin(Mm - 4*D);
 
             latEcl = latEcl
-                + osg::DegreesToRadians(-0.173) * sin(F - 2*D)
-                + osg::DegreesToRadians(-0.055) * sin(Mm - F - 2*D)
-                + osg::DegreesToRadians(-0.046) * sin(Mm + F - 2*D)
-                + osg::DegreesToRadians(+0.033) * sin(F + 2*D)
-                + osg::DegreesToRadians(+0.017) * sin(2*Mm + F);
+                + d2r(-0.173) * sin(F - 2*D)
+                + d2r(-0.055) * sin(Mm - F - 2*D)
+                + d2r(-0.046) * sin(Mm + F - 2*D)
+                + d2r(+0.033) * sin(F + 2*D)
+                + d2r(+0.017) * sin(2*Mm + F);
 
             rg = rg +
                 -0.58 * cos(Mm - 2*D)
@@ -376,8 +376,8 @@ osg::Vec3d
 Ephemeris::getMoonPositionECEF(const DateTime& date) const
 {
     Moon moon;
-    osg::Vec3d rdr = moon.getRaDeclRange(date.year(), date.month(), date.day(), date.hours());
-    OE_NOTICE << "Moon: Y=" << date.year() << ", M=" << date.month() << ", D=" << date.day() << ", H=" << date.hours() << ": RA=" << osg::RadiansToDegrees(rdr.x()) << "; Decl=" << osg::RadiansToDegrees(rdr.y()) << "; Range=" << rdr.z() << std::endl;
+    //osg::Vec3d rdr = moon.getRaDeclRange(date.year(), date.month(), date.day(), date.hours());
+    //OE_NOTICE << "Moon: Y=" << date.year() << ", M=" << date.month() << ", D=" << date.day() << ", H=" << date.hours() << ": RA=" << osg::RadiansToDegrees(rdr.x()) << "; Decl=" << osg::RadiansToDegrees(rdr.y()) << "; Range=" << rdr.z() << std::endl;
     return moon.getECEF( date.year(), date.month(), date.day(), date.hours() );
 }
 

@@ -37,28 +37,22 @@ namespace
 
 #define d2r(X) osg::DegreesToRadians(X)
 #define r2d(X) osg::RadiansToDegrees(X)
-#define nrad(X) { while( X > TWO_PI ) X -= TWO_PI; while( X < 0.0 ) X += TWO_PI; }
+#define nrad(X) { while( X >= TWO_PI ) X -= TWO_PI; while( X < 0.0 ) X += TWO_PI; }
 #define nrad2(X) { while( X <= -osg::PI ) X += TWO_PI; while( X > osg::PI ) X -= TWO_PI; }
 
     static const double TWO_PI = (2.0*osg::PI);
     static const double JD2000 = 2451545.0;
-
-    struct CelestialPosition
-    {
-        osg::Vec3d _ecef;
-        double     _rightAscension;
-        double     _declination;
-        double     _localAzimuth;
-        double     _localElevation;
-        double     _localLatitude;
-        double     _localLongitude;
-    };
     
     osg::Vec3d getPositionFromRADecl(double ra, double decl, double range)
     {
-        return osg::Vec3(0,range,0) * 
-            osg::Matrix::rotate( decl, 1, 0, 0 ) * 
-            osg::Matrix::rotate( ra - osg::PI_2, 0, 0, 1 );
+        return osg::Vec3d(
+                range * cos(decl) * cos(ra),
+                range * cos(decl) * sin(ra),
+                range * sin(decl) );
+
+        //return osg::Vec3(0,range,0) * 
+        //    osg::Matrix::rotate( decl, 1, 0, 0 ) * 
+        //    osg::Matrix::rotate( ra, 0, 0, 1 ); // - osg::PI_2, 0, 0, 1 );
     }
 
 
@@ -234,22 +228,19 @@ namespace
         // Math: http://www.stjarnhimlen.se/comp/ppcomp.html
         // More: http://www.stjarnhimlen.se/comp/tutorial.html#7
         // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
-        osg::Vec3d getRaDeclRange(int year, int month, int date, double hoursUTC ) const
+        osg::Vec3d getEarthLonLatRange(int year, int month, int date, double hoursUTC ) const
         {
             int di = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
             double d = (double)di;
             double time_r = hoursUTC/24.0; // 0..1            
             d += time_r;
 
-            // the obliquity of the elliptic, i.e., the tilt of the earth
-            double ecl = d2r(23.4393 - 3.563E-7 * d); nrad2(ecl);
-
-            double N = d2r(125.1228 - 0.0529538083 * d); nrad2(N);
-            double i = d2r(5.1454); nrad2(i);
-            double w = d2r(318.0634 + 0.1643573223 * d); nrad2(w);
+            double N = d2r(125.1228 - 0.0529538083 * d);  nrad(N);
+            double i = d2r(5.1454);                       
+            double w = d2r(318.0634 + 0.1643573223 * d);  nrad(w);
             double a = 60.2666;//  (Earth radii)
             double e = 0.054900;
-            double M = d2r(115.3654 + 13.0649929509 * d); nrad2(M);
+            double M = d2r(115.3654 + 13.0649929509 * d); nrad(M);
 
             //double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
             double E = M + e * sin(M) * ( 1.0 + e * cos(M) );
@@ -284,20 +275,19 @@ namespace
             //Just use the average distance from the earth
             double rg = 6378137.0 * a;
 
-#if 1
-            // add in the more significant perturbations.
+            // add in the perturbations.
             double Mm = M;
-            double Ms = osg::DegreesToRadians(356.0470 + 0.9856002585 * d); nrad2(Ms); // mean anomaly of the sun
-            double ws = osg::DegreesToRadians(282.9404 + 4.70935E-5   * d); nrad2(ws); // sun's longitude of perihelion
-            double Ls = ws + Ms;    nrad2(Ls);
-            double Lm = N + w + Mm; nrad2(Lm);
-            double D = Lm - Ls;     nrad2(D);
-            double F = Lm - N;      nrad2(F);
+            double Ms = d2r(356.0470 + 0.9856002585 * d); //nrad(Ms); // mean anomaly of the sun
+            double ws = d2r(282.9404 + 4.70935E-5   * d); //nrad(ws); // sun's longitude of perihelion
+            double Ls = ws + Ms;    //nrad(Ls);
+            double Lm = N + w + Mm; //nrad(Lm);
+            double D = Lm - Ls;     //nrad(D);
+            double F = Lm - N;      //nrad(F);
 
             lonEcl = lonEcl
-                + d2r(-1.274) * sin(Mm - 2*D)   // (Evection)
+                + d2r(-1.274) * sin(Mm - 2*D)    // (Evection)
                 + d2r(+0.658) * sin(2*D)         //(Variation)
-                + d2r(-0.186) * sin(Ms)         // (Yearly equation)
+                + d2r(-0.186) * sin(Ms)          // (Yearly equation)
                 + d2r(-0.059) * sin(2*Mm - 2*D)
                 + d2r(-0.057) * sin(Mm - 2*D + Ms)
                 + d2r(+0.053) * sin(Mm + 2*D)
@@ -315,44 +305,79 @@ namespace
                 + d2r(+0.033) * sin(F + 2*D)
                 + d2r(+0.017) * sin(2*Mm + F);
 
-            rg = rg +
+            r = r +
                 -0.58 * cos(Mm - 2*D)
                 -0.46 * cos(2*D);
 
+            // R is in "earth radii", so resolve to meters:
+            r *= 6378137.0;
+
+#if 0
+            // convert to elliptic geocentric (unit)
+            double xg = cos(lonEcl) * cos(latEcl);
+            double yg = sin(lonEcl) * cos(latEcl);
+            double zg = sin(latEcl);
+
+            nrad(lonEcl);
+            double lonDeg = r2d(lonEcl);
+            double latDeg = r2d(latEcl);
 #endif
 
-            // convert to elliptic geocentric:
-            double xg = r * cos(lonEcl) * cos(latEcl);
-            double yg = r * sin(lonEcl) * cos(latEcl);
-            double zg = r * sin(latEcl);
+            // convert to elliptic geocentric (unit)
+            double xg = cos(lonEcl) * cos(latEcl);
+            double yg = sin(lonEcl) * cos(latEcl);
+            double zg = sin(latEcl);
 
-            // convert to equatorial geocentric:
+            // and then to rectangular equatorial (unit)
+            double ecl = d2r(23.4393 - 3.563E-7 * d); // obliquity of elliptic (tilt of earth)
             double xe = xg;
-            double ye = yg * cos(ecl) - zg * sin(ecl);
-            double ze = yg * sin(ecl) + zg * cos(ecl);
+            double ye = yg*cos(ecl) - zg*sin(ecl);
+            double ze = yg*sin(ecl) + zg*cos(ecl);
 
-            double RA  = atan2(ye, xe);
-            double Dec = atan2(ze, sqrt(xe*xe + ye*ye));
+            // get the ra/decl:
+            double RA   = atan2(ye, xe);
+            double Decl = atan2(ze, sqrt(xe*xe + ye*ye));
+
+            nrad(RA);
+            double RAdeg  = r2d(RA);
+            double Decdeg = r2d(Decl);
+          
+            // finally, adjust for the time of day (rotation of the earth).
+            double UT = d - floor(d);
+            double GMST0 = Ls + d2r(180.0);
+            double siteLon = 0.0, siteLat = 0.0;
+            double siderealTime = GMST0 + d2r(UT*360.0) + siteLon;
+            double hourAngle = siderealTime - RA;
+            nrad2(hourAngle);
+
+            double x = cos(hourAngle) * cos(Decl);
+            double y = sin(hourAngle) * cos(Decl);
+            double z = sin(Decl);
             
-            // finally, adjust for the time of day (rotation of the earth)
-            double moon_r = RA/TWO_PI; // convert to 0..1
+            double earthLat = atan2(z, sqrt(x*x + y*y) );
+            
+            // calculate the topographic right ascension and declination:
+            double mpar  = asin(1.0/r);
+            double gclat = siteLat - d2r(0.1924)*sin(2.0*siteLat);
+            double rho   = 0.99833 + 0.00167*cos(2.0*siteLat);
+            double g     = atan( tan(gclat) / cos(hourAngle) );
+            double topRA   = RA - (mpar * rho * cos(gclat) * sin(hourAngle) / cos(Decl));
+            double topDecl = Decl - (mpar * rho * sin(gclat) * sin(g - Decl) / sin(g));
 
-            // rotational difference between UTC and current time
-            double diff_r = moon_r - time_r;
-            double diff_lon = TWO_PI * diff_r;
+            // use that to calculate the 
+            double earthLon = topRA - GMST0 - d2r(UT*360.0);
 
-            //RA -= diff_lon;
-
-            nrad2(RA);
-
-            return osg::Vec3d(RA, Dec, rg);
+            return osg::Vec3d(earthLon, earthLat, r);
         }
 
         osg::Vec3d getECEF(int year, int month, int date, double hoursUTC) const
-        {
+        {            
+            osg::Vec3d LLA = getEarthLonLatRange(year, month, date, hoursUTC);
             
-            osg::Vec3d r = getRaDeclRange(year, month, date, hoursUTC);
-            return getPositionFromRADecl( r.x(), r.y(), r.z() );
+            return osg::Vec3d(
+                    LLA.z() * cos(LLA.y()) * cos(LLA.x()),
+                    LLA.z() * cos(LLA.y()) * sin(LLA.x()),
+                    LLA.z() * sin(LLA.y()) ); 
         }
     };
 }

@@ -228,6 +228,7 @@ namespace
         // Math: http://www.stjarnhimlen.se/comp/ppcomp.html
         // More: http://www.stjarnhimlen.se/comp/tutorial.html#7
         // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
+        // Test: http://www.timeanddate.com/astronomy/moon/light.html
         osg::Vec3d getEarthLonLatRange(int year, int month, int date, double hoursUTC ) const
         {
             int di = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
@@ -242,7 +243,6 @@ namespace
             double e = 0.054900;
             double M = d2r(115.3654 + 13.0649929509 * d); nrad(M);
 
-            //double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
             double E = M + e * sin(M) * ( 1.0 + e * cos(M) );
             double E0 = E, E1 = 0.0;
             double epsilon = d2r(0.001);
@@ -255,7 +255,7 @@ namespace
             }
             while( fabs(E1-E0) > epsilon && count < 10 );
             
-            E = E - (E - e*sin(E) - M) / (1.0 - e*cos(E) );
+            //E = E - (E - e*sin(E) - M) / (1.0 - e*cos(E) );
             
             double xv = a * ( cos(E) - e );
             double yv = a * ( sqrt(1.0 - e*e) * sin(E) );
@@ -311,17 +311,6 @@ namespace
 
             // R is in "earth radii", so resolve to meters:
             r *= 6378137.0;
-
-#if 0
-            // convert to elliptic geocentric (unit)
-            double xg = cos(lonEcl) * cos(latEcl);
-            double yg = sin(lonEcl) * cos(latEcl);
-            double zg = sin(latEcl);
-
-            nrad(lonEcl);
-            double lonDeg = r2d(lonEcl);
-            double latDeg = r2d(latEcl);
-#endif
 
             // convert to elliptic geocentric (unit)
             double xg = cos(lonEcl) * cos(latEcl);

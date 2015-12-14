@@ -102,7 +102,7 @@ public:
                             cx = xform.push(featureList, cx);
                         }
 
-                        return f->getGeometry()->toVec3dArray();
+                        return f->getGeometry()->createVec3dArray();
                     }
                 }
             }

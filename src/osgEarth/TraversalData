@@ -48,6 +48,8 @@ namespace osgEarth
         osg::Referenced* fetch(osg::Referenced* owner, const std::string& key) const;
 
         bool exists(osg::Referenced* owner, const std::string& key) const;
+
+        int size() const;
         
     protected:
         typedef fast_map<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
@@ -62,6 +64,11 @@ namespace osgEarth
         Table _table;
 
         mutable Threading::Mutex _mutex;
+
+        static bool isObserverInvalid(const Table::entry_t&);
+
+    public:
+        static bool unitTest();
     };
 
     struct OSGEARTH_EXPORT VisitorData

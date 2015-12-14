@@ -168,7 +168,7 @@ namespace osgEarth { namespace Annotation
          * Apply general style information to the node
          */
         virtual void applyStyle( const Style&);
-        virtual void applyGeneralSymbology(const Style&);
+        virtual void applyRenderSymbology(const Style&);
         
         /**
          * Sets the node to automatically re-clamp its geometry to incoming terrain tiles

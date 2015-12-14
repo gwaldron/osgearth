@@ -239,7 +239,7 @@ FeatureNode::build()
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
             } 
 
-            applyGeneralSymbology( style );
+            applyRenderSymbology( style );
         }
     }
 

@@ -22,6 +22,18 @@
 
 using namespace osgEarth;
 
+bool
+TransientUserDataStore::isObserverInvalid(const Table::entry_t& p)
+{
+    return p.second._owner.valid() == false;
+}
+
+int
+TransientUserDataStore::size() const
+{
+    return _table.size();
+}
+
 void
 TransientUserDataStore::store(osg::Referenced* owner, const std::string& key, osg::Referenced* data)
 {
@@ -30,13 +42,7 @@ TransientUserDataStore::store(osg::Referenced* owner, const std::string& key, os
     _mutex.lock();
 
     // clear out orphaned data:
-    for(Table::iterator i = _table.begin(); i != _table.end(); )
-    {
-        if ( !i->second._owner.valid() )
-            _table.erase(i++);
-        else
-            ++i;
-    }
+    _table.erase( std::remove_if(_table.begin(), _table.end(), isObserverInvalid), _table.end() );
 
     // insert new data:
     DataPair& p = _table[owner];
@@ -80,6 +86,38 @@ TransientUserDataStore::exists(osg::Referenced* owner, const std::string& key) c
 }
 
 bool
+TransientUserDataStore::unitTest()
+{
+  osgEarth::TransientUserDataStore tuds;
+  osg::ref_ptr<osg::Referenced> owner1 = new osg::Referenced;
+  osg::ref_ptr<osg::Referenced> owner2 = new osg::Referenced;
+  osg::ref_ptr<osg::Referenced> owner3 = new osg::Referenced;
+  osg::ref_ptr<osg::Referenced> data1 = new osg::Referenced;
+  osg::ref_ptr<osg::Referenced> data2 = new osg::Referenced;
+  osg::ref_ptr<osg::Referenced> data3 = new osg::Referenced;
+  tuds.store(owner1, "foo", data1);
+  tuds.store(owner1, "foo", data2);
+  tuds.store(owner1, "foo", data1);
+  data1 = NULL;
+  tuds.store(owner1, "foo", data2);
+  data2 = new osg::Referenced;
+  tuds.store(owner1, "foo", data3);
+  tuds.store(owner1, "foo", data2);
+  data1 = new osg::Referenced;
+  owner1 = owner2;
+  tuds.store(owner1, "foo", data3);
+  tuds.store(owner1, "foo", data1);
+  tuds.store(owner3, "foo", data1);
+  owner3 = NULL;
+  tuds.store(owner1, "foo", data2);
+  tuds.store(owner2, "foo", data2);
+  owner1 = owner2 = owner3 = NULL;
+  owner1 = new osg::Referenced;
+  tuds.store(owner1, "foo", data3);
+  return true;
+}
+
+bool
 VisitorData::store(osg::NodeVisitor& nv, const std::string& key, osg::Referenced* data)
 {
     Registry::instance()->dataStore().store( &nv, key, data );
@@ -97,3 +135,4 @@ VisitorData::isSet(osg::NodeVisitor& nv, const std::string& key)
 {
     return Registry::instance()->dataStore().exists( &nv, key );
 }
+

@@ -178,6 +178,11 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 l2w = _local2world;
             }
 
+            // collect all the pre-transformation HAT (Z) values.
+            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
+            hats->reserve( part->size() );
+            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+                hats->push_back( i->z() );
 
             // build the geometry:
             tileAndBuildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
@@ -228,7 +233,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 // install clamping attributes if necessary
                 if (_style.has<AltitudeSymbol>() &&
                     _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
-                {            
+                {
                     Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
                 }
             }
@@ -297,6 +302,12 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             if ( part->size() < 2 )
                 continue;
 
+            // collect all the pre-transformation HAT (Z) values.
+            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
+            hats->reserve( part->size() );
+            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+                hats->push_back( i->z() );
+
             // transform the geometry into the target SRS and localize it about 
             // a local reference point.
             osg::ref_ptr<osg::Vec3Array> verts   = new osg::Vec3Array();
@@ -319,6 +330,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
             {
                 Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
+                Clamping::setHeights( geom, hats.get() );
             }
         }
 
@@ -372,6 +384,12 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // skip invalid geometry for lines.
             if ( part->size() < 2 )
                 continue;
+
+            // collect all the pre-transformation HAT (Z) values.
+            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
+            hats->reserve( part->size() );
+            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+                hats->push_back( i->z() );
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
@@ -438,6 +456,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
             {
                 Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                Clamping::setHeights( osgGeom, hats.get() );
             }
         }
     }
@@ -479,6 +498,12 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
 
             if ( !point )
                 continue;
+
+            // collect all the pre-transformation HAT (Z) values.
+            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
+            hats->reserve( part->size() );
+            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+                hats->push_back( i->z() );
 
             // resolve the color:
             osg::Vec4f primaryColor = point->fill()->color();
@@ -525,6 +550,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
                 _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
             {            
                 Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                Clamping::setHeights( osgGeom, hats.get() );
             }
         }
     }

@@ -4,6 +4,9 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 
+#include <osgEarth/URI>
+#include <osgEarth/Registry>
+
 #include "NLTemplate.h"
 
 using namespace NL::Template;
@@ -84,7 +87,13 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
 
             OSG_DEBUG << "Processed template " << std::endl << output.buf.str() << std::endl;
 
-            return driver->readNode( output.buf, options );                       
+            // Set the osgEarth URIContext so that relative paths will work.  We have to do this manually here
+            // since we are using the stream based readNode function and the Earth driver won't know 
+            // where the original earth file came frame.
+            osg::ref_ptr< osgDB::Options > opt = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+            osgEarth::URIContext( realName ).apply( opt.get() );
+
+            return driver->readNode( output.buf, opt.get() );                       
         }        
 };
 

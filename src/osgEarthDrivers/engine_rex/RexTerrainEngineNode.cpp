@@ -836,12 +836,7 @@ RexTerrainEngineNode::updateState()
             terrainVP->setName( "Rex Terrain" );
             package.load(terrainVP, package.ENGINE_VERT_MODEL);
             
-            bool useTerrainColor = _terrainOptions.color().isSet();
-            package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
-            if ( useTerrainColor )
-            {
-                surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
-            }
+            surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
 
             bool useBlending = _terrainOptions.enableBlending().get();
             package.define("OE_REX_GL_BLENDING", useBlending);

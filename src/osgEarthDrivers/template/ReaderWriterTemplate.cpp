@@ -66,7 +66,10 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
 
             LoaderFile loader;
             Template t(loader);
+            OE_NOTICE << "real name " << realName << std::endl;
             t.load( realName.c_str() );
+            OE_NOTICE << "loaded " << realName << std::endl;
+            
 
             // Populate a list of key value pairs from the options string.
             if (options)

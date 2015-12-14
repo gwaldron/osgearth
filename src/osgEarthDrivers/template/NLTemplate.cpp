@@ -4,6 +4,8 @@
 
 #include "NLTemplate.h"
 
+#include <osgEarth/FileUtils>
+
 
 using namespace std;
 using namespace NL::Template;
@@ -354,8 +356,22 @@ Loader::~Loader() {
 }
 
 
+const std::string& Loader::getReferrer() const
+{
+    return _referrer;
+}
+
+void Loader::setReferrer(const std::string& referrer)
+{
+    _referrer = referrer; 
+}
+
+
 const char * LoaderFile::load( const char *name ) {
-    FILE *f = fopen( name, "rb" );
+
+    std::string fullPath = osgEarth::getFullPath(_referrer, std::string(name));
+
+    FILE *f = fopen( fullPath.c_str(), "rb" );
     fseek( f, 0, SEEK_END );
     long len = ftell( f );
     fseek( f, 0, SEEK_SET );
@@ -372,9 +388,14 @@ Template::Template( Loader & loader ) : Block( "main" ), loader( loader ) {
 
 
 void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vector<Node*> & nodes ) {
+        
     Tokenizer *tokenizer = new Tokenizer( loader.load( name ) );
     files.push_back( tokenizer );
-   
+
+    std::string referrer = osgEarth::getFullPath(loader.getReferrer(), std::string(name));
+    _referrerStack.push_back( referrer );
+    loader.setReferrer( referrer );      
+
     bool done = false;
     while( !done ) {
         Token token = files.back()->next();
@@ -402,6 +423,16 @@ void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vec
                 break;
         }
     }
+
+    _referrerStack.pop_back();
+    if (!_referrerStack.empty())
+    {
+        loader.setReferrer( _referrerStack.back() );
+    }
+    else
+    {
+        loader.setReferrer("");
+    }
     
     delete files.back();
     files.pop_back();
@@ -428,8 +459,9 @@ void Template::load( const char *name ) {
     stack.push_back( this );
     
     vector<Tokenizer*> file_stack;
-    
+   
     load_recursive( name, file_stack, stack );
+
 }
 
 

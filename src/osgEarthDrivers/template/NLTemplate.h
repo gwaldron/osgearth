@@ -139,6 +139,11 @@ public:
     virtual ~Loader();
     // Returns mallocated memory that the consumer must free()
     virtual const char * load( const char *name ) = 0;
+
+    const std::string& getReferrer() const;
+    void setReferrer(const std::string& referrer);
+
+    std::string _referrer;
 };
 
 
@@ -152,6 +157,8 @@ public:
 class Template : public Block {
 protected:
     Loader & loader;
+
+    std::vector< std::string > _referrerStack;
     
 public:
     Template( Loader & loader );

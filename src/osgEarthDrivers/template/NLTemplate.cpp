@@ -24,9 +24,15 @@ static inline bool alphanum( const char c ) {
     return
     ( c >= 'a' && c <= 'z' ) ||
     ( c >= 'A' && c <= 'Z' ) ||
-    ( c >= '0' && c <= '9' ) ||
+    ( c >= '0' && c <= '9' ) ||    
     ( c == '_' ) ||
-    ( c == '.' );
+    ( c == '.' ) ||
+
+    // JB:  Added these to enable matching of paths as well
+    ( c == ' ' ) ||
+    ( c == ':' ) ||
+    ( c == '/' ) ||
+    ( c == '\\' );
 }
 
 
@@ -368,7 +374,7 @@ Template::Template( Loader & loader ) : Block( "main" ), loader( loader ) {
 void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vector<Node*> & nodes ) {
     Tokenizer *tokenizer = new Tokenizer( loader.load( name ) );
     files.push_back( tokenizer );
-    
+   
     bool done = false;
     while( !done ) {
         Token token = files.back()->next();

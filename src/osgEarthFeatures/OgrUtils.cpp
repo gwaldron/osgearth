@@ -19,6 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <osgDB/ConvertUTF>
 #include <osgEarthFeatures/OgrUtils>
 
 #define LC "[FeatureSource] "
@@ -340,7 +341,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
                 if (OGR_F_IsFieldSet( handle, i ))
                 {
                     const char* value = OGR_F_GetFieldAsString(handle, i);
-                    feature->set( name, std::string(value) );
+                    feature->set( name, osgDB::convertStringFromCurrentCodePageToUTF8(value) );
                 }
                 else
                 {

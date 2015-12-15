@@ -33,6 +33,8 @@ static inline bool alphanum( const char c ) {
     // JB:  Added these to enable matching of paths as well
     ( c == ' ' ) ||
     ( c == ':' ) ||
+    ( c == '-' ) ||
+    ( c == '@' ) ||
     ( c == '/' ) ||
     ( c == '\\' );
 }

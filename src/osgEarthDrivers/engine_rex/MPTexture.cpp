@@ -104,9 +104,10 @@ MPTexture::inheritState(MPTexture* parent, const osg::Matrixf& scaleBias)
                 {
                     if ( parentPass->_layer.get() == pass->_layer.get())
                     {
-                        // If we don't own the texture for this layer, re-copy it from the parent (in case it changed)
-                        // and recalculate the scale/bias matrix:
-                        if ( !pass->_ownsTexture )
+                        // If the texture matrix is non-identity, that means we are inheriting from another tile.
+                        // In this case, re-copy from the parent (in case it changed) and recalculate the
+                        // texture matrix.
+                        if ( !pass->_textureMatrix.isIdentity() )
                         {
                             pass->_texture = parentPass->_texture.get();
                             pass->_textureMatrix = parentPass->_textureMatrix;

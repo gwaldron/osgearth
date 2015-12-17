@@ -55,7 +55,8 @@ namespace osgEarth
 #define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"[osgEarth]  ")
 #define OE_NULL if(false) osgEarth::notify(osg::ALWAYS)
 
-#define OE_START_TIMER(VAR) osg::Timer_t VAR##_timer = osg::Timer::instance()->tick()
-#define OE_STOP_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_timer, osg::Timer::instance()->tick() )
+#define OE_START_TIMER(VAR) osg::Timer_t VAR##_oe_timer = osg::Timer::instance()->tick()
+#define OE_STOP_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
+#define OE_GET_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 
 #endif // OSGEARTH_NOTIFY_H

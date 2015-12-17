@@ -35,6 +35,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
     class FilterContext;
+    class Session;
 
     /**
      * Metadata and schema information for feature data.
@@ -219,10 +220,12 @@ namespace osgEarth { namespace Features
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
-        double eval( NumericExpression& expr, FilterContext const* context=0L ) const;
+        double eval(NumericExpression& expr, FilterContext const* context=0L) const;
+        double eval(NumericExpression& expr, Session* session) const;
         
         /** populates the variables of an expression with attribute values and evals the expression. */
-        const std::string& eval( StringExpression& expr, FilterContext const* context=0L ) const;
+        const std::string& eval(StringExpression& expr, FilterContext const* context=0L) const;
+        const std::string& eval(StringExpression& expr, Session* session) const;
 
     public:
         /** Gets a GeoJSON representation of this Feature */

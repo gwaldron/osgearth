@@ -38,6 +38,11 @@ namespace osgEarth
         virtual ~ProgressCallback() { }
 
         /**
+         * Report an error and set the canceled flag to true.
+         */
+        virtual void reportError(const std::string& msg);
+
+        /**
         * Callback function that will be called.
         * @param current
         *        The amount of work done in the current stage
@@ -89,7 +94,16 @@ namespace osgEarth
          */
         virtual bool isCanceled() { return _canceled; }
 
+        /**
+         * Whether reportError was called
+         */
+        virtual bool failed() { return _failed; }
+
+        /**
+         * Status/error message
+         */
         std::string& message() { return _message; }
+        const std::string& message() const { return _message; }
 
         /**
          * Resets the canceled flag.
@@ -117,6 +131,7 @@ namespace osgEarth
         std::string       _message;
         mutable  bool     _needsRetry;
         mutable  bool     _canceled;
+        mutable  bool     _failed;
         mutable  Stats    _stats;
     };
 
@@ -132,6 +147,8 @@ namespace osgEarth
         */
         ConsoleProgressCallback();
         virtual ~ConsoleProgressCallback() { }
+
+        virtual void reportError(const std::string& msg);
 
         /**
         * Callback function that will be called.

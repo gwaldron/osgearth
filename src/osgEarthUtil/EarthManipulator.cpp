@@ -610,7 +610,7 @@ EarthManipulator::applySettings( Settings* settings )
 
     // apply new pitch restrictions
     double old_pitch;
-    getEulerAngles( _rotation, 0L, &old_pitch );
+    getEulerAngles( _rotation, 0L, &old_pitch, 0L );
 
     double new_pitch = osg::clampBetween( old_pitch, _settings->getMinPitch(), _settings->getMaxPitch() );
 
@@ -866,7 +866,7 @@ EarthManipulator::getViewpoint() const
 
     // Always update the local offsets.
     double localAzim, localPitch;
-    getEulerAngles( _rotation, &localAzim, &localPitch );
+    getEulerAngles( _rotation, &localAzim, &localPitch, 0L );
 
     vp.heading() = Angle(localAzim,  Units::RADIANS).to(Units::DEGREES);
     vp.pitch()   = Angle(localPitch, Units::RADIANS).to(Units::DEGREES);
@@ -917,7 +917,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         // Fill in any missing end-point data with defaults matching the current camera setup.
         // Then all fields are guaranteed to contain usable data during transition.
         double defPitch, defAzim;
-        getEulerAngles( _rotation, &defAzim, &defPitch );
+        getEulerAngles( _rotation, &defAzim, &defPitch, 0L );
 
         if ( !_setVP1->heading().isSet() )
             _setVP1->heading() = Angle(defAzim, Units::RADIANS);
@@ -1121,7 +1121,7 @@ EarthManipulator::setViewpointFrame(double time_s)
         osg::Vec3d newOffset = offset0 + (offset1-offset0)*tp;
 
         // Activate.
-        setLookAt( newCenter, newAzim, newPitch, newRange, newOffset );
+        setLookAt( newCenter, newAzim, newPitch, 0., newRange, newOffset );
 
         // interpolate tether rotation:
         _tetherRotation.slerp(tp, _tetherRotationVP0, _tetherRotationVP1);
@@ -1147,6 +1147,7 @@ void
 EarthManipulator::setLookAt(const osg::Vec3d& center,
                             double            azim,
                             double            pitch,
+                            double            roll,
                             double            range,
                             const osg::Vec3d& posOffset)
 {
@@ -1165,14 +1166,14 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
         osg::DegreesToRadians(_settings->getMinPitch()),
         osg::DegreesToRadians(_settings->getMaxPitch()) );
 
-    _rotation = getQuaternion(azim, pitch);
+    _rotation = getQuaternion(azim, pitch, roll);
 }
 
 void
 EarthManipulator::resetLookAt()
 {
     double pitch;
-    getEulerAngles( _rotation, 0L, &pitch );
+    getEulerAngles( _rotation, 0L, &pitch, 0L );
 
     double maxPitch = osg::DegreesToRadians(-10.0);
     if ( pitch > maxPitch )
@@ -2361,7 +2362,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
 
     _centerRotation = computeCenterRotation(_center);// getRotation( _center ).getRotate().inverse();
-    _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();	
+    _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();
     
     _previousUp = getUpVector(_centerLocalToWorld);
 
@@ -2562,7 +2563,7 @@ EarthManipulator::rotate( double dx, double dy )
 
     // clamp pitch range:
     double oldPitch;
-    getEulerAngles( _rotation, 0L, &oldPitch );
+    getEulerAngles( _rotation, 0L, &oldPitch, 0L );
 
     if ( dy + oldPitch > maxp || dy + oldPitch < minp )
         dy = 0;
@@ -2951,40 +2952,40 @@ EarthManipulator::getCompositeEulerAngles( double* out_azim, double* out_pitch )
 
 // Extracts azim and pitch from a quaternion that does not contain any roll.
 void
-EarthManipulator::getEulerAngles(const osg::Quat& q, double* out_azim, double* out_pitch) const
+EarthManipulator::getEulerAngles(const osg::Quat& q, double* out_azim, double* out_pitch, double* out_roll) const
 {
-    osg::Matrix m( q );
+    double w = q.w();
+    double x = q.x();
+    double y = q.y();
+    double z = q.z();
 
-    osg::Vec3d look = -getUpVector( m );
-    osg::Vec3d up   =  getFrontVector( m );
-    
-    look.normalize();
-    up.normalize();
-
-    if ( out_azim )
+    if (out_azim)
     {
-        if ( look.z() < -0.9 )
-            *out_azim = atan2( up.x(), up.y() );
-        else if ( look.z() > 0.9 )
-            *out_azim = atan2( -up.x(), -up.y() );
-        else
-            *out_azim = atan2( look.x(), look.y() );
-
-        *out_azim = normalizeAzimRad( *out_azim );
+      double azim = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+      *out_azim = normalizeAzimRad(-azim);
     }
 
-    if ( out_pitch )
+    if (out_pitch)
     {
-        *out_pitch = asin( look.z() );
+      double pitch = atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+      *out_pitch = pitch - osg::PI_2;
+    }
+
+    if (out_roll)
+    {
+      double roll = asin(2 * (w * y - z * x));
+      *out_roll = roll;
     }
 }
 
 osg::Quat
-EarthManipulator::getQuaternion(double azim, double pitch) const
+EarthManipulator::getQuaternion(double azim, double pitch, double roll) const
 {
     osg::Quat azim_q (  azim,            osg::Vec3d(0,0,1) );
     osg::Quat pitch_q( -pitch-osg::PI_2, osg::Vec3d(1,0,0) );
-    osg::Matrix newRot = osg::Matrixd( azim_q * pitch_q );
+    osg::Quat roll_q(  -roll,            osg::Vec3d(0,1,0) );
+    osg::Matrix newRot = osg::Matrixd( azim_q * (roll_q * pitch_q) );
+
     return osg::Matrixd::inverse(newRot).getRotate();
     //TODO: simplify this old code..
 }
@@ -3002,7 +3003,7 @@ EarthManipulator::collapseTetherRotationIntoRotation()
         osg::DegreesToRadians(_settings->getMinPitch()),
         osg::DegreesToRadians(_settings->getMaxPitch()) );
 
-    _rotation = getQuaternion(azim, pitch);
+    _rotation = getQuaternion(azim, pitch, 0L);
 
     _tetherRotation = osg::Quat();
     _tetherRotationOffset.unset();

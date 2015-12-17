@@ -843,10 +843,10 @@ namespace osgEarth { namespace Util
         bool serviceTask();
 
         // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
-        void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
+        void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch, double* roll) const;
 
         // Makes a quaternion from an azimuth and pitch.
-        osg::Quat getQuaternion(double azim, double pitch) const;
+        osg::Quat getQuaternion(double azim, double pitch, double roll) const;
 
         /**
          * Fire a ray from the current eyepoint along the current look vector,
@@ -1014,7 +1014,7 @@ namespace osgEarth { namespace Util
         // returns "t", the parametric coefficient of a timed transition. 1=finished.
         double setViewpointFrame(double time_s);
 
-        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
+        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double roll, double range, const osg::Vec3d& posoffset);
         void resetLookAt();
         void collapseTetherRotationIntoRotation();
 

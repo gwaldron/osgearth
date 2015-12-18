@@ -157,6 +157,17 @@ StyleSheet::getResourceLibrary( const std::string& name ) const
         return 0L;
 }
 
+ResourceLibrary*
+StyleSheet::getDefaultResourceLibrary() const
+{
+    Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
+    if ( _resLibs.size() > 0 )
+        return _resLibs.begin()->second.get();
+    else
+        return 0L;
+}
+
+
 void StyleSheet::setScript( ScriptDef* script )
 {
   _script = script;

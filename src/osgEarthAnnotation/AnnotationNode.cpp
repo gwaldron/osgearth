@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthSymbology/ModelSymbol>
 
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNode>
@@ -369,7 +370,7 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 {
     return
         !style.has<ExtrusionSymbol>()  &&
-        !style.has<InstanceSymbol>()   &&
+        !style.has<ModelSymbol>()   &&
         !style.has<MarkerSymbol>()     &&  // backwards-compability
         style.has<AltitudeSymbol>()    &&
         (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
@@ -408,7 +409,7 @@ void
 AnnotationNode::applyStyle( const Style& style)
 {
     if ( supportsAutoClamping(style) )
-    {
+    {     
         _altitude = style.get<AltitudeSymbol>();
         setCPUAutoClamping( true );
     }

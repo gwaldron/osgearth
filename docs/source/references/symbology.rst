@@ -377,6 +377,10 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 +--------------------------------+--------------------------------------------------------------------+
 | text-halo-offset               | Outline thickness (float, pixels)                                  |
 +--------------------------------+--------------------------------------------------------------------+
+| text-offset-x                  | The x offset of the text in pixels                                 |
++--------------------------------+--------------------------------------------------------------------+
+| text-offset-y                  | The y offset of the text in pixels                                 |
++--------------------------------+--------------------------------------------------------------------+
 | text-align                     | Alignment of the text string relative to its anchor point:         |
 |                                |   * ``left-top``                                                   |
 |                                |   * ``left-center``                                                |

@@ -148,14 +148,14 @@ public:
     {
         osg::Vec3d center = feature->getGeometry()->getBounds().center();
 
-        AltitudeMode mode = AltitudeMode::ALTMODE_ABSOLUTE;        
+        AltitudeMode mode = ALTMODE_ABSOLUTE;        
 
         const AltitudeSymbol* alt = style.getSymbol<AltitudeSymbol>();
         if (alt &&
            (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
            alt->technique() == AltitudeSymbol::TECHNIQUE_SCENE)
         {
-            mode = AltitudeMode::ALTMODE_RELATIVE;
+            mode = ALTMODE_RELATIVE;
         }                              
 
         GeoPoint point(feature->getSRS(), center.x(), center.y(), center.z(), mode);        

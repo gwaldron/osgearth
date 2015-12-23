@@ -200,20 +200,13 @@ PlaceNode::init()
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-        }
-
-        text = AnnotationUtils::createTextDrawable(
-            _text,
-            _style.get<TextSymbol>(),
-            osg::Vec3( (offset.x() + (s / 2.0) + 2), offset.y(), 0 ) );
+        }      
     }
-    else
-    {
-        text = AnnotationUtils::createTextDrawable(
+    
+    text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
             osg::Vec3( 0, 0, 0 ) );
-    }
 
     if ( text )
         _geode->addDrawable( text );

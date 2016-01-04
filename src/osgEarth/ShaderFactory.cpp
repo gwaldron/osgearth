@@ -399,12 +399,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         if ( hasVS )
         {
               buf << "\n// TCS stage inputs:\n"
-                 << "in " << vertdata << " vp_in []; \n";
+                 << "in " << vertdata << " vp_in [gl_MaxPatchVertices]; \n";
         }
 
         // The TES is mandatory.
         buf << "\n// TCS stage outputs to TES: \n"
-            << "out " << vertdata << " vp_out []; \n";
+            << "out " << vertdata << " vp_out [gl_MaxPatchVertices]; \n";
 
         // Stage globals.
         buf << "\n// TCS stage globals \n";

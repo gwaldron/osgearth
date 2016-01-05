@@ -233,6 +233,13 @@ _mode   ( 0 )
         l2CacheSize = as<int>( std::string(l2env), 0 );
     }
 
+    // Env cache-only mode also disables the L2 cache.
+    char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
+    if ( noCacheEnv )
+    {
+        l2CacheSize = 0;
+    }
+
     // Initialize the l2 cache if it's size is > 0
     if ( l2CacheSize > 0 )
     {

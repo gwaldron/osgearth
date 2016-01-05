@@ -120,7 +120,7 @@ For example, let's use user functions to create a simple "haze" effect::
 
     // haze_vertex:
     varying vec3 v_pos;
-    void setup_have(inout vec4 vertexView)
+    void setup_haze(inout vec4 vertexView)
     {
         v_pos = vertexView.xyz;
     }

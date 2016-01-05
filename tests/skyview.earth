@@ -1,0 +1,22 @@
+<!--
+osgEarth Sample
+
+Earth at night.
+-->
+<map name="readymap.org" type="geocentric">
+    
+
+    <options>
+        <terrain>
+            <cluster_culling>false</cluster_culling>
+            <skirt_ratio>0.0</skirt_ratio>
+        </terrain>
+
+    </options>
+    
+    <image name="EarthAtNight" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/26/</url>
+    </image>      
+
+
+</map>

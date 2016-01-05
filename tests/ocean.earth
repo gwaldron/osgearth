@@ -40,7 +40,7 @@ http://readymap.org
             </mask_layer>
             
             <!-- surface color (before texturing) -->
-            <base_color>#334f7fbf</base_color>
+            <base_color>#0000ffcf</base_color>
             
             <max_altitude>20000</max_altitude>
             

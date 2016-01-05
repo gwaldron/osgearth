@@ -57,6 +57,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         void onSetSunVisible();
         void onSetMoonVisible();
         void onSetStarsVisible();
+        void onSetAtmosphereVisible();
         void onSetMinimumAmbient();
 
     public: // osg::Node

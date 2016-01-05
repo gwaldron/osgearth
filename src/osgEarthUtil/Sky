@@ -167,6 +167,10 @@ namespace osgEarth { namespace Util
         void setStarsVisible(bool value);
         bool getStarsVisible() const { return _starsVisible; }
 
+        /** Whether the atmosphere is visible */
+        void setAtmosphereVisible(bool value);
+        bool getAtmosphereVisible() const { return _atmosphereVisible; }
+
         /** Access the osg::Light representing the sun */
         virtual osg::Light* getSunLight() = 0;
 
@@ -193,6 +197,7 @@ namespace osgEarth { namespace Util
         virtual void onSetMoonVisible() { }
         virtual void onSetStarsVisible() { }
         virtual void onSetSunVisible() { }
+        virtual void onSetAtmosphereVisible() { }
         virtual void onSetMinimumAmbient() { }
 
     private:
@@ -202,6 +207,7 @@ namespace osgEarth { namespace Util
         bool                    _sunVisible;
         bool                    _moonVisible;
         bool                    _starsVisible;
+        bool                    _atmosphereVisible;
         osg::Vec4f              _minimumAmbient;
         optional<GeoPoint>      _refpoint;
 

@@ -111,6 +111,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskLayer
     MaskNode
     MaskSource
+    Memory
     MemCache
     ModelLayer
     ModelSource
@@ -267,6 +268,7 @@ set(TARGET_SRC
     MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
+    Memory.cpp
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp

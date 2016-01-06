@@ -127,7 +127,7 @@ namespace
         {
             if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
             {
-                if (ea.getKey() == ']')
+                if (ea.getKey() == 'y')
                 {
                     osg::ref_ptr< osg::Node > safeNode = _canvas.get();
                     if (safeNode.valid())

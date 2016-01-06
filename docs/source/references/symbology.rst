@@ -333,6 +333,11 @@ as some osgEarth-specific settings that are not specific to any other symbol typ
 +-------------------------------+--------------------------------------------------------------+
 | render-lighting               | Enable or disable GL lighting. (boolean)                     |
 +-------------------------------+--------------------------------------------------------------+
+| render-transparent            | hint to render in the                                        |
+|                               | transparent (depth-sorted) bin (boolean)                     |
++-------------------------------+--------------------------------------------------------------+
+| render-bin                    | render bin to use for sorting (string)                       |
++-------------------------------+--------------------------------------------------------------+
 | render-depth-offset           | Enable or disable Depth Offseting. Depth offsetting is a     |
 |                               | GPU technique that modifies a fragment's depth value,        |
 |                               | simulating the rendering of that object closer or farther    |
@@ -376,6 +381,10 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 |                                | outline. (HTML Color)                                              |
 +--------------------------------+--------------------------------------------------------------------+
 | text-halo-offset               | Outline thickness (float, pixels)                                  |
++--------------------------------+--------------------------------------------------------------------+
+| text-offset-x                  | The x offset of the text in pixels                                 |
++--------------------------------+--------------------------------------------------------------------+
+| text-offset-y                  | The y offset of the text in pixels                                 |
 +--------------------------------+--------------------------------------------------------------------+
 | text-align                     | Alignment of the text string relative to its anchor point:         |
 |                                |   * ``left-top``                                                   |

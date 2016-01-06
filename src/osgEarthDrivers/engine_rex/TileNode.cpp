@@ -278,7 +278,7 @@ TileNode::getVisibilityRangeHint(EngineContext* context) const
     }
     // The motivation here is to use the extents of the tile at lowest resolution
     // along with a factor as an estimate of the visibility range
-    const float factor = mtrf * 2.5f;
+    const float factor = mtrf * 3.214f; //2.5f;
     const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }

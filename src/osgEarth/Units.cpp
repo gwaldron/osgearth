@@ -41,7 +41,19 @@ namespace
 
         std::string valueStr, unitsStr;
 
-        std::string::const_iterator i = std::find_if( input.begin(), input.end(), ::isalpha );
+        std::string::const_iterator start = input.begin();
+        
+        // deal with scientific notation by moving the units search point
+        // past the "e+/-" if it exists:
+        std::string::size_type pos = input.find_first_of("eE");
+        if (pos != std::string::npos && 
+            input.length() > (pos+2) &&
+            (input.at(pos+1) == '-' || input.at(pos+1) == '+'))
+        {
+            start = input.begin() + pos + 2;
+        }
+
+        std::string::const_iterator i = std::find_if( start, input.end(), ::isalpha );
         if ( i == input.end() )
         {
             // to units found; use default
@@ -214,3 +226,50 @@ const Units Units::DATA_MILES_PER_HOUR  ( "data miles per hour",     "dm/h", Uni
 const Units Units::KNOTS                ( "nautical miles per hour", "kts",  Units::NAUTICAL_MILES, Units::HOURS );
 
 const Units Units::PIXELS               ( "pixels", "px", Units::TYPE_SCREEN_SIZE, 1.0 );
+
+
+
+int
+Units::unitTest()
+{
+    double value;
+    Units  units;
+
+    // test parsing scientific notation
+    {
+        Units::parse( "123e-003m", value, units, Units::MILES);
+        if ( value != 123e-003 || units != Units::METERS )
+            return 101;
+
+        Units::parse( "123e+003m", value, units, Units::MILES );
+        if ( value != 123e+003 || units != Units::METERS )
+            return 102;
+
+        Units::parse( "123E-003m", value, units, Units::MILES );
+        if ( value != 123E-003 || units != Units::METERS )
+            return 103;
+
+        Units::parse( "123E+003m", value, units, Units::MILES );
+        if ( value != 123E+003 || units != Units::METERS )
+            return 104;
+    }
+
+    // normal parsing
+    {
+        Units::parse( "123m", value, units, Units::MILES );
+        if ( value != 123 || units != Units::METERS )
+            return 201;
+        
+        Units::parse( "123km", value, units, Units::MILES );
+        if ( value != 123 || units != Units::KILOMETERS )
+            return 202;
+        
+        Units::parse( "1.2rad", value, units, Units::DEGREES );
+        if ( value != 1.2 || units != Units::RADIANS )
+            return 203;
+    }
+
+    // add tests as needed
+
+    return 0;
+}

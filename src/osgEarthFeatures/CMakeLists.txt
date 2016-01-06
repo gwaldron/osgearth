@@ -16,7 +16,6 @@ SET(LIB_PUBLIC_HEADERS
     BufferFilter
     BuildGeometryFilter  
     BuildTextFilter
-    BuildTextOperator
     CentroidFilter
     Common
     ConvertTypeFilter
@@ -61,7 +60,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     BufferFilter.cpp
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp
-    BuildTextOperator.cpp
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp

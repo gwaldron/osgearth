@@ -73,7 +73,7 @@ LocalGeometryNode::initNode()
         // activate clamping if necessary
         replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
-        applyGeneralSymbology( _style );
+        applyRenderSymbology( _style );
         setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
     }
 }
@@ -102,7 +102,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
             // activate clamping if necessary
             replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
-            applyGeneralSymbology( _style );
+            applyRenderSymbology( _style );
         }
     }
 }

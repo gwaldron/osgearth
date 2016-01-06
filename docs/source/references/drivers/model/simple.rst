@@ -5,7 +5,7 @@ map coordinates.
 
 Example usage::
 
-    <model name = "cow" driver="simple">
+    <model name ="model" driver="simple">
         <url>../data/red_flag.osg.100,100,100.scale</url>
         <location>-74.018 40.717 10</location>
     </model>

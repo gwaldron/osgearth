@@ -17,8 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Feature>
-#include <osgEarth/StringUtils>
+#include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/StringUtils>
 #include <osgEarth/JsonUtils>
 #include <algorithm>
 
@@ -331,6 +332,42 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
     return expr.eval();
 }
 
+double
+Feature::eval(NumericExpression& expr, Session* session) const
+{
+    const NumericExpression::Variables& vars = expr.variables();
+    for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+    {
+        double val = 0.0;
+        AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+        if (ai != _attrs.end())
+        {
+            val = ai->second.getDouble(0.0);
+        }
+        else if (session)
+        {
+            //No attr found, look for script
+            ScriptEngine* engine = session->getScriptEngine();
+            if (engine)
+            {
+                ScriptResult result = engine->run(i->first, this);
+                if (result.success())
+                {
+                    val = result.asDouble();
+                }
+                else
+                {
+                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                }
+            }
+        }
+
+        expr.set( *i, val );
+    }
+
+    return expr.eval();
+}
+
 const std::string&
 Feature::eval( StringExpression& expr, FilterContext const* context ) const
 {
@@ -358,6 +395,38 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
       }
 
       expr.set( *i, val );
+    }
+
+    return expr.eval();
+}
+
+const std::string&
+Feature::eval(StringExpression& expr, Session* session) const
+{
+    const StringExpression::Variables& vars = expr.variables();
+    for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+    {
+        std::string val = "";
+        AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+        if (ai != _attrs.end())
+        {
+            val = ai->second.getString();
+        }
+        else if (session)
+        {
+            //No attr found, look for script
+            ScriptEngine* engine = session->getScriptEngine();
+            if (engine)
+            {
+                ScriptResult result = engine->run(i->first, this);
+                if (result.success())
+                    val = result.asString();
+                else
+                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+            }
+        }
+
+        expr.set( *i, val );
     }
 
     return expr.eval();

@@ -27,53 +27,52 @@
 #include <osg/Geode>
 #include <osg/Group>
 #include <osg/Polytope>
+#include <osg/CoordinateSystemNode>
 #include <vector>
 
 namespace osgEarth { namespace Util
 {
-    class HTMNode;
+    struct HTMSettings
+    {
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
+        unsigned _maxLeaves;
+        float _maxLeafRange;
+        int _debugCount;
+        int _debugFrame;
+    };
 
     /**
-     * Hierarchical Triangular Mesh group
+     * Hierarchical Triangular Mesh group - for geocentric maps only
      * http://www.geog.ucsb.edu/~hu/papers/spatialIndex.pdf
      *
      * An osg::Group that automatically organizes its contents spatially
-     * in order to improve culling performance and proximity search.
-     *
-     * Note! This group will improve performance when you have a huge
-     * number of entities and you zoom in to a smaller area. It will NOT
-     * improve the performance when viewing the entire set from a far
-     * range.
+     * in order to improve culling performance.
      */
     class OSGEARTHUTIL_EXPORT HTMGroup : public osg::Group
     {
     public:
         HTMGroup();
 
-        /** total number of objects in the group. */
-        unsigned dataCount() const { return _dataCount; }
+        /**
+         * Sets the ellipsoid representing the earth
+         */
+        void setEllipsoid(const osg::EllipsoidModel*);
 
-        /** The maximum number of objects to hold in an index cell before
-            splitting it up into smaller parts. */
-        unsigned getSplitThreshold() const { return _splitThreshold; }
+        /**
+         * Sets the maximum number of leaf nodes that can exist at a
+         * given level in the graph before it subdivides into a more refined
+         * index. The default is 16.
+         */
+        void setMaxLeaves(unsigned value);
+        float getMaxLeaves() const { return _settings._maxLeaves; }
 
-        /** The minimum number of objects across a set of child cells before
-            merging them back into a single cell. */
-        unsigned getMergeThreshold() const { return _mergeThreshold; }
+        /**
+         * Sets the maximum visibility range of any leaf node in this graph.
+         * @param[in ] range Maximum visibile range (meters); default is 50,000m.
+         */
+        void setMaxLeafRange(float range);
+        float getMaxLeafRange() const { return _settings._maxLeafRange; }
 
-        /** enable or disable clustering (experimental) */
-        void setCluster( bool value ) { _cluster = value; }
-        bool getCluster() const       { return _cluster; }
-
-        /** activate debugging mode */
-        void setDebug() { _debug = true; }
-        bool getDebug() const { return _debug; }
-
-        /** check a node to see whether we need to move it. */
-        bool refresh(osg::Node* node);
-
-        /** removes a node from the group. */
-        bool remove(osg::Node* node);
 
     public: // osg::Group
 
@@ -91,22 +90,14 @@ namespace osgEarth { namespace Util
         virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
         virtual bool setChild(unsigned index, osg::Node* node);
 
-        /** custom traversal */
-        virtual void traverse(osg::NodeVisitor& nv);
-
     protected:
         virtual ~HTMGroup() { }
 
         bool insert(osg::Node* node);
 
-        unsigned _dataCount;
-        bool     _debug;
-        bool     _cluster;
-        unsigned _splitThreshold;
-        unsigned _mergeThreshold;
+        void reinitialize();
 
-        typedef std::map<osg::Node*, HTMNode*> NodeMap;
-        NodeMap _nodeTable;
+        HTMSettings _settings;
     };
 
 
@@ -116,46 +107,28 @@ namespace osgEarth { namespace Util
     class HTMNode : public osg::Group
     {
     public:
-        HTMNode(HTMGroup* root, const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2);
-
-    public: // osg::Group
-
-        virtual void traverse(osg::NodeVisitor& nv);
-
-    protected:
-        virtual ~HTMNode() { }
-
-        HTMNode* insert(osg::Node* node);
-
-        bool remove(osg::Node* node);
-
-        bool refresh(osg::Node* node);
-
-        void split();
-
-        void merge();
-
-        bool isLeaf() const {
-            return getNumChildren() == 0;
-        }
-
+        HTMNode(HTMSettings& settings,
+                const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2);
+        
         bool contains(const osg::Vec3d& p) const {
             return _tri.contains(p);
         }
 
-        unsigned dataCount() const {
-            return _dataCount;
-        }
+        void insert(osg::Node* node);
 
-        HTMNode* findLeaf(osg::Node*);
+    public:
+        void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~HTMNode() { }
+
+        void split();
 
         // test whether the node's triangle lies entirely withing a frustum
         bool entirelyWithin(const osg::Polytope& tope) const;
         
         // test whether the node's triangle intersects a frustum
         bool intersects(const osg::Polytope& tope) const;
-
-        osg::BoundingSphere computeBound() const;
 
     private:
 
@@ -179,17 +152,10 @@ namespace osgEarth { namespace Util
             }
         };
 
-        typedef std::list<osg::ref_ptr<osg::Node> > NodeList;
 
-        Triangle      _tri;
-        NodeList      _data;
-        unsigned      _dataCount;
-        HTMGroup*     _root;
-        osg::ref_ptr<osg::Geode> _debugGeode;
-        osg::ref_ptr<osg::Node>  _clusterNode;
-        osg::BoundingSphere      _bs;
-
-        friend class HTMGroup;
+        Triangle _tri;
+        bool     _isLeaf;
+        HTMSettings& _settings;
     };
 
 } } // namesapce osgEarth::Util

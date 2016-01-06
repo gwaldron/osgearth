@@ -24,6 +24,7 @@
 
 #include <osg/BlendFunc>
 #include <osg/Texture2D>
+#include <osg/Texture2DArray>
 
 #define LC "[SkinResource] "
 

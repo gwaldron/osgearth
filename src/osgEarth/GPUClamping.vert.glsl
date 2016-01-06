@@ -1,4 +1,4 @@
-#version $GLSL_VERSION_STR
+#version 130
 
 #pragma vp_entryPoint oe_clamp_vertex
 #pragma vp_location   vertex_view
@@ -6,8 +6,8 @@
 
 #pragma include GPUClamping.vert.lib.glsl
 
-in vec4 oe_clamp_attrs;
-in float oe_clamp_offset;
+in vec4 oe_clamp_attrs;     // vertex attribute
+in float oe_clamp_height;   // vertex attribute
 
 out float oe_clamp_alpha;
 
@@ -44,7 +44,7 @@ void oe_clamp_vertex(inout vec4 vertexView)
         float depth;
         oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
 
-        float dh = 0.0;
+        float dh = verticalOffset + oe_clamp_altitudeOffset;
 
         if ( relativeToAnchor )
         {
@@ -52,24 +52,21 @@ void oe_clamp_vertex(inout vec4 vertexView)
             // distance from the anchor point to the terrain. Since distance() is unsigned,
             // we use the vector dot product to calculate whether to adjust up or down.
             float dist = distance(pointToClamp, clampedPoint);
-            float dir = dot(clampedPoint-pointToClamp, vertexView-pointToClamp) < 0.0 ? -1.0 : 1.0;
+            float dir  = sign(dot(clampedPoint-pointToClamp, vertexView-pointToClamp));
             dh += (dist * dir);
         }
         else
         {
             // if we are clamping to the terrain, the vertex becomes the
-            // clamped point.
-            vertexView.xyz = clampedPoint.xyz/clampedPoint.w;
+            // clamped point
+            vertexView.xyz = clampedPoint.xyz;
+            dh += oe_clamp_height;
         }
-
-        // apply the z-offset if there is one.
-        float hOffset = dh + oe_clamp_altitudeOffset + verticalOffset;
-        if ( hOffset != 0.0 )
-        {
-            vec3 up;
-            oe_getClampingUpVector(up);
-            vertexView.xyz += up * hOffset;
-        }
+        
+        // calculate the up vector along which clamping will occur (in either direction)
+        vec3 up;
+        oe_getClampingUpVector( up );
+        vertexView.xyz += up*dh;
 
         // if the clamped depth value is near the far plane, suppress drawing
         // to avoid rendering anomalies.

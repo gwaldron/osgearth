@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthSymbology/ModelSymbol>
 
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNode>
@@ -369,34 +370,54 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 {
     return
         !style.has<ExtrusionSymbol>()  &&
-        !style.has<InstanceSymbol>()   &&
+        !style.has<ModelSymbol>()   &&
         !style.has<MarkerSymbol>()     &&  // backwards-compability
         style.has<AltitudeSymbol>()    &&
         (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
-         style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN);
+         style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
+        style.get<AltitudeSymbol>()->technique() != AltitudeSymbol::TECHNIQUE_GPU;
 }
 
 void
 AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 {
-    setCPUAutoClamping(
-        mode == ALTMODE_RELATIVE ||
-        (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
+    bool cpuClamp = false;
+
+    if ( _altitude.valid() )
+    {
+        bool clamp =
+            _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN ||
+            _altitude->clamping() == _altitude->CLAMP_RELATIVE_TO_TERRAIN;
+
+        bool gpuClamp =
+            clamp && _altitude->technique() == _altitude->TECHNIQUE_GPU;
+
+        cpuClamp = 
+            (mode == ALTMODE_RELATIVE || clamp) &&
+            !gpuClamp;
+
+        if ( clamp && mode == ALTMODE_ABSOLUTE )
+        {
+            // note: altitude mode conflicts with style.
+        }
+    }
+
+    setCPUAutoClamping( cpuClamp );
 }
 
 void
 AnnotationNode::applyStyle( const Style& style)
 {
     if ( supportsAutoClamping(style) )
-    {
+    {     
         _altitude = style.get<AltitudeSymbol>();
         setCPUAutoClamping( true );
     }
-    applyGeneralSymbology(style);
+    applyRenderSymbology(style);
 }
 
 void
-AnnotationNode::applyGeneralSymbology(const Style& style)
+AnnotationNode::applyRenderSymbology(const Style& style)
 {
     const RenderSymbol* render = style.get<RenderSymbol>();
     if ( render )

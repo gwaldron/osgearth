@@ -250,7 +250,7 @@ namespace
         "        vec4 texel1 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.xy); \n"
         "        vec4 texel2 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.zw); \n"
         "        vec4 texel  = vec4(texel1.rgb*texel2.rgb, texel2.a); \n"
-        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, texel.a), color.a); \n"
+        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, 0.5), color.a); \n"
         "        color = mix(color, nearColor, rangeEffect); \n"
         "    } \n"
 

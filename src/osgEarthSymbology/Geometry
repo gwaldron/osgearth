@@ -120,13 +120,13 @@ namespace osgEarth { namespace Symbology
          * Creates a new Vec3Array (single-precision), copies the part into it, and
          * returns the new object. 
          */
-        osg::Vec3Array* toVec3Array() const;
+        osg::Vec3Array* createVec3Array() const;
 
         /**
          * Creates a new Vec3dArray (double-precision), copies the part into it, and
          * returns the new object.
          */
-        osg::Vec3dArray* toVec3dArray() const;
+        osg::Vec3dArray* createVec3dArray() const;
 
         /**
          * Gets the bounds of this geometry

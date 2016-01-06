@@ -98,21 +98,27 @@ void
 AltitudeSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "altitude-clamping") ) {
-        if      ( match(c.value(), "none") )     
+        if      ( match(c.value(), "none") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_NONE;
-        else if ( match(c.value(), "terrain") )  
+        }
+        else if ( match(c.value(), "terrain") )  {
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_TO_TERRAIN;
-        else if ( match(c.value(), "absolute") ) 
+        }
+        else if ( match(c.value(), "absolute") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_ABSOLUTE;
-        else if ( match(c.value(), "relative") ) 
+        }
+        else if ( match(c.value(), "relative") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_RELATIVE_TO_TERRAIN;
-        else if ( match(c.value(), "terrain-drape") )
-        {
+        }
+        else if ( match(c.value(), "relative-gpu") ) {
+            style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_RELATIVE_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
+        }
+        else if ( match(c.value(), "terrain-drape") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_DRAPE;
         }
-        else if ( match(c.value(), "terrain-gpu") )
-        {
+        else if ( match(c.value(), "terrain-gpu") ) {
             style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
         }

@@ -180,6 +180,12 @@ namespace osgEarth
         // called by Registry to register system units
         static void registerAll(class Registry* registry);
         friend class Registry;
+
+    public:
+
+        // returns 0 upon success, error code on failure
+        static int unitTest();
+
     };
     
     template<typename T>

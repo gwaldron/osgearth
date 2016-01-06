@@ -20,35 +20,27 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOLIZER_H
-#define OSGEARTHSYMBOLOGY_MARKER_SYMBOLIZER_H 1
+#ifndef OSGEARTH_MEMORY_H
+#define OSGEARTH_MEMORY_H 1
 
-#include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
-#include <osgEarthSymbology/TextSymbol>
-#include <osg/Node>
+#include <osgEarth/Common>
 
-namespace osgEarth { namespace Features
+namespace osgEarth
 {
-    /**
-     * Creates a text node that labels feature data.
-     */
-    class OSGEARTHFEATURES_EXPORT BuildTextOperator
+    class OSGEARTH_EXPORT Memory
     {
     public:
-        BuildTextOperator(bool hideClutter=false) : _hideClutter(hideClutter) { };
-        virtual ~BuildTextOperator() { }
-    public:
-        osg::Node* operator()(
-            const FeatureList& features, 
-            const osgEarth::Symbology::TextSymbol *symbol,
-            const FilterContext& context);
+        /** Memory usage, in bytes, for the calling process. */
+        static unsigned getProcessUsage();
 
-    protected:
-        bool _hideClutter;
+        /** Peak memory usage, in bytes, for the calling process since it started. */
+        static unsigned getProcessPeakUsage();
+
+    private:
+        // Not creatable.
+        Memory() { }
     };
+}
 
-} } // namespace osgEarth::Features
 
-#endif
+#endif // OSGEARTH_MEMORY_H

@@ -249,7 +249,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 
                 if (part->getType() == Geometry::TYPE_POLYGON)
                 {
-                    osg::Vec3Array* partVerts = part->toVec3Array();
+                    osg::ref_ptr<osg::Vec3Array> partVerts = part->createVec3Array();
                     maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
                     newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
                 }

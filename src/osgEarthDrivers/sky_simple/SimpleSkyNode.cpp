@@ -411,6 +411,13 @@ SimpleSkyNode::onSetSunVisible()
 }
 
 void
+SimpleSkyNode::onSetAtmosphereVisible()
+{
+    if (_atmosphere.valid())
+        _atmosphere->setNodeMask( getAtmosphereVisible() ? ~0 : 0 );
+}
+
+void
 SimpleSkyNode::makeSceneLighting()
 {
     // installs the main uniforms and the shaders that will light the subgraph (terrain).

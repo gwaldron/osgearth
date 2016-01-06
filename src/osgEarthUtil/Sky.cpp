@@ -55,6 +55,7 @@ SkyNode::baseInit(const SkyOptions& options)
     _sunVisible = true;
     _moonVisible = true;
     _starsVisible = true;
+    _atmosphereVisible = true;
     _minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
 
     _lightingUniformsHelper = new UpdateLightingUniformsHelper();
@@ -127,6 +128,13 @@ SkyNode::setStarsVisible(bool value)
 {
     _starsVisible = value;
     onSetStarsVisible();
+}
+
+void
+SkyNode::setAtmosphereVisible(bool value)
+{
+    _atmosphereVisible = value;
+    onSetAtmosphereVisible();
 }
 
 void

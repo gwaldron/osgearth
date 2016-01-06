@@ -6,5 +6,6 @@ SET(TARGET_SRC
     ReaderWriterTemplate.cpp
     NLTemplate.cpp
 )
+
     
 SETUP_PLUGIN(template)

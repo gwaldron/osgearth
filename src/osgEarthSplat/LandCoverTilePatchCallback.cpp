@@ -48,14 +48,17 @@ LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
         {
             bool pushedTileStateSet = false;
 
-            ZoneData& zone = _zones[*zoneIndex];
+            //ZoneData& zone = _zones[*zoneIndex];
+            Zone* zone = _zones[*zoneIndex].get();
 
-            for(int i=0; i<zone._layers.size(); ++i)
+            LandCoverLayers& layers = zone->getLandCover()->getLayers();
+            for(int i=0; i<layers.size(); ++i)
             {
-                LayerData& layerData = zone._layers[i];
-                
-                if (layerData._layer->getLOD() == key.getLOD() && 
-                    (!isShadowCamera || layerData._layer->getCastShadows()) )
+                //LayerData& layerData = zone._layers[i];
+                LandCoverLayer* layer = layers[i].get();
+
+                if ( layer->getLOD() == key.getLOD() &&
+                    (!isShadowCamera || layer->getCastShadows()) )
                 {
                     if ( !pushedTileStateSet )
                     {
@@ -63,7 +66,7 @@ LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
                         pushedTileStateSet = true;
                     }
 
-                    cv->pushStateSet( layerData._stateSet.get() );
+                    cv->pushStateSet( layer->getStateSet() );
 
                     tilePatch->accept( *cv );
 
@@ -79,3 +82,8 @@ LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
     }
 }
 
+void
+LandCoverTilePatchCallback::release(const TileKey& key)
+{
+    // nop - implementation is stateless.
+}

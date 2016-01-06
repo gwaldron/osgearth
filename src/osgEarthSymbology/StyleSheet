@@ -85,6 +85,9 @@ namespace osgEarth { namespace Symbology
         /** Gets a resource library by name. */
         ResourceLibrary* getResourceLibrary( const std::string& name ) const;
 
+        /** Gets the first library. */
+        ResourceLibrary* getDefaultResourceLibrary() const;
+
         /** Script accessors */
         void setScript( ScriptDef* script );
         ScriptDef* script() const { return _script.get(); }

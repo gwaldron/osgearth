@@ -111,6 +111,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskLayer
     MaskNode
     MaskSource
+    Memory
     MemCache
     ModelLayer
     ModelSource
@@ -154,6 +155,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
+    TilePatchCallback
     Tessellator
     TextureCompositor
     TileKey
@@ -266,6 +268,7 @@ set(TARGET_SRC
     MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
+    Memory.cpp
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
@@ -304,6 +307,7 @@ set(TARGET_SRC
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
+    TilePatchCallback.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp

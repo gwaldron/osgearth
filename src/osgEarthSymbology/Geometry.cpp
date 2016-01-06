@@ -105,7 +105,7 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
 }
 
 osg::Vec3Array*
-Geometry::toVec3Array() const 
+Geometry::createVec3Array() const 
 {
     osg::Vec3Array* result = new osg::Vec3Array( this->size() );
     std::copy( begin(), end(), result->begin() );
@@ -113,7 +113,7 @@ Geometry::toVec3Array() const
 }
 
 osg::Vec3dArray*
-Geometry::toVec3dArray() const 
+Geometry::createVec3dArray() const 
 {
     osg::Vec3dArray* result = new osg::Vec3dArray( this->size() );
     std::copy( begin(), end(), result->begin() );

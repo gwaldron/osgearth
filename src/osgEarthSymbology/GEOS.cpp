@@ -160,7 +160,7 @@ namespace
                 //if ( seq )
                 //    delete seq;
 
-                OE_NOTICE << "GEOS::import: Removed degenerate geometry" << std::endl;
+                OE_DEBUG << "GEOS::import: Removed degenerate geometry" << std::endl;
             }
         }
 

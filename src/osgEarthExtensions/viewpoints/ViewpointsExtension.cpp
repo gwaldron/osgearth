@@ -36,21 +36,21 @@ using namespace osgEarth::Viewpoints;
 
 namespace
 {
-    void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
+    void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp, float t)
     {
         Viewpoint currentVP = manip->getViewpoint();
         GeoPoint vp0 = currentVP.focalPoint().get();
         GeoPoint vp1 = vp.focalPoint().get();
         double distance = vp0.distanceTo(vp1);
-        double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
+        double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, (double)t);
         manip->setViewpoint( vp, duration );
     }
 
 
     struct ViewpointsHandler : public osgGA::GUIEventHandler
     {
-        ViewpointsHandler(const std::vector<Viewpoint>& viewpoints)
-            : _viewpoints( viewpoints ) { } 
+        ViewpointsHandler(const std::vector<Viewpoint>& viewpoints, float t)
+            : _viewpoints( viewpoints ), _t(t) { }
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
         {
@@ -63,7 +63,7 @@ namespace
                     {
                         EarthManipulator* manip = getManip(aa);
                         if ( manip )
-                            flyToViewpoint( manip, _viewpoints[index] );
+                            flyToViewpoint( manip, _viewpoints[index], _t );
                     }
                 }
                 if ( ea.getKey() == 'v' )
@@ -87,7 +87,7 @@ namespace
             {
                 EarthManipulator* manip = getManip(aa);
                 if ( manip )
-                    flyToViewpoint(manip, *_flyTo);
+                    flyToViewpoint(manip, *_flyTo, _t);
                 _flyTo.unset();
             }
 
@@ -102,6 +102,7 @@ namespace
 
         std::vector<Viewpoint> _viewpoints;
         optional<Viewpoint>    _flyTo;
+        float                  _t;
     };
 
 
@@ -164,6 +165,7 @@ ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
 {
     // backwards-compatibility: read viewpoints at the top level???
     const Config& viewpointsConf = options.getConfig();
+    float t = viewpointsConf.value("time", VP_MAX_DURATION);
 
     std::vector<Viewpoint> viewpoints;
 
@@ -178,7 +180,7 @@ ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
 
     OE_INFO << LC << "Read " << viewpoints.size() << " viewpoints\n";
 
-    _handler = new ViewpointsHandler(viewpoints);
+    _handler = new ViewpointsHandler(viewpoints, t);
 }
 
 ViewpointsExtension::~ViewpointsExtension()

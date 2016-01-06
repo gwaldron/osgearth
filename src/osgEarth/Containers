@@ -227,6 +227,10 @@ namespace osgEarth
             return _data.erase( i );
         }
 
+        iterator erase(iterator i0, iterator i1) {
+            return _data.erase(i0, i1);
+        }
+
         void erase(const KEY& key) {
             iterator i = find(key);
             if ( i != end() ) {

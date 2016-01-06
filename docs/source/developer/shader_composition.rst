@@ -190,7 +190,7 @@ The FRAGMENT locations are as follows.
 Shader Packages
 ---------------
 
-Earlier we shows you how to inject functions using ``VirtualProgram``. 
+Earlier we showed you how to inject functions using ``VirtualProgram``. 
 The Shader Composition Framework also provides the concept of a ``ShaderPackage`` that supports
 more advances methods of shader management. We will talk about some of those now.
 

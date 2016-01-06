@@ -54,17 +54,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT Config
     {
     public:
-        Config() { }
+        Config()
+            : _isLocation(false) { }
 
         Config( const std::string& key )
-            : _key(key) { }
+            : _key(key), _isLocation(false) { }
 
         Config( const std::string& key, const std::string& value ) 
-            : _key( key ), _defaultValue( value ) { }
+            : _key( key ), _defaultValue( value ), _isLocation(false) { }
 
         /** Copy ctor */
         Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
         virtual ~Config();
 
@@ -77,11 +78,6 @@ namespace osgEarth
          */
         void setReferrer( const std::string& value );
 
-        /**
-         * Same as setReferrer, but appends the new value to any already existing values (path concat)
-         */
-        void inheritReferrer( const std::string& value );
-
         /** Access this object's "relative-to" location. */
         const std::string& referrer() const { return _referrer; }
 
@@ -89,6 +85,11 @@ namespace osgEarth
         const std::string referrer( const std::string& key ) const {
             return child(key).referrer();
         }
+
+        /** Sets whether this Config's value represents a location, i.e. a URI, filename, or
+            other string that can be relocated to be relative to a different referrer. */
+        void setIsLocation(bool tf) { _isLocation = tf; }
+        bool isLocation() const     { return _isLocation; }
 
         /** Hint that this Config came from an externally referenced resource. */
         const std::string& externalRef() const { return _externalRef;}
@@ -211,13 +212,13 @@ namespace osgEarth
         template<typename T>
         void add( const std::string& key, const T& value ) {
             _children.push_back( Config(key, Stringify() << value) );
-            _children.back().inheritReferrer( _referrer );
+            _children.back().setReferrer( _referrer );
         }
 
         /** Add a Config as a child */
         void add( const Config& conf ) {
             _children.push_back( conf );
-            _children.back().inheritReferrer( _referrer );
+            _children.back().setReferrer( _referrer );
         }
 
         /** Add a config as a child, assigning it a key */
@@ -436,7 +437,8 @@ namespace osgEarth
         std::string _key;
         std::string _defaultValue;
         ConfigSet   _children;   
-        std::string _referrer;        
+        std::string _referrer;
+        bool        _isLocation;
         std::string _externalRef;
         RefMap      _refMap;
     };
@@ -476,8 +478,7 @@ namespace osgEarth
     template<> inline
     void Config::add<std::string>( const std::string& key, const std::string& value ) {
         _children.push_back( Config( key, value ) );
-        //_children.back().setReferrer( _referrer );
-        _children.back().inheritReferrer( _referrer );
+        _children.back().setReferrer( _referrer );
     }
 
     template<> inline

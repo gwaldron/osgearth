@@ -260,6 +260,7 @@ namespace osgEarth
             Config conf("uri", base());
             conf.addIfSet("option_string", _optionString);
             conf.setReferrer( context().referrer() );
+            conf.setIsLocation( true );
             return conf;
         }
 
@@ -413,8 +414,6 @@ namespace osgEarth
         if ( opt.isSet() ) {
             Config c = opt->getConfig();
             c.key() = key;
-            // setting the referrer is a hint that this may be a relative path requiring resolution
-            //c.setReferrer( opt->context().referrer() );
             add( c );
         }
     }

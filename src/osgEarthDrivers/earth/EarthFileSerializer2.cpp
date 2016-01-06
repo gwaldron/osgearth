@@ -114,6 +114,9 @@ namespace
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
             _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+
+            OE_INFO << "new referrer abspath = " << _newReferrerAbsPath << "\n";
+            OE_INFO << "new referrer folder  = " << _newReferrerFolder  << "\n";
         }
 
         /** Whether to make absolute paths into relative paths if possible */
@@ -124,8 +127,8 @@ namespace
 
         void apply(Config& input)
         {
-            // only consider "simple" values (no children) with a set referrer:
-            if ( !input.referrer().empty() ) //&& input.isSimple() )
+            // only consider "simple" values with a set referrer:
+            if ( input.isLocation() && !input.referrer().empty() && !input.value().empty() )
             {
                 // If the input has a referrer set, it might be a path. Rewrite the path
                 // to be relative to the new referrer that was passed into this visitor.
@@ -370,7 +373,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         mapConf.add( ext );
     }
 
-#if 0 // removed until it can be debugged.
+#if 1 // removed until it can be debugged.
     // Re-write pathnames in the Config so they are relative to the new referrer.
     if ( _rewritePaths && !referrer.empty() )
     {

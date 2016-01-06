@@ -71,15 +71,6 @@ Config::setReferrer( const std::string& referrer )
     }
 }
 
-void
-Config::inheritReferrer( const std::string& referrer )
-{
-    if ( !referrer.empty() )
-    {
-        setReferrer( referrer );
-    }
-}
-
 bool
 Config::fromXML( std::istream& in )
 {
@@ -242,7 +233,6 @@ namespace
                                 array_value.append( conf2json(*j, nicer, depth+1) );
                             }
                             value = array_value;
-                            //value[array_key] = array_value;
                         }
                     }
                 }

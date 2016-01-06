@@ -66,8 +66,8 @@ bool SkyManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAd
 
             double speed = minSpeed + (1.0 - _distance / maxDistance) * (maxSpeed - minSpeed);
 
-            _heading += dx * speed;
-            _pitch += dy * speed;
+            _heading -= dx * speed;
+            _pitch -= dy * speed;
         }
 
         _prevX = ea.getX();

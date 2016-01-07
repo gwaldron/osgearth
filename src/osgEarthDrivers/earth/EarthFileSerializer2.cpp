@@ -114,9 +114,6 @@ namespace
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
             _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
-
-            OE_INFO << "new referrer abspath = " << _newReferrerAbsPath << "\n";
-            OE_INFO << "new referrer folder  = " << _newReferrerFolder  << "\n";
         }
 
         /** Whether to make absolute paths into relative paths if possible */
@@ -125,17 +122,31 @@ namespace
             _rewriteAbsolutePaths = value;
         }
 
+        bool isLocation(const Config& input) const
+        {
+            if ( input.value().empty() )
+                return false;
+
+            if ( input.referrer().empty() )
+                return false;
+
+            return 
+                input.key() == "url"      ||
+                input.key() == "uri"      ||
+                input.key() == "href"     ||
+                input.key() == "filename" ||
+                input.key() == "file"     ||
+                input.key() == "pathname" ||
+                input.key() == "path";
+        }
+
         void apply(Config& input)
         {
-            // only consider "simple" values with a set referrer:
-            if ( input.isLocation() && !input.referrer().empty() && !input.value().empty() )
+            if ( isLocation(input) )
             {
-                // If the input has a referrer set, it might be a path. Rewrite the path
-                // to be relative to the new referrer that was passed into this visitor.
-
                 // resolve the absolute path of the input:
                 URI inputURI( input.value(), URIContext(input.referrer()) );
-                
+
                 std::string newValue = resolve(inputURI);
                 if ( newValue != input.value() )
                 {
@@ -165,8 +176,14 @@ namespace
         {
             std::string inputAbsPath = osgDB::convertFileNameToUnixStyle( inputURI.full() );
 
+            // if the abs paths have different roots, no resolution; use the input.
+            if (osgDB::getPathRoot(inputAbsPath) != osgDB::getPathRoot(_newReferrerFolder))
+            {
+                return inputURI.full();
+            }
+
             // see whether the file exists (this is how we verify that it's actually a path)
-            if ( osgDB::fileExists(inputAbsPath) )
+            //if ( osgDB::fileExists(inputAbsPath) )
             {
                 if ( !osgDB::isAbsolutePath(inputURI.base()) || _rewriteAbsolutePaths )
                 {

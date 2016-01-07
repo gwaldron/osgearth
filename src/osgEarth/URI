@@ -421,7 +421,8 @@ namespace osgEarth
     template<> inline
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            update(key, opt->getConfig());
+            remove(key);
+            add( key, opt->getConfig() );
         }
     }
 

@@ -207,9 +207,12 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     // then register the callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
 
-    // enable backface culling
-    osg::StateSet* set = getOrCreateStateSet();
-    set->setMode( GL_CULL_FACE, 1 );
+    // apply render bin if necessary
+    if ( options.binNumber().isSet() )
+    {
+        osg::StateSet* set = getOrCreateStateSet();
+        set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
+    }
 
     if ( options.enableMercatorFastPath().isSet() )
     {

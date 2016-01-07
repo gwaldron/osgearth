@@ -113,6 +113,36 @@ namespace
         osg::observer_ptr<osg::Node> _node;
     };
 
+    /**
+     * Toggles the main control canvas on and off.
+     */
+    struct ToggleCanvasEventHandler : public osgGA::GUIEventHandler
+    {
+        ToggleCanvasEventHandler(osg::Node* canvas):
+            _canvas(canvas)
+        {
+        }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
+            {
+                if (ea.getKey() == 'y')
+                {
+                    osg::ref_ptr< osg::Node > safeNode = _canvas.get();
+                    if (safeNode.valid())
+                    {
+                        safeNode->setNodeMask( safeNode->getNodeMask() ? 0 : ~0 );
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        osg::observer_ptr<osg::Node> _canvas;
+    };
+
     // sets a user-specified uniform.
     struct ApplyValueUniform : public ControlEventHandler
     {
@@ -534,6 +564,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
         mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
     }
     canvas->addControl( mainContainer );
+
+    // Add an event handler to toggle the canvas with a key press;
+    view->addEventHandler(new ToggleCanvasEventHandler(canvas) );
+
+
 
 
     // look for external data in the map node:

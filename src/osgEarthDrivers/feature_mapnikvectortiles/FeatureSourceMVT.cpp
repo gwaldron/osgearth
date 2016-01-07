@@ -108,16 +108,16 @@ public:
         {
             _minLevel = as<int>(minLevelStr, 0);
             _maxLevel = as<int>(maxLevelStr, 0);
-            OE_INFO << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
+            OE_NOTICE << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
         }
         else
         {
             computeLevels();
-            OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
+            OE_NOTICE << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
         }
 
 
-        result->setFirstLevel(_minLevel);
+        result->setFirstLevel(1);
         result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
         result->geoInterp() = osgEarth::GEOINTERP_RHUMB_LINE;
@@ -203,10 +203,36 @@ public:
                 {
                     const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
+                    /*
+                    OE_NOTICE << "Layer has " << layer.keys().size() << " keys" << std::endl;
+                    OE_NOTICE << "Layer has " << layer.values().size() << " values" << std::endl;
+                    OE_NOTICE << "Layer has " << layer.features().size() << " features" << std::endl;
+                    for (unsigned int j = 0; j < layer.keys().size(); j++)
+                    {
+                        OSG_NOTICE << "Key " << layer.keys().Get(j) << std::endl;
+                    }
+                    OE_NOTICE << "Got Keys " << std::endl;
+
+                    OE_NOTICE << "Get Values " << std::endl;
+                    for (unsigned int j = 0; j < layer.values().size(); j++)
+                    {
+                        OSG_NOTICE << "Value " << layer.values().Get(j).string_value() << std::endl;
+                    }
+                    OE_NOTICE << "Got Values " << std::endl;
+                    */
+                    
                     for (unsigned int j = 0; j < layer.features().size(); j++)
                     {
                         const mapnik::vector::tile_feature &feature = layer.features().Get(j);
 
+                        /*
+                        for (unsigned int k = 0; k < feature.tags().size(); k+=2)
+                        {
+                            std::string key = layer.keys().Get(feature.tags().Get(k));
+                            std::string value = layer.values().Get(feature.tags().Get(k+1)).string_value();
+                        }
+                        */
+                        
                         osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
 
                         eGeomType geomType = static_cast<eGeomType>(feature.type());
@@ -295,12 +321,12 @@ public:
             }
             else
             {
-                OE_DEBUG << "Failed to parse, not surprising" << std::endl;
+                OE_INFO << "Failed to parse, not surprising" << std::endl;
             }
         }
         else
         {
-            //OE_NOTICE << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
+            OE_INFO << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
             valid = false;
         }
 
@@ -308,6 +334,7 @@ public:
 
         if (!features.empty())
         {
+            //OE_NOTICE << "Returning " << features.size() << " features" << std::endl;
             return new FeatureListCursor(features);
         }
 

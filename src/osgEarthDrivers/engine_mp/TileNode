@@ -56,11 +56,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileNode(const TileKey& key, TileModel* model, const osg::Matrixd& matrix);
 
         /**
-         * Assigned the UID of the engine that created this tile.
-         */
-        void setEngineUID(UID uid) { _engineUID = uid; }
-
-        /**
          * True if this is a valid tile node.
          * Subclass may override (see InvalidTileNode)
          */
@@ -125,7 +120,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         virtual ~TileNode() { }
 
         TileKey                            _key;
-        UID                                _engineUID;
         osg::ref_ptr<TileModel>            _model;
         unsigned                           _lastTraversalFrame;
         Revision                           _maprevision;

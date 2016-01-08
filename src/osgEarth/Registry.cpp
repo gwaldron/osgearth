@@ -160,7 +160,7 @@ _cacheDriver        ( "filesystem" )
             options.setDriver( getDefaultCacheDriverName() );
 
             osg::ref_ptr<Cache> cache = CacheFactory::create(options);
-            if ( cache->isOK() )
+            if ( cache.valid() && cache->isOK() )
             {
                 setCache( cache.get() );
             }

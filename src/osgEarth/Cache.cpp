@@ -95,7 +95,7 @@ CacheFactory::create( const CacheOptions& options )
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();
         osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( driverExt, rwopt.get() );
         result = dynamic_cast<Cache*>( rr.getObject() );
-        if ( !result )
+        if ( !result.valid() )
         {
             OE_WARN << LC << "Failed to load cache plugin for type \"" << options.getDriver() << "\"" << std::endl;
         }

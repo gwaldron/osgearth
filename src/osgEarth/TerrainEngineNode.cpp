@@ -419,6 +419,19 @@ TerrainEngineNode::removeTilePatchCallback(TilePatchCallback* cb)
     std::remove(_tilePatchCallbacks.begin(), _tilePatchCallbacks.end(), cb);
 }
 
+ComputeRangeCallback*
+TerrainEngineNode::getComputeRangeCallback() const
+{
+    return _computeRangeCallback.get();
+}
+
+void
+TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback)
+{
+    _computeRangeCallback = computeRangeCallback;
+}
+
+
 //------------------------------------------------------------------------
 
 #undef LC

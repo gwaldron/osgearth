@@ -21,6 +21,7 @@
 */
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
+#include "MPTerrainEngineNode"
 #include <osg/Version>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
@@ -235,25 +236,38 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
             break;
         case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
         {
-            float required_range = 0;
-            if (_rangeMode==DISTANCE_FROM_EYE_POINT)
+            osg::ref_ptr<MPTerrainEngineNode> engine;
+            MPTerrainEngineNode::getEngineByUID( _engineUID, engine );
+
+            // Compute the required range.
+            float required_range = -1.0;
+            if (engine->getComputeRangeCallback())
+            {                
+                required_range = (*engine->getComputeRangeCallback())(this, nv);
+            }            
+
+            // If we don't have a callback or it return a negative number fallback on the original calculation.
+            if (required_range < 0.0)
             {
-                required_range = nv.getDistanceToViewPoint(getCenter(),true);
-            }
-            else
-            {
-                osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
-                if (cullStack && cullStack->getLODScale()>0.0f)
+                if (_rangeMode==DISTANCE_FROM_EYE_POINT)
                 {
-                    required_range = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                    required_range = nv.getDistanceToViewPoint(getCenter(),true);
                 }
                 else
                 {
-                    // fallback to selecting the highest res tile by
-                    // finding out the max range
-                    for(unsigned int i=0;i<_rangeList.size();++i)
+                    osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
+                    if (cullStack && cullStack->getLODScale()>0.0f)
                     {
-                        required_range = osg::maximum(required_range,_rangeList[i].first);
+                        required_range = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
+                    }
+                    else
+                    {
+                        // fallback to selecting the highest res tile by
+                        // finding out the max range
+                        for(unsigned int i=0;i<_rangeList.size();++i)
+                        {
+                            required_range = osg::maximum(required_range,_rangeList[i].first);
+                        }
                     }
                 }
             }

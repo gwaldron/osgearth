@@ -100,6 +100,17 @@ namespace osgEarth
     };
 
 
+
+    /**
+     * A callback that lets you customize the computed range for a terrain tile.
+     * Providing a custom range can let applications better control how paging behaves.
+     */
+    struct ComputeRangeCallback : public osg::Referenced
+    {
+        virtual float operator()(osg::Node* node, osg::NodeVisitor& nv) = 0;
+    };
+
+
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
      *
@@ -163,6 +174,12 @@ namespace osgEarth
 
         /** Removes a tile patch callback. */
         virtual void removeTilePatchCallback(TilePatchCallback*);
+
+        /** Gets the ComputeRangeCallback for this TerrainEngineNode */
+        ComputeRangeCallback* getComputeRangeCallback() const;
+
+        /** Sets the ComputeRangeCallback for this TerrainEngineNode */
+        void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback);
 
 
     public: // TerrainEngine
@@ -323,6 +340,8 @@ namespace osgEarth
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
+
+        osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 
     protected:
 

@@ -362,6 +362,18 @@ TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node
         _tileNodeCallbacks[i]->operator()(key, node);
 }
 
+ComputeRangeCallback*
+TerrainEngineNode::getComputeRangeCallback() const
+{
+    return _computeRangeCallback.get();
+}
+
+void
+TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback)
+{
+    _computeRangeCallback = computeRangeCallback;
+}
+
 
 //------------------------------------------------------------------------
 

@@ -30,7 +30,7 @@ Press 'w' for wireframe mode to see the tessellation!
 	
     <image name="pavement" driver="agglite" enabled="true" shared="true" visible="false" min_level="7" max_data_level="10">  
         <features name="world" driver="ogr">
-            <url>H:/data/xplane/apt_shapes/APTBoundary.shp</url>
+            <url>H:/data/xplane/aerodrome/APTBoundary_all.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features> 
 		<layout>

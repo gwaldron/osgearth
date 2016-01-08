@@ -1,0 +1,39 @@
+<map>
+    <options>
+        <profile
+            srs="+proj=longlat +a=6441918.37 +b=6420319.837342"
+            xmin="-180" xmax="180" ymin="-90" ymax="90">
+        </profile>
+        <terrain driver="rex" color="#ffffff00" bin_number="2" skirt_ratio="0" tile_size="7"/>
+    </options>
+        
+    <image name="Clouds" driver="osg" url="../data/cloud_combined_2048.jpg">
+        <profile>global-geodetic</profile>
+        <cache_policy usage="none"/>
+        
+        <color_filters>
+            <glsl>
+                color.a = color.r;
+            </glsl>
+        </color_filters>  
+        
+        <!-- concept: not yet implemented -->
+        <shader name="cloudAlpha"/>
+    </image>
+    
+    <!-- concept: not yet implemented -->
+    <shaders>
+        <shader name="cloudAlpha">
+            <code>
+              <![CDATA[
+                #pragma vp_location   fragment_coloring
+                #pragma vp_entryPoint cloudAlpha
+                
+                void cloudAlpha(inout vec4 color) {
+                    color.a = color.r;
+                }
+              ]]>
+            </code>
+        </shader>
+    </shaders>
+</map>

@@ -119,13 +119,16 @@ namespace
 
             if ( engine.valid() )
             {
-                PagerLoader* loader = static_cast<PagerLoader*>( engine->getLoader() );
-                TileKey key = loader->getTileKeyForRequest(requestUID);
-
-                MapFrame frame(engine->getMap());
-                if ( frame.isCached(key) )
+                PagerLoader* loader = dynamic_cast<PagerLoader*>( engine->getLoader() );
+                if ( loader )
                 {
-                    result = LOCAL_FILE;
+                    TileKey key = loader->getTileKeyForRequest(requestUID);
+
+                    MapFrame frame(engine->getMap());
+                    if ( frame.isCached(key) )
+                    {
+                        result = LOCAL_FILE;
+                    }
                 }
 
                 //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";

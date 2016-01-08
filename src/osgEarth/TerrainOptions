@@ -186,6 +186,9 @@ namespace osgEarth
          */
         optional<bool>& debug() { return _debug; }
         const optional<bool>& debug() const { return _debug; }
+
+        optional<int>& binNumber() { return _binNumber; }
+        const optional<int>& binNumber() const { return _binNumber; }
    
     public:
         virtual Config getConfig() const;
@@ -223,6 +226,7 @@ namespace osgEarth
         optional<unsigned> _minNormalMapLOD;
         optional<bool> _gpuTessellation;
         optional<bool> _debug;
+        optional<int> _binNumber;
     };
 }
 

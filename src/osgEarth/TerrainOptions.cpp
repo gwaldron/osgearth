@@ -47,7 +47,8 @@ _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
 _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
-_debug( false )
+_debug( false ),
+_binNumber( 0 )
 {
     fromConfig( _conf );
 }
@@ -80,6 +81,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "min_normal_map_lod", _minNormalMapLOD );
     conf.updateIfSet( "gpu_tessellation", _gpuTessellation );
     conf.updateIfSet( "debug", _debug );
+    conf.updateIfSet( "bin_number", _binNumber );
 
     //Save the filter settings
 	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -123,6 +125,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "min_normal_map_lod", _minNormalMapLOD );
     conf.getIfSet( "gpu_tessellation", _gpuTessellation );
     conf.getIfSet( "debug", _debug );
+    conf.getIfSet( "bin_number", _binNumber );
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

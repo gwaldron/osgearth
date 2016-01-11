@@ -225,7 +225,7 @@ this. The setup looks like this in the earth file::
         <normal_map>true</normal_map>
     </image>
     
-The **noise driver** generates Perlin noise; this will will the image with pseudo-
+The **noise driver** generates Perlin noise; this will fill the image with pseudo-
 random normal vectors. (Setting ``normal_map`` to ``true`` is what tells the driver
 to make normal vectors instead of RGB values. You should also set ``shared`` to 
 ``true``; this will make the normal map available to the shader pipeline so that it

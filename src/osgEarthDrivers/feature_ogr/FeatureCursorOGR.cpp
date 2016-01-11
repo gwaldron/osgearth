@@ -95,11 +95,11 @@ _filters          ( filters )
             from = delim + from + delim;                    
         }
 
-        if ( query.expression().isSet() )
+        if ( _query.expression().isSet() )
         {
             // build the SQL: allow the Query to include either a full SQL statement or
             // just the WHERE clause.
-            expr = query.expression().value();
+            expr = _query.expression().value();
 
             // if the expression is just a where clause, expand it into a complete SQL expression.
             std::string temp = osgEarth::toLower(expr);
@@ -121,9 +121,9 @@ _filters          ( filters )
         }
 
         //Include the order by clause if it's set
-        if (query.orderby().isSet())
+        if (_query.orderby().isSet())
         {                     
-            std::string orderby = query.orderby().value();
+            std::string orderby = _query.orderby().value();
             
             std::string temp = osgEarth::toLower(orderby);
 
@@ -138,15 +138,22 @@ _filters          ( filters )
             expr += (" " + orderby );
         }
 
+        // if the tilekey is set, convert it to feature profile coords
+        if ( _query.tileKey().isSet() && !_query.bounds().isSet() && profile )
+        {
+            GeoExtent localEx = _query.tileKey()->getExtent().transform( profile->getSRS() );
+            _query.bounds() = localEx.bounds();
+        }
+
         // if there's a spatial extent in the query, build the spatial filter:
-        if ( query.bounds().isSet() )
+        if ( _query.bounds().isSet() )
         {
             OGRGeometryH ring = OGR_G_CreateGeometry( wkbLinearRing );
-            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMax(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMax(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMin(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, _query.bounds()->xMin(), _query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, _query.bounds()->xMin(), _query.bounds()->yMax(), 0 );
+            OGR_G_AddPoint(ring, _query.bounds()->xMax(), _query.bounds()->yMax(), 0 );
+            OGR_G_AddPoint(ring, _query.bounds()->xMax(), _query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, _query.bounds()->xMin(), _query.bounds()->yMin(), 0 );
 
             _spatialFilter = OGR_G_CreateGeometry( wkbPolygon );
             OGR_G_AddGeometryDirectly( _spatialFilter, ring ); 

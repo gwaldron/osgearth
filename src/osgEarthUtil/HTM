@@ -27,14 +27,12 @@
 #include <osg/Geode>
 #include <osg/Group>
 #include <osg/Polytope>
-#include <osg/CoordinateSystemNode>
 #include <vector>
 
 namespace osgEarth { namespace Util
 {
     struct HTMSettings
     {
-        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         unsigned _maxLeaves;
         float _maxLeafRange;
         int _debugCount;
@@ -52,11 +50,6 @@ namespace osgEarth { namespace Util
     {
     public:
         HTMGroup();
-
-        /**
-         * Sets the ellipsoid representing the earth
-         */
-        void setEllipsoid(const osg::EllipsoidModel*);
 
         /**
          * Sets the maximum number of leaf nodes that can exist at a

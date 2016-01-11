@@ -91,13 +91,16 @@ osg::BoundingSphered SimplePager::getBounds(const TileKey& key)
 
 osg::Node* SimplePager::buildRootNode()
 {
+    
     osg::Group* root = new osg::Group;
 
     std::vector<TileKey> keys;
     _profile->getRootKeys( keys );
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        root->addChild( createPagedNode( keys[i] ) );
+        osg::Node* node = createPagedNode( keys[i] );
+        if ( node )
+            root->addChild( node );
     }
 
     return root;
@@ -117,49 +120,71 @@ osg::Node* SimplePager::createNode( const TileKey& key )
     return mt;
 }
 
-osg::PagedLOD* SimplePager::createPagedNode( const TileKey& key )
+osg::Node* SimplePager::createPagedNode( const TileKey& key )
 {
     osg::BoundingSphered tileBounds = getBounds( key );
 
-    osg::PagedLOD* plod = new osg::PagedLOD;
-    plod->setCenter( tileBounds.center() );
-    plod->setRadius( tileBounds.radius() );
+    // restrict subdivision to max level:
+    bool hasChildren = key.getLOD() < _maxLevel;
 
     // Create the actual data for this tile.
-    osg::Node* node = createNode( key );
-    if (!node && key.getLevelOfDetail() < _minLevel)
-    {              
-        // If we couldn't create any data, just create an empty group.  That's ok.
-        node = new osg::Group;
-    }
-    if (!node) return 0;
-    plod->addChild( node );
+    osg::ref_ptr<osg::Node> node;
 
-    std::stringstream buf;
-    buf << key.getLevelOfDetail() << "_" << key.getTileX() << "_" << key.getTileY() << ".osgearth_pseudo_simple";
-
-    std::string uri = buf.str();
-
-    // Now setup a filename on the PagedLOD that will load all of the children of this node.
-    plod->setFileName(1, uri);
-    plod->setDatabaseOptions( _options.get() );
-
-    // Setup the min and max ranges.
-
-    // This setups a replacement mode where the parent will be completely replaced by it's children.
-    float minRange = (float)(tileBounds.radius() * _rangeFactor);
-
-    if (!_additive)
+    // only create real node if we are at least at the min LOD:
+    if ( key.getLevelOfDetail() >= _minLevel )
     {
-        // Replace mode, the parent is replaced by it's children.
-        plod->setRange( 0, minRange, FLT_MAX );
-        plod->setRange( 1, 0, minRange );
+        node = createNode( key );
+
+        if ( !node.valid() )
+        {
+            hasChildren = false;
+        }
+    }
+
+    if ( !node.valid() )
+    {
+        node = new osg::Group();
+    }
+
+    osg::PagedLOD* plod = new osg::PagedLOD;
+    plod->setCenter( tileBounds.center() ); 
+    plod->setRadius( tileBounds.radius() );
+
+    plod->addChild( node.get() );
+
+    if ( hasChildren )
+    {
+        std::stringstream buf;
+        buf << key.getLevelOfDetail() << "_" << key.getTileX() << "_" << key.getTileY() << ".osgearth_pseudo_simple";
+
+        std::string uri = buf.str();
+
+        // Now setup a filename on the PagedLOD that will load all of the children of this node.
+        plod->setFileName(1, uri);
+        plod->setDatabaseOptions( _options.get() );
+
+        // Setup the min and max ranges.
+
+        // This setups a replacement mode where the parent will be completely replaced by it's children.
+        float minRange = (float)(tileBounds.radius() * _rangeFactor);
+
+        if (!_additive)
+        {
+            // Replace mode, the parent is replaced by it's children.
+            plod->setRange( 0, minRange, FLT_MAX );
+            plod->setRange( 1, 0, minRange );
+        }
+        else
+        {
+            // Additive, the parent remains and new data is added
+            plod->setRange( 0, 0, FLT_MAX );
+            plod->setRange( 1, 0, minRange );
+        }
     }
     else
     {
-        // Additive, the parent remains and new data is added
+        // no children, so max out the visibility range.
         plod->setRange( 0, 0, FLT_MAX );
-        plod->setRange( 1, 0, minRange );
     }
 
     return plod;
@@ -177,7 +202,7 @@ osg::Node* SimplePager::loadKey( const TileKey& key )
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::PagedLOD* plod = createPagedNode( childKey );
+        osg::Node* plod = createPagedNode( childKey );
         if (plod)
         {
             group->addChild( plod );

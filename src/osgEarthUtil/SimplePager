@@ -76,7 +76,7 @@ namespace osgEarth { namespace Util {
         /**
         * Creates a PagedLOD for the given TileKEy
         */
-        osg::PagedLOD* createPagedNode( const TileKey& key );
+        osg::Node* createPagedNode( const TileKey& key );
 
 
         /**

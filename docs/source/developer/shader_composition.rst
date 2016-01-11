@@ -16,7 +16,7 @@ worked with shaders has run into the same challenges:
   shaders is a maintenance nightmare.
 * Maintaining multiple versions of shader main()s is cumbersome and
   difficult.
-* Maintaining the dreaded "uber shader" becomes unmanagable as the 
+* Maintaining the dreaded "uber shader" becomes unmanageable as the 
   GLSL code base grows in complexity and you add more features.
   
 *Shader Composition* solves these problems by *modularizing* the shader

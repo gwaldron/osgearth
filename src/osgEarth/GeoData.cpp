@@ -833,43 +833,41 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     if ( isInvalid() )
         return false;
 
-    double local_x = x, local_y = y;
-
     osg::Vec3d xy( x, y, 0 );
     osg::Vec3d localxy = xy;
 
     if (srs &&
         !srs->isEquivalentTo( _srs.get() ) &&
         !srs->transform(xy, _srs.get(), localxy) )
-    {
+    {    
         return false;
     }
     else
     {
         // normalize a geographic longitude to -180:+180
         if ( _srs->isGeographic() )
-            local_x = normalizeLongitude( local_x );            
+            localxy.x() = normalizeLongitude( localxy.x() );            
 
         //Account for small rounding errors along the edges of the extent
-        if (osg::equivalent(_west, local_x)) local_x = _west;
-        if (osg::equivalent(_east, local_x)) local_x = _east;
-        if (osg::equivalent(_south, local_y)) local_y = _south;
-        if (osg::equivalent(_north, local_y)) local_y = _north;
+        if (osg::equivalent(_west, localxy.x())) localxy.x() = _west;
+        if (osg::equivalent(_east, localxy.x())) localxy.x() = _east;
+        if (osg::equivalent(_south, localxy.y())) localxy.y() = _south;
+        if (osg::equivalent(_north, localxy.y())) localxy.y() = _north;
 
         if ( crossesAntimeridian() )
         {
-            if ( local_x > 0.0 )
+            if ( localxy.x() > 0.0 )
             {
-                return local_x >= _west && local_x <= 180.0 && local_y >= _south && local_y <= _north;
+                return localxy.x() >= _west && localxy.x() <= 180.0 && localxy.y() >= _south && localxy.y() <= _north;
             }
             else
             {
-                return local_x >= -180.0 && local_x <= _east && local_y >= _south && local_y <= _north;
+                return localxy.x() >= -180.0 && localxy.x() <= _east && localxy.y() >= _south && localxy.y() <= _north;
             }
         }
         else
         {
-            return local_x >= _west && local_x <= _east && local_y >= _south && local_y <= _north;
+            return localxy.x() >= _west && localxy.x() <= _east && localxy.y() >= _south && localxy.y() <= _north;
         }
     }
 }

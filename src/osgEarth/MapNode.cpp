@@ -492,6 +492,9 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
         // set the IO options is they were provided:
         if ( options )
             extension->setDBOptions( options );
+
+        else if ( getMap()->getDBOptions() )
+            extension->setDBOptions( getMap()->getDBOptions() );
         
         // start it.
         ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);

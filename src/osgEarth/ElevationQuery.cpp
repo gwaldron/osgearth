@@ -116,6 +116,11 @@ osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& file
 #endif
 }
 
+ElevationQuery::ElevationQuery()
+{
+    //nop
+}
+
 ElevationQuery::ElevationQuery(const Map* map) :
 _mapf( map, (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) )
 {
@@ -129,6 +134,13 @@ _mapf( mapFrame )
 }
 
 void
+ElevationQuery::setMapFrame(const MapFrame& frame)
+{
+    _mapf = frame;
+    postCTOR();
+}
+
+void
 ElevationQuery::postCTOR()
 {
     // defaults:
@@ -136,6 +148,7 @@ ElevationQuery::postCTOR()
     _queries          = 0.0;
     _totalTime        = 0.0;
     _fallBackOnNoData = false;
+    _cache.clear();
     _cache.setMaxSize( 500 );
 
     // set read callback for IntersectionVisitor

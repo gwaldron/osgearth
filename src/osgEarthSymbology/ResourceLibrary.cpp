@@ -347,3 +347,12 @@ ResourceLibrary::getInstance( const std::string& name, const osgDB::Options* dbO
     ResourceMap<InstanceResource>::const_iterator i = _instances.find( name );
     return i != _instances.end() ? i->second.get() : 0L;
 }
+
+ModelResource*
+ResourceLibrary::getModel( const ModelSymbol* ms, const osgDB::Options* dbOptions ) const
+{
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
+    Threading::ScopedReadLock shared( _mutex );
+    ResourceMap<InstanceResource>::const_iterator i = _instances.find( ms->name()->eval() );
+    return i != _instances.end() ? dynamic_cast<ModelResource*>(i->second.get()) : 0L;
+}

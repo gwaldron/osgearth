@@ -201,6 +201,17 @@ namespace osgEarth
          */
         const std::vector< osg::ref_ptr<Extension> >& getExtensions() const { return _extensions; }
 
+        /**
+         * Find an extension by type and return it.
+         */
+        template<typename T>
+        T* getExtension() const {
+            for(std::vector< osg::ref_ptr<Extension> >::const_iterator i = _extensions.begin(); i != _extensions.end(); ++i) {
+                T* e = dynamic_cast<T*>(i->get());
+                if ( e ) return e;
+            }
+            return 0L;
+        }
 
     public: // special purpose
 

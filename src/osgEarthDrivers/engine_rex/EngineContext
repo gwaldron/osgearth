@@ -69,7 +69,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         GeometryPool* getGeometryPool() const { return _geometryPool; }
 
-        const MapFrame& getMapFrame() const { return _frame; }
+        const MapFrame& getMapFrame();
 
         TerrainEngineNode* getEngine() const { return _terrainEngine; }
 

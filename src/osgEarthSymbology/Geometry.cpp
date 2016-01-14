@@ -497,6 +497,31 @@ void Geometry::removeDuplicates()
     }
 }
 
+void
+Geometry::removeColinearPoints()
+{
+    if ( size() >= 3 )
+    {
+        std::vector<unsigned> ind;
+
+        for(unsigned i=0; i<size()-2; ++i)
+        {
+            osg::Vec3d v0( at(i+1) - at(i) );
+            v0.normalize();
+            osg::Vec3d v1( at(i+2) - at(i) );
+            v1.normalize();
+
+            if ( osg::equivalent(v0*v1, 1.0) )
+                ind.push_back(i+1);
+        }
+
+        for(std::vector<unsigned>::reverse_iterator r = ind.rbegin(); r != ind.rend(); ++r)
+        {
+            erase( begin() + (*r) );
+        }
+    }
+}
+
 Geometry::Orientation 
 Geometry::getOrientation() const
 {
@@ -785,6 +810,14 @@ Polygon::removeDuplicates()
         (*i)->removeDuplicates();
 }
 
+void
+Polygon::removeColinearPoints()
+{
+    Ring::removeColinearPoints();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->removeColinearPoints();
+}
+
 //----------------------------------------------------------------------------
 
 MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
@@ -883,6 +916,15 @@ MultiGeometry::rewind( Orientation orientation )
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
     {
         i->get()->rewind( orientation );
+    }
+}
+
+void
+MultiGeometry::removeColinearPoints()
+{
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    {
+        i->get()->removeColinearPoints();
     }
 }
 

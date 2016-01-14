@@ -49,6 +49,7 @@ SET(HEADERS_ROOT
     Shaders
 	Shadowing
 	SimplexNoise
+    SimplePager
     Sky
     SpatialData
     StarData
@@ -127,6 +128,7 @@ SET(SOURCES_ROOT
     RTTPicker.cpp
 	Shadowing.cpp
 	SimplexNoise.cpp
+    SimplePager.cpp
     SpatialData.cpp
     Sky.cpp
     TerrainProfile.cpp

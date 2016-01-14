@@ -214,23 +214,11 @@ HTMNode::split()
 
 HTMGroup::HTMGroup()
 {
-    _settings._ellipsoid = new osg::EllipsoidModel();
     _settings._maxLeaves = 16;
     _settings._maxLeafRange = 50000.0f;
 
     // hopefully prevent the OSG optimizer from altering this graph:
     setDataVariance( osg::Object::DYNAMIC );
-
-    reinitialize();
-}
-
-void
-HTMGroup::setEllipsoid(const osg::EllipsoidModel* e)
-{
-    if ( !e )
-        return;
-
-    _settings._ellipsoid = e;
 
     reinitialize();
 }
@@ -254,14 +242,11 @@ HTMGroup::setMaxLeafRange(float range)
 void
 HTMGroup::reinitialize()
 {
-    if ( _settings._ellipsoid.valid() == false )
-        return;
-
     _children.clear();
 
-    double rx = 1.0; //_settings._ellipsoid->getRadiusEquator();
-    double ry = 1.0; //_settings._ellipsoid->getRadiusEquator();
-    double rz = 1.0; //_settings._ellipsoid->getRadiusPolar();
+    double rx = 1.0;
+    double ry = 1.0;
+    double rz = 1.0;
 
     // assemble the base manifold of 8 triangles.
     osg::Vec3d v0( 0,   0,   rz);     // lat= 90  long=  0

@@ -71,6 +71,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationQuery
     {
     public:
+        ElevationQuery();
+
         /**
          * Constructs a new elevation manager.
          *
@@ -89,6 +91,9 @@ namespace osgEarth
 
         /** dtor */
         virtual ~ElevationQuery() { }
+
+        /** Sets a new map frame */
+        void setMapFrame(const MapFrame& frame);
 
         /**
          * Gets the terrain elevation at a point, given a terrain resolution.

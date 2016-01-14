@@ -31,6 +31,7 @@ _heading(rhs._heading),
 _pitch(rhs._pitch),
 _roll(rhs._roll),
 _autoScale(rhs._autoScale),
+_name(rhs._name),
 _node(rhs._node)
 {
 }
@@ -53,6 +54,7 @@ ModelSymbol::getConfig() const
     conf.addObjIfSet( "heading",    _heading );
     conf.addObjIfSet( "pitch",      _pitch );
     conf.addObjIfSet( "roll",       _roll );
+    conf.addObjIfSet( "name",       _name );
     
     conf.addIfSet( "auto_scale", _autoScale );
     conf.addIfSet( "alias_map", _uriAliasMap );
@@ -67,6 +69,7 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "heading", _heading );
     conf.getObjIfSet( "pitch",   _pitch );
     conf.getObjIfSet( "roll",    _roll );
+    conf.getObjIfSet( "name",       _name );
 
     conf.getIfSet( "auto_scale", _autoScale );
     conf.getIfSet( "alias_map", _uriAliasMap );
@@ -117,6 +120,9 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "model-script") ) {
         style.getOrCreate<ModelSymbol>()->script() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "model-name") ) {
+        style.getOrCreate<ModelSymbol>()->name() = StringExpression(c.value());
     }
 }
 

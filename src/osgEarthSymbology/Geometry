@@ -199,6 +199,12 @@ namespace osgEarth { namespace Symbology
         virtual void removeDuplicates();
 
         /**
+         * Removes any colinear points, i.e. points that can be safely removed without
+         * affecting the shape/area of the geometry.
+         */
+        virtual void removeColinearPoints();
+
+        /**
          * Get the winding orientation of the geometry (if you consider the last point
          * to connect back to the first in a ring.)
          */
@@ -336,6 +342,8 @@ namespace osgEarth { namespace Symbology
 
         virtual void removeDuplicates();
 
+        virtual void removeColinearPoints();
+
     public:
         RingCollection& getHoles() { return _holes; }
         const RingCollection& getHoles() const { return _holes; }
@@ -373,6 +381,7 @@ namespace osgEarth { namespace Symbology
         virtual bool isValid() const;
         virtual Bounds getBounds() const;
         virtual void rewind( Orientation ori );
+        virtual void removeColinearPoints();
 
     public:
         GeometryCollection& getComponents() { return _parts; }

@@ -343,7 +343,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
     mapConf.set("version", "2");
 
     if ( !input || !input->getMap() )
-        return mapConf;
+        return mapConf; 
 
     const Map* map = input->getMap();
     MapFrame mapf( map, Map::ENTIRE_MODEL );

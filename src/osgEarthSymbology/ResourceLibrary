@@ -24,6 +24,8 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
+#include <osgEarthSymbology/ModelResource>
+#include <osgEarthSymbology/ModelSymbol>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Random>
 #include <map>
@@ -123,7 +125,13 @@ namespace osgEarth { namespace Symbology
          * Finds an instance-resource by name.
          */
         InstanceResource* getInstance( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
+        
+        ModelResource* getModel( const ModelSymbol* ms, const osgDB::Options* dbOptions =0L ) const;
 
+        /**
+         * Returns a list of all Model resources.
+         */
+        void getModels( ModelResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
 
     public: // serialization functions
 

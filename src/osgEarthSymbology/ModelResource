@@ -53,6 +53,8 @@ namespace osgEarth { namespace Symbology
         virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
     };
 
+    typedef std::vector<osg::ref_ptr<ModelResource> > ModelResourceVector;
+
 } } // namespace osgEarth::Symbology
 
 #endif // OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H

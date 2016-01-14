@@ -394,7 +394,9 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf << "#version " TCS_GLSL_VERSION "\n"
-            << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n";
+            << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n"
+            // For gl_MaxPatchVertices
+            << "#extension GL_NV_gpu_shader5 : enable\n";
 
         if ( hasVS )
         {

@@ -128,6 +128,11 @@ namespace osgEarth { namespace Symbology
         
         ModelResource* getModel( const ModelSymbol* ms, const osgDB::Options* dbOptions =0L ) const;
 
+        /**
+         * Returns a list of all Model resources.
+         */
+        void getModels( ModelResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+
     public: // serialization functions
 
         void mergeConfig( const Config& conf );

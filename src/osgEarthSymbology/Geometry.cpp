@@ -500,18 +500,25 @@ void Geometry::removeDuplicates()
 void
 Geometry::removeColinearPoints()
 {
-    std::vector<unsigned> ind;
-    for(unsigned i=0; i<size()-2; ++i)
+    if ( size() >= 3 )
     {
-        osg::Vec3d v0( at(i+1) - at(i) );
-        osg::Vec3d v1( at(i+2) - at(i) );
-        if ( osg::equivalent(v0*v1, 1.0) )
-            ind.push_back(i+1);
-    }
+        std::vector<unsigned> ind;
 
-    for(std::vector<unsigned>::reverse_iterator r = ind.rbegin(); r != ind.rend(); ++r)
-    {
-        erase( begin() + (*r) );
+        for(unsigned i=0; i<size()-2; ++i)
+        {
+            osg::Vec3d v0( at(i+1) - at(i) );
+            v0.normalize();
+            osg::Vec3d v1( at(i+2) - at(i) );
+            v1.normalize();
+
+            if ( osg::equivalent(v0*v1, 1.0) )
+                ind.push_back(i+1);
+        }
+
+        for(std::vector<unsigned>::reverse_iterator r = ind.rbegin(); r != ind.rend(); ++r)
+        {
+            erase( begin() + (*r) );
+        }
     }
 }
 

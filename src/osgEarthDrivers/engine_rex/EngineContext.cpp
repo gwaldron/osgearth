@@ -57,6 +57,14 @@ _tilePatchCallbacks( tilePatchCallbacks )
     //NOP
 }
 
+const MapFrame& EngineContext::getMapFrame()
+{
+    if (_frame.needsSync())
+        _frame.sync();
+
+    return _frame;
+}
+
 void
 EngineContext::startCull(osgUtil::CullVisitor* cv)
 {

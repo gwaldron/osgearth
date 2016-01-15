@@ -72,8 +72,6 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~LandCoverTerrainEffect() { }
 
-        bool installLandCoverLayers();
-
         osg::ref_ptr<const osgDB::Options> _dbo;
 
         osg::ref_ptr<Coverage> _coverage;

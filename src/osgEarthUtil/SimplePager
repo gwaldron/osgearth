@@ -51,6 +51,9 @@ namespace osgEarth { namespace Util {
         unsigned int getMaxLevel() const { return _maxLevel; }
         void setMaxLevel(unsigned int maxLevel) { _maxLevel = maxLevel; }
 
+        float getRangeFactor() const { return _rangeFactor; }
+        void setRangeFactor(float value) { _rangeFactor = value; }
+
         /**
          * Gets the profile for the SimplePager.
          */

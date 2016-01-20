@@ -510,7 +510,6 @@ Geometry::removeColinearPoints()
             v0.normalize();
             osg::Vec3d v1( at(i+2) - at(i) );
             v1.normalize();
-
             if ( osg::equivalent(v0*v1, 1.0) )
                 ind.push_back(i+1);
         }

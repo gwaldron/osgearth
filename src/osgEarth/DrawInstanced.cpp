@@ -232,12 +232,14 @@ ConvertToDrawInstanced::apply(osg::LOD& lod)
 }
 
 
-void
+bool
 DrawInstanced::install(osg::StateSet* stateset)
 {
     if ( !stateset )
-        return;
-
+        return false;
+    
+    if ( !Registry::capabilities().supportsDrawInstanced() )
+        return false;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     
@@ -245,6 +247,8 @@ DrawInstanced::install(osg::StateSet* stateset)
     pkg.load( vp, pkg.InstancingVertex );
 
     stateset->getOrCreateUniform("oe_di_postex_TBO", osg::Uniform::SAMPLER_BUFFER)->set(POSTEX_TBO_UNIT);
+
+    return true;
 }
 
 
@@ -266,9 +270,12 @@ DrawInstanced::remove(osg::StateSet* stateset)
 }
 
 
-void
+bool
 DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 {
+    if ( !Registry::capabilities().supportsDrawInstanced() )
+        return false;
+
     // place a static bounding sphere on the graph since we intend to alter
     // the structure of the subgraph.
     const osg::BoundingSphere& bs = parent->getBound();

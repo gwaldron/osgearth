@@ -25,7 +25,6 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
-#include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Decluttering>
 #include <osgEarth/CullingUtils>
@@ -38,18 +37,6 @@
 #include <osg/ShapeDrawable>
 #include <osg/AlphaFunc>
 #include <osg/Billboard>
-
-#include <osgSim/LightPointNode>
-
-#include <osgDB/FileNameUtils>
-#include <osgDB/Registry>
-#include <osgDB/WriteFile>
-
-#include <osgUtil/Optimizer>
-#include <osgUtil/MeshOptimizers>
-
-#include <list>
-#include <deque>
 
 #define LC "[SubstituteModelFilter] "
 
@@ -322,7 +309,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
     }
 
     // active DrawInstanced if required:
-    if ( _useDrawInstanced && Registry::capabilities().supportsDrawInstanced() )
+    if ( _useDrawInstanced )
     {
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 

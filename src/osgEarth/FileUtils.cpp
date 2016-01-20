@@ -152,7 +152,7 @@ bool osgEarth::isRelativePath(const std::string& fileName)
     return true;
 #else
     //Absolute paths in Unix will start with a '/'
-    return !(fileName.size() >= 1 && fileName[0] == '/');
+    return !(native.size() >= 1 && native[0] == '/');
 #endif
 }
 

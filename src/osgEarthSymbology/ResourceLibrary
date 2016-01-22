@@ -132,6 +132,11 @@ namespace osgEarth { namespace Symbology
          * Returns a list of all Model resources.
          */
         void getModels( ModelResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+        
+        /**
+         * Returns a list of models that match the input symbol.
+         */
+        void getModels(const ModelSymbol* ms, ModelResourceVector& output, const osgDB::Options* dbOptions =0L) const;
 
     public: // serialization functions
 

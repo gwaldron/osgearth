@@ -117,6 +117,10 @@ namespace osgEarth { namespace Symbology
         optional<unsigned> maxTextureSpan() { return _maxTexSpan; }
         const optional<unsigned> maxTextureSpan() const { return _maxTexSpan; }
 
+        /** Whether this image is suitable for texture atlasing */
+        optional<bool>& atlasHint() { return _atlasHint; }
+        const optional<bool>& atlasHint() const { return _atlasHint; }
+
     public: // serialization methods
 
         virtual Config getConfig() const;
@@ -142,6 +146,7 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>          _imageLayer;
         optional<float>             _imageScaleS;
         optional<float>             _imageScaleT;
+        optional<bool>              _atlasHint;
 
         osg::ref_ptr<osg::Image>    _image;
     };

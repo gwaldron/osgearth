@@ -363,8 +363,54 @@ ResourceLibrary::getModels( ModelResourceVector& output, const osgDB::Options* d
     const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     Threading::ScopedReadLock shared( _mutex );
     output.reserve( _instances.size() );
-    for( ResourceMap<SkinResource>::const_iterator i = _skins.begin(); i != _skins.end(); ++i ) {
+    for( ResourceMap<InstanceResource>::const_iterator i = _instances.begin(); i != _instances.end(); ++i ) {
         ModelResource* m = dynamic_cast<ModelResource*>(i->second.get());
         if ( m ) output.push_back( m );
+    }
+}
+
+void
+ResourceLibrary::getModels(const ModelSymbol* ms, ModelResourceVector& output, const osgDB::Options* dbOptions) const
+{
+    if ( !ms ) return;
+
+    // if a name is set, use the other getter.
+    if ( ms->name().isSet() )
+    {
+        ModelResource* mr = getModel(ms, dbOptions);
+        if ( mr )
+            output.push_back( mr );
+    }
+
+    else
+    {
+        const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
+
+        Threading::ScopedReadLock shared( _mutex );
+
+        output.reserve( _instances.size() );
+        for( ResourceMap<InstanceResource>::const_iterator i = _instances.begin(); i != _instances.end(); ++i )
+        {
+            ModelResource* m = dynamic_cast<ModelResource*>(i->second.get());
+            if ( m )
+            {
+                // check for matching tags:
+                if (ms && ms->tags().size() > 0 && !m->containsTags(ms->tags()) )
+                    continue;
+
+                // if there's a size restriction, pre-load the model so we can know its size.
+                if (ms && ms->maxSizeX().isSet() && ms->maxSizeY().isSet())
+                {
+                    const osg::BoundingBox& bbox = m->getBoundingBox( dbOptions );
+                    if ( ms->maxSizeX().get() < (bbox.xMax() - bbox.xMin()) )
+                        continue;
+                    if ( ms->maxSizeY().get() < (bbox.yMax() - bbox.yMin()) )
+                        continue;
+                }
+
+                // good, return it
+                output.push_back( m );
+            }
+        }
     }
 }

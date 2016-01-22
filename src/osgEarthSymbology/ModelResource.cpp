@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgUtil/Optimizer>
+#include <osg/ComputeBoundsVisitor>
 
 #define LC "[ModelResource] "
 
@@ -49,6 +50,26 @@ ModelResource::getConfig() const
     conf.key() = "model";
     //nop
     return conf;
+}
+
+const osg::BoundingBox&
+ModelResource::getBoundingBox(const osgDB::Options* dbo)
+{
+    if ( !_bbox.valid() )
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        if ( !_bbox.valid() )
+        {
+            osg::ref_ptr<osg::Node> node = createNodeFromURI( uri().get(), dbo );
+            if ( node.valid() )
+            {
+                osg::ComputeBoundsVisitor cbv;
+                node->accept(cbv);
+                _bbox = cbv.getBoundingBox();
+            }
+        }
+    }
+    return _bbox;
 }
 
 osg::Node*

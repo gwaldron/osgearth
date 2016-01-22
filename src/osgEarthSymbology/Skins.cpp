@@ -46,7 +46,8 @@ _imageBiasS       ( 0.0f ),
 _imageBiasT       ( 0.0f ),
 _imageLayer       ( 0 ),
 _imageScaleS      ( 1.0f ),
-_imageScaleT      ( 1.0f )
+_imageScaleT      ( 1.0f ),
+_atlasHint        ( true )
 {
     mergeConfig( conf );
 }
@@ -73,6 +74,8 @@ SkinResource::mergeConfig( const Config& conf )
     conf.getIfSet( "image_layer",         _imageLayer );
     conf.getIfSet( "image_scale_s",       _imageScaleS );
     conf.getIfSet( "image_scale_t",       _imageScaleT );
+
+    conf.getIfSet( "atlas", _atlasHint );
 }
 
 Config
@@ -100,6 +103,8 @@ SkinResource::getConfig() const
     conf.updateIfSet( "image_layer",         _imageLayer );
     conf.updateIfSet( "image_scale_s",       _imageScaleS );
     conf.updateIfSet( "image_scale_t",       _imageScaleT );
+    
+    conf.updateIfSet( "atlas", _atlasHint );
 
     return conf;
 }

@@ -132,8 +132,8 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     {
         SkinResource* skin = i->get();
 
-        // skip tiled skins for now.
-        if ( skin->isTiled() == true )
+        // skip skins that say "no atlas please"
+        if ( skin->atlasHint() == false )
         {
             continue;
         }

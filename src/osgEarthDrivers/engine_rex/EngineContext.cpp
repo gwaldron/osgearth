@@ -83,6 +83,7 @@ EngineContext::getElapsedCullTime() const
     return osg::Timer::instance()->delta_s(_tick, now);
 }
 
+#if 0
 namespace {
     struct UnloadDormantTiles : public TileNodeRegistry::Operation {
         const osg::FrameStamp* _fs;
@@ -98,6 +99,7 @@ namespace {
         }
     };
 }
+#endif
 
 void
 EngineContext::endCull(osgUtil::CullVisitor* cv)

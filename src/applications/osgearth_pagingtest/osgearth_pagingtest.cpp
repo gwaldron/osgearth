@@ -77,7 +77,7 @@ public:
 
     virtual osg::Node* createNode( const TileKey& key )
     {        
-        osg::BoundingSphered bounds = getBounds( key );
+        osg::BoundingSphere bounds = getBounds( key );
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );

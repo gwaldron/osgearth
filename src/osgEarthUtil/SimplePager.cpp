@@ -61,7 +61,7 @@ void SimplePager::build()
     addChild( buildRootNode() );
 }
 
-osg::BoundingSphered SimplePager::getBounds(const TileKey& key)
+osg::BoundingSphere SimplePager::getBounds(const TileKey& key)
 {
     int samples = 6;
 
@@ -70,7 +70,7 @@ osg::BoundingSphered SimplePager::getBounds(const TileKey& key)
     double xSample = extent.width() / (double)samples;
     double ySample = extent.height() / (double)samples;
 
-    osg::BoundingSphered bs;
+    osg::BoundingSphere bs;
     for (int c = 0; c < samples+1; c++)
     {
         double x = extent.xMin() + (double)c * xSample;
@@ -108,7 +108,7 @@ osg::Node* SimplePager::buildRootNode()
 
 osg::Node* SimplePager::createNode( const TileKey& key )
 {
-    osg::BoundingSphered bounds = getBounds( key );
+    osg::BoundingSphere bounds = getBounds( key );
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
@@ -122,7 +122,8 @@ osg::Node* SimplePager::createNode( const TileKey& key )
 
 osg::Node* SimplePager::createPagedNode( const TileKey& key )
 {
-    osg::BoundingSphered tileBounds = getBounds( key );
+    osg::BoundingSphere tileBounds = getBounds( key );
+    float tileRadius = tileBounds.radius();
 
     // restrict subdivision to max level:
     bool hasChildren = key.getLOD() < _maxLevel;
@@ -135,7 +136,11 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
     {
         node = createNode( key );
 
-        if ( !node.valid() )
+        if ( node.valid() )
+        {
+            tileBounds = node->getBound();
+        }
+        else
         {
             hasChildren = false;
         }
@@ -146,9 +151,11 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
         node = new osg::Group();
     }
 
+    tileRadius = std::max(tileBounds.radius(), tileRadius);
+
     osg::PagedLOD* plod = new osg::PagedLOD;
     plod->setCenter( tileBounds.center() ); 
-    plod->setRadius( tileBounds.radius() );
+    plod->setRadius( tileRadius );
 
     plod->addChild( node.get() );
 
@@ -166,7 +173,7 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
         // Setup the min and max ranges.
 
         // This setups a replacement mode where the parent will be completely replaced by it's children.
-        float minRange = (float)(tileBounds.radius() * _rangeFactor);
+        float minRange = (float)(tileRadius * _rangeFactor);
 
         if (!_additive)
         {

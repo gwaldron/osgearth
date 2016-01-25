@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_DRIVER_SILVERLINING_OPTIONS
 #define OSGEARTH_DRIVER_SILVERLINING_OPTIONS 1
 
+#include "Common"
 #include <osgEarthUtil/Sky>
 
 namespace osgEarth { namespace SilverLining
@@ -26,7 +27,7 @@ namespace osgEarth { namespace SilverLining
     /**
      * Options for creating a SilverLining environment node
      */
-    class SilverLiningOptions : public osgEarth::Util::SkyOptions
+    class OSGEARTHSILVERLINING_EXPORT SilverLiningOptions : public osgEarth::Util::SkyOptions
     {
     public:
         SilverLiningOptions(const osgEarth::Util::SkyOptions& options =osgEarth::Util::SkyOptions()) :

@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_TRITON_NODE
 #define OSGEARTH_TRITON_NODE 1
 
+#include "Common"
 #include "TritonOptions"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
@@ -31,12 +32,14 @@ namespace osgEarth { namespace Triton
     /**
      * Node that roots the Triton adapter.
      */
-    class TritonNode : public osgEarth::Util::OceanNode
+    class OSGEARTHTRITON_EXPORT TritonNode : public osgEarth::Util::OceanNode
     {
     public:
         TritonNode(
             osgEarth::MapNode*   mapNode,
             const TritonOptions& options );
+
+        TritonContext* getContext() { return _TRITON.get(); }
 
     protected: // OceanNode
 

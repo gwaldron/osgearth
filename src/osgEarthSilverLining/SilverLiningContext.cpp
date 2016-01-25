@@ -26,7 +26,7 @@
 using namespace osgEarth::SilverLining;
 
 
-SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
+SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options, ::SilverLining::Atmosphere* atmosphere) :
 _options              ( options ),
 _initAttempted        ( false ),
 _initFailed           ( false ),
@@ -36,8 +36,7 @@ _clouds               ( 0L ),
 _minAmbient           ( 0,0,0,0 )
 {
     // Create a SL atmosphere (the main SL object).
-    // TODO: plug in the username + license key.
-    _atmosphere = new ::SilverLining::Atmosphere(
+    _atmosphere = atmosphere ? atmosphere : new ::SilverLining::Atmosphere(
         options.user()->c_str(),
         options.licenseCode()->c_str() );
 }
@@ -107,7 +106,6 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 _maxAmbientLightingAlt = 
                     _atmosphere->GetConfigOptionDouble("atmosphere-height");
 #endif
-
                 if ( _options.drawClouds() == true )
                 {
                     OE_INFO << LC << "Initializing clouds\n";

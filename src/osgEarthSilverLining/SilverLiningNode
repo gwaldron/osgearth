@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include "Common"
 #include "SilverLiningOptions"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
@@ -31,14 +32,17 @@ namespace osgEarth { namespace SilverLining
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public osgEarth::Util::SkyNode
+    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::Util::SkyNode
     {
     public:
         SilverLiningNode(
             const osgEarth::Map*       map,
-            const SilverLiningOptions& options );
+            const SilverLiningOptions& options,
+            ::SilverLining::Atmosphere* atmosphere=0L);
 
     public: // SkyNode
+
+        SilverLiningContext* getContext() { return _SL.get(); }
 
         osg::Light* getSunLight() { return _light.get(); }
 

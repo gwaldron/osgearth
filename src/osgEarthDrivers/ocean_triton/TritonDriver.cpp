@@ -25,14 +25,15 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarthUtil/Ocean>
 
-#include "TritonNode"
+#include <osgEarthTriton/TritonOptions>
+#include <osgEarthTriton/TritonNode>
 
 #undef  LC
 #define LC "[TritonDriver] "
 
 //---------------------------------------------------------------------------
 
-namespace osgEarth { namespace Triton
+namespace osgEarth { namespace Drivers { namespace Triton
 {
     class TritonDriver : public osgEarth::Util::OceanDriver
     {
@@ -54,7 +55,7 @@ namespace osgEarth { namespace Triton
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            TritonOptions tritonOptions = getOceanOptions(options);
+            osgEarth::Triton::TritonOptions tritonOptions = getOceanOptions(options);
 
             // if the Resource Path isn't set, attempt to set it from 
             // the SL environment variable.
@@ -81,7 +82,7 @@ namespace osgEarth { namespace Triton
             }
 
             osgEarth::MapNode* mapNode = getMapNode(options);
-            return new TritonNode( mapNode, tritonOptions );
+            return new osgEarth::Triton::TritonNode( mapNode, tritonOptions );
         }
 
     protected:
@@ -90,4 +91,4 @@ namespace osgEarth { namespace Triton
 
     REGISTER_OSGPLUGIN(osgearth_ocean_triton, TritonDriver)
 
-} } // namespace osgEarth::Triton
+} } } // namespace osgEarth::Drivers::Triton

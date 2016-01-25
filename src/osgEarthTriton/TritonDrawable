@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_TRITON_DRAWABLE_H
 #define OSGEARTH_TRITON_DRAWABLE_H
 
+#include "Common"
 #include <osg/Drawable>
 #include <osg/RenderInfo>
 #include <osg/TextureCubeMap>
@@ -39,7 +40,7 @@ namespace osgEarth { namespace Triton
     /**
      * Custom drawable for rendering the Triton ocean effects
      */
-    class TritonDrawable : public osg::Drawable
+    class OSGEARTHTRITON_EXPORT TritonDrawable : public osg::Drawable
     {
     public:
         TritonDrawable(osgEarth::MapNode* mapNode=NULL, TritonContext* TRITON =0L);

@@ -374,6 +374,10 @@ const char * LoaderFile::load( const char *name ) {
     std::string fullPath = osgEarth::getFullPath(_referrer, std::string(name));
 
     FILE *f = fopen( fullPath.c_str(), "rb" );
+    if (!f) {
+        std::cout << "NLTemplate error:  Failed to open " << fullPath << std::endl;
+        return 0;
+    }
     fseek( f, 0, SEEK_END );
     long len = ftell( f );
     fseek( f, 0, SEEK_SET );
@@ -391,7 +395,13 @@ Template::Template( Loader & loader ) : Block( "main" ), loader( loader ) {
 
 void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vector<Node*> & nodes ) {
         
-    Tokenizer *tokenizer = new Tokenizer( loader.load( name ) );
+    const char* loaded = loader.load( name );
+    if (!loaded)
+    {
+        return;
+    }
+
+    Tokenizer *tokenizer = new Tokenizer( loaded );
     files.push_back( tokenizer );
 
     std::string referrer = osgEarth::getFullPath(loader.getReferrer(), std::string(name));

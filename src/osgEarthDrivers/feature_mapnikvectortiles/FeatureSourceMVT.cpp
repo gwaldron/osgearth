@@ -206,12 +206,6 @@ public:
                     {
                         const mapnik::vector::tile_feature &feature = layer.features().Get(j);
 
-                        for (unsigned int k = 0; k < feature.tags().size(); k+=2)
-                        {
-                            std::string key = layer.keys().Get(feature.tags().Get(k));
-                            std::string value = layer.values().Get(feature.tags().Get(k+1)).string_value();
-                        }
-                        
                         osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
 
                         eGeomType geomType = static_cast<eGeomType>(feature.type());
@@ -238,6 +232,42 @@ public:
 
                         osg::ref_ptr< Feature > oeFeature = new Feature(geometry, key.getProfile()->getSRS());
                         features.push_back(oeFeature.get());                    
+
+                        // Read attributes
+                        for (unsigned int k = 0; k < feature.tags().size(); k+=2)
+                        {
+                            std::string key = layer.keys().Get(feature.tags().Get(k));
+                            mapnik::vector::tile_value value = layer.values().Get(feature.tags().Get(k+1));
+                            if (value.has_bool_value())
+                            {
+                                oeFeature->set(key, value.bool_value());
+                            }
+                            else if (value.has_double_value())
+                            {
+                                oeFeature->set(key, value.double_value());
+                            }
+                            else if (value.has_float_value())
+                            {
+                                oeFeature->set(key, value.float_value());
+                            }
+                            else if (value.has_int_value())
+                            {
+                                oeFeature->set(key, (int)value.int_value());
+                            }
+                            else if (value.has_sint_value())
+                            {
+                                oeFeature->set(key, (int)value.sint_value());
+                            }
+                            else if (value.has_string_value())
+                            {
+                                oeFeature->set(key, value.string_value());
+                            }
+                            else if (value.has_uint_value())
+                            {
+                                oeFeature->set(key, (int)value.uint_value());
+                            }
+                        }
+                        
                         
                         unsigned int length = 0;
                         int cmd = -1;

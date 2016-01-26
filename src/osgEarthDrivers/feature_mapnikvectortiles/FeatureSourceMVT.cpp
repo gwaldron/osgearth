@@ -268,8 +268,6 @@ public:
                                 oeFeature->set(key, (int)value.uint_value());
                             }
 
-                            oeFeature->set("height", 1.0);
-
                             // Special path for getting heights from our test dataset.
                             if (key == "other_tags")
                             {

@@ -37,22 +37,11 @@
 #define LC "[osgearth_sundog] "
 
 
-class SetupCloudsGraphicsOp : public osg::GraphicsOperation
+struct SetupCloudsCallback : public osgEarth::SilverLining::InitializationCallback
 {
-public:
-
-    SetupCloudsGraphicsOp(::SilverLining::Atmosphere* atmosphere):
-        osg::Referenced(true),
-        osg::GraphicsOperation("SetupCloudsGraphicsOp",false),
-        _atmosphere(atmosphere) {}
-
-    virtual void operator () (osg::GraphicsContext* context)
+    void operator()(::SilverLining::Atmosphere* atmosphere)
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
-
-        ::srand(1234);
-
-        if (_atmosphere)
+        if (atmosphere)
         {
             // create a cirrus layer
             SilverLining::CloudLayer* cirrusCloudLayer;
@@ -65,8 +54,8 @@ public:
             cirrusCloudLayer->SetBaseLength(100000);
             cirrusCloudLayer->SetBaseWidth(100000);
             cirrusCloudLayer->SetLayerPosition(0, 0);
-            cirrusCloudLayer->SeedClouds(*_atmosphere);
-            _atmosphere->GetConditions()->AddCloudLayer(cirrusCloudLayer);
+            cirrusCloudLayer->SeedClouds(*atmosphere);
+            atmosphere->GetConditions()->AddCloudLayer(cirrusCloudLayer);
 
             // create a cumulus layer
             SilverLining::CloudLayer *cumulusCongestusLayer;
@@ -82,13 +71,18 @@ public:
             cumulusCongestusLayer->SetAlpha(0.8);
             // Enable convection effects, but not growth:
             cumulusCongestusLayer->SetCloudAnimationEffects(0.1, false, 0);
-            cumulusCongestusLayer->SeedClouds(*_atmosphere);
-            _atmosphere->GetConditions()->AddCloudLayer(cumulusCongestusLayer);
+            cumulusCongestusLayer->SeedClouds(*atmosphere);
+            atmosphere->GetConditions()->AddCloudLayer(cumulusCongestusLayer);
+
+            // set the wind conditions
+            //SilverLining::WindVolume wv;
+            //wv.SetDirection(90);
+            //wv.SetMinAltitude(0);
+            //wv.SetMaxAltitude(10000);
+            //wv.SetWindSpeed(50);
+            //atmosphere->GetConditions()->SetWind(wv);
         }
     }
-
-    OpenThreads::Mutex  _mutex;
-    ::SilverLining::Atmosphere* _atmosphere;
 };
 
 int
@@ -155,18 +149,8 @@ main(int argc, char** argv)
                 << std::endl;
         }
 
-        osg::ref_ptr<osgEarth::SilverLining::SilverLiningNode> sky = new osgEarth::SilverLining::SilverLiningNode( mapNode->getMap(), slOptions );
-
-        // Set up wind blowing west at 50 meters/sec
-        ::SilverLining::Atmosphere* atm = sky->getContext()->getAtmosphere();
-
-        SilverLining::WindVolume wv;
-        wv.SetDirection(90);
-        wv.SetMinAltitude(0);
-        wv.SetMaxAltitude(10000);
-        wv.SetWindSpeed(50);
-        atm->GetConditions()->SetWind(wv);
-
+        // TODO: uncommenting the callback on the following line results in a crash when SeedClouds is called.
+        osg::ref_ptr<osgEarth::SilverLining::SilverLiningNode> sky = new osgEarth::SilverLining::SilverLiningNode( mapNode->getMap(), slOptions/*, new SetupCloudsCallback()*/ );
         node->addChild(sky);
 
 
@@ -198,20 +182,11 @@ main(int argc, char** argv)
         osg::ref_ptr<osgEarth::Triton::TritonNode> ocean = new osgEarth::Triton::TritonNode( mapNode, tritonOptions );
         sky->addChild( ocean );
 
-        osg::ref_ptr<SetupCloudsGraphicsOp> cloudOp = new SetupCloudsGraphicsOp(atm);
 
         bool initialized_triton = false;
-        bool initialized_sl = false;
         while(!viewer.done())
         {
             viewer.frame();
-
-            // neet to wait until SilverLining is initialized before adding the clouds
-            if (!initialized_sl && sky->getContext()->ready())
-            {
-                initialized_sl = true;
-                viewer.getCamera()->getGraphicsContext()->add(cloudOp.get());
-            }
 
             // need to wait until triton environment is created before working with it
             if (!initialized_triton && ocean->getContext()->ready())

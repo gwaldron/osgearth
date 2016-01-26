@@ -28,6 +28,7 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
+    struct InitializationCallback;
 
     /**
      * Node that roots the silverlining adapter.
@@ -38,7 +39,7 @@ namespace osgEarth { namespace SilverLining
         SilverLiningNode(
             const osgEarth::Map*       map,
             const SilverLiningOptions& options,
-            ::SilverLining::Atmosphere* atmosphere=0L);
+            InitializationCallback* callback=0L);
 
     public: // SkyNode
 

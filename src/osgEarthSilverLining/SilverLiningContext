@@ -34,12 +34,20 @@ namespace osgEarth {
 namespace osgEarth { namespace SilverLining
 {
     /**
+     * A callback that lets you execute code at initialization
+     */
+    struct InitializationCallback : public osg::Referenced
+    {
+        virtual void operator()(::SilverLining::Atmosphere* atmosphere) = 0;
+    };
+
+    /**
      * Contains all the SilverLining SDK pointers.
      */
     class OSGEARTHSILVERLINING_EXPORT SilverLiningContext : public osg::Referenced
     {
     public:
-        SilverLiningContext(const SilverLiningOptions& options, ::SilverLining::Atmosphere* atmosphere=0L);
+        SilverLiningContext(const SilverLiningOptions& options, InitializationCallback* callback=0);
         
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
@@ -104,6 +112,8 @@ namespace osgEarth { namespace SilverLining
         osg::Vec4f                     _minAmbient;
 
         SilverLiningOptions _options;
+
+        osg::ref_ptr<InitializationCallback> _initCallback;
     };
 
 } } // namespace osgEarth::SilverLining

@@ -26,8 +26,9 @@
 using namespace osgEarth::SilverLining;
 
 
-SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options, ::SilverLining::Atmosphere* atmosphere) :
+SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options, InitializationCallback* callback) :
 _options              ( options ),
+_initCallback         (callback),
 _initAttempted        ( false ),
 _initFailed           ( false ),
 _maxAmbientLightingAlt( -1.0 ),
@@ -36,7 +37,7 @@ _clouds               ( 0L ),
 _minAmbient           ( 0,0,0,0 )
 {
     // Create a SL atmosphere (the main SL object).
-    _atmosphere = atmosphere ? atmosphere : new ::SilverLining::Atmosphere(
+    _atmosphere = new ::SilverLining::Atmosphere(
         options.user()->c_str(),
         options.licenseCode()->c_str() );
 }
@@ -110,6 +111,11 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 {
                     OE_INFO << LC << "Initializing clouds\n";
                     setupClouds();
+                }
+
+                if (_initCallback.valid())
+                {
+                    (*_initCallback)(_atmosphere);
                 }
             }
         }

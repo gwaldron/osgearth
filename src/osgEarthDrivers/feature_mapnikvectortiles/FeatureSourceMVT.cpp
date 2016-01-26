@@ -67,7 +67,9 @@ class MVTFeatureSource : public FeatureSource
 public:
     MVTFeatureSource(const MVTFeatureOptions& options ) :
       FeatureSource( options ),
-      _options     ( options )
+      _options     ( options ),
+      _minLevel(0),
+      _maxLevel(14)
     {
         _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
         if (!_compressor.valid())
@@ -84,7 +86,7 @@ public:
 
     //override
     void initialize( const osgDB::Options* dbOptions )
-    {
+    {        
         _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
         std::string fullFilename = _options.url()->full();
 
@@ -111,16 +113,16 @@ public:
             OE_NOTICE << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
         }
         else
-        {
+        {            
             computeLevels();
             OE_NOTICE << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
         }
 
 
-        result->setFirstLevel(1);
+        result->setFirstLevel(_minLevel);
         result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
-        result->geoInterp() = osgEarth::GEOINTERP_RHUMB_LINE;
+        result->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
         return result;
     }
 
@@ -131,18 +133,11 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
-        //OE_NOTICE << "Getting feature cursor" << query.tileKey()->str() << std::endl;
-
         TileKey key = *query.tileKey();
 
         int z = key.getLevelOfDetail();
         int tileX = key.getTileX();
         int tileY = key.getTileY();
-
-        GeoPoint ll(key.getProfile()->getSRS(), key.getExtent().xMin(), key.getExtent().yMin(), 0, ALTMODE_ABSOLUTE);
-        ll = ll.transform(SpatialReference::create("epsg:4326"));
-        //OE_NOTICE << "Requesting key with ll " << ll.x() << ", " << ll.y() << std::endl;
-
 
         unsigned int numRows, numCols;
         key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
@@ -203,35 +198,19 @@ public:
                 {
                     const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
-                    /*
-                    OE_NOTICE << "Layer has " << layer.keys().size() << " keys" << std::endl;
-                    OE_NOTICE << "Layer has " << layer.values().size() << " values" << std::endl;
-                    OE_NOTICE << "Layer has " << layer.features().size() << " features" << std::endl;
-                    for (unsigned int j = 0; j < layer.keys().size(); j++)
-                    {
-                        OSG_NOTICE << "Key " << layer.keys().Get(j) << std::endl;
-                    }
-                    OE_NOTICE << "Got Keys " << std::endl;
+                    //OE_NOTICE << layer.name() << std::endl;
+                    //if (layer.name() != "road") continue;
+                    //if (layer.name() != "building") continue;
 
-                    OE_NOTICE << "Get Values " << std::endl;
-                    for (unsigned int j = 0; j < layer.values().size(); j++)
-                    {
-                        OSG_NOTICE << "Value " << layer.values().Get(j).string_value() << std::endl;
-                    }
-                    OE_NOTICE << "Got Values " << std::endl;
-                    */
-                    
                     for (unsigned int j = 0; j < layer.features().size(); j++)
                     {
                         const mapnik::vector::tile_feature &feature = layer.features().Get(j);
 
-                        /*
                         for (unsigned int k = 0; k < feature.tags().size(); k+=2)
                         {
                             std::string key = layer.keys().Get(feature.tags().Get(k));
                             std::string value = layer.values().Get(feature.tags().Get(k+1)).string_value();
                         }
-                        */
                         
                         osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
 
@@ -258,10 +237,9 @@ public:
                         }
 
                         osg::ref_ptr< Feature > oeFeature = new Feature(geometry, key.getProfile()->getSRS());
-                        features.push_back(oeFeature.get());
-
+                        features.push_back(oeFeature.get());                    
+                        
                         unsigned int length = 0;
-                        unsigned int g_length = 0;
                         int cmd = -1;
                         const int cmd_bits = 3;
 
@@ -277,7 +255,6 @@ public:
                                 unsigned int cmd_length = feature.geometry(k++);
                                 cmd = cmd_length & ((1 << cmd_bits) - 1);
                                 length = cmd_length >> cmd_bits;
-                                g_length = 0;
                             } 
                             if (length > 0)
                             {
@@ -288,23 +265,16 @@ public:
                                     int py = feature.geometry(k++);
                                     px = zig_zag_decode(px);
                                     py = zig_zag_decode(py);
-                                    if (cmd == SEG_MOVETO)
-                                    {
-                                        x += px;
-                                        y += py;
-                                    }
-                                    else if (cmd == SEG_LINETO)
-                                    {
-                                        x += px;
-                                        y += py;
 
-                                        double width = key.getExtent().width();
-                                        double height = key.getExtent().height();
+                                    x += px;
+                                    y += py;
 
-                                        double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                                        double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
-                                        geometry->push_back(geoX, geoY, 0);
-                                    }
+                                    double width = key.getExtent().width();
+                                    double height = key.getExtent().height();
+
+                                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
+                                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                                    geometry->push_back(geoX, geoY, 0);
                                 }
                                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
                                 {
@@ -313,15 +283,16 @@ public:
                             }
                         }
 
-                        geometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
-
-                       
+                        if (geometry->getType() == Geometry::TYPE_POLYGON)
+                        {
+                            geometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);                                               
+                        }
                     }
                 }
             }
             else
             {
-                OE_INFO << "Failed to parse, not surprising" << std::endl;
+                OE_WARN << LC << "Failed to parse " << key.str() << std::endl;
             }
         }
         else

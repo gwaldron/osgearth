@@ -238,6 +238,7 @@ public:
                         {
                             std::string key = layer.keys().Get(feature.tags().Get(k));
                             mapnik::vector::tile_value value = layer.values().Get(feature.tags().Get(k+1));
+
                             if (value.has_bool_value())
                             {
                                 oeFeature->set(key, value.bool_value());
@@ -265,6 +266,31 @@ public:
                             else if (value.has_uint_value())
                             {
                                 oeFeature->set(key, (int)value.uint_value());
+                            }
+
+                            oeFeature->set("height", 1.0);
+
+                            // Special path for getting heights from our test dataset.
+                            if (key == "other_tags")
+                            {
+                                std::string other_tags = value.string_value();
+                                
+                                StringTokenizer tok("=>");
+                                StringVector tized;
+                                tok.tokenize(other_tags, tized);            
+                                if (tized.size() == 3)
+                                {
+                                    if (tized[0] == "height")
+                                    {
+                                        std::string value = tized[2];
+                                        // Remove quotes from the height
+                                        float height = as<float>(value, FLT_MAX);
+                                        if (height != FLT_MAX)
+                                        {
+                                            oeFeature->set("height", height);                                            
+                                        }
+                                    }
+                                }
                             }
                         }
                         

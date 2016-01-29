@@ -935,11 +935,16 @@ RexTerrainEngineNode::updateState()
             OE_DEBUG << LC << "Render Bindings:\n";
             for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
+                osg::Image* empty = ImageUtils::createEmptyImage(1,1);
+                osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
+
                 if ( b->isActive() )
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
                     OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+                    terrainStateSet->setTextureAttribute(b->unit(), tex.get());
                 }
+
             }
 
             // uniform that controls per-layer opacity

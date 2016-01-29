@@ -75,7 +75,7 @@ public:
     {
     }
 
-    virtual osg::Node* createNode( const TileKey& key )
+    virtual osg::Node* createNode(const TileKey& key, ProgressCallback*)
     {        
         osg::BoundingSphere bounds = getBounds( key );
 
@@ -103,7 +103,7 @@ public:
           setMaxLevel( features->getFeatureProfile()->getMaxLevel());
       }
       
-      virtual osg::Node* createNode( const TileKey& key )
+      virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress)
       {
           // Get features for this key
           osgEarth::Symbology::Query query;

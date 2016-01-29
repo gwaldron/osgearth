@@ -153,8 +153,8 @@ namespace
             "    oe_duk_save_feature(this.__ptr);"
             "} ");
 
-        duk_eval_string_noresult(ctx,
-            "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
+//        duk_eval_string_noresult(ctx,
+//            "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
 
         GeometryAPI::bindToFeature(ctx);
 
@@ -249,11 +249,14 @@ DuktapeEngine::run(const std::string&   code,
     duk_context* ctx = c._ctx;
 #endif
 
-	if(feature) {
-		// encode the feature in the global object and push a
-        // native pointer:
+	if ( feature && feature != c._feature.get() )
+    {
+		// encode the feature in the global object and push a native pointer:
 		setFeature(ctx, feature);
 	}
+
+    // remember the feature so we don't re-create it if not necessary
+    c._feature = feature;
 
     // run the script. On error, the top of stack will hold the error
     // message instead of the return value.

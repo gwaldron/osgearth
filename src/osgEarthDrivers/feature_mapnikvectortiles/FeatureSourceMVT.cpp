@@ -351,7 +351,7 @@ public:
         }
         else
         {
-            OE_INFO << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
+            OE_DEBUG << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
             valid = false;
         }
 

@@ -20,6 +20,7 @@ ELSE(WITH_EXTERNAL_DUKTAPE)
 
     SET(TARGET_H
         duktape.h
+        duk_config.h
         DuktapeEngine
 		JSGeometry
     )

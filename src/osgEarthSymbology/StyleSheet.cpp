@@ -212,6 +212,8 @@ StyleSheet::getConfig() const
             scriptConf.set( "language", _script->language );
         if ( _script->uri.isSet() )
             scriptConf.set( "url", _script->uri->base() );
+        if ( !_script->profile.empty() )
+            scriptConf.set( "profile", _script->profile );
         else if ( !_script->code.empty() )
             scriptConf.value() = _script->code;
 
@@ -257,6 +259,9 @@ StyleSheet::mergeConfig( const Config& conf )
 
         std::string lang = i->value("language");
         _script->language = lang.empty() ? "javascript" : lang;
+
+        std::string profile = i->value("profile");
+        _script->profile = profile;
     }
 
     // read any style class definitions. either "class" or "selector" is allowed

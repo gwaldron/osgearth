@@ -107,10 +107,12 @@ Session::setStyles( StyleSheet* value )
     {
         if (_styles->script())
         {
-            _styleScriptEngine = ScriptEngineFactory::create( Script(
-                _styles->script()->code, 
-                _styles->script()->language, 
-                _styles->script()->name ) );
+            _styleScriptEngine = ScriptEngineFactory::createWithProfile(
+                Script(
+                    _styles->script()->code, 
+                    _styles->script()->language, 
+                    _styles->script()->name ),
+                _styles->script()->profile );
         }
         else
         {

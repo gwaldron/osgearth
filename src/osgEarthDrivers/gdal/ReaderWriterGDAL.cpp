@@ -1515,12 +1515,23 @@ public:
                     image->setInternalTextureFormat( internalFormat );
                     ImageUtils::markAsUnNormalized( image, true );
                     memset(image->data(), 0, image->getImageSizeInBytes());
+                
+                    ImageUtils::PixelWriter write(image); 
+                    
+                    // initialize all coverage texels to NODATA. -gw
+                    osg::Vec4 temp;
+                    temp.r() = NO_DATA_VALUE;
+
+                    for(int s=0; s<image->s(); ++s) {
+                        for(int t=0; t<image->t(); ++t) {
+                            write(temp, s, t);
+                        }
+                    }
                     
                     // coverage data; one channel data that is not subject to interpolated values
                     unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
                     memset(data, 0, target_width * target_height * gdalSampleSize);
 
-                    osg::Vec4 temp;
 
                     int success;
                     float nodata = bandGray->GetNoDataValue(&success);
@@ -1530,8 +1541,6 @@ public:
                     CPLErr err = bandGray->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0);
                     if ( err == CE_None )
                     {
-                        ImageUtils::PixelWriter write(image);
-
                         // copy from data to image.
                         for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
                         {
@@ -1650,13 +1659,22 @@ public:
                     image->allocateImage(tileSize, tileSize, 1, GL_LUMINANCE, GL_FLOAT);
                     image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
                     ImageUtils::markAsUnNormalized(image, true);
+
+                    // initialize all coverage texels to NODATA. -gw
+                    osg::Vec4 temp;
+                    temp.r() = NO_DATA_VALUE;
+                    ImageUtils::PixelWriter write(image);
+                    for(int s=0; s<image->s(); ++s) {
+                        for(int t=0; t<image->t(); ++t) {
+                            write(temp, s, t);
+                        }
+                    }
                 }
                 else
                 {
                     image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
+                    memset(image->data(), 0, image->getImageSizeInBytes());
                 }
-
-                memset(image->data(), 0, image->getImageSizeInBytes());
 
                 bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 

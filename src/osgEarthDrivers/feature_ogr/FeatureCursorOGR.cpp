@@ -89,10 +89,11 @@ _filters          ( filters )
         std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );             
         // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
         // Or quote any layers containing spaces for PostgreSQL
-        if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
-        {                        
+        if (driverName == "ESRI Shapefile" || driverName == "VRT" ||
+            from.find(" ") != std::string::npos)
+        {
             std::string delim = "\"";
-            from = delim + from + delim;                    
+            from = delim + from + delim;
         }
 
         if ( _query.expression().isSet() )

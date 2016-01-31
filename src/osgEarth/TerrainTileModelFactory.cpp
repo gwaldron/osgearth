@@ -126,6 +126,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 else
                     geoImage = layer->createImage( key, progress );
 
+#if 0
                 // If the request failed, and this is a root tile, try to find
                 // lower-resolution data to fulfill the request.
                 if ( !geoImage.valid() && isRootKey )
@@ -148,6 +149,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                         }
                     }
                 }
+#endif
             }
             
             if ( geoImage.valid() )

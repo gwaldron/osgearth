@@ -430,6 +430,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
         parent->addChild( instanceGroup );
     }
+
+    return true;
 }
 
 

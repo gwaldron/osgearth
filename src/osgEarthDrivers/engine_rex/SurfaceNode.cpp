@@ -120,19 +120,17 @@ namespace
 
 //..............................................................
 
-HorizonTileCuller::HorizonTileCuller(const SpatialReference* srs, 
-                                     const osg::Matrix&      local2world)
+void
+HorizonTileCuller::set(const SpatialReference* srs, 
+                       const osg::Matrix&      local2world,
+                       const osg::BoundingBox& bbox)
 {
-    _horizonProto = new Horizon();
-    _horizonProto->setEllipsoid(*srs->getEllipsoid());
+    _horizon = new Horizon();
+    _horizon->setEllipsoid(*srs->getEllipsoid());
     _radiusPolar = srs->getEllipsoid()->getRadiusPolar();
     _radiusEquator = srs->getEllipsoid()->getRadiusEquator();
     _local2world = local2world;
-}
 
-void
-HorizonTileCuller::set(const osg::BoundingBox& bbox)
-{
     // Adjust the horizon ellipsoid based on the minimum Z value of the tile;
     // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
     // may be visible even if it doesn't pass the horizon-cone test. In such
@@ -140,7 +138,7 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
     double zMin = bbox.corner(0).z();
     if ( zMin < 0.0 )
     {
-        _horizonProto->setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
+        _horizon->setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
     }            
 
     // consider the uppermost 4 points of the tile-aligned bounding box.
@@ -149,23 +147,6 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
     {
         _points[i] = bbox.corner(4+i) * _local2world;
     }
-}
-
-bool
-HorizonTileCuller::isVisible(const osg::Vec3d& from) const
-{
-    osg::ref_ptr<Horizon> horizon = osg::clone(_horizonProto.get());
-    horizon->setEye( from );
-
-    for(unsigned i=0; i<4; ++i)
-    {                   
-        if ( horizon->isVisible(_points[i]) )
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 
@@ -201,38 +182,6 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 
     // Initialize the cached bounding box.
     setElevationRaster( 0L, osg::Matrixf::identity() );
-}
-
-bool
-SurfaceNode::isVisible(osgUtil::CullVisitor* cv) const
-{
-    return _horizonCuller->isVisible( cv->getViewPoint() );
-}
-
-bool
-SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius2, float fZoomFactor)
-{
-    float z2 = fZoomFactor*fZoomFactor;
-
-    for(int i=0; i<4; ++i)
-    {
-        // calculate the minimum distance (squared) from the sphere center point:
-        float mind2 = FLT_MAX;
-
-        for(int j=0; j<8; ++j)
-        {
-            float d2 = (_childrenCorners[i][j]-center).length2() * z2;
-            if ( d2 < mind2 )
-                mind2 = d2;
-        }
-
-        // if it's within the radius (squared), success.
-        if ( mind2 < radius2 )
-        {
-            return true;
-        }
-    }
-    return false;
 }
 
 void
@@ -334,12 +283,7 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     }
 
     // Update the horizon culler.
-    if ( !_horizonCuller.valid() )
-    {
-        _horizonCuller = new HorizonTileCuller( _tileKey.getProfile()->getSRS(), getMatrix() );
-    }
-
-    _horizonCuller->set( box );
+    _horizonCuller.set( _tileKey.getProfile()->getSRS(), getMatrix(), box );
 
     // need this?
     dirtyBound();

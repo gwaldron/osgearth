@@ -285,16 +285,15 @@ TileNode::getVisibilityRangeHint(EngineContext* context) const
 
 
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float lodScale)
+TileNode::shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo)
 {
     unsigned currLOD = _key.getLOD();
-    if (   currLOD <  selectionInfo.numLods()
-        && currLOD != selectionInfo.numLods()-1)
+    if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
     {
-        osg::Vec3 cameraPos = nv.getViewPoint();
-
-        float radius2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
-        return _surface->anyChildBoxIntersectsSphere(cameraPos, radius2, lodScale);
+        return _surface->anyChildBoxIntersectsSphere(
+            cv->getViewPointLocal(), 
+            (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2,
+            cv->getLODScale());
     }
     return false;
 }
@@ -354,7 +353,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         context->progress()->stats()["TileNode::cull"]++;
 
     // determine whether we can and should subdivide to a higher resolution:
-    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
+    bool subdivide = shouldSubDivide(cv, selectionInfo);
 
     // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = subdivide;
@@ -474,13 +473,9 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
     {
         if ( context->progress() )
             context->progress()->stats()["TileNode::acceptSurface"]++;
-
-        cv->pushStateSet(context->_surfaceSS.get());
-
+        
         cv->pushStateSet( _payloadStateSet.get() );
         _surface->accept( *cv );
-        cv->popStateSet();
-
         cv->popStateSet();
     }
     return visible;

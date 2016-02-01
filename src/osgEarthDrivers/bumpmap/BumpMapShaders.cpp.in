@@ -1,5 +1,5 @@
 /** CMake Template File - compiled into AutoGenShaders.cpp */
-#include <osgEarthExtensions/bumpmap/BumpMapShaders>
+#include <osgEarthDrivers/bumpmap/BumpMapShaders>
 
 #define MULTILINE(...) #__VA_ARGS__
 

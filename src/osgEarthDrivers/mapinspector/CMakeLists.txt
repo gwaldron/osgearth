@@ -19,9 +19,9 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
 	osgEarthFeatures
 	osgEarthSymbology)
 	
-SETUP_EXTENSION(osgearth_mapinspector)
+SETUP_PLUGIN(osgearth_mapinspector)
 
 SET(LIB_NAME mapinspector)
 
-INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
+INCLUDE(ModuleInstallOsgEarthPluginIncludes OPTIONAL)
 

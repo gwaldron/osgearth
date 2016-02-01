@@ -37,9 +37,8 @@ set(TARGET_H
 set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)
 	
-setup_extension(osgearth_bumpmap)
+setup_plugin(osgearth_bumpmap)
 
 # to install public driver includes:
 set(LIB_NAME bumpmap)
 
-#include(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)

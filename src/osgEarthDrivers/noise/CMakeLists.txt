@@ -19,7 +19,7 @@ set(TARGET_H
 set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)
 	
-setup_extension(osgearth_noise)
+setup_plugin(osgearth_noise)
 
 # to install public driver includes:
 set(LIB_NAME noise)

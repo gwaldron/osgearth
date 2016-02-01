@@ -15,10 +15,10 @@ SET(TARGET_H
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)
 	
-SETUP_EXTENSION(osgearth_viewpoints)
+setup_plugin(osgearth_viewpoints)
 
 # to install public driver includes:
 SET(LIB_NAME viewpoints)
 
-INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
+#INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
 

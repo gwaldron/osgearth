@@ -527,6 +527,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
 void
 TileNode::createChildren(EngineContext* context)
 {
+    // NOTE: Ensure that _mutex is locked before calling this fucntion!
+
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {

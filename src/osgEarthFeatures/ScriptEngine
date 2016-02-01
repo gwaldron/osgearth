@@ -36,7 +36,10 @@ namespace osgEarth { namespace Features
   {
   public:
       ScriptEngineOptions( const ConfigOptions& options =ConfigOptions() ) : 
-        DriverConfigOptions( options ) { fromConfig(_conf); }
+        DriverConfigOptions( options )
+      {
+          fromConfig(_conf);
+      }
 
     virtual ~ScriptEngineOptions() { }
 
@@ -77,6 +80,10 @@ namespace osgEarth { namespace Features
         return script ? supported(script->getLanguage()) : false;
     }
 
+    /** Impl-specific profile to set. */
+    void setProfile(const std::string& profile) { _profile = profile; }
+    const std::string& getProfile() const { return _profile; }
+
     /** Runs a code snippet. */
     virtual ScriptResult run(const std::string& code, Feature const* feature=0L, FilterContext const* context=0L) =0;
 
@@ -103,6 +110,7 @@ namespace osgEarth { namespace Features
   protected:
     // common script to be included in each call to run()
     optional<Script> _script;
+    std::string _profile;
   };
 
   typedef std::list< osg::ref_ptr<ScriptEngine> > ScriptEngineList;
@@ -125,6 +133,7 @@ namespace osgEarth { namespace Features
 
     static ScriptEngine* create( const std::string& language, const std::string& engineName="", bool quiet =false);
     static ScriptEngine* create( const Script& script, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* createWithProfile( const Script& script, const std::string& profile, const std::string& engineName="", bool quiet =false);
     static ScriptEngine* create( const ScriptEngineOptions& options, bool quiet =false);
 
   protected:

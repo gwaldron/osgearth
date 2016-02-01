@@ -43,6 +43,8 @@ namespace osgEarth { namespace Symbology
 
         virtual bool is2D() const { return false; }
 
+        const osg::BoundingBox& getBoundingBox(const osgDB::Options*);
+
     public: // serialization methods
 
         virtual Config getConfig() const;
@@ -50,7 +52,10 @@ namespace osgEarth { namespace Symbology
 
     protected: // InstanceResource
 
-        virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
+        virtual osg::Node* createNodeFromURI(const URI& uri, const osgDB::Options* dbOptions) const;
+
+        osg::BoundingBox _bbox;
+        Threading::Mutex _mutex;
     };
 
     typedef std::vector<osg::ref_ptr<ModelResource> > ModelResourceVector;

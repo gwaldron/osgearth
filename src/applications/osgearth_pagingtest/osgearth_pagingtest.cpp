@@ -75,9 +75,9 @@ public:
     {
     }
 
-    virtual osg::Node* createNode( const TileKey& key )
+    virtual osg::Node* createNode(const TileKey& key, ProgressCallback*)
     {        
-        osg::BoundingSphered bounds = getBounds( key );
+        osg::BoundingSphere bounds = getBounds( key );
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
@@ -103,7 +103,7 @@ public:
           setMaxLevel( features->getFeatureProfile()->getMaxLevel());
       }
       
-      virtual osg::Node* createNode( const TileKey& key )
+      virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress)
       {
           // Get features for this key
           osgEarth::Symbology::Query query;

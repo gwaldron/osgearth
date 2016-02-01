@@ -58,8 +58,9 @@ namespace osgEarth { namespace Drivers { namespace Duktape
         {
             Context();
             ~Context();
-            void initialize(const ScriptEngineOptions&);
+            void initialize(const ScriptEngineOptions&, bool);
             duk_context* _ctx;
+            osg::observer_ptr<const Feature> _feature;
         };
 
         PerThread<Context> _contexts;

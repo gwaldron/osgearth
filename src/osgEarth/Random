@@ -63,6 +63,11 @@ namespace osgEarth
         virtual ~Random() { }
 
         /**
+         * Seeds the PRNG with a new seed.
+         */
+        void seed(unsigned s);
+
+        /**
          * Resets the PRNG to its initial state (initial seed).
          */
         void reset();

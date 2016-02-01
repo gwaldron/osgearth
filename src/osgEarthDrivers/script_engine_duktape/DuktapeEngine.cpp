@@ -136,30 +136,64 @@ namespace
 namespace
 {
     // Create a "feature" object in the global namespace.
-    void setFeature(duk_context* ctx, Feature const* feature)
+    void setFeature(duk_context* ctx, Feature const* feature, bool complete)
     {
-        std::string geojson = feature->getGeoJSON();
-        
-        duk_push_global_object(ctx);                         // [global]
-        duk_push_string(ctx, geojson.c_str());               // [global, json]
-        duk_json_decode(ctx, -1);                            // [global, feature]
-        duk_push_pointer(ctx, (void*)feature);               // [global, feature, ptr]
-        duk_put_prop_string(ctx, -2, "__ptr");               // [global, feature]
-        duk_put_prop_string(ctx, -2, "feature");             // [global]
+        duk_push_global_object(ctx);                             // [global]
 
-        // add the save() function and the "attributes" alias.
-        duk_eval_string_noresult(ctx,
-            "feature.save = function() {"
-            "    oe_duk_save_feature(this.__ptr);"
-            "} ");
+        // Complete profile: properties, geometry, and API bindings.
+        if ( complete )
+        {
+            std::string geojson = feature->getGeoJSON();
+            duk_push_string(ctx, geojson.c_str());               // [global, json]
+            duk_json_decode(ctx, -1);                            // [global, feature]
+            duk_push_pointer(ctx, (void*)feature);               // [global, feature, ptr]
+            duk_put_prop_string(ctx, -2, "__ptr");               // [global, feature]
+            duk_put_prop_string(ctx, -2, "feature");             // [global]
 
-        duk_eval_string_noresult(ctx,
-            "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
+            // add the save() function and the "attributes" alias.
+            duk_eval_string_noresult(ctx,
+                "feature.save = function() {"
+                "    oe_duk_save_feature(this.__ptr);"
+                "} ");
 
-        GeometryAPI::bindToFeature(ctx);
+            duk_eval_string_noresult(ctx,
+                "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
+
+            GeometryAPI::bindToFeature(ctx);
+        }
+
+        // Minimal profile: ID and properties only. MUCH faster!
+        else
+        {
+            duk_idx_t feature_i = duk_push_object(ctx);
+            {
+                duk_push_int(ctx, feature->getFID());
+                duk_put_prop_string(ctx, feature_i, "id");
+
+                duk_idx_t props_i = duk_push_object(ctx);
+                {
+                    const AttributeTable& attrs = feature->getAttrs();
+                    for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
+                    {
+                        AttributeType type = a->second.first;
+                        switch(type) {
+                        case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;
+                        case ATTRTYPE_INT:    duk_push_int    (ctx, a->second.getInt()); break;
+                        case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()); break;
+                        case ATTRTYPE_STRING:
+                        default:              duk_push_string (ctx, a->second.getString().c_str()); break;
+                        }
+                        duk_put_prop_string(ctx, props_i, a->first.c_str());
+                    }
+                }
+                duk_put_prop_string(ctx, feature_i, "properties");
+            }
+            duk_put_prop_string(ctx, -2, "feature");
+        }
 
         duk_pop(ctx); 
     }
+    
 }
 
 //............................................................................
@@ -170,7 +204,7 @@ DuktapeEngine::Context::Context()
 }
 
 void
-DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
+DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool complete)
 {
     if ( _ctx == 0L )
     {
@@ -193,14 +227,17 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         duk_push_global_object( _ctx );
 
         // Add global log function.
-        duk_push_c_function( _ctx, log, DUK_VARARGS );
-        duk_put_prop_string( _ctx, -2, "log" );
+        duk_push_c_function( _ctx, log, DUK_VARARGS ); // [global, function]
+        duk_put_prop_string( _ctx, -2, "log" );        // [global]
 
-        // feature.save() callback
-        duk_push_c_function(_ctx, oe_duk_save_feature, 1/*numargs*/); // [global, function]
-        duk_put_prop_string(_ctx, -2, "oe_duk_save_feature");         // [global]
+        if ( complete )
+        {
+            // feature.save() callback
+            duk_push_c_function(_ctx, oe_duk_save_feature, 1/*numargs*/); // [global, function]
+            duk_put_prop_string(_ctx, -2, "oe_duk_save_feature");         // [global]
 
-        GeometryAPI::install(_ctx);
+            GeometryAPI::install(_ctx);
+        }
 
         duk_pop(_ctx); // []
     }
@@ -236,28 +273,34 @@ DuktapeEngine::run(const std::string&   code,
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
+        
+    bool complete = (getProfile() == "full");
 
 #ifdef MAXIMUM_ISOLATION
     // brand new context every time
     Context c;
-    c.initialize( _options );
+    c.initialize( _options, complete );
     duk_context* ctx = c._ctx;
 #else
     // cache the Context on a per-thread basis
     Context& c = _contexts.get();
-    c.initialize( _options );
+    c.initialize( _options, complete );
     duk_context* ctx = c._ctx;
 #endif
 
-	if(feature) {
-		// encode the feature in the global object and push a
-        // native pointer:
-		setFeature(ctx, feature);
+	if ( feature && feature != c._feature.get() )
+    {
+		// encode the feature in the global object and push a native pointer:
+		setFeature(ctx, feature, complete);
 	}
+
+    // remember the feature so we don't re-create it if not necessary
+    c._feature = feature;
 
     // run the script. On error, the top of stack will hold the error
     // message instead of the return value.
     std::string resultString;
+
     bool ok = (duk_peval_string(ctx, code.c_str()) == 0); // [ "result" ]
     const char* resultVal = duk_to_string(ctx, -1);
     if ( resultVal )
@@ -265,7 +308,7 @@ DuktapeEngine::run(const std::string&   code,
 
     if ( !ok )
     {
-        OE_WARN << LC << "Error: source =\n" << code << std::endl;
+        OE_WARN << LC << "Error: source =" << std::endl << code << std::endl;
     }
 
     // pop the return value:

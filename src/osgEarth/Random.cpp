@@ -61,6 +61,13 @@ _next  ( rhs._next )
 }
 
 void
+Random::seed(unsigned value)
+{
+    _seed = value;
+    reset();
+}
+
+void
 Random::reset()
 {
     _next = _seed;

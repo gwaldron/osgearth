@@ -52,6 +52,9 @@ _tileSize    ( tileSize ),
 _drawPatch   ( false ),
 _skirtSize   ( skirtSize )
 {
+    this->setDataVariance( DYNAMIC );
+    _geom->setDataVariance( DYNAMIC );
+
     this->setName( key.str() );
 
     setUseVertexBufferObjects( true );

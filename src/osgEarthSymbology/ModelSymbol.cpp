@@ -32,7 +32,9 @@ _pitch(rhs._pitch),
 _roll(rhs._roll),
 _autoScale(rhs._autoScale),
 _name(rhs._name),
-_node(rhs._node)
+_node(rhs._node),
+_maxSizeX(rhs._maxSizeX),
+_maxSizeY(rhs._maxSizeY)
 {
 }
 
@@ -41,7 +43,9 @@ InstanceSymbol( conf ),
 _heading  ( NumericExpression(0.0) ),
 _pitch    ( NumericExpression(0.0) ),
 _roll     ( NumericExpression(0.0) ),
-_autoScale( false )
+_autoScale( false ),
+_maxSizeX ( FLT_MAX ),
+_maxSizeY ( FLT_MAX )
 {
     mergeConfig( conf );
 }
@@ -59,6 +63,9 @@ ModelSymbol::getConfig() const
     conf.addIfSet( "auto_scale", _autoScale );
     conf.addIfSet( "alias_map", _uriAliasMap );
 
+    conf.addIfSet( "max_size_x", _maxSizeX );
+    conf.addIfSet( "max_size_y", _maxSizeY );
+
     conf.addNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
 }
@@ -69,7 +76,10 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "heading", _heading );
     conf.getObjIfSet( "pitch",   _pitch );
     conf.getObjIfSet( "roll",    _roll );
-    conf.getObjIfSet( "name",       _name );
+    conf.getObjIfSet( "name",    _name );
+
+    conf.getIfSet( "max_size_x", _maxSizeX );
+    conf.getIfSet( "max_size_y", _maxSizeY );
 
     conf.getIfSet( "auto_scale", _autoScale );
     conf.getIfSet( "alias_map", _uriAliasMap );
@@ -123,6 +133,12 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "model-name") ) {
         style.getOrCreate<ModelSymbol>()->name() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "model-max-size-x") ) {
+        //todo - may not need this.
+    }
+    else if ( match(c.key(), "model-max-size-y") ) {
+        //todo - may not need this.
     }
 }
 

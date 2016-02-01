@@ -136,6 +136,8 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             duk_put_prop_string(ctx, -2, "xmax");
             duk_push_number(ctx, b.yMax());
             duk_put_prop_string(ctx, -2, "ymax");
+            duk_push_number(ctx, b.area2d());
+            duk_put_prop_string(ctx, -2, "area");
 
             return 1;
         }

@@ -134,12 +134,10 @@ _additive(false),
 _minLevel(0),
 _maxLevel(30)
 {
-    _options = new osgDB::Options;
-    _options->setUserData( this );
-
-    this->setName("osgEarth::Util::SimplerPager::this");
-    _options->getOrCreateUserDataContainer()->addUserObject( this );
-
+    // required in order to pass our "this" pointer to the pseudo loader:
+    this->setName( "osgEarth::Util::SimplerPager::this" );
+    
+    // install the master framestamp tracker:
     _progressMaster = new ProgressMaster();
     addCullCallback( _progressMaster.get() );
 }
@@ -242,7 +240,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
     osg::PagedLOD* plod = new osg::PagedLOD;
     plod->setCenter( tileBounds.center() ); 
-    plod->setRadius( tileRadius );
+    plod->setRadius( tileRadius );    
 
     plod->addChild( node.get() );
 
@@ -267,6 +265,10 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         options->getOrCreateUserDataContainer()->addUserObject( this );
         options->getOrCreateUserDataContainer()->addUserObject( progressUpdater );
         plod->setDatabaseOptions( options );
+        
+        // Install an FLC if the caller provided one
+        if ( _fileLocationCallback.valid() )
+            options->setFileLocationCallback( _fileLocationCallback.get() );
 
         // Setup the min and max ranges.
         float minRange = (float)(tileRadius * _rangeFactor);

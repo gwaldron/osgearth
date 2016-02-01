@@ -77,30 +77,6 @@ namespace
                 node->onMapModelChanged( change );
         }
     };
-
-#if 0
-    // Render bin for terrain surface geometry
-    class SurfaceBin : public osgUtil::RenderBin
-    {
-    public:
-        SurfaceBin()
-        {
-            this->setName( "oe.SurfaceBin" );
-            this->setStateSet( new osg::StateSet() );
-            this->setSortMode(SORT_FRONT_TO_BACK);
-        }
-
-        osg::Object* clone(const osg::CopyOp& copyop) const
-        {
-            return new SurfaceBin(*this, copyop);
-        }
-
-        SurfaceBin(const SurfaceBin& rhs, const osg::CopyOp& copy) :
-            osgUtil::RenderBin(rhs, copy)
-        {
-        }
-    };
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -217,14 +193,21 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 void
 RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::preInitialize( map, options );
-    //nop.
+    // Force the mercator fast path off, since REX does not support it yet.
+    TerrainOptions myOptions = options;
+    myOptions.enableMercatorFastPath() = false;
+
+    TerrainEngineNode::preInitialize( map, myOptions );
 }
 
 void
 RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::postInitialize( map, options );
+    // Force the mercator fast path off, since REX does not support it yet.
+    TerrainOptions myOptions = options;
+    myOptions.enableMercatorFastPath() = false;
+
+    TerrainEngineNode::postInitialize( map, myOptions );
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
@@ -232,7 +215,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
-    _terrainOptions.merge( options );
+    _terrainOptions.merge( myOptions );
 
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if ( _terrainOptions.morphImagery() == true )

@@ -62,12 +62,13 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         renderInfo.getState()->disableAllVertexArrays();
         _SL->getAtmosphere()->DrawObjects( true, true, true );
 
-        // Dirty the state and the program tracking to prevent GL state conflicts.
+        // Restore the GL state to where it was before.
         state->dirtyAllVertexArrays();
         state->dirtyAllAttributes();
-        osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
-        api->glUseProgram((GLuint)0);
-        state->setLastAppliedProgramObject(0L);    
+        //osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
+        //api->glUseProgram((GLuint)0);
+        //state->setLastAppliedProgramObject(0L);
+        state->apply();
     }
 }
 

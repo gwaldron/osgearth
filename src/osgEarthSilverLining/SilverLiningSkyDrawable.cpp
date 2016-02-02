@@ -64,6 +64,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         renderInfo.getState()->dirtyAllVertexArrays();
         renderInfo.getState()->dirtyAllAttributes();
 
+#if 0
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
         osg::GLExtensions* api = renderInfo.getState()->get<osg::GLExtensions>();
 #else
@@ -71,6 +72,9 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 #endif
         api->glUseProgram((GLuint)0);
         renderInfo.getState()->setLastAppliedProgramObject(0L);
+#endif
+
+        renderInfo.getState()->apply();
     }
 }
 

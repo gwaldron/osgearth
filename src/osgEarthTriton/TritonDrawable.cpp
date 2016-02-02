@@ -550,9 +550,10 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     // Put GL back in a state that won't confuse the OSG state tracking:
     state->dirtyAllVertexArrays();
     state->dirtyAllAttributes();
-    osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
-    api->glUseProgram((GLuint)0);
-    state->setLastAppliedProgramObject( 0L );
+    //osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
+    //api->glUseProgram((GLuint)0);
+    //state->setLastAppliedProgramObject( 0L );
+    state->apply();
 }
 
 void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)

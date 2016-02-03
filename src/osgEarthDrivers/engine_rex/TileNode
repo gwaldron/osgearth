@@ -128,12 +128,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned                           _count;
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;
+        bool                               _childrenReady;
+
+        bool accept_cull(osgUtil::CullVisitor* cv);
 
     private:
 
         void createChildren(EngineContext* context);
 
-        void cull(osg::NodeVisitor& nv);
+        /** Returns false if the Surface node fails visiblity test */
+        bool cull(osgUtil::CullVisitor* cv); //osg::NodeVisitor& nv);
 
         void cull_stealth(osg::NodeVisitor& nv);
 
@@ -144,8 +148,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float getVisibilityRangeHint(EngineContext*) const;
 
+        void createPayloadStateSet(EngineContext*);
+
         void updateTileUniforms(const SelectionInfo& selectionInfo);
-        void createTileUniforms();
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

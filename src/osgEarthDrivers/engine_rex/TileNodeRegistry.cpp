@@ -61,10 +61,10 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 
                 for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
                 {
-                    i->second->setMapRevision( _maprev );
+                    i->second.tile->setMapRevision( _maprev );
                     if ( setToDirty )
                     {
-                        i->second->setDirty( true );
+                        i->second.tile->setDirty( true );
                     }
                 }
             }
@@ -90,7 +90,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
             maxLevel >= key.getLOD() &&
             extent.intersects(i->first.getExtent(), checkSRS) )
         {
-            i->second->setDirty( true );
+            i->second.tile->setDirty( true );
         }
     }
 }
@@ -98,7 +98,8 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
 void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
-    _tiles[ tile->getTileKey() ] = tile;
+    _tiles.insert( tile->getTileKey(), tile );
+    //_tiles[ tile->getTileKey() ] = tile;
     if ( _revisioningEnabled )
         tile->setMapRevision( _maprev );
 
@@ -110,10 +111,10 @@ TileNodeRegistry::addSafely(TileNode* tile)
 
         for(TileKeySet::iterator listener = listeners.begin(); listener != listeners.end(); ++listener)
         {
-            TileNodeMap::iterator listenerTile = _tiles.find( *listener );
-            if ( listenerTile != _tiles.end() )
+            TileNode* listenerTile = _tiles.find( *listener );
+            if ( listenerTile )
             {
-                listenerTile->second->notifyOfArrival( tile );
+                listenerTile->notifyOfArrival( tile );
             }
         }
         _notifiers.erase( notifier );
@@ -205,8 +206,8 @@ TileNodeRegistry::moveAll(TileNodeRegistry* destination)
     {
         for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
         {
-            if ( i->second.valid() )
-                destination->add( i->second.get() );
+            if ( i->second.tile.valid() )
+                destination->add( i->second.tile.get() );
         }
     }
 
@@ -219,13 +220,8 @@ TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {
     Threading::ScopedReadLock shared( _tilesMutex );
 
-    TileNodeMap::iterator i = _tiles.find(key);
-    if ( i != _tiles.end() )
-    {
-        out_tile = i->second.get();
-        return true;
-    }
-    return false;
+    out_tile = _tiles.find(key);
+    return out_tile.valid();
 }
 
 
@@ -234,14 +230,12 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
 
-    TileNodeMap::iterator i = _tiles.find(key);
-    if ( i != _tiles.end() )
+    out_tile = _tiles.find(key);
+    if ( out_tile.valid() )
     {
-        out_tile = i->second.get();
         removeSafely( key );
-        return true;
     }
-    return false;
+    return out_tile.valid();
 }
 
 
@@ -276,13 +270,13 @@ void
 TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
     Threading::ScopedWriteLock lock( _tilesMutex );
-    TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
-    if ( i != _tiles.end() )
+    TileNode* tile = _tiles.find( tileToWaitFor );
+    if ( tile )
     {
         OE_DEBUG << LC << waiter->getTileKey().str() << " listened for " << tileToWaitFor.str()
             << ", but it was already in the repo.\n";
 
-        waiter->notifyOfArrival( i->second.get() );
+        waiter->notifyOfArrival( tile );
     }
     else
     {
@@ -296,7 +290,7 @@ TileNode*
 TileNodeRegistry::takeAny()
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
-    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
+    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.tile.get();
     removeSafely( tile->getTileKey() );
     return tile.release();
 }

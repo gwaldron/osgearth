@@ -59,6 +59,9 @@ namespace
 
 //........................................................................
 
+#undef  LC
+#define LC "[UnloaderGroup] "
+
 UnloaderGroup::UnloaderGroup(TileNodeRegistry* live, TileNodeRegistry* dead) :
 _live     ( live ),
 _dead     ( dead ),
@@ -71,7 +74,18 @@ void
 UnloaderGroup::unloadChildren(const TileKey& key)
 {
     _mutex.lock();
-    _parentKeys.insert(key);
+    ///_parentKeys.insert(key);
+    _parentKeys.push_back( key ); 
+    _mutex.unlock();
+}
+
+void
+UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
+{
+    _mutex.lock();
+    for(std::vector<TileKey>::const_iterator i = keys.begin(); i != keys.end(); ++i)
+        _parentKeys.push_back( *i );
+    //_parentKeys.insert(keys.begin(), keys.end());
     _mutex.unlock();
 }
 
@@ -84,7 +98,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
         {
             unsigned count = 0;
             Threading::ScopedMutexLock lock( _mutex );
-            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            for(std::vector<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
                 if ( _live->get(*parentKey, parentNode) )

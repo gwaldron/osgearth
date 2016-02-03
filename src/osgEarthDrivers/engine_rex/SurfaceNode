@@ -85,12 +85,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         // A box can have 4 children. 
         // Returns true if any child box intersects the sphere of radius centered around point
-        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float fZoomFactor) {
-            float z2 = fZoomFactor*fZoomFactor;
-            for(int i=0; i<4; ++i) {
+        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float lodScale) {
+            double X = radiusSquared / (lodScale*lodScale);
+            for(int c=0; c<4; ++c) {
                 for(int j=0; j<8; ++j) {
-                    float d2 = (_childrenCorners[i][j]-point).length2() * z2;
-                    if ( d2 < radiusSquared )
+                    if ( (_childrenCorners[c][j]-point).length2() < X )
                         return true;
                 }
             }
@@ -124,7 +123,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         typedef VectorPoints (ChildrenCorners) [4];
         ChildrenCorners _childrenCorners;
 
-        osg::ref_ptr<osg::RefMatrix> _matrix;
+        //osg::ref_ptr<osg::RefMatrix> _matrix;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

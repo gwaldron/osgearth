@@ -125,7 +125,9 @@ HorizonTileCuller::set(const SpatialReference* srs,
                        const osg::Matrix&      local2world,
                        const osg::BoundingBox& bbox)
 {
-    _horizon = new Horizon();
+    if ( !_horizon.valid() )
+        _horizon = new Horizon();
+
     _horizon->setEllipsoid(*srs->getEllipsoid());
     _radiusPolar = srs->getEllipsoid()->getRadiusPolar();
     _radiusEquator = srs->getEllipsoid()->getRadiusEquator();
@@ -135,11 +137,8 @@ HorizonTileCuller::set(const SpatialReference* srs,
     // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
     // may be visible even if it doesn't pass the horizon-cone test. In such
     // cases we need a more conservative ellipsoid.
-    double zMin = bbox.corner(0).z();
-    if ( zMin < 0.0 )
-    {
-        _horizon->setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
-    }            
+    double zMin = (double)std::min( bbox.corner(0).z(), 0.0f );
+    _horizon->setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
 
     // consider the uppermost 4 points of the tile-aligned bounding box.
     // (the last four corners of the bbox are the "zmax" corners.)
@@ -177,9 +176,7 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     osg::Matrix local2world;
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
-
-    _matrix = new osg::RefMatrix( local2world );
-
+    
     // Initialize the cached bounding box.
     setElevationRaster( 0L, osg::Matrixf::identity() );
 }

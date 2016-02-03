@@ -83,40 +83,27 @@ EngineContext::getElapsedCullTime() const
     return osg::Timer::instance()->delta_s(_tick, now);
 }
 
-#if 0
-namespace {
-    struct UnloadDormantTiles : public TileNodeRegistry::Operation {
-        const osg::FrameStamp* _fs;
-        Unloader* _unloader;
-        UnloadDormantTiles(const osg::FrameStamp* fs, Unloader* unloader) : _fs(fs), _unloader(unloader) { }
-        void operator()(TileNodeRegistry::TileNodeMap& tiles) {
-            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i) {
-                TileNode* tile = i->second.get();
-                if ( tile->areSubTilesDormant(_fs) ) {
-                    _unloader->unloadChildren(tile->getTileKey());
-                }
-            }
-        }
-    };
-}
-#endif
-
 void
 EngineContext::endCull(osgUtil::CullVisitor* cv)
 {
-    double tms = 1000.0 * getElapsedCullTime();
-    int tileDelta = _liveTiles->size() - _tilesLastCull;
-    if ( tileDelta != 0 )
-    {
-        OE_DEBUG << LC << "Live tiles = " << _liveTiles->size() << "; cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
-    }
-
     if ( progress() )
     {
+        double tms = 1000.0 * getElapsedCullTime();
+
         OE_NOTICE << "Stats:\n";
+        double totalCull = getElapsedCullTime();
+        OE_NOTICE << "  TOTAL TIME = " << tms << " ms ... live tiles = " << _liveTiles->size() << std::endl;
         for(ProgressCallback::Stats::const_iterator i = _progress->stats().begin(); i != _progress->stats().end(); ++i)
         { 
-            OE_NOTICE << "    " << i->first << " = " << i->second << std::endl;
+            if ( osgEarth::endsWith(i->first, "_count") )
+            {
+                OE_NOTICE << "    " << i->first << " = " << (int)i->second << std::endl;
+            }
+            else
+            {
+                OE_NOTICE << "    " << i->first << " = " << std::setprecision(5) << (1000.0*i->second) << " ms (" << 
+                    std::setprecision(2) << 100.0*i->second/totalCull << "%)" << std::endl;
+            }
         }
     }  
 
@@ -125,10 +112,11 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
     OE_NOTICE << c.toJSON(true) << std::endl << std::endl;
 #endif
 
-    //Forceably unload all dormat tiles -- this works, but it too slow to run
-    // every frame.
-    //UnloadDormantTiles op(cv->getFrameStamp(), _unloader);
-    //_liveTiles->run(op);
+    if ( !_tilesWithChildrenToUnload.empty() )
+    {
+        getUnloader()->unloadChildren( _tilesWithChildrenToUnload );
+        _tilesWithChildrenToUnload.clear();
+    }
 }
 
 bool

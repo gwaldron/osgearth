@@ -49,6 +49,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         {
             setDriver( "rex" );
             fromConfig( _conf );
+
+            // override.
+            enableMercatorFastPath().init( false );
         }
 
         /** dtor */

@@ -93,6 +93,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
 
+        void unloadChildrenOf(const TileKey& key) { _tilesWithChildrenToUnload.push_back(key); }
+
         void invokeTilePatchCallbacks(
             osgUtil::CullVisitor* cv,
             const TileKey&        tileKey,
@@ -100,7 +102,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             osg::Node*            tilePatch);
         
         osg::ref_ptr<osg::StateSet>           _surfaceSS;
-
 
     protected:
 
@@ -121,7 +122,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
         osg::ref_ptr<ProgressCallback>        _progress;
-        TilePatchCallbacks&                   _tilePatchCallbacks;
+        TilePatchCallbacks&                   _tilePatchCallbacks;        
+        std::vector<TileKey>                  _tilesWithChildrenToUnload;
 
         typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
         MatrixUniformMap _matrixUniforms;

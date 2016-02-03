@@ -481,7 +481,7 @@ namespace
         void operator()( const TileNodeRegistry::TileNodeMap& tiles ) const {
             unsigned count = 0;
             for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-                if ( i->second->referenceCount() == 1 ) {
+                if ( i->second.tile->referenceCount() == 1 ) {
                     count++;
                 }
             }
@@ -792,6 +792,8 @@ RexTerrainEngineNode::updateState()
     {
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
+        
+        terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(

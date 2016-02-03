@@ -10,8 +10,8 @@
                  tile_size="17"
                  high_resolution_first="true" 
                  merges_per_frame="50"
-                 skirt_ratio="0.01"
-                 normal_maps="true" />
+                 skirt_ratio="0.01">
+        </terrain>
     </options>
     
     <elevation name="readymap_elevation" driver="tms" enabled="true">
@@ -28,8 +28,6 @@
                 <warp>0.01</warp>
             </image>
         </images>
-        <shared_sampler> landUseTex       </shared_sampler>
-        <shared_matrix>  landUseTexMatrix </shared_matrix>
     </image>
 
     <extensions>   

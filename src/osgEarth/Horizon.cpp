@@ -216,6 +216,7 @@ Horizon::isVisible(const osg::Vec3d& target,
     return false;
 }
 
+
 bool
 Horizon::isVisible(const osg::Vec3d& eye,
                    const osg::Vec3d& target,
@@ -224,10 +225,9 @@ Horizon::isVisible(const osg::Vec3d& eye,
     if ( _valid == false || radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
         return true;
 
-    osg::Vec3d eyeUnit( eye );
-    eyeUnit.normalize();
+    optional<osg::Vec3d> eyeUnit;
 
-    osg::Vec3d VC( osg::componentMultiply(-eye, _scale) );  // viewer->center (scaled)
+    osg::Vec3d VC = osg::componentMultiply(-eye, _scale);  // viewer->center (scaled)
 
     // First check the object against the horizon plane, a plane that intersects the 
     // ellipsoid, whose normal is the vector from the eyepoint to the center of the 
@@ -235,7 +235,14 @@ Horizon::isVisible(const osg::Vec3d& eye,
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
     // Viewer-to-target 
-    osg::Vec3d VT( (target + eyeUnit*radius) - eye);
+    osg::Vec3d delta(0,0,0);
+    if ( radius > 0.0 )
+    {
+        eyeUnit = eye;
+        eyeUnit->normalize();
+        delta.set( eyeUnit.get()*radius );
+    }
+    osg::Vec3d VT( target+delta - eye );
 
     // transform into unit space:
     VT = osg::componentMultiply( VT, _scale );
@@ -251,7 +258,7 @@ Horizon::isVisible(const osg::Vec3d& eye,
     // (since the above test failed) the target is occluded. 
     // NOTE: it might be better instead to check for a maximum distance from
     // the eyepoint instead. 
-    double VCmag  = std::max( VC.length(), _minVCmag );      // clamped to the min HAE
+    double VCmag = std::max( VC.length(), _minVCmag );      // clamped to the min HAE
     if ( VCmag < 0.0 )
     {
         return false;
@@ -277,7 +284,11 @@ Horizon::isVisible(const osg::Vec3d& eye,
     double coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
     double coneTan = tan(acos(coneCos));
 
-    double a = VT * -eyeUnit;
+    if ( !eyeUnit.isSet() ) {
+        eyeUnit = eye;
+        eyeUnit->normalize();
+    }
+    double a = VT * -eyeUnit.get();
     double b = a * coneTan;
     double c = sqrt( VT*VT - a*a );
     double d = c - b;

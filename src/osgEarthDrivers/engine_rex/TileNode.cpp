@@ -470,6 +470,10 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 {
     OE_START_TIMER(acceptSurface);
 
+    // The reason we push the top-leel surface SS for every node is because
+    // of the patch callbacks. Instead of doing this we need a way to put
+    // patch traversals in their own top-level bin...
+
     cv->pushStateSet( context->_surfaceSS.get() );
     cv->pushStateSet( _payloadStateSet.get() );
     _surface->accept( *cv );

@@ -7,7 +7,7 @@
     <options>        
         <terrain driver                = "rex"
                  tile_size             = "17"
-                 merges_per_frame      = "20"
+                 merges_per_frame      = "4"
                  morph_terrain         = "true"
                  morph_imagery         = "true"
                  high_resolution_first = "true"

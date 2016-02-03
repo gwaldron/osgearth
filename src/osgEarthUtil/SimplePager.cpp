@@ -2,6 +2,8 @@
 #include <osgEarth/TileKey>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Options>
+#include <osg/UserDataContainer>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 #include <osg/Geode>
@@ -99,6 +101,7 @@ namespace
 
             unsigned lod, x, y;
             sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+
 
             SimplePager* pager =
                 dynamic_cast<SimplePager*>(

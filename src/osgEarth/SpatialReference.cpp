@@ -197,7 +197,7 @@ SpatialReference::createFromUserInput( const std::string& input, const std::stri
     }
     else 
     {
-        OE_WARN << LC << "Unable to create spatial reference from user input: " << input << std::endl;
+        //OE_WARN << LC << "Unable to create spatial reference from user input: " << input << std::endl;
         OSRDestroySpatialReference( handle );
     }
     return result.release();

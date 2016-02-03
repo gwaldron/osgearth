@@ -128,13 +128,6 @@ namespace osgEarth
         const optional<std::string>& cacheId() const { return _cacheId; }
 
         /**
-         * The format that this MapLayer should use when caching. This can be a mime type
-         * or a file extension.
-         */
-        optional<std::string>& cacheFormat() { return _cacheFormat; }
-        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
-
-        /**
          * Caching policy to use for this layer.
          */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
@@ -187,7 +180,6 @@ namespace osgEarth
         optional<unsigned>          _maxDataLevel;
 
         optional<std::string>       _cacheId;
-        optional<std::string>       _cacheFormat;
         optional<CachePolicy>       _cachePolicy;
         optional<ProxySettings>     _proxySettings;
     };
@@ -448,7 +440,7 @@ namespace osgEarth
         Threading::ReadWriteMutex      _cacheBinsMutex;
 
         void init();
-        //void applyCacheFormat( CacheBin* bin, const std::string& format );
+
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
 
         // methods accesible by Map:

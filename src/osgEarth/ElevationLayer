@@ -145,8 +145,6 @@ namespace osgEarth
             const TileKey&     key,
             ProgressCallback*  progress );
         
-        virtual std::string suggestCacheFormat() const;
-
     private:
         ElevationLayerOptions _runtimeOptions;
 

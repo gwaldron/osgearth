@@ -163,6 +163,9 @@ IF ( Qt5Widgets_FOUND )
     qt5_use_modules( ${LIB_NAME} Gui Widgets OpenGL )
 ENDIF( Qt5Widgets_FOUND )
 
+# Add this project to the NodeKits solution folder
+set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
+
 INCLUDE(ModuleInstall OPTIONAL)
 
 ENDIF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)

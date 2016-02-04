@@ -58,6 +58,9 @@ LINK_CORELIB_DEFAULT(
 	${LIB_NAME}
 	${CMAKE_THREAD_LIBS_INIT} )
 
+# Add this project to the NodeKits solution folder
+set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
+
 INCLUDE(ModuleInstall OPTIONAL)
 
 ENDIF(TRITON_FOUND)

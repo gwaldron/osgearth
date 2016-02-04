@@ -18,10 +18,7 @@ FOREACH( lib
          osgEarthSplat
          osgEarthSilverLining
          osgEarthTriton )
-       
-    add_subdirectory( ${lib} )
-    set_property( TARGET ${lib} PROPERTY FOLDER "NodeKits" )
-    
+    add_subdirectory( ${lib} )    
 ENDFOREACH( lib )
 
 ADD_SUBDIRECTORY( osgEarthDrivers )

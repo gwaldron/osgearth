@@ -701,34 +701,29 @@ TileNode::load(osg::NodeVisitor& nv)
         }
     }
 
-#if 0
-    double range0, range1;
-    int lod = getTileKey().getLOD();
-    if ( lod > context->getOptions().firstLOD().get() )
-        range0 = context->getSelectionInfo().visParameters(lod-1)._visibilityRange;
-    else
-        range0 = 0.0;
-    double range1 = context->getSelectionInfo().visParameters(lod)._visibilityRange;
+    
+    // Construct the load PRIORITY: 0=lowest, 1=highest.
+    
+    const SelectionInfo& si = context->getSelectionInfo();
+    int lod     = getTileKey().getLOD();
+    int numLods = si.numLods();
+    
+    // LOD priority is in the range [0..numLods]
+    float lodPriority = (float)lod;
+    if ( context->getOptions().highResolutionFirst() == false )
+        lodPriority = (float)(numLods - lod);
 
-    priority = 
-#endif
+    float distance = nv.getDistanceToViewPoint(getBound().center(), true);
 
-    // Prioritize by LOD. (negated because lower order gets priority)
-    float priority = - (float)getTileKey().getLOD();
+    // dist priority uis in the range [0..1]
+    float distPriority = 1.0 - distance/si.visParameters(0)._visibilityRange;
 
-    if ( context->getOptions().highResolutionFirst() == true )
-    {
-        priority = context->getSelectionInfo().numLods() - priority;
-        //priority = -priority;
-    }
+    // add thenm together, and you get tiles sorted first by lodPriority (because of
+    // the biggest range), and second by distance.
+    float priority = lodPriority + distPriority;
 
-    // then sort by distance within each LOD.
-    float distance = nv.getDistanceToViewPoint( getBound().center(), true );
-    priority = 10.0f*priority - log10(distance);
-
-    // testing intermediate loading idea...
-    //if ( getTileKey().getLOD() == 5 )
-    //    priority += 100.0f;
+    // normalize the composite priority to [0..1].
+    priority /= (float)(numLods+1);
 
     // Submit to the loader.
     context->getLoader()->load( _loadRequest.get(), priority, nv );

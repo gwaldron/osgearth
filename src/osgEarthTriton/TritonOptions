@@ -27,7 +27,7 @@ namespace osgEarth { namespace Triton
     /**
      * Options for controlling the ocean surface node.
      */
-    class /*header-only*/ OSGEARTHTRITON_EXPORT TritonOptions : public osgEarth::Util::OceanOptions
+    class /*header-only*/ TritonOptions : public osgEarth::Util::OceanOptions
     {
     public:
         TritonOptions(const osgEarth::Util::OceanOptions& conf = osgEarth::Util::OceanOptions()) :

@@ -27,7 +27,7 @@ namespace osgEarth { namespace SilverLining
     /**
      * Options for creating a SilverLining environment node
      */
-    class OSGEARTHSILVERLINING_EXPORT SilverLiningOptions : public osgEarth::Util::SkyOptions
+    class /*header only*/ SilverLiningOptions : public osgEarth::Util::SkyOptions
     {
     public:
         SilverLiningOptions(const osgEarth::Util::SkyOptions& options =osgEarth::Util::SkyOptions()) :

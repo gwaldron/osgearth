@@ -26,7 +26,8 @@ ProgressCallback::ProgressCallback() :
 osg::Referenced( true ),
 _canceled      ( false ),
 _failed        ( false ),
-_needsRetry    ( false )
+_needsRetry    ( false ),
+_collectStats  ( false )
 {
     //NOP
 }
@@ -44,6 +45,18 @@ bool ProgressCallback::reportProgress(double             current,
                                       const std::string& msg )
 {
     return false;
+}
+
+double& ProgressCallback::stats(const std::string& key)
+{
+    Stats::iterator i = _stats.find(key);
+    if ( i == _stats.end() )
+    {
+        double& value = _stats[key];
+        value = 0.0;
+        return value;
+    }
+    return i->second;
 }
 
 /******************************************************************************/

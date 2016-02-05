@@ -146,7 +146,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             progress->stats()["http_get_time"] / progress->stats()["http_get_count"];
 
                         OE_NOTICE << "tile: " << tileDef << std::endl;
-                        for(fast_map<std::string,double>::iterator i = progress->stats().begin();
+                        for(ProgressCallback::Stats::iterator i = progress->stats().begin();
                             i != progress->stats().end();
                             ++i)
                         {

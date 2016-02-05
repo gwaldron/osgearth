@@ -84,10 +84,17 @@ namespace osgEarth { namespace Util {
         */
         osg::Node* createPagedNode(const TileKey& key, ProgressCallback* progress);
 
+    public:
+        struct ProgressTracker : public osg::NodeCallback {
+            ProgressTracker(osg::NodeCallback*);
+            osg::ref_ptr<ProgressCallback> _progress[4];
+            void operator()(osg::Node*, osg::NodeVisitor*);
+        };
+
         /**
         * Loads the PagedLOD hierarchy for this key.
         */
-        osg::Node* loadKey(const TileKey& key, ProgressCallback* progress);
+        osg::Node* loadKey(const TileKey& key, ProgressTracker* progress);
 
     protected:
 

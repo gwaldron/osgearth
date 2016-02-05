@@ -10,6 +10,7 @@
 
 using namespace osgEarth::Util;
 
+#define LC "[SimplerPager] "
 
 namespace
 {
@@ -57,6 +58,7 @@ namespace
         osg::observer_ptr<ProgressMaster> _master;
     };
 
+#if 0
     /**
      * Cull callback installed on each PagedLOD that keeps the corresponding
      * progress callback up to date each time the PagedLOD gets cull traversed.
@@ -77,6 +79,10 @@ namespace
             traverse(node, nv);
         }
     };
+#endif
+
+#if 0
+#endif
 
 
     /**
@@ -110,16 +116,14 @@ namespace
             
             if (pager)
             {
-                ProgressUpdater* progressUpdater = 
-                    dynamic_cast<ProgressUpdater*>(
+                SimplePager::ProgressTracker* tracker =
+                    dynamic_cast<SimplePager::ProgressTracker*>(
                         const_cast<osg::Object*>(
-                            options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::ProgressUpdater")));
-
-                ProgressCallback* progress = progressUpdater? progressUpdater->_progress.get() : 0L;
+                            options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::ProgressTracker")));
 
                 return pager->loadKey(
                     TileKey(lod, x, y, pager->getProfile()),
-                    progress);
+                    tracker);
             }
 
             return ReadResult::ERROR_IN_READING_FILE;
@@ -127,6 +131,21 @@ namespace
     };
 
     REGISTER_OSGPLUGIN(osgearth_pseudo_simple, SimplePagerPseudoLoader);
+}
+
+
+SimplePager::ProgressTracker::ProgressTracker(osg::NodeCallback* master)
+{
+    setName( "osgEarth::Util::SimplerPager::ProgressTracker" );
+    for(int i=0; i<4; ++i)
+        _progress[i] = new MyProgressCallback( static_cast<ProgressMaster*>(master) );
+}
+
+void SimplePager::ProgressTracker::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    for(int i=0; i<4; ++i)
+        static_cast<MyProgressCallback*>(_progress[i].get())->touch( nv->getFrameStamp() );
+    traverse(node, nv);
 }
 
 
@@ -258,15 +277,15 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         plod->setFileName(1, uri);
         
         // install a callback that will update the progress tracker whenever the PLOD
-        // gets traversed. The child, once activated, will have access to the Progress
-        // and be able to check for cancelation or to report progress as it wishes..
-        ProgressUpdater* progressUpdater = new ProgressUpdater( _progressMaster.get() );
-        plod->addCullCallback( progressUpdater );
-        
+        // gets traversed. The children, once activated, will have access to its
+        // ProgressCallback within and be able to check for cancelation, use stats, etc.
+        ProgressTracker* tracker = new ProgressTracker( _progressMaster.get() );
+        plod->addCullCallback( tracker );
+
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
         options->getOrCreateUserDataContainer()->addUserObject( this );
-        options->getOrCreateUserDataContainer()->addUserObject( progressUpdater );
+        options->getOrCreateUserDataContainer()->addUserObject( tracker );
         plod->setDatabaseOptions( options );
         
         // Install an FLC if the caller provided one
@@ -302,7 +321,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 /**
 * Loads the PagedLOD hierarchy for this key.
 */
-osg::Node* SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
+osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
 
@@ -310,7 +329,7 @@ osg::Node* SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::Node* plod = createPagedNode( childKey, progress );
+        osg::Node* plod = createPagedNode( childKey, tracker->_progress[i].get() );
         if (plod)
         {
             group->addChild( plod );

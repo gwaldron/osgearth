@@ -314,33 +314,32 @@ TileNode::isVisible(osg::CullStack* stack) const
 #endif
 }
 
-void
-TileNode::cull_stealth(osg::NodeVisitor& nv)
+bool
+TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 {
-    if ( !isDormant(nv.getFrameStamp()) )
+    bool visible = false;
+
+    if ( !isDormant(cv->getFrameStamp()) )
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-        EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+        EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
        
-        if ( getNumChildren() == 4 )
+        if ( _childrenReady && !areSubTilesDormant(cv->getFrameStamp()) )
         {
-            unsigned before = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
             for(int i=0; i<4; ++i)
             {
-                _children[i]->accept( nv );
-            }
-            unsigned after = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
-            if ( after == before )
-            {
-                acceptSurface( cv, context );
+                getSubTile(i)->accept_cull_stealth( cv );
             }
         }
 
-        else if ( _surface.valid() )
+        else
         {
             acceptSurface( cv, context );
         }
+
+        visible = true;
     }
+
+    return visible;
 }
 
 void
@@ -348,12 +347,17 @@ TileNode::tryUnload(TileNode* tile, const osg::Vec3& vp, EngineContext* context)
 {
     if ( tile->getNumChildren() > 0 )
     {
-        const osg::BoundingSphere& bs = tile->getBound();
-        double distToTile2 = (bs.center() - vp).length2() + bs.radius2();
-        if ( distToTile2 > context->getExpirationRange2() )
+        bool unload = true;
+        double range2 = context->getExpirationRange2();
+        if ( range2 > 0.0 )
         {
-            context->unloadChildrenOf( tile );
+            const osg::BoundingSphere& bs = tile->getBound();
+            double distToTile2 = (bs.center() - vp).length2() + bs.radius2();
+            if ( distToTile2 <= range2 )
+                unload = false;
         }
+        if ( unload )
+            context->unloadChildrenOf( tile );
     }
 }
 
@@ -497,25 +501,33 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 bool
 TileNode::accept_cull(osgUtil::CullVisitor* cv)
 {
-    //cv->pushOntoNodePath( this );
-
     bool visible = false;
     
     if ( !cv->isCulled(*this) )
     {
-        //cv->pushCurrentMask();
-
         cv->pushStateSet( getStateSet() );
 
-        //cv->handle_cull_callbacks_and_traverse(*this);
         visible = cull( cv );
-
-        //cv->popCurrentMask();
 
         cv->popStateSet();
     }
 
-    //cv->popFromNodePath();
+    return visible;
+}
+
+bool
+TileNode::accept_cull_stealth(osgUtil::CullVisitor* cv)
+{
+    bool visible = false;
+    
+    //if ( !cv->isCulled(*this) )
+    {
+        cv->pushStateSet( getStateSet() );
+
+        visible = cull_stealth( cv );
+
+        cv->popStateSet();
+    }
 
     return visible;
 }
@@ -530,12 +542,11 @@ TileNode::traverse(osg::NodeVisitor& nv)
 
         if (VisitorData::isSet(nv, "osgEarth.Stealth"))
         {
-            cull_stealth( nv );
+            accept_cull_stealth( cv );
         }
         else
         {
             accept_cull( cv );
-            //cull(nv);
         }
     }
 

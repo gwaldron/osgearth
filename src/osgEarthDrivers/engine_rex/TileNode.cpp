@@ -319,24 +319,21 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
 
-    if ( !isDormant(cv->getFrameStamp()) )
+    EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
+
+    unsigned frame = cv->getFrameStamp()->getFrameNumber();
+
+    if ( frame - _lastAcceptSurfaceFrame < 2u )
     {
-        EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
-       
-        if ( _childrenReady && !areSubTilesDormant(cv->getFrameStamp()) )
-        {
-            for(int i=0; i<4; ++i)
-            {
-                getSubTile(i)->accept_cull_stealth( cv );
-            }
-        }
+        acceptSurface( cv, context );
+    }
 
-        else
+    else if ( _childrenReady )
+    {
+        for(int i=0; i<4; ++i)
         {
-            acceptSurface( cv, context );
+            getSubTile(i)->accept_cull_stealth( cv );
         }
-
-        visible = true;
     }
 
     return visible;
@@ -463,6 +460,7 @@ TileNode::cull(osgUtil::CullVisitor* cv)
     if ( canAcceptSurface )
     {
         acceptSurface( cv, context );
+        _lastAcceptSurfaceFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
     }
 
        

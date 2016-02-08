@@ -125,6 +125,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
+        OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;

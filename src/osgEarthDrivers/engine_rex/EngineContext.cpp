@@ -54,7 +54,7 @@ _options       ( options ),
 _selectionInfo ( selectionInfo ),
 _tilePatchCallbacks( tilePatchCallbacks )
 {
-    //NOP
+    _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
 }
 
 const MapFrame& EngineContext::getMapFrame()
@@ -63,6 +63,12 @@ const MapFrame& EngineContext::getMapFrame()
         _frame.sync();
 
     return _frame;
+}
+
+void
+EngineContext::unloadChildrenOf(TileNode* tile)
+{
+    _tilesWithChildrenToUnload.push_back( tile->getTileKey() );
 }
 
 void
@@ -113,7 +119,7 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
 #endif
 
     if ( !_tilesWithChildrenToUnload.empty() )
-    {
+    {        
         getUnloader()->unloadChildren( _tilesWithChildrenToUnload );
         _tilesWithChildrenToUnload.clear();
     }

@@ -343,6 +343,19 @@ TileNode::cull_stealth(osg::NodeVisitor& nv)
     }
 }
 
+void
+TileNode::tryUnload(TileNode* tile, const osg::Vec3& vp, EngineContext* context)
+{
+    if ( tile->getNumChildren() > 0 )
+    {
+        const osg::BoundingSphere& bs = tile->getBound();
+        double distToTile2 = (bs.center() - vp).length2() + bs.radius2();
+        if ( distToTile2 > context->getExpirationRange2() )
+        {
+            context->unloadChildrenOf( tile );
+        }
+    }
+}
 
 bool
 TileNode::cull(osgUtil::CullVisitor* cv)
@@ -354,10 +367,7 @@ TileNode::cull(osgUtil::CullVisitor* cv)
     if ( !_surface->isVisible(cv) )
     {
         // If we can't see the surface, and it has children, retire them
-        if ( getNumChildren() > 0 )
-        {
-            context->unloadChildrenOf( _key );
-        }
+        tryUnload( this, cv->getViewPointLocal(), context );
         return false;
     }
 
@@ -419,12 +429,11 @@ TileNode::cull(osgUtil::CullVisitor* cv)
         {
             for(int i=0; i<4; ++i)
             {
-                bool childVisible = getSubTile(i)->accept_cull(cv);
+                TileNode* subTile = getSubTile(i);
 
-                if ( !childVisible && getSubTile(i)->getNumChildren() > 0 )
+                if ( !subTile->accept_cull(cv) )
                 {
-                    // Child is not visible, unload its children if it has any.
-                    context->unloadChildrenOf( getSubTile(i)->getTileKey() );
+                    tryUnload( subTile, cv->getViewPointLocal(), context );
                 }
             }
 

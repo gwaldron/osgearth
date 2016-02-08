@@ -70,6 +70,7 @@ _threshold( INT_MAX )
     this->setNumChildrenRequiringUpdateTraversal( 1u );
 }
 
+#if 0
 void
 UnloaderGroup::unloadChildren(const TileKey& key)
 {
@@ -78,6 +79,7 @@ UnloaderGroup::unloadChildren(const TileKey& key)
     _parentKeys.push_back( key ); 
     _mutex.unlock();
 }
+#endif
 
 void
 UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)

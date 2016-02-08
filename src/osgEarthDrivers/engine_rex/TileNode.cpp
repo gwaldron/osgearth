@@ -321,6 +321,8 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 
     EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
 
+#if 1
+    // Shows all culled tiles, good for testing culling
     unsigned frame = cv->getFrameStamp()->getFrameNumber();
 
     if ( frame - _lastAcceptSurfaceFrame < 2u )
@@ -335,6 +337,21 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
             getSubTile(i)->accept_cull_stealth( cv );
         }
     }
+#else
+    // Shows all loaded tiles, good for testing expiration range
+    if ( _childrenReady )
+    {
+        for(int i=0; i<4; ++i)
+        {
+            getSubTile(i)->accept_cull_stealth( cv );
+        }
+    }
+    else
+    {
+        acceptSurface( cv, context );
+    }
+
+#endif
 
     return visible;
 }
@@ -345,6 +362,9 @@ TileNode::tryUnload(TileNode* tile, const osg::Vec3& vp, EngineContext* context)
     if ( tile->getNumChildren() > 0 )
     {
         bool unload = true;
+
+        // Test against the expiration range. A tile whose outer rim is closer
+        // than this range cannot be unloaded.
         double range2 = context->getExpirationRange2();
         if ( range2 > 0.0 )
         {

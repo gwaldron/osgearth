@@ -751,7 +751,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     }
 
     HINTERNET hInternet = InternetOpen(
-        getUserAgent().c_str(), //"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+        getUserAgent().c_str(),
+        //"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
         INTERNET_OPEN_TYPE_PRECONFIG, 
         NULL,       // proxy
         NULL,       // proxy bypass
@@ -765,11 +766,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     // clears any session cookies..?
     InternetSetOption( 0, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0 );
-    
-    DWORD openFlags =
-        INTERNET_FLAG_PRAGMA_NOCACHE |
-        INTERNET_FLAG_KEEP_CONNECTION |
-        INTERNET_FLAG_SECURE;
     
     // parse the URL:
     URL_COMPONENTS urlcomp;
@@ -802,7 +798,17 @@ HTTPClient::doGet(const HTTPRequest&    request,
         << "Host name = " << hostName << "\n"
         << "Url path = " << urlcomp.lpszUrlPath << "\n"
         << "Port = " << port << "\n";
+    
+    DWORD openFlags =
+        //INTERNET_FLAG_PRAGMA_NOCACHE |
+        INTERNET_FLAG_RELOAD |
+        INTERNET_FLAG_NO_CACHE_WRITE |
+        INTERNET_FLAG_KEEP_CONNECTION;
 
+    if ( urlcomp.nScheme == INTERNET_SCHEME_HTTPS)
+    {
+        openFlags |= INTERNET_FLAG_SECURE;
+    }
 
     // InternetOpenUrl is a lot less code, but we have to use the InternetConnnect +
     // HttpOpenRequest + HttpSendRequest approach in order to support system dialogs
@@ -816,7 +822,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         "", // password
         INTERNET_SERVICE_HTTP,
         0,  // flags
-        0); // context
+        INTERNET_NO_CALLBACK); // context
 
     if ( !hConnection )
     {
@@ -833,7 +839,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         NULL,                   // Referrer
         NULL,                   // Accept types
         openFlags,              // flags
-        NULL);                  // context (user data)
+        INTERNET_NO_CALLBACK);                  // context (user data)
 
     if ( !hRequest )
     {
@@ -872,7 +878,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
         else
         {
-            OE_WARN << LC << "InternetOpenUrl failed to open " << url << ": " << GetLastErrorAsString() << std::endl;
+            OE_WARN << LC << "HttpSendRequest failed to open " << url << ": " << GetLastErrorAsString() << std::endl;
             InternetCloseHandle( hRequest );
             InternetCloseHandle( hConnection );
             InternetCloseHandle( hInternet );
@@ -929,10 +935,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     if ( progress )
     {
-        progress->stats()["http_get_time"] += OE_GET_TIMER(http_get);
-        progress->stats()["http_get_count"] += 1;
+        progress->stats("http_get_time") += OE_GET_TIMER(http_get);
+        progress->stats("http_get_count") += 1;
         if ( response._cancelled )
-            progress->stats()["http_cancel_count"] += 1;
+            progress->stats("http_cancel_count") += 1;
     }
     
     return response;
@@ -948,6 +954,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     initialize();
 
     OE_START_TIMER(http_get);
+    
+    std::string url = request.getURL();
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
@@ -1043,7 +1051,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
-    std::string url = request.getURL();
     // Rewrite the url if the url rewriter is available  
     osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
     if ( rewriter.valid() )
@@ -1091,7 +1098,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
             const_cast<HTTPClient*>(this)->_previousHttpAuthentication = 0;
         }
 #endif
-    }
+    }  
 
 
     // Set any headers
@@ -1104,11 +1111,11 @@ HTTPClient::doGet(const HTTPRequest&    request,
             buf << itr->first << ": " << itr->second;
             headers = curl_slist_append(headers, buf.str().c_str());
         }
-    }    
+    }
 
     // Disable the default Pragma: no-cache that curl adds by default.
     headers = curl_slist_append(headers, "Pragma: ");
-    curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers); 
     
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );

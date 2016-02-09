@@ -87,15 +87,31 @@ LoadTileData::invoke()
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
+        osg::ref_ptr<ProgressCallback> progress; // = new ProgressCallback();
+
         // Assemble all the components necessary to display this tile
         _model = _context->getEngine()->createTileModel(
             _context->getMapFrame(),
             tilenode->getTileKey(),
-            0L ); // progress
+            progress ); // progress
 
         // Prep the stateset for merging (and for GL pre-compile).
         if ( _model.valid() )
         {
+#if 0
+            if ( progress.valid() )
+            {
+                int count = (int)progress->stats("http_get_count");
+                if ( count > 0 )
+                {
+                    double t = (progress->stats("http_get_time")*1000.0);
+                    OE_NOTICE << LC << tilenode->getTileKey().str()
+                        << " : http_get_time = " << t << " ms, "
+                        << " : http_get_count = " << count << ", avg = " << (t/count) << std::endl;
+                }
+            }
+#endif
+
             const RenderBindings& bindings = _context->getRenderBindings();
 
             osg::StateSet* stateSet = getStateSet();

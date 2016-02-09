@@ -51,7 +51,7 @@ namespace osgEarth { namespace Triton
         // custom draw (called with an active GC)
         void drawImplementation(osg::RenderInfo& ri) const;
         
-        void setupHeightMap(osgEarth::MapNode* mapNode);
+        void setupHeightMap(osgEarth::MapNode* mapNode, osg::State& state);
 
         void updateHeightMap(osg::RenderInfo& renderInfo) const;
 

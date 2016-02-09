@@ -21,6 +21,8 @@
 #include "TritonDrawable"
 #include "TritonContext"
 #include <osg/MatrixTransform>
+#include <osg/FrameBufferObject>
+
 #include <osgEarth/SpatialReference>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapNode>
@@ -408,7 +410,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if ( _TRITON->passHeightMapToTriton() && !_terrainChangedCallback.valid() )
     {
-        const_cast< TritonDrawable *>( this )->setupHeightMap(_mapNode.get());
+        const_cast<TritonDrawable*>(this)->setupHeightMap(_mapNode.get(), *state);
     }
 
     ::Triton::Environment* environment = _TRITON->getEnvironment();
@@ -556,7 +558,74 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     state->apply();
 }
 
-void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
+namespace
+{
+#ifdef GL_LUMINANCE_FLOAT16_ATI
+#   define GL_LUMINANCE_FLOAT16_ATI 0x881E
+#endif
+    /** Choose a supported FBO format by testing suitable ones until we find one that works. */
+    bool getBestFBOConfiguration(GLint* out_internalFormat, GLenum* out_sourceFormat, osg::State& state)
+    {
+#define NUM_FORMATS 7
+
+        struct Format {
+            GLint internalFormat;
+            GLenum sourceFormat;
+            std::string name;
+        };
+
+        const Format formats[NUM_FORMATS] = {
+            { GL_LUMINANCE16F_ARB,      GL_LUMINANCE, "GL_LUMINANCE16F_ARB" },
+            { GL_LUMINANCE_FLOAT16_ATI, GL_LUMINANCE, "GL_LUMINANCE_FLOAT16_ATI" },
+            { GL_LUMINANCE32F_ARB,      GL_LUMINANCE, "GL_LUMINANCE32F_ARB" },
+            { GL_RGB16F_ARB,            GL_RGB,       "GL_RGB16F_ARB" },
+            { GL_RGBA16F_ARB,           GL_RGBA,      "GL_RGBA16F_ARB" },
+            { GL_RGB32F_ARB,            GL_RGB,       "GL_RGB32F_ARB" },
+            { GL_RGBA32F_ARB,           GL_RGBA,      "GL_RGBA32F_ARB" }
+        };           
+
+        osg::GLExtensions* ext = osg::GLExtensions::Get(state.getContextID(), true);
+
+        osg::State::CheckForGLErrors check = state.getCheckForGLErrors();
+        state.setCheckForGLErrors(state.NEVER_CHECK_GL_ERRORS);
+
+        bool found = false;
+
+        for(int i=0; i<NUM_FORMATS && !found; ++i)
+        {
+            const Format& format = formats[i];
+
+            osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D();
+            tex->setTextureSize(1, 1);
+            tex->setInternalFormat( format.internalFormat );
+            tex->setSourceFormat  ( format.sourceFormat );
+
+            osg::ref_ptr<osg::FrameBufferObject> fbo = new osg::FrameBufferObject();
+            fbo->setAttachment( osg::Camera::COLOR_BUFFER, osg::FrameBufferAttachment(tex.get()) );
+
+            fbo->apply( state );
+
+            GLenum status = ext->glCheckFramebufferStatus(GL_FRAMEBUFFER_EXT);
+
+            fbo->releaseGLObjects( &state );
+            tex->releaseGLObjects( &state );
+
+            if ( status == GL_FRAMEBUFFER_COMPLETE_EXT )
+            {
+                if ( out_internalFormat) *out_internalFormat = format.internalFormat;
+                if ( out_sourceFormat )  *out_sourceFormat   = format.sourceFormat;
+                OE_INFO << LC << "Height map format => " << format.name << std::endl;
+                found = true;
+            }
+        }
+
+        state.setCheckForGLErrors(check);
+
+        return found;
+    }
+}
+
+void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode, osg::State& state)
 {
     if ( !mapNode )
         return;
@@ -564,11 +633,20 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     int textureUnit = 0;
     int textureSize = _TRITON->getHeightMapSize();
 
+    // Discover a suitable FBO format for floating point values:
+    GLint internalFormat;
+    GLenum sourceFormat;
+    if ( !getBestFBOConfiguration(&internalFormat, &sourceFormat, state) )
+    {
+        OE_WARN << LC << "No supported FBO format available for height map; height map disabled!\n";
+        return;
+    }
+
     // Create our height map texture
     _heightMap = new osg::Texture2D;
     _heightMap->setTextureSize(textureSize, textureSize);
-    _heightMap->setInternalFormat(GL_LUMINANCE32F_ARB);
-    _heightMap->setSourceFormat(GL_LUMINANCE);
+    _heightMap->setInternalFormat( internalFormat );
+    _heightMap->setSourceFormat( sourceFormat );
     _heightMap->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
     _heightMap->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
 

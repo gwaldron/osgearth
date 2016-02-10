@@ -1,9 +1,11 @@
 <!--
 osgEarth Sample
 
-Earth at night.
+Shows the skyview driver, which will flip an image source horizontally
+so that it's viewable from inside the globe, planetarium style.
+Run with osgearth_skyview skyview1.earth
 -->
-<map name="readymap.org" type="geocentric">
+<map name="skyview" type="geocentric">
     
 
     <options>
@@ -13,10 +15,16 @@ Earth at night.
         </terrain>
 
     </options>
+   
+    <!-- Wrap the image in the skyview driver to flip it-->
+    <image name="skyview" driver="skyview">
+	    <image name="EarthAtNight" driver="osg">
+	        <url>../data/skyview/celestial-ref.jpg</url>
+	        <profile>global-geodetic</profile>
+	    </image>      
+    </image>
+
     
-    <image name="EarthAtNight" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/26/</url>
-    </image>      
 
 
 </map>

@@ -84,6 +84,7 @@ ADD_SUBDIRECTORY(osgearth_clipplane)
 ADD_SUBDIRECTORY(osgearth_cache_test)
 ADD_SUBDIRECTORY(osgearth_pick)
 ADD_SUBDIRECTORY(osgearth_computerangecallback)
+ADD_SUBDIRECTORY(osgearth_skyview)
 
 IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)

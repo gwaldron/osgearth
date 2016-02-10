@@ -52,7 +52,8 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    float vfov = -1.0f;
+    // Increase the fov to provide a more immersive experience.
+    float vfov = 100.0f;
     arguments.read("--vfov", vfov);
 
     // create a viewer:

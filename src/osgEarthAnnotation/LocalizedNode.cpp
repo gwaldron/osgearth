@@ -51,14 +51,11 @@ LocalizedNode::init()
 {
     this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );    
     _horizonCuller = new HorizonCullCallback();
+    if ( getMapNode() )
+        _horizonCuller->setHorizon( new Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
     this->addCullCallback( _horizonCuller.get() );
 }
 
-
-namespace
-{
-    static Threading::Mutex s_initCompleteMutex;
-}
 
 osg::BoundingSphere
 LocalizedNode::computeBound() const
@@ -67,10 +64,10 @@ LocalizedNode::computeBound() const
     {
         // perform initialization that cannot happen in the CTOR
         // (due to possible virtual function calls)
-        Threading::ScopedMutexLock lock(s_initCompleteMutex);
+        Threading::ScopedMutexLock lock(_initCompleteMutex);
         if ( !_initComplete )
         {
-            const_cast<LocalizedNode*>(this)->_initComplete = true;
+            _initComplete = true;
             const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCullingRequested );
             const_cast<LocalizedNode*>(this)->setPosition      ( _mapPosition );
         }

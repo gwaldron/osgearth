@@ -144,7 +144,7 @@ namespace osgEarth { namespace Annotation
         bool                         _needsRebuild;
         bool                         _clusterCulling;
         GeoExtent                    _extent;
-        osg::NodeCallback*           _clusterCullingCallback;
+        osg::ref_ptr<osg::NodeCallback> _clusterCullingCallback;
 
         osg::ref_ptr< osg::Node >    _compiled;
 

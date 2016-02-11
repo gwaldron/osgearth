@@ -64,7 +64,8 @@ _mapNode    ( mapNode ),
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L )
+_activeDs   ( 0L ),
+_priority   ( 0.0f )
 {
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
@@ -80,7 +81,8 @@ _mapNode    ( mapNode ),
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L )
+_activeDs   ( 0L ),
+_priority   ( 0.0f )
 {
     this->setName( conf.value("name") );
 
@@ -153,25 +155,15 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 }
 
 void
-AnnotationNode::setAnnotationData( AnnotationData* data )
-{
-    _annoData = data;
-}
-
-AnnotationData*
-AnnotationNode::getOrCreateAnnotationData()
-{
-    if ( !_annoData.valid() )
-    {
-        setAnnotationData( new AnnotationData() );
-    }
-    return _annoData.get();
-}
-
-void
 AnnotationNode::setDynamic( bool value )
 {
     _dynamic = value;
+}
+
+void
+AnnotationNode::setPriority(float priority)
+{
+    _priority = priority;
 }
 
 void

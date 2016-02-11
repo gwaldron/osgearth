@@ -73,3 +73,4 @@ AnnotationData::getConfig() const
 
     return conf;
 }
+

@@ -84,6 +84,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
+            imageGeom->setUserData( new DeclutteringData(getPriority()) );
         }
     }
 
@@ -134,6 +135,19 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 }
 
 void
+TrackNode::setPriority(float value)
+{
+    OrthoNode::setPriority( value );
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    {
+        //_geode->getDrawable(i)->setUserData( this );
+        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+    }
+}
+
+void
 TrackNode::setFieldValue( const std::string& name, const osgText::String& value )
 {
     NamedDrawables::const_iterator i = _namedDrawables.find(name);
@@ -163,10 +177,8 @@ TrackNode::setFieldValue( const std::string& name, const osgText::String& value 
 void
 TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
 {
-    // attach the annotation data to the drawable:
-    if ( _annoData.valid() )
-        drawable->setUserData( _annoData.get() );
-
+    //drawable->setUserData( this );
+    drawable->setUserData( new DeclutteringData(getPriority()) );
     _namedDrawables[name] = drawable;
     _geode->addDrawable( drawable );
 }
@@ -176,16 +188,4 @@ TrackNode::getDrawable( const std::string& name ) const
 {
     NamedDrawables::const_iterator i = _namedDrawables.find(name);
     return i != _namedDrawables.end() ? i->second : 0L;
-}
-
-void
-TrackNode::setAnnotationData( AnnotationData* data )
-{
-    OrthoNode::setAnnotationData( data );
-
-    // override this method so we can attach the anno data to the drawables.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
-    {
-        _geode->getDrawable(i)->setUserData( data );
-    }
 }

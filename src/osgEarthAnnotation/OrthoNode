@@ -64,7 +64,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */
-        virtual osg::Group* getAttachPoint() { return _attachPoint; }
+        virtual osg::Group* getAttachPoint() { return _matxform; }
 
 
     public: // PositionedAnnotationNode
@@ -115,8 +115,6 @@ namespace osgEarth { namespace Annotation
 
     public: // osg::Node
 
-        virtual void traverse( osg::NodeVisitor& nv );
-
         virtual osg::BoundingSphere computeBound() const;
 
     protected:
@@ -124,11 +122,7 @@ namespace osgEarth { namespace Annotation
         virtual ~OrthoNode() { }
 
     private:
-        osg::Switch*                   _switch;
-        osg::Group*                    _oq;
-        osg::AutoTransform*            _autoxform;
         osg::MatrixTransform*          _matxform;
-        osg::Group*                    _attachPoint;
         bool                           _occlusionCulling;
         optional< double >             _occlusionCullingMaxAltitude;
         GeoPoint                       _mapPosition;

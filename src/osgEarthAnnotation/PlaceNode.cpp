@@ -228,15 +228,24 @@ PlaceNode::init()
         "osgEarth.PlaceNode",
         Registry::stateSetCache() );
 
-    // re-apply annotation drawable-level stuff as neccesary.
-    AnnotationData* ad = getAnnotationData();
-    if ( ad )
-        setAnnotationData( ad );
+    setPriority(getPriority());
 
     if ( _dynamic )
         setDynamic( _dynamic );
 }
 
+void
+PlaceNode::setPriority(float value)
+{
+    OrthoNode::setPriority(value);
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    {
+        //_geode->getDrawable(i)->setUserData( this );
+        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+    }
+}
 
 void
 PlaceNode::setText( const std::string& text )
@@ -283,19 +292,6 @@ PlaceNode::setIconImage(osg::Image* image)
     // changing the icon requires a complete rebuild.
     _image = image;
     init();
-}
-
-
-void
-PlaceNode::setAnnotationData( AnnotationData* data )
-{
-    OrthoNode::setAnnotationData( data );
-
-    // override this method so we can attach the anno data to the drawables.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
-    {
-        _geode->getDrawable(i)->setUserData( data );
-    }
 }
 
 

@@ -146,6 +146,9 @@ LabelNode::setStyle( const Style& style )
     _geode->addDrawable(t);
     _geode->setCullingActive(false);
 
+    //t->setUserData( this );
+    t->setUserData( new DeclutteringData(getPriority()) );
+
     applyStyle( _style );
 
     setLightingIfNotSet( false );
@@ -157,14 +160,15 @@ LabelNode::setStyle( const Style& style )
 }
 
 void
-LabelNode::setAnnotationData( AnnotationData* data )
+LabelNode::setPriority(float value)
 {
-    OrthoNode::setAnnotationData( data );
+    OrthoNode::setPriority(value);
 
-    // override this method so we can attach the anno data to the drawables.
+    // re-apply annotation drawable-level stuff as neccesary.
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        _geode->getDrawable(i)->setUserData( data );
+        //_geode->getDrawable(i)->setUserData( this );
+        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
     }
 }
 

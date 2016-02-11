@@ -64,23 +64,9 @@ _horizonCullingRequested( true )
 
 void
 OrthoNode::init()
-{
-    _switch = new osg::Switch();
-    this->addChild( _switch );
-
-    _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
-    _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-    _autoxform->setAutoScaleToScreen( true );
-    _autoxform->setCullingActive( false ); // for the first pass
-    _switch->addChild( _autoxform );
-
+{    
     _matxform = new osg::MatrixTransform();
-    _switch->addChild( _matxform );
-    _switch->setSingleChildOn( 0 );
-
-    _attachPoint = new osg::Group();
-    _autoxform->addChild( _attachPoint );
-    _matxform->addChild( _attachPoint );
+    this->addChild( _matxform );
 
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 
@@ -88,9 +74,12 @@ OrthoNode::init()
     _horizonCuller = new HorizonCullCallback();
     if ( getMapNode() )
         _horizonCuller->setHorizon( new Horizon(getMapNode()->getMapSRS()) );
+
     setHorizonCulling( _horizonCullingRequested );
 
-    _attachPoint->addCullCallback( _horizonCuller.get() );
+    _matxform->addCullCallback( _horizonCuller.get() );
+
+    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
 }
 
 osg::BoundingSphere
@@ -99,68 +88,6 @@ OrthoNode::computeBound() const
     osg::BoundingSphere bs = PositionedAnnotationNode::computeBound();
     //OE_NOTICE << "BOUND RADIUS = " << bs.radius() << "\n";
     return bs;
-}
-
-void
-OrthoNode::traverse( osg::NodeVisitor& nv )
-{
-    osgUtil::CullVisitor* cv = 0L;
-
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        cv = Culling::asCullVisitor(nv);
-
-        // make sure that we're NOT using the AutoTransform if this node is in the decluttering bin;
-        // the decluttering bin automatically manages screen space transformation.
-        bool declutter = cv->getCurrentRenderBin()->getName() == OSGEARTH_DECLUTTER_BIN;
-        if ( declutter && _switch->getValue(0) == 1 )
-        {
-            _switch->setSingleChildOn( 1 );
-        }
-        else if ( !declutter && _switch->getValue(0) == 0 )
-        {
-            _switch->setSingleChildOn( 0 );
-        }
-
-        // If decluttering is enabled, update the auto-transform but not its children.
-        // This is necessary to support picking/selection. An optimization would be to
-        // disable this pass when picking is not in use
-        //if ( !declutter )
-        //{
-        //    static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->accept( nv, false );
-        //}
-
-        // turn off small feature culling
-        // (note: pretty sure this does nothing here -gw)
-        cv->setSmallFeatureCullingPixelSize(-1.0f);
-
-        AnnotationNode::traverse( nv );
-
-        if ( _autoxform->getCullingActive() == false )
-        {
-            _autoxform->setCullingActive( true );
-            this->dirtyBound();
-        }
-    }
-    
-    // For an intersection visitor, ALWAYS traverse the autoxform instead of the 
-    // matrix transform. The matrix transform is only used in combination with the 
-    // decluttering engine, so it cannot properly support picking of decluttered
-    // objects
-    else if ( 
-        nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR &&
-        dynamic_cast<osgUtil::IntersectionVisitor*>( &nv ) )
-    {
-        if ( static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->okToIntersect() )
-        {
-            _autoxform->accept( nv );
-        }
-    }
-
-    else
-    {
-        AnnotationNode::traverse( nv );
-    }
 }
 
 void
@@ -219,11 +146,12 @@ OrthoNode::setPosition( const GeoPoint& position )
 void
 OrthoNode::applyStyle(const Style& style)
 {
-    // check for decluttering.
     const TextSymbol* text = style.get<TextSymbol>();
-    if ( text && text->declutter().isSet() )
+
+    // check for decluttering.
+    if ( text && text->declutter() == false )
     {
-        Decluttering::setEnabled( this->getOrCreateStateSet(), (text->declutter() == true) );
+        setPriority( FLT_MAX );
     }
 
 
@@ -239,9 +167,10 @@ OrthoNode::applyStyle(const Style& style)
     }
 
     const IconSymbol* icon = style.get<IconSymbol>();
-    if ( icon && icon->declutter().isSet() )
+
+    if ( icon && icon->declutter() == false )
     {
-        Decluttering::setEnabled( this->getOrCreateStateSet(), (icon->declutter() == true) );
+        setPriority( FLT_MAX );
     }
 
     // check for occlusion culling
@@ -278,7 +207,7 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         local2world.preMult( osg::Matrix::translate(_localOffset) );
 
         // update the xforms:
-        _autoxform->setPosition( local2world.getTrans() );
+        //_autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
         
         osg::Vec3d world = local2world.getTrans();
@@ -291,7 +220,7 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
     else
     {
         osg::Vec3d absPos = p.vec3d() + _localOffset;
-        _autoxform->setPosition( absPos );
+        //_autoxform->setPosition( absPos );
         _matxform->setMatrix( osg::Matrix::translate(absPos) );
     }
 
@@ -367,7 +296,7 @@ OrthoNode::setOcclusionCulling( bool value )
 
         if ( _occlusionCulling && getMapNode() )
         {
-            osg::Vec3d world = _autoxform->getPosition();
+            osg::Vec3d world = osg::Vec3d(0,0,0) * _matxform->getMatrix(); //_autoxform->getPosition();
             _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );
             _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );
             addCullCallback( _occlusionCuller.get()  );

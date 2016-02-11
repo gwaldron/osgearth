@@ -135,9 +135,9 @@ namespace osgEarth { namespace Annotation
          */
         osg::Drawable* getDrawable( const std::string& name ) const;
 
-    public: // override
+    public:
 
-        virtual void setAnnotationData( AnnotationData* data );
+        virtual void setPriority(float value);
 
     protected:
 

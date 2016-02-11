@@ -58,7 +58,6 @@ _style        ( style ),
 _options      ( options ),
 _needsRebuild (true),
 _clusterCulling(true),
-_clusterCullingCallback(0),
 _styleSheet( styleSheet )
 {
     if (_style.empty() && feature->style().isSet())
@@ -80,7 +79,6 @@ _style        ( style ),
 _options      ( options ),
 _needsRebuild (true),
 _clusterCulling(true),
-_clusterCullingCallback(0),
 _styleSheet( styleSheet )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
@@ -375,7 +373,7 @@ void
 FeatureNode::updateClusterCulling()
 {
     // install a cluster culler.
-    if ( getMapNode()->isGeocentric() && _clusterCulling && !_clusterCullingCallback)
+    if ( getMapNode() && getMapNode()->isGeocentric() && _clusterCulling && !_clusterCullingCallback.valid() )
     {
         const GeoExtent& ccExtent = _extent;
         if ( ccExtent.isValid() )
@@ -391,14 +389,14 @@ FeatureNode::updateClusterCulling()
                 osg::Vec3d centerECEF;
                 ccExtent.getSRS()->transform( tileCenter, getMapNode()->getMapSRS()->getECEF(), centerECEF );
                 _clusterCullingCallback = ClusterCullingFactory::create2( this, centerECEF );
-                if ( _clusterCullingCallback )
-                    this->addCullCallback( _clusterCullingCallback );
+                if ( _clusterCullingCallback.valid() )
+                    this->addCullCallback( _clusterCullingCallback.get() );
             }
         }
     }
-    else if (!_clusterCulling && _clusterCullingCallback)
+    else if (!_clusterCulling && _clusterCullingCallback.valid() )
     {
-        this->removeCullCallback( _clusterCullingCallback );
+        this->removeCullCallback( _clusterCullingCallback.get() );
         _clusterCullingCallback = 0;
     }
 }

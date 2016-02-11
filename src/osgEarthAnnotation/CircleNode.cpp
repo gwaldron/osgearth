@@ -53,6 +53,7 @@ _pie         ( pie ),
 _numSegments ( 0 )
 {
     _xform = new osg::MatrixTransform();
+    this->addChild( _xform.get() );
     rebuild();
 }
 
@@ -148,9 +149,7 @@ CircleNode::rebuild()
     clearDecoration();
 
     // Reset this node.
-    osgEarth::clearChildren( this );
     osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
 
     // construct a local-origin circle.
     GeometryFactory factory;
@@ -163,15 +162,17 @@ CircleNode::rebuild()
     {
         geom = factory.createArc(osg::Vec3d(0,0,0), _radius, _arcStart, _arcEnd, _numSegments, 0L, _pie);
     }
+
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
-        if ( node )
+        osg::ref_ptr<Feature> feature = new Feature(geom, SpatialReference::get("wgs84")); //todo: consider the SRS
+        osg::ref_ptr<osg::Node> node = compiler.compile( feature.get(), _style, FilterContext(0L) );
+        if ( node.valid() )
         {
-            _xform->addChild( node );
-            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            //node = applyAltitudePolicy( node.get(), _style );
+            _xform->addChild( node.get() );
+//            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
         applyRenderSymbology( _style );

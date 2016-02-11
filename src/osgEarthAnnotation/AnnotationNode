@@ -23,13 +23,14 @@
 #define OSGEARTH_ANNO_ANNOTATION_NODE_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNodeObserver>
 #include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
+#include <osgEarth/Viewpoint>
+#include <osgEarth/DateTimeRange>
 
 
 #define META_AnnotationNode(library,name) \
@@ -65,13 +66,6 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
 
         /**
-         * Annotation data attached to this annotation node.
-         */
-        virtual void setAnnotationData( AnnotationData* data );
-        AnnotationData* getAnnotationData() const { return _annoData.get(); }
-        AnnotationData* getOrCreateAnnotationData();
-
-        /**
          * Sets the node to "dynamic", i.e. sets up the node so that you can
          * safely change it at runtime.
          */
@@ -87,6 +81,15 @@ namespace osgEarth { namespace Annotation
          */
         virtual Config getConfig() const { return Config(); }
 
+    public:
+
+        const std::string& getName() const { return osg::Group::getName(); }
+        
+        /**
+         * Priority of the item. A negative Priority means "never occlude me".
+         */
+        virtual void setPriority( float value );
+        float getPriority() const { return _priority; }
 
     public: // decoration support
 
@@ -142,7 +145,6 @@ namespace osgEarth { namespace Annotation
 
     protected:
 
-        osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
         bool                         _autoclamp;
         bool                         _depthAdj;
@@ -155,6 +157,7 @@ namespace osgEarth { namespace Annotation
         Decoration*   _activeDs;
         std::string   _activeDsName;
 
+        float _priority;
 
         bool supportsAutoClamping( const Style& style ) const;
         

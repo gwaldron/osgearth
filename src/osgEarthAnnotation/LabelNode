@@ -113,7 +113,7 @@ namespace osgEarth { namespace Annotation
 
     public: // OrthoNode override
 
-        virtual void setAnnotationData( AnnotationData* data );
+        virtual void setPriority(float value);
 
         virtual void setDynamic( bool value );
 

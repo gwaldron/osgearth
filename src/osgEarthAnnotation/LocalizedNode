@@ -124,7 +124,9 @@ namespace osgEarth { namespace Annotation
         bool updateTransform(const GeoPoint& absPt, osg::Node* patch =0L);
 
     protected:
-        bool                               _initComplete;
+        mutable Threading::Mutex           _initCompleteMutex;
+        mutable bool                       _initComplete;
+
         GeoPoint                           _mapPosition;
         osg::Vec3f                         _scale;
         osg::Vec3d                         _localOffset;
@@ -132,6 +134,7 @@ namespace osgEarth { namespace Annotation
         
         bool                               _horizonCullingRequested;
         osg::ref_ptr<HorizonCullCallback>  _horizonCuller;
+
 
         friend class Decoration;
         

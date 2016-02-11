@@ -1,0 +1,30 @@
+<!--
+osgEarth Sample
+
+Shows the skyview driver, which will flip an image source horizontally
+so that it's viewable from inside the globe, planetarium style.
+
+This image was shot with the "photosphere" mode with a Google Nexus 6p
+
+Run with osgearth_skyview photosphere2.earth
+-->
+<map name="photosphere" type="geocentric">
+
+    <options>
+
+        <terrain>
+            <cluster_culling>false</cluster_culling>
+            <skirt_ratio>0.0</skirt_ratio>
+        </terrain>
+
+    </options>
+
+    <!-- Wrap the image in the skyview driver to flip it-->
+    <image name="stockholm_subway" driver="skyview">
+	    <image name="stockholm_subway" driver="osg">
+	        <url>../data/skyview/stockholm_subway.jpg</url>
+	        <profile>global-geodetic</profile>
+	    </image>      
+    </image>
+
+</map>

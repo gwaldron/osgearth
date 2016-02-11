@@ -43,6 +43,22 @@ ClampCallback::ClampCallback(osg::Node* terrainNode)
     _intersectionMask = 0xffffffff;
 }
 
+
+unsigned int
+ClampCallback::getIntersectionMask() const
+{
+    return _intersectionMask;
+}
+
+void
+ClampCallback::setIntersectionMask(unsigned int intersectionMask)
+{
+    _intersectionMask = intersectionMask;
+}
+
+
+
+
 bool ClampCallback::clamp(const osg::Vec3d& pos, osg::Vec3d& out) const
 {
     //Return if there is no terrain node assigned

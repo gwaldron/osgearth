@@ -1732,10 +1732,6 @@ public:
                 return NULL;
             }
         }
-        else
-        {
-            OE_NOTICE << LC << key.str() << " does not intersect " << _options.url()->full() << std::endl;
-        }
 
         return image.release();
     }

@@ -191,9 +191,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         track->setFieldValue( FIELD_NUMBER,   Stringify() << (1 + prng.next(9)) );
 
         // add a priority
-        AnnotationData* data = new AnnotationData();
-        data->setPriority( float(i) );
-        track->setAnnotationData( data );
+        track->setPriority( float(i) );
 
         Decluttering::setEnabled(track->getOrCreateStateSet(), true);
 

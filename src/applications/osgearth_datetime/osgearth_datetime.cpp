@@ -30,6 +30,8 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ExampleResources>
 
+#include <osgEarthAnnotation/AnnotationData>
+
 #include <osgEarthDrivers/kml/KML>
 
 #include <osgViewer/Viewer>
@@ -68,7 +70,7 @@ struct CullNodeByDateTimeRange : public osg::NodeCallback
     DateTimeRange range;
 
     void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
+    {        
         AnnotationData* data = dynamic_cast<AnnotationData*>(node->getUserData());
         if (data && !data->getDateTimeRange().intersects(range))
         {

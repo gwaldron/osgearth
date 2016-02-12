@@ -52,7 +52,14 @@ _arcEnd       ( arcEnd ),
 _pie          ( pie ),
 _numSegments  ( 0 )
 {
+    initEllipseNode();
+}
+
+void
+EllipseNode::initEllipseNode()
+{
     _xform = new osg::MatrixTransform();
+    addChild( _xform.get() );
     rebuild();
 }
 
@@ -183,9 +190,9 @@ EllipseNode::rebuild()
     clearDecoration();
 
     //Remove all children from this node
-    osgEarth::clearChildren( this );
+    //osgEarth::clearChildren( this );
     osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    //this->addChild( _xform.get() );
 
     // construct a local-origin ellipse.
     GeometryFactory factory;
@@ -203,11 +210,12 @@ EllipseNode::rebuild()
     {
         GeometryCompiler compiler;
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {
-            _xform->addChild( node );
-            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            node = applyAltitudePolicy(node.get(), _style);
+            _xform->addChild( node.get() );
+            //this->replaceChild( _xform.get(),  );
         }
 
         applyRenderSymbology( _style );
@@ -230,15 +238,13 @@ EllipseNode::EllipseNode(MapNode*              mapNode,
 LocalizedNode( mapNode, conf ),
 _numSegments ( 0 )
 {
-    _xform = new osg::MatrixTransform();
-
     conf.getObjIfSet( "radius_major", _radiusMajor );
     conf.getObjIfSet( "radius_minor", _radiusMinor );
     conf.getObjIfSet( "rotation", _rotationAngle );
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "num_segments", _numSegments );
 
-    rebuild();
+    initEllipseNode();
 }
 
 Config

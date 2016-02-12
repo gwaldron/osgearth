@@ -149,6 +149,8 @@ namespace osgEarth { namespace Annotation
 
         void rebuild();
 
+        void initCircleNode();
+
         Style           _style;
         bool            _draped;
         unsigned        _numSegments;

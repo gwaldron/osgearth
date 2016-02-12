@@ -168,6 +168,8 @@ namespace osgEarth { namespace Annotation
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
 
         void rebuild();
+
+        void initEllipseNode();
         
         Style _style;
         Angle _rotationAngle;

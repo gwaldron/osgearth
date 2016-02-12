@@ -91,6 +91,9 @@ namespace osgEarth { namespace Annotation
         virtual void setPriority( float value );
         float getPriority() const { return _priority; }
 
+        //void setDateTimeRange(const DateTimeRange& value) { _dateTimeRange = value; }
+        //const DateTimeRange& getDateTimeRange() const     { return _dateTimeRange; } 
+
     public: // decoration support
 
         /**
@@ -158,6 +161,7 @@ namespace osgEarth { namespace Annotation
         std::string   _activeDsName;
 
         float _priority;
+        DateTimeRange _dateTimeRange;
 
         bool supportsAutoClamping( const Style& style ) const;
         

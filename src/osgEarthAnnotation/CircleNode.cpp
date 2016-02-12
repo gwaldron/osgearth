@@ -52,11 +52,17 @@ _arcEnd      ( arcEnd ),
 _pie         ( pie ),
 _numSegments ( 0 )
 {
+    initCircleNode();
+}
+
+
+void
+CircleNode::initCircleNode()
+{
     _xform = new osg::MatrixTransform();
     this->addChild( _xform.get() );
     rebuild();
 }
-
 
 const Linear&
 CircleNode::getRadius() const
@@ -151,6 +157,8 @@ CircleNode::rebuild()
     // Reset this node.
     osgEarth::clearChildren( _xform.get() );
 
+    OE_WARN << "radius=" << _radius.asString() << ", segs=" << _numSegments << std::endl;
+
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = NULL;
@@ -166,13 +174,11 @@ CircleNode::rebuild()
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<Feature> feature = new Feature(geom, SpatialReference::get("wgs84")); //todo: consider the SRS
-        osg::ref_ptr<osg::Node> node = compiler.compile( feature.get(), _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
         if ( node.valid() )
         {
-            //node = applyAltitudePolicy( node.get(), _style );
+            node = applyAltitudePolicy( node.get(), _style );
             _xform->addChild( node.get() );
-//            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
         applyRenderSymbology( _style );
@@ -195,13 +201,10 @@ LocalizedNode( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _numSegments ( 0 )
 {
-    _xform = new osg::MatrixTransform();
-
     conf.getObjIfSet( "radius", _radius );
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "num_segments", _numSegments );
-
-    rebuild();
+    initCircleNode();
 }
 
 Config

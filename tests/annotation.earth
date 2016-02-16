@@ -8,16 +8,8 @@ osgEarth Sample - Annotations
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-    
-    <options>
-        <terrain>
-            <lighting>false</lighting>
-            <sample_ratio>0.125</sample_ratio>
-        </terrain>
-        <!-- <cache_policy usage="cache_only"/> -->
-    </options>
     
     <extensions>
         <viewpoints>
@@ -48,11 +40,12 @@ osgEarth Sample - Annotations
             </place>
             
             <circle name="draped circle">
-                <position lat="34.051" long="-117.974" alt="1000"/>
+                <position lat="34.051" long="-117.974"/>
                 <radius value="50" units="km"/>
                 <style type="text/css">
                     fill:               #ffff0080;
-                    //altitude-clamping:  terrain-drape;
+                    stroke:             #ffffff;
+                    altitude-clamping:  terrain-drape;
                 </style>
             </circle>
             
@@ -156,13 +149,13 @@ osgEarth Sample - Annotations
             <feature name="Long Line">
                 <srs>wgs84</srs>
                 <geometry>
-                    LINESTRING(0 0, 0 65)
+                    LINESTRING(10 0, 10 65)
                 </geometry>
                 <style type="text/css">
                     stroke:              #ffff00;
                     stroke-width:        3;
-                    stroke-tessellation: 90;
-                    altitude-clamping:   relative;
+                    stroke-tessellation-size: 10km;
+                    altitude-clamping:   terrain;
 					altitude-technique:  scene;
                     render-lighting:     false;
                 </style>

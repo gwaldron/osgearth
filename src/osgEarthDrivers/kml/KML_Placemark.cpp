@@ -125,13 +125,13 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                         if ( cx._options->modelScale() != 1.0f )
                         {
                             float s = *cx._options->modelScale();
-                            node->setScale( osg::Vec3f(s,s,s) );
+                            node->getPositionAttitudeTransform()->setScale(osg::Vec3d(s,s,s));
                         }
 
                         // model local tangent plane rotation:
                         if ( !cx._options->modelRotation()->zeroRotation() )
                         {
-                            node->setLocalRotation( *cx._options->modelRotation() );
+                            node->getPositionAttitudeTransform()->setAttitude( *cx._options->modelRotation() );
                         }
 
                         modelNode = node;

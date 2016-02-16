@@ -23,12 +23,11 @@
 #define OSGEARTH_ANNO_ORTHO_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarth/Decluttering>
+#include <osgEarth/GeoTransform>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Horizon>
 #include <osgEarth/CullingUtils>
-#include <osg/AutoTransform>
-#include <osg/MatrixTransform>
+#include <osg/PositionAttitudeTransform>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -41,8 +40,7 @@ namespace osgEarth { namespace Annotation
      * Don't use this class directly. Use one of its subclasses instead like
      * LabelNode or PlaceNode.
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, 
-                                          public SupportsDecluttering
+    class OSGEARTHANNO_EXPORT OrthoNode : public AnnotationNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );
@@ -57,35 +55,21 @@ namespace osgEarth { namespace Annotation
          * @param mapNode  MapNode used to referenced the ortho node
          * @param position Starting position
          */
-        OrthoNode( 
-            MapNode*        mapNode, 
-            const GeoPoint& position );
+        OrthoNode(MapNode* mapNode, const GeoPoint& position);
 
         /**
-         * Attaches a child node to the transforms. Use this instead of addChild.
+         * Access to the GeoTransform that positions this node.
          */
-        virtual osg::Group* getAttachPoint() { return _matxform; }
-
-
-    public: // PositionedAnnotationNode
-
-        /** Sets the node position */
-        virtual bool setPosition( const GeoPoint& pos );
-
-        /** Gets the position (in map coordinates) of the node */
-        virtual GeoPoint getPosition() const;
-
-    public:
-        /**
-         * Sets a "local offset" position - for an ECEF map, this is an offset in 
-         * the local tangent plane of the node that is applied to the geometry.
-         */
-        void setLocalOffset( const osg::Vec3d& offset );
+        GeoTransform* getGeoTransform() const { return _geoxform; }
 
         /**
-         * Gets the local tangent plane -space offset.
+         * Access to the PositionAttitudeTransform for local offsets and rotation
          */
-        const osg::Vec3d& getLocalOffset() const;
+        osg::PositionAttitudeTransform* getPositionAttitudeTransform() const { return _paxform; }
+
+        /** Sets the anchor position (convenience function) */
+        void setPosition( const GeoPoint& pos ) { getGeoTransform()->setPosition( pos ); }
+        const GeoPoint& getPosition() const     { return getGeoTransform()->getPosition(); }
 
         /**
          * Enables or disable automatic horizon culling for geocentric maps
@@ -105,6 +89,9 @@ namespace osgEarth { namespace Annotation
         double getOcclusionCullingMaxAltitude() const;
         void setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude );
 
+        /** Serialize. */
+        Config getConfig() const;
+
     public: // AnnotationNode
 
         virtual void applyStyle(const Style& style);
@@ -113,38 +100,27 @@ namespace osgEarth { namespace Annotation
 
         virtual void setMapNode( MapNode* mapNode );
 
-    public: // osg::Node
-
-        virtual osg::BoundingSphere computeBound() const;
-
     protected:
         /** virtual dtor */
         virtual ~OrthoNode() { }
 
     private:
-        osg::MatrixTransform*          _matxform;
-        bool                           _occlusionCulling;
-        optional< double >             _occlusionCullingMaxAltitude;
-        GeoPoint                       _mapPosition;
-        osg::Vec3d                     _localOffset;
-        bool                           _horizonCullingRequested;
+        GeoTransform*                   _geoxform;
+        osg::PositionAttitudeTransform* _paxform;
+        bool                            _occlusionCullingRequested;
+        optional< double >              _occlusionCullingMaxAltitude;
+        bool                            _horizonCullingRequested;
 
         osg::ref_ptr< HorizonCullCallback >      _horizonCuller;
         osg::ref_ptr< OcclusionCullingCallback > _occlusionCuller;
 
         void init();
 
-        osg::Vec3d adjustOcclusionCullingPoint( const osg::Vec3d& world );
-
     protected:
+        OrthoNode(MapNode* mapNode, const Config& conf);
+
         // required by META_Node, but this object is not cloneable
-        OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : PositionedAnnotationNode(rhs, op) { }
-
-    private:
-        // autoclamping.
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
-
-        bool updateTransforms( const GeoPoint& mappos, osg::Node* patch =0L );
+        OrthoNode(const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : AnnotationNode(rhs, op) { }
     };
 
 } } // namespace osgEarth::Annotation

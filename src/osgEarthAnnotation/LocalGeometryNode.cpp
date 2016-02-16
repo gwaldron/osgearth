@@ -38,11 +38,11 @@ using namespace osgEarth::Features;
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_geom        ( geom ),
-_style       ( style )
+OrthoNode( ),
+_geom    ( geom ),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
@@ -50,30 +50,34 @@ _style       ( style )
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_node        ( node ),
-_style       ( style )
+OrthoNode(),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
+void
+LocalGeometryNode::setMapNode(MapNode* mapNode)
+{
+    if ( mapNode != getMapNode() )
+    {
+        OrthoNode::setMapNode( mapNode );
+        init(0L);
+    }
+}
 
 void
 LocalGeometryNode::initNode()
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
-
     if ( _node.valid() )
     {
-        _xform->addChild( _node );
-        // activate clamping if necessary
-        replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+        _node = applyAltitudePolicy( _node.get(), _style );
+
+        getPositionAttitudeTransform()->addChild( _node.get() );
 
         applyRenderSymbology( _style );
+
         setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
     }
 }
@@ -82,25 +86,21 @@ LocalGeometryNode::initNode()
 void
 LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
-
     if ( _geom.valid() )
     {
         Session* session = 0L;
         if ( getMapNode() )
             session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
+
         FilterContext cx( session );
 
         GeometryCompiler gc;
-        osg::Node* node = gc.compile( _geom.get(), _style, cx );
-        if ( node )
+        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), _style, cx );
+        if ( node.valid() )
         {
-            _xform->addChild( node );
-            // activate clamping if necessary
-            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            //node = applyAltitudePolicy( node.get(), _style );
+
+            getPositionAttitudeTransform()->addChild( node.get() );
 
             applyRenderSymbology( _style );
         }
@@ -109,7 +109,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 
 
 void 
-LocalGeometryNode::init(const osgDB::Options* options )
+LocalGeometryNode::init(const osgDB::Options* options)
 {
     this->clearDecoration();
     
@@ -157,10 +157,8 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+OrthoNode( mapNode, conf )
 {
-    _xform = new osg::MatrixTransform();
-
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
@@ -177,7 +175,7 @@ LocalizedNode( mapNode, conf )
 Config
 LocalGeometryNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = OrthoNode::getConfig();
     conf.key() = "local_geometry";
 
     if ( _geom.valid() )

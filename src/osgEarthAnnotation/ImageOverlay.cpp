@@ -62,7 +62,7 @@ namespace
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-AnnotationNode(mapNode, conf),
+AnnotationNode(conf),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
 _upperRight   (20, 20),
@@ -116,6 +116,7 @@ _texture      (0)
     conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
     postCTOR();
+    ImageOverlay::setMapNode( mapNode );
 }
 
 Config
@@ -168,7 +169,7 @@ ImageOverlay::getConfig() const
 
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image) :
-AnnotationNode(mapNode),
+AnnotationNode(),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
 _upperRight   (20, 20),
@@ -181,6 +182,7 @@ _magFilter    (osg::Texture::LINEAR),
 _texture      (0)
 {        
     postCTOR();
+    ImageOverlay::setMapNode(mapNode);
 }
 
 void

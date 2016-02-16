@@ -34,14 +34,14 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-LocalizedNode::LocalizedNode(MapNode*        mapNode,
-                             const GeoPoint& position) :
-PositionedAnnotationNode( mapNode ),
+LocalizedNode::LocalizedNode(MapNode* mapNode, const GeoPoint& position) :
+PositionedAnnotationNode( ),
 _initComplete           ( false ),
 _horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f ),
 _mapPosition            ( position )
 {
+    LocalizedNode::setMapNode( mapNode );
     init();
 }
 
@@ -280,7 +280,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
 //-------------------------------------------------------------------
 
 LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
-PositionedAnnotationNode( mapNode, conf ),
+PositionedAnnotationNode( conf ),
 _initComplete           ( false ),
 _horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f )
@@ -309,6 +309,7 @@ _scale                  ( 1.0f, 1.0f, 1.0f )
         setLocalRotation( q );
     }
 
+    LocalizedNode::setMapNode( mapNode );
     init();
 }
 

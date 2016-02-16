@@ -29,6 +29,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/DrapeableNode>
+#include <osgEarth/ClampableNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -59,25 +61,20 @@ Style AnnotationNode::s_emptyStyle;
 
 //-------------------------------------------------------------------
 
-AnnotationNode::AnnotationNode(MapNode* mapNode) :
-_mapNode    ( mapNode ),
+AnnotationNode::AnnotationNode() :
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L ),
 _priority   ( 0.0f )
 {
-    //Note: Cannot call setMapNode() here because it's a virtual function.
-    //      Each subclass will be separately responsible at ctor time.
-
     // always blend.
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
 }
 
-AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
-_mapNode    ( mapNode ),
+AnnotationNode::AnnotationNode(const Config& conf) :
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
@@ -272,6 +269,49 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
     }
 
     return false;
+}
+
+osg::Node*
+AnnotationNode::applyAltitudePolicy(osg::Node* node, const Style& style)
+{
+    AnnotationUtils::AltitudePolicy ap;
+
+    AnnotationUtils::getAltitudePolicy( style, ap );
+
+    // Draped (projected) geometry
+    if ( ap.draping )
+    {
+        DrapeableNode* drapable = new DrapeableNode();
+        drapable->addChild( node );
+        node = drapable;
+    }
+
+    // gw - not sure whether is makes sense to support this for LocalizedNode
+    // GPU-clamped geometry
+    else if ( ap.gpuClamping )
+    {
+        ClampableNode* clampable = new ClampableNode( getMapNode() );
+        clampable->addChild( node );
+        node = clampable;
+
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if ( render && render->depthOffset().isSet() )
+        {
+            clampable->setDepthOffsetOptions( *render->depthOffset() );
+        }
+    }
+
+    // scenegraph-clamped geometry
+    else if ( ap.sceneClamping )
+    {
+        // save for later when we need to reclamp the mesh on the CPU
+        _altitude = style.get<AltitudeSymbol>();
+
+        // activate the terrain callback:
+        setCPUAutoClamping( true );
+    }
+
+    return node;
 }
 
 

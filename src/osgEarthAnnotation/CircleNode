@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_CIRCLE_NODE_H
 #define OSGEARTH_ANNOTATION_CIRCLE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Circle annotation.
      */
-    class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT CircleNode : public OrthoNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, CircleNode );
@@ -133,10 +133,6 @@ namespace osgEarth { namespace Annotation
          */
         void setPie(const bool& pie);
 
-    public: // LocalizedNode
-
-        osg::MatrixTransform* getTransform() { return _xform.get(); }
-
 
     public: // AnnotationNode overrides
 
@@ -158,8 +154,6 @@ namespace osgEarth { namespace Annotation
         Angle          _arcStart;
         Angle          _arcEnd;
         bool           _pie;
-
-        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

@@ -28,6 +28,8 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Decluttering>
+
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>
@@ -41,22 +43,25 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
+#define DEFAULT_HORIZON_CULLING   true
+#define DEFAULT_OCCLUSION_CULLING false
 
-OrthoNode::OrthoNode(MapNode*        mapNode,
-                     const GeoPoint& position ) :
 
-PositionedAnnotationNode( mapNode ),
-_occlusionCulling       ( false ),
-_horizonCullingRequested( true )
+OrthoNode::OrthoNode(MapNode* mapNode, const GeoPoint& position ) :
+AnnotationNode(),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
 {
     init();
-    setPosition( position );
+    OrthoNode::setMapNode( mapNode );
+    _geoxform->setPosition( position );
 }
 
 
 OrthoNode::OrthoNode() :
-_occlusionCulling       ( false ),
-_horizonCullingRequested( true )
+AnnotationNode(),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
 {
     init();
 }
@@ -65,10 +70,12 @@ _horizonCullingRequested( true )
 void
 OrthoNode::init()
 {    
-    _matxform = new osg::MatrixTransform();
-    this->addChild( _matxform );
+    _geoxform = new GeoTransform();
+    _geoxform->setAutoRecomputeHeights( true );
+    this->addChild( _geoxform );
 
-    this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+    _paxform = new osg::PositionAttitudeTransform();
+    _geoxform->addChild( _paxform );
 
     // Callback to cull ortho nodes that are not visible over the geocentric horizon
     _horizonCuller = new HorizonCullCallback();
@@ -76,18 +83,9 @@ OrthoNode::init()
         _horizonCuller->setHorizon( new Horizon(getMapNode()->getMapSRS()) );
 
     setHorizonCulling( _horizonCullingRequested );
-
-    _matxform->addCullCallback( _horizonCuller.get() );
-
-    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
-}
-
-osg::BoundingSphere
-OrthoNode::computeBound() const
-{
-    osg::BoundingSphere bs = PositionedAnnotationNode::computeBound();
-    //OE_NOTICE << "BOUND RADIUS = " << bs.radius() << "\n";
-    return bs;
+    _geoxform->addCullCallback( _horizonCuller.get() );
+    
+    this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 }
 
 void
@@ -96,51 +94,28 @@ OrthoNode::setMapNode( MapNode* mapNode )
     MapNode* oldMapNode = getMapNode();
     if ( oldMapNode != mapNode )
     {
-        PositionedAnnotationNode::setMapNode( mapNode );
+        AnnotationNode::setMapNode( mapNode );
 
         // the occlusion culler depends on the mapnode, so re-initialize it:
-        if ( _occlusionCulling )
+        setOcclusionCulling( false );
+        if ( _occlusionCullingRequested )
         {
-            setOcclusionCulling( false );
             setOcclusionCulling( true );
         }
 
         // same goes for the horizon culler:
-        _horizonCuller->setHorizon( new Horizon(*mapNode->getMapSRS()->getEllipsoid()) );
-        setHorizonCulling( _horizonCullingRequested );
+        if ( getMapNode() )
+        {
+            _horizonCuller->setHorizon( new Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
+            setHorizonCulling( _horizonCullingRequested );
 
-        // re-apply the position since the map has changed
-        setPosition( getPosition() );
+            _geoxform->setTerrain( getMapNode()->getTerrain() );
+        }
+        else
+        {
+            _geoxform->setTerrain( 0L );
+        }
     }
-}
-
-bool
-OrthoNode::setPosition( const GeoPoint& position )
-{
-    MapNode* mapNode = getMapNode();
-    if ( mapNode )
-    {
-        // first transform the point to the map's SRS:
-        const SpatialReference* mapSRS = mapNode->getMapSRS();
-        GeoPoint mapPos = mapSRS ? position.transform(mapSRS) : position;
-        if ( !mapPos.isValid() )
-            return false;
-
-        _mapPosition = mapPos;
-    }
-    else
-    {
-        _mapPosition = position;
-    }
-
-    // make sure the node is set up for auto-z-update if necessary:
-    configureForAltitudeMode( _mapPosition.altitudeMode() );
-
-    // and update the node.
-    if ( !updateTransforms(_mapPosition) )
-        return false;
-
-    return true;
 }
 
 void
@@ -185,66 +160,7 @@ OrthoNode::applyStyle(const Style& style)
     }
 
     // up the chain
-    PositionedAnnotationNode::applyStyle( style );
-}
-
-bool
-OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
-{
-    if ( getMapNode() )
-    {
-        //OE_NOTICE << "updateTransforms" << std::endl;
-        // make sure the point is absolute to terrain
-        GeoPoint absPos(p);
-        if ( !makeAbsolute(absPos, patch) )
-            return false;
-
-        osg::Matrixd local2world;
-        if ( !absPos.createLocalToWorld(local2world) )
-            return false;
-
-        // apply the local tangent plane offset:
-        local2world.preMult( osg::Matrix::translate(_localOffset) );
-
-        // update the xforms:
-        //_autoxform->setPosition( local2world.getTrans() );
-        _matxform->setMatrix( local2world );
-        
-        osg::Vec3d world = local2world.getTrans();
-
-        if (_occlusionCuller.valid())
-        {                                
-            _occlusionCuller->setWorld( adjustOcclusionCullingPoint( world ));
-        } 
-    }
-    else
-    {
-        osg::Vec3d absPos = p.vec3d() + _localOffset;
-        //_autoxform->setPosition( absPos );
-        _matxform->setMatrix( osg::Matrix::translate(absPos) );
-    }
-
-    dirtyBound();
-    return true;
-}
-
-GeoPoint
-OrthoNode::getPosition() const
-{
-    return _mapPosition;
-}
-
-void
-OrthoNode::setLocalOffset( const osg::Vec3d& offset )
-{
-    _localOffset = offset;
-    setPosition( _mapPosition );
-}
-
-const osg::Vec3d&
-OrthoNode::getLocalOffset() const
-{
-    return _localOffset;
+    AnnotationNode::applyStyle( style );
 }
 
 bool
@@ -264,53 +180,29 @@ OrthoNode::setHorizonCulling(bool value)
         getMapNode()->isGeocentric() );
 }
 
-osg::Vec3d
-OrthoNode::adjustOcclusionCullingPoint( const osg::Vec3d& world )
-{
-    // Adjust the height by a little bit "up", we can't have the occlusion point sitting right on the ground
-    if ( getMapNode() )
-    {
-        const osg::EllipsoidModel* em = getMapNode()->getMapSRS()->getEllipsoid();
-        osg::Vec3d up = em ? em->computeLocalUpVector( world.x(), world.y(), world.z() ) : osg::Vec3d(0,0,1);
-        osg::Vec3d adjust = up * AnnotationSettings::getOcclusionCullingHeightAdjustment();        
-        return world + adjust;
-    }
-    else
-    {
-        return world;
-    }
-}
-
 bool
 OrthoNode::getOcclusionCulling() const
 {
-    return _occlusionCulling;
+    return _occlusionCullingRequested;
 }
 
 void
 OrthoNode::setOcclusionCulling( bool value )
 {
-    if (_occlusionCulling != value)
+    if (_occlusionCullingRequested != value)
     {
-        _occlusionCulling = value;
+        _occlusionCullingRequested = value;
 
-        if ( _occlusionCulling && getMapNode() )
+        if ( _occlusionCullingRequested )
         {
-            osg::Vec3d world = osg::Vec3d(0,0,0) * _matxform->getMatrix(); //_autoxform->getPosition();
-            _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );
+            _occlusionCuller = new OcclusionCullingCallback( _geoxform );
             _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );
             addCullCallback( _occlusionCuller.get()  );
         }
-        else
+        else if (_occlusionCuller.valid())
         {
-            if (_occlusionCulling)
-            {
-                if (_occlusionCuller.valid())
-                {
-                    removeCullCallback( _occlusionCuller.get() );
-                    _occlusionCuller = 0;
-                }
-            }
+            removeCullCallback( _occlusionCuller.get() );
+            _occlusionCuller = 0;
         }
     }
 }
@@ -334,12 +226,90 @@ void OrthoNode::setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitu
     }
 }
 
-void
-OrthoNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
+
+
+OrthoNode::OrthoNode(MapNode* mapNode, const Config& conf) :
+AnnotationNode          ( conf ),
+_horizonCullingRequested( true )
 {
-    // first verify that the label position intersects the tile:
-    if ( key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
+    init();
+    OrthoNode::setMapNode( mapNode );
+
+    if ( conf.hasChild( "position" ) )
     {
-        updateTransforms( _mapPosition, tile );
+        setPosition( GeoPoint(conf.child("position")) );
     }
+
+    if ( conf.hasChild( "scale" ) )
+    {
+        const Config* c = conf.child_ptr("scale");
+        osg::Vec3f s( c->value("x", 1.0f), c->value("y", 1.0f), c->value("z", 1.0f) );
+        getPositionAttitudeTransform()->setScale( s );
+    }
+
+    if ( conf.hasChild( "local_offset" ) )
+    {
+        const Config* c = conf.child_ptr("local_offset");
+        osg::Vec3d o( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0) );
+        getPositionAttitudeTransform()->setPosition( o );
+    }
+
+    if ( conf.hasChild( "local_rotation" ) )
+    {
+        const Config* c = conf.child_ptr("local_rotation");
+        osg::Quat q( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0), c->value("w", 1.0) );
+        getPositionAttitudeTransform()->setAttitude( q );
+    }
+
+    bool hc = conf.value("horizon_culling", DEFAULT_HORIZON_CULLING);
+    if ( hc != getHorizonCulling() )
+    {
+        setHorizonCulling( hc );
+    }
+}
+
+Config
+OrthoNode::getConfig() const
+{
+    Config conf = AnnotationNode::getConfig();
+
+    conf.addObj( "position", getGeoTransform()->getPosition() );
+    
+    const osg::Vec3d& scale = getPositionAttitudeTransform()->getScale();
+    if ( scale.x() != 1.0f || scale.y() != 1.0f || scale.z() != 1.0f )
+    {
+        Config c( "scale" );
+        c.add( "x", scale.x() );
+        c.add( "y", scale.y() );
+        c.add( "z", scale.z() );
+        conf.add( c );
+    }
+
+    const osg::Vec3d& offset = getPositionAttitudeTransform()->getPosition();
+    if ( offset != osg::Vec3d(0,0,0) )
+    {
+        Config c( "local_offset" );
+        c.set( "x", offset.x() );
+        c.set( "y", offset.y() );
+        c.set( "z", offset.z() );
+        conf.add( c );
+    }
+
+    const osg::Quat& rot = getPositionAttitudeTransform()->getAttitude();
+    if ( !rot.zeroRotation() )
+    {
+        Config c( "local_rotation" );
+        c.set( "x", rot.x() );
+        c.set( "y", rot.y() );
+        c.set( "z", rot.z() );
+        c.set( "w", rot.w() );
+        conf.add( c );
+    }
+
+    if ( getHorizonCulling() != DEFAULT_HORIZON_CULLING )
+    {
+        conf.add( "horizon_culling", getHorizonCulling() );
+    }
+
+    return conf;
 }

@@ -24,6 +24,8 @@
 #include <osgEarth/optional>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Horizon>
+#include <osgEarth/GeoTransform>
+
 #include <osg/NodeCallback>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
@@ -130,16 +132,15 @@ namespace osgEarth
 
     /**
      * Simple occlusion culling callback that does a ray interseciton between the eyepoint
-     * and a world point and doesn't draw if there are intersections with the node.
+     * and a A GeoTransform node.
      */
-    struct OSGEARTH_EXPORT OcclusionCullingCallback : public osg::NodeCallback {
-        OcclusionCullingCallback( const SpatialReference* srs, const osg::Vec3d& world, osg::Node* node);
+    struct OSGEARTH_EXPORT OcclusionCullingCallback : public osg::NodeCallback
+    {
+        OcclusionCullingCallback(GeoTransform* xform);
 
-        const osg::Vec3d& getWorld() const;
-        void setWorld( const osg::Vec3d& world);
+        /** Maximum eye altitude at which to perform the occlusion culling test */
         double getMaxAltitude() const;
         void setMaxAltitude( double value);
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
         /**
         * Gets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
@@ -153,12 +154,13 @@ namespace osgEarth
         */
         static void setMaxFrameTime( double ms );
 
+    public: //NodeCallback
+        
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
     private:
 
-        osg::ref_ptr< osg::Node > _node;
-        osg::ref_ptr< const osgEarth::SpatialReference > _srs;
-        osg::Vec3d _world;
-        osg::Vec3d _prevWorld;
+        osg::observer_ptr<GeoTransform> _xform;
         osg::Vec3d _prevEye;
         bool _visible;
         double _maxAltitude;

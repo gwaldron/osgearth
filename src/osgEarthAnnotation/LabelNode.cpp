@@ -26,6 +26,7 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Decluttering>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -90,13 +91,15 @@ OrthoNode( mapNode, GeoPoint::INVALID )
 void
 LabelNode::init( const Style& style )
 {
+    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+
     _geode = new osg::Geode();
 
     // ensure that (0,0,0) is the bounding sphere control/center point.
     // useful for things like horizon culling.
     _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
 
-    getAttachPoint()->addChild( _geode.get() );
+    getPositionAttitudeTransform()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
@@ -213,7 +216,7 @@ LabelNode::getConfig() const
     Config conf( "label" );
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getPosition() );
+    conf.addObj( "position", getGeoTransform()->getPosition() );
 
     return conf;
 }

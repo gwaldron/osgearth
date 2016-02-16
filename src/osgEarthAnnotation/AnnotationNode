@@ -91,9 +91,6 @@ namespace osgEarth { namespace Annotation
         virtual void setPriority( float value );
         float getPriority() const { return _priority; }
 
-        //void setDateTimeRange(const DateTimeRange& value) { _dateTimeRange = value; }
-        //const DateTimeRange& getDateTimeRange() const     { return _dateTimeRange; } 
-
     public: // decoration support
 
         /**
@@ -170,6 +167,10 @@ namespace osgEarth { namespace Annotation
          * automatic mesh clamping if necessary.
          */
         virtual void configureForAltitudeMode( const AltitudeMode& mode );
+        
+        // Checks for clamping or draping and replaces the input node with a parent
+        // node if necessary. The proper usage pattern is: node = applyAltitudePolicy(node, style)
+        osg::Node* applyAltitudePolicy( osg::Node* node, const Style& style );
 
         /**
          * Apply general style information to the node
@@ -201,10 +202,10 @@ namespace osgEarth { namespace Annotation
         bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
         // hidden default ctor
-        AnnotationNode( MapNode* mapNode =0L );
+        AnnotationNode();
 
         // hidden config ctor
-        AnnotationNode( MapNode* mapNode, const Config& conf );
+        AnnotationNode(const Config& conf );
 
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
@@ -224,6 +225,7 @@ namespace osgEarth { namespace Annotation
         virtual ~AnnotationNode();
     };
 
+#if 1
     /**
      * Virtual class for AnnotationNodes with the set/getPosition method
      */
@@ -247,14 +249,12 @@ namespace osgEarth { namespace Annotation
         PositionedAnnotationNode()
             : AnnotationNode() { }
 
-        PositionedAnnotationNode(MapNode* mapNode)
-            : AnnotationNode( mapNode ) { }
-
-        PositionedAnnotationNode(MapNode* mapNode, const Config& conf)
-            : AnnotationNode( mapNode, conf ) { }
+        PositionedAnnotationNode(const Config& conf)
+            : AnnotationNode( conf ) { }
         
         PositionedAnnotationNode(const PositionedAnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : AnnotationNode(rhs, op) { }
     };
+#endif
 
 } } // namespace osgEarth::Annotation
 

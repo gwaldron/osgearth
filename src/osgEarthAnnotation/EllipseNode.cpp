@@ -42,7 +42,7 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Angle&      arcStart,
                          const Angle&      arcEnd,
                          const bool        pie) :
-LocalizedNode ( mapNode, position ),
+OrthoNode     ( mapNode, position ),
 _radiusMajor  ( radiusMajor ),
 _radiusMinor  ( radiusMinor ),
 _rotationAngle( rotationAngle ),
@@ -58,8 +58,6 @@ _numSegments  ( 0 )
 void
 EllipseNode::initEllipseNode()
 {
-    _xform = new osg::MatrixTransform();
-    addChild( _xform.get() );
     rebuild();
 }
 
@@ -186,13 +184,7 @@ EllipseNode::setPie(const bool& pie)
 void
 EllipseNode::rebuild()
 {
-    std::string currentDecoration = getDecoration();
-    clearDecoration();
-
-    //Remove all children from this node
-    //osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    //this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     // construct a local-origin ellipse.
     GeometryFactory factory;
@@ -214,15 +206,13 @@ EllipseNode::rebuild()
         if ( node )
         {
             node = applyAltitudePolicy(node.get(), _style);
-            _xform->addChild( node.get() );
-            //this->replaceChild( _xform.get(),  );
+            getPositionAttitudeTransform()->addChild( node.get() );
         }
 
         applyRenderSymbology( _style );
         setLightingIfNotSet( false );
-    }
 
-    setDecoration( currentDecoration );
+    }
 }
 
 
@@ -235,7 +225,7 @@ OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
 EllipseNode::EllipseNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf ),
+OrthoNode    ( mapNode, conf ),
 _numSegments ( 0 )
 {
     conf.getObjIfSet( "radius_major", _radiusMajor );
@@ -250,7 +240,7 @@ _numSegments ( 0 )
 Config
 EllipseNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = OrthoNode::getConfig();
     conf.key() = "ellipse";
 
     conf.addObj( "radius_major", _radiusMajor );

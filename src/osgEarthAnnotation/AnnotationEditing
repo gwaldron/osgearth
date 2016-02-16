@@ -21,7 +21,7 @@
 #define OSGEARTHANNO_ANNOTATION_EDITING_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/RectangleNode>
@@ -49,7 +49,7 @@ namespace osgEarth { namespace Annotation
          * @param localizedNode
          *        The LocalizedNode to edit
          */
-        LocalizedNodeEditor(LocalizedNode* localizedNode);    
+        LocalizedNodeEditor(OrthoNode* localizedNode);    
         
         virtual ~LocalizedNodeEditor();    
 
@@ -60,7 +60,7 @@ namespace osgEarth { namespace Annotation
         void setPosition( const GeoPoint& pos );
 
     protected:
-        osg::ref_ptr< LocalizedNode > _node;
+        osg::ref_ptr< OrthoNode > _node;
         Dragger* _dragger;
     };
 

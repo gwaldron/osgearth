@@ -28,6 +28,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Decluttering>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -82,9 +83,11 @@ _dbOptions( dbOptions )
 void
 PlaceNode::init()
 {
+    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+
     //reset.
     this->clearDecoration();
-    getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
+    getPositionAttitudeTransform()->removeChildren(0, getPositionAttitudeTransform()->getNumChildren());
 
     _geode = new osg::Geode();
 
@@ -131,6 +134,8 @@ PlaceNode::init()
             _image = imageURI.getImage( _dbOptions.get() );
         }
     }
+
+    osg::BoundingBox imageBox(0,0,0,0,0,0);
 
     // found an image; now format it:
     if ( _image.get() )
@@ -200,13 +205,21 @@ PlaceNode::init()
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-        }      
+            imageBox = imageGeom->getBoundingBox();
+        }    
+    }
+
+    if ( _image.valid() )
+    {
+        TextSymbol* textSymbol = _style.getOrCreate<TextSymbol>();
+        if ( !textSymbol->alignment().isSet() )
+            textSymbol->alignment() = textSymbol->ALIGN_LEFT_CENTER;
     }
     
     text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
-            osg::Vec3( 0, 0, 0 ) );
+            imageBox );
 
     if ( text )
         _geode->addDrawable( text );
@@ -214,7 +227,7 @@ PlaceNode::init()
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getAttachPoint()->addChild( _geode );
+    getPositionAttitudeTransform()->addChild( _geode );
 
     // for clamping and occlusion culling    
     //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
@@ -344,7 +357,7 @@ PlaceNode::getConfig() const
     Config conf( "place" );
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getPosition() );
+    conf.addObj( "position", getGeoTransform()->getPosition() );
     if ( _image.valid() ) {
         if ( !_image->getFileName().empty() )
             conf.add( "icon", _image->getFileName() );

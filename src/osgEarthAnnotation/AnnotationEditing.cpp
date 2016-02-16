@@ -31,7 +31,7 @@ using namespace osgEarth::Symbology;
 class DraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    DraggerCallback(LocalizedNode* node, LocalizedNodeEditor* editor):
+    DraggerCallback(OrthoNode* node, LocalizedNodeEditor* editor):
       _node(node),
       _editor( editor )
       {          
@@ -43,7 +43,7 @@ public:
           _editor->updateDraggers();
       }
 
-      LocalizedNode* _node;
+      OrthoNode* _node;
       LocalizedNodeEditor* _editor;
 };
 
@@ -58,7 +58,7 @@ osg::Group()
 }
 
 /**********************************************************************/
-LocalizedNodeEditor::LocalizedNodeEditor(LocalizedNode* node):
+LocalizedNodeEditor::LocalizedNodeEditor(OrthoNode* node):
 _node( node )
 {
     _dragger  = new SphereDragger( _node->getMapNode());  
@@ -179,7 +179,6 @@ CircleNodeEditor::updateDraggers()
         // Get the current location of the center of the circle (in lat/long, absolute Z)
         GeoPoint location = _node->getPosition();   
         location.makeGeographic();
-        //location.makeAbsolute( _node->getMapNode()->getTerrain() );
         
         //Get the radius of the circle in meters
         double r = static_cast<CircleNode*>(_node.get())->getRadius().as(Units::METERS);

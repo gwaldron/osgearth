@@ -25,6 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Decluttering>
 #include <osg/Depth>
 #include <osgText/Text>
 
@@ -125,7 +126,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 
     setLightingIfNotSet( false );
 
-    getAttachPoint()->addChild( _geode );
+    getPositionAttitudeTransform()->addChild( _geode );
     
     // generate shaders:
     Registry::shaderGenerator().run(

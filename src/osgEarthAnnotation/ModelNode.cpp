@@ -43,11 +43,10 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-LocalizedNode( mapNode ),
+OrthoNode    ( mapNode, GeoPoint() ),
 _style       ( style ),
 _dbOptions   ( dbOptions )
 {
-    _xform = new osg::MatrixTransform();
     init();
 }
 
@@ -59,6 +58,7 @@ ModelNode::setStyle(const Style& style)
     init();
 }
 
+#if 0
 void
 ModelNode::setScale(const osg::Vec3f& scale)
 {
@@ -67,25 +67,21 @@ ModelNode::setScale(const osg::Vec3f& scale)
     {
         stateSet->setRenderBinToInherit();
     }
-    LocalizedNode::setScale( scale );
+    OrthoNode::setScale( scale );
 }
+#endif
 
 void
 ModelNode::init()
 {
-    // reset.
-    this->clearDecoration();
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
-
-    this->setHorizonCulling(false);
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     osg::ref_ptr<const ModelSymbol> sym = _style.get<ModelSymbol>();
     
     // backwards-compatibility: support for MarkerSymbol (deprecated)
     if ( !sym.valid() && _style.has<MarkerSymbol>() )
     {
+        OE_WARN << LC << "MarkerSymbol is deprecated, please remove it\n";
         osg::ref_ptr<InstanceSymbol> temp = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
         sym = dynamic_cast<const ModelSymbol*>( temp.get() );
     }
@@ -98,7 +94,7 @@ ModelNode::init()
             osg::ref_ptr<osg::Node> node = sym->getModel();
 
             // Try to get a model from URI
-            if (node.valid() == false)
+            if ( !node.valid() )
             {
                 URI uri = sym->url()->evalURI();
 
@@ -114,13 +110,13 @@ ModelNode::init()
                     node = uri.getNode( tempOptions.get() );
                 }
 
-                if (node.valid() == false)
+                if ( !node.valid() )
                 {
                     OE_WARN << LC << "No model and failed to load data from " << uri.full() << std::endl;
                 }
             }
 
-            if (node.valid() == true)
+            if ( node.valid() )
             {
                 if ( Registry::capabilities().supportsGLSL() )
                 {
@@ -131,16 +127,15 @@ ModelNode::init()
                         Registry::stateSetCache() );
                 }
 
-                // attach to the transform:
-                _xform->addChild( node );
+                // install clamping/draping if necessary
+                node = applyAltitudePolicy( node.get(), _style );
 
-                // insert a clamping agent if necessary:
-                replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+                getPositionAttitudeTransform()->addChild( node.get() );
 
                 if ( sym->scale().isSet() )
                 {
                     double s = sym->scale()->eval();
-                    this->setScale( osg::Vec3f(s, s, s) );
+                    getPositionAttitudeTransform()->setScale( osg::Vec3d(s,s,s) );
                 }
 
                 // auto scaling?
@@ -160,7 +155,8 @@ ModelNode::init()
                         osg::DegreesToRadians(heading), osg::Vec3(0,0,1),
                         osg::DegreesToRadians(pitch),   osg::Vec3(1,0,0),
                         osg::DegreesToRadians(roll),    osg::Vec3(0,1,0) );
-                    this->setLocalRotation( rot.getRotate() );
+
+                    getPositionAttitudeTransform()->setAttitude( rot.getRotate() );
                 }
 
                 this->applyRenderSymbology( _style );
@@ -187,11 +183,9 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf ),
+OrthoNode    ( mapNode, conf ),
 _dbOptions   ( dbOptions )
 {
-    _xform = new osg::MatrixTransform();
-
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
@@ -204,7 +198,7 @@ _dbOptions   ( dbOptions )
 Config
 ModelNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = OrthoNode::getConfig();
     conf.key() = "model";
 
     if ( !_style.empty() )

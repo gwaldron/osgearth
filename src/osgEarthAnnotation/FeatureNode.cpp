@@ -53,7 +53,7 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const Style& style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet) :
-AnnotationNode( mapNode ),
+AnnotationNode(),
 _style        ( style ),
 _options      ( options ),
 _needsRebuild (true),
@@ -66,6 +66,9 @@ _styleSheet( styleSheet )
     }
 
     _features.push_back( feature );
+
+    FeatureNode::setMapNode( mapNode );
+
     build();
 }
 
@@ -74,7 +77,7 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const Style& style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet):
-AnnotationNode( mapNode ),
+AnnotationNode(),
 _style        ( style ),
 _options      ( options ),
 _needsRebuild (true),
@@ -82,6 +85,7 @@ _clusterCulling(true),
 _styleSheet( styleSheet )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
+    FeatureNode::setMapNode( mapNode );
     build();
 }
 
@@ -410,7 +414,7 @@ OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 FeatureNode::FeatureNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions ) :
-AnnotationNode( mapNode, conf )
+AnnotationNode(conf)
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )
@@ -430,6 +434,8 @@ AnnotationNode( mapNode, conf )
 
     conf.getObjIfSet( "style", _style );
 
+    FeatureNode::setMapNode( mapNode );
+
     if ( srs.valid() && geom.valid() )
     {
         Feature* feature = new Feature(geom.get(), srs.get() );
@@ -444,8 +450,7 @@ AnnotationNode( mapNode, conf )
 
 Config
 FeatureNode::getConfig() const
-{
-    
+{    
     Config conf("feature");
 
     if ( !_features.empty() )

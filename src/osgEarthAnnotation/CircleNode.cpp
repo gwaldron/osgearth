@@ -44,7 +44,7 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Angle&       arcEnd,
                        const bool         pie):
 
-LocalizedNode( mapNode, position ),
+OrthoNode    ( mapNode, position ),
 _radius      ( radius ),
 _style       ( style ),
 _arcStart    ( arcStart ),
@@ -59,8 +59,6 @@ _numSegments ( 0 )
 void
 CircleNode::initCircleNode()
 {
-    _xform = new osg::MatrixTransform();
-    this->addChild( _xform.get() );
     rebuild();
 }
 
@@ -151,13 +149,7 @@ CircleNode::setPie(const bool& pie)
 void
 CircleNode::rebuild()
 {
-    std::string currentDecoration = getDecoration();
-    clearDecoration();
-
-    // Reset this node.
-    osgEarth::clearChildren( _xform.get() );
-
-    OE_WARN << "radius=" << _radius.asString() << ", segs=" << _numSegments << std::endl;
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     // construct a local-origin circle.
     GeometryFactory factory;
@@ -177,15 +169,14 @@ CircleNode::rebuild()
         osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
         if ( node.valid() )
         {
-            node = applyAltitudePolicy( node.get(), _style );
-            _xform->addChild( node.get() );
+            //node = applyAltitudePolicy( node.get(), _style );
+            getPositionAttitudeTransform()->addChild( node.get() );
         }
 
         applyRenderSymbology( _style );
+
         setLightingIfNotSet( false );
     }
-
-    setDecoration( currentDecoration );
 }
 
 
@@ -197,7 +188,7 @@ OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf ),
+OrthoNode    ( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _numSegments ( 0 )
 {
@@ -210,7 +201,7 @@ _numSegments ( 0 )
 Config
 CircleNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = OrthoNode::getConfig();
     conf.key() = "circle";
 
     conf.addObj( "radius", _radius );

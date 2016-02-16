@@ -163,6 +163,7 @@ MeshClamper::apply( osg::Geode& geode )
                 lsi->reset();
                 lsi->setStart( vw + n_vector*r*_scale );
                 lsi->setEnd( vw - n_vector*r );
+                lsi->setIntersectionLimit( lsi->LIMIT_NEAREST );
 
                 _terrainPatch->accept( iv );
 

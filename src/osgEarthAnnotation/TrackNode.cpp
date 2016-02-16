@@ -42,7 +42,7 @@ TrackNode::TrackNode(MapNode*                    mapNode,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
-OrthoNode   ( mapNode, position )
+GeoPositionNode   ( mapNode, position )
 {
     if ( image )
     {
@@ -58,7 +58,7 @@ TrackNode::TrackNode(MapNode*                    mapNode,
                      const Style&                style,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
-OrthoNode   ( mapNode, position ),
+GeoPositionNode   ( mapNode, position ),
 _style      ( style )
 {
     init( fieldSchema );
@@ -138,7 +138,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 void
 TrackNode::setPriority(float value)
 {
-    OrthoNode::setPriority( value );
+    GeoPositionNode::setPriority( value );
 
     // re-apply annotation drawable-level stuff as neccesary.
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)

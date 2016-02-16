@@ -43,7 +43,7 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-OrthoNode    ( mapNode, GeoPoint() ),
+GeoPositionNode    ( mapNode, GeoPoint() ),
 _style       ( style ),
 _dbOptions   ( dbOptions )
 {
@@ -67,7 +67,7 @@ ModelNode::setScale(const osg::Vec3f& scale)
     {
         stateSet->setRenderBinToInherit();
     }
-    OrthoNode::setScale( scale );
+    GeoPositionNode::setScale( scale );
 }
 #endif
 
@@ -183,7 +183,7 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-OrthoNode    ( mapNode, conf ),
+GeoPositionNode    ( mapNode, conf ),
 _dbOptions   ( dbOptions )
 {
     conf.getObjIfSet( "style", _style );
@@ -198,7 +198,7 @@ _dbOptions   ( dbOptions )
 Config
 ModelNode::getConfig() const
 {
-    Config conf = OrthoNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "model";
 
     if ( !_style.empty() )

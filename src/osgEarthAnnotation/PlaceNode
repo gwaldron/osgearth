@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNOTATION_PLACE_NODE_H
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 
 namespace osgEarth { namespace Annotation
@@ -34,7 +34,7 @@ namespace osgEarth { namespace Annotation
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
      * and a popup control (eventually)
      */
-    class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
+    class OSGEARTHANNO_EXPORT PlaceNode : public GeoPositionNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, PlaceNode);
@@ -111,7 +111,7 @@ namespace osgEarth { namespace Annotation
         const Style& getStyle() const { return _style; }
 
 
-    public: // OrthoNode override
+    public: // GeoPositionNode override
 
         virtual void setPriority( float value );
         virtual void setDynamic( bool value );
@@ -133,7 +133,7 @@ namespace osgEarth { namespace Annotation
 
         // required by META_Node, but this object is not cloneable
         PlaceNode() { }
-        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : OrthoNode(rhs, op) { }
+        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
     };
 
 } } // namespace osgEarth::Annotation

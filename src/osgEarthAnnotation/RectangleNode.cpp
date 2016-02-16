@@ -40,7 +40,7 @@ RectangleNode::RectangleNode(MapNode*          mapNode,
                              const Linear&     width,
                              const Linear&     height,
                              const Style&      style) :
-OrthoNode    ( mapNode, position ),
+GeoPositionNode    ( mapNode, position ),
 _width       ( width ),
 _height      ( height ),
 _style       ( style )
@@ -363,7 +363,7 @@ OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 RectangleNode::RectangleNode(MapNode*              mapNode,
                              const Config&         conf,
                              const osgDB::Options* dbOptions) :
-OrthoNode( mapNode, conf )
+GeoPositionNode( mapNode, conf )
 {
     conf.getObjIfSet( "width", _width );
     conf.getObjIfSet( "height", _height );
@@ -375,7 +375,7 @@ OrthoNode( mapNode, conf )
 Config
 RectangleNode::getConfig() const
 {
-    Config conf = OrthoNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "rectangle";
 
     conf.addObj( "width",  _width );

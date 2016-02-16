@@ -44,7 +44,7 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Angle&       arcEnd,
                        const bool         pie):
 
-OrthoNode    ( mapNode, position ),
+GeoPositionNode    ( mapNode, position ),
 _radius      ( radius ),
 _style       ( style ),
 _arcStart    ( arcStart ),
@@ -188,7 +188,7 @@ OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
-OrthoNode    ( mapNode, conf ),
+GeoPositionNode    ( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _numSegments ( 0 )
 {
@@ -201,7 +201,7 @@ _numSegments ( 0 )
 Config
 CircleNode::getConfig() const
 {
-    Config conf = OrthoNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "circle";
 
     conf.addObj( "radius", _radius );

@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_ELLIPSE_NODE_H
 #define OSGEARTH_ANNOTATION_ELLIPSE_NODE_H 1
 
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
     /** 
      * Renders an ellipse that can drape on a MapNode terrain.    
      */
-    class OSGEARTHANNO_EXPORT EllipseNode : public OrthoNode
+    class OSGEARTHANNO_EXPORT EllipseNode : public GeoPositionNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, EllipseNode );

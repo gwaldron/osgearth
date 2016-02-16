@@ -42,7 +42,7 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Angle&      arcStart,
                          const Angle&      arcEnd,
                          const bool        pie) :
-OrthoNode     ( mapNode, position ),
+GeoPositionNode     ( mapNode, position ),
 _radiusMajor  ( radiusMajor ),
 _radiusMinor  ( radiusMinor ),
 _rotationAngle( rotationAngle ),
@@ -225,7 +225,7 @@ OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
 EllipseNode::EllipseNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions) :
-OrthoNode    ( mapNode, conf ),
+GeoPositionNode    ( mapNode, conf ),
 _numSegments ( 0 )
 {
     conf.getObjIfSet( "radius_major", _radiusMajor );
@@ -240,7 +240,7 @@ _numSegments ( 0 )
 Config
 EllipseNode::getConfig() const
 {
-    Config conf = OrthoNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "ellipse";
 
     conf.addObj( "radius_major", _radiusMajor );

@@ -47,7 +47,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _image   ( image ),
 _text    ( text ),
 _style   ( style ),
@@ -61,7 +61,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
@@ -73,7 +73,7 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const GeoPoint&       position,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-OrthoNode ( mapNode, position ),
+GeoPositionNode ( mapNode, position ),
 _style    ( style ),
 _dbOptions( dbOptions )
 {
@@ -250,7 +250,7 @@ PlaceNode::init()
 void
 PlaceNode::setPriority(float value)
 {
-    OrthoNode::setPriority(value);
+    GeoPositionNode::setPriority(value);
 
     // re-apply annotation drawable-level stuff as neccesary.
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
@@ -311,7 +311,7 @@ PlaceNode::setIconImage(osg::Image* image)
 void
 PlaceNode::setDynamic( bool value )
 {
-    OrthoNode::setDynamic( value );
+    GeoPositionNode::setDynamic( value );
     
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
@@ -330,7 +330,7 @@ OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
-OrthoNode ( mapNode, conf ),
+GeoPositionNode ( mapNode, conf ),
 _dbOptions( dbOptions )
 {
     conf.getObjIfSet( "style",  _style );

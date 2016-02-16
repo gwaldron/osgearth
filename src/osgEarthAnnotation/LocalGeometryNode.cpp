@@ -38,7 +38,7 @@ using namespace osgEarth::Features;
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
-OrthoNode( ),
+GeoPositionNode( ),
 _geom    ( geom ),
 _style   ( style )
 {
@@ -50,7 +50,7 @@ _style   ( style )
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
-OrthoNode(),
+GeoPositionNode(),
 _style   ( style )
 {
     LocalGeometryNode::setMapNode( mapNode );
@@ -62,7 +62,7 @@ LocalGeometryNode::setMapNode(MapNode* mapNode)
 {
     if ( mapNode != getMapNode() )
     {
-        OrthoNode::setMapNode( mapNode );
+        GeoPositionNode::setMapNode( mapNode );
         init(0L);
     }
 }
@@ -157,7 +157,7 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-OrthoNode( mapNode, conf )
+GeoPositionNode( mapNode, conf )
 {
     if ( conf.hasChild("geometry") )
     {
@@ -175,7 +175,7 @@ OrthoNode( mapNode, conf )
 Config
 LocalGeometryNode::getConfig() const
 {
-    Config conf = OrthoNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "local_geometry";
 
     if ( _geom.valid() )

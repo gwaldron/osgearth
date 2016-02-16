@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNO_MODEL_NODE_H
 #define OSGEARTH_ANNO_MODEL_NODE_H 1
 
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/URI>
 #include <osgEarth/CachePolicy>
 #include <osgDB/ReaderWriter>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
      * Annotation node that loads a 3D model from a URI and places it
      * at a geo location.
      */
-    class OSGEARTHANNO_EXPORT ModelNode : public OrthoNode
+    class OSGEARTHANNO_EXPORT ModelNode : public GeoPositionNode
     {
     public:
         /**

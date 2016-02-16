@@ -46,7 +46,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _text    ( text )
 {
     init( style );
@@ -57,7 +57,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const TextSymbol*   symbol ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _text    ( text )
 {
     Style style;
@@ -67,7 +67,7 @@ _text    ( text )
 
 LabelNode::LabelNode(const std::string&  text,
                      const Style&        style ) :
-OrthoNode(),
+GeoPositionNode(),
 _text    ( text )
 {
     init( style );
@@ -76,14 +76,14 @@ _text    ( text )
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
-OrthoNode( mapNode, position )
+GeoPositionNode( mapNode, position )
 {
     init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
                      const Style&        style ) :
-OrthoNode( mapNode, GeoPoint::INVALID )
+GeoPositionNode( mapNode, GeoPoint::INVALID )
 {
     init( style );
 }
@@ -165,7 +165,7 @@ LabelNode::setStyle( const Style& style )
 void
 LabelNode::setPriority(float value)
 {
-    OrthoNode::setPriority(value);
+    GeoPositionNode::setPriority(value);
 
     // re-apply annotation drawable-level stuff as neccesary.
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
@@ -178,7 +178,7 @@ LabelNode::setPriority(float value)
 void
 LabelNode::setDynamic( bool dynamic )
 {
-    OrthoNode::setDynamic( dynamic );
+    GeoPositionNode::setDynamic( dynamic );
 
     osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
     if ( d )
@@ -197,7 +197,7 @@ OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 LabelNode::LabelNode(MapNode*               mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions ) :
-OrthoNode( mapNode, GeoPoint::INVALID )
+GeoPositionNode( mapNode, GeoPoint::INVALID )
 {
     optional<Style> style;
 

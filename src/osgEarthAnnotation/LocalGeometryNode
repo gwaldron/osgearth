@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H
 #define OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H 1
 
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
@@ -37,7 +37,7 @@ namespace osgEarth { namespace Annotation
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
      */
-    class OSGEARTHANNO_EXPORT LocalGeometryNode : public OrthoNode
+    class OSGEARTHANNO_EXPORT LocalGeometryNode : public GeoPositionNode
     {
     public:
         /**

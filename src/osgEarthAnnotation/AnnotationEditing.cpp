@@ -31,7 +31,7 @@ using namespace osgEarth::Symbology;
 class DraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    DraggerCallback(OrthoNode* node, LocalizedNodeEditor* editor):
+    DraggerCallback(GeoPositionNode* node, GeoPositionNodeEditor* editor):
       _node(node),
       _editor( editor )
       {          
@@ -43,8 +43,8 @@ public:
           _editor->updateDraggers();
       }
 
-      OrthoNode* _node;
-      LocalizedNodeEditor* _editor;
+      GeoPositionNode* _node;
+      GeoPositionNodeEditor* _editor;
 };
 
 /**********************************************************************/
@@ -58,7 +58,7 @@ osg::Group()
 }
 
 /**********************************************************************/
-LocalizedNodeEditor::LocalizedNodeEditor(OrthoNode* node):
+GeoPositionNodeEditor::GeoPositionNodeEditor(GeoPositionNode* node):
 _node( node )
 {
     _dragger  = new SphereDragger( _node->getMapNode());  
@@ -67,19 +67,19 @@ _node( node )
     updateDraggers();
 }
 
-LocalizedNodeEditor::~LocalizedNodeEditor()
+GeoPositionNodeEditor::~GeoPositionNodeEditor()
 {    
 }
 
 void
-LocalizedNodeEditor::updateDraggers()
+GeoPositionNodeEditor::updateDraggers()
 {
     GeoPoint pos = _node->getPosition();    
     _dragger->setPosition( pos, false );
 }
 
 void
-LocalizedNodeEditor::setPosition(const GeoPoint& pos)
+GeoPositionNodeEditor::setPosition(const GeoPoint& pos)
 {
     _node->setPosition( pos );
     updateDraggers();
@@ -123,7 +123,7 @@ public:
 
 
 CircleNodeEditor::CircleNodeEditor( CircleNode* node ):
-LocalizedNodeEditor( node ),
+GeoPositionNodeEditor( node ),
 _radiusDragger( 0 ),
 _bearing( osg::DegreesToRadians( 90.0 ) )
 {
@@ -171,7 +171,7 @@ CircleNodeEditor::computeBearing()
 void
 CircleNodeEditor::updateDraggers()
 {
-    LocalizedNodeEditor::updateDraggers();
+    GeoPositionNodeEditor::updateDraggers();
     if (_radiusDragger)
     {
         const osg::EllipsoidModel* em = _node->getMapNode()->getMapSRS()->getEllipsoid();
@@ -255,7 +255,7 @@ public:
 
 
 EllipseNodeEditor::EllipseNodeEditor( EllipseNode* node ):
-LocalizedNodeEditor( node ),
+GeoPositionNodeEditor( node ),
 _minorDragger( 0 ),
 _majorDragger( 0 )
 {
@@ -279,7 +279,7 @@ EllipseNodeEditor::~EllipseNodeEditor()
 void
 EllipseNodeEditor::updateDraggers()
 {
-    LocalizedNodeEditor::updateDraggers();
+    GeoPositionNodeEditor::updateDraggers();
     if (_majorDragger && _minorDragger)
     {
         const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
@@ -351,7 +351,7 @@ public:
 
 
 RectangleNodeEditor::RectangleNodeEditor( RectangleNode* node ):
-LocalizedNodeEditor( node ),
+GeoPositionNodeEditor( node ),
 _llDragger( 0 ),
 _lrDragger( 0 ),
 _urDragger( 0 ),
@@ -391,7 +391,7 @@ RectangleNodeEditor::~RectangleNodeEditor()
 void
 RectangleNodeEditor::updateDraggers()
 {
-    LocalizedNodeEditor::updateDraggers();    
+    GeoPositionNodeEditor::updateDraggers();    
 
     RectangleNode* rect = static_cast<RectangleNode*>(_node.get());
     

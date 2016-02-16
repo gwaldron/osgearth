@@ -99,7 +99,7 @@ main(int argc, char** argv)
     {
         Style pm;
         pm.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
-        pm.getOrCreate<IconSymbol>()->declutter() = false;
+        pm.getOrCreate<IconSymbol>()->declutter() = true;
         pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
 
         // bunch of pins:

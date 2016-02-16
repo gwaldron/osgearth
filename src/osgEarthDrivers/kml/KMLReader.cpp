@@ -103,10 +103,10 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
     if ( cx._options == 0L )
         cx._options = &blankOptions;
 
-    if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
-    {
-        Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
-    }
+    //if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
+    //{
+    //    Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
+    //}
 
     //const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
 	xml_node<> *top = doc.first_node("kml", 0, false);

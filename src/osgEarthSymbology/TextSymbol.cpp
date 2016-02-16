@@ -174,7 +174,7 @@ TextSymbol::mergeConfig( const Config& conf )
 void
 TextSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "text-fill") ) {
+    if ( match(c.key(), "text-fill") || match(c.key(), "text-color") ) {
         style.getOrCreate<TextSymbol>()->fill()->color() = Color(c.value());
     }
     else if ( match(c.key(), "text-fill-opacity") ) {
@@ -186,7 +186,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "text-font") ) {
         style.getOrCreate<TextSymbol>()->font() = c.value();
     }
-    else if ( match(c.key(), "text-halo") ) {
+    else if ( match(c.key(), "text-halo") || match(c.key(), "text-halo-color") ) {
         style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
     }
     else if ( match(c.key(), "text-halo-offset") ) {
@@ -240,7 +240,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         else if ( match(c.value(), "vertical" ) )
             style.getOrCreate<TextSymbol>()->layout() = TextSymbol::LAYOUT_VERTICAL;
     }
-    else if ( match(c.key(), "text-content") ) {        
+    else if ( match(c.key(), "text-content") || match(c.key(), "text") ) {        
         style.getOrCreate<TextSymbol>()->content() = StringExpression( c.value() );
     }
     else if ( match(c.key(), "text-priority") ) {

@@ -152,8 +152,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             osg::Vec4f primaryColor = poly->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )
@@ -399,8 +399,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             osg::Vec4f primaryColor = line->stroke()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -509,8 +509,8 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             osg::Vec4f primaryColor = point->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -802,7 +802,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     {
         Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
         if (geom)
-        {            
+        {
             // temporary target geometry for this cell:
             osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
             temp->setVertexArray( new osg::Vec3Array() );

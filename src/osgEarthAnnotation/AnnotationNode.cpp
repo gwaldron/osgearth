@@ -122,9 +122,7 @@ AnnotationNode::setLightingIfNotSet( bool lighting )
 
     if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
     {
-        this->getOrCreateStateSet()->setMode(
-            GL_LIGHTING,
-            (lighting ? 1 : 0) | osg::StateAttribute::OVERRIDE );
+        this->getOrCreateStateSet()->setMode(GL_LIGHTING, lighting? 1 : 0);
     }
 }
 

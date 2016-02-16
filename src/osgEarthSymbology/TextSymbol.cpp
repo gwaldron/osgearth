@@ -52,7 +52,7 @@ TextSymbol::TextSymbol( const Config& conf ) :
 Symbol                ( conf ),
 _fill                 ( Fill( 1, 1, 1, 1 ) ),
 _halo                 ( Stroke( 0.3, 0.3, 0.3, 1) ),
-_haloOffset           ( 0.07f ),
+_haloOffset           ( 0.0625f ),
 _size                 ( 16.0f ),
 _removeDuplicateLabels( false ),
 _alignment            ( ALIGN_BASE_LINE ),
@@ -174,6 +174,8 @@ TextSymbol::mergeConfig( const Config& conf )
 void
 TextSymbol::parseSLD(const Config& c, Style& style)
 {
+    TextSymbol defaults;
+
     if ( match(c.key(), "text-fill") || match(c.key(), "text-color") ) {
         style.getOrCreate<TextSymbol>()->fill()->color() = Color(c.value());
     }
@@ -190,7 +192,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
     }
     else if ( match(c.key(), "text-halo-offset") ) {
-        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.0625f);
+        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), defaults.haloOffset().get() );
     }
     else if ( match(c.key(), "text-remove-duplicate-labels") ) {
         if ( c.value() == "true" )
@@ -262,21 +264,21 @@ TextSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_ASCII;
     }
     else if ( match(c.key(), "text-declutter") ) {
-        style.getOrCreate<TextSymbol>()->declutter() = as<bool>(c.value(), true);
+        style.getOrCreate<TextSymbol>()->declutter() = as<bool>(c.value(), defaults.declutter().get() );
     }
     else if ( match(c.key(), "text-occlusion-cull") ) {
-        style.getOrCreate<TextSymbol>()->occlusionCull() = as<bool>(c.value(), false);
+        style.getOrCreate<TextSymbol>()->occlusionCull() = as<bool>(c.value(), defaults.occlusionCull().get() );
     }
     else if ( match(c.key(), "text-occlusion-cull-altitude") ) {
-        style.getOrCreate<TextSymbol>()->occlusionCullAltitude() = as<double>(c.value(), 200000.0);
+        style.getOrCreate<TextSymbol>()->occlusionCullAltitude() = as<double>(c.value(), defaults.occlusionCullAltitude().get() );    
     }
     else if ( match(c.key(), "text-script") ) {
         style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
     }
     else if ( match(c.key(), "text-offset-x") ) {
-        style.getOrCreate<TextSymbol>()->pixelOffset()->x() = as<double>(c.value(), 0.0);
+        style.getOrCreate<TextSymbol>()->pixelOffset()->x() = as<double>(c.value(), defaults.pixelOffset()->x() );
     }
     else if ( match(c.key(), "text-offset-y") ) {
-        style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), 0.0);
+        style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), defaults.pixelOffset()->y() );
     }
 }

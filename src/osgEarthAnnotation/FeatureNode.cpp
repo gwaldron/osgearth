@@ -234,12 +234,12 @@ FeatureNode::build()
                 // activate the terrain callback:
                 setCPUAutoClamping( true );
 
-                // set default lighting based on whether we are extruding:
-                setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-
                 // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
             } 
+
+            // set default lighting based on whether we are extruding:
+            setLightingIfNotSet( style.has<ExtrusionSymbol>() );
 
             applyRenderSymbology( style );
         }

@@ -673,6 +673,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
         defaultIcon->url()->setLiteral(KML_PUSHPIN_URL);
         kml_options.defaultIconSymbol() = defaultIcon;
 
+        TextSymbol* defaultText = new TextSymbol();
+        defaultText->halo() = Stroke(0.3,0.3,0.3,1.0);
+        kml_options.defaultTextSymbol() = defaultText;
+
         osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
         if ( kml )
         {

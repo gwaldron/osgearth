@@ -166,10 +166,10 @@ CircleNode::rebuild()
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style );
         if ( node.valid() )
         {
-            //node = applyAltitudePolicy( node.get(), _style );
+            node = applyAltitudePolicy( node.get(), _style );
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 

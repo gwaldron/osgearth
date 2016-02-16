@@ -158,7 +158,6 @@ namespace osgEarth { namespace Annotation
         std::string   _activeDsName;
 
         float _priority;
-        DateTimeRange _dateTimeRange;
 
         bool supportsAutoClamping( const Style& style ) const;
         
@@ -224,37 +223,6 @@ namespace osgEarth { namespace Annotation
 
         virtual ~AnnotationNode();
     };
-
-#if 1
-    /**
-     * Virtual class for AnnotationNodes with the set/getPosition method
-     */
-    class PositionedAnnotationNode : public AnnotationNode
-    {
-    public:
-
-        /**
-         * Sets the map position of the node.
-         * Returns true upon success.
-         */
-        virtual bool setPosition( const GeoPoint& p ) =0;
-
-        /**
-         * Gets the position (in map coordinates) of the node
-         */
-        virtual GeoPoint getPosition() const =0;
-
-    protected:
-
-        PositionedAnnotationNode()
-            : AnnotationNode() { }
-
-        PositionedAnnotationNode(const Config& conf)
-            : AnnotationNode( conf ) { }
-        
-        PositionedAnnotationNode(const PositionedAnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : AnnotationNode(rhs, op) { }
-    };
-#endif
 
 } } // namespace osgEarth::Annotation
 

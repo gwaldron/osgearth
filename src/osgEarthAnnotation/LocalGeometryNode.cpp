@@ -22,10 +22,9 @@
 
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/MeshClamper>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 
 #define LC "[GeometryNode] "
@@ -72,7 +71,7 @@ LocalGeometryNode::initNode()
 {
     if ( _node.valid() )
     {
-        _node = applyAltitudePolicy( _node.get(), _style );
+        _node = AnnotationUtils::installOverlayParent( _node.get(), _style );
 
         getPositionAttitudeTransform()->addChild( _node.get() );
 
@@ -98,7 +97,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
         osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), _style, cx );
         if ( node.valid() )
         {
-            //node = applyAltitudePolicy( node.get(), _style );
+            node = AnnotationUtils::installOverlayParent( node.get(), _style );
 
             getPositionAttitudeTransform()->addChild( node.get() );
 
@@ -111,7 +110,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 void 
 LocalGeometryNode::init(const osgDB::Options* options)
 {
-    this->clearDecoration();
+    //this->clearDecoration();
     
     if ( _node.valid() )
     {

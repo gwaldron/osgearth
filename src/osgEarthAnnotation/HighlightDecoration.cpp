@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#if 0
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationUtils>
@@ -91,3 +92,4 @@ HighlightDecoration::apply(AnnotationNode& node, bool enable)
     }
     return _supported;
 }
+#endif

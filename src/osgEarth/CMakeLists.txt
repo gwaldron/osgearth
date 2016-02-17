@@ -87,6 +87,7 @@ SET(LIB_PUBLIC_HEADERS
     Geoid
     GeoMath
 	GeoTransform
+    GeometryClamper
     HeightFieldUtils
     Horizon
     HTTPClient
@@ -246,6 +247,7 @@ set(TARGET_SRC
     Geoid.cpp
     GeoMath.cpp
 	GeoTransform.cpp
+    GeometryClamper.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
     HTTPClient.cpp

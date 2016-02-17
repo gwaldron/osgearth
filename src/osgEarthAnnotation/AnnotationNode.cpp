@@ -37,6 +37,7 @@ using namespace osgEarth::Annotation;
 
 //-------------------------------------------------------------------
 
+#if 0
 namespace osgEarth { namespace Annotation
 {
     struct AutoClampCallback : public TerrainCallback
@@ -54,6 +55,7 @@ namespace osgEarth { namespace Annotation
         AnnotationNode* _annotation;
     };
 }  }
+#endif
 
 //-------------------------------------------------------------------
 
@@ -65,7 +67,7 @@ AnnotationNode::AnnotationNode() :
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L ),
+//_activeDs   ( 0L ),
 _priority   ( 0.0f )
 {
     // always blend.
@@ -78,7 +80,7 @@ AnnotationNode::AnnotationNode(const Config& conf) :
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L ),
+//_activeDs   ( 0L ),
 _priority   ( 0.0f )
 {
     this->setName( conf.value("name") );
@@ -131,6 +133,7 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
+#if 0
         // relocate the auto-clamping callback, if there is one:
         osg::ref_ptr<MapNode> oldMapNode = _mapNode.get();
         if ( oldMapNode.valid() )
@@ -142,7 +145,7 @@ AnnotationNode::setMapNode( MapNode* mapNode )
                     mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
             }
         }		
-
+#endif
         _mapNode = mapNode;
 
 		applyStyle( this->getStyle() );
@@ -161,6 +164,7 @@ AnnotationNode::setPriority(float priority)
     _priority = priority;
 }
 
+#if 0
 void
 AnnotationNode::setCPUAutoClamping( bool value )
 {
@@ -207,6 +211,7 @@ AnnotationNode::setCPUAutoClamping( bool value )
         }
     }
 }
+#endif
 
 void
 AnnotationNode::setDepthAdjustment( bool enable )
@@ -223,96 +228,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
     _depthAdj = enable;
 }
 
-bool
-AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
-{
-    // in terrain-clamping mode, force it to HAT=0:
-    if ( _altitude.valid() && (
-        _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
-        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
-    {
-        mapPoint.altitudeMode() = ALTMODE_RELATIVE;
-        //If we're clamping to the terrain
-        if (_altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)
-        {
-            mapPoint.z() = 0.0;
-        }
-    }
-
-    // if the point's already absolute and we're not clamping it, nop.
-    if ( mapPoint.altitudeMode() == ALTMODE_ABSOLUTE )
-    {
-        return true;
-    }
-
-    // calculate the absolute Z of the map point.
-    if ( getMapNode() )
-    {
-        // find the terrain height at the map point:
-        double hamsl;
-        if (getMapNode()->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
-        {
-            // apply any scale/offset in the symbology:
-            if ( _altitude.valid() )
-            {
-                if ( _altitude->verticalScale().isSet() )
-                    hamsl *= _altitude->verticalScale()->eval();
-                if ( _altitude->verticalOffset().isSet() )
-                    hamsl += _altitude->verticalOffset()->eval();
-            }
-            mapPoint.z() += hamsl;
-        }
-        mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
-        return true;
-    }
-
-    return false;
-}
-
-osg::Node*
-AnnotationNode::applyAltitudePolicy(osg::Node* node, const Style& style)
-{
-    AnnotationUtils::AltitudePolicy ap;
-
-    AnnotationUtils::getAltitudePolicy( style, ap );
-
-    // Draped (projected) geometry
-    if ( ap.draping )
-    {
-        DrapeableNode* drapable = new DrapeableNode();
-        drapable->addChild( node );
-        node = drapable;
-    }
-
-    // gw - not sure whether is makes sense to support this for LocalizedNode
-    // GPU-clamped geometry
-    else if ( ap.gpuClamping )
-    {
-        ClampableNode* clampable = new ClampableNode( getMapNode() );
-        clampable->addChild( node );
-        node = clampable;
-
-        const RenderSymbol* render = style.get<RenderSymbol>();
-        if ( render && render->depthOffset().isSet() )
-        {
-            clampable->setDepthOffsetOptions( *render->depthOffset() );
-        }
-    }
-
-    // scenegraph-clamped geometry
-    else if ( ap.sceneClamping )
-    {
-        // save for later when we need to reclamp the mesh on the CPU
-        _altitude = style.get<AltitudeSymbol>();
-
-        // activate the terrain callback:
-        setCPUAutoClamping( true );
-    }
-
-    return node;
-}
-
-
+#if 0
 void
 AnnotationNode::installDecoration( const std::string& name, Decoration* ds )
 {
@@ -387,14 +303,18 @@ AnnotationNode::hasDecoration( const std::string& name ) const
 {
     return _dsMap.find(name) != _dsMap.end();
 }
+#endif
 
+#if 0
 osg::Group*
 AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
 }
+#endif
 
+#if 0
 bool
 AnnotationNode::supportsAutoClamping( const Style& style ) const
 {
@@ -407,6 +327,7 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
          style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
         style.get<AltitudeSymbol>()->technique() != AltitudeSymbol::TECHNIQUE_GPU;
 }
+
 
 void
 AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
@@ -434,15 +355,16 @@ AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 
     setCPUAutoClamping( cpuClamp );
 }
+#endif
 
 void
 AnnotationNode::applyStyle( const Style& style)
 {
-    if ( supportsAutoClamping(style) )
-    {     
-        _altitude = style.get<AltitudeSymbol>();
-        setCPUAutoClamping( true );
-    }
+    //if ( supportsAutoClamping(style) )
+    //{     
+    //    _altitude = style.get<AltitudeSymbol>();
+    //    setCPUAutoClamping( true );
+    //}
     applyRenderSymbology(style);
 }
 

@@ -34,15 +34,13 @@
 
 
 #define META_AnnotationNode(library,name) \
-    META_Node(library,name) \
-    virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
+    META_Node(library,name)
 
 #define META_AnnotationNodeAbstract(library,name) \
     virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const name *>(obj)!=NULL; } \
     virtual const char* className() const { return #name; } \
     virtual const char* libraryName() const { return #library; } \
-    virtual void accept(osg::NodeVisitor& nv) { if (nv.validNodeMask(*this)) { nv.pushOntoNodePath(this); nv.apply(*this); nv.popFromNodePath(); } } \
-    virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
+    virtual void accept(osg::NodeVisitor& nv) { if (nv.validNodeMask(*this)) { nv.pushOntoNodePath(this); nv.apply(*this); nv.popFromNodePath(); } }
 
 // forward decs
 namespace osgEarth
@@ -74,7 +72,7 @@ namespace osgEarth { namespace Annotation
         /** 
          * Gets the attach point for children of this node
          */
-        virtual osg::Group* getChildAttachPoint();
+        //virtual osg::Group* getChildAttachPoint();
 
         /**
          * Serialized this annotation node so you can re-create it later
@@ -90,38 +88,6 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setPriority( float value );
         float getPriority() const { return _priority; }
-
-    public: // decoration support
-
-        /**
-         * Installs a decoration on this annotation node.
-         */
-        void installDecoration( const std::string& name, Decoration* ds );
-
-        /**
-         * Uninstalls a decoration on this annotation node.
-         */
-        void uninstallDecoration( const std::string& name );
-
-        /**
-         * Gets the current decoration
-         */
-        const std::string& getDecoration() const;
-
-        /**
-         * Activates a named decoration that was installed previously
-         */
-        virtual void setDecoration( const std::string& name );
-
-        /**
-         * Clears any decoration.
-         */
-        virtual void clearDecoration();
-
-        /**
-         * Whether this annotation has the specified decoration installed.
-         */
-        bool hasDecoration( const std::string& name ) const;
 
         /**
          * Text associated with this annotation; might be the name, might be actual text
@@ -143,38 +109,76 @@ namespace osgEarth { namespace Annotation
         virtual const Style& getStyle() const { return s_emptyStyle; }
 
 
+#if 0
+    public: // decoration support - DEPRECATED
+
+        /**
+         * @deprecated
+         * Installs a decoration on this annotation node.
+         */
+        void installDecoration( const std::string& name, Decoration* ds );
+
+        /**
+         * @deprecated
+         * Uninstalls a decoration on this annotation node.
+         */
+        void uninstallDecoration( const std::string& name );
+
+        /**
+         * @deprecated
+         * Gets the current decoration
+         */
+        const std::string& getDecoration() const;
+
+        /**
+         * @deprecated
+         * Activates a named decoration that was installed previously
+         */
+        virtual void setDecoration( const std::string& name );
+
+        /**
+         * @deprecated
+         * Clears any decoration.
+         */
+        virtual void clearDecoration();
+
+        /**
+         * @deprecated
+         * Whether this annotation has the specified decoration installed.
+         */
+        bool hasDecoration( const std::string& name ) const;
+#endif
+
     protected:
 
         bool                         _dynamic;
         bool                         _autoclamp;
         bool                         _depthAdj;
-        osg::ref_ptr<const AltitudeSymbol> _altitude;
+        //osg::ref_ptr<const AltitudeSymbol> _altitude;
 
         DepthOffsetAdapter _doAdapter;
 
+#if 0
         typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
         DecorationMap _dsMap;
         Decoration*   _activeDs;
         std::string   _activeDsName;
+#endif
 
         float _priority;
 
-        bool supportsAutoClamping( const Style& style ) const;
+        //bool supportsAutoClamping( const Style& style ) const;
         
         /**
          * Check the altitude symbology (if present) and configure the
          * automatic mesh clamping if necessary.
          */
-        virtual void configureForAltitudeMode( const AltitudeMode& mode );
-        
-        // Checks for clamping or draping and replaces the input node with a parent
-        // node if necessary. The proper usage pattern is: node = applyAltitudePolicy(node, style)
-        osg::Node* applyAltitudePolicy( osg::Node* node, const Style& style );
+        //virtual void configureForAltitudeMode( const AltitudeMode& mode );
 
         /**
          * Apply general style information to the node
          */
-        virtual void applyStyle( const Style&);
+        virtual void applyStyle(const Style&);
         virtual void applyRenderSymbology(const Style&);
         
         /**
@@ -183,7 +187,7 @@ namespace osgEarth { namespace Annotation
          * Note: you usually don't need to call this directly; it is automatically set
          * based on the symbology. But you can call it to override the automatic setting.
          */
-        virtual void setCPUAutoClamping( bool value );
+        //virtual void setCPUAutoClamping( bool value );
 
         /**
          * Whether to activate depth adjustment.
@@ -197,9 +201,6 @@ namespace osgEarth { namespace Annotation
          */
         void setLightingIfNotSet( bool lighting );
 
-        // utility funcion to make a geopoint absolute height
-        bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
-
         // hidden default ctor
         AnnotationNode();
 
@@ -209,7 +210,7 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
-        osg::ref_ptr< TerrainCallback > _autoClampCallback;
+        //osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
     private:
             
@@ -219,7 +220,7 @@ namespace osgEarth { namespace Annotation
 
     public: // internal methods; do not call directly
 
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
+        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
 
         virtual ~AnnotationNode();
     };

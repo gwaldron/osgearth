@@ -22,6 +22,7 @@
 
 #include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -344,7 +345,7 @@ RectangleNode::rebuild()
         osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
         if ( node )
         {
-            node = applyAltitudePolicy( node.get(), _style );
+            node = AnnotationUtils::installOverlayParent( node.get(), _style );
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 

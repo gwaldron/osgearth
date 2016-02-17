@@ -124,7 +124,7 @@ namespace osgEarth { namespace Annotation
 
     public: // AnnotationNode
         
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
     public: // MapNodeObserver
 
@@ -141,7 +141,7 @@ namespace osgEarth { namespace Annotation
         void init();
         void clampLatitudes();
 
-        void clampMesh( osg::Node* terrainModel );
+        //void clampMesh( osg::Node* terrainModel );
 
         void updateFilters();
 

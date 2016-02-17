@@ -29,6 +29,7 @@ namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+#if 0
     //-----------------------------------------------------------------------
 
     class OSGEARTHANNO_EXPORT Decoration : public osg::Referenced
@@ -112,6 +113,7 @@ namespace osgEarth { namespace Annotation
         virtual bool apply(osg::Group* attachPoint, bool enable);
     };
 
+#endif
 
 } } // namespace osgEarth::Annotation
 

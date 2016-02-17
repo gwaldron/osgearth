@@ -22,6 +22,7 @@
 
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/AutoScale>
@@ -128,7 +129,7 @@ ModelNode::init()
                 }
 
                 // install clamping/draping if necessary
-                node = applyAltitudePolicy( node.get(), _style );
+                node = AnnotationUtils::installOverlayParent( node.get(), _style );
 
                 getPositionAttitudeTransform()->addChild( node.get() );
 

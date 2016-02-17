@@ -24,6 +24,7 @@
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/GeometryClamper>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
@@ -70,7 +71,7 @@ namespace osgEarth { namespace Annotation
          /**
          * Gets the list of features
          */
-        FeatureList& getFeatures() { return _features; };
+        FeatureList& getFeatures() { return _features; }
 
         /**
          * Utility that lets you work on this FeatureNode as a single Feature instead of a list
@@ -112,7 +113,7 @@ namespace osgEarth { namespace Annotation
 
     public: // AnnotationNode
 
-        virtual osg::Group* getAttachPoint();
+        //virtual osg::Group* getAttachPoint();
 
         /**
          * Gets the Style for this FeatureNode.
@@ -142,9 +143,13 @@ namespace osgEarth { namespace Annotation
         osg::Polytope                _featurePolytope;
         Style                        _style;
         bool                         _needsRebuild;
+        bool                         _needsSceneClamping;
         bool                         _clusterCulling;
         GeoExtent                    _extent;
         osg::ref_ptr<osg::NodeCallback> _clusterCullingCallback;
+
+        typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
+        osg::ref_ptr<ClampCallback> _clampCallback;
 
         osg::ref_ptr< osg::Node >    _compiled;
 
@@ -153,12 +158,18 @@ namespace osgEarth { namespace Annotation
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
         
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+        void clamp(const Terrain* terrain, osg::Node* patch);
 
         void build();
 
         void updateClusterCulling();
 
+    public:
+
+        void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
         
     private:
         void clampMesh( osg::Node* terrainModel );

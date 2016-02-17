@@ -21,6 +21,7 @@
 */
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/DrapeableNode>
@@ -205,7 +206,7 @@ EllipseNode::rebuild()
         osg::ref_ptr<osg::Node> node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {
-            node = applyAltitudePolicy(node.get(), _style);
+            node = AnnotationUtils::installOverlayParent(node.get(), _style);
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 

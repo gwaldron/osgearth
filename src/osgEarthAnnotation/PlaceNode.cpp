@@ -86,7 +86,7 @@ PlaceNode::init()
     Decluttering::setEnabled( this->getOrCreateStateSet(), true );
 
     //reset.
-    this->clearDecoration();
+    //this->clearDecoration();
     getPositionAttitudeTransform()->removeChildren(0, getPositionAttitudeTransform()->getNumChildren());
 
     _geode = new osg::Geode();

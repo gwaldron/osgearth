@@ -29,6 +29,7 @@ namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+#if 0
     /**
      * Decoration technique that highlights the geometry.
      */
@@ -54,6 +55,7 @@ namespace osgEarth { namespace Annotation
         osg::Vec4f                   _color;
         osg::ref_ptr<osg::Uniform>   _colorUniform;
     };
+#endif
 
 } } // namespace osgEarth::Annotation
 

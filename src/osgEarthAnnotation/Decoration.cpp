@@ -30,7 +30,7 @@
 #include <osgEarthAnnotation/TrackNode>
 
 using namespace osgEarth::Annotation;
-
+#if 0
 //---------------------------------------------------------------------------
 
 void
@@ -103,3 +103,4 @@ InjectionDecoration::apply(osg::Group* ap, bool enable)
     }
     return false;
 }
+#endif

@@ -23,7 +23,6 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/MeshClamper>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -307,7 +306,7 @@ ImageOverlay::init()
         style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         applyStyle( style );
         setLightingIfNotSet( false );
-        clampMesh( getMapNode()->getTerrain()->getGraph() );
+        //clampMesh( getMapNode()->getTerrain()->getGraph() );
 
         if ( Registry::capabilities().supportsGLSL() )
         {
@@ -719,7 +718,7 @@ ImageOverlay::removeCallback( ImageOverlayCallback* cb )
     }    
 }
 
-
+#if 0
 void
 ImageOverlay::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
@@ -753,3 +752,4 @@ ImageOverlay::clampMesh( osg::Node* terrainModel )
 
     this->dirtyBound();
 }
+#endif

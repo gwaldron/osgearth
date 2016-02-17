@@ -134,7 +134,7 @@ LabelNode::setStyle( const Style& style )
         return;
     }
     
-    this->clearDecoration();
+//    this->clearDecoration();
 
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
 

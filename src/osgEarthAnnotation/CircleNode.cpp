@@ -22,6 +22,7 @@
 
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -169,7 +170,7 @@ CircleNode::rebuild()
         osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style );
         if ( node.valid() )
         {
-            node = applyAltitudePolicy( node.get(), _style );
+            node = AnnotationUtils::installOverlayParent( node.get(), _style );
             getPositionAttitudeTransform()->addChild( node.get() );
         }
 

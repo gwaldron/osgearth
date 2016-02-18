@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_GEOMETRY_CLAMPER
+#define OSGEARTH_GEOMETRY_CLAMPER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/Terrain>
+#include <osgEarth/DPLineSegmentIntersector>
+#include <osg/NodeVisitor>
+#include <osg/fast_back_stack>
+
+namespace osgEarth
+{
+    using namespace osgEarth;
+
+    /**
+     * Utility that takes existing OSG geometry and modifies it so that
+     * it "conforms" with a terrain patch.
+     */
+    class OSGEARTH_EXPORT GeometryClamper : public osg::NodeVisitor
+    {
+    public:
+        GeometryClamper();
+
+        virtual ~GeometryClamper() { }
+
+        void setTerrainPatch(osg::Node* node) { _terrainPatch = node; }
+        osg::Node* getTerrainPatch() const { return _terrainPatch.get(); }
+
+        void setTerrainSRS(const SpatialReference* srs) { _terrainSRS = srs; }
+        const SpatialReference* getTerrainSRS() const   { return _terrainSRS.get(); }
+
+        void setPreserveZ(bool value) { _preserveZ = value; }
+        bool getPreserveZ() const     { return _preserveZ; }
+
+        void setScale(float scale) { _scale = scale; }
+        float getScale() const     { return _scale; }
+
+        void setOffset(float offset) { _offset = offset; }
+        float getOffset() const      { return _offset; }
+
+    public: // osg::NodeVisitor
+
+        void apply( osg::Geode& );
+        void apply( osg::Transform& );
+
+    protected:
+
+        osg::ref_ptr<osg::Node>              _terrainPatch;
+        osg::ref_ptr<const SpatialReference> _terrainSRS;
+        bool                                 _preserveZ;
+        float                                _scale;
+        float                                _offset;
+        osg::fast_back_stack<osg::Matrixd>   _matrixStack;
+        osg::ref_ptr<DPLineSegmentIntersector> _lsi;
+    };
+
+
+    class GeometryClamperCallback : public osgEarth::TerrainCallback
+    {
+    public:
+        GeometryClamperCallback();
+
+        virtual ~GeometryClamperCallback() { }
+
+        /** Access to configure the underlying clamper */
+        GeometryClamper& getClamper()             { return _clamper; }
+        const GeometryClamper& getClamper() const { return _clamper; }
+
+    public: // TerrainCallback
+        
+        virtual void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
+
+    protected:
+        GeometryClamper _clamper;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_GEOMETRY_CLAMPER

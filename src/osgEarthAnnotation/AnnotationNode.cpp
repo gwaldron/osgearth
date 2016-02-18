@@ -65,9 +65,7 @@ Style AnnotationNode::s_emptyStyle;
 
 AnnotationNode::AnnotationNode() :
 _dynamic    ( false ),
-_autoclamp  ( false ),
 _depthAdj   ( false ),
-//_activeDs   ( 0L ),
 _priority   ( 0.0f )
 {
     // always blend.
@@ -78,9 +76,7 @@ _priority   ( 0.0f )
 
 AnnotationNode::AnnotationNode(const Config& conf) :
 _dynamic    ( false ),
-_autoclamp  ( false ),
 _depthAdj   ( false ),
-//_activeDs   ( 0L ),
 _priority   ( 0.0f )
 {
     this->setName( conf.value("name") );
@@ -164,55 +160,6 @@ AnnotationNode::setPriority(float priority)
     _priority = priority;
 }
 
-#if 0
-void
-AnnotationNode::setCPUAutoClamping( bool value )
-{
-    if ( getMapNode() )
-    {
-        if ( !_autoclamp && value )
-        {
-            setDynamic( true );
-
-            if ( AnnotationSettings::getContinuousClamping() )
-            {
-                _autoClampCallback = new AutoClampCallback( this );
-                getMapNode()->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
-            }
-        }
-        else if ( _autoclamp && !value && _autoClampCallback.valid())
-        {
-            getMapNode()->getTerrain()->removeTerrainCallback( _autoClampCallback );
-            _autoClampCallback = 0;
-        }
-
-        _autoclamp = value;
-        
-        if ( _autoclamp && AnnotationSettings::getApplyDepthOffsetToClampedLines() )
-        {
-            if ( !_depthAdj )
-            {
-                // verify that the geometry if polygon-less:
-                bool wantDepthAdjustment = false;
-                PrimitiveSetTypeCounter counter;
-                this->accept(counter);
-                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
-                {
-                    wantDepthAdjustment = true;
-                }
-
-                setDepthAdjustment( wantDepthAdjustment );
-            }
-            else
-            {
-                // update depth adjustment calculation
-                //getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
-            }
-        }
-    }
-}
-#endif
-
 void
 AnnotationNode::setDepthAdjustment( bool enable )
 {
@@ -228,143 +175,9 @@ AnnotationNode::setDepthAdjustment( bool enable )
     _depthAdj = enable;
 }
 
-#if 0
-void
-AnnotationNode::installDecoration( const std::string& name, Decoration* ds )
-{
-    if ( _activeDs )
-    {
-        clearDecoration();
-    }
-
-    if ( ds == 0L )
-    {
-        _dsMap.erase( name );
-    }
-    else
-    {
-        _dsMap[name] = ds->copyOrClone();
-    }
-}
-
-void
-AnnotationNode::uninstallDecoration( const std::string& name )
-{
-    clearDecoration();
-    _dsMap.erase( name );
-}
-
-const std::string&
-AnnotationNode::getDecoration() const
-{
-    return _activeDsName;
-}
-
-void
-AnnotationNode::setDecoration( const std::string& name )
-{
-    // already active?
-    if ( _activeDs && _activeDsName == name )
-        return;
-
-    // is a different one active? if so kill it
-    if ( _activeDs )
-        clearDecoration();
-
-    // try to find and enable the new one
-    DecorationMap::iterator i = _dsMap.find(name);
-    if ( i != _dsMap.end() )
-    {
-        Decoration* ds = i->second.get();
-        if ( ds )
-        {
-            if ( this->accept(ds, true) ) 
-            {
-                _activeDs = ds;
-                _activeDsName = name;
-            }
-        }
-    }
-}
-
-void
-AnnotationNode::clearDecoration()
-{
-    if ( _activeDs )
-    {
-        this->accept(_activeDs, false);
-        _activeDs = 0L;
-        _activeDsName = "";
-    }
-}
-
-bool
-AnnotationNode::hasDecoration( const std::string& name ) const
-{
-    return _dsMap.find(name) != _dsMap.end();
-}
-#endif
-
-#if 0
-osg::Group*
-AnnotationNode::getChildAttachPoint()
-{
-    osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
-    return t ? (osg::Group*)t : (osg::Group*)this;
-}
-#endif
-
-#if 0
-bool
-AnnotationNode::supportsAutoClamping( const Style& style ) const
-{
-    return
-        !style.has<ExtrusionSymbol>()  &&
-        !style.has<ModelSymbol>()   &&
-        !style.has<MarkerSymbol>()     &&  // backwards-compability
-        style.has<AltitudeSymbol>()    &&
-        (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
-         style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
-        style.get<AltitudeSymbol>()->technique() != AltitudeSymbol::TECHNIQUE_GPU;
-}
-
-
-void
-AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
-{
-    bool cpuClamp = false;
-
-    if ( _altitude.valid() )
-    {
-        bool clamp =
-            _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN ||
-            _altitude->clamping() == _altitude->CLAMP_RELATIVE_TO_TERRAIN;
-
-        bool gpuClamp =
-            clamp && _altitude->technique() == _altitude->TECHNIQUE_GPU;
-
-        cpuClamp = 
-            (mode == ALTMODE_RELATIVE || clamp) &&
-            !gpuClamp;
-
-        if ( clamp && mode == ALTMODE_ABSOLUTE )
-        {
-            // note: altitude mode conflicts with style.
-        }
-    }
-
-    setCPUAutoClamping( cpuClamp );
-}
-#endif
-
 void
 AnnotationNode::applyStyle( const Style& style)
 {
-    //if ( supportsAutoClamping(style) )
-    //{     
-    //    _altitude = style.get<AltitudeSymbol>();
-    //    setCPUAutoClamping( true );
-    //}
     applyRenderSymbology(style);
 }
 

@@ -23,14 +23,10 @@
 #define OSGEARTH_ANNO_ANNOTATION_NODE_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgEarthAnnotation/Decoration>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNodeObserver>
-#include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
-#include <osgEarth/Viewpoint>
-#include <osgEarth/DateTimeRange>
 
 
 #define META_AnnotationNode(library,name) \
@@ -69,11 +65,6 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDynamic( bool value );
 
-        /** 
-         * Gets the attach point for children of this node
-         */
-        //virtual osg::Group* getChildAttachPoint();
-
         /**
          * Serialized this annotation node so you can re-create it later
          */
@@ -108,86 +99,20 @@ namespace osgEarth { namespace Annotation
 
         virtual const Style& getStyle() const { return s_emptyStyle; }
 
-
-#if 0
-    public: // decoration support - DEPRECATED
-
-        /**
-         * @deprecated
-         * Installs a decoration on this annotation node.
-         */
-        void installDecoration( const std::string& name, Decoration* ds );
-
-        /**
-         * @deprecated
-         * Uninstalls a decoration on this annotation node.
-         */
-        void uninstallDecoration( const std::string& name );
-
-        /**
-         * @deprecated
-         * Gets the current decoration
-         */
-        const std::string& getDecoration() const;
-
-        /**
-         * @deprecated
-         * Activates a named decoration that was installed previously
-         */
-        virtual void setDecoration( const std::string& name );
-
-        /**
-         * @deprecated
-         * Clears any decoration.
-         */
-        virtual void clearDecoration();
-
-        /**
-         * @deprecated
-         * Whether this annotation has the specified decoration installed.
-         */
-        bool hasDecoration( const std::string& name ) const;
-#endif
-
     protected:
 
-        bool                         _dynamic;
-        bool                         _autoclamp;
-        bool                         _depthAdj;
-        //osg::ref_ptr<const AltitudeSymbol> _altitude;
+        bool _dynamic;
+        bool _depthAdj;
 
         DepthOffsetAdapter _doAdapter;
 
-#if 0
-        typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
-        DecorationMap _dsMap;
-        Decoration*   _activeDs;
-        std::string   _activeDsName;
-#endif
-
         float _priority;
-
-        //bool supportsAutoClamping( const Style& style ) const;
-        
-        /**
-         * Check the altitude symbology (if present) and configure the
-         * automatic mesh clamping if necessary.
-         */
-        //virtual void configureForAltitudeMode( const AltitudeMode& mode );
 
         /**
          * Apply general style information to the node
          */
         virtual void applyStyle(const Style&);
         virtual void applyRenderSymbology(const Style&);
-        
-        /**
-         * Sets the node to automatically re-clamp its geometry to incoming terrain tiles
-         * as they page in (if applicable).
-         * Note: you usually don't need to call this directly; it is automatically set
-         * based on the symbology. But you can call it to override the automatic setting.
-         */
-        //virtual void setCPUAutoClamping( bool value );
 
         /**
          * Whether to activate depth adjustment.
@@ -210,7 +135,6 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
-        //osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
     private:
             
@@ -218,9 +142,7 @@ namespace osgEarth { namespace Annotation
         static Style s_emptyStyle;
 
 
-    public: // internal methods; do not call directly
-
-        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
+    public:
 
         virtual ~AnnotationNode();
     };

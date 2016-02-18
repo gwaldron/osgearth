@@ -24,8 +24,6 @@
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/GeoTransform>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/Horizon>
 #include <osgEarth/CullingUtils>
 #include <osg/PositionAttitudeTransform>
 
@@ -34,11 +32,9 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth;
 
     /**
-     * Base class for an annotation node that it drawn in screen-space
-     * (as an orthographic overlay)
-     *
-     * Don't use this class directly. Use one of its subclasses instead like
-     * LabelNode or PlaceNode.
+     * Base class for an annotation node that is anchored to a GeoPoint on the map.
+     * Use getGeoTransform() to control the map position, and getPositionAttitudeTransform()
+     * to control the offsets in the local tangent plane at that location.
      */
     class OSGEARTHANNO_EXPORT GeoPositionNode : public AnnotationNode
     {
@@ -71,12 +67,6 @@ namespace osgEarth { namespace Annotation
          * Access to the PositionAttitudeTransform for local offsets and rotation
          */
         osg::PositionAttitudeTransform* getPositionAttitudeTransform() const { return _paxform; }
-
-        /**
-         * Enables or disable automatic horizon culling for geocentric maps
-         */
-        void setHorizonCulling(bool value);
-        bool getHorizonCulling() const;
 
         /**
          * Enables or disables ray based occlusion culling

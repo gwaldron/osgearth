@@ -43,22 +43,19 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-#define DEFAULT_HORIZON_CULLING   true
 #define DEFAULT_OCCLUSION_CULLING false
 
 
 GeoPositionNode::GeoPositionNode() :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
 {
     init();
 }
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode) :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -66,8 +63,7 @@ _horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const GeoPoint& position ) :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -83,14 +79,6 @@ GeoPositionNode::init()
 
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
-
-    // Callback to cull ortho nodes that are not visible over the geocentric horizon
-    _horizonCuller = new HorizonCullCallback();
-    if ( getMapNode() )
-        _horizonCuller->setHorizon( new Horizon(getMapNode()->getMapSRS()) );
-
-    setHorizonCulling( _horizonCullingRequested );
-    _geoxform->addCullCallback( _horizonCuller.get() );
     
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 }
@@ -110,18 +98,10 @@ GeoPositionNode::setMapNode( MapNode* mapNode )
             setOcclusionCulling( true );
         }
 
-        // same goes for the horizon culler:
-        if ( getMapNode() )
-        {
-            _horizonCuller->setHorizon( new Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
-            setHorizonCulling( _horizonCullingRequested );
-
+        if ( mapNode )
             _geoxform->setTerrain( getMapNode()->getTerrain() );
-        }
         else
-        {
             _geoxform->setTerrain( 0L );
-        }
     }
 }
 
@@ -168,23 +148,6 @@ GeoPositionNode::applyStyle(const Style& style)
 
     // up the chain
     AnnotationNode::applyStyle( style );
-}
-
-bool
-GeoPositionNode::getHorizonCulling() const
-{
-    return _horizonCullingRequested;
-}
-
-void
-GeoPositionNode::setHorizonCulling(bool value)
-{
-    _horizonCullingRequested = value;
-
-    _horizonCuller->setEnabled(
-        _horizonCullingRequested &&
-        getMapNode() &&
-        getMapNode()->isGeocentric() );
 }
 
 bool
@@ -267,12 +230,6 @@ _horizonCullingRequested( true )
         osg::Quat q( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0), c->value("w", 1.0) );
         getPositionAttitudeTransform()->setAttitude( q );
     }
-
-    bool hc = conf.value("horizon_culling", DEFAULT_HORIZON_CULLING);
-    if ( hc != getHorizonCulling() )
-    {
-        setHorizonCulling( hc );
-    }
 }
 
 Config
@@ -311,11 +268,6 @@ GeoPositionNode::getConfig() const
         c.set( "z", rot.z() );
         c.set( "w", rot.w() );
         conf.add( c );
-    }
-
-    if ( getHorizonCulling() != DEFAULT_HORIZON_CULLING )
-    {
-        conf.add( "horizon_culling", getHorizonCulling() );
     }
 
     return conf;

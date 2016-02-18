@@ -26,8 +26,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNodeObserver>
-#include <osgEarth/TileKey>
-
+#include <osgEarth/Horizon>
 
 #define META_AnnotationNode(library,name) \
     META_Node(library,name)
@@ -79,6 +78,12 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setPriority( float value );
         float getPriority() const { return _priority; }
+
+        /**
+         * Enables or disable automatic horizon culling for geocentric maps
+         */
+        void setHorizonCulling(bool value);
+        bool getHorizonCulling() const;
 
         /**
          * Text associated with this annotation; might be the name, might be actual text
@@ -135,12 +140,14 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
+    protected:
+        
+        osg::ref_ptr<HorizonCullCallback> _horizonCuller;
 
     private:
             
         osg::observer_ptr<MapNode>   _mapNode;
         static Style s_emptyStyle;
-
 
     public:
 

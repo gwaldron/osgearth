@@ -23,39 +23,12 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthSymbology/ModelSymbol>
 
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNode>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/DrapeableNode>
-#include <osgEarth/ClampableNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-
-//-------------------------------------------------------------------
-
-#if 0
-namespace osgEarth { namespace Annotation
-{
-    struct AutoClampCallback : public TerrainCallback
-    {
-        AutoClampCallback( AnnotationNode* annotation):
-        _annotation( annotation )
-        {
-        }
-
-        void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
-        {
-            _annotation->reclamp( key, tile, context.getTerrain() );
-        }
-
-        AnnotationNode* _annotation;
-    };
-}  }
-#endif
 
 //-------------------------------------------------------------------
 
@@ -72,6 +45,9 @@ _priority   ( 0.0f )
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
+    
+    _horizonCuller = new HorizonCullCallback();
+    this->addCullCallback( _horizonCuller.get() );
 }
 
 AnnotationNode::AnnotationNode(const Config& conf) :
@@ -79,33 +55,13 @@ _dynamic    ( false ),
 _depthAdj   ( false ),
 _priority   ( 0.0f )
 {
-    this->setName( conf.value("name") );
-
-    if ( conf.hasValue("lighting") )
-    {
-        bool lighting = conf.value<bool>("lighting", false);
-        setLightingIfNotSet( lighting );
-    }
-
-    if ( conf.hasValue("backface_culling") )
-    {
-        bool culling = conf.value<bool>("backface_culling", false);
-        getOrCreateStateSet()->setMode( GL_CULL_FACE, (culling?1:0) | osg::StateAttribute::OVERRIDE );
-    }
-
-    if ( conf.hasValue("blending") )
-    {
-        bool blending = conf.value<bool>("blending", false);
-        getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
-    }
-    else
-    {
-        // blend by default.
-        this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
-    }
-    
+    this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     // always draw after the terrain.
     this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
+    _horizonCuller = new HorizonCullCallback();
+    this->addCullCallback( _horizonCuller.get() );
+
+    this->setName( conf.value("name") );
 }
 
 AnnotationNode::~AnnotationNode()
@@ -129,23 +85,30 @@ AnnotationNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
-#if 0
-        // relocate the auto-clamping callback, if there is one:
-        osg::ref_ptr<MapNode> oldMapNode = _mapNode.get();
-        if ( oldMapNode.valid() )
-        {
-            if ( _autoClampCallback )
-            {
-                oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
-                if ( mapNode )
-                    mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
-            }
-        }		
-#endif
         _mapNode = mapNode;
+        
+        if ( mapNode )
+        {
+            if ( mapNode->isGeocentric() )
+                _horizonCuller->setHorizon( new Horizon(mapNode->getMapSRS()) );
+            else
+                _horizonCuller->setEnabled( false );
+        }
 
 		applyStyle( this->getStyle() );
     }
+}
+
+bool
+AnnotationNode::getHorizonCulling() const
+{
+    return _horizonCuller->getEnabled();
+}
+
+void
+AnnotationNode::setHorizonCulling(bool value)
+{
+    _horizonCuller->setEnabled( value );
 }
 
 void

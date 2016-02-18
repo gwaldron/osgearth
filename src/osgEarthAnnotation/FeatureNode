@@ -84,16 +84,6 @@ namespace osgEarth { namespace Annotation
         void setFeature(Feature* feature);
 
         /**
-         * Get whether cluster culling is enabled on this FeatureNode
-         */
-        bool getClusterCulling() const;
-
-        /*
-         * Sets whether cluster culling is enabled on this FeatureNode.
-         */
-        void setClusterCulling( bool clusterCulling );
-
-        /**
          * Gets the StyleSheet for the session.
          */
         StyleSheet* getStyleSheet() const;
@@ -112,8 +102,6 @@ namespace osgEarth { namespace Annotation
         void dirty() { init(); }
 
     public: // AnnotationNode
-
-        //virtual osg::Group* getAttachPoint();
 
         /**
          * Gets the Style for this FeatureNode.
@@ -143,10 +131,7 @@ namespace osgEarth { namespace Annotation
         osg::Polytope                _featurePolytope;
         Style                        _style;
         bool                         _needsRebuild;
-        bool                         _needsSceneClamping;
-        bool                         _clusterCulling;
         GeoExtent                    _extent;
-        osg::ref_ptr<osg::NodeCallback> _clusterCullingCallback;
 
         typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
@@ -161,8 +146,6 @@ namespace osgEarth { namespace Annotation
         void clamp(const Terrain* terrain, osg::Node* patch);
 
         void build();
-
-        void updateClusterCulling();
 
     public:
 

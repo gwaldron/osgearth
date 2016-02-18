@@ -55,10 +55,8 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet) :
 AnnotationNode(),
-//_style             ( style ),
 _options           ( options ),
 _needsRebuild      ( true ),
-_clusterCulling    ( true ),
 _styleSheet        ( styleSheet )
 {
     _features.push_back( feature );
@@ -72,8 +70,6 @@ _styleSheet        ( styleSheet )
     }
 
     setStyle( style );
-
-    //build();
 }
 
 FeatureNode::FeatureNode(MapNode* mapNode, 
@@ -82,34 +78,14 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet):
 AnnotationNode(),
-//_style        ( style ),
 _options        ( options ),
 _needsRebuild   ( true ),
-_clusterCulling ( true ),
 _styleSheet     ( styleSheet )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
     FeatureNode::setMapNode( mapNode );
     setStyle( style );
-    //build();
 }
-
-bool
-FeatureNode::getClusterCulling() const
-{
-    return _clusterCulling;
-}
-
-void
-FeatureNode::setClusterCulling( bool clusterCulling)
-{
-    if (_clusterCulling != clusterCulling)
-    {
-        _clusterCulling = clusterCulling;
-        updateClusterCulling();
-    }
-}
-
 
 void
 FeatureNode::build()
@@ -245,8 +221,6 @@ FeatureNode::build()
             getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
         }
     }
-
-    updateClusterCulling();
 }
 
 void
@@ -341,39 +315,6 @@ FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
         this->dirtyBound();
     }
 }
-
-void
-FeatureNode::updateClusterCulling()
-{
-    // install a cluster culler.
-    if ( getMapNode() && getMapNode()->isGeocentric() && _clusterCulling && !_clusterCullingCallback.valid() )
-    {
-        const GeoExtent& ccExtent = _extent;
-        if ( ccExtent.isValid() )
-        {
-            // if the extent is more than 90 degrees, bail
-            GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
-            if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
-            {
-                // get the geocentric tile center:
-                osg::Vec3d tileCenter;
-                ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
-
-                osg::Vec3d centerECEF;
-                ccExtent.getSRS()->transform( tileCenter, getMapNode()->getMapSRS()->getECEF(), centerECEF );
-                _clusterCullingCallback = ClusterCullingFactory::create2( this, centerECEF );
-                if ( _clusterCullingCallback.valid() )
-                    this->addCullCallback( _clusterCullingCallback.get() );
-            }
-        }
-    }
-    else if (!_clusterCulling && _clusterCullingCallback.valid() )
-    {
-        this->removeCullCallback( _clusterCullingCallback.get() );
-        _clusterCullingCallback = 0;
-    }
-}
-
 
 //-------------------------------------------------------------------
 

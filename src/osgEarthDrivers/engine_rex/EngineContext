@@ -93,7 +93,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
 
-        void unloadChildrenOf(TileNode*);
+        void unloadChildrenOf(const TileNode*);
 
         double getExpirationRange2() const { return _expirationRange2; }
 

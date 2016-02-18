@@ -321,7 +321,6 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 
     EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
 
-#if 1
     // Shows all culled tiles, good for testing culling
     unsigned frame = cv->getFrameStamp()->getFrameNumber();
 
@@ -337,45 +336,8 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
             getSubTile(i)->accept_cull_stealth( cv );
         }
     }
-#else
-    // Shows all loaded tiles, good for testing expiration range
-    if ( _childrenReady )
-    {
-        for(int i=0; i<4; ++i)
-        {
-            getSubTile(i)->accept_cull_stealth( cv );
-        }
-    }
-    else
-    {
-        acceptSurface( cv, context );
-    }
-
-#endif
 
     return visible;
-}
-
-void
-TileNode::tryUnload(TileNode* tile, const osg::Vec3& vp, EngineContext* context)
-{
-    if ( tile->getNumChildren() > 0 )
-    {
-        bool unload = true;
-
-        // Test against the expiration range. A tile whose outer rim is closer
-        // than this range cannot be unloaded.
-        double range2 = context->getExpirationRange2();
-        if ( range2 > 0.0 )
-        {
-            const osg::BoundingSphere& bs = tile->getBound();
-            double distToTile2 = (bs.center() - vp).length2() + bs.radius2();
-            if ( distToTile2 <= range2 )
-                unload = false;
-        }
-        if ( unload )
-            context->unloadChildrenOf( tile );
-    }
 }
 
 bool
@@ -387,13 +349,8 @@ TileNode::cull(osgUtil::CullVisitor* cv)
     // Horizon check the surface first:
     if ( !_surface->isVisible(cv) )
     {
-        // If we can't see the surface, and it has children, retire them
-        tryUnload( this, cv->getViewPointLocal(), context );
         return false;
     }
-
-    // update the timestamp so this tile doesn't become dormant.
-    _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
     
     // determine whether we can and should subdivide to a higher resolution:
     bool childrenInRange = shouldSubDivide(cv, selectionInfo);
@@ -450,12 +407,7 @@ TileNode::cull(osgUtil::CullVisitor* cv)
         {
             for(int i=0; i<4; ++i)
             {
-                TileNode* subTile = getSubTile(i);
-
-                if ( !subTile->accept_cull(cv) )
-                {
-                    tryUnload( subTile, cv->getViewPointLocal(), context );
-                }
+                getSubTile(i)->accept_cull(cv);
             }
 
             // if we traversed all children, but they all return "not visible",
@@ -521,6 +473,10 @@ TileNode::accept_cull(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
     
+
+    // update the timestamp so this tile doesn't become dormant.
+    _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
+
     if ( !cv->isCulled(*this) )
     {
         cv->pushStateSet( getStateSet() );

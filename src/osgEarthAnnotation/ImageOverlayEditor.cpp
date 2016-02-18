@@ -99,7 +99,8 @@ ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
     osg::Vec2d location = _overlay->getControlPoint( controlPoint );
     
     SphereDragger* dragger = new SphereDragger(_overlay->getMapNode());
-    dragger->setPosition( GeoPoint( SpatialReference::create( "epsg:4326"), location.x(), location.y()));
+    GeoPoint point( SpatialReference::get("epsg:4326"), location.x(), location.y() );
+    dragger->setPosition( point );
     dragger->addPositionChangedCallback( new ImageOverlayDraggerCallback(_overlay.get(), controlPoint, _singleVert));
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;

@@ -34,6 +34,9 @@
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
 
+#include <osgEarthAnnotation/AnnotationEditing>
+#include <osgEarthAnnotation/ImageOverlayEditor>
+
 #include <osgEarthSymbology/GeometryFactory>
 
 #include <osgViewer/Viewer>
@@ -84,6 +87,9 @@ main(int argc, char** argv)
     // Make a group for labels
     osg::Group* labelGroup = new osg::Group();
     annoGroup->addChild( labelGroup );
+
+    osg::Group* editGroup = new osg::Group();
+    root->addChild( editGroup );
 
     // Style our labels:
     Style labelStyle;
@@ -206,6 +212,8 @@ main(int argc, char** argv)
             Distance(300, Units::KILOMETERS),
             circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
         annoGroup->addChild( circle );
+
+        editGroup->addChild( new CircleNodeEditor(circle) );
     }
 
 	{
@@ -220,6 +228,8 @@ main(int argc, char** argv)
 			Distance(300, Units::KILOMETERS),
 			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
 		annoGroup->addChild( circle );
+
+        editGroup->addChild( new CircleNodeEditor(circle) );
 	}
 
     //--------------------------------------------------------------------
@@ -240,6 +250,8 @@ main(int argc, char** argv)
             Angle(360.0 - 45.0, Units::DEGREES), 
             true);
         annoGroup->addChild( ellipse );
+
+        editGroup->addChild( new EllipseNodeEditor(ellipse) );
     }
 	{
 		Style ellipseStyle;
@@ -256,6 +268,8 @@ main(int argc, char** argv)
             Angle(40.0, Units::DEGREES), 
             true);
 		annoGroup->addChild( ellipse );
+
+        editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
     
     //--------------------------------------------------------------------
@@ -273,6 +287,8 @@ main(int argc, char** argv)
             Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
+
+        editGroup->addChild( new RectangleNodeEditor(rect) );
     }    
 
     //--------------------------------------------------------------------
@@ -309,6 +325,8 @@ main(int argc, char** argv)
             imageOverlay = new ImageOverlay(mapNode, image);
             imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
             annoGroup->addChild( imageOverlay );
+
+            editGroup->addChild( new ImageOverlayEditor(imageOverlay) );
         }
     }
 

@@ -170,9 +170,6 @@ namespace osgEarth { namespace Annotation
             const TileKey&          key, 
             osg::Node*              tile, 
             TerrainCallbackContext& context);
-        
-    private:
-        void clampMesh( osg::Node* terrainModel );
     };
 
 } } // namespace osgEarth::Annotation

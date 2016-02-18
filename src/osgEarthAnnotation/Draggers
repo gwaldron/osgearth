@@ -23,6 +23,7 @@
 #define OSGEARTH_DRAGGERS_H
 
 #include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/MapNodeObserver>
@@ -39,7 +40,12 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Annotation
 {
-    class OSGEARTHANNO_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
+    /**
+     * Dragger is a handle you can use to control things in the scene.
+     * You drag it around with the mouse and it fires PositionChangedCallback's
+     * that you can listen to to repond to.
+     */
+    class OSGEARTHANNO_EXPORT Dragger : public GeoPositionNode
     {
     public:
         /**
@@ -65,62 +71,59 @@ namespace osgEarth { namespace Annotation
         /** dtor */
         virtual ~Dragger();
 
+        /** Sets the map position of the dragger, optionally firing a PositionChanged event. */
+        void setPosition(const osgEarth::GeoPoint& position, bool fireEvents);
+
+        /** Is the user currently dragging? */
         bool getDragging() const;
 
+        /** Is the mouse hovering over this dragger? */
         bool getHovered() const;
 
-        const osgEarth::GeoPoint& getPosition() const;
-
-        void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
-
+        /** Mod key to require to activate the dragget */
         void setModKeyMask(int mask) { _modKeyMask = mask; }
-
         int getModKeyMask() const { return _modKeyMask; }
 
+        /** Drag mode */
         void setDefaultDragMode(const DragMode& mode) { _defaultMode = mode; }
-
         DragMode& getDefaultDragMode() { return _defaultMode; }
 
+        /** Minimum vertical distance for vertical dragging */
         void setVerticalMinimum(double min) { _verticalMinimum = min; }
-
         double getVerticalMinimim() const { return _verticalMinimum; }
-
-
-        void updateTransform(osg::Node* patch = 0);
-
+        
+        /** Runs when the mouse intersects/hovers over the dragger */
         virtual void enter();
 
+        /** Runs when the mouse leaves the dragger */
         virtual void leave();
 
+        /** Sets the main color of the dragger */
         virtual void setColor( const osg::Vec4f& color ) =0;
 
+        /** Sets the color to use when the dragger is entered */
         virtual void setPickColor( const osg::Vec4f& color ) =0;
 
+        /** Add a callback that runs whenever the user moves the dragger */
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
+        /** Remove a callback. */
         void removePositionChangedCallback( PositionChangedCallback* callback );
 
-        virtual void traverse(osg::NodeVisitor& nv);        
 
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
+    public: // GeoPositionNode
 
+        virtual void setPosition(const GeoPoint& point);
 
-    public: // MapNodeObserver
+    public: // osg::Node
 
-        virtual void setMapNode( MapNode* mapNode );
-
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
-
+        virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
         void firePositionChanged();
-
-        osg::ref_ptr< TerrainCallback > _autoClampCallback;
-
-        osg::observer_ptr< MapNode > _mapNode;
-        osgEarth::GeoPoint _position;
+        
         bool _dragging;
         bool _hovered;
         PositionChangedCallbackList _callbacks;
@@ -161,8 +164,6 @@ namespace osgEarth { namespace Annotation
     protected:
 
         void updateColor();
-
-        osg::MatrixTransform* _scaler;
         osg::ShapeDrawable* _shapeDrawable;
         osg::Vec4f _pickColor;
         osg::Vec4f _color;

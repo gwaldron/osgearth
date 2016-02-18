@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/GeometryClamper>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -210,6 +211,11 @@ ImageOverlay::init()
 
     _geode->removeDrawables(0, _geode->getNumDrawables() );
 
+    if ( !_clampCallback.valid() )
+    {
+        _clampCallback = new TerrainCallbackAdapter<ImageOverlay>(this);
+    }
+
     if ( getMapNode() )
     {
         double height = 0;
@@ -227,7 +233,7 @@ ImageOverlay::init()
         g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
         g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
         g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
-        //_boundingPolytope = f->getWorldBoundingPolytope();
+        
         f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
 
         // next, convert to world coords and create the geometry:
@@ -313,6 +319,9 @@ ImageOverlay::init()
             //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
             Registry::shaderGenerator().run( _geode, "osgEarth.ImageOverlay" );
         }
+
+        getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
+        clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
     }
 }
 
@@ -718,38 +727,27 @@ ImageOverlay::removeCallback( ImageOverlayCallback* cb )
     }    
 }
 
-#if 0
 void
-ImageOverlay::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+ImageOverlay::clamp(const Terrain* terrain, osg::Node* patch)
 {
-    if ( _boundingPolytope.contains( tile->getBound() ) ) // intersects, actually
+    if ( terrain && patch )
     {
-        clampMesh( tile );
-        OE_DEBUG << LC << "Clamped overlay mesh, tile radius = " << tile->getBound().radius() << std::endl;
+        GeometryClamper clamper;
+        clamper.setTerrainPatch( patch );
+        clamper.setTerrainSRS( terrain->getSRS() );
+
+        this->accept( clamper );
+        this->dirtyBound();
     }
 }
 
 void
-ImageOverlay::clampMesh( osg::Node* terrainModel )
+ImageOverlay::onTileAdded(const TileKey&          key, 
+                          osg::Node*              tile, 
+                          TerrainCallbackContext& context)
 {
-    double scale  = 1.0;
-    double offset = 0.0;
-    bool   relative = false;
-
-    if (_altitude.valid())
+    if ( tile == 0L || _boundingPolytope.contains(tile->getBound()) )
     {
-        if ( _altitude->verticalScale().isSet() )
-            scale = _altitude->verticalScale()->eval();
-
-        if ( _altitude->verticalOffset().isSet() )
-            offset = _altitude->verticalOffset()->eval();
-
-        relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        clamp( context.getTerrain(), tile );
     }
-
-    MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
-    this->accept( clamper );
-
-    this->dirtyBound();
 }
-#endif

@@ -24,6 +24,7 @@ set(LIB_PUBLIC_HEADERS
     FeatureNode
     FeatureEditing
     GeoPositionNode
+    GeoPositionNodeAutoScaler
     LocalGeometryNode
     HighlightDecoration
     ImageOverlay
@@ -50,6 +51,7 @@ set(LIB_COMMON_FILES
     FeatureNode.cpp
     FeatureEditing.cpp
     GeoPositionNode.cpp
+    GeoPositionNodeAutoScaler.cpp
     LocalGeometryNode.cpp
     HighlightDecoration.cpp
     ImageOverlay.cpp

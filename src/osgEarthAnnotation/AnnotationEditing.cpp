@@ -150,16 +150,18 @@ void
 CircleNodeEditor::computeBearing()
 {
     _bearing = osg::DegreesToRadians( 90.0 );
+
     //Get the radius dragger's position
-    if (!_radiusDragger->getMatrix().isIdentity())
+    if ( _radiusDragger->getPosition().isValid() )
     {
         // Get the current location of the center of the circle (in lat/long)
         GeoPoint location = _node->getPosition();
         location.makeGeographic();
 
         // location of the radius dragger (in lat/long)
-        GeoPoint radiusLocation;
-        radiusLocation.fromWorld( location.getSRS(), _radiusDragger->getMatrix().getTrans() );
+        GeoPoint radiusLocation = _radiusDragger->getPosition();
+        if ( !radiusLocation.getSRS()->isGeographic() )
+            radiusLocation = radiusLocation.transform( location.getSRS() );
 
         // calculate the bearing b/w the 
         _bearing = GeoMath::bearing(

@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/GeoPositionNodeAutoScaler>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/AutoScale>
@@ -58,19 +59,6 @@ ModelNode::setStyle(const Style& style)
     _style = style;
     init();
 }
-
-#if 0
-void
-ModelNode::setScale(const osg::Vec3f& scale)
-{
-    osg::StateSet* stateSet = getStateSet();
-    if ( stateSet && stateSet->getBinName() == osgEarth::AUTO_SCALE_BIN )
-    {
-        stateSet->setRenderBinToInherit();
-    }
-    GeoPositionNode::setScale( scale );
-}
-#endif
 
 void
 ModelNode::init()
@@ -133,17 +121,29 @@ ModelNode::init()
 
                 getPositionAttitudeTransform()->addChild( node.get() );
 
+                osg::Vec3d scale(1, 1, 1);
+
                 if ( sym->scale().isSet() )
                 {
                     double s = sym->scale()->eval();
-                    getPositionAttitudeTransform()->setScale( osg::Vec3d(s,s,s) );
+                    scale.set(s, s, s);
                 }
+                if ( sym->scaleX().isSet() )
+                    scale.x() = sym->scaleX()->eval();
+
+                if ( sym->scaleY().isSet() )
+                    scale.y() = sym->scaleY()->eval();
+
+                if ( sym->scaleZ().isSet() )
+                    scale.z() = sym->scaleZ()->eval();
+
+                getPositionAttitudeTransform()->setScale( scale );
 
                 // auto scaling?
                 if ( sym->autoScale() == true )
                 {
-                    this->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN );
-                }
+                    this->addCullCallback( new GeoPositionNodeAutoScaler() );
+                } 
 
                 // rotational offsets?
                 if (sym && (sym->heading().isSet() || sym->pitch().isSet() || sym->roll().isSet()) )

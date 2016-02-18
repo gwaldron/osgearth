@@ -24,6 +24,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osg/NodeCallback>
+#include <osg/Vec3d>
 
 namespace osgEarth { namespace Annotation
 {
@@ -40,11 +41,14 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT GeoPositionNodeAutoScaler : public osg::NodeCallback
     {
     public:
-        GeoPositionNodeAutoScaler();
+        GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale = osg::Vec3d(1,1,1));
 
     public: // osg::NodeCallback
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    protected:
+        osg::Vec3d _baseScale;
     };
 
 } } // namespace

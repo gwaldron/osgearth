@@ -109,8 +109,11 @@ osgEarth Sample - Annotations
             </feature>
             
             <model name="flag model">
-                <url>../data/red_flag.osg.100000.scale</url>
                 <position lat="43" long="-100"/>
+                <style>
+                    model:       "../data/red_flag.osg.45.scale";
+                    model-scale: auto;
+                </style>
             </model>
             
             <imageoverlay>

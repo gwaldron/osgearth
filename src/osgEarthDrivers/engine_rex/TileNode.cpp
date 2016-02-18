@@ -264,8 +264,8 @@ TileNode::releaseGLObjects(osg::State* state) const
         _surface->releaseGLObjects(state);
     if ( _patch.valid() )
         _patch->releaseGLObjects(state);
-    //if ( _mptex.valid() )
-    //    _mptex->releaseGLObjects(state);
+    if ( _mptex.valid() )
+        _mptex->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }

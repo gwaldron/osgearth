@@ -109,13 +109,10 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                     if ( parentNode->areSubTilesDormant(nv.getFrameStamp()) )
                     {
                         // find and move all tiles to be unloaded to the dead pile.
-                        if ( _live )
-                        {
-                            ExpirationCollector collector( _live, _dead );
-                            for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
-                                parentNode->getSubTile(i)->accept( collector );
-                            unloaded += collector._count;
-                        }
+                        ExpirationCollector collector( _live, _dead );
+                        for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
+                            parentNode->getSubTile(i)->accept( collector );
+                        unloaded += collector._count;
                         parentNode->removeSubTiles();
                     }
                     else notDormant++;
@@ -123,7 +120,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 else notFound++;
             }
 
-            OE_DEBUG << LC << "Total=" << _parentKeys.size() << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "\n";
+            OE_DEBUG << LC << "Total=" << _parentKeys.size() << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "; live=" << _live->size() << "\n";
             _parentKeys.clear();
         }
     }

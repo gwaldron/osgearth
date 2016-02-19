@@ -196,9 +196,9 @@ namespace osgEarth { namespace Features
         std::vector<const FeatureLevel*> _lodmap;
 
         osg::Group*                      _overlayInstalled;
-        osg::Group*                      _overlayPlaceholder;
-        ClampableNode*                   _clampable;
-        DrapeableNode*                   _drapeable;
+        osg::ref_ptr<osg::Group>         _overlayPlaceholder;
+        osg::ref_ptr<ClampableNode>      _clampable;
+        osg::ref_ptr<DrapeableNode>      _drapeable;
         DepthOffsetAdapter               _depthOffsetAdapter;
 
         enum OverlayChange {

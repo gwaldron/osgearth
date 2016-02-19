@@ -20,7 +20,7 @@ osgEarth Sample - Annotations
         
         <annotations>
         
-            <label text="LabelNode">
+            <label text="Label">
                 <position lat="34" long="-120" />
                 <style type="text/css">
                     text-align:     center_center;
@@ -30,7 +30,7 @@ osgEarth Sample - Annotations
                 </style>
             </label>
             
-            <place text="PlaceNode">
+            <place text="Place">
                 <position lat="35" long="-110"/>
                 <icon>../data/placemark32.png</icon>
                 <style type="text/css">
@@ -45,9 +45,11 @@ osgEarth Sample - Annotations
                 <style type="text/css">
                     fill:               #ffff0080;
                     stroke:             #ffffff;
+                    stroke-width:       2px;
                     altitude-clamping:  terrain-drape;
                 </style>
             </circle>
+            <label text="Draped circle" lat="34.051" long="-117.974"/>
             
             <ellipse name="ellipse relative">
                 <position lat="34.051" long="-116" hat="5000"/>
@@ -68,18 +70,9 @@ osgEarth Sample - Annotations
                     extrusion-height: 5000;
                 </style>
             </ellipse>
-            
-            <rectangle name="absolute rectangle">
-                <position lat="34" long="-90" hat="1000"/>
-                <width value="50" units="nm"/>
-                <height value="25" units="nm"/>
-                <style type="text/css">
-                    stroke:       #00ffff; 
-                    stroke-width: 2; 
-                </style>
-            </rectangle>
+            <label text="Extruded Ellipse" lat="32" long="-100.0"/>
 
-            <feature name="Extruded Line with Outline">
+            <feature name="Extruded Line">
                 <srs>wgs84</srs>
                 <geometry>
                     LINESTRING(-80.37 34.039, -80.09 33.96, -79.75 34, -79.43 33.37, -79.48 32.88)
@@ -93,8 +86,9 @@ osgEarth Sample - Annotations
                     render-lighting:     true;
                 </style>
             </feature>
+            <label text="Extruded Line" lat="32" long="-80"/>
 
-            <feature name="Red GPU-clamped Line">
+            <feature name="GPU-Clamped Line">
                 <srs>wgs84</srs>
                 <geometry>
                     LINESTRING(-110 47, -110 43, -120 43, -120 42)
@@ -102,29 +96,41 @@ osgEarth Sample - Annotations
                 <style type="text/css">
                     stroke:              #ff3000;
                     stroke-width:        3;
-                    stroke-tessellation-size: 5km;
+                    stroke-tessellation-size: 1km;
                     altitude-clamping:   terrain-gpu;
-                    render-lighting:     false;
                 </style>
             </feature>
+            <label text="GPU-Clamped Line" lat="44" long="-115"/>
             
-            <model name="flag model">
+            <feature name="Draped Polygon">
+                <srs>wgs84</srs>
+                <geometry>
+                    POLYGON((-100 47, -100 49, -95 48, -96 45 -98 42))
+                </geometry>
+                <style type="text/css">
+                    fill:     #ffff007f;
+                    stroke:   #ffffff;
+                    stroke-width: 2px;
+                    altitude-clamping: terrain-drape;
+                </style>
+            </feature>
+            <label text="Draped Polygon" lat="45" long="-98"/>
+            
+            <model name="Auto-Scaled Model">
                 <position lat="43" long="-100"/>
                 <style>
                     model:       "../data/red_flag.osg.45.scale";
                     model-scale: auto;
                 </style>
             </model>
+            <label text="Auto-Scaled Model" lat="42.5" long="-100"/>
             
             <imageoverlay>
                 <url>../data/fractal.png</url>
                 <alpha>1.0</alpha>
                 <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
-            </imageoverlay>
-            
-            <label text="image overlay">
-                <position lat="26" long="-81" />
-            </label>
+            </imageoverlay>            
+            <label text="ImageOverlay" lat="26" long="-81"/>
             
             <local_geometry name="3D geometry">
                 <geometry>
@@ -139,15 +145,7 @@ osgEarth Sample - Annotations
                 </style>
                 <horizon_culling>true</horizon_culling>
             </local_geometry>
-            
-            <circle name="scene-clamped circle">
-                <position lat="33.4" long="-116.6"/>
-                <radius value="5" units="km"/>
-                <style type="text/css">
-                    fill: #afafff9f;
-                    render-lighting: false;
-                </style>
-            </circle>
+            <label text="3D Geometry" lat="33.4" long="-116.6"/>
 
             <feature name="Long Line">
                 <srs>wgs84</srs>
@@ -163,6 +161,7 @@ osgEarth Sample - Annotations
                     render-lighting:     false;
                 </style>
             </feature>
+            <label text="Tessellated line" lat="35" long="10"/>
             
         </annotations>
         

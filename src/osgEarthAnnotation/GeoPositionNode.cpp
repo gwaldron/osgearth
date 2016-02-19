@@ -209,6 +209,14 @@ _horizonCullingRequested( true )
     {
         setPosition( GeoPoint(conf.child("position")) );
     }
+    else
+    {
+        if (conf.hasValue("lat") && conf.hasValue("long"))
+        {
+            setPosition( GeoPoint(SpatialReference::get("wgs84"),
+                conf.value("long", 0.0), conf.value("lat", 0.0)) );
+        }
+    }
 
     if ( conf.hasChild( "scale" ) )
     {
@@ -238,7 +246,7 @@ GeoPositionNode::getConfig() const
     Config conf = AnnotationNode::getConfig();
 
     conf.addObj( "position", getGeoTransform()->getPosition() );
-    
+
     const osg::Vec3d& scale = getPositionAttitudeTransform()->getScale();
     if ( scale.x() != 1.0f || scale.y() != 1.0f || scale.z() != 1.0f )
     {

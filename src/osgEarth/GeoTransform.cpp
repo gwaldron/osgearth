@@ -21,6 +21,8 @@
 
 #define LC "[GeoTransform] "
 
+#define OE_TEST OE_DEBUG
+
 using namespace osgEarth;
 
 GeoTransform::GeoTransform() :
@@ -72,7 +74,6 @@ GeoTransform::setPosition(const GeoPoint& position)
     if ( !position.isValid() )
         return false;
 
-    // save the last know position
     _position = position;
 
     // relative Z or reprojection require a terrain:
@@ -82,7 +83,7 @@ GeoTransform::setPosition(const GeoPoint& position)
     // relative Z requires a terrain:
     if (position.altitudeMode() == ALTMODE_RELATIVE && !terrain.valid())
     {
-        OE_DEBUG << LC << "setPosition failed condition 1\n";
+        OE_TEST << LC << "setPosition failed condition 1\n";
         return false;
     }
 
@@ -97,14 +98,14 @@ GeoTransform::setPosition(const GeoPoint& position)
     // bail if the transformation failed:
     if ( !p.isValid() )
     {
-        OE_DEBUG << LC << "setPosition failed condition 2\n";
+        OE_TEST << LC << "setPosition failed condition 2\n";
         return false;
     }
 
     // convert to absolute height:
     if ( !p.makeAbsolute(_terrain.get()) )
     {
-        OE_DEBUG << LC << "setPosition failed condition 3\n";
+        OE_TEST << LC << "setPosition failed condition 3\n";
         return false;
     }
 
@@ -136,7 +137,7 @@ GeoTransform::onTileAdded(const TileKey&          key,
 {
    if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE)
    {
-       OE_DEBUG << LC << "onTileAdded fail condition 1\n";
+       OE_TEST << LC << "onTileAdded fail condition 1\n";
        return;
    }
 

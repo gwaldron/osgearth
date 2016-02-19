@@ -194,10 +194,10 @@ LabelNode::setDynamic( bool dynamic )
 OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 
 
-LabelNode::LabelNode(MapNode*               mapNode,
+LabelNode::LabelNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions ) :
-GeoPositionNode( mapNode, GeoPoint::INVALID )
+GeoPositionNode( mapNode, conf )
 {
     optional<Style> style;
 
@@ -205,9 +205,6 @@ GeoPositionNode( mapNode, GeoPoint::INVALID )
     conf.getIfSet   ( "text",  _text );
 
     init( *style );
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
@@ -216,7 +213,6 @@ LabelNode::getConfig() const
     Config conf( "label" );
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getGeoTransform()->getPosition() );
 
     return conf;
 }

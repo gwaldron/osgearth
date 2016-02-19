@@ -346,9 +346,6 @@ _dbOptions( dbOptions )
     }
 
     init();
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
@@ -357,7 +354,6 @@ PlaceNode::getConfig() const
     Config conf( "place" );
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getGeoTransform()->getPosition() );
     if ( _image.valid() ) {
         if ( !_image->getFileName().empty() )
             conf.add( "icon", _image->getFileName() );

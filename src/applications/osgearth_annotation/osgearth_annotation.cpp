@@ -137,13 +137,20 @@ main(int argc, char** argv)
         geom->push_back( osg::Vec3d(-60, 40, 0) );
         geom->push_back( osg::Vec3d(-60, 60, 0) );
         geom->push_back( osg::Vec3d(0,   60, 0) );
+
+        Feature* feature = new Feature(geom, geoSRS);
+        feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
         Style geomStyle;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
-        annoGroup->addChild( gnode );
+        
+        FeatureNode* fnode = new FeatureNode(mapNode, feature, geomStyle);
+        
+        annoGroup->addChild( fnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );
     }
@@ -158,11 +165,17 @@ main(int argc, char** argv)
         geom->push_back(  160., -45. );
         geom->push_back( -150., -40. );
         Style geomStyle;
+
+        Feature* feature = new Feature(geom, geoSRS);
+        feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
+
+        FeatureNode* gnode = new FeatureNode(mapNode, feature, geomStyle);
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS, -175, -35), "Antimeridian polygon", labelStyle) );
@@ -180,14 +193,17 @@ main(int argc, char** argv)
         path->push_back( osg::Vec3d(-74, 40.714, 0) );   // New York
         path->push_back( osg::Vec3d(139.75, 35.68, 0) ); // Tokyo
 
-        Style pathStyle;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-        pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-
         Feature* pathFeature = new Feature(path, geoSRS);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+
+        Style pathStyle;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
+        pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        pathStyle.getOrCreate<PointSymbol>()->size() = 5;
+        pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+        pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 

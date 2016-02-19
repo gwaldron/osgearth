@@ -181,29 +181,28 @@ namespace
 
     Action* getDoubleClickAction(const ViewVector& views)
     {
-      if (_annotation.valid())
-      {
-        if (_annotation->getAnnotationData() && _annotation->getAnnotationData()->getViewpoint())
+        if (_annotation.valid())
         {
-          return new SetViewpointAction(osgEarth::Viewpoint(*_annotation->getAnnotationData()->getViewpoint()), views);
+            osgEarth::Viewpoint vp;
+            vp.setNode( _annotation.get() );
+            return new SetViewpointAction( vp, views );
         }
         else if (_map.valid())
         {
-          osg::Vec3d center = _annotation->getBound().center();
+            osg::Vec3d center = _annotation->getBound().center();
 
-          GeoPoint output;
-          output.fromWorld( _map->getSRS(), center );
-          //_map->worldPointToMapPoint(center, output);
+            GeoPoint output;
+            output.fromWorld( _map->getSRS(), center );
+            //_map->worldPointToMapPoint(center, output);
 
-          osgEarth::Viewpoint vp;
-          vp.focalPoint() = output;
-          vp.range() = 1e5;
-          vp.heading() = 0.0;
-          vp.pitch() = -90.0;
+            osgEarth::Viewpoint vp;
+            vp.focalPoint() = output;
+            vp.range() = 1e5;
+            vp.heading() = 0.0;
+            vp.pitch() = -90.0;
 
-          return new SetViewpointAction(vp, views);
+            return new SetViewpointAction(vp, views);
         }
-      }
 
       return 0L;
     }
@@ -534,11 +533,10 @@ void MapCatalogWidget::refreshAnnotations()
     _manager->getAnnotations(annos);
     for (AnnotationVector::const_iterator it = annos.begin(); it != annos.end(); ++it)
     {
-      AnnotationTreeItem* annoItem = new AnnotationTreeItem(*it, _map);
-      annoItem->setText(0, QString(((*it)->getAnnotationData() ? (*it)->getAnnotationData()->getName().c_str() : "Annotation")));
-			annoItem->setCheckState(0, (*it)->getNodeMask() != 0 ? Qt::Checked : Qt::Unchecked);
-
-			_annotationsItem->addChild(annoItem);
+        AnnotationTreeItem* annoItem = new AnnotationTreeItem(*it, _map);
+        annoItem->setText(0, QString( (*it)->getName().c_str() ) );
+        annoItem->setCheckState(0, (*it)->getNodeMask() != 0 ? Qt::Checked : Qt::Unchecked);
+        _annotationsItem->addChild(annoItem);
 
       if (_manager->isSelected(*it))
         annoItem->setSelected(true);

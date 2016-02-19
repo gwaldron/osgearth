@@ -101,8 +101,8 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   //       to the on__TypeChange() methods.  Currently doing here for efficiency.
   for (AnnotationVector::const_iterator it = _annotations.begin(); it != _annotations.end(); ++it)
   {
-    osgEarth::Annotation::AnnotationData* annoData = (*it)->getAnnotationData();
-    std::string annoName = annoData && annoData->getName().size() > 0 ? annoData->getName() : "Annotation";
+    std::string annoName = (*it)->getName();
+    if ( annoName.empty() ) annoName = "Annotation";
     _ui.p1NodeCombo->addItem(tr(annoName.c_str()));
     _ui.p2NodeCombo->addItem(tr(annoName.c_str()));
     _ui.radNodeCombo->addItem(tr(annoName.c_str()));
@@ -751,9 +751,11 @@ void LOSCreationDialog::centerMapOnNode(osg::Node* node)
   if (node && _map.valid() && _manager.valid() && _views)
   {
     AnnotationNode* annoNode = dynamic_cast<AnnotationNode*>(node);
-    if (annoNode && annoNode->getAnnotationData() && annoNode->getAnnotationData()->getViewpoint())
+    if (annoNode)
     {
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(*annoNode->getAnnotationData()->getViewpoint()), *_views));
+      osgEarth::Viewpoint vp;
+      vp.setNode( annoNode );
+      _manager->doAction(this, new SetViewpointAction(vp, *_views));
     }
     else
     {

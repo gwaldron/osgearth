@@ -38,7 +38,6 @@ namespace
         CollectAnnotationNodes() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
         {
             _group.key() = "annotations";
-            _declutter   = false;
         }
 
         void apply(osg::Node& node)
@@ -50,19 +49,10 @@ namespace
                 _group.add( conf );
             }
 
-            if (!_declutter &&
-                node.getStateSet() &&
-                node.getStateSet()->getRenderBinMode() != osg::StateSet::INHERIT_RENDERBIN_DETAILS &&
-                node.getStateSet()->getBinName() == OSGEARTH_DECLUTTER_BIN )
-            {
-                _declutter = true;
-            }
-
             traverse(node);
         }
 
         Config _group;
-        bool   _declutter;
     };
 }
 
@@ -104,10 +94,8 @@ AnnotationRegistry::create(MapNode*              mapNode,
 {
     bool createdAtLeastOne = false;
 
-    bool declutter = conf.value<bool>("declutter",false) == true;
-
     // first try to parse the top-level config as an annotation:
-    AnnotationNode* top = createOne(mapNode, conf, options, declutter);
+    AnnotationNode* top = createOne(mapNode, conf, options);
     if ( top )
     {
         if ( results == 0L )
@@ -121,7 +109,7 @@ AnnotationRegistry::create(MapNode*              mapNode,
     {
         for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
         {
-            AnnotationNode* anno = createOne( mapNode, *i, options, declutter );
+            AnnotationNode* anno = createOne( mapNode, *i, options );
             if ( anno )
             {
                 if ( results == 0L )
@@ -139,8 +127,7 @@ AnnotationRegistry::create(MapNode*              mapNode,
 AnnotationNode*
 AnnotationRegistry::createOne(MapNode*              mapNode, 
                               const Config&         conf, 
-                              const osgDB::Options* options, 
-                              bool                  declutterOrthos ) const
+                              const osgDB::Options* options) const
 {
     FactoryMap::const_iterator f = _factories.find( conf.key() );
     if ( f != _factories.end() && f->second != 0L )
@@ -148,13 +135,7 @@ AnnotationRegistry::createOne(MapNode*              mapNode,
         AnnotationNode* anno = f->second->create(mapNode, conf, options);
         if ( anno )
         {
-            if ( declutterOrthos && dynamic_cast<SupportsDecluttering*>(anno) )
-            {
-                Decluttering::setEnabled( anno->getOrCreateStateSet(), true );
-            }
-
             Registry::objectIndex()->tagNode( anno, anno );
-
             return anno;
         }
     }
@@ -169,8 +150,6 @@ AnnotationRegistry::getConfig( osg::Node* graph ) const
     {
         CollectAnnotationNodes visitor;
         graph->accept( visitor );
-        if ( visitor._declutter )
-            visitor._group.set( "declutter", "true" );
         return visitor._group;
     }
     return Config();

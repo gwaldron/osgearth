@@ -705,7 +705,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         if ( annotations )
         {
             mapNode->addChild( annotations );
-            //root->addChild( annotations );
         }
     }
 

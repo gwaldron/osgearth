@@ -190,7 +190,6 @@ void AnnotationListWidget::refresh()
   {
     _annoList->clear();
 
-    osgEarth::Annotation::AnnotationData* annoData = 0L;
     bool annoDataSet = false;
 
     AnnotationVector annos;
@@ -198,28 +197,19 @@ void AnnotationListWidget::refresh()
     for (AnnotationVector::const_iterator it = annos.begin(); it != annos.end(); ++it)
     {
       AnnotationListItem* item = new AnnotationListItem(*it);
-      item->setText(QString(tr((*it)->getAnnotationData() ? (*it)->getAnnotationData()->getName().c_str() : "Annotation")));
+      item->setText( QString(tr((*it)->getName())) );
       item->setCheckState((*it)->getNodeMask() != 0 ? Qt::Checked : Qt::Unchecked);
 
       _annoList->addItem(item);
 
       if (_manager->isSelected(*it))
       {
-        if (!annoDataSet)
-        {
-          annoData = (*it)->getAnnotationData();
-          annoDataSet = true;
-        }
-        else
-          annoData = 0L;
-
         item->setSelected(true);
       }
     }
 
     _nameField->setText(tr(annoData ? annoData->getName().c_str() : "-----"));
     _priorityField->setText(annoData ? QString::number(annoData->getPriority()) : tr("-----"));
-    _viewpointField->setText(tr(annoData && annoData->getViewpoint() ? annoData->getViewpoint()->toString().c_str() : "-----"));
     _descriptionField->setText(tr(annoData ? annoData->getDescription().c_str() : ""));
   }
 

@@ -653,7 +653,6 @@ EarthManipulator::reinitialize()
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _setVPArcHeight = 0.0;
     _vfov = 30.0;
-    _tanHalfVFOV = tan(0.5*osg::DegreesToRadians(_vfov));
 }
 
 
@@ -788,8 +787,6 @@ EarthManipulator::setNode(osg::Node* node)
         _node     = node;
         _mapNode = 0L;
         _srs     = 0L;
-
-        _viewCamera = 0L;
 
         reinitialize();
         established();
@@ -1489,9 +1486,6 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack 
 }
 
 
-// this method will automatically install or uninstall the camera post-update callback 
-// depending on whether there's a tether node.
-//
 // Camera updates get called AFTER the scene gets its update traversal. So, if you have
 // tethering enabled (or some other feature that tracks scene graph nodes), this will
 // update the camera after the scene graph. This is important in order to maintain
@@ -1501,22 +1495,16 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack 
 // support OSG's "ON_DEMAND" frame scheme, which disables itself is there are any
 // update callbacks in the scene graph.
 void
-EarthManipulator::updateProjection( osg::Camera* eventCamera )
+EarthManipulator::updateProjection(osg::Camera* eventCamera)
 {
-    // Take a temporary ref to the observer pointers to keep them around.
-    osg::ref_ptr< osg::Camera > viewCamera;
-
     // check to see if we need to install a new camera callback:
-    if ( _viewCamera.lock(viewCamera) )
+    if ( eventCamera )
     {
-        // check whether a settings change requires an update:
-        bool settingsChanged = _settings->outOfSyncWith(_viewCameraSettingsMonitor);
-
         // update the projection matrix if necessary
-        osg::Viewport* vp = viewCamera->getViewport();
+        osg::Viewport* vp = eventCamera->getViewport();
         if ( vp )
         {
-            const osg::Matrixd& proj = viewCamera->getProjectionMatrix();
+            const osg::Matrixd& proj = eventCamera->getProjectionMatrix();
             bool isOrtho = osg::equivalent(proj(3,3), 1.0);
 
             // For a perspective camera, remember the last known VFOV. We will need it if we 
@@ -1524,7 +1512,7 @@ EarthManipulator::updateProjection( osg::Camera* eventCamera )
             if ( !isOrtho )
             {
                 double vfov, ar, zn, zf;
-                if (viewCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
+                if (eventCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
                 {
                     _vfov = vfov;
                 }
@@ -1551,22 +1539,20 @@ EarthManipulator::updateProjection( osg::Camera* eventCamera )
 
                 double ignore, N, F;
                 proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
-                _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, N, F);
+                eventCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, N, F);
 #else
                 double ignore, N, F;
                 proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
-                viewCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
+                eventCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
 #endif
 
-                //OE_WARN << "ORTHO: "
-                //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
-                //    << ", dist = " << _distance << ", vfov=" << _vfov
-                //    << ", X = " << x << ", Y = " << y
-                //    << std::endl;
+                OE_DEBUG << "ORTHO: "
+                    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
+                    << ", dist = " << _distance << ", vfov=" << _vfov
+                    << ", X = " << x << ", Y = " << y
+                    << std::endl;
             }
         }
-
-        _settings->sync( _viewCameraSettingsMonitor );
     }
 }
 

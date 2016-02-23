@@ -110,6 +110,8 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {
+        FeatureSource::initialize( dbOptions );
+
         if ( _options.url().isSet() )
         {
             _source = _options.url()->full();
@@ -317,7 +319,7 @@ public:
             return new GeometryFeatureCursor(
                 _geometry.get(),
                 getFeatureProfile(),
-                _options.filters() );
+                getFilters() );
         }
         else
         {
@@ -346,7 +348,7 @@ public:
                     this,
                     getFeatureProfile(),
                     query,
-                    _options.filters() );
+                    getFilters() );
             }
             else
             {

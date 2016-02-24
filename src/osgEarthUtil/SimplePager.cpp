@@ -58,32 +58,6 @@ namespace
         osg::observer_ptr<ProgressMaster> _master;
     };
 
-#if 0
-    /**
-     * Cull callback installed on each PagedLOD that keeps the corresponding
-     * progress callback up to date each time the PagedLOD gets cull traversed.
-     */
-    struct ProgressUpdater : public osg::NodeCallback
-    {
-        osg::ref_ptr<MyProgressCallback> _progress;
-
-        ProgressUpdater(osg::NodeCallback* master)
-        {
-            setName( "osgEarth::Util::SimplerPager::ProgressUpdater" );
-            _progress = new MyProgressCallback( static_cast<ProgressMaster*>(master) );
-        }
-
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            _progress->touch( nv->getFrameStamp() );
-            traverse(node, nv);
-        }
-    };
-#endif
-
-#if 0
-#endif
-
 
     /**
     * A pseudo-loader for paged feature tiles.
@@ -154,7 +128,9 @@ _profile( profile ),
 _rangeFactor( 6.0 ),
 _additive(false),
 _minLevel(0),
-_maxLevel(30)
+_maxLevel(30),
+_priorityScale(1.0f),
+_priorityOffset(0.0f)
 {
     // required in order to pass our "this" pointer to the pseudo loader:
     this->setName( "osgEarth::Util::SimplerPager::this" );
@@ -262,7 +238,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
     osg::PagedLOD* plod = new osg::PagedLOD;
     plod->setCenter( tileBounds.center() ); 
-    plod->setRadius( tileRadius );    
+    plod->setRadius( tileRadius );
 
     plod->addChild( node.get() );
 
@@ -275,6 +251,8 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
         // Now setup a filename on the PagedLOD that will load all of the children of this node.
         plod->setFileName(1, uri);
+        plod->setPriorityOffset(1, _priorityOffset);
+        plod->setPriorityScale (1, _priorityScale);
         
         // install a callback that will update the progress tracker whenever the PLOD
         // gets traversed. The children, once activated, will have access to its

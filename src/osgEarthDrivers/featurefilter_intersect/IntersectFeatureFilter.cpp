@@ -41,8 +41,11 @@ class IntersectFeatureFilter : public FeatureFilter, public IntersectFeatureFilt
 private:
     Threading::Mutex _transformMutex;
     bool _transformed;
+
     osg::ref_ptr<const SpatialReference> _boundarySRS;
-    std::vector< osg::ref_ptr<Ring> > _boundaries;
+    std::vector< osg::ref_ptr<Ring> >    _boundaries;
+    std::vector< Bounds >                _bboxes;
+    Bounds                               _overallbbox;
 
 public:
     IntersectFeatureFilter(const ConfigOptions& options)
@@ -59,6 +62,8 @@ public:
         {
             Ring& ring = *_boundaries[i].get();
             _boundarySRS->transform( ring.asVector(), srs );
+            _bboxes.push_back( ring.getBounds() );
+            _overallbbox.expandBy( _bboxes.back() );
         }
     }
 
@@ -125,19 +130,57 @@ public: // FeatureFilter
                 if ( feature && feature->getGeometry() )
                 {
                     osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
-                    
-                    for(unsigned b=0; b<_boundaries.size(); ++b)
-                    {
-                        bool contains = _boundaries[b]->contains2D(c.x(), c.y());
 
-                        if ( contains != invert().value() )
+                    if ( contains() == true )
+                    {
+                        // coarsest:
+                        if ( _overallbbox.contains(c.x(), c.y()) )
+                        {
+                            for(unsigned b=0; b<_boundaries.size(); ++b)
+                            {
+                                // finer:
+                                if ( _bboxes[b].contains(c.x(), c.y()) )
+                                {
+                                    // finest:
+                                    if ( exact()==false || _boundaries[b]->contains2D(c.x(), c.y()) )
+                                    {
+                                        output.push_back( feature );
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    else
+                    {    
+                        bool contained = false;
+
+                        // coarsest:
+                        if ( _overallbbox.contains(c.x(), c.y()) )
+                        {
+                            // finer:
+                            for(unsigned b=0; b<_boundaries.size() && !contained; ++b)
+                            {
+                                if ( _bboxes[b].contains(c.x(), c.y()) )
+                                {
+                                    // finest:
+                                    if ( exact()==false || _boundaries[b]->contains2D(c.x(), c.y()) )
+                                    {
+                                        contained = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if ( !contained )
                         {
                             output.push_back( feature );
-                            break;
                         }
                     }
                 }
             }
+
             OE_DEBUG << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
         
             input = output;

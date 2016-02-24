@@ -35,9 +35,9 @@ FeatureCursor::fill( FeatureList& list )
 
 //---------------------------------------------------------------------------
 
-FeatureListCursor::FeatureListCursor(const FeatureList& features, bool clone) :
+FeatureListCursor::FeatureListCursor(const FeatureList& features) :
 _features( features ),
-_clone   ( clone )
+_clone   ( false )
 {
     _iter = _features.begin();
 }

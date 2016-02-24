@@ -359,6 +359,9 @@ public:
 
         sqlite3_finalize( select );
 
+        // apply filters before returning.
+        applyFilters( features );
+
         if (!features.empty())
         {
             //OE_NOTICE << "Returning " << features.size() << " features" << std::endl;

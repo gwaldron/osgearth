@@ -39,6 +39,7 @@ DriverConfigOptions( options )
 
 FeatureSourceOptions::~FeatureSourceOptions()
 {
+    //nop
 }
 
 void
@@ -185,6 +186,21 @@ FeatureSource::isBlacklisted( FeatureID fid ) const
 {
     Threading::ScopedReadLock shared( const_cast<FeatureSource*>(this)->_blacklistMutex );
     return _blacklist.find( fid ) != _blacklist.end();
+}
+
+void
+FeatureSource::applyFilters(FeatureList& features) const
+{
+    // apply filters before returning.
+    if ( !getFilters().empty() )
+    {
+        FilterContext cx;
+        cx.setProfile( getFeatureProfile() );
+        for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
+        {
+            cx = filter->get()->push( features, cx );
+        }
+    }
 }
 
 //------------------------------------------------------------------------

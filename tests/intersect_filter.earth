@@ -28,11 +28,19 @@ to a polygon mask.
             <url>../data/ne_cities.shp</url>
             <profile>spherical-mercator</profile>
             <filters>
-                <intersect comment="Use the outline of France as a mask">
+                <intersect>
+                    <comment>
+                        Features: geometry to intersect with;
+                        Contains: true=features fall inside geometry; false=outside
+                        Exact:    true=use exact geometry; false=use bounding boxes only
+                    </comment>
+                    
                     <features driver="ogr">
                         <url>../data/france.shp</url>
                     </features>
-                    <invert>false</invert>
+                    <contains>true</contains>
+                    <exact>true</exact>                    
+                    
                 </intersect>
             </filters>
         </features>

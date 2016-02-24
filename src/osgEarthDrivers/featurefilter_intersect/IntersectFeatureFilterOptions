@@ -36,6 +36,8 @@ namespace osgEarth { namespace Drivers
         IntersectFeatureFilterOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
         {
             _conf.set("driver", "intersect");
+            _contains.init( true );
+            _exact.init( true );
             fromConfig( _conf );
         }
 
@@ -43,16 +45,22 @@ namespace osgEarth { namespace Drivers
         optional<FeatureSourceOptions>& features() { return _features; }
         const optional<FeatureSourceOptions>& features() const { return _features; }
 
-        /** Invert the boundaries; if true, geometries are excluded areas. */
-        optional<bool>& invert() { return _invert; }
-        const optional<bool>& invert() const { return _invert; }
+        /** If true (the default), accept features whose centroids are contained in the boundaries */
+        optional<bool>& contains() { return _contains; }
+        const optional<bool>& contains() const { return _contains; }
+
+        /** Whether to exactly check the boundary geometry (default=true). Set to false to use
+            bounding boxes only -- coarser but potentially much faster. */
+        optional<bool>& exact() { return _exact; }
+        const optional<bool>& exact() const { return _exact; }
 
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "intersect";
             conf.addObjIfSet( "features", _features );
-            conf.addIfSet   ( "invert",   _invert );
+            conf.addIfSet   ( "contains", _contains );
+            conf.addIfSet   ( "exact",    _exact );
             return conf;
         }
 
@@ -65,11 +73,13 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getObjIfSet( "features", _features );
-            conf.getIfSet   ( "invert",   _invert );
+            conf.getIfSet   ( "contains", _contains );
+            conf.getIfSet   ( "exact",    _exact );
         }
 
         optional<FeatureSourceOptions> _features;
-        optional<bool>                 _invert;
+        optional<bool>                 _contains;
+        optional<bool>                 _exact;
     };
 
 } } // namespace osgEarth::Drivers

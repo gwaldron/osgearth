@@ -191,7 +191,7 @@ AnnotationNode::applyRenderSymbology(const Style& style)
             int binNumber = render->order().isSet() ? (int)render->order()->eval() : ss->getBinNumber();
             std::string binName =
                 render->renderBin().isSet() ? render->renderBin().get() :
-                ss->useRenderBinDetails() ? ss->getBinName() : "RenderBin";
+                ss->useRenderBinDetails() ? ss->getBinName() : "DepthSortedBin";
             ss->setRenderBinDetails(binNumber, binName);
         }
 

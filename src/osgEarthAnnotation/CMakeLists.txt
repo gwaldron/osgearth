@@ -11,6 +11,7 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 set(LIB_PUBLIC_HEADERS  
     AnnotationSettings
     AnnotationEditing
+    AnnotationExtension
     AnnotationData
     AnnotationNode
     AnnotationRegistry
@@ -39,6 +40,7 @@ set(LIB_PUBLIC_HEADERS
 
 set(LIB_COMMON_FILES
     AnnotationEditing.cpp
+    AnnotationExtension.cpp
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationNode.cpp

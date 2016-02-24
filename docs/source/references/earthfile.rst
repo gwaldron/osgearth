@@ -44,7 +44,6 @@ the entire map.
     <map>
         <options lighting                 = "true"
                  elevation_interpolation  = "bilinear"
-                 elevation_tile_size      = "17"
                  overlay_texture_size     = "4096"
                  overlay_blending         = "true"
                  overlay_resolution_ratio = "3.0" >
@@ -181,6 +180,7 @@ An *image layer* is a raster image overlaid on the map's geometry.
                max_level      = "23"
                min_resolution = "100.0"
                max_resolution = "0.0"
+               max_data_level = "23"
                enabled        = "true"
                visible        = "true"
                shared         = "false"
@@ -347,8 +347,8 @@ A *Model Layer* renders non-terrain data, like vector features or external 3D mo
     <map>
         <model name    = "my model layer"
                driver  = "feature_geom"
-               enabled = true
-               visible = true >
+               enabled = "true"
+               visible = "true" >
 
 
 +-----------------------+--------------------------------------------------------------------+

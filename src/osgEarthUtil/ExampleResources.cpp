@@ -35,7 +35,6 @@
 
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
-#include <osgEarthUtil/ContourMap>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -582,8 +581,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // TODO: Most of these are likely to move into extensions.
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
-    const Config& contourMapConf  = externals.child("contour_map");
 
+    
+#if 0
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
     {
@@ -621,6 +621,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
         }
     }
+#endif
 
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
@@ -799,12 +800,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !vertScaleConf.empty() )
     {
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
-    }
-
-    // Install a contour map effect.
-    if ( !contourMapConf.empty() )
-    {
-        mapNode->getTerrainEngine()->addEffect( new ContourMap(contourMapConf) );
     }
 
     // Generic named value uniform with min/max.

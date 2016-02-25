@@ -30,7 +30,8 @@ namespace osgEarth { namespace TerrainShader
     using namespace osgEarth;
 
     class TerrainShaderExtension : public Extension,
-                                   public ExtensionInterface<MapNode>
+                                   public ExtensionInterface<MapNode>,
+                                   public TerrainShaderOptions
     {
     public:
         META_Object(osgearth_ext_terrainshader, TerrainShaderExtension);
@@ -45,8 +46,9 @@ namespace osgEarth { namespace TerrainShader
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        virtual void setDBOptions(const osgDB::Options* dbOptions);
 
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -59,7 +61,6 @@ namespace osgEarth { namespace TerrainShader
         TerrainShaderExtension(const TerrainShaderExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const TerrainShaderOptions         _options;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<TerrainEffect>        _effect;
     };

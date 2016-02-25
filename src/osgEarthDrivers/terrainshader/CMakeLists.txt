@@ -2,7 +2,6 @@
 # terrain shader plugin
 #
 set(TARGET_SRC
-	TerrainShaderPlugin.cpp
 	TerrainShaderExtension.cpp
 	${SHADERS_CPP} )
 	

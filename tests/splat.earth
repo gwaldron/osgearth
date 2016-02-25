@@ -9,8 +9,7 @@
         <terrain driver="rex" 
                  tile_size="17"
                  high_resolution_first="true" 
-                 merges_per_frame="50"
-                 skirt_ratio="0.01">
+                 merges_per_frame="25">
         </terrain>
     </options>
     

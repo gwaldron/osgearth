@@ -3,7 +3,6 @@
 #
 
 SET(TARGET_SRC
-	MapInspectorPlugin.cpp
 	MapInspectorExtension.cpp
 	MapInspectorUI.cpp)
 	

@@ -28,6 +28,17 @@ using namespace osgEarth;
 #define EXTENSION_OPTIONS_TAG "__osgEarth::ExtensionOptions"
 
 
+Extension::Extension()
+{
+    //nop
+}
+
+const ConfigOptions&
+Extension::getConfigOptions() const
+{
+    return _defaultOptions;
+}
+
 Extension*
 Extension::create(const std::string& name, const ConfigOptions& options)
 {
@@ -57,6 +68,10 @@ Extension::create(const std::string& name, const ConfigOptions& options)
         OE_WARN << LC << "Plugin \"" << name << "\" is not an Extension" << std::endl;
         return 0L;
     }
+
+    // for automatic serialization, in the event that the subclass does not
+    // implement getConfigOptions.
+    extension->_defaultOptions = options;
 
     rr.takeObject();
     return extension;

@@ -34,7 +34,8 @@ namespace osgEarth { namespace Util
      * Extension for loading the graticule node on demand.
      */
     class GraticuleExtension : public Extension,
-                               public ExtensionInterface<MapNode>
+                               public ExtensionInterface<MapNode>,
+                               public GraticuleOptions
     {
     public:
         META_Object(osgearth_ext_graticule, GraticuleExtension);
@@ -49,8 +50,9 @@ namespace osgEarth { namespace Util
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        virtual void setDBOptions(const osgDB::Options* dbOptions);
 
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -63,7 +65,6 @@ namespace osgEarth { namespace Util
         GraticuleExtension(const GraticuleExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const GraticuleOptions                 _options;
         osg::ref_ptr<const osgDB::Options>     _dbOptions;
         osg::ref_ptr<GraticuleTerrainEffect>   _effect;
         osg::ref_ptr<GraticuleNode>            _node;

@@ -31,6 +31,10 @@ using namespace osgEarth::MapInspector;
 
 #define LC "[MapInspector] "
 
+
+REGISTER_OSGEARTH_EXTENSION(osgearth_mapinspector, MapInspectorExtension)
+
+
 MapInspectorExtension::MapInspectorExtension()
 {
     ctor();

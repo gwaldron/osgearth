@@ -37,7 +37,7 @@ BumpMapExtension::BumpMapExtension()
 }
 
 BumpMapExtension::BumpMapExtension(const BumpMapOptions& options) :
-_options( options )
+BumpMapOptions( options )
 {
     //nop
 }
@@ -62,28 +62,28 @@ BumpMapExtension::connect(MapNode* mapNode)
         return false;
     }
     
-    osg::ref_ptr<osg::Image> image = _options.imageURI()->getImage( _dbOptions.get() );
+    osg::ref_ptr<osg::Image> image = imageURI()->getImage( _dbOptions.get() );
     if ( !image.valid() )
     {
         OE_WARN << LC << "Failed; unable to load normal map image from "
-            << _options.imageURI()->full() << "\n";
+            << imageURI()->full() << "\n";
         return false;
     }
 
     _effect = new BumpMapTerrainEffect( _dbOptions.get() );
     _effect->setBumpMapImage( image.get() );
 
-    if (_options.intensity().isSet())
-        _effect->getIntensityUniform()->set( _options.intensity().get() );
+    if (intensity().isSet())
+        _effect->getIntensityUniform()->set( intensity().get() );
 
-    if (_options.scale().isSet())
-        _effect->getScaleUniform()->set( _options.scale().get() );
+    if (scale().isSet())
+        _effect->getScaleUniform()->set( scale().get() );
 
-    if ( _options.octaves().isSet() )
-        _effect->setOctaves( _options.octaves().get() );
+    if ( octaves().isSet() )
+        _effect->setOctaves( octaves().get() );
 
-    if ( _options.baseLOD().isSet() )
-        _effect->setBaseLOD( _options.baseLOD().get() );
+    if ( baseLOD().isSet() )
+        _effect->setBaseLOD( baseLOD().get() );
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     

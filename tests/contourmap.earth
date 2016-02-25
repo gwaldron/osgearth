@@ -12,7 +12,5 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
-    <extensions>
-        <contour_map/>
-    </extensions>
+    <contour_map/>
 </map>

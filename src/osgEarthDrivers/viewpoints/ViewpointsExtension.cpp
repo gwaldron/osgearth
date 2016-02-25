@@ -161,7 +161,8 @@ ViewpointsExtension::ViewpointsExtension()
     //NOP
 }
 
-ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
+ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options) :
+ConfigOptions( options )
 {
     // backwards-compatibility: read viewpoints at the top level???
     const Config& viewpointsConf = options.getConfig();

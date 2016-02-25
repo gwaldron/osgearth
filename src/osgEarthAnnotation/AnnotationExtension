@@ -49,6 +49,8 @@ namespace osgEarth { namespace Annotation
 
         void setDBOptions(const osgDB::Options* dbOptions);
 
+        const ConfigOptions& getConfigOptions() const { return *this; }
+
 
     public: // ExtensionInterface<MapNode>
 

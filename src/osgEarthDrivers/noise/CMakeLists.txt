@@ -3,7 +3,6 @@
 #
 
 set(TARGET_SRC
-	NoisePlugin.cpp
 	NoiseExtension.cpp
 	NoiseTerrainEffect.cpp
 	${SHADERS_CPP} )

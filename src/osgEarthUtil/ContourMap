@@ -25,11 +25,13 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/Extension>
 #include <osg/Texture1D>
 #include <osg/TransferFunction>
 
 namespace osgEarth {
     class Map;
+    class MapNode;
 }
 
 namespace osgEarth { namespace Util
@@ -77,6 +79,28 @@ namespace osgEarth { namespace Util
         optional<float> _opacity;
         optional<bool>  _grayscale;
     };
+
+    /** Activates contour map from the earth file. */
+    class OSGEARTHUTIL_EXPORT ContourMapExtension : public Extension,
+                                                    public ExtensionInterface<MapNode>
+    {
+    public:
+        META_Object(osgEarthUtil, ContourMapExtension);
+
+        ContourMapExtension() { }
+        ContourMapExtension(const ConfigOptions&) { }
+
+    public: // ExtensionInterface<MapNode>
+        bool connect(MapNode*);
+        bool disconnect(MapNode*);
+
+    protected:
+        ContourMapExtension(const ContourMapExtension& rhs, const osg::CopyOp& op) { }
+        virtual ~ContourMapExtension() { }
+
+        osg::ref_ptr<ContourMap> _effect;
+    };
+
 
 } } // namespace osgEarth::Util
 

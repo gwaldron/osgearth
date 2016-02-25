@@ -41,7 +41,6 @@ set(TARGET_SRC
     LandCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
     NoiseTextureFactory.cpp
-	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
 	SplatTerrainEffect.cpp

@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/MapNode>
 
 #define LC "[ContourMap] "
 
@@ -211,4 +212,27 @@ ContourMap::getConfig() const
     conf.addIfSet("opacity", _opacity);
     conf.addIfSet("grayscale", _grayscale);
     return conf;
+}
+
+//-------------------------------------------------------------
+
+REGISTER_OSGEARTH_EXTENSION(osgearth_contourmap,  ContourMapExtension);
+REGISTER_OSGEARTH_EXTENSION(osgearth_contour_map, ContourMapExtension);
+
+bool
+ContourMapExtension::connect(MapNode* mapNode)
+{
+    if ( !_effect.valid() )
+        _effect = new ContourMap();
+
+    mapNode->getTerrainEngine()->addEffect( _effect.get() );
+    return true;
+}
+
+bool
+ContourMapExtension::disconnect(MapNode* mapNode)
+{
+    if ( mapNode )
+        mapNode->getTerrainEngine()->removeEffect( _effect.get() );
+    return true;
 }

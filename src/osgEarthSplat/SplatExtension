@@ -23,6 +23,7 @@
 #include "SplatOptions"
 #include "SplatTerrainEffect"
 #include "LandCoverTerrainEffect"
+#include "Zone"
 
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
@@ -39,7 +40,8 @@ namespace osgEarth { namespace Splat
      */
     class OSGEARTHSPLAT_EXPORT SplatExtension : public Extension,
                                                 public ExtensionInterface<MapNode>,
-                                                public ExtensionInterface<Control>
+                                                public ExtensionInterface<Control>,
+                                                public SplatOptions
     {
     public:
         META_Object(osgearth_ext_splat, SplatExtension);
@@ -55,6 +57,8 @@ namespace osgEarth { namespace Splat
     public: // Extension
 
         void setDBOptions(const osgDB::Options* dbOptions);
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
 
 
     public: // ExtensionInterface<MapNode>
@@ -75,10 +79,10 @@ namespace osgEarth { namespace Splat
         SplatExtension(const SplatExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const SplatOptions                   _options;
         osg::ref_ptr<const osgDB::Options>   _dbo;
         osg::ref_ptr<SplatTerrainEffect>     _splatEffect;
         osg::ref_ptr<LandCoverTerrainEffect> _landCoverEffect;
+        osg::ref_ptr<ZoneSwitcher>           _zoneSwitcher;
     };
 
 } } // namespace osgEarth::Splat

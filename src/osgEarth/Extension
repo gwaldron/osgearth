@@ -21,27 +21,27 @@
 #define OSGEARTH_EXTENSION_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osg/Object>
 #include <osgDB/Options>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 
-namespace osgEarth
-{
-    class ConfigOptions;
-}
 
 namespace osgEarth
 {
     /**
      * An Extension is an object that can be loaded on demand (from a plugin) 
-     * and can have multiple object-specific interfaces.
+     * and can have multiple object-specific interfaces. Its main function is
+     * to enable activation and configuration of a plugin feature from an
+     * osgEarth .earth file.
      *
      * For example, the pattern for declaring an Extension that connects to a
      * MapNode looks like:
      *
-     *   public MyExtension : public Extension, public ExtensionInterface<MapNode>
+     *   public MyExtension : public Extension,
+     *                        public ExtensionInterface<MapNode>
      *
      * You can implement more than one interface. This one would connect to a
      * MapNode and to a UI Control:
@@ -49,6 +49,14 @@ namespace osgEarth
      *   public MyExtension : public Extension,
      *                        public ExtensionInterface<MapNode>,
      *                        public ExtensionInterface<Control>
+     *
+     * You can register an Extension so that one can activate and configure it
+     * from a .earth file. Use the registration macro:
+     *
+     *   REGISTER_OSGEARTH_EXTENSION( osgearth_extension, ExtentionClassName );
+     *
+     * Where the string "extension" in osgearth_extension is the key string 
+     * that will appear in the earth file under the <map> element.
      */
     class OSGEARTH_EXPORT Extension : public osg::Object // header-only
     {
@@ -56,11 +64,23 @@ namespace osgEarth
         /**
          * Sets DB options that this extension should use when doing IO operations.
          */
-        virtual void setDBOptions(const osgDB::Options* options) { }
+        virtual void setDBOptions(const osgDB::Options* dbo) { }
 
+        /**
+         * Gets the configuration options that can be used to re-configure
+         * this Extension. Necessary for serialization.
+         */
+        virtual const ConfigOptions& getConfigOptions() const;
+
+        /**
+         * Convenience function for casting the extension to another one of its
+         * interfaces.
+         */
+        template<typename T> T* as() { return dynamic_cast<T*>(this); }
+        template<typename T> const T* as() const { return dynamic_cast<T*>(this); }
 
     protected:
-        Extension() { }
+        Extension();
 
     protected:
         virtual ~Extension() { }
@@ -75,6 +95,9 @@ namespace osgEarth
          * Fetch configuration options from a plugin loader
          */
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+
+    private:
+        ConfigOptions _defaultOptions;
     };
 
     

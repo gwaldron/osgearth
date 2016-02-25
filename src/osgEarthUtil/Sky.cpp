@@ -24,6 +24,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Extension>
+#include <osgEarth/MapNode>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -164,17 +166,36 @@ SkyNode::traverse(osg::NodeVisitor& nv)
 #define SKY_OPTIONS_TAG "__osgEarth::Util::SkyOptions"
 
 SkyNode*
-SkyNode::create(const SkyOptions& options,
-                MapNode*          mapNode)
+SkyNode::create(const SkyOptions& options, MapNode* mapNode)
 {
-    SkyNode* result = 0L;
+    if ( !mapNode ) {
+        OE_WARN << LC << "Internal error; null map node passed to SkyNode::Create\n";
+        return 0L;
+    }
 
     std::string driverName = options.getDriver();
     if ( driverName.empty() )
         driverName = "simple";
 
-    std::string driverExt = std::string(".osgearth_sky_") + driverName;
+    std::string extensionName = std::string("osgearth_sky_") + driverName;
 
+    osg::ref_ptr<Extension> extension = Extension::create( extensionName, options );
+    if ( !extension.valid() ) {
+        OE_WARN << LC << "Failed to load extension for sky driver \"" << driverName << "\"\n";
+        return 0L;
+    }
+
+    SkyNodeFactory* factory = extension->as<SkyNodeFactory>();
+    if ( !factory ) {
+        OE_WARN << LC << "Internal error; extension \"" << extensionName << "\" does not implement SkyNodeFactory\n";
+        return 0L;
+    }
+
+    osg::ref_ptr<SkyNode> result = factory->getOrCreateSkyNode( mapNode->getMap()->getProfile() );
+
+    return result.release();
+
+#if 0
     osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
     rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
     rwopts->setPluginData( SKY_OPTIONS_TAG, (void*)&options );
@@ -188,6 +209,7 @@ SkyNode::create(const SkyOptions& options,
     {
         OE_WARN << LC << "FAIL, unable to load sky driver for \"" << driverName << "\"" << std::endl;
     }
+#endif
 
     return result;
 }

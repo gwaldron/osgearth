@@ -34,7 +34,8 @@ namespace osgEarth { namespace Noise
      * Extension for loading the normal mapping effect on demand.
      */
     class NoiseExtension : public Extension,
-                               public ExtensionInterface<MapNode>
+                           public ExtensionInterface<MapNode>,
+                           public NoiseOptions
     {
     public:
         META_Object(osgearth_ext_normalmap, NoiseExtension);
@@ -49,8 +50,9 @@ namespace osgEarth { namespace Noise
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        virtual void setDBOptions(const osgDB::Options* dbOptions);
 
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
 
     public: // ExtensionInterface<MapNode>
 
@@ -63,8 +65,7 @@ namespace osgEarth { namespace Noise
         NoiseExtension(const NoiseExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const NoiseOptions                 _options;
-        osg::ref_ptr<const osgDB::Options>     _dbOptions;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<NoiseTerrainEffect>   _effect;
     };
 

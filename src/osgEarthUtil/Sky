@@ -27,6 +27,7 @@
 #include <osgEarth/DateTime>
 #include <osgEarth/GeoData>
 #include <osgEarth/Config>
+#include <osgEarth/Profile>
 #include <osg/Group>
 #include <osg/Uniform>
 #include <osg/View>
@@ -228,6 +229,15 @@ namespace osgEarth { namespace Util
     protected:
         MapNode* getMapNode(const osgDB::Options* opt) const;
         const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
+    };
+
+    /**
+     * Factory interface that sky extensions need to implement.
+     */
+    class /*header-only*/ SkyNodeFactory
+    {
+    public:
+        virtual SkyNode* getOrCreateSkyNode(const Profile* profile) =0;
     };
 
 } } // namespace osgEarth::Util

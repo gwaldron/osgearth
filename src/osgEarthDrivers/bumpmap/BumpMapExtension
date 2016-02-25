@@ -34,7 +34,8 @@ namespace osgEarth { namespace BumpMap
      * Extension for loading the normal mapping effect on demand.
      */
     class BumpMapExtension : public Extension,
-                             public ExtensionInterface<MapNode>
+                             public ExtensionInterface<MapNode>,
+                             public BumpMapOptions
     {
     public:
         META_Object(osgearth_ext_BumpMap, BumpMapExtension);
@@ -49,7 +50,9 @@ namespace osgEarth { namespace BumpMap
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        virtual void setDBOptions(const osgDB::Options* dbOptions);
+
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
 
 
     public: // ExtensionInterface<MapNode>
@@ -63,7 +66,6 @@ namespace osgEarth { namespace BumpMap
         BumpMapExtension(const BumpMapExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const BumpMapOptions                 _options;
         osg::ref_ptr<const osgDB::Options>   _dbOptions;
         osg::ref_ptr<BumpMapTerrainEffect>   _effect;
     };

@@ -28,6 +28,9 @@ using namespace osgEarth::BumpMap;
 #define LC "[BumpMapExtension] "
 
 
+REGISTER_OSGEARTH_EXTENSION(osgearth_bumpmap, BumpMapExtension);
+
+
 BumpMapExtension::BumpMapExtension()
 {
     //nop

@@ -18,6 +18,7 @@
  */
 #include "AnnotationExtension"
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarth/Extension>
 
 #include <osgEarth/MapNode>
 #include <osgDB/FileNameUtils>
@@ -68,6 +69,9 @@ AnnotationExtension::connect(MapNode* mapNode)
 
     if ( annotations )
     {
+        if ( annotations )
+            annotations->setName("osgEarth::AnnotationExtension");
+
         mapNode->addChild( annotations );
     }
 
@@ -79,37 +83,18 @@ AnnotationExtension::disconnect(MapNode* mapNode)
 {
     if ( mapNode )
     {
+        for(unsigned i=0; i<mapNode->getNumChildren(); ++i)
+        {
+            if ( mapNode->getChild(i)->getName() == "osgEarth::AnnotationExtension")
+            {
+                mapNode->removeChild(i);
+                break;
+            }
+        }
     }
 
     return true;
 }
 
-
-namespace
-{
-    class AnnotationPlugin : public osgDB::ReaderWriter
-    {
-    public: // Plugin stuff
-
-        AnnotationPlugin() {
-            supportsExtension( "osgearth_annotations", "osgEarthAnnotation" );
-            supportsExtension( "osgearth_annotation",  "osgEarthAnnotation" );
-        }
-        
-        const char* className() {
-            return "osgEarthAnnotation";
-        }
-
-        virtual ~AnnotationPlugin() { }
-
-        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
-        {
-          if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-          return ReadResult( new AnnotationExtension(Extension::getConfigOptions(dbOptions)) );
-        }
-    };
-
-    REGISTER_OSGPLUGIN(osgearth_annotations, AnnotationPlugin)
-}
+REGISTER_OSGEARTH_EXTENSION(osgearth_annotations, AnnotationExtension);
+REGISTER_OSGEARTH_EXTENSION(osgearth_annotation,  AnnotationExtension);

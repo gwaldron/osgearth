@@ -23,34 +23,6 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace BumpMap
-{
-    /**
-     * Plugin entry point
-     */
-    class BumpMapPlugin : public osgDB::ReaderWriter
-    {
-    public: // Plugin stuff
+using namespace osgEarth::BumpMap;
 
-        BumpMapPlugin() {
-            supportsExtension( "osgearth_bumpmap", "osgEarth Bump Map Extension Plugin" );
-        }
-        
-        const char* className() {
-            return "osgEarth Bump Map Extension Plugin";
-        }
-
-        virtual ~BumpMapPlugin() { }
-
-        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
-        {
-          if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-          return ReadResult( new BumpMapExtension(Extension::getConfigOptions(dbOptions)) );
-        }
-    };
-
-    REGISTER_OSGPLUGIN(osgearth_bumpmap, BumpMapPlugin)
-
-} } // namespace osgEarth::BumpMap
+REGISTER_OSGEARTH_EXTENSION(osgearth_bumpmap, BumpMapExtension);

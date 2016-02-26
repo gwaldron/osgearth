@@ -34,10 +34,17 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
+LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
+GeoPositionNode()
+{
+    LocalGeometryNode::setMapNode( mapNode );
+    init( 0L );
+}
+
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
-GeoPositionNode( ),
+GeoPositionNode(),
 _geom    ( geom ),
 _style   ( style )
 {
@@ -77,9 +84,9 @@ LocalGeometryNode::initNode()
 
         getPositionAttitudeTransform()->addChild( _node.get() );
 
-        applyRenderSymbology( _style );
+        applyRenderSymbology( getStyle() );
 
-        setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
+        setLightingIfNotSet( getStyle().has<ExtrusionSymbol>() );
     }
 }
 
@@ -91,21 +98,19 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 
     if ( _geom.valid() )
     {
-        Session* session = 0L;
+        osg::ref_ptr<Session> session;
         if ( getMapNode() )
             session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
-
-        FilterContext cx( session );
-
+        
         GeometryCompiler gc;
-        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), _style, cx );
+        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), getStyle(), FilterContext(session) );
         if ( node.valid() )
         {
-            node = AnnotationUtils::installOverlayParent( node.get(), _style );
+            node = AnnotationUtils::installOverlayParent( node.get(), getStyle() );
 
             getPositionAttitudeTransform()->addChild( node.get() );
 
-            applyRenderSymbology( _style );
+            applyRenderSymbology( getStyle() );
         }
     }
 }
@@ -113,9 +118,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 
 void 
 LocalGeometryNode::init(const osgDB::Options* options)
-{
-    //this->clearDecoration();
-    
+{    
     if ( _node.valid() )
     {
         initNode();
@@ -166,13 +169,10 @@ GeoPositionNode( mapNode, conf )
     {
         Config geomconf = conf.child("geometry");
         _geom = GeometryUtils::geometryFromWKT( geomconf.value() );
-        if ( _geom.valid() )
-        {
-            conf.getObjIfSet( "style", _style );
-
-            init( dbOptions );
-        }
     }
+
+    conf.getObjIfSet( "style", _style );
+    init( dbOptions );
 }
 
 Config
@@ -181,15 +181,12 @@ LocalGeometryNode::getConfig() const
     Config conf = GeoPositionNode::getConfig();
     conf.key() = "local_geometry";
 
+    if ( !_style.empty() )
+        conf.addObj( "style", _style );
+
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-        if ( !_style.empty() )
-            conf.addObj( "style", _style );
-    }
-    else
-    {
-        OE_WARN << LC << "Cannot serialize GeometryNode because it contains no geometry" << std::endl;
     }
 
     return conf;

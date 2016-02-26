@@ -57,6 +57,12 @@ namespace osgEarth { namespace Annotation
             osg::Node*   node, 
             const Style& style  =Style() );
 
+        /**
+         * Construct an LGN connected to a mapnode.
+         */
+        LocalGeometryNode( MapNode* node );
+
+
         virtual ~LocalGeometryNode() { }
 
         /**
@@ -106,6 +112,7 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
+        LocalGeometryNode() { }
 
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;

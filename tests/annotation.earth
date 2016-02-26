@@ -52,13 +52,15 @@ osgEarth Sample - Annotations
             <label text="Draped circle" lat="34.051" long="-117.974"/>
             
             <ellipse name="ellipse relative">
-                <position lat="34.051" long="-116" hat="5000"/>
+                <position lat="40" long="-100" hat="5000"/>
                 <radius_major value="50" units="km"/>
                 <radius_minor value="40" units="km"/>
                 <style type="text/css">
-                    fill: #ffff0080;
+                    fill: #ff00ff7f;
+                    stroke: #ffffff;
                 </style>
             </ellipse>
+            <label text="HAT Ellipse" lat="40" long="-100.0"/>
             
             <ellipse name="ellipse extruded">
                 <position lat="32" long="-100.0"/>

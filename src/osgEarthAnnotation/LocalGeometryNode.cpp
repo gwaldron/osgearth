@@ -57,6 +57,7 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
 GeoPositionNode(),
+_node    ( node ),
 _style   ( style )
 {
     LocalGeometryNode::setMapNode( mapNode );

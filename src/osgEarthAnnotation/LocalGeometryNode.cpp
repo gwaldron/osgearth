@@ -69,6 +69,8 @@ LocalGeometryNode::setMapNode(MapNode* mapNode)
 void
 LocalGeometryNode::initNode()
 {
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
+
     if ( _node.valid() )
     {
         _node = AnnotationUtils::installOverlayParent( _node.get(), _style );
@@ -85,6 +87,8 @@ LocalGeometryNode::initNode()
 void
 LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 {
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
+
     if ( _geom.valid() )
     {
         Session* session = 0L;

@@ -67,6 +67,8 @@ _style      ( style )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
+
     _geode = new osg::Geode();
 
     IconSymbol* icon = _style.get<IconSymbol>();

@@ -100,9 +100,9 @@ GLSkyExtension::connect(MapNode* mapNode)
         _skyNode = getOrCreateSkyNode( mapNode->getMap()->getProfile() );
     }
      
+    // insert the new sky node at the top of the tree.
     _skyNode->addChild( top );
 
-    // if we're not at the treetop, insert the sky node.
     if ( topParent )
     {
         topParent->addChild( _skyNode.get() );
@@ -133,37 +133,3 @@ GLSkyExtension::getOrCreateSkyNode(const Profile* profile)
 {
     return new GLSkyNode(profile, *this);
 }
-
-
-#if 0
-    class GLSkyDriver : public SkyDriver
-    {
-    public:
-        GLSkyDriver()
-        {
-            supportsExtension(
-                "osgearth_sky_gl",
-                "osgEarth GL Sky Plugin" );
-        }
-
-        const char* className()
-        {
-            return "osgEarth GL Sky Plugin";
-        }
-
-        ReadResult readNode(const std::string& file_name, const osgDB::Options* options) const
-        {
-            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
-                return ReadResult::FILE_NOT_HANDLED;
-
-            MapNode* mapNode = getMapNode(options);
-            const Profile* profile = mapNode ? mapNode->getMap()->getProfile() : 0L;
-            return new GLSkyNode(profile, getSkyOptions(options));
-        }
-
-    protected:
-        virtual ~GLSkyDriver() { }
-    };
-
-    REGISTER_OSGPLUGIN(osgearth_sky_gl, GLSkyDriver)
-#endif

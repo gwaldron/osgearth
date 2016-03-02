@@ -64,13 +64,14 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
     // Get the path to write to
     std::string path = getPathForTile( key );
 
+    // Get the user set TileSource for output if it is set
+    osgEarth::TileSource* tileSource = _packager->getTileSource();
+
     // Don't write out a new file if we're not overwriting
-    if (osgDB::fileExists(path) && !_packager->getOverwrite())
+    if (!tileSource && osgDB::fileExists(path) && !_packager->getOverwrite())
     {
         return true;
     }
-
-    osgEarth::TileSource* tileSource = _packager->getTileSource();
 
     if (!tileSource)
     {
@@ -225,7 +226,8 @@ _visitor(new TileVisitor()),
     _height(0),
     _overwrite(false),
     _keepEmpties(false),
-    _applyAlphaMask(false)
+    _applyAlphaMask(false),
+    _tileSource(0L)
 {
 }
 
@@ -276,7 +278,7 @@ void TMSPackager::setTileSource( osgEarth::TileSource* source )
 
 osgEarth::TileSource* TMSPackager::getTileSource() const
 {
-    return _tileSource;
+    return _tileSource.get();
 }
 
 const std::string& TMSPackager::getLayerName() const

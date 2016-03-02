@@ -2073,7 +2073,7 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
             interp);
 
         // if the vertical datums don't match, do a conversion:
-        if ( out_elevation != NO_DATA_VALUE && !extentSRS->isVertEquivalentTo(outputSRS) )
+        if ( out_elevation != NO_DATA_VALUE && outputSRS && !extentSRS->isVertEquivalentTo(outputSRS) )
         {
             // if the caller provided a custom output SRS, perform the appropriate
             // Z transformation. This requires a lat/long point:

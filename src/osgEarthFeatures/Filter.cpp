@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
+#include <osgEarth/Registry>
 #include <osg/MatrixTransform>
 #include <osg/Point>
 #include <osg/LineWidth>
@@ -41,6 +42,9 @@ FeatureFilter::~FeatureFilter()
 
 /********************************************************************************/
         
+#undef  LC
+#define LC "[FeatureFilterRegistry] "
+
 FeatureFilterRegistry::FeatureFilterRegistry()
 {
 }
@@ -70,21 +74,60 @@ FeatureFilterRegistry::add( FeatureFilterFactory* factory )
     _factories.push_back( factory );
 }
 
+#define FEATURE_FILTER_OPTIONS_TAG "__osgEarth::FeatureFilterOptions"
+
 FeatureFilter*
-FeatureFilterRegistry::create( const Config& conf )
+FeatureFilterRegistry::create(const Config& conf, const osgDB::Options* dbo)
 {
-    for (FeatureFilterFactoryList::iterator itr = _factories.begin(); itr != _factories.end(); itr++)
+    std::string driver = conf.key();
+
+    osg::ref_ptr<FeatureFilter> result;
+
+    for (FeatureFilterFactoryList::iterator itr = _factories.begin(); result == 0L && itr != _factories.end(); itr++)
     {
-        FeatureFilter* filter = itr->get()->create( conf );
-        if (filter) return filter;
+        result = itr->get()->create( conf );
     }
-    return 0;
+
+    if ( !result.valid() )
+    {
+        // not found; try to load from plugin.
+        if ( driver.empty() )
+        {
+            OE_WARN << LC << "ILLEGAL- no driver set for feature filter" << std::endl;
+            return 0L;
+        }
+
+        ConfigOptions options(conf);
+
+        osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions(dbo);
+        dbopt->setPluginData( FEATURE_FILTER_OPTIONS_TAG, (void*)&options );
+
+        std::string driverExt = std::string( ".osgearth_featurefilter_" ) + driver;
+        result = dynamic_cast<FeatureFilter*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
+    }
+
+    if ( !result.valid() )
+    {
+        OE_WARN << LC << "Failed to load FeatureFilter driver \"" << driver << "\"" << std::endl;
+    }
+
+    return result.release();
 } 
+
+const ConfigOptions&
+FeatureFilterDriver::getConfigOptions(const osgDB::Options* dbo) const
+{
+    return *static_cast<const ConfigOptions*>( dbo->getPluginData(FEATURE_FILTER_OPTIONS_TAG) );
+}
 
 /********************************************************************************/
 
+#undef  LC
+#define LC "[FeaturesToNodeFilter] "
+
 FeaturesToNodeFilter::~FeaturesToNodeFilter()
 {
+    //nop
 }
 
 void

@@ -95,7 +95,6 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "vdatum", _vertDatum );
 
     conf.updateIfSet   ( "cacheid",      _cacheId );
-    conf.updateIfSet   ( "cache_format", _cacheFormat );
     conf.updateObjIfSet( "proxy",        _proxySettings );
 
     if ( _cachePolicy.isSet() && !_cachePolicy->empty() )
@@ -127,7 +126,6 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "vsrs", _vertDatum );    // back compat
 
     conf.getIfSet   ( "cacheid",      _cacheId );
-    conf.getIfSet   ( "cache_format", _cacheFormat );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
     conf.getObjIfSet( "proxy",        _proxySettings );
 

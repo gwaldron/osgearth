@@ -46,6 +46,9 @@ using namespace osgEarth;
 
 #define LC "[TileNode] "
 
+#define REPORT(name,timer) if(context->progress()) { \
+    context->progress()->stats()[name] += OE_GET_TIMER(timer); }
+
 namespace
 {
     // Scale and bias matrices, one for each TileKey quadrant.
@@ -59,7 +62,8 @@ namespace
 }
 
 TileNode::TileNode() : 
-_dirty( false )
+_dirty        ( false ),
+_childrenReady( false )
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -137,7 +141,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
     }
 
     // initialize all the per-tile uniforms the shaders will need:
-    createTileUniforms();
+    createPayloadStateSet(context);
+
     updateTileUniforms(context->getSelectionInfo());
 
     // Set up a data container for multipass layer rendering:
@@ -189,7 +194,7 @@ TileNode::getElevationMatrix() const
 }
 
 void
-TileNode::createTileUniforms()
+TileNode::createPayloadStateSet(EngineContext* context)
 {
     _payloadStateSet = new osg::StateSet();
 
@@ -259,8 +264,8 @@ TileNode::releaseGLObjects(osg::State* state) const
         _surface->releaseGLObjects(state);
     if ( _patch.valid() )
         _patch->releaseGLObjects(state);
-    //if ( _mptex.valid() )
-    //    _mptex->releaseGLObjects(state);
+    if ( _mptex.valid() )
+        _mptex->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -285,16 +290,15 @@ TileNode::getVisibilityRangeHint(EngineContext* context) const
 
 
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float lodScale)
+TileNode::shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo)
 {
     unsigned currLOD = _key.getLOD();
-    if (   currLOD <  selectionInfo.numLods()
-        && currLOD != selectionInfo.numLods()-1)
+    if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
     {
-        osg::Vec3 cameraPos = nv.getViewPoint();
-
-        float radius2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
-        return _surface->anyChildBoxIntersectsSphere(cameraPos, radius2, lodScale);
+        return _surface->anyChildBoxIntersectsSphere(
+            cv->getViewPointLocal(), 
+            (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2,
+            cv->getLODScale());
     }
     return false;
 }
@@ -310,62 +314,59 @@ TileNode::isVisible(osg::CullStack* stack) const
 #endif
 }
 
-void
-TileNode::cull_stealth(osg::NodeVisitor& nv)
+bool
+TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 {
-    if ( !isDormant(nv.getFrameStamp()) )
-    {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-        EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-       
-        if ( getNumChildren() == 4 )
-        {
-            unsigned before = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
-            for(int i=0; i<4; ++i)
-            {
-                _children[i]->accept( nv );
-            }
-            unsigned after = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
-            if ( after == before )
-            {
-                acceptSurface( cv, context );
-            }
-        }
+    bool visible = false;
 
-        else if ( _surface.valid() )
+    EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
+
+    // Shows all culled tiles, good for testing culling
+    unsigned frame = cv->getFrameStamp()->getFrameNumber();
+
+    if ( frame - _lastAcceptSurfaceFrame < 2u )
+    {
+        acceptSurface( cv, context );
+    }
+
+    else if ( _childrenReady )
+    {
+        for(int i=0; i<4; ++i)
         {
-            acceptSurface( cv, context );
+            getSubTile(i)->accept_cull_stealth( cv );
         }
     }
+
+    return visible;
 }
 
-
-void TileNode::cull(osg::NodeVisitor& nv)
+bool
+TileNode::cull(osgUtil::CullVisitor* cv)
 {
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+    EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    // record the number of drawables before culling this node:
-    unsigned before = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
-
-    if ( context->progress() )
-        context->progress()->stats()["TileNode::cull"]++;
-
+    // Horizon check the surface first:
+    if ( !_surface->isVisible(cv) )
+    {
+        return false;
+    }
+    
     // determine whether we can and should subdivide to a higher resolution:
-    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
+    bool childrenInRange = shouldSubDivide(cv, selectionInfo);
 
     // whether it is OK to create child TileNodes is necessary.
-    bool canCreateChildren = subdivide;
+    bool canCreateChildren = childrenInRange;
 
     // whether it is OK to load data if necessary.
     bool canLoadData = true;
 
-
+    // whether to accept the current surface node and not the children.
+    bool canAcceptSurface = false;
+    
+    // Don't create children in progressive mode until content is in place
     if ( _dirty && context->getOptions().progressive() == true )
     {
-        // Don't create children in progressive mode until content is in place
         canCreateChildren = false;
     }
     
@@ -375,114 +376,133 @@ void TileNode::cull(osg::NodeVisitor& nv)
     if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
     {
         canCreateChildren = false;
-        canLoadData = false;
+        canLoadData       = false;
     }
 
-    optional<bool> surfaceVisible( false );
-
-    if (subdivide)
+    if (childrenInRange)
     {
         // We are in range of the child nodes. Either draw them or load them.
 
         // If the children don't exist, create them and inherit the parent's data.
-        if ( getNumChildren() == 0 && canCreateChildren )
+        if ( !_childrenReady && canCreateChildren )
         {
-            Threading::ScopedMutexLock exclusive(_mutex);
-            if ( getNumChildren() == 0 )
+            _mutex.lock();
+
+            if ( !_childrenReady )
             {
+                OE_START_TIMER(createChildren);
                 createChildren( context );
+                REPORT("TileNode::createChildren", createChildren);
+                _childrenReady = true;
+
+                // This means that you cannot start loading data immediately; must wait a frame.
+                canLoadData = false;
             }
+
+            _mutex.unlock();
         }
 
         // If all are ready, traverse them now.
-        if ( getNumChildren() == 4 )
+        if ( _childrenReady )
         {
             for(int i=0; i<4; ++i)
             {
-                // pre-check each child for simple bounding sphere culling, and if the check 
-                // fails, unload it's children if them exist. This lets us unload dormant
-                // tiles from memory as we go. If those children are visible from another
-                // camera, no worries, the unload attempt will fail gracefully.
-                if (!cv->isCulled(*_children[i].get()))
-                {
-                    _children[i]->accept( nv );
-                }
-                else
-                {
-                    context->getUnloader()->unloadChildren(getSubTile(i)->getTileKey());
-                }
+                getSubTile(i)->accept_cull(cv);
             }
+
+            // if we traversed all children, but they all return "not visible",
+            // that means it's a horizon-culled tile anyway and we don't need
+            // to add any drawables.
         }
 
         // If we don't traverse the children, traverse this node's payload.
-        else if ( _surface.valid() )
+        else
         {
-            surfaceVisible = acceptSurface( cv, context );
+            canAcceptSurface = true;
         }
     }
 
     // If children are outside camera range, draw the payload and expire the children.
-    else if ( _surface.valid() )
+    else
     {
-        surfaceVisible = acceptSurface( cv, context );
-
-        // if children exists, and are not in the process of loading, unload them now.
-        if ( !_dirty && _children.size() > 0 )
-        {
-            context->getUnloader()->unloadChildren( this->getTileKey() );
-        }
+        canAcceptSurface = true;
     }
 
-    // See whether we actually added any drawables.
-    unsigned after = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
-    bool addedDrawables = (after > before);
-    
-    // Only continue if we accepted at least one surface drawable.
-    if ( addedDrawables )
+    // accept this surface if necessary.
+    if ( canAcceptSurface )
     {
-        // update the timestamp so this tile doesn't become dormant.
-        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
+        acceptSurface( cv, context );
+        _lastAcceptSurfaceFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
     }
 
+       
+    // Run any patch callbacks.
     context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _patch.get() );
 
     // If this tile is marked dirty, try loading data.
-    if ( addedDrawables && _dirty && canLoadData )
+    if ( _dirty && canLoadData )
     {
-        // Only load data if the surface would be visible to the camera
-        if ( !surfaceVisible.isSet() )
-        {
-            surfaceVisible = _surface->isVisible(cv);
-        }
-
-        if ( surfaceVisible == true )
-        {
-            load( nv );
-        }
-        else
-        {
-            OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
-        }
+        load( *cv );
     }
+
+    return true;
 }
 
 bool
 TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 {
-    bool visible = _surface->isVisible(cv);
-    if ( visible )
+    OE_START_TIMER(acceptSurface);
+
+    // The reason we push the top-leel surface SS for every node is because
+    // of the patch callbacks. Instead of doing this we need a way to put
+    // patch traversals in their own top-level bin...
+
+    cv->pushStateSet( context->_surfaceSS.get() );
+    cv->pushStateSet( _payloadStateSet.get() );
+    _surface->accept( *cv );
+    cv->popStateSet();
+    cv->popStateSet();
+
+    REPORT("TileNode::acceptSurface", acceptSurface);
+
+    return true; //visible;
+}
+
+bool
+TileNode::accept_cull(osgUtil::CullVisitor* cv)
+{
+    bool visible = false;
+    
+
+    // update the timestamp so this tile doesn't become dormant.
+    _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
+
+    if ( !cv->isCulled(*this) )
     {
-        if ( context->progress() )
-            context->progress()->stats()["TileNode::acceptSurface"]++;
+        cv->pushStateSet( getStateSet() );
 
-        cv->pushStateSet(context->_surfaceSS.get());
-
-        cv->pushStateSet( _payloadStateSet.get() );
-        _surface->accept( *cv );
-        cv->popStateSet();
+        visible = cull( cv );
 
         cv->popStateSet();
     }
+
+    return visible;
+}
+
+bool
+TileNode::accept_cull_stealth(osgUtil::CullVisitor* cv)
+{
+    bool visible = false;
+    
+    //if ( !cv->isCulled(*this) )
+    {
+        cv->pushStateSet( getStateSet() );
+
+        visible = cull_stealth( cv );
+
+        cv->popStateSet();
+    }
+
     return visible;
 }
 
@@ -492,13 +512,15 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+
         if (VisitorData::isSet(nv, "osgEarth.Stealth"))
         {
-            cull_stealth( nv );
+            accept_cull_stealth( cv );
         }
         else
         {
-            cull(nv);
+            accept_cull( cv );
         }
     }
 
@@ -543,8 +565,6 @@ TileNode::createChildren(EngineContext* context)
         // Inherit the samplers with new scale/bias information.
         node->inheritState( context );
     }
-    
-    //OE_NOTICE << LC << "Creating children of: " << getTileKey().str() << "; count = " << (++_count) << "\n";
 }
 
 bool
@@ -675,34 +695,29 @@ TileNode::load(osg::NodeVisitor& nv)
         }
     }
 
-#if 0
-    double range0, range1;
-    int lod = getTileKey().getLOD();
-    if ( lod > context->getOptions().firstLOD().get() )
-        range0 = context->getSelectionInfo().visParameters(lod-1)._visibilityRange;
-    else
-        range0 = 0.0;
-    double range1 = context->getSelectionInfo().visParameters(lod)._visibilityRange;
+    
+    // Construct the load PRIORITY: 0=lowest, 1=highest.
+    
+    const SelectionInfo& si = context->getSelectionInfo();
+    int lod     = getTileKey().getLOD();
+    int numLods = si.numLods();
+    
+    // LOD priority is in the range [0..numLods]
+    float lodPriority = (float)lod;
+    if ( context->getOptions().highResolutionFirst() == false )
+        lodPriority = (float)(numLods - lod);
 
-    priority = 
-#endif
+    float distance = nv.getDistanceToViewPoint(getBound().center(), true);
 
-    // Prioritize by LOD. (negated because lower order gets priority)
-    float priority = - (float)getTileKey().getLOD();
+    // dist priority uis in the range [0..1]
+    float distPriority = 1.0 - distance/si.visParameters(0)._visibilityRange;
 
-    if ( context->getOptions().highResolutionFirst() == true )
-    {
-        priority = context->getSelectionInfo().numLods() - priority;
-        //priority = -priority;
-    }
+    // add thenm together, and you get tiles sorted first by lodPriority (because of
+    // the biggest range), and second by distance.
+    float priority = lodPriority + distPriority;
 
-    // then sort by distance within each LOD.
-    float distance = nv.getDistanceToViewPoint( getBound().center(), true );
-    priority = 10.0f*priority - log10(distance);
-
-    // testing intermediate loading idea...
-    //if ( getTileKey().getLOD() == 5 )
-    //    priority += 100.0f;
+    // normalize the composite priority to [0..1].
+    priority /= (float)(numLods+1);
 
     // Submit to the loader.
     context->getLoader()->load( _loadRequest.get(), priority, nv );
@@ -722,5 +737,6 @@ TileNode::areSubTilesDormant(const osg::FrameStamp* fs) const
 void
 TileNode::removeSubTiles()
 {
+    _childrenReady = false;
     this->removeChildren(0, this->getNumChildren());
 }

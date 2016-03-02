@@ -107,6 +107,19 @@ ScriptEngineFactory::create( const Script& script, const std::string& engineName
 }
 
 ScriptEngine*
+ScriptEngineFactory::createWithProfile( const Script& script, const std::string& profile, const std::string& engineName, bool quiet)
+{
+  ScriptEngineOptions opts;
+  opts.setDriver(script.getLanguage() + (engineName.empty() ? "" : (std::string("_") + engineName)));
+  opts.script() = script;
+
+  ScriptEngine* e = create(opts, quiet);
+  if ( e )
+      e->setProfile( profile );
+  return e;
+}
+
+ScriptEngine*
 ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
 {
     ScriptEngine* scriptEngine = 0L;

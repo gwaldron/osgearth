@@ -32,13 +32,85 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
+    struct RandomAccessTileMap
+    {
+        struct Entry {
+            osg::ref_ptr<TileNode> tile;
+            unsigned index;
+        };
+
+        typedef std::map<TileKey, Entry> Table;
+        Table _table;
+
+        typedef Table::iterator iterator;
+        typedef Table::const_iterator const_iterator;
+
+        typedef std::vector<Entry*> Vector;
+        Vector _vector;
+
+        iterator begin()             { return _table.begin(); }
+        const_iterator begin() const { return _table.begin(); }
+        iterator end()               { return _table.end(); }
+        const_iterator end() const   { return _table.end(); }
+
+        void insert(const TileKey& key, TileNode* data) {
+            Entry& e = _table[key];
+            e.tile = data;
+            e.index = _vector.size();
+            _vector.push_back( &e );
+        }
+
+        void erase(const TileKey& key) {
+            iterator i = _table.find(key);
+            if ( i != _table.end() ) {
+                unsigned s = _vector.size()-1;
+                _vector[i->second.index] = _vector[s];
+                _vector[i->second.index]->index = i->second.index;
+                _vector.resize( s );
+                _table.erase( i );
+            }
+        }
+
+        const TileNode* find(const TileKey& key) const {
+            const_iterator i = _table.find(key);
+            return i != _table.end() ? i->second.tile.get() : 0L;
+        }
+
+        TileNode* find(const TileKey& key) {
+            const_iterator i = _table.find(key);
+            return i != _table.end() ? i->second.tile.get() : 0L;
+        }
+
+        unsigned size() const {
+            return _vector.size();
+        }
+
+        bool empty() const {
+            return size() == 0u;
+        }
+
+        TileNode* at(unsigned index) {
+            return _vector[index]->tile.get();
+        }
+
+        const TileNode* at(unsigned index) const {
+            return _vector[index]->tile.get();
+        }
+
+        void clear() {
+            _table.clear();
+            _vector.clear();
+        }
+    };
+
     /**
      * Holds a reference to each tile created by the driver.
      */
     class TileNodeRegistry : public osg::Referenced
     {
     public:
-        typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
+        typedef RandomAccessTileMap TileNodeMap;
+        //typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
 
         // Prototype for a locked tileset operation (see run)
         struct Operation {

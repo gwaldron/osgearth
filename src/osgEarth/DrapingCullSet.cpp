@@ -82,7 +82,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
             // If there's an active (non-identity matrix), apply it
             if ( entry->_matrix.valid() )
             {
-                entry->_matrix->preMult( *cv->getModelViewMatrix() );
+                entry->_matrix->postMult( *cv->getModelViewMatrix() );
                 cv->pushModelViewMatrix( entry->_matrix.get(), osg::Transform::RELATIVE_RF );
             }
 

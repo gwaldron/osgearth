@@ -34,8 +34,12 @@ _autoScale(rhs._autoScale),
 _name(rhs._name),
 _node(rhs._node),
 _maxSizeX(rhs._maxSizeX),
-_maxSizeY(rhs._maxSizeY)
+_maxSizeY(rhs._maxSizeY),
+_scaleX( rhs._scaleX ),
+_scaleY( rhs._scaleY ),
+_scaleZ( rhs._scaleZ )
 {
+    // nop
 }
 
 ModelSymbol::ModelSymbol( const Config& conf ) :
@@ -45,7 +49,10 @@ _pitch    ( NumericExpression(0.0) ),
 _roll     ( NumericExpression(0.0) ),
 _autoScale( false ),
 _maxSizeX ( FLT_MAX ),
-_maxSizeY ( FLT_MAX )
+_maxSizeY ( FLT_MAX ),
+_scaleX    ( NumericExpression(1.0) ),
+_scaleY    ( NumericExpression(1.0) ),
+_scaleZ    ( NumericExpression(1.0) )
 {
     mergeConfig( conf );
 }
@@ -65,6 +72,10 @@ ModelSymbol::getConfig() const
 
     conf.addIfSet( "max_size_x", _maxSizeX );
     conf.addIfSet( "max_size_y", _maxSizeY );
+    
+    conf.addObjIfSet( "scale_x", _scaleX );
+    conf.addObjIfSet( "scale_y", _scaleY );
+    conf.addObjIfSet( "scale_z", _scaleZ );
 
     conf.addNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
@@ -83,6 +94,10 @@ ModelSymbol::mergeConfig( const Config& conf )
 
     conf.getIfSet( "auto_scale", _autoScale );
     conf.getIfSet( "alias_map", _uriAliasMap );
+    
+    conf.getObjIfSet( "scale_x", _scaleX );
+    conf.getObjIfSet( "scale_y", _scaleY );
+    conf.getObjIfSet( "scale_z", _scaleZ );
 
     _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
@@ -124,6 +139,15 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<ModelSymbol>()->autoScale() = true;
         else
             style.getOrCreate<ModelSymbol>()->scale() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "model-scale-x") ) {
+        style.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "model-scale-y") ) {
+        style.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "model-scale-z") ) {
+        style.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression(c.value());
     }
     else if ( match(c.key(), "model-heading") ) {
         style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());

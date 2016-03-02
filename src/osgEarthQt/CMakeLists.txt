@@ -1,3 +1,6 @@
+IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
+
+
 IF   (DYNAMIC_OSGEARTH)
     ADD_DEFINITIONS(-DOSGEARTHQT_LIBRARY)
 ELSE (DYNAMIC_OSGEARTH)
@@ -11,9 +14,9 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 if(OSGEARTH_QT_BUILD_LEGACY_WIDGETS)
     # Header files that need moc'd
     set(LIB_MOC_HDRS
-        AnnotationDialogs
-        AnnotationListWidget
-        AnnotationToolbar
+        #AnnotationDialogs
+        #AnnotationListWidget
+        #AnnotationToolbar
         CollapsiblePairWidget
         DataManager
         LayerManagerWidget
@@ -63,9 +66,9 @@ if(OSGEARTH_QT_BUILD_LEGACY_WIDGETS)
     SET(LIB_PUBLIC_HEADERS
     #   header files go here
         Actions
-        AnnotationDialogs
-        AnnotationListWidget
-        AnnotationToolbar
+        #AnnotationDialogs
+        #AnnotationListWidget
+        #AnnotationToolbar
         CollapsiblePairWidget
         Common
         DataManager
@@ -89,9 +92,9 @@ if(OSGEARTH_QT_BUILD_LEGACY_WIDGETS)
         ${LIB_RC_SRCS}
         ${LIB_UI_SRCS}
         ${LIB_MOC_SRCS}
-        AnnotationDialogs.cpp
-        AnnotationListWidget.cpp
-        AnnotationToolbar.cpp
+        #AnnotationDialogs.cpp
+        #AnnotationListWidget.cpp
+        #AnnotationToolbar.cpp
         CollapsiblePairWidget.cpp
         DataManager.cpp
         LayerManagerWidget.cpp
@@ -160,4 +163,9 @@ IF ( Qt5Widgets_FOUND )
     qt5_use_modules( ${LIB_NAME} Gui Widgets OpenGL )
 ENDIF( Qt5Widgets_FOUND )
 
+# Add this project to the NodeKits solution folder
+set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
+
 INCLUDE(ModuleInstall OPTIONAL)
+
+ENDIF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)

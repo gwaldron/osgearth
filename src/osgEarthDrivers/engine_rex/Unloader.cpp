@@ -59,6 +59,9 @@ namespace
 
 //........................................................................
 
+#undef  LC
+#define LC "[UnloaderGroup] "
+
 UnloaderGroup::UnloaderGroup(TileNodeRegistry* live, TileNodeRegistry* dead) :
 _live     ( live ),
 _dead     ( dead ),
@@ -67,11 +70,24 @@ _threshold( INT_MAX )
     this->setNumChildrenRequiringUpdateTraversal( 1u );
 }
 
+#if 0
 void
 UnloaderGroup::unloadChildren(const TileKey& key)
 {
     _mutex.lock();
-    _parentKeys.insert(key);
+    ///_parentKeys.insert(key);
+    _parentKeys.push_back( key ); 
+    _mutex.unlock();
+}
+#endif
+
+void
+UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
+{
+    _mutex.lock();
+    for(std::vector<TileKey>::const_iterator i = keys.begin(); i != keys.end(); ++i)
+        _parentKeys.push_back( *i );
+    //_parentKeys.insert(keys.begin(), keys.end());
     _mutex.unlock();
 }
 
@@ -82,9 +98,9 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
     {
         if ( _parentKeys.size() > _threshold )
         {
-            unsigned count = 0;
+            unsigned unloaded=0, notFound=0, notDormant=0;
             Threading::ScopedMutexLock lock( _mutex );
-            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            for(std::vector<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
                 if ( _live->get(*parentKey, parentNode) )
@@ -93,19 +109,18 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                     if ( parentNode->areSubTilesDormant(nv.getFrameStamp()) )
                     {
                         // find and move all tiles to be unloaded to the dead pile.
-                        if ( _live )
-                        {
-                            ExpirationCollector collector( _live, _dead );
-                            for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
-                                parentNode->getSubTile(i)->accept( collector );
-                            count += collector._count;
-                        }
+                        ExpirationCollector collector( _live, _dead );
+                        for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
+                            parentNode->getSubTile(i)->accept( collector );
+                        unloaded += collector._count;
                         parentNode->removeSubTiles();
                     }
+                    else notDormant++;
                 }
+                else notFound++;
             }
 
-            //OE_NOTICE << "Unloaded " << count << " tiles" << std::endl;
+            //OE_NOTICE << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "; live=" << _live->size() << "\n";
             _parentKeys.clear();
         }
     }

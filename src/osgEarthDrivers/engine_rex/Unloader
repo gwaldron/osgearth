@@ -37,7 +37,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class Unloader
     {
     public:
-        virtual void unloadChildren(const TileKey& key) =0;
+        virtual void unloadChildren(const std::vector<TileKey>& keys) =0;
     };
 
 
@@ -51,16 +51,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setThreshold(int t) { _threshold = t; }
 
     public: // Unloader
-        void unloadChildren(const TileKey& key);
+
+        void unloadChildren(const std::vector<TileKey>& keys);
 
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
     protected:
-        int                 _threshold;
-        std::set<TileKey>   _parentKeys;
-        TileNodeRegistry*   _live;
-        TileNodeRegistry*   _dead;
+        int                  _threshold;
+        std::vector<TileKey> _parentKeys;
+        TileNodeRegistry*    _live;
+        TileNodeRegistry*    _dead;
         mutable Threading::Mutex  _mutex;
     };
 

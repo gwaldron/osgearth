@@ -21,7 +21,7 @@
 #define OSGEARTHANNO_ANNOTATION_EDITING_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/RectangleNode>
@@ -41,7 +41,7 @@ namespace osgEarth { namespace Annotation
      /**
      * An editor node that allows you to move the position of LocalizedNode annotations    
      */
-    class OSGEARTHANNO_EXPORT LocalizedNodeEditor : public AnnotationEditor
+    class OSGEARTHANNO_EXPORT GeoPositionNodeEditor : public AnnotationEditor
     {
     public:
         /**
@@ -49,9 +49,9 @@ namespace osgEarth { namespace Annotation
          * @param localizedNode
          *        The LocalizedNode to edit
          */
-        LocalizedNodeEditor(LocalizedNode* localizedNode);    
+        GeoPositionNodeEditor(GeoPositionNode* localizedNode);    
         
-        virtual ~LocalizedNodeEditor();    
+        virtual ~GeoPositionNodeEditor();    
 
         virtual void updateDraggers();
 
@@ -60,11 +60,11 @@ namespace osgEarth { namespace Annotation
         void setPosition( const GeoPoint& pos );
 
     protected:
-        osg::ref_ptr< LocalizedNode > _node;
+        osg::ref_ptr< GeoPositionNode > _node;
         Dragger* _dragger;
     };
 
-    class OSGEARTHANNO_EXPORT CircleNodeEditor : public LocalizedNodeEditor
+    class OSGEARTHANNO_EXPORT CircleNodeEditor : public GeoPositionNodeEditor
     {
     public:
         /**
@@ -89,7 +89,7 @@ namespace osgEarth { namespace Annotation
         Dragger* _radiusDragger;
     };
 
-    class OSGEARTHANNO_EXPORT EllipseNodeEditor : public LocalizedNodeEditor
+    class OSGEARTHANNO_EXPORT EllipseNodeEditor : public GeoPositionNodeEditor
     {
     public:
         /**
@@ -107,7 +107,7 @@ namespace osgEarth { namespace Annotation
         Dragger* _minorDragger;
     };
 
-    class OSGEARTHANNO_EXPORT RectangleNodeEditor : public LocalizedNodeEditor
+    class OSGEARTHANNO_EXPORT RectangleNodeEditor : public GeoPositionNodeEditor
     {
     public:
         /**

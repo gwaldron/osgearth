@@ -29,43 +29,15 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
 
-    /**
-     * This filter will resample line segments so they are between
-     * the min and max specified length.
-     */
-    class OSGEARTHFEATURES_EXPORT ResampleFilter : public FeatureFilter
+    class ResampleFilterOptions : public ConfigOptions
     {
     public:
-        // Call this determine whether this filter is available.
-        static bool isSupported();    
-
-    public:
-        ResampleFilter();
-        ResampleFilter( double minLength, double maxLength );
-
-        ResampleFilter( const Config& conf );
-
-        /**
-         * Serialize this FeatureFilter
-         */
-        virtual Config getConfig() const;
-
-
-
-        virtual ~ResampleFilter() { }
-
-    public:
-
-        optional<double>& minLength() { return _minLen; }
-        const optional<double>& minLength() const { return _minLen; }
-
-        optional<double>& maxLength() { return _maxLen; }
-        const optional<double>& maxLength() const { return _maxLen; }
-
-        optional<double>& perturbationThreshold() { return _perturbThresh; }
-        const optional<double>& perturbationThreshold() const { return _perturbThresh; }
-
-
+        ResampleFilterOptions(const ConfigOptions& co =ConfigOptions()) : ConfigOptions(co) {
+            _minLen.init(0.0);
+            _maxLen.init(DBL_MAX);
+            _mode.init  (RESAMPLE_LINEAR);
+            fromConfig(_conf);
+        }
 
         enum ResampleMode
         {
@@ -74,17 +46,60 @@ namespace osgEarth { namespace Features
             RESAMPLE_RHUMB
         };
 
-        optional<ResampleMode>& resampleMode() { return _resampleMode;}
-        const optional<ResampleMode>& resampleMode() const { return _resampleMode;}
+        optional<double>& minLength() { return _minLen; }
+        const optional<double>& minLength() const { return _minLen; }
 
+        optional<double>& maxLength() { return _maxLen; }
+        const optional<double>& maxLength() const { return _maxLen; }
+
+        optional<ResampleMode>& resampleMode() { return _mode;}
+        const optional<ResampleMode>& resampleMode() const { return _mode; }
+
+        void fromConfig(const Config& conf) {
+            conf.getIfSet("min_length", _minLen);
+            conf.getIfSet("max_length", _maxLen);
+            conf.getIfSet("mode", "linear",       _mode, RESAMPLE_LINEAR);
+            conf.getIfSet("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
+            conf.getIfSet("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
+        }
+
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.addIfSet("min_length", _minLen);
+            conf.addIfSet("max_length", _maxLen);
+            conf.addIfSet("mode", "linear",       _mode, RESAMPLE_LINEAR);
+            conf.addIfSet("mode", "great_circle", _mode, RESAMPLE_GREATCIRCLE);
+            conf.addIfSet("mode", "rhumb_line",   _mode, RESAMPLE_RHUMB);
+            return conf;
+        }
+
+    protected:
+        optional<double> _minLen, _maxLen, _perturbThresh;
+        optional<ResampleMode> _mode;
+    };
+
+    /**
+     * This filter will resample line segments so they are between
+     * the min and max specified length.
+     */
+    class OSGEARTHFEATURES_EXPORT ResampleFilter : public FeatureFilter,
+                                                   public ResampleFilterOptions
+    {
+    public:
+        // Call this determine whether this filter is available.
+        static bool isSupported();    
+
+    public:
+        ResampleFilter();
+        ResampleFilter( double minLength, double maxLength );
+        ResampleFilter( const Config& conf );
+
+        virtual ~ResampleFilter() { }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
-        optional<double> _minLen, _maxLen, _perturbThresh;
-        optional<ResampleMode> _resampleMode;
-
         bool push( Feature* input, FilterContext& context );
     };
 

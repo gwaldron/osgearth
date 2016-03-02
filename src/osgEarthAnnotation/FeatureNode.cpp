@@ -26,7 +26,6 @@
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/MeshClamper>
 
 #include <osgEarthSymbology/AltitudeSymbol>
 
@@ -36,6 +35,8 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/GeometryClamper>
+#include <osgEarth/TerrainEngineNode>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>
@@ -50,24 +51,25 @@ using namespace osgEarth::Symbology;
 
 FeatureNode::FeatureNode(MapNode* mapNode,
                          Feature* feature,
-                         const Style& style,
+                         const Style& in_style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet) :
-AnnotationNode( mapNode ),
-_style        ( style ),
-_options      ( options ),
-_needsRebuild (true),
-_clusterCulling(true),
-_clusterCullingCallback(0),
-_styleSheet( styleSheet )
+AnnotationNode(),
+_options           ( options ),
+_needsRebuild      ( true ),
+_styleSheet        ( styleSheet )
 {
-    if (_style.empty() && feature->style().isSet())
+    _features.push_back( feature );
+
+    FeatureNode::setMapNode( mapNode );
+    
+    Style style = in_style;
+    if (style.empty() && feature->style().isSet())
     {
-        _style = *feature->style();
+        style = *feature->style();
     }
 
-    _features.push_back( feature );
-    build();
+    setStyle( style );
 }
 
 FeatureNode::FeatureNode(MapNode* mapNode, 
@@ -75,40 +77,22 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const Style& style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet):
-AnnotationNode( mapNode ),
-_style        ( style ),
-_options      ( options ),
-_needsRebuild (true),
-_clusterCulling(true),
-_clusterCullingCallback(0),
-_styleSheet( styleSheet )
+AnnotationNode(),
+_options        ( options ),
+_needsRebuild   ( true ),
+_styleSheet     ( styleSheet )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
-    build();
+    FeatureNode::setMapNode( mapNode );
+    setStyle( style );
 }
-
-bool
-FeatureNode::getClusterCulling() const
-{
-    return _clusterCulling;
-}
-
-void
-FeatureNode::setClusterCulling( bool clusterCulling)
-{
-    if (_clusterCulling != clusterCulling)
-    {
-        _clusterCulling = clusterCulling;
-        updateClusterCulling();
-    }
-}
-
 
 void
 FeatureNode::build()
 {
-    // if there's a decoration, clear it out first.
-    this->clearDecoration();
+    if ( !_clampCallback.valid() )
+        _clampCallback = new ClampCallback(this);
+
     _attachPoint = 0L;
 
     // if there is existing geometry, kill it
@@ -131,11 +115,11 @@ FeatureNode::build()
 
     // If we're doing auto-clamping on the CPU, shut off compiler map clamping
     // clamping since it would be redundant.
-    // TODO: I think this is OBE now that we have "scene" clamping technique..
     if ( ap.sceneClamping )
     {
         options.ignoreAltitudeSymbol() = true;
     }
+
 
     osg::Node* node = _compiled.get();
     if (_needsRebuild || !_compiled.valid() )
@@ -179,9 +163,9 @@ FeatureNode::build()
             itr->get()->getWorldBound(getMapNode()->getMapSRS(), bs);
             bounds.expandBy(bs);
         }
+
         // The polytope will ensure we only clamp to intersecting tiles:
         Feature::getWorldBoundingPolytope(bounds, getMapNode()->getMapSRS(), _featurePolytope);
-
     }
 
     if ( node )
@@ -191,16 +175,14 @@ FeatureNode::build()
         {
             node = AnnotationUtils::installTwoPassAlpha( node );
         }
-
-        //OE_NOTICE << GeometryUtils::geometryToGeoJSON( _feature->getGeometry() ) << std::endl;
-
+        
         _attachPoint = new osg::Group();
         _attachPoint->addChild( node );
 
         // Draped (projected) geometry
         if ( ap.draping )
         {
-            DrapeableNode* d = new DrapeableNode(); // getMapNode() );
+            DrapeableNode* d = new DrapeableNode();
             d->addChild( _attachPoint );
             this->addChild( d );
         }
@@ -223,27 +205,22 @@ FeatureNode::build()
         {
             this->addChild( _attachPoint );
 
-            // CPU-clamped geometry?
-            if ( ap.sceneClamping )
-            {
-                // save for later when we need to reclamp the mesh on the CPU
-                _altitude = style.get<AltitudeSymbol>();
-
-                // activate the terrain callback:
-                setCPUAutoClamping( true );
-
-                // set default lighting based on whether we are extruding:
-                setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-
-                // do an initial clamp to get started.
-                clampMesh( getMapNode()->getTerrain()->getGraph() );
-            } 
+            // set default lighting based on whether we are extruding:
+            setLightingIfNotSet( style.has<ExtrusionSymbol>() );
 
             applyRenderSymbology( style );
         }
-    }
 
-    updateClusterCulling();
+        if ( ap.sceneClamping )
+        {
+            getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
+            clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
+        }
+        else
+        {
+            getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
+        }
+    }
 }
 
 void
@@ -251,7 +228,11 @@ FeatureNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
+        if (_clampCallback.valid() && getMapNode())
+            getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
+
         AnnotationNode::setMapNode( mapNode );
+
         _needsRebuild = true;
         build();
     }
@@ -265,22 +246,11 @@ const Style& FeatureNode::getStyle() const
 void
 FeatureNode::setStyle(const Style& style)
 {
-    // Try to compare the styles and see if we can get away with not compiling the geometry again.
-    Style a = _style;
-    Style b = style;
-   
-    // If the only thing that has changed is the AltitudeSymbol, we don't need to worry about rebuilding the entire geometry again.
-    a.remove<AltitudeSymbol>();
-    b.remove<AltitudeSymbol>();
-    if (a.getConfig().toJSON() == b.getConfig().toJSON())
-    {
-        _needsRebuild = false;
-    }
-    else
-    {
-        _needsRebuild = true;
-    }
     _style = style;
+
+    AnnotationNode::setStyle( style );
+
+    _needsRebuild = true;
     build();
 }
 
@@ -320,89 +290,31 @@ void FeatureNode::init()
     build();
 }
 
-osg::Group*
-FeatureNode::getAttachPoint()
-{
-    if ( !_attachPoint )
-        return 0L;
-
-    // first try to find a transform to go under:
-    osg::Group* xform = osgEarth::findTopMostNodeOfType<osg::Transform>(_attachPoint);
-    if ( xform )
-        return xform;
-
-    // failing that, use the artificial attach group we created.
-    return _attachPoint;
-}
-
-
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
+FeatureNode::onTileAdded(const TileKey&          key, 
+                         osg::Node*              tile, 
+                         TerrainCallbackContext& context)
 {
-    if ( _featurePolytope.contains( tile->getBound() ) )
+    if ( !tile || _featurePolytope.contains( tile->getBound() ) )
     {
-        clampMesh( tile );
+        clamp( context.getTerrain(), tile );
     }
 }
 
 void
-FeatureNode::clampMesh( osg::Node* terrainModel )
+FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
 {
-    if ( getMapNode() )
+    if ( terrain && patch )
     {
-        double scale  = 1.0;
-        double offset = 0.0;
-        bool   relative = false;
+        GeometryClamper clamper;
+        clamper.setTerrainPatch( patch );
+        clamper.setTerrainSRS( terrain->getSRS() );
 
-        if (_altitude.valid())
-        {
-            NumericExpression scaleExpr(_altitude->verticalScale().value());
-            NumericExpression offsetExpr(_altitude->verticalOffset().value());
-            scale = scaleExpr.eval();
-            offset = offsetExpr.eval();
-            relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-        }
-
-        MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
-        getAttachPoint()->accept( clamper );
-
+        this->accept( clamper );
         this->dirtyBound();
     }
 }
-
-void
-FeatureNode::updateClusterCulling()
-{
-    // install a cluster culler.
-    if ( getMapNode()->isGeocentric() && _clusterCulling && !_clusterCullingCallback)
-    {
-        const GeoExtent& ccExtent = _extent;
-        if ( ccExtent.isValid() )
-        {
-            // if the extent is more than 90 degrees, bail
-            GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
-            if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
-            {
-                // get the geocentric tile center:
-                osg::Vec3d tileCenter;
-                ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
-
-                osg::Vec3d centerECEF;
-                ccExtent.getSRS()->transform( tileCenter, getMapNode()->getMapSRS()->getECEF(), centerECEF );
-                _clusterCullingCallback = ClusterCullingFactory::create2( this, centerECEF );
-                if ( _clusterCullingCallback )
-                    this->addCullCallback( _clusterCullingCallback );
-            }
-        }
-    }
-    else if (!_clusterCulling && _clusterCullingCallback)
-    {
-        this->removeCullCallback( _clusterCullingCallback );
-        _clusterCullingCallback = 0;
-    }
-}
-
 
 //-------------------------------------------------------------------
 
@@ -412,7 +324,7 @@ OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 FeatureNode::FeatureNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions ) :
-AnnotationNode( mapNode, conf )
+AnnotationNode(conf)
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )
@@ -432,6 +344,8 @@ AnnotationNode( mapNode, conf )
 
     conf.getObjIfSet( "style", _style );
 
+    FeatureNode::setMapNode( mapNode );
+
     if ( srs.valid() && geom.valid() )
     {
         Feature* feature = new Feature(geom.get(), srs.get() );
@@ -446,8 +360,7 @@ AnnotationNode( mapNode, conf )
 
 Config
 FeatureNode::getConfig() const
-{
-    
+{    
     Config conf("feature");
 
     if ( !_features.empty() )

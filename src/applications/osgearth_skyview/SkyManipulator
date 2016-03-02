@@ -1,0 +1,40 @@
+#ifndef OSGEARTH_SKYMANIPULATOR_H
+#define OSGEARTH_SKYMANIPULATOR_H
+
+#include <osgGA/CameraManipulator>
+
+class SkyManipulator : public osgGA::CameraManipulator
+{
+public:
+    SkyManipulator();
+
+    /** set the position of the matrix manipulator using a 4x4 Matrix.*/
+    virtual void setByMatrix(const osg::Matrixd& matrix);
+
+    /** set the position of the matrix manipulator using a 4x4 Matrix.*/
+    virtual void setByInverseMatrix(const osg::Matrixd& matrix);
+
+    /** get the position of the manipulator as 4x4 Matrix.*/
+    virtual osg::Matrixd getMatrix() const;
+
+    /** get the position of the manipulator as a inverse matrix of the manipulator, typically used as a model view matrix.*/
+    virtual osg::Matrixd getInverseMatrix() const;
+
+    osg::Quat getRotation() const;
+
+    // handle events, return true if handled, false otherwise.
+    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+
+    // Move the camera to the default position.
+    virtual void home(double /*unused*/);
+    virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+
+    double _heading;
+    double _pitch;
+    double _distance;
+
+    float _prevX, _prevY;
+};
+
+
+#endif

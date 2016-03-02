@@ -1,0 +1,21 @@
+/** CMake Template File - compiled into AutoGenShaders.cpp */
+#include <osgEarthDrivers/bumpmap/BumpMapShaders>
+
+#define MULTILINE(...) #__VA_ARGS__
+
+using namespace osgEarth::BumpMap;
+
+Shaders::Shaders()
+{
+    VertexView = "BumpMap.vert.view.glsl";
+    _sources[VertexView] = MULTILINE(@BumpMap.vert.view.glsl@);
+
+    FragmentSimple = "BumpMap.frag.simple.glsl";
+    _sources[FragmentSimple] = MULTILINE(@BumpMap.frag.simple.glsl@);
+
+    FragmentProgressive = "BumpMap.frag.progressive.glsl";
+    _sources[FragmentProgressive] = MULTILINE(@BumpMap.frag.progressive.glsl@);
+
+    FragmentCommon = "BumpMap.frag.common.glsl";
+    _sources[FragmentCommon] = MULTILINE(@BumpMap.frag.common.glsl@);
+};

@@ -87,6 +87,8 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {        
+        FeatureSource::initialize( dbOptions );
+
         _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
         std::string fullFilename = _options.url()->full();
 
@@ -351,11 +353,14 @@ public:
         }
         else
         {
-            OE_INFO << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
+            OE_DEBUG << LC << "SQL QUERY failed for " << queryStr << ": " << std::endl;
             valid = false;
         }
 
         sqlite3_finalize( select );
+
+        // apply filters before returning.
+        applyFilters( features );
 
         if (!features.empty())
         {

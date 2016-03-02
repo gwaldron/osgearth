@@ -110,14 +110,14 @@ MeasureToolHandler::rebuild()
 
     _featureNode = new FeatureNode( getMapNode(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    _featureNode->setClusterCulling(false);
+    //_featureNode->setClusterCulling(false);
 
     _group->addChild (_featureNode.get() );
 
 #ifdef SHOW_EXTENT
 
     // Define the extent feature:
-    _extentFeature = new Feature( new Polygon(), mapNode->getMapSRS() );
+    _extentFeature = new Feature( new Polygon(), getMapNode()->getMapSRS() );
     _extentFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
     _extentFeature->style()->add( alt );
     LineSymbol* extentLine = _extentFeature->style()->getOrCreate<LineSymbol>();
@@ -125,7 +125,7 @@ MeasureToolHandler::rebuild()
     extentLine->stroke()->width() = 2.0f;
     extentLine->tessellation() = 20;
 
-    _extentFeatureNode = new FeatureNode( _mapNode.get(), _extentFeature.get() );
+    _extentFeatureNode = new FeatureNode( getMapNode(), _extentFeature.get() );
     
     _group->addChild( _extentFeatureNode.get() );
 #endif
@@ -226,8 +226,8 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                     }
 
 #ifdef SHOW_EXTENT
-                    const GeoExtent& ex = _feature->getExtent();
-                    OE_INFO << "extent = " << ex.toString() << std::endl;
+                    const GeoExtent ex( _feature->getSRS(), _feature->getGeometry()->getBounds() );
+                    //OE_INFO << "extent = " << ex.toString() << std::endl;
                     Geometry* eg = _extentFeature->getGeometry();
                     osg::Vec3d fc = ex.getCentroid();
                     eg->clear();

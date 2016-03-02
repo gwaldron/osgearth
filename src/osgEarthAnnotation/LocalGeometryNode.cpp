@@ -22,10 +22,9 @@
 
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/MeshClamper>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 
 #define LC "[GeometryNode] "
@@ -35,14 +34,21 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
+LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
+GeoPositionNode()
+{
+    LocalGeometryNode::setMapNode( mapNode );
+    init( 0L );
+}
+
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_geom        ( geom ),
-_style       ( style )
+GeoPositionNode(),
+_geom    ( geom ),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
@@ -50,31 +56,38 @@ _style       ( style )
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_node        ( node ),
-_style       ( style )
+GeoPositionNode(),
+_node    ( node ),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
+void
+LocalGeometryNode::setMapNode(MapNode* mapNode)
+{
+    if ( mapNode != getMapNode() )
+    {
+        GeoPositionNode::setMapNode( mapNode );
+        init(0L);
+    }
+}
 
 void
 LocalGeometryNode::initNode()
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     if ( _node.valid() )
     {
-        _xform->addChild( _node );
-        // activate clamping if necessary
-        replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+        _node = AnnotationUtils::installOverlayParent( _node.get(), _style );
 
-        applyRenderSymbology( _style );
-        setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
+        getPositionAttitudeTransform()->addChild( _node.get() );
+
+        applyRenderSymbology( getStyle() );
+
+        setLightingIfNotSet( getStyle().has<ExtrusionSymbol>() );
     }
 }
 
@@ -82,37 +95,31 @@ LocalGeometryNode::initNode()
 void
 LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     if ( _geom.valid() )
     {
-        Session* session = 0L;
+        osg::ref_ptr<Session> session;
         if ( getMapNode() )
             session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
-        FilterContext cx( session );
-
+        
         GeometryCompiler gc;
-        osg::Node* node = gc.compile( _geom.get(), _style, cx );
-        if ( node )
+        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), getStyle(), FilterContext(session) );
+        if ( node.valid() )
         {
-            _xform->addChild( node );
-            // activate clamping if necessary
-            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            node = AnnotationUtils::installOverlayParent( node.get(), getStyle() );
 
-            applyRenderSymbology( _style );
+            getPositionAttitudeTransform()->addChild( node.get() );
+
+            applyRenderSymbology( getStyle() );
         }
     }
 }
 
 
 void 
-LocalGeometryNode::init(const osgDB::Options* options )
-{
-    this->clearDecoration();
-    
+LocalGeometryNode::init(const osgDB::Options* options)
+{    
     if ( _node.valid() )
     {
         initNode();
@@ -157,38 +164,30 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+GeoPositionNode( mapNode, conf )
 {
-    _xform = new osg::MatrixTransform();
-
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
         _geom = GeometryUtils::geometryFromWKT( geomconf.value() );
-        if ( _geom.valid() )
-        {
-            conf.getObjIfSet( "style", _style );
-
-            init( dbOptions );
-        }
     }
+
+    conf.getObjIfSet( "style", _style );
+    init( dbOptions );
 }
 
 Config
 LocalGeometryNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "local_geometry";
+
+    if ( !_style.empty() )
+        conf.addObj( "style", _style );
 
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-        if ( !_style.empty() )
-            conf.addObj( "style", _style );
-    }
-    else
-    {
-        OE_WARN << LC << "Cannot serialize GeometryNode because it contains no geometry" << std::endl;
     }
 
     return conf;

@@ -234,7 +234,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 
         // scale from LOD to 0..1 range, more or less
         // TODO: need to balance this with normal PagedLOD priority setup
-        float scaledPriority = priority / 20.0f;
+        //float scaledPriority = priority / 20.0f;
 
         nv.getDatabaseRequestHandler()->requestNodeFile(
             filename,

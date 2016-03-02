@@ -1030,20 +1030,14 @@ namespace osgEarth { namespace Util
         EventType _last_event;
         double    _time_s_last_event;
         
-
-        // to support updating the camera after the update traversal (e.g., for tethering)
-        osg::observer_ptr<osg::Camera> _viewCamera;
         double _vfov;
-        double _tanHalfVFOV;
-        optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
-        Revision _viewCameraSettingsMonitor;
 
         /** updates a camera to switch between prospective and ortho. */
         void updateProjection( osg::Camera* eventCamera );
 
         // Support snappy transition when the pointer leaves and
         // returns to earth during a drag
-        osg::Vec3d               _lastPointOnEarth;
+        osg::Vec3d _lastPointOnEarth;
 
 
         osg::ref_ptr< TerrainCallback > _terrainCallback;

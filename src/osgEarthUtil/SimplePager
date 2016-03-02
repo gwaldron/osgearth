@@ -25,6 +25,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Profile>
+#include <osgEarth/Progress>
 #include <osg/Group>
 #include <osg/PagedLOD>
 
@@ -54,38 +55,52 @@ namespace osgEarth { namespace Util {
         float getRangeFactor() const { return _rangeFactor; }
         void setRangeFactor(float value) { _rangeFactor = value; }
 
+        float getPriorityScale() const { return _priorityScale; }
+        void setPriorityScale(float value) { _priorityScale = value; }
+
+        float getPriorityOffset() const { return _priorityOffset; }
+        void setPriorityOffset(float value) { _priorityOffset = value; }
+
+        void setFileLocationCallback(osgDB::FileLocationCallback* cb) { _fileLocationCallback = cb; }
+        osgDB::FileLocationCallback* getFileLocationCallback() const  { return _fileLocationCallback.get(); }
+
         /**
          * Gets the profile for the SimplePager.
          */
-        const osgEarth::Profile* getProfile();
+        const osgEarth::Profile* getProfile() const;
 
         /**
         * Creates a node for the given TileKey.  Doesn't do anything with paging, just gets the raw data.
         * Subclasses override this method to provide their data for TileKeys
         */
-        virtual osg::Node* createNode( const TileKey& key );
+        virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
 
         /**
         * Gets the bounding sphere for a given TileKey.
         */
-        osg::BoundingSphere getBounds(const TileKey& key);
+        osg::BoundingSphere getBounds(const TileKey& key) const;
 
         /**
         * The root node is a special node.
         */
         osg::Node* buildRootNode();
 
-
         /**
         * Creates a PagedLOD for the given TileKEy
         */
-        osg::Node* createPagedNode( const TileKey& key );
+        osg::Node* createPagedNode(const TileKey& key, ProgressCallback* progress);
 
+    public:
+        struct ProgressTracker : public osg::NodeCallback {
+            ProgressTracker(osg::NodeCallback*);
+            osg::ref_ptr<ProgressCallback> _progress[4];
+            void operator()(osg::Node*, osg::NodeVisitor*);
+        };
 
         /**
         * Loads the PagedLOD hierarchy for this key.
         */
-        osg::Node* loadKey( const TileKey& key );
+        osg::Node* loadKey(const TileKey& key, ProgressTracker* progress);
 
     protected:
 
@@ -94,7 +109,10 @@ namespace osgEarth { namespace Util {
         unsigned int _minLevel;
         unsigned int _maxLevel;
         osg::ref_ptr< const osgEarth::Profile > _profile;
-        osg::ref_ptr< osgDB::Options > _options;
+        osg::ref_ptr< osg::NodeCallback > _progressMaster;
+        osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
+        float _priorityScale;
+        float _priorityOffset;
     };
 
 } } // namespace osgEarth::Util

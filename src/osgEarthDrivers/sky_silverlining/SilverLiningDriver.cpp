@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "SilverLiningOptions"
-#include "SilverLiningNode"
+#include <osgEarthSilverLining/SilverLiningOptions>
+#include <osgEarthSilverLining/SilverLiningNode>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Sky>
 #include <osgDB/FileNameUtils>
 
 #define LC "[SilverLiningDriver] "
 
-namespace osgEarth { namespace SilverLining
+namespace osgEarth { namespace Drivers { namespace SilverLining
 {
     class SilverLiningDriver : public osgEarth::Util::SkyDriver
     {
@@ -46,7 +46,7 @@ namespace osgEarth { namespace SilverLining
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            SilverLiningOptions slOptions = getSkyOptions(options);
+             osgEarth::SilverLining::SilverLiningOptions slOptions = getSkyOptions(options);
 
             // if the Resource Path isn't set, attempt to set it from 
             // the SL environment variable.
@@ -70,7 +70,7 @@ namespace osgEarth { namespace SilverLining
 
             osgEarth::MapNode* mapnode = getMapNode(options);
             const Map* map = mapnode ? mapnode->getMap() : 0L;
-            return new SilverLiningNode( map, slOptions );
+            return new osgEarth::SilverLining::SilverLiningNode( map, slOptions );
         }
 
     protected:
@@ -79,4 +79,4 @@ namespace osgEarth { namespace SilverLining
 
     REGISTER_OSGPLUGIN(osgearth_sky_silverlining, SilverLiningDriver)
 
-} } // namespace osgEarth::Drivers::SilverLining
+} } } // namespace osgEarth::Drivers::SilverLining

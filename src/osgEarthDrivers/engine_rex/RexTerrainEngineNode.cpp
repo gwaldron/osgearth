@@ -77,30 +77,6 @@ namespace
                 node->onMapModelChanged( change );
         }
     };
-
-#if 0
-    // Render bin for terrain surface geometry
-    class SurfaceBin : public osgUtil::RenderBin
-    {
-    public:
-        SurfaceBin()
-        {
-            this->setName( "oe.SurfaceBin" );
-            this->setStateSet( new osg::StateSet() );
-            this->setSortMode(SORT_FRONT_TO_BACK);
-        }
-
-        osg::Object* clone(const osg::CopyOp& copyop) const
-        {
-            return new SurfaceBin(*this, copyop);
-        }
-
-        SurfaceBin(const SurfaceBin& rhs, const osg::CopyOp& copy) :
-            osgUtil::RenderBin(rhs, copy)
-        {
-        }
-    };
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -217,14 +193,21 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 void
 RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::preInitialize( map, options );
-    //nop.
+    // Force the mercator fast path off, since REX does not support it yet.
+    TerrainOptions myOptions = options;
+    myOptions.enableMercatorFastPath() = false;
+
+    TerrainEngineNode::preInitialize( map, myOptions );
 }
 
 void
 RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::postInitialize( map, options );
+    // Force the mercator fast path off, since REX does not support it yet.
+    TerrainOptions myOptions = options;
+    myOptions.enableMercatorFastPath() = false;
+
+    TerrainEngineNode::postInitialize( map, myOptions );
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
@@ -232,7 +215,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
-    _terrainOptions.merge( options );
+    _terrainOptions.merge( myOptions );
 
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if ( _terrainOptions.morphImagery() == true )
@@ -498,7 +481,7 @@ namespace
         void operator()( const TileNodeRegistry::TileNodeMap& tiles ) const {
             unsigned count = 0;
             for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-                if ( i->second->referenceCount() == 1 ) {
+                if ( i->second.tile->referenceCount() == 1 ) {
                     count++;
                 }
             }
@@ -810,6 +793,8 @@ RexTerrainEngineNode::updateState()
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
         
+        terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
+        
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
@@ -935,11 +920,16 @@ RexTerrainEngineNode::updateState()
             OE_DEBUG << LC << "Render Bindings:\n";
             for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
+                osg::Image* empty = ImageUtils::createEmptyImage(1,1);
+                osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
+
                 if ( b->isActive() )
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
                     OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+                    terrainStateSet->setTextureAttribute(b->unit(), tex.get());
                 }
+
             }
 
             // uniform that controls per-layer opacity

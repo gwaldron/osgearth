@@ -24,8 +24,6 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/ModelNode>
-#include <osgEarthAnnotation/LocalGeometryNode>
-#include <osgEarth/Decluttering>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
 
@@ -125,13 +123,13 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                         if ( cx._options->modelScale() != 1.0f )
                         {
                             float s = *cx._options->modelScale();
-                            node->setScale( osg::Vec3f(s,s,s) );
+                            node->getPositionAttitudeTransform()->setScale(osg::Vec3d(s,s,s));
                         }
 
                         // model local tangent plane rotation:
                         if ( !cx._options->modelRotation()->zeroRotation() )
                         {
-                            node->setLocalRotation( *cx._options->modelRotation() );
+                            node->getPositionAttitudeTransform()->setAttitude( *cx._options->modelRotation() );
                         }
 
                         modelNode = node;
@@ -213,11 +211,6 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 
                     cx._groupStack.top()->addChild( group );
 
-                    if ( iconNode && cx._options->declutter() == true )
-                    {
-                        Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
-                    }
-
                     if ( iconNode )
                         KML_Feature::build( node, cx, iconNode );
                     if ( modelNode )
@@ -237,10 +230,6 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                         else
                         {
                             cx._groupStack.top()->addChild( iconNode );
-                            if ( cx._options->declutter() == true )
-                            {
-                                Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
-                            }
                         }
                         KML_Feature::build( node, cx, iconNode );
                     }

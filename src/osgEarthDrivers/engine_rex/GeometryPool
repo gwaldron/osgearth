@@ -112,6 +112,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const MapInfo& mapInfo,
             MaskGenerator* maskSet ) const;
 
+        bool _enabled;
         bool _debug;
     };
 

@@ -28,6 +28,7 @@
 #include <osgUtil/StateGraph>
 #include <osgText/Text>
 #include <osg/UserDataContainer>
+#include <osg/ValueObject>
 #include <set>
 #include <algorithm>
 
@@ -232,7 +233,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
         // compute a window matrix so we can do window-space culling. If this is an RTT camera
         // with a reference camera attachment, we actually want to declutter in the window-space
-        // of the reference camera.
+        // of the reference camera. (e.g., for picking).
         const osg::Viewport* vp = cam->getViewport();
 
         osg::Matrix windowMatrix = vp->computeWindowMatrix();
@@ -282,23 +283,21 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::Matrix MVP = (*leaf->_modelview.get()) * (*leaf->_projection.get());
             osg::Vec4d clip = s_zero_w * MVP;
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
-            osg::Vec3f winPos = clip_ndc * windowMatrix;
-
-            // this accounts for the size difference when using a reference camera (RTT/picking)
-            box.xMin() *= refCamScale.x();
-            box.xMax() *= refCamScale.x();
-            box.yMin() *= refCamScale.y();
-            box.yMax() *= refCamScale.y();
+            
+            // if we are using a reference camera (like for picking), we do the decluttering in
+            // its viewport so that they match. 
+            osg::Vec3f winPos    = clip_ndc * windowMatrix;
+            osg::Vec3f refWinPos = clip_ndc * refWindowMatrix;
 
             // The "declutter" box is the box we use to reserve screen space.
             // This must be unquantized regardless of whether snapToPixel is set.
             box.set(
-                floor(winPos.x() + box.xMin()),
-                floor(winPos.y() + box.yMin()),
-                winPos.z(),
-                ceil(winPos.x() + box.xMax()),
-                ceil(winPos.y() + box.yMax()),
-                winPos.z() );
+                floor(refWinPos.x() + box.xMin()),
+                floor(refWinPos.y() + box.yMin()),
+                refWinPos.z(),
+                ceil(refWinPos.x() + box.xMax()),
+                ceil(refWinPos.y() + box.yMax()),
+                refWinPos.z() );
 
             // if snapping is enabled, only snap when the camera stops moving.
             bool quantize = snapToPixel;
@@ -318,15 +317,25 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 {
                     info._lastXY.set( winPos.x(), winPos.y() );
                 }
-            }
+            }            
 
-            // if this leaf is already in a culled group, skip it.
             if ( s_enabledGlobally )
             {
-                if ( culledParents.find(drawableParent) != culledParents.end() )
+                // A max priority => never occlude.
+                const DeclutteringData* data = dynamic_cast<const DeclutteringData*>(drawable->getUserData());
+                float priority = data ? data->_priority : 0.0f;
+
+                if ( priority == FLT_MAX )
+                {
+                    visible = true;
+                }
+                
+                // if this leaf is already in a culled group, skip it.
+                else if ( culledParents.find(drawableParent) != culledParents.end() )
                 {
                     visible = false;
                 }
+
                 else
                 {
                     // weed out any drawables that are obscured by closer drawables.
@@ -795,16 +804,13 @@ Decluttering::getOptions()
 bool
 DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
 {
-    float diff = 0.0f;
-    const PriorityProvider* lhsData = dynamic_cast<const PriorityProvider*>(lhs->getDrawable()->getUserData());
-    if ( lhsData )
-    {
-        const PriorityProvider* rhsData = dynamic_cast<const PriorityProvider*>(rhs->getDrawable()->getUserData());
-        if ( rhsData )
-        {
-            diff = lhsData->getPriority() - rhsData->getPriority();
-        }
-    }
+    const DeclutteringData* lhsdata = dynamic_cast<const DeclutteringData*>(lhs->getDrawable()->getUserData());
+    float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
+    
+    const DeclutteringData* rhsdata = dynamic_cast<const DeclutteringData*>(rhs->getDrawable()->getUserData());
+    float rhsPriority = rhsdata ? rhsdata->_priority : 0.0;
+
+    float diff = lhsPriority - rhsPriority;
 
     if ( diff != 0.0f )
         return diff > 0.0f;

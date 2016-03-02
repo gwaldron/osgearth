@@ -24,14 +24,13 @@
 
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarthAnnotation/LocalizedNode>
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/TrackNode>
 
 using namespace osgEarth::Annotation;
-
+#if 0
 //---------------------------------------------------------------------------
 
 void
@@ -56,13 +55,7 @@ Decoration::apply(class AnnotationNode& node, bool enable)
 }
 
 bool
-Decoration::apply(class LocalizedNode& node, bool enable)
-{ 
-    return apply(static_cast<AnnotationNode&>(node), enable);
-}
-
-bool
-Decoration::apply(class OrthoNode& node, bool enable)
+Decoration::apply(class GeoPositionNode& node, bool enable)
 {
     return apply(static_cast<AnnotationNode&>(node), enable);
 }
@@ -110,3 +103,4 @@ InjectionDecoration::apply(osg::Group* ap, bool enable)
     }
     return false;
 }
+#endif

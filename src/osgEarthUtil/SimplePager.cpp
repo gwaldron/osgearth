@@ -2,58 +2,142 @@
 #include <osgEarth/TileKey>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Options>
+#include <osg/UserDataContainer>
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 
 using namespace osgEarth::Util;
 
+#define LC "[SimplerPager] "
 
-/**
-* A pseudo-loader for paged feature tiles.
-*/
-struct SimplePagerPseudoLoader : public osgDB::ReaderWriter
+namespace
 {
-    SimplePagerPseudoLoader()
+    /**
+     * The master progress tracker keeps track of the current framestamp
+     * for the entire paged scene graph.
+     */
+    struct ProgressMaster : public osg::NodeCallback
     {
-        supportsExtension( "osgearth_pseudo_simple", "" );
-    }
+        unsigned _frame;
 
-    const char* className()
-    { // override
-        return "Simple Pager";
-    }
-
-    ReadResult readNode(const std::string& uri, const Options* options) const
-    {
-        if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
-            return ReadResult::FILE_NOT_HANDLED;
-
-        unsigned lod, x, y;
-        sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
-
-        SimplePager* pager = dynamic_cast< SimplePager*>(const_cast<Options*>(options)->getUserData());
-        if (pager)
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
-            return pager->loadKey( TileKey( lod, x, y, pager->getProfile() ) );
+            _frame = nv->getFrameStamp() ? nv->getFrameStamp()->getFrameNumber() : 0u;
+            traverse(node, nv);
+        }
+    };
+
+    /**
+     * The ProgressCallback that gets passed to createNode() for the subclass
+     * to use. It will report cancelation if the last reported frame number is
+     * behind the current master frame number (as tracked by the ProgressMaster)
+     */
+    struct MyProgressCallback : public ProgressCallback
+    {
+        MyProgressCallback(ProgressMaster* master)
+        {
+            _master = master;
         }
 
-        return ReadResult::ERROR_IN_READING_FILE;
-    }
-};
+        // override from ProgressCallback
+        bool isCanceled()
+        {
+            return (!_master.valid()) || (_master->_frame - _lastFrame > 1u);
+        }
 
-REGISTER_OSGPLUGIN(osgearth_pseudo_simple, SimplePagerPseudoLoader);
+        // called by ProgressUpdater
+        void touch(const osg::FrameStamp* stamp)
+        {
+            if ( stamp )
+                _lastFrame = stamp->getFrameNumber();
+        }
+
+        unsigned _lastFrame;
+        osg::observer_ptr<ProgressMaster> _master;
+    };
+
+
+    /**
+    * A pseudo-loader for paged feature tiles.
+    */
+    struct SimplePagerPseudoLoader : public osgDB::ReaderWriter
+    {
+        SimplePagerPseudoLoader()
+        {
+            supportsExtension( "osgearth_pseudo_simple", "" );
+        }
+
+        const char* className()
+        { // override
+            return "Simple Pager";
+        }
+
+        ReadResult readNode(const std::string& uri, const Options* options) const
+        {
+            if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
+                return ReadResult::FILE_NOT_HANDLED;
+
+            unsigned lod, x, y;
+            sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
+
+
+            SimplePager* pager =
+                dynamic_cast<SimplePager*>(
+                    const_cast<osg::Object*>(
+                        options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::this")));
+            
+            if (pager)
+            {
+                SimplePager::ProgressTracker* tracker =
+                    dynamic_cast<SimplePager::ProgressTracker*>(
+                        const_cast<osg::Object*>(
+                            options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::ProgressTracker")));
+
+                return pager->loadKey(
+                    TileKey(lod, x, y, pager->getProfile()),
+                    tracker);
+            }
+
+            return ReadResult::ERROR_IN_READING_FILE;
+        }
+    };
+
+    REGISTER_OSGPLUGIN(osgearth_pseudo_simple, SimplePagerPseudoLoader);
+}
+
+
+SimplePager::ProgressTracker::ProgressTracker(osg::NodeCallback* master)
+{
+    setName( "osgEarth::Util::SimplerPager::ProgressTracker" );
+    for(int i=0; i<4; ++i)
+        _progress[i] = new MyProgressCallback( static_cast<ProgressMaster*>(master) );
+}
+
+void SimplePager::ProgressTracker::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    for(int i=0; i<4; ++i)
+        static_cast<MyProgressCallback*>(_progress[i].get())->touch( nv->getFrameStamp() );
+    traverse(node, nv);
+}
 
 
 SimplePager::SimplePager(const osgEarth::Profile* profile):
 _profile( profile ),
-    _rangeFactor( 6.0 ),
-    _additive(false),
-    _minLevel(0),
-    _maxLevel(30)
+_rangeFactor( 6.0 ),
+_additive(false),
+_minLevel(0),
+_maxLevel(30),
+_priorityScale(1.0f),
+_priorityOffset(0.0f)
 {
-    _options = new osgDB::Options;
-    _options->setUserData( this );          
+    // required in order to pass our "this" pointer to the pseudo loader:
+    this->setName( "osgEarth::Util::SimplerPager::this" );
+    
+    // install the master framestamp tracker:
+    _progressMaster = new ProgressMaster();
+    addCullCallback( _progressMaster.get() );
 }
 
 void SimplePager::build()
@@ -61,7 +145,7 @@ void SimplePager::build()
     addChild( buildRootNode() );
 }
 
-osg::BoundingSphere SimplePager::getBounds(const TileKey& key)
+osg::BoundingSphere SimplePager::getBounds(const TileKey& key) const
 {
     int samples = 6;
 
@@ -90,15 +174,14 @@ osg::BoundingSphere SimplePager::getBounds(const TileKey& key)
 }
 
 osg::Node* SimplePager::buildRootNode()
-{
-    
+{    
     osg::Group* root = new osg::Group;
 
     std::vector<TileKey> keys;
     _profile->getRootKeys( keys );
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        osg::Node* node = createPagedNode( keys[i] );
+        osg::Node* node = createPagedNode( keys[i], 0L );
         if ( node )
             root->addChild( node );
     }
@@ -106,7 +189,7 @@ osg::Node* SimplePager::buildRootNode()
     return root;
 }
 
-osg::Node* SimplePager::createNode( const TileKey& key )
+osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
     osg::BoundingSphere bounds = getBounds( key );
 
@@ -120,7 +203,7 @@ osg::Node* SimplePager::createNode( const TileKey& key )
     return mt;
 }
 
-osg::Node* SimplePager::createPagedNode( const TileKey& key )
+osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 {
     osg::BoundingSphere tileBounds = getBounds( key );
     float tileRadius = tileBounds.radius();
@@ -134,7 +217,7 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
     // only create real node if we are at least at the min LOD:
     if ( key.getLevelOfDetail() >= _minLevel )
     {
-        node = createNode( key );
+        node = createNode( key, progress );
 
         if ( node.valid() )
         {
@@ -168,16 +251,31 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
 
         // Now setup a filename on the PagedLOD that will load all of the children of this node.
         plod->setFileName(1, uri);
-        plod->setDatabaseOptions( _options.get() );
+        plod->setPriorityOffset(1, _priorityOffset);
+        plod->setPriorityScale (1, _priorityScale);
+        
+        // install a callback that will update the progress tracker whenever the PLOD
+        // gets traversed. The children, once activated, will have access to its
+        // ProgressCallback within and be able to check for cancelation, use stats, etc.
+        ProgressTracker* tracker = new ProgressTracker( _progressMaster.get() );
+        plod->addCullCallback( tracker );
+
+        // assemble data to pass to the pseudoloader
+        osgDB::Options* options = new osgDB::Options();
+        options->getOrCreateUserDataContainer()->addUserObject( this );
+        options->getOrCreateUserDataContainer()->addUserObject( tracker );
+        plod->setDatabaseOptions( options );
+        
+        // Install an FLC if the caller provided one
+        if ( _fileLocationCallback.valid() )
+            options->setFileLocationCallback( _fileLocationCallback.get() );
 
         // Setup the min and max ranges.
-
-        // This setups a replacement mode where the parent will be completely replaced by it's children.
         float minRange = (float)(tileRadius * _rangeFactor);
 
         if (!_additive)
         {
-            // Replace mode, the parent is replaced by it's children.
+            // Replace mode, the parent is replaced by its children.
             plod->setRange( 0, minRange, FLT_MAX );
             plod->setRange( 1, 0, minRange );
         }
@@ -201,7 +299,7 @@ osg::Node* SimplePager::createPagedNode( const TileKey& key )
 /**
 * Loads the PagedLOD hierarchy for this key.
 */
-osg::Node* SimplePager::loadKey( const TileKey& key )
+osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 {       
     osg::ref_ptr< osg::Group >  group = new osg::Group;
 
@@ -209,7 +307,7 @@ osg::Node* SimplePager::loadKey( const TileKey& key )
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::Node* plod = createPagedNode( childKey );
+        osg::Node* plod = createPagedNode( childKey, tracker->_progress[i].get() );
         if (plod)
         {
             group->addChild( plod );
@@ -222,7 +320,7 @@ osg::Node* SimplePager::loadKey( const TileKey& key )
     return 0;
 }
 
-const osgEarth::Profile* SimplePager::getProfile()
+const osgEarth::Profile* SimplePager::getProfile() const
 {
     return _profile.get();
 }

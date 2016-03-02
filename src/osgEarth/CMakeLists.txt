@@ -17,6 +17,7 @@ IF(WIN32)
         ADD_DEFINITIONS(-DCURL_STATICLIB)
         SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
     ENDIF(CURL_IS_STATIC)
+    LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
 SET(LIB_NAME osgEarth)
@@ -86,6 +87,7 @@ SET(LIB_PUBLIC_HEADERS
     Geoid
     GeoMath
 	GeoTransform
+    GeometryClamper
     HeightFieldUtils
     Horizon
     HTTPClient
@@ -245,6 +247,7 @@ set(TARGET_SRC
     Geoid.cpp
     GeoMath.cpp
 	GeoTransform.cpp
+    GeometryClamper.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
     HTTPClient.cpp

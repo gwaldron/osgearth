@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#include "Common"
+#include "SilverLiningOptions"
+#include <osgEarthUtil/Sky>
+#include <osgEarth/Map>
+#include <osgEarth/PhongLightingEffect>
+#include <osg/Light>
+#include <osg/LightSource>
+
+namespace osgEarth { namespace SilverLining
+{
+    class SilverLiningContext;
+    struct InitializationCallback;
+
+    /**
+     * Node that roots the silverlining adapter.
+     */
+    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::Util::SkyNode
+    {
+    public:
+        SilverLiningNode(
+            const osgEarth::Map*       map,
+            const SilverLiningOptions& options,
+            InitializationCallback* callback=0L);
+
+    public: // SkyNode
+
+        SilverLiningContext* getContext() { return _SL.get(); }
+
+        osg::Light* getSunLight() { return _light.get(); }
+
+        void attach(osg::View* view, int lightNum);
+
+        // callbacks from base class.
+        void onSetDateTime();
+        void onSetMinimumAmbient();
+
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor&);
+
+    protected:
+        virtual ~SilverLiningNode();
+
+        osg::ref_ptr<SilverLiningContext> _SL;
+		osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<osg::LightSource> _lightSource;
+        osg::Drawable* _skyDrawable;
+		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
+        osg::ref_ptr<osg::Light> _light;
+		double _lastAltitude;
+		const SilverLiningOptions _options;
+        osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
+    };
+
+} } // namespace osgEarth::SilverLining

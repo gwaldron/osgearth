@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_RECTANGLE_NODE_H
 #define OSGEARTH_ANNOTATION_RECTANGLE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Rectangle annotation.
      */
-    class OSGEARTHANNO_EXPORT RectangleNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT RectangleNode : public GeoPositionNode
     {
     public:
         enum Corner
@@ -126,10 +126,6 @@ namespace osgEarth { namespace Annotation
 
         RectangleNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
-        
-    protected: // LocalizedNode
-
-        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
 
     private:
         RectangleNode() { }
@@ -140,8 +136,6 @@ namespace osgEarth { namespace Annotation
         Style  _style;
         Linear _width;
         Linear _height;
-
-        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

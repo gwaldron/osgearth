@@ -41,18 +41,21 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     /**
      * Like cluster culling
      */
-    struct HorizonTileCuller : public osg::Referenced
+    struct HorizonTileCuller
     {
         double      _radiusPolar, _radiusEquator;
         osg::Vec3d  _points[4];
         osg::Matrix _local2world;
-        osg::ref_ptr<Horizon> _horizonProto;
+        osg::ref_ptr<Horizon> _horizon;
 
-        HorizonTileCuller(const SpatialReference* srs, const osg::Matrix& local2world);
+        void set(const SpatialReference* srs, const osg::Matrix& local2world, const osg::BoundingBox& bbox);
 
-        void set(const osg::BoundingBox& bbox);
-
-        bool isVisible(const osg::Vec3d& point) const;
+        inline bool isVisible(const osg::Vec3d& from) const {
+            for(unsigned i=0; i<4; ++i)
+                if ( _horizon->isVisible(from, _points[i], 0.0) )
+                    return true;
+            return false;
+        }
     };
 
 
@@ -76,11 +79,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         TileDrawable* getDrawable() const { return _drawable.get(); }
 
-        bool isVisible(osgUtil::CullVisitor* cv) const;
+        inline bool isVisible(osgUtil::CullVisitor* cv) const {
+            return _horizonCuller.isVisible(cv->getViewPointLocal());
+        }
         
         // A box can have 4 children. 
         // Returns true if any child box intersects the sphere of radius centered around point
-        bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float fZoomFactor);
+        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float lodScale) {
+            double X = radiusSquared / (lodScale*lodScale);
+            for(int c=0; c<4; ++c) {
+                for(int j=0; j<8; ++j) {
+                    if ( (_childrenCorners[c][j]-point).length2() < X )
+                        return true;
+                }
+            }
+            return false;
+        }
 
         void setDebugText(const std::string& strText);
 
@@ -96,7 +110,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
         
-        osg::ref_ptr<HorizonTileCuller> _horizonCuller;        
+        HorizonTileCuller           _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];
 
@@ -109,7 +123,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         typedef VectorPoints (ChildrenCorners) [4];
         ChildrenCorners _childrenCorners;
 
-        osg::ref_ptr<osg::RefMatrix> _matrix;
+        //osg::ref_ptr<osg::RefMatrix> _matrix;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -61,6 +61,7 @@ namespace osgEarth
          * positions.
          */
         void setTerrain(Terrain* terrain);
+        osg::ref_ptr<Terrain> getTerrain() const { osg::ref_ptr<Terrain> t; _terrain.lock(t); return t; }
 
         /**
          * Enabling this will cause the object to automatically 

@@ -45,10 +45,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _normalMaps             ( true ),
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
-            _mergesPerFrame         ( 20 )
+            _mergesPerFrame         ( 20 ),
+            _expirationRange        ( 0 )
         {
             setDriver( "rex" );
             fromConfig( _conf );
+
+            // override.
+            enableMercatorFastPath().init( false );
         }
 
         /** dtor */
@@ -67,6 +71,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
           * possible, freeing up memory faster */
         optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
         const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
+
+        /** Minimum distance at which tiles will page out of memory once loaded */
+        optional<float>& expirationRange() { return _expirationRange; }
+        const optional<float>& expirationRange() const { return _expirationRange; }
 
         /** Number of terrain tiles to keep in memory before expiring usused tiles. */
         optional<unsigned>& expirationThreshold() { return _expirationThreshold; }
@@ -96,12 +104,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<int>& mergesPerFrame() { return _mergesPerFrame; }
         const optional<int>& mergesPerFrame() const { return _mergesPerFrame; }
 
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.updateIfSet( "expiration_range", _expirationRange );
             conf.updateIfSet( "expiration_threshold", _expirationThreshold );
             conf.updateIfSet( "progressive", _progressive );
             conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
@@ -123,6 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "color", _color );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.getIfSet( "expiration_range", _expirationRange );
             conf.getIfSet( "expiration_threshold", _expirationThreshold );
             conf.getIfSet( "progressive", _progressive );
             conf.getIfSet( "high_resolution_first", _highResolutionFirst );
@@ -135,6 +146,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<float>    _skirtRatio;
         optional<Color>    _color;
         optional<bool>     _quickRelease;
+        optional<float>    _expirationRange;
         optional<unsigned> _expirationThreshold;
         optional<bool>     _progressive;
         optional<bool>     _highResolutionFirst;

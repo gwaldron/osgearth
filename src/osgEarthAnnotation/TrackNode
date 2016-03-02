@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNOTATION_TRACK_NODE_H
 #define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
 
-#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Containers>
 #include <osg/Image>
@@ -80,7 +80,7 @@ namespace osgEarth { namespace Annotation
      * presumably the entity itself will be responsible for its own absolute
      * positioning (and clamping, if applicable).
      */
-    class OSGEARTHANNO_EXPORT TrackNode : public OrthoNode
+    class OSGEARTHANNO_EXPORT TrackNode : public GeoPositionNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, TrackNode);
@@ -135,9 +135,9 @@ namespace osgEarth { namespace Annotation
          */
         osg::Drawable* getDrawable( const std::string& name ) const;
 
-    public: // override
+    public:
 
-        virtual void setAnnotationData( AnnotationData* data );
+        virtual void setPriority(float value);
 
     protected:
 

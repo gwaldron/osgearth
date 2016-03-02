@@ -44,7 +44,7 @@ IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol        ( conf ),
 _alignment            ( ALIGN_CENTER_BOTTOM ),
 _heading              ( NumericExpression(0.0) ),
-_declutter            ( false ),
+_declutter            ( true ),
 _occlusionCull        ( false ),
 _occlusionCullAltitude( 200000 )
 {

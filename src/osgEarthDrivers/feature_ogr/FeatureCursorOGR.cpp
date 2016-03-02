@@ -89,10 +89,11 @@ _filters          ( filters )
         std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );             
         // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
         // Or quote any layers containing spaces for PostgreSQL
-        if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
-        {                        
+        if (driverName == "ESRI Shapefile" || driverName == "VRT" ||
+            from.find(" ") != std::string::npos)
+        {
             std::string delim = "\"";
-            from = delim + from + delim;                    
+            from = delim + from + delim;
         }
 
         if ( _query.expression().isSet() )
@@ -193,7 +194,7 @@ FeatureCursorOGR::~FeatureCursorOGR()
 bool
 FeatureCursorOGR::hasMore() const
 {
-    return _resultSetHandle && ( _queue.size() > 0 || _nextHandleToQueue != 0L );
+    return _resultSetHandle && _queue.size() > 0;
 }
 
 Feature*
@@ -202,7 +203,7 @@ FeatureCursorOGR::nextFeature()
     if ( !hasMore() )
         return 0L;
 
-    if ( _queue.size() == 0 && _nextHandleToQueue )
+    if ( _queue.size() == 1u )
         readChunk();
 
     // do this in order to hold a reference to the feature we return, so the caller
@@ -214,7 +215,6 @@ FeatureCursorOGR::nextFeature()
     return _lastFeatureReturned.get();
 }
 
-
 // reads a chunk of features into a memory cache; do this for performance
 // and to avoid needing the OGR Mutex every time
 void
@@ -223,86 +223,51 @@ FeatureCursorOGR::readChunk()
     if ( !_resultSetHandle )
         return;
     
-    FeatureList preProcessList;
-    
     OGR_SCOPED_LOCK;
 
-    if ( _nextHandleToQueue )
-    {
-        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile.get() );
-        if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
-        {
-            if ( isGeometryValid( f->getGeometry() ) )
-            {
-                _queue.push( f );
+    bool resultSetEndReached = false;
 
-                if ( _filters.size() > 0 )
+    while( _queue.size() < _chunkSize && !resultSetEndReached )
+    {
+        FeatureList filterList;
+        while( filterList.size() < _chunkSize && !resultSetEndReached )
+        {
+            OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
+            if ( handle )
+            {
+                osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
+
+                if (feature.valid() &&
+                    !_source->isBlacklisted( feature->getFID() ) &&
+                    isGeometryValid( feature->getGeometry() ))
                 {
-                    preProcessList.push_back( f.release() );
+                    filterList.push_back( feature.release() );
                 }
+                OGR_F_Destroy( handle );
             }
             else
             {
-                OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                resultSetEndReached = true;
             }
         }
-        OGR_F_Destroy( _nextHandleToQueue );
-        _nextHandleToQueue = 0L;
-    }
 
-    unsigned handlesToQueue = _chunkSize - _queue.size();
-    bool resultSetEndReached = false;
-
-    for( unsigned i=0; i<handlesToQueue; i++ )
-    {
-        OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
-        if ( handle )
+        // preprocess the features using the filter list:
+        if ( !_filters.empty() )
         {
-            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile.get() );
-            if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
+            FilterContext cx;
+            cx.setProfile( _profile.get() );
+
+            for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
             {
-                if (isGeometryValid( f->getGeometry() ) )
-                {
-                    _queue.push( f );
-
-                    if ( _filters.size() > 0 )
-                    {
-                        preProcessList.push_back( f.release() );
-                    }
-                }
-                else
-                {
-                    OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
-                }
-            }            
-            OGR_F_Destroy( handle );
+                FeatureFilter* filter = i->get();
+                cx = filter->push( filterList, cx );
+            }
         }
-        else
+
+        for(FeatureList::const_iterator i = filterList.begin(); i != filterList.end(); ++i)
         {
-            resultSetEndReached = true;
-            break;
+            _queue.push( i->get() );
         }
     }
-
-    // preprocess the features using the filter list:
-    if ( preProcessList.size() > 0 )
-    {
-        FilterContext cx;
-        cx.setProfile( _profile.get() );
-
-        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push( preProcessList, cx );
-        }
-    }
-
-    // read one more for "more" detection:
-    if (!resultSetEndReached)
-        _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
-    else
-        _nextHandleToQueue = 0L;
-
-    //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }
 

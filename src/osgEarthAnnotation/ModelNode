@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNO_MODEL_NODE_H
 #define OSGEARTH_ANNO_MODEL_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/URI>
 #include <osgEarth/CachePolicy>
 #include <osgDB/ReaderWriter>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
      * Annotation node that loads a 3D model from a URI and places it
      * at a geo location.
      */
-    class OSGEARTHANNO_EXPORT ModelNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT ModelNode : public GeoPositionNode
     {
     public:
         /**
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Annotation
 
     public: // LocalizedNode
         
-        virtual void setScale( const osg::Vec3f& scale );
+    //    virtual void setScale( const osg::Vec3f& scale );
 
     public:
 
@@ -76,15 +76,10 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
-    protected: // LocalizedNode
-
-        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
-
     protected:
 
         Style _style;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
-        osg::ref_ptr<osg::MatrixTransform> _xform;
 
         void init();
 

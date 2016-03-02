@@ -36,44 +36,23 @@ ResampleFilter::isSupported()
 }
 
 ResampleFilter::ResampleFilter() :
-_minLen( 0 ),
-_maxLen( DBL_MAX ),
-_perturbThresh( 0 ),
-_resampleMode(RESAMPLE_LINEAR)
+ResampleFilterOptions()
 {
     //NOP
 }
 
 ResampleFilter::ResampleFilter( double minLen, double maxLen ) :
-_minLen( minLen ),
-_maxLen( maxLen ),
-_perturbThresh( 0 ),
-_resampleMode(RESAMPLE_LINEAR)
+ResampleFilterOptions()
 {
-    // NOP
+    _minLen = minLen;
+    _maxLen = maxLen;
 }
 
-ResampleFilter::ResampleFilter( const Config& conf):
-_minLen( 0 ),
-_maxLen( DBL_MAX ),
-_perturbThresh( 0 ),
-_resampleMode(RESAMPLE_LINEAR)
+ResampleFilter::ResampleFilter( const Config& conf ):
+ResampleFilterOptions( conf )
 {
-    if (conf.key() == "resample")
-    {
-        conf.getIfSet( "min_length", _minLen );
-        conf.getIfSet( "max_length", _maxLen );
-    }
+    //nop
 }
-
-Config ResampleFilter::getConfig() const
-{
-    Config config( "resample" );
-    config.addIfSet( "min_length", _minLen);
-    config.addIfSet( "max_length", _maxLen);
-    return config;
-}
-
 
 
 bool
@@ -116,11 +95,9 @@ ResampleFilter::push( Feature* input, FilterContext& context )
             bool lastSeg = v1 == last;
             osg::Vec3d seg = p1 - p0;
 
-            //OE_NOTICE << "p0=" << p0 << " to " << "p1=" << p1 << std::endl;
-
             osg::Vec3d p0Rad, p1Rad;
 
-            if (_resampleMode.value() == RESAMPLE_GREATCIRCLE || _resampleMode.value() == RESAMPLE_RHUMB)
+            if (resampleMode().value() == RESAMPLE_GREATCIRCLE || resampleMode().value() == RESAMPLE_RHUMB)
             {
                 p0Rad = osg::Vec3d(osg::DegreesToRadians(p0.x()), osg::DegreesToRadians(p0.y()), p0.z());
                 p1Rad = osg::Vec3d(osg::DegreesToRadians(p1.x()), osg::DegreesToRadians(p1.y()), p1.z());
@@ -128,7 +105,7 @@ ResampleFilter::push( Feature* input, FilterContext& context )
                        
             //Compute the length of the segment
             double segLen = 0.0;
-            switch (_resampleMode.value())
+            switch (resampleMode().value())
             {
             case RESAMPLE_LINEAR:
                 segLen = seg.length();
@@ -154,7 +131,7 @@ ResampleFilter::push( Feature* input, FilterContext& context )
                 seg.normalize();
                 osg::Vec3d newPt;
                 double newHeight;
-                switch (_resampleMode.value())
+                switch (resampleMode().value())
                 {
                 case RESAMPLE_LINEAR:
                     {
@@ -196,13 +173,6 @@ ResampleFilter::push( Feature* input, FilterContext& context )
         part->clear();
         part->reserve( plist.size() );
         part->insert( part->begin(), plist.begin(), plist.end() );
-
-        /*
-        if ( origSize != part->size() )
-        {
-            OE_NOTICE << "Resampled part from " << origSize << " to " << part->size() << " points" << std::endl;
-        }
-        */
     }
     return success;
 }

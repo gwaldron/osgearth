@@ -125,6 +125,9 @@ namespace osgEarth
          */
         typedef fast_map<std::string,double> Stats;
         Stats& stats() { return _stats; }
+        double& stats(const std::string& name);
+        bool& collectStats() { return _collectStats; } 
+        const bool& collectStats() const { return _collectStats; }        
 
     protected:
         volatile unsigned _numStages;
@@ -133,6 +136,7 @@ namespace osgEarth
         mutable  bool     _canceled;
         mutable  bool     _failed;
         mutable  Stats    _stats;
+        mutable  bool     _collectStats;
     };
 
 

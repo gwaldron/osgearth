@@ -44,7 +44,9 @@
                 <warp>0</warp>
                 <features driver="ogr" build_spatial_index="true">
                     <url>../data/boston-scl-utm19n-meters.shp</url>
-                    <buffer distance="5"/>
+                    <filters>
+                        <buffer distance="5"/>
+                    </filters>
                 </features>                
                 <styles>
                     <style type="text/css">

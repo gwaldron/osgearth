@@ -415,7 +415,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             }
             else
             {
-                OE_INFO << LC << "Failed to load an extension for \"" << i->key() << "\"\n";
+                OE_DEBUG << LC << "Failed to load an extension for \"" << i->key() << "\"\n";
             }
         }
     }

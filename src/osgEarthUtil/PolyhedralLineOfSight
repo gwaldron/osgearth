@@ -26,7 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/GeoData>
 #include <osgEarth/Units>
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/Terrain>
 #include <osg/Geode>
 
@@ -38,7 +38,7 @@ namespace osgEarth { namespace Util
     /**
      * A Node that display a line of sight polytope.
      */
-    class OSGEARTHUTIL_EXPORT PolyhedralLineOfSightNode : public LocalizedNode
+    class OSGEARTHUTIL_EXPORT PolyhedralLineOfSightNode : public GeoPositionNode
     {
     public:
         /**
@@ -79,10 +79,9 @@ namespace osgEarth { namespace Util
         void addChangedCallback( LOSChangedCallback* callback );
         void removeChangedCallback( LOSChangedCallback* callback );
 
-    public: // LocalizedNode
+    public: // GeoPositionNode
         
-        virtual bool setPosition( const GeoPoint& pos );
-        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+        virtual void setPosition( const GeoPoint& pos );
 
     public: // MapNodeObserver
 

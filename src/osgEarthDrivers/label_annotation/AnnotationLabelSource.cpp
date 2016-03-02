@@ -133,10 +133,6 @@ public:
             }
         }
 
-        // Note to self: need to change this to support picking later. -gw
-        //VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
-        //vp->setInheritShaders( false );
-
         return group;
     }
 
@@ -161,12 +157,11 @@ public:
         GeoPoint point(feature->getSRS(), center.x(), center.y(), center.z(), mode);        
 
         PlaceNode* node = new PlaceNode(0L, point, style, context.getDBOptions());
-
+        
         if ( !priorityExpr.empty() )
         {
-            AnnotationData* data = new AnnotationData();
-            data->setPriority( feature->eval(priorityExpr, &context) );
-            node->setAnnotationData( data );
+            float val = feature->eval(priorityExpr, &context);
+            node->setPriority( val >= 0.0f ? val : FLT_MAX );
         }
 
         return node;

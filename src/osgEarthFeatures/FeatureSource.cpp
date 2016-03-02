@@ -39,10 +39,11 @@ DriverConfigOptions( options )
 
 FeatureSourceOptions::~FeatureSourceOptions()
 {
+    //nop
 }
 
 void
-FeatureSourceOptions::fromConfig( const Config& conf )
+FeatureSourceOptions::fromConfig(const Config& conf)
 {
     unsigned numResamples = 0;
 
@@ -53,39 +54,18 @@ FeatureSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 
-    const ConfigSet& children = conf.children();
-    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-    {
-        const Config& child = *i;
-
-        if (!child.empty())
-        {
-            FeatureFilter* filter = FeatureFilterRegistry::instance()->create( child );
-            if (filter)
-            {
-                //Do some checks to make sure resample filters are applied before buffering.
-                ResampleFilter* resample = dynamic_cast< ResampleFilter*>( filter );
-                BufferFilter* buffer = dynamic_cast< BufferFilter*>(filter );
-                if (resample)
-                {
-                    numResamples++;
-                }
-                else if (buffer)
-                {
-                    if ( numResamples > 0 )
-                    {
-                        OE_WARN << LC 
-                            << "Warning: Resampling should be applied after buffering, as buffering"
-                            << " will remove colinear segments created by the resample operation."
-                            << std::endl;
-                    }
-                }
-
-                OE_DEBUG << "Added FeatureFilter " << filter->getConfig().toJSON(true) << std::endl;
-                _filters.push_back( filter );
-            }
-        }        
+    // For backwards-compatibility (before adding the "filters" block)
+    // TODO: Remove at some point in the distant future.
+    const std::string bcstrings[3] = { "resample", "buffer", "convert" };
+    for(unsigned i=0; i<3; ++i) {
+        if ( conf.hasChild(bcstrings[i]) ) {
+            _filterOptions.push_back( conf.child(bcstrings[i]) );
+        }
     }
+
+    const Config& filters = conf.child("filters");
+    for(ConfigSet::const_iterator i = filters.children().begin(); i != filters.children().end(); ++i)
+        _filterOptions.push_back( *i );
 }
 
 Config
@@ -100,9 +80,14 @@ FeatureSourceOptions::getConfig() const
     conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     
-    for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+    if ( !_filterOptions.empty() )
     {
-        conf.update( i->get()->getConfig() );        
+        Config filters;
+        for(unsigned i=0; i<_filterOptions.size(); ++i)
+        {
+            filters.add( _filterOptions[i].getConfig() );
+        }
+        conf.update( "filters", filters );
     }
 
     return conf;
@@ -121,6 +106,26 @@ _options( options )
 
 FeatureSource::~FeatureSource()
 {
+    //nop
+}
+
+void
+FeatureSource::initialize(const osgDB::Options* dbo)
+{
+    if ( dbo )
+        _dbOptions = dbo;
+    
+    // Create and initialize the filters.
+    for(unsigned i=0; i<_options.filters().size(); ++i)
+    {
+        const ConfigOptions& conf = _options.filters().at(i);
+        FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
+        if ( filter )
+        {
+            _filters.push_back( filter );
+            filter->initialize( dbo );
+        }
+    }
 }
 
 const FeatureProfile*
@@ -145,7 +150,7 @@ FeatureSource::getFeatureProfile() const
 const FeatureFilterList&
 FeatureSource::getFilters() const
 {
-    return _options.filters();
+    return _filters;
 }
 
 const FeatureSchema&
@@ -181,6 +186,21 @@ FeatureSource::isBlacklisted( FeatureID fid ) const
 {
     Threading::ScopedReadLock shared( const_cast<FeatureSource*>(this)->_blacklistMutex );
     return _blacklist.find( fid ) != _blacklist.end();
+}
+
+void
+FeatureSource::applyFilters(FeatureList& features) const
+{
+    // apply filters before returning.
+    if ( !getFilters().empty() )
+    {
+        FilterContext cx;
+        cx.setProfile( getFeatureProfile() );
+        for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
+        {
+            cx = filter->get()->push( features, cx );
+        }
+    }
 }
 
 //------------------------------------------------------------------------

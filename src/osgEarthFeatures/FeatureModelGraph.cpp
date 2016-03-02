@@ -248,9 +248,6 @@ _postMergeOperations( postMergeOperations ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
-_overlayPlaceholder ( 0L ),
-_clampable          ( 0L ),
-_drapeable          ( 0L ),
 _overlayChange      ( OVERLAY_NO_CHANGE )
 {
     ctor();
@@ -270,9 +267,6 @@ _postMergeOperations( postMergeOperations ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
-_overlayPlaceholder ( 0L ),
-_clampable          ( 0L ),
-_drapeable          ( 0L ),
 _overlayChange      ( OVERLAY_NO_CHANGE )
 {
     ctor();
@@ -1408,23 +1402,17 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
             alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN)
         {
-            if ( alt->technique() == AltitudeSymbol::TECHNIQUE_GPU && !_clampable )
+            if ( alt->technique() == AltitudeSymbol::TECHNIQUE_GPU && !_clampable.valid() )
             {
                 _clampable = new ClampableNode( 0L );
                 _overlayChange = OVERLAY_INSTALL_CLAMPABLE;
             }
-
-            //else if ( alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE && !_drapeable )
-            //{
-            //    _drapeable = new DrapeableNode();
-            //    _overlayChange = OVERLAY_INSTALL_DRAPEABLE;
-            //}
         }
     }
     
     const RenderSymbol* render = style.get<RenderSymbol>();
 
-    if ( _clampable )
+    if ( _clampable.valid() )
     {
         // if we're using extrusion, don't perform depth offsetting:
         const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
@@ -1563,12 +1551,12 @@ void
 FeatureModelGraph::changeOverlay()
 {
     if (_overlayChange == OVERLAY_INSTALL_CLAMPABLE &&
-        _clampable                                  && 
-        _clampable != _overlayInstalled )
+        _clampable.valid()                          && 
+        _clampable.get() != _overlayInstalled )
     {
-        runPostMergeOperations( _clampable );
-        osgEarth::replaceGroup( _overlayInstalled, _clampable );
-        _overlayInstalled   = _clampable;
+        runPostMergeOperations( _clampable.get() );
+        osgEarth::replaceGroup( _overlayInstalled, _clampable.get() );
+        _overlayInstalled   = _clampable.get();
         _drapeable          = 0L;
         _overlayPlaceholder = 0L;
         OE_DEBUG << LC << "Installed clampable decorator on layer " << getName() << std::endl;
@@ -1576,12 +1564,12 @@ FeatureModelGraph::changeOverlay()
 
     else if (
         _overlayChange == OVERLAY_INSTALL_DRAPEABLE && 
-        _drapeable                                  && 
-        _drapeable != _overlayInstalled )
+        _drapeable.valid()                          && 
+        _drapeable.get() != _overlayInstalled )
     {
-        runPostMergeOperations( _drapeable );
-        osgEarth::replaceGroup( _overlayInstalled, _drapeable );
-        _overlayInstalled   = _drapeable;
+        runPostMergeOperations( _drapeable.get() );
+        osgEarth::replaceGroup( _overlayInstalled, _drapeable.get() );
+        _overlayInstalled   = _drapeable.get();
         _overlayPlaceholder = 0L;
         _clampable          = 0L;
         OE_DEBUG << LC << "Installed drapeable decorator on layer " << getName() << std::endl;
@@ -1589,12 +1577,12 @@ FeatureModelGraph::changeOverlay()
 
     else if (
         _overlayChange == OVERLAY_INSTALL_PLACEHOLDER && 
-        _overlayPlaceholder                           && 
-        _overlayPlaceholder != _overlayInstalled)
+        _overlayPlaceholder.valid()                   && 
+        _overlayPlaceholder.get() != _overlayInstalled)
     {
-        runPostMergeOperations( _overlayPlaceholder );
-        osgEarth::replaceGroup( _overlayInstalled, _overlayPlaceholder );
-        _overlayInstalled = _overlayPlaceholder;
+        runPostMergeOperations( _overlayPlaceholder.get() );
+        osgEarth::replaceGroup( _overlayInstalled, _overlayPlaceholder.get() );
+        _overlayInstalled = _overlayPlaceholder.get();
         _clampable        = 0L;
         _drapeable        = 0L;
         OE_INFO << LC << "Installed null decorator on layer " << getName() << std::endl;

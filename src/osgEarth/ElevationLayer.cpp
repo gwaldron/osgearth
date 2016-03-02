@@ -160,12 +160,6 @@ ElevationLayer::init()
     //nop
 }
 
-std::string
-ElevationLayer::suggestCacheFormat() const
-{
-    return "tif";
-}
-
 void
 ElevationLayer::addCallback( ElevationLayerCallback* cb )
 {

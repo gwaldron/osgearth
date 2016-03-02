@@ -1,0 +1,30 @@
+<!--
+osgEarth Sample
+
+Shows the skyview driver, which will flip an image source horizontally
+so that it's viewable from inside the globe, planetarium style.
+Run with osgearth_skyview skyview1.earth
+-->
+<map name="skyview" type="geocentric">
+    
+
+    <options>
+        <terrain>
+            <cluster_culling>false</cluster_culling>
+            <skirt_ratio>0.0</skirt_ratio>
+        </terrain>
+
+    </options>
+   
+    <!-- Wrap the image in the skyview driver to flip it-->
+    <image name="skyview" driver="skyview">
+	    <image name="EarthAtNight" driver="osg">
+	        <url>../data/skyview/celestial-ref.jpg</url>
+	        <profile>global-geodetic</profile>
+	    </image>      
+    </image>
+
+    
+
+
+</map>

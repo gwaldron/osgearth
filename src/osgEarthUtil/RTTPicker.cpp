@@ -265,7 +265,7 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
 
     // install the RTT pick camera under this view's camera if it's not already:
     PickContext& context = getOrCreatePickContext( view );
-
+    
     // Create a new pick
     Pick pick;
     pick._context  = &context;

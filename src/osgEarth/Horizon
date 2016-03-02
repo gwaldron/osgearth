@@ -86,6 +86,12 @@ namespace osgEarth
          * Specify an optional radius to test a sphere.
          */
         bool isVisible(const osg::Vec3d& point, double radius =0.0) const;
+
+        /**
+         * Whether "target" with bounding radius "radius" is visible from "eye".
+         * This function does not require you to call setEye.
+         */
+        bool isVisible(const osg::Vec3d& eye, const osg::Vec3d& target, double radius) const;
                 
         /**
          * Whether a bounding sphere is visible over the horizon.

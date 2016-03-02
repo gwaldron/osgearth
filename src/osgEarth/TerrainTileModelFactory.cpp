@@ -89,14 +89,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
             GeoImage geoImage;
 
             const Profile* layerProfile = layer->getProfile();
-
-            // The "fast path" preserves mercator tiles without reprojection.
-            bool useMercatorFastPath =
-                _options.enableMercatorFastPath() != false &&
-                frame.getMapInfo().isGeocentric()          &&
-                layerProfile                               &&
-                layerProfile->getSRS()->isSphericalMercator();
-
+            
             // If this is a ROOT tile, we will try to fall back on lower-resolution
             // data if we can't find something at the optimal LOD.
             bool isRootKey =
@@ -120,34 +113,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
             // fetch the image from the layer if it's available:
             if ( hasDataInExtent && layer->isKeyInRange(key) )
             {
-                // Ask the layer to produce an image tile.
-                if ( useMercatorFastPath )
-                    geoImage = layer->createImageInNativeProfile( key, progress );
-                else
-                    geoImage = layer->createImage( key, progress );
-
-                // If the request failed, and this is a root tile, try to find
-                // lower-resolution data to fulfill the request.
-                if ( !geoImage.valid() && isRootKey )
-                {
-                    for(TileKey fallbackKey = key.createParentKey();
-                        fallbackKey.valid() && !geoImage.valid();
-                        fallbackKey = fallbackKey.createParentKey())
-                    {
-                        if ( useMercatorFastPath )
-                            geoImage = layer->createImageInNativeProfile( fallbackKey, progress );
-                        else
-                            geoImage = layer->createImage( fallbackKey, progress );
-
-                        if ( geoImage.valid() )
-                        {
-                            OE_DEBUG << LC << "Fell back from (" 
-                                << key.str() << ") to ("
-                                << fallbackKey.str() << ") for a root tile request."
-                                << std::endl;
-                        }
-                    }
-                }
+                geoImage = layer->createImage( key, progress );
             }
             
             if ( geoImage.valid() )
@@ -169,17 +135,6 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                     texture = createImageTexture(geoImage.getImage(), layer);
 
                 layerModel->setTexture( texture );
-
-#if 0 // TODO: figure this out in the engine
-                if ( geoImage.valid() )
-                {
-                    // TODO: the engine derive the Locator; it shouldn't be in the model.
-                    if ( useMercatorFastPath )
-                        layerModel->setLocator( new MercatorLocator(geoImage.getExtent()) );
-                    else
-                        layerModel->setLocator( GeoLocator::createForExtent(geoImage.getExtent(), frame.getMapInfo()) );
-                }
-#endif
 
 
                 if ( layer->isShared() )

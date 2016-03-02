@@ -38,11 +38,13 @@ Rendering pipeline.
 
                 uniform float osg_FrameTime;
                 
+                vec3 vp_Normal;
+                
                 void pulsateEffect()
                 {
                     float strength = 0.25 + sin(osg_FrameTime*2.0)*0.25;
                     vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0;
-                    
+                                        
                     // For each vertex in the input triangle:
                     for(int i=0; i < 3; ++i)
                     {
@@ -51,7 +53,8 @@ Rendering pipeline.
                         
                         // Transform the vertex:
                         vec4 pos = gl_in[i].gl_Position;
-                        pos += vec4(normalize(cen.xyz-pos.xyz) * distance(cen, pos) * strength, 0.0);
+                        pos.xyz += vec3(0,0,1) * 1e6 * strength;
+                        //pos += vec4(normalize(cen.xyz-pos.xyz) * distance(cen, pos) * strength, 0.0);
                         gl_Position = pos;
                         
                         // Copies stage globals to output and calles EmitVertex():

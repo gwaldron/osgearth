@@ -56,13 +56,24 @@ namespace osgEarth { namespace Annotation
         static osgText::String::Encoding convertTextSymbolEncoding(const TextSymbol::Encoding encoding);
 
         /**
-         * Creates a drawable representing a symbolized text label in
-         * pixel space.
+         * Creates a drawable representing a symbolized text label in pixel space.
+         * The "box" is an alignment box; all positioning and alignment of the text
+         * is relative to this box. For example, if the TextSymbol contains an align
+         * of RIGHT_TOP, that means the text origin is at the upper-right corner of
+         * the box.
          */
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
-            const osg::Vec3&   positionOffset );
+            const osg::BoundingBox& alignmentBox);
+        
+        static osg::Drawable* createTextDrawable(
+            const std::string& text,
+            const TextSymbol*  symbol,
+            const osg::Vec3&   pos )
+        {
+            return createTextDrawable(text, symbol, osg::BoundingBox(pos,pos));
+        }
 
         /**
          * Creates the basic geometry to draw an image texture-mapped to
@@ -98,18 +109,6 @@ namespace osgEarth { namespace Annotation
          * Checks whether using a style will require transparency blending.
          */
         static bool styleRequiresAlphaBlending( const Style& style );
-
-        /**
-         * Internal - A customized AutoTransform used by the OrthoNode to
-         * support intersections that are compatible with the decluttering engine
-         */
-        struct OrthoNodeAutoTransform : public osg::AutoTransform
-        {
-            /** override */
-            virtual void accept(osg::NodeVisitor& nv);
-
-            bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
-        };
 
         // some geometry creation utilities
         static osg::Drawable* create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
@@ -152,8 +151,15 @@ namespace osgEarth { namespace Annotation
             bool sceneClamping;
             bool gpuClamping;
         };
+
         static void getAltitudePolicy( const Style& style, AltitudePolicy& b );
 
+        /**
+         * If the style requests draping or clamping, creates the appropriate parent
+         * group and adds the input node as a child, and returns the new parent.
+         * Otherwise, just returns the input node unchanged.
+         */
+        static osg::Node* installOverlayParent(osg::Node* child, const Style& style);
 
     private:
         AnnotationUtils() { }

@@ -356,17 +356,12 @@ TileDrawable::getElevationMatrix() const
 void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
 {
-#if 0
-    {
-        Threading::ScopedMutexLock lock(_profMutex);
-        s_functors++;
-    }
-#endif
-
     const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
     const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
         
 #if 1 // triangles (OSG-stats-friendly)
+
+    //TODO: improve by caching the entire Vec3f, not just the height.
 
     f.begin(GL_TRIANGLES);
     for(int t=0; t<_tileSize-1; ++t)

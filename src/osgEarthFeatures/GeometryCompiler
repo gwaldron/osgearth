@@ -179,7 +179,11 @@ namespace osgEarth { namespace Features
 
         osg::Node* compile(
             Geometry*             geom,
-            const FilterContext&  context );
+            const Style&          style);
+
+        osg::Node* compile(
+            Geometry*             geom,
+            const FilterContext&  context);
 
         osg::Node* compile(
             FeatureList&          mungeableInput,

@@ -22,6 +22,7 @@
 
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -44,18 +45,24 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Angle&       arcEnd,
                        const bool         pie):
 
-LocalizedNode( mapNode, position ),
+LocalGeometryNode(mapNode),
 _radius      ( radius ),
-_style       ( style ),
 _arcStart    ( arcStart ),
 _arcEnd      ( arcEnd ),
 _pie         ( pie ),
 _numSegments ( 0 )
 {
-    _xform = new osg::MatrixTransform();
-    rebuild();
+    initCircleNode();
+    setStyle( style );
 }
 
+
+void
+CircleNode::initCircleNode()
+{
+    setName("Circle");
+    rebuildGeometry();
+}
 
 const Linear&
 CircleNode::getRadius() const
@@ -69,7 +76,7 @@ CircleNode::setRadius( const Linear& radius )
     if (_radius != radius )
     {
         _radius = radius;
-        rebuild();
+        rebuildGeometry();
     }
 }
 
@@ -85,21 +92,8 @@ CircleNode::setNumSegments(unsigned int numSegments )
     if (_numSegments != numSegments )
     {
         _numSegments = numSegments;
-        rebuild();
+        rebuildGeometry();
     }
-}
-
-const Style&
-CircleNode::getStyle() const
-{
-    return _style;
-}
-
-void
-CircleNode::setStyle( const Style& style )
-{
-    _style = style;
-    rebuild();
 }
 
 const Angle&
@@ -112,7 +106,7 @@ void
 CircleNode::setArcStart(const Angle& arcStart)
 {
 	_arcStart = arcStart;
-	rebuild();
+	rebuildGeometry();
 }
 
 const Angle&
@@ -125,7 +119,7 @@ void
 CircleNode::setArcEnd(const Angle& arcEnd)
 {
 	_arcEnd = arcEnd;
-	rebuild();
+	rebuildGeometry();
 }
 
 const bool&
@@ -138,20 +132,12 @@ void
 CircleNode::setPie(const bool& pie)
 {
     _pie = pie;
-    rebuild();
+    rebuildGeometry();
 }
 
 void
-CircleNode::rebuild()
+CircleNode::rebuildGeometry()
 {
-    std::string currentDecoration = getDecoration();
-    clearDecoration();
-
-    // Reset this node.
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
-
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = NULL;
@@ -163,22 +149,11 @@ CircleNode::rebuild()
     {
         geom = factory.createArc(osg::Vec3d(0,0,0), _radius, _arcStart, _arcEnd, _numSegments, 0L, _pie);
     }
+
     if ( geom )
     {
-        GeometryCompiler compiler;
-        osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
-        if ( node )
-        {
-            _xform->addChild( node );
-            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
-        }
-
-        applyRenderSymbology( _style );
-        setLightingIfNotSet( false );
+        setGeometry( geom );        
     }
-
-    setDecoration( currentDecoration );
 }
 
 
@@ -190,27 +165,22 @@ OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf ),
+LocalGeometryNode( mapNode, conf, dbOptions ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _numSegments ( 0 )
 {
-    _xform = new osg::MatrixTransform();
-
-    conf.getObjIfSet( "radius", _radius );
-    conf.getObjIfSet( "style",  _style );
+    conf.getObjIfSet( "radius",       _radius );
     conf.getIfSet   ( "num_segments", _numSegments );
-
-    rebuild();
+    initCircleNode();
 }
 
 Config
 CircleNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = LocalGeometryNode::getConfig();
     conf.key() = "circle";
 
     conf.addObj( "radius", _radius );
-    conf.addObj( "style",  _style );
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );

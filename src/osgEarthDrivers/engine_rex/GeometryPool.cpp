@@ -34,6 +34,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
 _options ( options ),
+_enabled ( true ),
 _debug   ( false )
 {
     if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
@@ -42,6 +43,11 @@ _debug   ( false )
     }
 
     _tileSize = _options.tileSize().get();
+
+    if ( ::getenv("OSGEARTH_REX_NO_POOL") )
+    {
+        _enabled = false;
+    }
 }
 
 void
@@ -54,29 +60,37 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
     GeometryKey geomKey;
     createKeyForTileKey( tileKey, _tileSize, mapInfo, geomKey );
 
-    // Look it up in the pool:
-    Threading::ScopedMutexLock exclusive( _geometryMapMutex );
-
-    bool masking = maskSet && maskSet->hasMasks();
-
-    GeometryMap::iterator i = _geometryMap.find( geomKey );
-    if ( !masking && i != _geometryMap.end() )
+    if ( _enabled )
     {
-        // Found. return it.
-        out = i->second.get();
+        // Look it up in the pool:
+        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+
+        bool masking = maskSet && maskSet->hasMasks();
+
+        GeometryMap::iterator i = _geometryMap.find( geomKey );
+        if ( !masking && i != _geometryMap.end() )
+        {
+            // Found. return it.
+            out = i->second.get();
+        }
+        else
+        {
+            // Not found. Create it.
+            out = createGeometry( tileKey, mapInfo, maskSet );
+
+            if (!masking)
+                _geometryMap[ geomKey ] = out.get();
+
+            if ( _debug )
+            {
+                OE_NOTICE << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
+            }
+        }
     }
+
     else
     {
-        // Not found. Create it.
         out = createGeometry( tileKey, mapInfo, maskSet );
-
-        if (!masking)
-            _geometryMap[ geomKey ] = out.get();
-
-        if ( _debug )
-        {
-            OE_NOTICE << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
-        }
     }
 }
 

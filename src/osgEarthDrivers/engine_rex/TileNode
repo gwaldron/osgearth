@@ -125,26 +125,35 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
+        OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;
+        bool                               _childrenReady;
 
     private:
 
         void createChildren(EngineContext* context);
 
-        void cull(osg::NodeVisitor& nv);
+        /** Returns false if the Surface node fails visiblity test */
+        bool cull(osgUtil::CullVisitor* cv);
 
-        void cull_stealth(osg::NodeVisitor& nv);
+        bool accept_cull(osgUtil::CullVisitor* cv);
+
+        bool cull_stealth(osgUtil::CullVisitor* cv);
+
+        bool accept_cull_stealth(osgUtil::CullVisitor* cv);
 
         // returns true if any surface geometry was added (visible).
         bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
 
-        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
+        bool shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
+
         float getVisibilityRangeHint(EngineContext*) const;
 
+        void createPayloadStateSet(EngineContext*);
+
         void updateTileUniforms(const SelectionInfo& selectionInfo);
-        void createTileUniforms();
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

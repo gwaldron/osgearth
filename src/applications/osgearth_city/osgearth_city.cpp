@@ -205,7 +205,10 @@ void addStreets(Map* map)
     // a resampling filter will ensure that the length of each segment falls
     // within the specified range. That can be helpful to avoid cropping 
     // very long lines segments.
-    feature_opt.filters().push_back( new ResampleFilter(0.0, 25.0) );
+    ResampleFilterOptions resample;
+    resample.minLength() = 0.0f;
+    resample.maxLength() = 25.0f;
+    feature_opt.filters().push_back( resample );
 
     // a style:
     Style style;

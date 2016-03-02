@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TRITON_OPTIONS
+#define OSGEARTH_TRITON_OPTIONS 1
+
+#include "Common"
+#include <osgEarthUtil/Ocean>
+
+namespace osgEarth { namespace Triton
+{
+    /**
+     * Options for controlling the ocean surface node.
+     */
+    class /*header-only*/ TritonOptions : public osgEarth::Util::OceanOptions
+    {
+    public:
+        TritonOptions(const osgEarth::Util::OceanOptions& conf = osgEarth::Util::OceanOptions()) :
+            osgEarth::Util::OceanOptions( conf )
+        {
+            setDriver( "triton" );
+            _useHeightMap.init( true );
+            _heightMapSize.init( 1024 );
+            fromConfig( _conf );
+        }
+
+        virtual ~TritonOptions() { }
+
+        /* User name for license activation */
+        osgEarth::optional<std::string>& user() { return _user; }
+        const osgEarth::optional<std::string>& user() const { return _user; }
+
+        /* License code string */
+        osgEarth::optional<std::string>& licenseCode() { return _licenseCode; }
+        const osgEarth::optional<std::string>& licenseCode() const { return _licenseCode; }
+
+        /* SilverLining resource path */
+        osgEarth::optional<std::string>& resourcePath() { return _resourcePath; }
+        const osgEarth::optional<std::string>& resourcePath() const { return _resourcePath; }
+
+        /** Whether to pass a heightmap raster to Triton to mitigate coastline interference */
+        osgEarth::optional<bool>& useHeightMap() { return _useHeightMap; }
+        const osgEarth::optional<bool>& useHeightMap() const { return _useHeightMap; }
+
+        /** Texture size to use for the height map */
+        osgEarth::optional<int>& heightMapSize() { return _heightMapSize; }
+        const osgEarth::optional<int>& heightMapSize() const { return _heightMapSize; }
+
+
+    public:
+        osgEarth::Config getConfig() const {
+            osgEarth::Config conf = osgEarth::Util::OceanOptions::newConfig();
+            conf.addIfSet("user", _user);
+            conf.addIfSet("license_code", _licenseCode);
+            conf.addIfSet("resource_path", _resourcePath);
+            conf.addIfSet("use_height_map", _useHeightMap);
+            conf.addIfSet("height_map_size", _heightMapSize);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const osgEarth::Config& conf ) {
+            osgEarth::Util::OceanOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const osgEarth::Config& conf ) {
+            conf.getIfSet("user", _user);
+            conf.getIfSet("license_code", _licenseCode);
+            conf.getIfSet("resource_path", _resourcePath);
+            conf.getIfSet("use_height_map", _useHeightMap);
+            conf.getIfSet("height_map_size", _heightMapSize);
+        }
+
+    private:
+        osgEarth::optional<std::string> _user;
+        osgEarth::optional<std::string> _licenseCode;
+        osgEarth::optional<std::string> _resourcePath;
+        osgEarth::optional<bool>        _useHeightMap;
+        osgEarth::optional<int>         _heightMapSize;
+    };
+
+} } // namespace osgEarth::Triton
+
+#endif // OSGEARTH_TRITON_OPTIONS

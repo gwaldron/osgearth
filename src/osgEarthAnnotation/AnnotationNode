@@ -146,7 +146,7 @@ namespace osgEarth { namespace Annotation
 
     private:
             
-        osg::observer_ptr<MapNode>   _mapNode;
+        osg::observer_ptr<MapNode> _mapNode;
         static Style s_emptyStyle;
 
     public:

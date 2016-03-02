@@ -58,6 +58,22 @@ namespace osgEarth { namespace Annotation
          */
         GeoPositionNode(MapNode* mapNode, const GeoPoint& position);
 
+        /** The anchor position */
+        virtual void setPosition(const GeoPoint& pos) { _geoxform->setPosition( pos ); dirty(); }
+        const GeoPoint& getPosition() const           { return _geoxform->getPosition(); }
+
+        /** Local XYZ offset */
+        virtual void setLocalOffset(const osg::Vec3f& pos) { _paxform->setPosition(pos); dirty(); }
+        const osg::Vec3d& getLocalOffset() const           { return _paxform->getPosition(); }
+
+        /** Local rotation */
+        virtual void setLocalRotation(const osg::Quat& rot) { _paxform->setAttitude(rot); dirty(); }
+        const osg::Quat& getLocalRotation() const           { return _paxform->getAttitude(); }
+
+        /** Scale */
+        virtual void setScale(const osg::Vec3f& scale) { _paxform->setScale(scale); dirty(); }
+        const osg::Vec3d& getScale() const             { return _paxform->getScale(); }
+
         /**
          * Access to the GeoTransform that positions this node.
          */
@@ -84,25 +100,6 @@ namespace osgEarth { namespace Annotation
         Config getConfig() const;
 
 
-    public: // Convenience / backwards-compatibility functions
-
-        /** The anchor position */
-        virtual void setPosition(const GeoPoint& pos) { _geoxform->setPosition( pos ); }
-        const GeoPoint& getPosition() const           { return _geoxform->getPosition(); }
-
-        /** Local XYZ offset */
-        virtual void setLocalOffset(const osg::Vec3f& pos) { _paxform->setPosition(pos); }
-        const osg::Vec3d& getLocalOffset() const           { return _paxform->getPosition(); }
-
-        /** Local rotation */
-        virtual void setLocalRotation(const osg::Quat& rot) { _paxform->setAttitude(rot); }
-        const osg::Quat& getLocalRotation() const           { return _paxform->getAttitude(); }
-
-        /** Scale */
-        virtual void setScale(const osg::Vec3f& scale) { _paxform->setScale(scale); }
-        const osg::Vec3d& getScale() const             { return _paxform->getScale(); }
-
-
     public: // AnnotationNode
 
         virtual void applyStyle(const Style& style);
@@ -114,6 +111,9 @@ namespace osgEarth { namespace Annotation
     protected:
         /** virtual dtor */
         virtual ~GeoPositionNode() { }
+
+        /** called when someone calls one of the set functions */
+        virtual void dirty() { }
 
     private:
         GeoTransform*                   _geoxform;

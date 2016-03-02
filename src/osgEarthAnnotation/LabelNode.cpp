@@ -102,7 +102,7 @@ LabelNode::init( const Style& style )
     getPositionAttitudeTransform()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );    
 
     setStyle( style );
 }

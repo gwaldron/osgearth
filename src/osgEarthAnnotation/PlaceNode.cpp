@@ -349,12 +349,6 @@ PlaceNode::getConfig() const
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
     conf.addObj( "position", getPosition() );
-    if ( _image.valid() ) {
-        if ( !_image->getFileName().empty() )
-            conf.add( "icon", _image->getFileName() );
-        else if ( !_image->getName().empty() )
-            conf.add( "icon", _image->getName() );
-    }
-
+    
     return conf;
 }

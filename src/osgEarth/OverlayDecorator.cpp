@@ -437,7 +437,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         
         //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
         double height;
-        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height)) // SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height))
         {
             geodetic.z() -= height;
         }
@@ -564,10 +564,15 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     // For now: our RTT camera z range will be based on this equation:
     double zspan = std::max(50000.0, hasl+25000.0);
+
+    double DH = 500000.0;
+    osg::Vec3d center = worldUp*R;
+
     osg::Vec3d up = camLook;
+    osg::Vec3d rttEye;
     if ( _isGeocentric )
     {
-        osg::Vec3d rttEye = eye+worldUp*zspan;
+        rttEye = center + worldUp*DH; //eye+worldUp*zspan;
         //establish a valid up vector
         osg::Vec3d rttLook = -rttEye;
         rttLook.normalize();
@@ -575,15 +580,16 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             up.set( camUp );
 
         // do NOT look at (0,0,0); must look down the ellipsoid up vector.
-        rttViewMatrix.makeLookAt( rttEye, rttEye-worldUp*zspan, up );
+        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
     else
     {
         osg::Vec3d rttLook(0, 0, -1);
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
+        rttEye = camEye + worldUp*zspan;
 
-        rttViewMatrix.makeLookAt( camEye + worldUp*zspan, camEye - worldUp*zspan, up );
+        rttViewMatrix.makeLookAt( rttEye, camEye - worldUp*zspan, up );
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
@@ -666,11 +672,17 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
 
             // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
-            double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
+            //double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
 
-            // in ecef it can't go past the horizon though, or you get bleed thru
-            if ( _isGeocentric )
-                dist = std::min(dist, eyeLen);
+            //double DH = 100000.; // height above MSL of the draping projection volume.
+            //double rttEyeLen = rttEye.length();
+
+            // extends the frustum as far as it will safely go.
+            // this may result in Z fighting. either ignore that, assuming that draped geometry
+            // should probaly not use depth testing anyway, or address it later
+            double rttLen = rttEye.length();
+            double orthoNear = 0.0; // at the rtt camera
+            double orthoFar  = _isGeocentric ? rttLen : (rttLen + DH);
 
             // Even through using xmin and xmax directly results in a tighter fit, 
             // it offsets the eyepoint from the center of the projection frustum.
@@ -679,10 +691,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             // here by using the larger of xmin and xmax. -gw.
 #if 1
             double x = std::max( fabs(xmin), fabs(xmax) );
-            rttProjMatrix.makeOrtho(-x, x, ymin, ymax, 0.0, dist+zspan);
+            rttProjMatrix.makeOrtho(-x, x, ymin, ymax, orthoNear, orthoFar);
 #else
             //Note: this was the original setup, which is technically optimal:
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, 2.0*DH);
 #endif
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped
@@ -750,7 +762,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             dsgmt->addChild( dsg );
 
             osg::Group* g = new osg::Group();
-            g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
+            //g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
             //g->addChild(overlay);
             g->addChild(intersection);

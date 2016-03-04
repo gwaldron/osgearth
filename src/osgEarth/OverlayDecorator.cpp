@@ -285,7 +285,8 @@ _useShaders          ( true ),
 _dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
-_totalOverlayChildren( 0 )
+_totalOverlayChildren( 0 ),
+_maxHeight           ( 500000.0 )
 {
     //nop.
 }
@@ -416,9 +417,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // height above sea level
     double hasl;
 
-    // weight of the HASL value when calculating extent compensation
-    double haslWeight;
-
     // approximate distance to the visible horizon
     double horizonDistance;
 
@@ -465,10 +463,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     
     // update the shared horizon distance.
     pvd._sharedHorizonDistance = horizonDistance;
-
-    // create a "weighting" that weights HASL against the camera's pitch.
-    osg::Vec3d lookVector = cv->getLookVectorLocal();
-    haslWeight = osg::absolute(worldUp * lookVector);
 
     // unit look-vector of the eye:
     osg::Vec3d camEye, camTo, camUp;
@@ -561,18 +555,14 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // the Ortho Z as mush as possible in order to maintain depth precision. Perhaps
     // later we can split this out and have each technique calculation its own View and
     // Proj matrix.
-
-    // For now: our RTT camera z range will be based on this equation:
-    double zspan = std::max(50000.0, hasl+25000.0);
-
-    double DH = 500000.0;
-    osg::Vec3d center = worldUp*R;
-
+    
     osg::Vec3d up = camLook;
     osg::Vec3d rttEye;
+
     if ( _isGeocentric )
     {
-        rttEye = center + worldUp*DH; //eye+worldUp*zspan;
+        osg::Vec3d center = worldUp*R;
+        rttEye = center + worldUp*_maxHeight;
         //establish a valid up vector
         osg::Vec3d rttLook = -rttEye;
         rttLook.normalize();
@@ -584,12 +574,14 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     }
     else
     {
+        osg::Vec3d center( camEye.x(), camEye.y(), 0.0 );
+        rttEye = center + worldUp*_maxHeight;
+
         osg::Vec3d rttLook(0, 0, -1);
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
-        rttEye = camEye + worldUp*zspan;
 
-        rttViewMatrix.makeLookAt( rttEye, camEye - worldUp*zspan, up );
+        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
@@ -671,18 +663,12 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             double xmin, ymin, xmax, ymax, maxDist;
             getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
 
-            // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
-            //double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
-
-            //double DH = 100000.; // height above MSL of the draping projection volume.
-            //double rttEyeLen = rttEye.length();
-
             // extends the frustum as far as it will safely go.
             // this may result in Z fighting. either ignore that, assuming that draped geometry
             // should probaly not use depth testing anyway, or address it later
             double rttLen = rttEye.length();
             double orthoNear = 0.0; // at the rtt camera
-            double orthoFar  = _isGeocentric ? rttLen : (rttLen + DH);
+            double orthoFar  = _isGeocentric ? rttLen : (rttLen + _maxHeight);
 
             // Even through using xmin and xmax directly results in a tighter fit, 
             // it offsets the eyepoint from the center of the projection frustum.
@@ -694,7 +680,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             rttProjMatrix.makeOrtho(-x, x, ymin, ymax, orthoNear, orthoFar);
 #else
             //Note: this was the original setup, which is technically optimal:
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, 2.0*DH);
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, 2.0*_maxHeight);
 #endif
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped

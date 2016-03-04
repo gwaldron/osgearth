@@ -23,10 +23,12 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Notify>
+#include <osgEarth/Registry>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgDB/ReaderWriter>
 #include <osgDB/Registry>
+#include <osgDB/FileNameUtils>
 
 #include "mongoose.h"
 
@@ -65,6 +67,10 @@ static std::string response(std::string const &content
 
 static osg::ref_ptr< osg::Image > s_image;
 static OpenThreads::Mutex s_imageMutex;
+static osg::ref_ptr< EarthManipulator > earthManipulator;
+static osgViewer::Viewer* s_viewer;
+static osg::ref_ptr< ScreenCaptureHandler > s_captureHandler;
+static osg::ref_ptr< MapNode > s_mapNode;
 
 static void setImage(const osg::Image &image)
 {
@@ -80,23 +86,72 @@ static osg::Image* getImage()
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
+
+  static OpenThreads::Mutex requestMutex;
+  OpenThreads::ScopedLock< OpenThreads::Mutex > lk(requestMutex);
   
   switch (ev) {
-    case MG_EV_HTTP_REQUEST:
-        std::cout << hm->uri.p << std::endl;
-      if (mg_vcmp(&hm->uri, "/osgearth") == 0) {
-        std::cout << "osgearth" << std::endl;
-        osg::ref_ptr< osg::Image > image = getImage();
-       
-        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
-        if (rw)
-        {
-            std::stringstream buf;
-            rw->writeImage(*image.get(), buf);
-            std::string res = response(buf.str(), "image/jpeg");
-            mg_send(nc, res.c_str(), res.size());       
-        }
-      } 
+  case MG_EV_HTTP_REQUEST:
+      {
+          std::string url(hm->uri.p, hm->uri.len);
+          OE_NOTICE << "url=" << url << std::endl;
+          StringTokenizer tok("/");
+          StringVector tized;
+          tok.tokenize(url, tized);            
+          OE_NOTICE << "url=" << url << " size=" << tized.size() << std::endl;
+          if ( tized.size() == 4 )
+          {
+              int z = as<int>(tized[1], 0);
+              int x = as<int>(tized[2], 0);
+              unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
+              std::string ext = osgDB::getFileExtension(tized[3]);
+              std::cout << "z=" << z << std::endl;
+              std::cout << "x=" << x << std::endl;
+              std::cout << "y=" << y << std::endl;              
+              std::cout << "ext=" << ext << std::endl;
+
+              TileKey key(z, x, y, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+
+              osgEarth::GeoPoint centroid;
+              key.getExtent().getCentroid(centroid);
+              double lon   = centroid.x(); 
+              double lat   = centroid.y(); 
+              double maxDim = osg::maximum(key.getExtent().width() , key.getExtent().height()); 
+              double range = ((0.5 * maxDim) / 0.267949849) * 111000.0; 
+              //double range = ((0.5 * maxDim) / 0.267949849); 
+              OE_NOTICE << "range=" << range << std::endl;
+              Viewpoint vp;
+              vp.focalPoint() = centroid;
+              vp.range()->set(range, Units::METERS);
+              earthManipulator->setViewpoint(vp, 0.0);
+              s_viewer->frame();
+              s_viewer->frame();
+
+              OE_NOTICE << "Centroid" << centroid.x() << ", " << centroid.y() << std::endl;
+
+              s_captureHandler->setFramesToCapture(1);
+              s_captureHandler->captureNextFrame(*s_viewer);
+              s_viewer->frame();
+              s_viewer->frame();
+              s_viewer->frame();
+
+              osg::ref_ptr< osg::Image > image = getImage();
+
+              osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+              if (rw)
+              {
+                  std::stringstream buf;
+                  rw->writeImage(*image.get(), buf);
+                  std::string mime = "image/png";
+                  if (ext == "jpeg" || ext == "jpg")
+                  {
+                      mime = "image/jpeg";
+                  }
+                  std::string res = response(buf.str(), mime);
+                  mg_send(nc, res.c_str(), res.size());       
+              }             
+          }
+      }
       break;
     default:
       break;
@@ -128,9 +183,7 @@ class ServerThread : public OpenThreads::Thread
 class CloneImageHandler : public osgViewer::ScreenCaptureHandler::CaptureOperation
 {
     virtual void operator()(const osg::Image& image, const unsigned int context_id)
-    {
-        OSG_NOTICE << "Capturing..." << std::endl;
-        // Just clone the image
+    {        
         setImage(image);
     }
 };
@@ -155,7 +208,8 @@ main(int argc, char** argv)
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+    earthManipulator = new EarthManipulator(arguments);
+    viewer.setCameraManipulator( earthManipulator );
 
     // disable the small-feature culling
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
@@ -164,7 +218,45 @@ main(int argc, char** argv)
     // closer to the ground without near clipping. If you need more, use --logdepth
     viewer.getCamera()->setNearFarRatio(0.0001);
 
+    s_viewer = &viewer;
+    
+
+        /*
+        ServerThread server;
+        server.start();
+    */
+
+    s_captureHandler = new ScreenCaptureHandler;
+    s_captureHandler->setCaptureOperation(new CloneImageHandler());
+    viewer.addEventHandler(s_captureHandler.get());   
     /*
+    s_captureHandler->setFramesToCapture(-1);
+    s_captureHandler->captureNextFrame(viewer);
+    screenCaptureHandler->startCapture();
+    */
+    
+
+    // load an earth file, and support all or our example command-line options
+    // and earth file <external> tags    
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
+    if ( node )
+    {
+        viewer.setSceneData( node );
+
+        /*
+        while(!viewer.done())
+        {
+            viewer.frame();
+        }
+        */
+    }
+    else
+    {
+        return usage(argv[0]);
+    }
+
+    viewer.realize();
+
 
     struct mg_connection *nc;
     struct mg_mgr mgr;
@@ -181,34 +273,6 @@ main(int argc, char** argv)
     }
 
     mg_mgr_free(&mgr);
-    */
-
-    ServerThread server;
-    server.start();
-
-    osg::ref_ptr< ScreenCaptureHandler > screenCaptureHandler = new ScreenCaptureHandler;
-    screenCaptureHandler->setCaptureOperation(new CloneImageHandler());
-    viewer.addEventHandler(screenCaptureHandler.get());   
-    screenCaptureHandler->setFramesToCapture(-1);
-    screenCaptureHandler->captureNextFrame(viewer);
-    screenCaptureHandler->startCapture();
-    
-
-    // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
-    if ( node )
-    {
-        viewer.setSceneData( node );
-        while(!viewer.done())
-        {
-            viewer.frame();
-        }
-    }
-    else
-    {
-        return usage(argv[0]);
-    }
 
     return 0;
 }

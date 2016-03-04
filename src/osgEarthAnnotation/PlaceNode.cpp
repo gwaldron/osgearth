@@ -203,7 +203,7 @@ PlaceNode::init()
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-            imageBox = imageGeom->getBoundingBox();
+            imageBox = osgEarth::Utils::getBoundingBox( imageGeom );
         }    
     }
 

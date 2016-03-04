@@ -46,6 +46,7 @@ namespace osgEarth
             osg::ref_ptr<osg::Group>     _node;
             osg::ref_ptr<osg::RefMatrix> _matrix;
             osg::ObserverNodePath        _path;
+            int                          _frame;
         };
 
     public:
@@ -53,7 +54,7 @@ namespace osgEarth
         ~DrapingCullSet() { } // not virtual
 
         /** Pushes a node and its matrix into the cull set */
-        void push(DrapeableNode* node, const osg::NodePath& path);
+        void push(DrapeableNode* node, const osg::NodePath& path, const osg::FrameStamp* stamp);
 
         /** Runs a node visitor on the cull set, optionally popping as it goes along. */
         void accept(osg::NodeVisitor& nv);

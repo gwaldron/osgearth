@@ -467,7 +467,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // unit look-vector of the eye:
     osg::Vec3d camEye, camTo, camUp;
     const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
-    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0); //eyeLen);
+    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0);
     osg::Vec3 camLook = camTo-camEye;
     camLook.normalize();
 
@@ -561,7 +561,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     if ( _isGeocentric )
     {
-        osg::Vec3d center = worldUp*R;
+        osg::Vec3d center = eye;
+        center.normalize();
+        center *= R;
         rttEye = center + worldUp*_maxHeight;
         //establish a valid up vector
         osg::Vec3d rttLook = -rttEye;

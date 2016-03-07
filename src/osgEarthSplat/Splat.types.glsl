@@ -2,6 +2,7 @@
 
 // Environment structure passed around locally.
 struct oe_SplatEnv {
+    float lod;
     float range;
     float elevation;
     float slope;

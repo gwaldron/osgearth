@@ -71,6 +71,7 @@ _textureIndex( -1 )
 SplatRangeData::SplatRangeData(const Config& conf) :
 _textureIndex( -1 )
 {
+    conf.getIfSet("min_range",  _minRange);
     conf.getIfSet("image",      _imageURI);
     conf.getIfSet("model",      _modelURI);
     conf.getIfSet("modelCount", _modelCount);
@@ -84,6 +85,7 @@ Config
 SplatRangeData::getConfig() const
 {
     Config conf;
+    conf.addIfSet("min_range",  _minRange);
     conf.addIfSet("image",      _imageURI);
     conf.addIfSet("model",      _modelURI);
     conf.addIfSet("modelCount", _modelCount);

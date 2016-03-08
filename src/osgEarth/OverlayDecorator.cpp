@@ -658,32 +658,42 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // TODO: when verts = 0 should we do something different? or use the previous
         // frame's view matrix?
         if ( verts.size() > 0 )
-        {
-            // calculate an orthographic RTT projection matrix based on the view-space
-            // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
-            // that bounds all the polyherdron verts in its XY plane)
-            double xmin, ymin, xmax, ymax, maxDist;
-            getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+        {            
+            bool lockToOrthoFrustum = false; // experimental
+
+            double xmin, ymin, xmax, ymax, orthoNear, orthoFar, maxDist;
+
+            // testing "lock to ortho viewport".
+            if ( lockToOrthoFrustum && osg::equivalent(projMatrix(3,3), 1.0) )
+            {
+                projMatrix.getOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+            }
+
+            else
+            {
+                // calculate an orthographic RTT projection matrix based on the view-space
+                // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+                // that bounds all the polyherdron verts in its XY plane)
+                getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+
+                // Even through using xmin and xmax directly results in a tighter fit, 
+                // it offsets the eyepoint from the center of the projection frustum.
+                // This causes problems for the draping projection matrix optimizer, so
+                // for now instead of re-doing that code we will just center the eyepoint
+                // here by using the larger of xmin and xmax. -gw.                
+                double x = std::max( fabs(xmin), fabs(xmax) );
+                xmin = -x, xmax = x;
+            }
 
             // extends the frustum as far as it will safely go.
             // this may result in Z fighting. either ignore that, assuming that draped geometry
             // should probaly not use depth testing anyway, or address it later
             double rttLen = rttEye.length();
-            double orthoNear = 0.0; // at the rtt camera
-            double orthoFar  = _isGeocentric ? rttLen : (rttLen + _maxHeight);
+            orthoNear = 0.0; // at the rtt camera
+            orthoFar  = _isGeocentric ? rttLen : (rttLen + _maxHeight);
 
-            // Even through using xmin and xmax directly results in a tighter fit, 
-            // it offsets the eyepoint from the center of the projection frustum.
-            // This causes problems for the draping projection matrix optimizer, so
-            // for now instead of re-doing that code we will just center the eyepoint
-            // here by using the larger of xmin and xmax. -gw.
-#if 1
-            double x = std::max( fabs(xmin), fabs(xmax) );
-            rttProjMatrix.makeOrtho(-x, x, ymin, ymax, orthoNear, orthoFar);
-#else
-            //Note: this was the original setup, which is technically optimal:
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, 2.0*_maxHeight);
-#endif
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped
             // frustum is the one we'll send to the technique.

@@ -1,0 +1,64 @@
+<!--
+  osgEarth Sample - Detail Texturing with an Inline Shader
+
+  Run:
+
+  osgearth_viewer detail_texture.earth --uniform detailLOD 0 24
+-->
+
+<map name="detail texturing" type="geocentric">
+        
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <extensions>
+        <terrainshader name="Detail Texture">
+        
+            <sampler name="detailTex" url="../data/osgearth.gif"/>
+            
+            <code>
+              <![CDATA[
+                #version 330
+                #pragma vp_entryPoint detailVertex
+                #pragma vp_location   vertex_view
+                
+                uniform float detailLOD;    // uniform of base LOD
+                vec4 oe_layer_tilec;        // stage global - tile coordinates
+                out vec2 detailCoords;      // output to fragment stage
+                
+                // Terrain SDK function
+                vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
+                
+                void detailVertex(inout vec4 color)
+                {
+                    detailCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, int(detailLOD));
+                }                
+              ]]>
+            </code>
+            
+            <code>
+              <![CDATA[
+                #version 330
+                #pragma vp_entryPoint detailFragment
+                #pragma vp_location   fragment_coloring
+                #pragma vp_order      1
+                
+                uniform sampler2D detailTex;    // uniform of detail texture
+                in vec2 detailCoords;           // input from vertex stage
+                
+                void detailFragment(inout vec4 color)
+                {
+                    vec4 texel = texture(detailTex, detailCoords);
+                    color.rgb = mix(color.rgb, texel.rgb, 0.5);
+                }                
+              ]]>
+            </code>
+            
+        </terrainshader>
+    </extensions>
+</map>

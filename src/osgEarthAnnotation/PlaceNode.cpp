@@ -243,18 +243,29 @@ PlaceNode::init()
 
     if ( _dynamic )
         setDynamic( _dynamic );
+
+    updateLayoutData();
 }
 
 void
 PlaceNode::setPriority(float value)
 {
     GeoPositionNode::setPriority(value);
+    updateLayoutData();
+}
+
+void
+PlaceNode::updateLayoutData()
+{
+    osg::ref_ptr<LayoutData> data = new LayoutData();
+    data->_priority = getPriority();
+    const TextSymbol* ts = getStyle().get<TextSymbol>();
+    if (ts) data->_pixelOffset = ts->pixelOffset().get();
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
     {
-        //_geode->getDrawable(i)->setUserData( this );
-        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+        _geode->getDrawable(i)->setUserData(data.get());
     }
 }
 

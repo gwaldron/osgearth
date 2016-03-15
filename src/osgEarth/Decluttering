@@ -50,13 +50,13 @@ namespace osgEarth
     /**
      * Interface that exposes set/getPriority for priority sorting
      */
-    struct DeclutteringData : public osg::Referenced
+    struct LayoutData : public osg::Referenced
     {
     public:
-        DeclutteringData(float priority) : _priority(priority) { }
-        float _priority;
+        float      _priority;
+        osg::Vec2s _pixelOffset;
     public:
-        virtual ~DeclutteringData() { }
+        virtual ~LayoutData() { }
     };
 
     /**

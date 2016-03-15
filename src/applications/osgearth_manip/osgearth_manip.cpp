@@ -503,7 +503,7 @@ namespace
             TextSymbol* text = style.getOrCreate<TextSymbol>();
             text->size() = 32.0f;
             text->declutter() = false;
-            text->pixelOffset()->set(50, 10);
+            text->pixelOffset()->set(50, 50);
             
             _label = new LabelNode(_name, style);
             _label->setDynamic( true );
@@ -519,28 +519,21 @@ namespace
             if ( ea.getEventType() == ea.FRAME )
             {
                 double t0 = osg::Timer::instance()->time_s();
-                double t = fmod( t0, 600.0 ) / 600.0;
+                double t = fmod( t0, 6000.0 ) / 6000.0;
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
                 double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
 
                 float a = sin(t0*0.2);
-                bearing += a * 0.5 * osg::PI;
-                float pitch = 0.0; //a * 0.1 * osg::PI;
+                //bearing += a * 0.5 * osg::PI;
+                float pitch = 0.0;
 
                 _geo->setPosition(p);
-                //_xform->setPosition( p );
 
                 _geo->setLocalRotation(
                     osg::Quat(pitch, osg::Vec3d(1, 0, 0)) *
                     osg::Quat(bearing, osg::Vec3d(0, 0, -1)));
-
-                //_pat->setAttitude(
-                //    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
-                //    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
-
-                //_label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
@@ -612,7 +605,7 @@ int main(int argc, char** argv)
     osg::Node* model = 0L;
     std::string modelFile;
     if (arguments.read("--model", modelFile))
-        model = osgDB::readNodeFile(modelFile);
+        model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
 
     // Simulator for tethering:
     Simulator* sim1 = new Simulator(root, manip, mapNode, model, "Thing 1", '8');

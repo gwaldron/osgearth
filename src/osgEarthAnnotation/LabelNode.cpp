@@ -133,8 +133,6 @@ LabelNode::setStyle( const Style& style )
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;
     }
-    
-//    this->clearDecoration();
 
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
 
@@ -148,10 +146,7 @@ LabelNode::setStyle( const Style& style )
     osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
     _geode->addDrawable(t);
     _geode->setCullingActive(false);
-
-    //t->setUserData( this );
-    t->setUserData( new DeclutteringData(getPriority()) );
-
+    
     applyStyle( _style );
 
     setLightingIfNotSet( false );
@@ -160,18 +155,29 @@ LabelNode::setStyle( const Style& style )
         this,
         "osgEarth.LabelNode",
         Registry::stateSetCache() );
+
+    updateLayoutData();
 }
 
 void
 LabelNode::setPriority(float value)
 {
     GeoPositionNode::setPriority(value);
+    updateLayoutData();
+}
+
+void
+LabelNode::updateLayoutData()
+{
+    osg::ref_ptr<LayoutData> data = new LayoutData();
+    data->_priority = getPriority();
+    const TextSymbol* ts = getStyle().get<TextSymbol>();
+    if (ts) data->_pixelOffset = ts->pixelOffset().get();
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
     {
-        //_geode->getDrawable(i)->setUserData( this );
-        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+        _geode->getDrawable(i)->setUserData(data.get());
     }
 }
 

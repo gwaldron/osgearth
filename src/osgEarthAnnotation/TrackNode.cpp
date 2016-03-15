@@ -87,7 +87,10 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-            imageGeom->setUserData( new DeclutteringData(getPriority()) );
+
+            LayoutData* layout = new LayoutData();
+            layout->_priority = getPriority();
+            imageGeom->setUserData(layout);
         }
     }
 
@@ -141,12 +144,19 @@ void
 TrackNode::setPriority(float value)
 {
     GeoPositionNode::setPriority( value );
+    updateLayoutData();
+}
+
+void
+TrackNode::updateLayoutData()
+{
+    osg::ref_ptr<LayoutData> data = new LayoutData();
+    data->_priority = getPriority();
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
     {
-        //_geode->getDrawable(i)->setUserData( this );
-        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+        _geode->getDrawable(i)->setUserData(data.get());
     }
 }
 
@@ -180,10 +190,9 @@ TrackNode::setFieldValue( const std::string& name, const osgText::String& value 
 void
 TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
 {
-    //drawable->setUserData( this );
-    drawable->setUserData( new DeclutteringData(getPriority()) );
     _namedDrawables[name] = drawable;
     _geode->addDrawable( drawable );
+    updateLayoutData();
 }
 
 osg::Drawable*

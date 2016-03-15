@@ -495,27 +495,23 @@ namespace
             { 
                 _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1)); //, 90.0f); //AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
             }
-            
-            _xform = new GeoTransform();
-            _xform->setTerrain(mapnode->getTerrain());
 
-            _pat = new osg::PositionAttitudeTransform();
-            _pat->addChild( _model );
-
-            _xform->addChild( _pat );
-
-            _cam = new osg::Camera();
-            _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
-            _cam->addChild( _xform );
+            _geo = new GeoPositionNode(mapnode);
+            _geo->getPositionAttitudeTransform()->addChild(_model);
 
             Style style;
-            style.getOrCreate<TextSymbol>()->size() = 32.0f;
-            style.getOrCreate<TextSymbol>()->declutter() = false;
-            _label = new LabelNode(_mapnode, GeoPoint(), _name, style);
+            TextSymbol* text = style.getOrCreate<TextSymbol>();
+            text->size() = 32.0f;
+            text->declutter() = false;
+            text->pixelOffset()->set(50, 10);
+            
+            _label = new LabelNode(_name, style);
             _label->setDynamic( true );
-            _cam->addChild( _label );
+            _label->setHorizonCulling(false);
 
-            root->addChild( _cam.get() );
+            _geo->getPositionAttitudeTransform()->addChild(_label);
+
+            root->addChild(_geo.get());
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -533,20 +529,26 @@ namespace
                 bearing += a * 0.5 * osg::PI;
                 float pitch = 0.0; //a * 0.1 * osg::PI;
 
-                _xform->setPosition( p );
+                _geo->setPosition(p);
+                //_xform->setPosition( p );
 
-                _pat->setAttitude(
-                    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
-                    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
+                _geo->setLocalRotation(
+                    osg::Quat(pitch, osg::Vec3d(1, 0, 0)) *
+                    osg::Quat(bearing, osg::Vec3d(0, 0, -1)));
 
-                _label->setPosition( p );
+                //_pat->setAttitude(
+                //    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
+                //    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
+
+                //_label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
                 if ( ea.getKey() == _key )
                 {                                
                     Viewpoint vp = _manip->getViewpoint();
-                    vp.setNode( _pat.get() );
+                    //vp.setNode( _pat.get() );
+                    vp.setNode(_model);
                     vp.range() = 25000.0;
                     vp.pitch() = -45.0;
                     _manip->setViewpoint(vp, 2.0);
@@ -560,14 +562,16 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        osg::ref_ptr<osg::Camera>          _cam;
-        osg::ref_ptr<GeoTransform>         _xform;
-        osg::ref_ptr<osg::PositionAttitudeTransform> _pat;
+        //osg::ref_ptr<osg::Camera>          _cam;
+        //osg::ref_ptr<GeoTransform>         _xform;
+        //osg::ref_ptr<osg::PositionAttitudeTransform> _pat;
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
         osg::Node*                         _model;
         float                              _heading;
         float                              _pitch;
+
+        osg::ref_ptr<GeoPositionNode>      _geo;
     };
 }
 

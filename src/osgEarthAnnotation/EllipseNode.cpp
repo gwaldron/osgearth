@@ -54,6 +54,7 @@ _numSegments  ( 0 )
 {
     initEllipseNode();
     setStyle( style );
+    setPosition( position );
 }
 
 void

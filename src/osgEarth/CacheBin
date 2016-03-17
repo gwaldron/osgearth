@@ -72,29 +72,35 @@ namespace osgEarth
          * Reads an object from the cache bin.
          * @param key     Lookup key to read         
          */
-        virtual ReadResult readObject(const std::string& key) =0;
+        virtual ReadResult readObject(const std::string& key, const osgDB::Options* dbo) =0;
 
         /**
          * Reads an image from the cache bin.
          * @param key     Lookup key to read         
          */
-        virtual ReadResult readImage(const std::string& key) =0;
+        virtual ReadResult readImage(const std::string& key, const osgDB::Options* dbo) = 0;
 
         /**
          * Reads a string buffer from the cache bin.
          * @param key    Lookup key to read.
          */
-        virtual ReadResult readString(const std::string& key) =0;
+        virtual ReadResult readString(const std::string& key, const osgDB::Options* dbo) = 0;
 
         /**
          * Writes an object (or an image) to the cache bin.
          * @param key    Lookup key to write to
          * @param object Object to serialize to the cache
          */
-        virtual bool write( 
-            const std::string& key, 
-            const osg::Object* object,
-            const Config&      metadata =Config() ) =0;
+        virtual bool write(
+            const std::string&    key,
+            const osg::Object*    object,
+            const Config&         metadata,
+            const osgDB::Options* dbo) = 0;
+
+        bool write(
+            const std::string&    key,
+            const osg::Object*    object,
+            const osgDB::Options* dbo) { return write(key, object, Config(), dbo); }
 
         /**
          * Gets the status of a key, i.e. not found, valid or expired.
@@ -143,7 +149,7 @@ namespace osgEarth
         /**
          * Store this pointer in an options structure
          */
-        void apply( osgDB::Options* options ) const {
+        void put( osgDB::Options* options ) const {
             if ( options ) options->setPluginData( "osgEarth::CacheBin", (void*)this );
         }
 

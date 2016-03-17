@@ -693,7 +693,7 @@ public:
 
                 if ( _cacheBin.valid() )
                 {
-                    _cacheBin->apply( _dbOptions.get() );
+                    _cacheBin->put( _dbOptions.get() );
                 }
             }
         }
@@ -780,7 +780,7 @@ public:
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
                 {                
-                    ReadResult result = _cacheBin->readString( vrtKey);
+                    ReadResult result = _cacheBin->readString( vrtKey, 0L);
                     if (result.succeeded())
                     {
                         _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );
@@ -824,7 +824,7 @@ public:
                                     buf << input.rdbuf();
                                     std::string vrtContents = buf.str();
                                     osg::ref_ptr< StringObject > strObject = new StringObject( vrtContents );
-                                    _cacheBin->write( vrtKey, strObject.get() );
+                                    _cacheBin->write(vrtKey, strObject.get(), 0L);
                                 }
                             }
                             if (osgDB::fileExists( vrtFile ) )

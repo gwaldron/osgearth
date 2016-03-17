@@ -85,7 +85,7 @@ public:
 
                 if ( _cacheBin.valid() )
                 {
-                    _cacheBin->apply( _dbOptions.get() );
+                    _cacheBin->put( _dbOptions.get() );
                 }
             }
         }

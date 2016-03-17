@@ -101,7 +101,7 @@ Horizon* Horizon::get(osg::NodeVisitor& nv)
 void
 Horizon::setEllipsoid(const osg::EllipsoidModel& e)
 {
-    _scaleInv.set( 
+    _scaleInv.set(
         e.getRadiusEquator(),
         e.getRadiusEquator(),
         e.getRadiusPolar() );
@@ -155,9 +155,9 @@ Horizon::isVisible(const osg::Vec3d& target,
 {
     if ( _valid == false || radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
         return true;
-    
-    // First check the object against the horizon plane, a plane that intersects the 
-    // ellipsoid, whose normal is the vector from the eyepoint to the center of the 
+
+    // First check the object against the horizon plane, a plane that intersects the
+    // ellipsoid, whose normal is the vector from the eyepoint to the center of the
     // ellipsoid.
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
@@ -173,28 +173,28 @@ Horizon::isVisible(const osg::Vec3d& target,
     // If the target is above the eye, it's visible
     double VTdotVC = VT*_VC;
     if ( VTdotVC <= 0.0 )
-    {        
+    {
         return true;
     }
 
     // If the eye is below the ellipsoid, but the target is below the eye
-    // (since the above test failed) the target is occluded. 
+    // (since the above test failed) the target is occluded.
     // NOTE: it might be better instead to check for a maximum distance from
-    // the eyepoint instead. 
+    // the eyepoint instead.
     if ( _VCmag < 0.0 )
     {
         return false;
     }
 
-    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane. 
+    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane.
     // If the point is in front of that horizon plane, it's visible and we're done
     if ( VTdotVC <= _VHmag2 )
     {
         return true;
     }
 
-    // The sphere is completely behind the horizon plane. So now intersect the 
-    // sphere with the horizon cone, a cone eminating from the eyepoint along the 
+    // The sphere is completely behind the horizon plane. So now intersect the
+    // sphere with the horizon cone, a cone eminating from the eyepoint along the
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
@@ -229,12 +229,12 @@ Horizon::isVisible(const osg::Vec3d& eye,
 
     osg::Vec3d VC = osg::componentMultiply(-eye, _scale);  // viewer->center (scaled)
 
-    // First check the object against the horizon plane, a plane that intersects the 
-    // ellipsoid, whose normal is the vector from the eyepoint to the center of the 
+    // First check the object against the horizon plane, a plane that intersects the
+    // ellipsoid, whose normal is the vector from the eyepoint to the center of the
     // ellipsoid.
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
-    // Viewer-to-target 
+    // Viewer-to-target
     osg::Vec3d delta(0,0,0);
     if ( radius > 0.0 )
     {
@@ -250,21 +250,21 @@ Horizon::isVisible(const osg::Vec3d& eye,
     // If the target is above the eye, it's visible
     double VTdotVC = VT*VC;
     if ( VTdotVC <= 0.0 )
-    {        
+    {
         return true;
     }
 
     // If the eye is below the ellipsoid, but the target is below the eye
-    // (since the above test failed) the target is occluded. 
+    // (since the above test failed) the target is occluded.
     // NOTE: it might be better instead to check for a maximum distance from
-    // the eyepoint instead. 
+    // the eyepoint instead.
     double VCmag = std::max( VC.length(), _minVCmag );      // clamped to the min HAE
     if ( VCmag < 0.0 )
     {
         return false;
     }
 
-    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane. 
+    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane.
     // If the point is in front of that horizon plane, it's visible and we're done
     double VHmag2 = VCmag*VCmag - 1.0;  // viewer->horizon line (scaled)
     if ( VTdotVC <= VHmag2 )
@@ -272,8 +272,8 @@ Horizon::isVisible(const osg::Vec3d& eye,
         return true;
     }
 
-    // The sphere is completely behind the horizon plane. So now intersect the 
-    // sphere with the horizon cone, a cone eminating from the eyepoint along the 
+    // The sphere is completely behind the horizon plane. So now intersect the
+    // sphere with the horizon cone, a cone eminating from the eyepoint along the
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
@@ -316,7 +316,7 @@ Horizon::getPlane(osg::Plane& out_plane) const
     if ( _VCmag > 0.0 )
     {
         // eyepoint is above ellipsoid? Calculate scaled distance from center to horizon plane
-        PCmag = 1.0/_VCmag;    
+        PCmag = 1.0/_VCmag;
     }
     else
     {
@@ -357,7 +357,8 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     {
         // pop the last node in the path (which is the node this callback is on)
         // to prevent double-transforming the bounding sphere's center point
-        np.pop_back();
+        if (!np.empty() && np.back() == node)
+            np.pop_back();
         local2world = osg::computeLocalToWorld(np);
 
         const osg::BoundingSphere& bs = node->getBound();
@@ -396,7 +397,7 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
 
 void
 HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{    
+{
     if ( _enabled )
     {
         if ( _proxy.valid() )

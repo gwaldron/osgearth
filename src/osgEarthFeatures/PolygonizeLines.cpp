@@ -23,9 +23,8 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-
+#include <osg/StateAttribute>
 #define LC "[PolygonizeLines] "
-
 using namespace osgEarth::Features;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
@@ -124,7 +123,6 @@ _stroke( stroke )
     //nop
 }
 
-
 osg::Geometry*
 PolygonizeLinesOperator::operator()(osg::Vec3Array* verts, 
                                     osg::Vec3Array* normals,
@@ -192,7 +190,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     osg::Vec3 prevBufVert;
     osg::Vec3 prevBufVec;
     unsigned  prevBufVertPtr;
-    unsigned  eboPtr = 0;
+   // unsigned  eboPtr = 0;
     osg::Vec3 prevDir;
     
     osg::Vec3 up(0,0,1);
@@ -200,20 +198,18 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     // iterate over both "sides" of the center line:
     int firstside = 0;
     int lastside  = twosided ? 1 : 0;
-    
     const float RIGHT_SIDE = 1.0f;
     const float LEFT_SIDE = -1.0f;
-
     for( int ss=firstside; ss<=lastside; ++ss )
     {
         float side = ss == 0 ? RIGHT_SIDE : LEFT_SIDE;
-
+        float tcoord_s=(side+1.0)/2.0;
         // iterate over each line segment.
         for( i=0; i<lineSize-1; ++i )
         {
             // establish the normal for this point, which will help us calculate a
             // 3D buffering vector.
-            const osg::Vec3& normal = (*normals)[i];
+            //const osg::Vec3& normal = (*normals)[i];
 
             // calculate the directional vector of this segment.
             Segment   seg   ( (*verts)[i], (*verts)[i+1] );
@@ -240,7 +236,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                 // first tex coord:
                 // TODO: revisit. I believe we have them going x = [-1..1] instead of [0..1] -gw
-                tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
 
                 // first normal
                 normals->push_back( (*normals)[i] );
@@ -265,7 +261,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-2, verts->size()-1, side );
-                        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                        tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                         normals->push_back( (*normals)[i] );
                         if ( spine ) spine->push_back( (*verts)[i] );
                     }
@@ -276,13 +272,13 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                     verts->push_back( verts->back() - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, side );
-                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                    tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                     normals->push_back( normals->back() );
                     if ( spine ) spine->push_back( (*verts)[i] );
 
                     verts->push_back( (*verts)[i] - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, side );
-                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                    tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (verts->back() - (*verts)[i]) * sqrt(2.0f) );
                 }
@@ -336,7 +332,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     // for *previous* segment.
                     //if ( addedVertex )
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
-                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                    tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
 
                     if ( spine ) spine->push_back( (*verts)[i] );
@@ -349,7 +345,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                     verts->push_back( start );
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
-                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                    tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (*verts)[i] );
 
@@ -367,7 +363,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-1, verts->size()-2, side );
-                        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                        tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                         normals->push_back( (*normals)[i] );
 
                         if ( spine ) spine->push_back( (*verts)[i] );
@@ -387,7 +383,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         // record the final point data.
         verts->push_back( (*verts)[i] + prevBufVec );
         addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
-        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+        tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
         normals->push_back( (*normals)[i] );
         if ( spine ) spine->push_back( (*verts)[i] );
 
@@ -407,24 +403,24 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 rotate( circlevec, (side)*a, up, v );
                 verts->push_back( (*verts)[i] + v );
                 addTri( ebo, i, verts->size()-1, verts->size()-2, side );
-                tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+                tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
                 normals->push_back( (*normals)[i] );
                 if ( spine ) spine->push_back( (*verts)[i] );
             }
         }
         else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
         {
-            float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
+            //float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
 
             verts->push_back( verts->back() + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, side );
-            tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+            tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
             normals->push_back( normals->back() );
             if ( spine ) spine->push_back( (*verts)[i] );
 
             verts->push_back( (*verts)[i] + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, side );
-            tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
+            tverts->push_back( osg::Vec2f(tcoord_s, (*tverts)[i].y()) );
             normals->push_back( (*normals)[i] );
             if ( spine ) spine->push_back( (*verts)[i] );
         }
@@ -441,23 +437,22 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         primset->addElement( ebo[i] );
     geom->addPrimitiveSet( primset );
 
-    // generate colors
+
+#if 1
+    if ( _stroke.texture().isSet() )
     {
+        geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, (osg::StateAttribute*)_stroke.stroke_tex(),1);
+    }
+    else
+    {
+        // generate colors
         osg::Vec4Array* colors = new osg::Vec4Array( verts->size() );
         colors->assign( colors->size(), _stroke.color() );
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
-     
-#if 0
-    //TESTING
-    osg::Image* image = osgDB::readImageFile("E:/data/textures/road.jpg");
-    osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-    geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, 1);
-#endif
 
+#endif
     return geom;
 }
 

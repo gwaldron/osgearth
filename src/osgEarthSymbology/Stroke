@@ -24,8 +24,9 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarth/Config>
 #include <osgEarth/Units>
-
-
+#include <osgEarth/Common>
+#include <osgEarthSymbology/InstanceSymbol>
+#include <osg/Texture2D>
 namespace osgEarth { namespace Symbology
 {
     /**
@@ -105,6 +106,15 @@ namespace osgEarth { namespace Symbology
         optional<float>& roundingRatio() { return _roundingRatio; }
         const optional<float>& roundingRatio() const { return _roundingRatio; }
 
+        /** texture */
+        optional<StringExpression>& texture() { return _texture; }
+        const optional<StringExpression>& texture() const { return _texture; }
+
+        /** URI context (relative paths, etc) associated wtih this symbol */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        osg::Texture2D* stroke_tex(){ return _stroke_tex; }
+        const osg::Texture2D* stroke_tex() const {return _stroke_tex;}
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -119,7 +129,9 @@ namespace osgEarth { namespace Symbology
         optional<unsigned short> _stipplePattern;
         optional<float>          _roundingRatio;
         optional<float>          _minPixels;
-
+        optional<StringExpression> _texture;
+        URIContext _uriContext;
+        osg::Texture2D* _stroke_tex;
         void init();
     };
 

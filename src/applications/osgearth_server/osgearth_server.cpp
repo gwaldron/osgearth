@@ -144,22 +144,6 @@ public:
 
           OE_NOTICE << "key=" << key.str() << std::endl;
 
-
-
-          // Remove all the children
-
-#if 0
-          _root->removeChildren(0, _root->getNumChildren());
-
-          osg::ref_ptr< osg::Node > tile = _mapNode->getTerrainEngine()->createTile( key );
-          if (!tile.valid())
-          {
-              return 0;
-          }
-
-          _root->addChild( tile );
-#endif
-
           // Set the projection matrix to capture the tile.                    
           OE_NOTICE << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
           _viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());

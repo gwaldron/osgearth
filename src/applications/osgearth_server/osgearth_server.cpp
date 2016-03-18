@@ -24,9 +24,11 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgDB/ReaderWriter>
+#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
@@ -57,7 +59,9 @@ static std::string response(std::string const &content
     out<< "HTTP/1.1 "<< status<< "\r\n"
       << "Content-Type: "<< content_type<< "; charset=utf-8\r\n"
       << "Content-Length: "<< content.size()<< "\r\n"
-      << "Connection: keep-alive\r\n";
+      << "Connection: keep-alive\r\n"
+      << "Cache-Control: no-cache\r\n"
+      << "Access-Control-Allow-Origin: *\r\n";
     if(!cookie.empty())
       out<< "Set-Cookie: "<< cookie<< ";max-age=315569260\r\n";
     out<< "Server: osgearth_server\r\n\r\n"
@@ -65,24 +69,129 @@ static std::string response(std::string const &content
     return out.str();
   }
 
-static osg::ref_ptr< osg::Image > s_image;
-static OpenThreads::Mutex s_imageMutex;
-static osg::ref_ptr< EarthManipulator > earthManipulator;
-static osgViewer::Viewer* s_viewer;
-static osg::ref_ptr< ScreenCaptureHandler > s_captureHandler;
-static osg::ref_ptr< MapNode > s_mapNode;
 
-static void setImage(const osg::Image &image)
+struct CloneImageHandler : public osgViewer::ScreenCaptureHandler::CaptureOperation
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(s_imageMutex);
-    s_image = new osg::Image(image);
-}
+    virtual void operator()(const osg::Image& image, const unsigned int context_id)
+    {        
+        setImage(image);
+    }
 
-static osg::Image* getImage()
+    void setImage(const osg::Image &image)
+    {
+        _image = new osg::Image(image);
+    }
+
+    osg::Image* getImage()
+    {     
+        if (_image.valid())
+        {
+            OE_NOTICE << "Returning image" << std::endl;
+            return new osg::Image(*_image.get());
+        }
+        return 0;
+    }
+
+    osg::ref_ptr< osg::Image > _image;
+};
+
+class TileImageServer
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(s_imageMutex);
-    return new osg::Image(*s_image.get());
-}
+public:
+    TileImageServer(MapNode* mapNode):
+      _mapNode(mapNode),
+      _viewer(0)
+      {
+          _viewer = new osgViewer::Viewer;
+          _viewer->setUpViewInWindow(0,0,256,256);
+          _viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+          float half = 256.0/2.0;
+          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(-half, half, -half, half);
+
+          _screenCaptureHandler = new ScreenCaptureHandler;
+          _cloneImageHandler = new CloneImageHandler();
+          _screenCaptureHandler->setCaptureOperation(_cloneImageHandler.get());
+          _viewer->addEventHandler(_screenCaptureHandler);
+
+          _root = new osg::Group;
+
+          _root->addChild(mapNode);
+
+          _viewer->setSceneData( _root.get() );
+
+          _viewer->realize();
+      }
+
+      ~TileImageServer()
+      {
+          if (_viewer)
+          {
+              delete _viewer;
+          }
+      }
+
+      osg::Image* getTile(unsigned int z, unsigned int x, unsigned int y)
+      {
+          OpenThreads::ScopedLock< OpenThreads::Mutex> lk(_mutex);
+
+          // Invert the y
+          unsigned cols=0, rows=0;
+          _mapNode->getMap()->getProfile()->getNumTiles( z, cols, rows );
+          y = rows - y - 1;
+
+
+          TileKey key(z, x, y, _mapNode->getMap()->getProfile());
+
+          OE_NOTICE << "key=" << key.str() << std::endl;
+
+
+
+          // Remove all the children
+
+#if 0
+          _root->removeChildren(0, _root->getNumChildren());
+
+          osg::ref_ptr< osg::Node > tile = _mapNode->getTerrainEngine()->createTile( key );
+          if (!tile.valid())
+          {
+              return 0;
+          }
+
+          _root->addChild( tile );
+#endif
+
+          // Set the projection matrix to capture the tile.                    
+          OE_NOTICE << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
+          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
+          _viewer->frame();
+          while (_viewer->getDatabasePager()->getRequestsInProgress())
+          {
+              OE_NOTICE << "Waiting...." << std::endl;
+              _viewer->frame();
+          }
+
+          OE_NOTICE << "Snap!" << std::endl;
+
+          // Actually take a shot of the tile.
+           _screenCaptureHandler->setFramesToCapture(1);
+           _screenCaptureHandler->captureNextFrame(*_viewer);
+           _viewer->frame();
+           _viewer->frame();
+
+           return _cloneImageHandler->getImage();
+      }
+
+    osgViewer::Viewer *_viewer;
+    osg::ref_ptr< MapNode > _mapNode;
+    osg::ref_ptr< osg::Group > _root;
+    osg::ref_ptr< CloneImageHandler > _cloneImageHandler;
+    osg::ref_ptr< ScreenCaptureHandler > _screenCaptureHandler;
+    OpenThreads::Mutex _mutex;
+};
+
+
+static TileImageServer* _server;
+
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   struct http_message *hm = (struct http_message *) ev_data;
@@ -98,7 +207,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
           StringTokenizer tok("/");
           StringVector tized;
           tok.tokenize(url, tized);            
-          OE_NOTICE << "url=" << url << " size=" << tized.size() << std::endl;
           if ( tized.size() == 4 )
           {
               int z = as<int>(tized[1], 0);
@@ -110,46 +218,41 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
               std::cout << "y=" << y << std::endl;              
               std::cout << "ext=" << ext << std::endl;
 
-              TileKey key(z, x, y, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+              osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y );
 
-              osgEarth::GeoPoint centroid;
-              key.getExtent().getCentroid(centroid);
-              double lon   = centroid.x(); 
-              double lat   = centroid.y(); 
-              double maxDim = osg::maximum(key.getExtent().width() , key.getExtent().height()); 
-              double range = ((0.5 * maxDim) / 0.267949849) * 111000.0; 
-              //double range = ((0.5 * maxDim) / 0.267949849); 
-              OE_NOTICE << "range=" << range << std::endl;
-              Viewpoint vp;
-              vp.focalPoint() = centroid;
-              vp.range()->set(range, Units::METERS);
-              earthManipulator->setViewpoint(vp, 0.0);
-              s_viewer->frame();
-              s_viewer->frame();
+              bool sent = false;
+              if (image.valid())
+              {              
 
-              OE_NOTICE << "Centroid" << centroid.x() << ", " << centroid.y() << std::endl;
-
-              s_captureHandler->setFramesToCapture(1);
-              s_captureHandler->captureNextFrame(*s_viewer);
-              s_viewer->frame();
-              s_viewer->frame();
-              s_viewer->frame();
-
-              osg::ref_ptr< osg::Image > image = getImage();
-
-              osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
-              if (rw)
-              {
-                  std::stringstream buf;
-                  rw->writeImage(*image.get(), buf);
-                  std::string mime = "image/png";
-                  if (ext == "jpeg" || ext == "jpg")
+                  osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+                  if (rw)
                   {
-                      mime = "image/jpeg";
-                  }
-                  std::string res = response(buf.str(), mime);
-                  mg_send(nc, res.c_str(), res.size());       
-              }             
+                      std::stringstream buf;
+                      rw->writeImage(*image.get(), buf);
+                      std::string mime = "image/png";
+                      if (ext == "jpeg" || ext == "jpg")
+                      {
+                          mime = "image/jpeg";
+                      }
+                      std::string res = response(buf.str(), mime);
+                      mg_send(nc, res.c_str(), res.size());       
+                      //mg_send_http_chunk(nc, res.c_str(), res.size());
+                      sent = true;
+                  }             
+              }
+
+              if (!sent)
+              {
+                  std::string res = response("", "", "404 Not Found");
+                  mg_send(nc, res.c_str(), res.size());
+              }
+
+              nc->flags |= MG_F_SEND_AND_CLOSE;
+          }
+          else
+          {
+              std::string res = response("", "", "404 Not Found");
+              mg_send(nc, res.c_str(), res.size());
           }
       }
       break;
@@ -158,35 +261,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   }
 }
 
-class ServerThread : public OpenThreads::Thread
-{
-    virtual void run()
-    {
-        struct mg_connection *nc;
-        struct mg_mgr mgr;
 
-        mg_mgr_init(&mgr, NULL);
-
-        // Note that many connections can be added to a single event manager
-        // Connections can be created at any point, e.g. in event handler function
-        nc = mg_bind(&mgr, "8000", ev_handler);
-        mg_set_protocol_http_websocket(nc);
-
-        for (;;) {
-            mg_mgr_poll(&mgr, 1000);
-        }
-
-        mg_mgr_free(&mgr);
-  }
-};
-
-class CloneImageHandler : public osgViewer::ScreenCaptureHandler::CaptureOperation
-{
-    virtual void operator()(const osg::Image& image, const unsigned int context_id)
-    {        
-        setImage(image);
-    }
-};
 
 int
 main(int argc, char** argv)
@@ -197,67 +272,25 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    // create a viewer:
-    osgViewer::Viewer viewer(arguments);
-
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
-    // install our default manipulator (do this before calling load)
-    earthManipulator = new EarthManipulator(arguments);
-    viewer.setCameraManipulator( earthManipulator );
 
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    // set a near/far ratio that is smaller than the default. This allows us to get
-    // closer to the ground without near clipping. If you need more, use --logdepth
-    viewer.getCamera()->setNearFarRatio(0.0001);
-
-    s_viewer = &viewer;
-    
-
-        /*
-        ServerThread server;
-        server.start();
-    */
-
-    s_captureHandler = new ScreenCaptureHandler;
-    s_captureHandler->setCaptureOperation(new CloneImageHandler());
-    viewer.addEventHandler(s_captureHandler.get());   
-    /*
-    s_captureHandler->setFramesToCapture(-1);
-    s_captureHandler->captureNextFrame(viewer);
-    screenCaptureHandler->startCapture();
-    */
-    
-
-    // load an earth file, and support all or our example command-line options
+        // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
-    if ( node )
-    {
-        viewer.setSceneData( node );
+    osg::ref_ptr< osg::Node> node = osgDB::readNodeFiles( arguments );
+    osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node );
 
-        /*
-        while(!viewer.done())
-        {
-            viewer.frame();
-        }
-        */
-    }
-    else
+    if (mapNode.valid())
     {
-        return usage(argv[0]);
+        OE_NOTICE << "Found map node" << std::endl;
     }
 
-    viewer.realize();
+    _server = new TileImageServer( mapNode.get() );
 
-
+   
     struct mg_connection *nc;
     struct mg_mgr mgr;
 

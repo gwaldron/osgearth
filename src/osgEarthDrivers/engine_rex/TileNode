@@ -155,8 +155,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);
 
-        void tryUnload(TileNode*, const osg::Vec3&, EngineContext*);
-
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;

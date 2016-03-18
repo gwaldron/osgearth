@@ -37,7 +37,6 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     LabelSource
-    MeshClamper
     OgrUtils
     OptimizerHints
     PolygonizeLines
@@ -79,7 +78,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
-    MeshClamper.cpp
     OgrUtils.cpp
     OptimizerHints.cpp
     PolygonizeLines.cpp

@@ -24,6 +24,7 @@
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/GeometryClamper>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
@@ -70,7 +71,7 @@ namespace osgEarth { namespace Annotation
          /**
          * Gets the list of features
          */
-        FeatureList& getFeatures() { return _features; };
+        FeatureList& getFeatures() { return _features; }
 
         /**
          * Utility that lets you work on this FeatureNode as a single Feature instead of a list
@@ -81,16 +82,6 @@ namespace osgEarth { namespace Annotation
          * Sets the contents of this FeatureNode to a single feature.
          */
         void setFeature(Feature* feature);
-
-        /**
-         * Get whether cluster culling is enabled on this FeatureNode
-         */
-        bool getClusterCulling() const;
-
-        /*
-         * Sets whether cluster culling is enabled on this FeatureNode.
-         */
-        void setClusterCulling( bool clusterCulling );
 
         /**
          * Gets the StyleSheet for the session.
@@ -111,8 +102,6 @@ namespace osgEarth { namespace Annotation
         void dirty() { init(); }
 
     public: // AnnotationNode
-
-        virtual osg::Group* getAttachPoint();
 
         /**
          * Gets the Style for this FeatureNode.
@@ -142,9 +131,10 @@ namespace osgEarth { namespace Annotation
         osg::Polytope                _featurePolytope;
         Style                        _style;
         bool                         _needsRebuild;
-        bool                         _clusterCulling;
         GeoExtent                    _extent;
-        osg::NodeCallback*           _clusterCullingCallback;
+
+        typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
+        osg::ref_ptr<ClampCallback> _clampCallback;
 
         osg::ref_ptr< osg::Node >    _compiled;
 
@@ -153,15 +143,16 @@ namespace osgEarth { namespace Annotation
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
         
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+        void clamp(const Terrain* terrain, osg::Node* patch);
 
         void build();
 
-        void updateClusterCulling();
+    public:
 
-        
-    private:
-        void clampMesh( osg::Node* terrainModel );
+        void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
     };
 
 } } // namespace osgEarth::Annotation

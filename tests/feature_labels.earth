@@ -24,21 +24,18 @@ This shows how to label point features with an attribute.
             </selector>
             <style type="text/css">              
                 cities {
-                    icon: "../data/downarrow.png";
+                    icon:           "../data/downarrow.png";
                     icon-placement: centroid;
                     icon-declutter: true;
-                    icon-align:    center-bottom;
-                    text-content:  [name];
-                    text-priority: [rank_max];
-                    text-align:    center-bottom;
-                    text-offset-y: 15;
-                    text-halo:     #3f3f3f;
-                    text-size:     16+1.25*([rank_max]-9);
-                    text-encoding: utf-8;
+                    icon-align:     center-bottom;
+                    text-content:   [name];
+                    text-priority:  [rank_max];
+                    text-align:     center-bottom;
+                    text-halo:      #3f3f3f;
+                    text-size:      12+3*([rank_max]-9);
                 }     
             </style>
         </styles>
-        
     </model>
     
     <options lighting="false"/>

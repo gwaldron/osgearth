@@ -22,6 +22,8 @@
 
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/GeoPositionNodeAutoScaler>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/AutoScale>
@@ -43,11 +45,10 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-LocalizedNode( mapNode ),
+GeoPositionNode    ( mapNode, GeoPoint() ),
 _style       ( style ),
 _dbOptions   ( dbOptions )
 {
-    _xform = new osg::MatrixTransform();
     init();
 }
 
@@ -60,32 +61,16 @@ ModelNode::setStyle(const Style& style)
 }
 
 void
-ModelNode::setScale(const osg::Vec3f& scale)
-{
-    osg::StateSet* stateSet = getStateSet();
-    if ( stateSet && stateSet->getBinName() == osgEarth::AUTO_SCALE_BIN )
-    {
-        stateSet->setRenderBinToInherit();
-    }
-    LocalizedNode::setScale( scale );
-}
-
-void
 ModelNode::init()
 {
-    // reset.
-    this->clearDecoration();
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
-
-    this->setHorizonCulling(false);
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     osg::ref_ptr<const ModelSymbol> sym = _style.get<ModelSymbol>();
     
     // backwards-compatibility: support for MarkerSymbol (deprecated)
     if ( !sym.valid() && _style.has<MarkerSymbol>() )
     {
+        OE_WARN << LC << "MarkerSymbol is deprecated, please remove it\n";
         osg::ref_ptr<InstanceSymbol> temp = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
         sym = dynamic_cast<const ModelSymbol*>( temp.get() );
     }
@@ -98,7 +83,7 @@ ModelNode::init()
             osg::ref_ptr<osg::Node> node = sym->getModel();
 
             // Try to get a model from URI
-            if (node.valid() == false)
+            if ( !node.valid() )
             {
                 URI uri = sym->url()->evalURI();
 
@@ -114,13 +99,13 @@ ModelNode::init()
                     node = uri.getNode( tempOptions.get() );
                 }
 
-                if (node.valid() == false)
+                if ( !node.valid() )
                 {
                     OE_WARN << LC << "No model and failed to load data from " << uri.full() << std::endl;
                 }
             }
 
-            if (node.valid() == true)
+            if ( node.valid() )
             {
                 if ( Registry::capabilities().supportsGLSL() )
                 {
@@ -131,23 +116,34 @@ ModelNode::init()
                         Registry::stateSetCache() );
                 }
 
-                // attach to the transform:
-                _xform->addChild( node );
+                // install clamping/draping if necessary
+                node = AnnotationUtils::installOverlayParent( node.get(), _style );
 
-                // insert a clamping agent if necessary:
-                replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+                getPositionAttitudeTransform()->addChild( node.get() );
+
+                osg::Vec3d scale(1, 1, 1);
 
                 if ( sym->scale().isSet() )
                 {
                     double s = sym->scale()->eval();
-                    this->setScale( osg::Vec3f(s, s, s) );
+                    scale.set(s, s, s);
                 }
+                if ( sym->scaleX().isSet() )
+                    scale.x() = sym->scaleX()->eval();
+
+                if ( sym->scaleY().isSet() )
+                    scale.y() = sym->scaleY()->eval();
+
+                if ( sym->scaleZ().isSet() )
+                    scale.z() = sym->scaleZ()->eval();
+
+                getPositionAttitudeTransform()->setScale( scale );
 
                 // auto scaling?
                 if ( sym->autoScale() == true )
                 {
-                    this->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN );
-                }
+                    this->addCullCallback( new GeoPositionNodeAutoScaler() );
+                } 
 
                 // rotational offsets?
                 if (sym && (sym->heading().isSet() || sym->pitch().isSet() || sym->roll().isSet()) )
@@ -160,7 +156,8 @@ ModelNode::init()
                         osg::DegreesToRadians(heading), osg::Vec3(0,0,1),
                         osg::DegreesToRadians(pitch),   osg::Vec3(1,0,0),
                         osg::DegreesToRadians(roll),    osg::Vec3(0,1,0) );
-                    this->setLocalRotation( rot.getRotate() );
+
+                    getPositionAttitudeTransform()->setAttitude( rot.getRotate() );
                 }
 
                 this->applyRenderSymbology( _style );
@@ -187,11 +184,9 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf ),
+GeoPositionNode    ( mapNode, conf ),
 _dbOptions   ( dbOptions )
 {
-    _xform = new osg::MatrixTransform();
-
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
@@ -204,7 +199,7 @@ _dbOptions   ( dbOptions )
 Config
 ModelNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "model";
 
     if ( !_style.empty() )

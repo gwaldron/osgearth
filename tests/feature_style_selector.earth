@@ -19,7 +19,9 @@ Demonstrates how to select a style name using javascript.
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
-            <buffer distance="-0.05"/>
+            <filters>
+                <buffer distance="-0.05"/>
+            </filters>
         </features>
         
         <styles>        

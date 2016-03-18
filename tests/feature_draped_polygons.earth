@@ -24,8 +24,10 @@ the feature data.
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
-            <buffer distance="-0.05"/>
-            <resample max_length="5.0"/>
+            <filters>
+                <resample max_length="5.0"/>
+                <buffer distance="-0.05"/>
+            </filters>
         </features>
         
         <styles>        

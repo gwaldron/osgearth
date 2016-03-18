@@ -19,7 +19,6 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 set(TARGET_SRC
-	BumpMapPlugin.cpp
 	BumpMapExtension.cpp
 	BumpMapTerrainEffect.cpp
 	${SHADERS_CPP} )

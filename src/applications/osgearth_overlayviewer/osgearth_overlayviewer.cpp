@@ -23,6 +23,7 @@
 #include <osg/Notify>
 #include <osg/Depth>
 #include <osg/LineWidth>
+#include <osg/LineStipple>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/AnimationPathManipulator>
 #include <osgViewer/CompositeViewer>
@@ -105,13 +106,27 @@ namespace
                 }
                 else
                 {
-                    dump->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(
-                        osg::Depth::LEQUAL, 0, 1, false), 1 | osg::StateAttribute::OVERRIDE);
-                    dump->getOrCreateStateSet()->setMode(GL_BLEND,1);
-                    dump->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(1.5f), 1);
+                    // note: the dumped geometry has some state in it (from ConvexPolyhedron::dumpGeometry)
+                    // so we need to override it.
+                    osg::Group* g = new osg::Group();
+                    osg::StateSet* gss = g->getOrCreateStateSet();
+                    gss->setAttributeAndModes(new osg::LineWidth(1.5f), 1);
+                    gss->setRenderBinDetails(90210, "DepthSortedBin");
+
+                    osg::Group* g0 = new osg::Group();
+                    g->addChild( g0 );
+                    osg::StateSet* g0ss = g0->getOrCreateStateSet();
+                    g0ss->setAttributeAndModes(new osg::LineStipple(1, 0x000F), 1);
+                    g0->addChild( dump );
+
+                    osg::Group* g1 = new osg::Group();
+                    g->addChild( g1 );
+                    osg::StateSet* g1ss = g1->getOrCreateStateSet();
+                    g1ss->setMode(GL_DEPTH_TEST, osg::StateAttribute::OVERRIDE | 1);
+                    g1->addChild( dump );
 
                     _parent->removeChildren(1, _parent->getNumChildren()-1);
-                    _parent->addChild( dump );
+                    _parent->addChild( g );
 
                     toggle(_parent, "camera", s_cameraCheck->getValue());
                     //toggle(_parent, "overlay", s_overlayCheck->getValue());

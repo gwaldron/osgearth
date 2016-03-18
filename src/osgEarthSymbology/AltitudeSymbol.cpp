@@ -122,6 +122,14 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
         }
+        else if ( match(c.value(), "terrain-scene") ) {
+            style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_SCENE;
+        }
+        else if ( match(c.value(), "relative-scene") ) {
+            style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_RELATIVE_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_SCENE;
+        }
     }
     else if ( match(c.key(), "altitude-technique") ) {
         if      ( match(c.value(), "map") )

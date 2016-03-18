@@ -73,8 +73,7 @@ namespace osgEarth { namespace Annotation
         AnnotationNode* createOne( 
             MapNode*              mapNode, 
             const Config&         conf,
-            const osgDB::Options* dbOptions, 
-            bool                  declutter =false ) const;
+            const osgDB::Options* dbOptions) const;
     };
 
     // Macro used to register new annotation types.

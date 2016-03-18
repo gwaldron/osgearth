@@ -66,9 +66,10 @@ const MapFrame& EngineContext::getMapFrame()
 }
 
 void
-EngineContext::unloadChildrenOf(TileNode* tile)
+EngineContext::unloadChildrenOf(const TileNode* tile)
 {
-    _tilesWithChildrenToUnload.push_back( tile->getTileKey() );
+   _tilesWithChildrenToUnload.push_back( tile->getTileKey() );
+   OE_INFO << LC << "Unload children of: " << tile->getTileKey().str() << "\n";
 }
 
 void
@@ -87,6 +88,32 @@ EngineContext::getElapsedCullTime() const
 {
     osg::Timer_t now = osg::Timer::instance()->tick();
     return osg::Timer::instance()->delta_s(_tick, now);
+}
+
+namespace
+{
+    struct Scanner : public TileNodeRegistry::ConstOperation
+    {
+        std::vector<TileKey>& _keys;
+        const osg::FrameStamp* _stamp;
+        Scanner(std::vector<TileKey>& keys, const osg::FrameStamp* stamp) : _keys(keys), _stamp(stamp) { }
+
+        void operator()(const TileNodeRegistry::TileNodeMap& tiles) const
+        {
+            if ( tiles.empty() ) return;
+            unsigned f = _stamp->getFrameNumber(), s = tiles.size();
+            unsigned index[4];
+            index[0] = f;
+            index[1] = (f+s/4);
+            index[2] = (f+s/2);
+            index[3] = (index[1]*2);
+            for(unsigned i=0; i<4; ++i) {
+                const TileNode* tile = tiles.at(index[i]%s);
+                if ( tile->areSubTilesDormant(_stamp) )
+                    _keys.push_back( tile->getTileKey() );
+            }
+        }
+    };
 }
 
 void
@@ -117,6 +144,9 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
     Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
     OE_NOTICE << c.toJSON(true) << std::endl << std::endl;
 #endif
+
+    Scanner scanner(_tilesWithChildrenToUnload, cv->getFrameStamp());
+    _liveTiles->run( scanner );
 
     if ( !_tilesWithChildrenToUnload.empty() )
     {        

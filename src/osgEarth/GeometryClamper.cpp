@@ -16,47 +16,34 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/MeshClamper>
-
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/GeometryClamper>
 
 #include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 
-#include <osg/TemplatePrimitiveFunctor>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/UserDataContainer>
 
-#define LC "[MeshClamper] "
+#define LC "[GeometryClamper] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
-#define ZOFFSETS_NAME "MeshClamper::zOffsets"
+#define ZOFFSETS_NAME "GeometryClamper::zOffsets"
 
 //-----------------------------------------------------------------------
 
-MeshClamper::MeshClamper(osg::Node*              terrainPatch,
-                         const SpatialReference* terrainSRS,
-                         bool                    geocentric,
-                         bool                    preserveZ,
-                         double                  scale,
-                         double                  offset) :
-
+GeometryClamper::GeometryClamper() :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_terrainPatch   ( terrainPatch ),
-_terrainSRS     ( terrainSRS ),
-_geocentric     ( geocentric ),
-_preserveZ      ( preserveZ ),
-_scale          ( scale ),
-_offset         ( offset )
+_preserveZ      ( false ),
+_scale          ( 1.0f ),
+_offset         ( 0.0f )
 {
-    //nop
+    this->setNodeMaskOverride( ~0 );
+    _lsi = new osgEarth::DPLineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
 }
 
 void
-MeshClamper::apply( osg::Transform& xform )
+GeometryClamper::apply(osg::Transform& xform)
 {
     osg::Matrixd matrix;
     if ( !_matrixStack.empty() ) matrix = _matrixStack.back();
@@ -67,8 +54,11 @@ MeshClamper::apply( osg::Transform& xform )
 }
 
 void
-MeshClamper::apply( osg::Geode& geode )
+GeometryClamper::apply(osg::Geode& geode)
 {
+    if ( !_terrainSRS.valid() )
+        return;
+
     const osg::Matrixd& local2world = _matrixStack.back();
     osg::Matrix world2local;
     world2local.invert( local2world );
@@ -76,12 +66,11 @@ MeshClamper::apply( osg::Geode& geode )
     const osg::EllipsoidModel* em = _terrainSRS->getEllipsoid();
     osg::Vec3d n_vector(0,0,1), start, end, msl;
 
-    // use a double-precision intersector b/c our intersection segment will be really long :)
-    DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(start, end);
-    osgUtil::IntersectionVisitor iv( lsi );
+    bool isGeocentric = _terrainSRS->isGeographic();
+
+    osgUtil::IntersectionVisitor iv( _lsi.get() );
 
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
-    //double r = 50000;
 
     unsigned count = 0;
 
@@ -121,7 +110,7 @@ MeshClamper::apply( osg::Geode& geode )
                 osg::Vec3d vw = (*verts)[k];
                 vw = vw * local2world;
 
-                if ( _geocentric )
+                if ( isGeocentric )
                 {
                     // normal to the ellipsoid:
                     n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
@@ -134,7 +123,7 @@ MeshClamper::apply( osg::Geode& geode )
 
                         if ( buildZOffsets )
                         {
-                            zOffsets->push_back( float(hae) );
+                            zOffsets->push_back( (*verts)[k].z() );
                         }
 
                         if ( _scale != 1.0 )
@@ -149,26 +138,16 @@ MeshClamper::apply( osg::Geode& geode )
                     zOffsets->push_back( float(vw.z()) );
                 }
 
-#if 0
-                    // if we're scaling, we need to know the MSL coord
-                    if ( _scale != 1.0 )
-                    {
-                        double lat,lon,height;
-                        em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, height);
-                        msl = vw - n_vector*height;
-                    }
-                }
-#endif
-
-                lsi->reset();
-                lsi->setStart( vw + n_vector*r*_scale );
-                lsi->setEnd( vw - n_vector*r );
+                _lsi->reset();
+                _lsi->setStart( vw + n_vector*r*_scale );
+                _lsi->setEnd( vw - n_vector*r );
+                _lsi->setIntersectionLimit( _lsi->LIMIT_NEAREST );
 
                 _terrainPatch->accept( iv );
 
-                if ( lsi->containsIntersections() )
+                if ( _lsi->containsIntersections() )
                 {
-                    osg::Vec3d fw = lsi->getFirstIntersection().getWorldIntersectPoint();
+                    osg::Vec3d fw = _lsi->getFirstIntersection().getWorldIntersectPoint();
                     if ( _scale != 1.0 )
                     {
                         osg::Vec3d delta = fw - msl;
@@ -198,10 +177,22 @@ MeshClamper::apply( osg::Geode& geode )
                     verts->dirty();
                 }
                 else
+                {
                     geom->dirtyDisplayList();
+                }
             }
         }
 
-        //OE_NOTICE << LC << "clamped " << count << " verts." << std::endl;
+        OE_DEBUG << LC << "clamped " << count << " verts." << std::endl;
     }
+}
+
+
+
+void
+GeometryClamperCallback::onTileAdded(const TileKey&          key, 
+                                     osg::Node*              tile, 
+                                     TerrainCallbackContext& context)
+{
+    tile->accept( _clamper );
 }

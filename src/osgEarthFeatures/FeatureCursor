@@ -52,7 +52,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureListCursor : public FeatureCursor
     {
     public:
-        FeatureListCursor( const FeatureList& input, bool cloneFeatures =false );
+        FeatureListCursor(const FeatureList& input);
         
         virtual ~FeatureListCursor() { }
 

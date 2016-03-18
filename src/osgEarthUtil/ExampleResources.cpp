@@ -576,7 +576,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     const Config& skyConf         = externals.child("sky");
     const Config& oceanConf       = externals.child("ocean");
-    const Config& annoConf        = externals.child("annotations");
     const Config& declutterConf   = externals.child("decluttering");
 
     // some terrain effects.
@@ -673,6 +672,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
         defaultIcon->url()->setLiteral(KML_PUSHPIN_URL);
         kml_options.defaultIconSymbol() = defaultIcon;
 
+        TextSymbol* defaultText = new TextSymbol();
+        defaultText->halo() = Stroke(0.3,0.3,0.3,1.0);
+        kml_options.defaultTextSymbol() = defaultText;
+
         osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
         if ( kml )
         {
@@ -690,18 +693,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         else
         {
             OE_NOTICE << "Failed to load " << kmlFile << std::endl;
-        }
-    }
-
-    // Annotations in the map node externals:
-    if ( !annoConf.empty() )
-    {
-        osg::Group* annotations = 0L;
-        AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
-        if ( annotations )
-        {
-            mapNode->addChild( annotations );
-            //root->addChild( annotations );
         }
     }
 

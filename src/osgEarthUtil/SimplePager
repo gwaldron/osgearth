@@ -55,6 +55,12 @@ namespace osgEarth { namespace Util {
         float getRangeFactor() const { return _rangeFactor; }
         void setRangeFactor(float value) { _rangeFactor = value; }
 
+        float getPriorityScale() const { return _priorityScale; }
+        void setPriorityScale(float value) { _priorityScale = value; }
+
+        float getPriorityOffset() const { return _priorityOffset; }
+        void setPriorityOffset(float value) { _priorityOffset = value; }
+
         void setFileLocationCallback(osgDB::FileLocationCallback* cb) { _fileLocationCallback = cb; }
         osgDB::FileLocationCallback* getFileLocationCallback() const  { return _fileLocationCallback.get(); }
 
@@ -105,6 +111,8 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< const osgEarth::Profile > _profile;
         osg::ref_ptr< osg::NodeCallback > _progressMaster;
         osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
+        float _priorityScale;
+        float _priorityOffset;
     };
 
 } } // namespace osgEarth::Util

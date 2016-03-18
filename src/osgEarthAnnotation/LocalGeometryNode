@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H
 #define OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
@@ -37,7 +37,7 @@ namespace osgEarth { namespace Annotation
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
      */
-    class OSGEARTHANNO_EXPORT LocalGeometryNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT LocalGeometryNode : public GeoPositionNode
     {
     public:
         /**
@@ -56,6 +56,12 @@ namespace osgEarth { namespace Annotation
             MapNode*     mapNode,
             osg::Node*   node, 
             const Style& style  =Style() );
+
+        /**
+         * Construct an LGN connected to a mapnode.
+         */
+        LocalGeometryNode( MapNode* node );
+
 
         virtual ~LocalGeometryNode() { }
 
@@ -91,6 +97,10 @@ namespace osgEarth { namespace Annotation
 
     public:
 
+        virtual void setMapNode(MapNode*);
+
+    public:
+
         /**
          * Constructs an LGN from a serialized Config.
          */
@@ -101,21 +111,41 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
-    protected: // LocalizedNode
+    public: // osg::Node
 
-        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+        virtual osg::BoundingSphere computeBound() const;
+
+    protected: // GeoPositionNode
+
+        virtual void dirty();
 
     protected:
+        LocalGeometryNode() { }
 
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;
         osg::ref_ptr<Geometry>       _geom;
-
-        osg::ref_ptr<osg::MatrixTransform> _xform;
+        
+        typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
+        osg::ref_ptr<ClampCallback> _clampCallback;
+        bool _clampRelative;
+        mutable osg::Polytope _boundingPT;
 
         void initNode();
         void initGeometry(const osgDB::Options*);
         void init(const osgDB::Options*);
+
+        void applyAltitudeSymbology(const Style&);
+
+    public:
+        void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
+
+        virtual void clampToScene(
+            osg::Node*     tile,
+            const Terrain* terrain);
     };
 
 } } // namespace osgEarth::Annotation

@@ -19,6 +19,10 @@
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Terrain>
 
+#define LC "[GeoTransform] "
+
+#define OE_TEST OE_DEBUG
+
 using namespace osgEarth;
 
 GeoTransform::GeoTransform() :
@@ -42,6 +46,11 @@ void
 GeoTransform::setTerrain(Terrain* terrain)
 {
     _terrain = terrain;
+
+    // Change in the terrain means we need to recompute the position
+    // if one is set.
+    if ( _position.isValid() )
+        setPosition( _position );
 }
 
 void
@@ -65,13 +74,18 @@ GeoTransform::setPosition(const GeoPoint& position)
     if ( !position.isValid() )
         return false;
 
+    _position = position;
+
     // relative Z or reprojection require a terrain:
     osg::ref_ptr<Terrain> terrain;
     _terrain.lock(terrain);
 
     // relative Z requires a terrain:
     if (position.altitudeMode() == ALTMODE_RELATIVE && !terrain.valid())
+    {
+        OE_TEST << LC << "setPosition failed condition 1\n";
         return false;
+    }
 
     GeoPoint p;
 
@@ -83,19 +97,22 @@ GeoTransform::setPosition(const GeoPoint& position)
 
     // bail if the transformation failed:
     if ( !p.isValid() )
+    {
+        OE_TEST << LC << "setPosition failed condition 2\n";
         return false;
+    }
 
     // convert to absolute height:
     if ( !p.makeAbsolute(_terrain.get()) )
+    {
+        OE_TEST << LC << "setPosition failed condition 3\n";
         return false;
+    }
 
     // assemble the matrix:
     osg::Matrixd local2world;
     p.createLocalToWorld( local2world );
     this->setMatrix( local2world );
-
-    // save the last know position
-    _position = position;
 
     // install auto-recompute?
     if (_autoRecompute &&
@@ -119,10 +136,16 @@ GeoTransform::onTileAdded(const TileKey&          key,
                           TerrainCallbackContext& context)
 {
    if (!_position.isValid() || _position.altitudeMode() != ALTMODE_RELATIVE)
+   {
+       OE_TEST << LC << "onTileAdded fail condition 1\n";
        return;
+   }
 
    if (!key.getExtent().contains(_position))
+   {
+       OE_DEBUG << LC << "onTileAdded fail condition 2\n";
        return;
+   }
 
    setPosition(_position);
 }

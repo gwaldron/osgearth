@@ -28,6 +28,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Decluttering>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -46,7 +47,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _image   ( image ),
 _text    ( text ),
 _style   ( style ),
@@ -60,7 +61,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, position ),
+GeoPositionNode( mapNode, position ),
 _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
@@ -72,7 +73,7 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const GeoPoint&       position,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-OrthoNode ( mapNode, position ),
+GeoPositionNode ( mapNode, position ),
 _style    ( style ),
 _dbOptions( dbOptions )
 {
@@ -82,9 +83,9 @@ _dbOptions( dbOptions )
 void
 PlaceNode::init()
 {
-    //reset.
-    this->clearDecoration();
-    getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
+    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     _geode = new osg::Geode();
 
@@ -131,6 +132,8 @@ PlaceNode::init()
             _image = imageURI.getImage( _dbOptions.get() );
         }
     }
+
+    osg::BoundingBox imageBox(0,0,0,0,0,0);
 
     // found an image; now format it:
     if ( _image.get() )
@@ -200,13 +203,21 @@ PlaceNode::init()
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-        }      
+            imageBox = osgEarth::Utils::getBoundingBox( imageGeom );
+        }    
+    }
+
+    if ( _image.valid() )
+    {
+        TextSymbol* textSymbol = _style.getOrCreate<TextSymbol>();
+        if ( !textSymbol->alignment().isSet() )
+            textSymbol->alignment() = textSymbol->ALIGN_LEFT_CENTER;
     }
     
     text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
-            osg::Vec3( 0, 0, 0 ) );
+            imageBox );
 
     if ( text )
         _geode->addDrawable( text );
@@ -214,7 +225,7 @@ PlaceNode::init()
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getAttachPoint()->addChild( _geode );
+    getPositionAttitudeTransform()->addChild( _geode );
 
     // for clamping and occlusion culling    
     //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
@@ -228,15 +239,24 @@ PlaceNode::init()
         "osgEarth.PlaceNode",
         Registry::stateSetCache() );
 
-    // re-apply annotation drawable-level stuff as neccesary.
-    AnnotationData* ad = getAnnotationData();
-    if ( ad )
-        setAnnotationData( ad );
+    setPriority(getPriority());
 
     if ( _dynamic )
         setDynamic( _dynamic );
 }
 
+void
+PlaceNode::setPriority(float value)
+{
+    GeoPositionNode::setPriority(value);
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    {
+        //_geode->getDrawable(i)->setUserData( this );
+        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+    }
+}
 
 void
 PlaceNode::setText( const std::string& text )
@@ -287,22 +307,9 @@ PlaceNode::setIconImage(osg::Image* image)
 
 
 void
-PlaceNode::setAnnotationData( AnnotationData* data )
-{
-    OrthoNode::setAnnotationData( data );
-
-    // override this method so we can attach the anno data to the drawables.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
-    {
-        _geode->getDrawable(i)->setUserData( data );
-    }
-}
-
-
-void
 PlaceNode::setDynamic( bool value )
 {
-    OrthoNode::setDynamic( value );
+    GeoPositionNode::setDynamic( value );
     
     for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
@@ -321,7 +328,7 @@ OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
-OrthoNode ( mapNode, conf ),
+GeoPositionNode ( mapNode, conf ),
 _dbOptions( dbOptions )
 {
     conf.getObjIfSet( "style",  _style );
@@ -337,9 +344,6 @@ _dbOptions( dbOptions )
     }
 
     init();
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
@@ -348,7 +352,6 @@ PlaceNode::getConfig() const
     Config conf( "place" );
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getPosition() );
     if ( _image.valid() ) {
         if ( !_image->getFileName().empty() )
             conf.add( "icon", _image->getFileName() );

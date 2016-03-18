@@ -139,6 +139,16 @@ namespace osgEarth { namespace Util
         void setWriteOptions( osgDB::Options* options );        
 
         /**
+         * Sets the TileSource for output. Overrides default TMS writer.
+         */
+        void setTileSource( osgEarth::TileSource* source );
+
+        /**
+         * Gets the TileSource used for output.
+         */
+        osgEarth::TileSource* getTileSource() const;
+
+        /**
          * Gets the layer name to use in the TMS XML.
          */
         const std::string& getLayerName() const;
@@ -176,6 +186,7 @@ namespace osgEarth { namespace Util
         std::string _layerName;
         bool _overwrite;
         osg::ref_ptr<osgDB::Options>    _writeOptions;
+        osg::ref_ptr<osgEarth::TileSource> _tileSource;
 
         unsigned int _width;
         unsigned int _height;

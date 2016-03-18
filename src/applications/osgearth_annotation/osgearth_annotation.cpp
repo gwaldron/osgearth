@@ -21,19 +21,11 @@
 */
 
 #include <osgEarth/MapNode>
-#include <osgEarth/Decluttering>
-#include <osgEarth/ECEF>
-#include <osgEarth/Registry>
 
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AnnotationEvents>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ExampleResources>
 
-#include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/ImageOverlay>
-#include <osgEarthAnnotation/ImageOverlayEditor>
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/EllipseNode>
@@ -41,23 +33,20 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/HighlightDecoration>
-#include <osgEarthAnnotation/ScaleDecoration>
-#include <osgEarthUtil/ActivityMonitorTool>
+
+#include <osgEarthAnnotation/AnnotationEditing>
+#include <osgEarthAnnotation/ImageOverlayEditor>
 
 #include <osgEarthSymbology/GeometryFactory>
 
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <osgGA/StateSetManipulator>
-#include <osgGA/EventVisitor>
-#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
+
+//------------------------------------------------------------------
 
 int
 usage( char** argv )
@@ -66,64 +55,7 @@ usage( char** argv )
     return -1;
 }
 
-osg::Vec4
-randomColor()
-{
-    float r = (float)rand() / (float)RAND_MAX;
-    float g = (float)rand() / (float)RAND_MAX;
-    float b = (float)rand() / (float)RAND_MAX;
-    return osg::Vec4(r,g,b,1.0f);
-}
-
-
 //------------------------------------------------------------------
-
-/**
- * Event handler that processes events fired from the
- * AnnotationEventCallback
- */
-struct MyAnnoEventHandler : public AnnotationEventHandler
-{
-    void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
-    {
-        anno->setDecoration( "hover" );
-        Registry::instance()->startActivity( "Hovering " + anno->getText() );
-        Registry::instance()->endActivity( _lastClick );
-    }
-
-    void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
-    {
-        anno->clearDecoration();
-        Registry::instance()->endActivity( "Hovering " + anno->getText() );
-        Registry::instance()->endActivity( _lastClick );
-    }
-
-    virtual void onClick( AnnotationNode* anno, const EventArgs& details )
-    {
-        Registry::instance()->endActivity( _lastClick );
-        _lastClick = "Clicked " + anno->getText();
-        Registry::instance()->startActivity( _lastClick );
-    }
-
-    std::string _lastClick;
-};
-
-//------------------------------------------------------------------
-
-struct ToggleNodeHandler : public ControlEventHandler
-{
-    ToggleNodeHandler( osg::Node* node ) : _node(node) { }
-
-    void onValueChanged( Control* control, bool value )
-    {
-        _node->setNodeMask( value ? ~0 : 0 );
-    }
-
-    osg::Node* _node;
-};
-
-//------------------------------------------------------------------
-
 
 int
 main(int argc, char** argv)
@@ -152,33 +84,12 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
-    //A group for all the editors
-    osg::Group* editorGroup = new osg::Group;
-    root->addChild( editorGroup );
-    editorGroup->setNodeMask( 0 );
-
-    HBox* box = ControlCanvas::getOrCreate(&viewer)->addControl( new HBox() );
-    box->setChildSpacing( 5 );
-    //Add a toggle button to toggle editing
-    CheckBoxControl* editCheckbox = new CheckBoxControl( false );
-    editCheckbox->addEventHandler( new ToggleNodeHandler( editorGroup ) );
-    box->addControl( editCheckbox );
-    LabelControl* labelControl = new LabelControl( "Edit Annotations" );
-    labelControl->setFontSize( 24.0f );
-    box->addControl( labelControl  );
-
-    // Activity monitor:
-    VBox* activityBox = ControlCanvas::getOrCreate(&viewer)->addControl( new VBox() );
-    activityBox->setHorizAlign(activityBox->ALIGN_RIGHT);
-    activityBox->setVertAlign(activityBox->ALIGN_BOTTOM);
-    activityBox->setBackColor(0,0,0,0.75);
-    viewer.addEventHandler(new ActivityMonitorTool(activityBox));
-
-    // Make a group for 2D items, and activate the decluttering engine. Decluttering
-    // will migitate overlap between elements that occupy the same screen real estate.
+    // Make a group for labels
     osg::Group* labelGroup = new osg::Group();
-    Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
     annoGroup->addChild( labelGroup );
+
+    osg::Group* editGroup = new osg::Group();
+    root->addChild( editGroup );
 
     // Style our labels:
     Style labelStyle;
@@ -192,27 +103,29 @@ main(int argc, char** argv)
 
     // A series of place nodes (an icon with a text label)
     {
-        Style pin;
-        pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
+        Style pm;
+        pm.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
+        pm.getOrCreate<IconSymbol>()->declutter() = true;
+        pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
 
         // bunch of pins:
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pm));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pm));
 
         // test with an LOD:
         osg::LOD* lod = new osg::LOD();
-        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
+        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pm), 0.0, 2e6);
         labelGroup->addChild( lod );
 
         // absolute altitude:
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago", pm));
     }
 
     //--------------------------------------------------------------------
@@ -224,13 +137,20 @@ main(int argc, char** argv)
         geom->push_back( osg::Vec3d(-60, 40, 0) );
         geom->push_back( osg::Vec3d(-60, 60, 0) );
         geom->push_back( osg::Vec3d(0,   60, 0) );
+
+        Feature* feature = new Feature(geom, geoSRS);
+        feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
         Style geomStyle;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
-        annoGroup->addChild( gnode );
+        
+        FeatureNode* fnode = new FeatureNode(mapNode, feature, geomStyle);
+        
+        annoGroup->addChild( fnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );
     }
@@ -245,11 +165,17 @@ main(int argc, char** argv)
         geom->push_back(  160., -45. );
         geom->push_back( -150., -40. );
         Style geomStyle;
+
+        Feature* feature = new Feature(geom, geoSRS);
+        feature->geoInterp() = GEOINTERP_RHUMB_LINE;
+
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
+
+        FeatureNode* gnode = new FeatureNode(mapNode, feature, geomStyle);
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS, -175, -35), "Antimeridian polygon", labelStyle) );
@@ -267,14 +193,17 @@ main(int argc, char** argv)
         path->push_back( osg::Vec3d(-74, 40.714, 0) );   // New York
         path->push_back( osg::Vec3d(139.75, 35.68, 0) ); // Tokyo
 
-        Style pathStyle;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-        pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-
         Feature* pathFeature = new Feature(path, geoSRS);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+
+        Style pathStyle;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
+        pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
+        pathStyle.getOrCreate<LineSymbol>()->tessellationSize() = 75000;
+        pathStyle.getOrCreate<PointSymbol>()->size() = 5;
+        pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+        pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 
@@ -300,7 +229,7 @@ main(int argc, char** argv)
             circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
         annoGroup->addChild( circle );
 
-        editorGroup->addChild( new CircleNodeEditor( circle ) );
+        editGroup->addChild( new CircleNodeEditor(circle) );
     }
 
 	{
@@ -316,7 +245,7 @@ main(int argc, char** argv)
 			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
 		annoGroup->addChild( circle );
 
-		editorGroup->addChild( new CircleNodeEditor( circle ) );
+        editGroup->addChild( new CircleNodeEditor(circle) );
 	}
 
     //--------------------------------------------------------------------
@@ -337,7 +266,8 @@ main(int argc, char** argv)
             Angle(360.0 - 45.0, Units::DEGREES), 
             true);
         annoGroup->addChild( ellipse );
-        editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
+
+        editGroup->addChild( new EllipseNodeEditor(ellipse) );
     }
 	{
 		Style ellipseStyle;
@@ -354,7 +284,8 @@ main(int argc, char** argv)
             Angle(40.0, Units::DEGREES), 
             true);
 		annoGroup->addChild( ellipse );
-		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
+
+        editGroup->addChild( new EllipseNodeEditor(ellipse) );
 	}
     
     //--------------------------------------------------------------------
@@ -373,7 +304,7 @@ main(int argc, char** argv)
             rectStyle);
         annoGroup->addChild( rect );
 
-        editorGroup->addChild( new RectangleNodeEditor( rect ) );
+        editGroup->addChild( new RectangleNodeEditor(rect) );
     }    
 
     //--------------------------------------------------------------------
@@ -411,121 +342,14 @@ main(int argc, char** argv)
             imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
             annoGroup->addChild( imageOverlay );
 
-            editorGroup->addChild( new ImageOverlayEditor( imageOverlay ) );
+            editGroup->addChild( new ImageOverlayEditor(imageOverlay) );
         }
     }
-
-    /*
-    // Add a bunch of features as individual FeatureNodes.  This is slow.
-    {
-        // A lat/lon grid, showing lots of features as individual feature nodes
-        for (unsigned int i = 0; i < 360; i++)
-        {
-            for (unsigned int j = 0; j < 180; j++)
-            {
-                double w = -180.0 + (double)(i);
-                double e = w + 1.0;
-                double s = -90 + (double)(j);
-                double n = s + 1.0;
-
-                Geometry* geometry = new Polygon();
-                geometry->push_back( w, s );
-                geometry->push_back( e, s );
-                geometry->push_back( e, n );
-                geometry->push_back( w, n );
-                
-                Style style;
-                style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
-                style.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-
-                Feature*     feature = new Feature(geometry, geoSRS, style);
-                FeatureNode* featureNode = new FeatureNode(mapNode, feature);
-                annoGroup->addChild( featureNode );
-            }
-        }
-    }
-    */
-
-    /*
-     // Add a bunch of features to a single FeatureNodes.  This is slow.
-    {
-        FeatureList features;
-
-        Style style;
-        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
-        style.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-
-        // A lat/lon grid, showing lots of features within a single FeatureNode
-        for (unsigned int i = 0; i < 360; i++)
-        {
-            for (unsigned int j = 0; j < 180; j++)
-            {
-                double w = -180.0 + (double)(i);
-                double e = w + 1.0;
-                double s = -90 + (double)(j);
-                double n = s + 1.0;
-
-                Geometry* geometry = new Polygon();
-                geometry->push_back( w, s );
-                geometry->push_back( e, s );
-                geometry->push_back( e, n );
-                geometry->push_back( w, n );
-
-                Feature*     feature = new Feature(geometry, geoSRS );
-                features.push_back( feature );
-            }
-        }
-
-        FeatureNode* featureNode = new FeatureNode( mapNode, features );
-        featureNode->setStyle( style );
-        annoGroup->addChild( featureNode );
-    }
-    */
-    
-    //--------------------------------------------------------------------
-
-    // install decoration. These change the appearance of an Annotation
-    // based on some user action.
-
-    // highlight annotation upon hover by default:
-    
-    DecorationInstaller highlightInstaller("hover", new HighlightDecoration());
-    annoGroup->accept( highlightInstaller );
-
-    // scale labels when hovering:
-    DecorationInstaller scaleInstaller("hover", new ScaleDecoration(1.1f));
-    labelGroup->accept( scaleInstaller );
-
-    // install an event handler for picking and hovering.
-    AnnotationEventCallback* cb = new AnnotationEventCallback();
-    cb->addHandler( new MyAnnoEventHandler() );
-
-    annoGroup->addEventCallback( cb );
 
     //--------------------------------------------------------------------
 
     // initialize the viewer:    
-    viewer.setSceneData( root );
-
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    
+    viewer.setSceneData( root );    
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    while (!viewer.done())
-    {
-        if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
-        {
-            // Change the color of the great circle path every 100 frames
-            Style pathStyle = pathNode->getStyle();
-            pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = randomColor();
-            pathNode->setStyle( pathStyle );
-        }
-        
-        viewer.frame();
-    }
-
-    return 0;
+    return viewer.run();
 }

@@ -224,7 +224,8 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                     return Status::Error( Stringify() << "Profile not recognized: " << profileStr );
                 }
             }
-            else
+            
+            if (!profile)
             {
                 // Spherical mercator is the MBTiles default.
                 profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();

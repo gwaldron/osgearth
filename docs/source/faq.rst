@@ -34,7 +34,24 @@ How do I place a 3D model on the map?
         osg::Matrix matrix;
         point.createLocalToWorld( matrix );
         myMatrixTransform->setMatrix( matrix );
-    
+
+
+I added a node, but it has no texture/lighting/etc. in osgEarth. Why?
+.....................................................................
+
+    Everything under an osgEarth scene graph is rendered with shaders.
+    So, when using your own models (or creating geometry by hand) you 
+    need to create shader components in order for them to render properly.
+
+    osgEarth has a built-in shader generator for this purpose. Run the
+    shader generator on your node like so:
+
+        osgEarth::Registry::shaderGenerator().run( myNode );
+
+    After that, your node will contain shader snippets that allows osgEarth
+    to render it properly and for it to work with other osgEarth features
+    like sky lighting.
+
 
 How do make the terrain transparent?
 ....................................

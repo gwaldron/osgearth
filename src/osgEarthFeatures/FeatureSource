@@ -55,8 +55,12 @@ namespace osgEarth { namespace Features
         const optional<std::string>& name() const { return _name; }
 
         /** List of filteres to apply to features read from this source */
-        FeatureFilterList& filters() { return _filters; }
-        const FeatureFilterList& filters() const { return _filters; }
+        //FeatureFilterList& filters() { return _filters; }
+        //const FeatureFilterList& filters() const { return _filters; }
+
+        /** Set of FeatureFilter options. */
+        std::vector<ConfigOptions>& filters() { return _filterOptions; }
+        const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
 
         /** Opens the feature data for writing, if supported */
         optional<bool>& openWrite() { return _openWrite; }
@@ -84,7 +88,7 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        FeatureFilterList          _filters;
+        std::vector<ConfigOptions> _filterOptions;
         optional<std::string>      _name;
         optional< bool >           _openWrite;
         optional<ProfileOptions>   _profile;
@@ -231,11 +235,20 @@ namespace osgEarth { namespace Features
 
         /**
          * Initialize the FeatureSource.
+         * If you override this function, please call this base implementation from within.
          */
-        virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
+        virtual void initialize( const osgDB::Options* dbOptions);
 
-        /** Dirties the feature profile */
+        /**
+         * Dirties the feature profile
+         */
         void dirtyFeatureProfile() { _featureProfile = 0;}
+
+
+        /**
+         * Convenience
+         */
+        void initialize() { initialize(0L); }
 
     protected:
 
@@ -258,7 +271,10 @@ namespace osgEarth { namespace Features
         const URIContext& uriContext() const { return _uriContext; }
 
         /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }            
+        Cache* getCache() const { return _cache.get(); }   
+
+        /** Convenience function to apply the filters to a FeatureList */
+        void applyFilters(FeatureList& features) const;
 
     private:
         const FeatureSourceOptions         _options;
@@ -271,6 +287,8 @@ namespace osgEarth { namespace Features
 
         Threading::ReadWriteMutex          _blacklistMutex;
         std::set<FeatureID>                _blacklist;
+        
+        FeatureFilterList                  _filters;
 
         friend class Map;
         friend class FeatureSourceFactory;

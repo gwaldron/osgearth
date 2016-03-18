@@ -125,7 +125,7 @@ IntersectionPicker::pick( float x, float y, Hits& results ) const
     //picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE_PER_DRAWABLE );
 
     // in MODEL mode, we need to window and proj matrixes in order to support some of the 
-    // features in osgEarth (like Annotation::OrthoNode).
+    // features in osgEarth (like Annotation::GeoPositionNode).
     if ( _root.valid() )
     {
         iv.pushWindowMatrix( new osg::RefMatrix(windowMatrix) );

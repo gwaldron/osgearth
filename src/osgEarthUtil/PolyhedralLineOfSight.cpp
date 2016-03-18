@@ -48,7 +48,7 @@ namespace
 //------------------------------------------------------------------------
 
 PolyhedralLineOfSightNode::PolyhedralLineOfSightNode( MapNode* mapNode ) :
-LocalizedNode( mapNode ),
+GeoPositionNode( mapNode ),
 _startAzim   ( Angle(-45.0, Units::DEGREES) ),
 _endAzim     ( Angle( 45.0, Units::DEGREES) ),
 _startElev   ( Angle(  0.0, Units::DEGREES) ),
@@ -103,7 +103,7 @@ PolyhedralLineOfSightNode::setMapNode( MapNode* mapNode )
         }
     }
 
-    LocalizedNode::setMapNode( mapNode );
+    GeoPositionNode::setMapNode( mapNode );
 }
 
 void
@@ -164,13 +164,12 @@ PolyhedralLineOfSightNode::traverse(osg::NodeVisitor& nv)
 }
 
 
-bool
-PolyhedralLineOfSightNode::setPosition( const GeoPoint& pos )
+void
+PolyhedralLineOfSightNode::setPosition(const GeoPoint& pos)
 {
-    bool ok = LocalizedNode::setPosition( pos );
+    GeoPositionNode::setPosition( pos );
     recalculateExtent();
     updateSamples();
-    return ok;
 }
 
 
@@ -185,7 +184,7 @@ void
 PolyhedralLineOfSightNode::recalculateExtent()
 {
     // get a local2world matrix for the map position:
-    GeoPoint absMapPos = _mapPosition;
+    GeoPoint absMapPos = getPosition();
     absMapPos.makeAbsolute( getMapNode()->getTerrain() );
     osg::Matrix local2world;
     absMapPos.createLocalToWorld( local2world );

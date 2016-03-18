@@ -33,10 +33,15 @@ namespace osgEarth { namespace Features
     /**
      * Base class for a filter.
      */
-    class OSGEARTHFEATURES_EXPORT Filter : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT Filter : public osg::Object
     {
+    public:
+        META_Object(osgEarthFeatures, Filter);
+
     protected:
         virtual ~Filter();
+        Filter() : osg::Object() { }
+        Filter(const Filter& rhs, const osg::CopyOp& copyop) : osg::Object(rhs, copyop) { }
     };
 
     /**
@@ -45,13 +50,24 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureFilter : public Filter
     {
     public:
+        /**
+         * Push a list of features through the filter.
+         */
         virtual FilterContext push( FeatureList& input, FilterContext& context ) =0;
+
+        /**
+         * Optionally initialize the filter.
+         */
+        virtual void initialize(const osgDB::Options* dbo) { }
 
         /**
          * Serialize this FeatureFilter
          */
         virtual Config getConfig() const { return Config(); }
 
+    protected:
+        FeatureFilter() { }
+        FeatureFilter(const FeatureFilter& rhs, const osg::CopyOp& c) : Filter(rhs, c) { }
         virtual ~FeatureFilter();
     };
 
@@ -87,7 +103,7 @@ namespace osgEarth { namespace Features
         /**
          * Creates a FeatureFilter with the registered plugins from the given Config
          */
-        FeatureFilter* create( const Config& conf );
+        FeatureFilter* create(const Config& conf, const osgDB::Options* dbo);
 
     protected:
         FeatureFilterRegistry();
@@ -120,7 +136,17 @@ namespace osgEarth { namespace Features
 
 #define OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER( KEY, CLASSNAME)\
     static osgEarth::Features::RegisterFeatureFilterProxy< osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME> > s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
+    
 
+    //--------------------------------------------------------------------
+
+    class OSGEARTHFEATURES_EXPORT FeatureFilterDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const ConfigOptions& getConfigOptions(const osgDB::Options* options) const;
+    };
+
+    //--------------------------------------------------------------------
 
     template<typename T>
     class TemplateFeatureFilter : public Filter, public T

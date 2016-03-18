@@ -20,7 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/Draggers>
+#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/GeoPositionNodeAutoScaler>
+
 #include <osgEarth/MapNode>
+#include <osgEarth/GeometryClamper>
 #include <osgEarth/IntersectionPicker>
 
 #include <osg/AutoTransform>
@@ -38,25 +42,10 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-struct ClampDraggerCallback : public TerrainCallback
-{
-    ClampDraggerCallback( Dragger* dragger ):
-        _dragger( dragger )
-    {
-        //nop
-    }
-
-    void onTileAdded( const TileKey& key, osg::Node* tile, osgEarth::TerrainCallbackContext& context )
-    {    
-        _dragger->reclamp( key, tile, context.getTerrain() );
-    }
-
-    Dragger* _dragger;
-};
-
 /**********************************************************/
+
 Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
-_position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
+GeoPositionNode( mapNode ),
 _dragging(false),
 _hovered(false),
 _modKeyMask(modKeyMask),
@@ -66,38 +55,17 @@ _verticalMinimum(0.0)
 {    
     setNumChildrenRequiringEventTraversal( 1 );
 
-    _autoClampCallback = new ClampDraggerCallback( this );
+    //_clampCallback = new ClampDraggerCallback( this );
     _projector = new osgManipulator::LineProjector;
 
-    setMapNode( mapNode );
+    //setMapNode( mapNode );
 
-    this->getOrCreateStateSet()->setRenderBinDetails(50, "RenderBin");
+    this->getOrCreateStateSet()->setRenderBinDetails(50, "DepthSortedBin");
 }
 
 Dragger::~Dragger()
 {
     setMapNode( 0L );
-}
-
-void
-Dragger::setMapNode( MapNode* mapNode )
-{
-    MapNode* oldMapNode = getMapNode();
-
-    if ( oldMapNode != mapNode )
-    {
-        if ( oldMapNode && _autoClampCallback.valid() )
-        {
-            oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
-        }
-
-        _mapNode = mapNode;
-
-        if ( _mapNode.valid() && _autoClampCallback.valid() )
-        {            
-            _mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
-        }
-    }
 }
 
 bool Dragger::getDragging() const
@@ -110,47 +78,23 @@ bool Dragger::getHovered() const
     return _hovered;
 }
 
-const GeoPoint& Dragger::getPosition() const
+void Dragger::setPosition(const GeoPoint& position)
 {
-    return _position;
+    Dragger::setPosition( position, true );
 }
 
-void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
+void Dragger::setPosition(const GeoPoint& position, bool fireEvents)
 {
-    if (_position != position)
-    {
-        _position = position;
-        updateTransform();
-
-        if ( fireEvents )
-            firePositionChanged();
-    }
+    GeoPositionNode::setPosition( position );
+    if ( fireEvents )
+        firePositionChanged();
 }
 
 void Dragger::firePositionChanged()
 {
     for( PositionChangedCallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
     {
-        i->get()->onPositionChanged(this, _position);
-    }
-}
-
-void Dragger::updateTransform(osg::Node* patch)
-{
-    if ( getMapNode() )
-    {
-        osg::Matrixd matrix;
-        
-        GeoPoint mapPoint( _position );
-        mapPoint = mapPoint.transform( _mapNode->getMapSRS() );
-        if (!mapPoint.makeAbsolute( getMapNode()->getTerrain() ))
-        {
-            OE_INFO << LC << "Failed to clamp dragger" << std::endl;
-            return;            
-        }
-
-        mapPoint.createLocalToWorld( matrix );
-        setMatrix( matrix );
+        i->get()->onPositionChanged(this, getPosition());
     }
 }
 
@@ -190,7 +134,7 @@ void Dragger::traverse(osg::NodeVisitor& nv)
                 ea->setHandled(true);
         }
     }
-    osg::MatrixTransform::traverse(nv);
+    GeoPositionNode::traverse( nv );
 }
 
 bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -199,7 +143,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
     if (!view) return false;
-    if (!_mapNode.valid()) return false;
+    if (!getMapNode()) return false;
 
     if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
     {
@@ -208,6 +152,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
         if ( picker.pick( ea.getX(), ea.getY(), hits ) )
         {
+            const GeoPoint& position = getPosition();
+
             _dragging = true;
 
             //Check for and handle vertical dragging if necessary
@@ -220,11 +166,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
               // set movement range
               // TODO: values 0.0 and 300000.0 are rather experimental
-              GeoPoint posStart(_position.getSRS(), _position.x(), _position.y(), 0.0, ALTMODE_ABSOLUTE);
+              GeoPoint posStart(position.getSRS(), position.x(), position.y(), 0.0, ALTMODE_ABSOLUTE);
               osg::Vec3d posStartXYZ;
               posStart.toWorld(posStartXYZ);
 
-              GeoPoint posEnd(_position.getSRS(), _position.x(), _position.y(), 300000.0, ALTMODE_ABSOLUTE);
+              GeoPoint posEnd(position.getSRS(), position.x(), position.y(), 300000.0, ALTMODE_ABSOLUTE);
               osg::Vec3d posEndXYZ;
               posEnd.toWorld(posEndXYZ);
 
@@ -300,9 +246,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
             if (_projector->project(_pointer, _startProjectedPoint)) 
             {
+                const GeoPoint& position = getPosition();
+
                 //Get the absolute mapPoint that they've drug it to.
                 GeoPoint projectedPos;
-                projectedPos.fromWorld(_position.getSRS(), _startProjectedPoint);
+                projectedPos.fromWorld(position.getSRS(), _startProjectedPoint);
 
                 // make sure point is not dragged down below
                 // TODO: think of a better solution / HeightAboveTerrain performance issues?
@@ -310,7 +258,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
                 {
                     //If the current position is relative, we need to convert the absolute world point to relative.
                     //If the point is absolute then just emit the absolute point.
-                    if (_position.altitudeMode() == ALTMODE_RELATIVE)
+                    if (position.altitudeMode() == ALTMODE_RELATIVE)
                     {
                         projectedPos.transformZ(ALTMODE_RELATIVE, getMapNode()->getTerrain());
                     }
@@ -328,16 +276,17 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
             osg::Vec3d world;
             if ( getMapNode() && getMapNode()->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
             {
+                const GeoPoint& position = getPosition();
+
                 //Get the absolute mapPoint that they've drug it to.
                 GeoPoint mapPoint;
                 mapPoint.fromWorld( getMapNode()->getMapSRS(), world );
-                //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
                 //If the current position is relative, we need to convert the absolute world point to relative.
                 //If the point is absolute then just emit the absolute point.
-                if (_position.altitudeMode() == ALTMODE_RELATIVE)
+                if (position.altitudeMode() == ALTMODE_RELATIVE)
                 {
-                    mapPoint.alt() = _position.alt();
+                    mapPoint.alt() = position.alt();
                     mapPoint.altitudeMode() = ALTMODE_RELATIVE;
                 }
 
@@ -382,18 +331,28 @@ void Dragger::setHover( bool hovered)
     }
 }
 
-void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
-{            
-    GeoPoint p;
-    _position.transform( key.getExtent().getSRS(), p );
-    // first verify that the control position intersects the tile:
-    if ( key.getExtent().contains( p.x(), p.y() ) )
+namespace
+{
+    struct DC : public osg::Drawable::DrawCallback
     {
-        updateTransform( tile );
-    }
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const {
+            osg::Matrix mvm = ri.getState()->getModelViewMatrix();
+            osg::Matrix pm = ri.getState()->getProjectionMatrix();
+            double l, r, b, t, n, f;
+            pm.getFrustum(l, r, b, t, n, f);
+            const osg::Viewport* vp = ri.getState()->getCurrentViewport();
+
+            double xr = (r-l) / ((double)vp->width());
+            double yr = (t-b) / ((double)vp->height());
+
+
+            ri.getState()->applyModelViewMatrix( new osg::RefMatrix(pm) );
+            //ri.getState()->applyProjectionMatrix(new osg::RefMatrix(pm));
+            
+            drawable->drawImplementation( ri );
+        }
+    };
 }
-
-
 
 /**********************************************************/
 
@@ -401,13 +360,14 @@ SphereDragger::SphereDragger(MapNode* mapNode):
 Dragger(mapNode),
 _pickColor(1.0f, 1.0f, 0.0f, 1.0f),
 _color(0.0f, 1.0f, 0.0f, 1.0f),
-_size( 5.0f )
+_size( 5.0 )
 {
     //Disable culling
     setCullingActive( false );
 
     //Build the handle
-    osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), 1.0f);   
+    osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), _size);
+
     osg::Geode* geode = new osg::Geode();
     _shapeDrawable = new osg::ShapeDrawable( shape );    
     _shapeDrawable->setDataVariance( osg::Object::DYNAMIC );
@@ -416,15 +376,10 @@ _size( 5.0f )
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
-    _scaler = new osg::MatrixTransform;
-    _scaler->setMatrix( osg::Matrixd::scale( _size, _size, _size ));
-    _scaler->addChild( geode );
+    getPositionAttitudeTransform()->addChild( geode );
 
-    osg::AutoTransform* at = new osg::AutoTransform;
-    at->setAutoScaleToScreen( true );
-    at->addChild( _scaler );
-    addChild( at );
-
+    this->addCullCallback( new GeoPositionNodeAutoScaler() );
+    
     updateColor();
 }
 
@@ -466,7 +421,9 @@ void SphereDragger::setSize(float size)
     if (_size != size)
     {
         _size = size;
-        _scaler->setMatrix( osg::Matrixd::scale( _size, _size, _size ));
+        _shapeDrawable->setShape( new osg::Sphere(osg::Vec3f(0,0,0), _size) );
+        _shapeDrawable->setColor( _color );
+        //getPositionAttitudeTransform()->setScale(osg::Vec3d(_size,_size,_size));
     }
 }
 

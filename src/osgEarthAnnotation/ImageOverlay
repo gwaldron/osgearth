@@ -23,6 +23,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Units>
 #include <osgEarth/URI>
+#include <osgEarth/Terrain>
 
 #include <osg/Group>
 #include <osg/Geometry>
@@ -124,7 +125,7 @@ namespace osgEarth { namespace Annotation
 
     public: // AnnotationNode
         
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
     public: // MapNodeObserver
 
@@ -133,6 +134,14 @@ namespace osgEarth { namespace Annotation
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
+
+    public:
+        
+        // callback from Terrain whsen new data arrives
+        void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
         
     private:
         void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
@@ -140,8 +149,6 @@ namespace osgEarth { namespace Annotation
         void postCTOR();
         void init();
         void clampLatitudes();
-
-        void clampMesh( osg::Node* terrainModel );
 
         void updateFilters();
 
@@ -166,6 +173,10 @@ namespace osgEarth { namespace Annotation
         optional<float> _alpha;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
+
+        osg::ref_ptr< TerrainCallbackAdapter<ImageOverlay> > _clampCallback;
+        
+        void clamp(const Terrain* terrain, osg::Node* patch);
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }

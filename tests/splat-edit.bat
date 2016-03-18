@@ -1,8 +1,6 @@
 setlocal
 set OSGEARTH_SPLAT_EDIT=1
-osgearth_viewer splat-test.earth ^
-	--ico ^
-	--logdepth ^
+osgearth_viewer splat.earth ^
 	--sky ^
 	--uniform oe_splat_detailRange 100000 0 ^
 	--uniform oe_splat_warp 0 0.02 ^

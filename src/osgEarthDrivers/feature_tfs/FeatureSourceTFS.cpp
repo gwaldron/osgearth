@@ -72,6 +72,8 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {
+        FeatureSource::initialize( dbOptions );
+
         _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
         if ( _dbOptions.valid() )
         {
@@ -299,7 +301,7 @@ public:
         }
 
         //If we have any filters, process them here before the cursor is created
-        if (!_options.filters().empty())
+        if (!getFilters().empty())
         {
             // preprocess the features using the filter list:
             if ( features.size() > 0 )
@@ -307,7 +309,7 @@ public:
                 FilterContext cx;
                 cx.setProfile( getFeatureProfile() );
 
-                for( FeatureFilterList::const_iterator i = _options.filters().begin(); i != _options.filters().end(); ++i )
+                for( FeatureFilterList::const_iterator i = getFilters().begin(); i != getFilters().end(); ++i )
                 {
                     FeatureFilter* filter = i->get();
                     cx = filter->push( features, cx );

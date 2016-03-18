@@ -121,6 +121,8 @@ VirtualFeatureSource::createFeatureCursor( const Query& query )
 void 
 VirtualFeatureSource::initialize( const osgDB::Options* dbOptions )
 {
+    FeatureSource::initialize( dbOptions );
+
     for( FeatureSourceMappingVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
     {
         i->_source->initialize( dbOptions );

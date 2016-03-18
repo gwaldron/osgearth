@@ -22,6 +22,7 @@
 
 #include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -40,12 +41,11 @@ RectangleNode::RectangleNode(MapNode*          mapNode,
                              const Linear&     width,
                              const Linear&     height,
                              const Style&      style) :
-LocalizedNode( mapNode, position ),
+GeoPositionNode    ( mapNode, position ),
 _width       ( width ),
 _height      ( height ),
 _style       ( style )
 {
-    _xform = new osg::MatrixTransform();
     rebuild();
 }
 
@@ -334,13 +334,7 @@ RectangleNode::setCorner( Corner corner, const GeoPoint& location)
 void
 RectangleNode::rebuild()
 {    
-    std::string currentDecoration = getDecoration();
-    clearDecoration();
-
-    // Reset:
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     // construct a local-origin circle.
     GeometryFactory factory;    
@@ -348,19 +342,16 @@ RectangleNode::rebuild()
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
         if ( node )
         {
-            _xform->addChild( node );
-            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            node = AnnotationUtils::installOverlayParent( node.get(), _style );
+            getPositionAttitudeTransform()->addChild( node.get() );
         }
 
         applyRenderSymbology( _style );
         setLightingIfNotSet( false );
     }
-
-    setDecoration( currentDecoration );
 }
 
 
@@ -373,10 +364,8 @@ OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 RectangleNode::RectangleNode(MapNode*              mapNode,
                              const Config&         conf,
                              const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+GeoPositionNode( mapNode, conf )
 {
-    _xform = new osg::MatrixTransform();
-
     conf.getObjIfSet( "width", _width );
     conf.getObjIfSet( "height", _height );
     conf.getObjIfSet( "style",  _style );
@@ -387,7 +376,7 @@ LocalizedNode( mapNode, conf )
 Config
 RectangleNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "rectangle";
 
     conf.addObj( "width",  _width );

@@ -50,14 +50,13 @@ namespace osgEarth
     /**
      * Interface that exposes set/getPriority for priority sorting
      */
-    class PriorityProvider
+    struct DeclutteringData : public osg::Referenced
     {
     public:
-        virtual void setPriority(float value) =0;
-        virtual float getPriority() const =0;
-
-    protected:
-        virtual ~PriorityProvider() { }
+        DeclutteringData(float priority) : _priority(priority) { }
+        float _priority;
+    public:
+        virtual ~DeclutteringData() { }
     };
 
     /**
@@ -72,8 +71,8 @@ namespace osgEarth
     };
 
     /**
-     * A decluttering functor that sorts by the priority field in AnnotationData.
-     * AnnotationData should be attached to each Drawable's user data.
+     * A decluttering functor that sorts by the priority field in AnnotationNode.
+     * AnnotationNode should be attached to each Drawable's user data.
      */
     struct OSGEARTH_EXPORT DeclutterByPriority : public DeclutterSortFunctor
     {

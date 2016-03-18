@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_ELLIPSE_NODE_H
 #define OSGEARTH_ANNOTATION_ELLIPSE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
     /** 
      * Renders an ellipse that can drape on a MapNode terrain.    
      */
-    class OSGEARTHANNO_EXPORT EllipseNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT EllipseNode : public LocalGeometryNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, EllipseNode );
@@ -113,16 +113,6 @@ namespace osgEarth { namespace Annotation
         void setNumSegments(unsigned int numSegments );
 
         /**
-         * Gets the style
-         */
-        const Style& getStyle() const;
-
-        /**
-         * Sets the style
-         */
-        void setStyle( const Style& style );
-
-        /**
          * Gets the start degrees of this (arc) circle
          */
         const Angle& getArcStart(void) const;
@@ -158,18 +148,14 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
 
-    public: // LocalizedNode
-
-        osg::MatrixTransform* getTransform() { return _xform.get(); }
-
-
     private:
         EllipseNode() { }
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
 
-        void rebuild();
+        void rebuildGeometry();
+
+        void initEllipseNode();
         
-        Style _style;
         Angle _rotationAngle;
         Distance _radiusMajor;
         Distance _radiusMinor;
@@ -177,7 +163,6 @@ namespace osgEarth { namespace Annotation
         Angle _arcEnd;
         bool  _pie;
         unsigned int _numSegments;
-        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

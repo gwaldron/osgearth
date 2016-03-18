@@ -238,12 +238,12 @@ namespace osgEarth
          *      Terrain callback to add. This will get called whenever tile data changes in
          *      the active terrain graph
          */
-        void addTerrainCallback( TerrainCallback* callback);
+        void addTerrainCallback(TerrainCallback* callback);
 
         /**
          * Removes a terrain callback.
          */
-        void removeTerrainCallback( TerrainCallback* callback );
+        void removeTerrainCallback(TerrainCallback* callback );
         
 
     public:

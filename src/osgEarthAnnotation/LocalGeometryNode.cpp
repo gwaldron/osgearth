@@ -22,10 +22,10 @@
 
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/MeshClamper>
-#include <osgEarth/DrapeableNode>
+#include <osgEarth/GeometryClamper>
 #include <osgEarth/Utils>
 
 #define LC "[GeometryNode] "
@@ -35,14 +35,21 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
+LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
+GeoPositionNode()
+{
+    LocalGeometryNode::setMapNode( mapNode );
+    init( 0L );
+}
+
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_geom        ( geom ),
-_style       ( style )
+GeoPositionNode(),
+_geom    ( geom ),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
@@ -50,31 +57,38 @@ _style       ( style )
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
-LocalizedNode( mapNode ),
-_node        ( node ),
-_style       ( style )
+GeoPositionNode(),
+_node    ( node ),
+_style   ( style )
 {
-    _xform = new osg::MatrixTransform();
+    LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
 }
 
+void
+LocalGeometryNode::setMapNode(MapNode* mapNode)
+{
+    if ( mapNode != getMapNode() )
+    {
+        GeoPositionNode::setMapNode( mapNode );
+        init(0L);
+    }
+}
 
 void
 LocalGeometryNode::initNode()
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     if ( _node.valid() )
     {
-        _xform->addChild( _node );
-        // activate clamping if necessary
-        replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+        _node = AnnotationUtils::installOverlayParent( _node.get(), _style );
 
-        applyRenderSymbology( _style );
-        setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
+        getPositionAttitudeTransform()->addChild( _node.get() );
+
+        applyRenderSymbology( getStyle() );
+
+        setLightingIfNotSet( getStyle().has<ExtrusionSymbol>() );
     }
 }
 
@@ -82,37 +96,33 @@ LocalGeometryNode::initNode()
 void
 LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 {
-    // reset
-    osgEarth::clearChildren( this );
-    osgEarth::clearChildren( _xform.get() );
-    this->addChild( _xform.get() );
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     if ( _geom.valid() )
     {
-        Session* session = 0L;
+        osg::ref_ptr<Session> session;
         if ( getMapNode() )
             session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
-        FilterContext cx( session );
-
+        
         GeometryCompiler gc;
-        osg::Node* node = gc.compile( _geom.get(), _style, cx );
-        if ( node )
+        osg::ref_ptr<osg::Node> node = gc.compile( _geom.get(), getStyle(), FilterContext(session) );
+        if ( node.valid() )
         {
-            _xform->addChild( node );
-            // activate clamping if necessary
-            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+            node = AnnotationUtils::installOverlayParent( node.get(), getStyle() );
 
-            applyRenderSymbology( _style );
+            getPositionAttitudeTransform()->addChild( node.get() );
+
+            applyRenderSymbology( getStyle() );
+
+            applyAltitudeSymbology( getStyle() );
         }
     }
 }
 
 
 void 
-LocalGeometryNode::init(const osgDB::Options* options )
-{
-    this->clearDecoration();
-    
+LocalGeometryNode::init(const osgDB::Options* options)
+{    
     if ( _node.valid() )
     {
         initNode();
@@ -149,6 +159,138 @@ LocalGeometryNode::setGeometry( Geometry* geom )
     initGeometry(0L);
 }
 
+void
+LocalGeometryNode::applyAltitudeSymbology(const Style& style)
+{
+    // deal with scene clamping symbology.
+    if ( getMapNode() )
+    {
+        if ( _clampCallback.valid() )
+        {
+            getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
+            _clampCallback = 0L;
+        }
+
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        if ( alt && alt->technique() == alt->TECHNIQUE_SCENE )
+        {
+            if ( alt->binding() == alt->BINDING_CENTROID )
+            {
+                // centroid scene clamping? let GeoTransform do its thing.
+                getGeoTransform()->setAutoRecomputeHeights( true );
+            }
+
+            else if ( alt->binding() == alt->BINDING_VERTEX )
+            {
+                // per vertex clamping? disable the GeoTransform's clamping and take over.
+                getGeoTransform()->setAutoRecomputeHeights( false );
+
+                if ( !_clampCallback.valid() )
+                {
+                    _clampCallback = new ClampCallback(this);
+                }
+
+                if ( alt->clamping() == alt->CLAMP_TO_TERRAIN )
+                {
+                    _clampRelative = false;
+                    getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
+                }
+
+                else if ( alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN )
+                {
+                    _clampRelative = true;
+                    getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
+                }
+            }
+        }
+    }
+}
+
+void
+LocalGeometryNode::onTileAdded(const TileKey&          key, 
+                               osg::Node*              patch, 
+                               TerrainCallbackContext& context)
+{
+    // if key and data intersect then
+    if ( _boundingPT.contains(patch->getBound()) )
+    {    
+        clampToScene( patch, context.getTerrain() );
+        this->dirtyBound();
+    }
+}
+
+void
+LocalGeometryNode::clampToScene(osg::Node* patch, const Terrain* terrain)
+{
+    GeometryClamper clamper;
+
+    clamper.setTerrainPatch( patch );
+    clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
+    clamper.setPreserveZ( _clampRelative );
+    clamper.setOffset( getPosition().alt() );
+
+    this->accept( clamper );
+}
+
+osg::BoundingSphere
+LocalGeometryNode::computeBound() const
+{
+    osg::BoundingSphere bs = AnnotationNode::computeBound();
+    
+    // NOTE: this is the same code found in Feature.cpp. Consolidate?
+
+    _boundingPT.clear();
+
+    // add planes for the four sides of the BS. Normals point inwards.
+    _boundingPT.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-bs.radius(),0,0)) );
+    _boundingPT.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( bs.radius(),0,0)) );
+    _boundingPT.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -bs.radius(),0)) );
+    _boundingPT.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  bs.radius(),0)) );
+
+    const SpatialReference* srs = getPosition().getSRS();
+    if ( srs )
+    {
+        // for a projected feature, we're done. For a geocentric one, transform the polytope
+        // into world (ECEF) space.
+        if ( srs->isGeographic() && !srs->isPlateCarre() )
+        {
+            const osg::EllipsoidModel* e = srs->getEllipsoid();
+
+            // add a bottom cap, unless the bounds are sufficiently large.
+            double minRad = std::min(e->getRadiusPolar(), e->getRadiusEquator());
+            double maxRad = std::max(e->getRadiusPolar(), e->getRadiusEquator());
+            double zeroOffset = bs.center().length();
+            if ( zeroOffset > minRad * 0.1 )
+            {
+                _boundingPT.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
+            }
+        }
+
+        // transform the clipping planes ito ECEF space
+        GeoPoint refPoint;
+        refPoint.fromWorld( srs, bs.center() );
+
+        osg::Matrix local2world;
+        refPoint.createLocalToWorld( local2world );
+
+        _boundingPT.transform( local2world );
+    }
+
+    return bs;
+}
+
+void
+LocalGeometryNode::dirty()
+{
+    GeoPositionNode::dirty();
+
+    // re-clamp the geometry if necessary.
+    if ( _clampCallback.valid() && getMapNode() )
+    {
+        clampToScene( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
+    }
+}
+
 //-------------------------------------------------------------------
 
 OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
@@ -157,38 +299,30 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+GeoPositionNode( mapNode, conf )
 {
-    _xform = new osg::MatrixTransform();
-
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
         _geom = GeometryUtils::geometryFromWKT( geomconf.value() );
-        if ( _geom.valid() )
-        {
-            conf.getObjIfSet( "style", _style );
-
-            init( dbOptions );
-        }
     }
+
+    conf.getObjIfSet( "style", _style );
+    init( dbOptions );
 }
 
 Config
 LocalGeometryNode::getConfig() const
 {
-    Config conf = LocalizedNode::getConfig();
+    Config conf = GeoPositionNode::getConfig();
     conf.key() = "local_geometry";
+
+    if ( !_style.empty() )
+        conf.addObj( "style", _style );
 
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-        if ( !_style.empty() )
-            conf.addObj( "style", _style );
-    }
-    else
-    {
-        OE_WARN << LC << "Cannot serialize GeometryNode because it contains no geometry" << std::endl;
     }
 
     return conf;

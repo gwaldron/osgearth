@@ -275,7 +275,9 @@ Terrain::addTerrainCallback( TerrainCallback* cb )
 {
     if ( cb )
     {        
-        Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
+        removeTerrainCallback( cb );
+
+        Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );        
         _callbacks.push_back( cb );
         ++_callbacksSize; // atomic increment
     }

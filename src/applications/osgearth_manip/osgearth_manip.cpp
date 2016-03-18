@@ -82,7 +82,7 @@ namespace
             "double-click :",      "zoom to point",
             "scroll wheel :",      "zoom in/out",
             "arrows :",            "pan",
-            "1-6 :",               "fly to preset viewpoints",
+            //"1-6 :",               "fly to preset viewpoints",
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
@@ -649,7 +649,7 @@ int main(int argc, char** argv)
 
     manip->setTetherCallback( new TetherCB() );
     
-    viewer.addEventHandler(new FlyToViewpointHandler( manip ));
+    //viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('q', manip));

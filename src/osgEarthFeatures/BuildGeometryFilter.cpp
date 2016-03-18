@@ -127,8 +127,10 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
             _style.get<PolygonSymbol>();
 
-        if ( !poly )
+        if ( !poly ) {
+            OE_TEST << LC << "Discarding feature with no poly symbol\n";
             continue;
+        }
 
         // run a symbol script if present.
         if ( poly->script().isSet() )
@@ -145,15 +147,17 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             part->removeDuplicates();
 
             // skip geometry that is invalid for a polygon
-            if ( part->size() < 3 )
+            if ( part->size() < 3 ) {
+                OE_TEST << LC << "Discarding illegal part (less than 3 verts)\n";
                 continue;
+            }
 
             // resolve the color:
             osg::Vec4f primaryColor = poly->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )
@@ -207,7 +211,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                     }
 
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                    OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+                    OE_TEST << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                     MeshSubdivider ms( _world2local, _local2world );
                     if ( input->geoInterp().isSet() )
@@ -237,9 +241,14 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                     Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
                 }
             }
+            else
+            {
+                OE_TEST << LC << "Oh no. buildAndTilePolygon returned nothing.\n";
+            }
         }
     }
     
+    OE_TEST << LC << "Num drawables = " << geode->getNumDrawables() << "\n";
     return geode;
 }
 
@@ -399,8 +408,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             osg::Vec4f primaryColor = line->stroke()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -509,8 +518,8 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             osg::Vec4f primaryColor = point->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            osgGeom->setUseVertexBufferObjects( true );
+            osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -791,18 +800,28 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 #define MAX_POINTS_PER_CROP_TILE 1024
 #define TARGET_TILE_SIZE_EXTENT_DEGREES 5.0
 
+    if ( ring == 0L )
+    {
+        OE_WARN << LC << "Ring is NULL.\n";
+        return;
+    }
+
     // Tile the incoming polygon if necessary
     GeometryCollection tiles;
     prepareForTesselation( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, MAX_POINTS_PER_CROP_TILE, tiles);    
+    //tiles.push_back( ring );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+
+    OE_TEST << LC << "TABP: tiles = " << tiles.size() << "\n";
 
     // Process each ring independently
     for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)
     {
-        Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
+        Geometry* geom = tiles[ringIndex].get();
+        //Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
         if (geom)
-        {            
+        {
             // temporary target geometry for this cell:
             osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
             temp->setVertexArray( new osg::Vec3Array() );
@@ -839,6 +858,10 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                     }
                 }
             }
+        }
+        else
+        {
+            OE_TEST << LC << "TABP: Uh oh. found a non-Ring geometry: " << geom->toString(geom->getComponentType()) << "\n";
         }
     }
 

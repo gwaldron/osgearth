@@ -87,6 +87,8 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {        
+        FeatureSource::initialize( dbOptions );
+
         _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
         std::string fullFilename = _options.url()->full();
 
@@ -356,6 +358,9 @@ public:
         }
 
         sqlite3_finalize( select );
+
+        // apply filters before returning.
+        applyFilters( features );
 
         if (!features.empty())
         {

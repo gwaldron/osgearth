@@ -58,7 +58,7 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 
         // find the cull set for this camera:
         DrapingCullSet& cullSet = DrapingCullSet::get( cv->getCurrentCamera() );
-        cullSet.push( this, cv->getNodePath() );
+        cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
     }
     else
     {

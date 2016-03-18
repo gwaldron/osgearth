@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_CIRCLE_NODE_H
 #define OSGEARTH_ANNOTATION_CIRCLE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Circle annotation.
      */
-    class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT CircleNode : public LocalGeometryNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, CircleNode );
@@ -94,16 +94,6 @@ namespace osgEarth { namespace Annotation
         void setNumSegments(unsigned int numSegments );
 
         /**
-         * Gets the style of this circle
-         */
-        const Style& getStyle() const;
-
-        /**
-         * Sets the style of this circle
-         */
-        void setStyle( const Style& style );
-
-        /**
          * Gets the start degrees of this (arc) circle
          */
         const Angle& getArcStart(void) const;
@@ -133,10 +123,6 @@ namespace osgEarth { namespace Annotation
          */
         void setPie(const bool& pie);
 
-    public: // LocalizedNode
-
-        osg::MatrixTransform* getTransform() { return _xform.get(); }
-
 
     public: // AnnotationNode overrides
 
@@ -147,17 +133,15 @@ namespace osgEarth { namespace Annotation
         CircleNode() { }
         CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
 
-        void rebuild();
+        void rebuildGeometry();
 
-        Style           _style;
-        bool            _draped;
-        unsigned        _numSegments;
-        Distance        _radius;
+        void initCircleNode();
+
+        unsigned       _numSegments;
+        Distance       _radius;
         Angle          _arcStart;
         Angle          _arcEnd;
         bool           _pie;
-
-        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

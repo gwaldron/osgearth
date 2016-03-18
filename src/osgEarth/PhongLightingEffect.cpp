@@ -129,7 +129,7 @@ namespace
         "    if (NdotL > 0.0) \n"
         "    { \n"
         "        vec3 V = normalize(oe_phong_vertexView3); \n"
-        "        vec3 H = normalize(L-V); \n"
+        "        vec3 H = reflect(-L,N); \n"
         "        float HdotN = max(dot(H,N), 0.0); \n"
         "        float shine = clamp(gl_FrontMaterial.shininess, 1.0, 128.0); \n"
         "        specular = gl_FrontLightProduct[0].specular * pow(HdotN, shine); \n"

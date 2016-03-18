@@ -159,7 +159,7 @@ void DataManager::addSelectedAnnotation(osgEarth::Annotation::AnnotationNode* an
 
     if (added)
     {
-      annotation->setDecoration(_selectedDecoration);
+      //annotation->setDecoration(_selectedDecoration);
       _selection.push_back(annotation);
     }
   }
@@ -179,7 +179,7 @@ void DataManager::removeSelectedAnnotation(osgEarth::Annotation::AnnotationNode*
     AnnotationVector::iterator found = std::find(_selection.begin(), _selection.end(), annotation);
     if (found != _selection.end())
     {
-      annotation->clearDecoration();
+      //annotation->clearDecoration();
       _selection.erase(found);
       removed = true;
     }
@@ -201,7 +201,7 @@ void DataManager::setSelectedAnnotations(const AnnotationVector& annotations)
 
     for (AnnotationVector::const_iterator itNew = annotations.begin(); itNew != annotations.end(); ++itNew)
     {
-      (*itNew)->setDecoration(_selectedDecoration);
+      //(*itNew)->setDecoration(_selectedDecoration);
       _selection.push_back(*itNew);
     }
   }
@@ -217,8 +217,8 @@ void DataManager::clearSelectedAnnotations()
   {
     Threading::ScopedWriteLock lock(const_cast<DataManager*>(this)->_dataMutex);
 
-    for (AnnotationVector::iterator itOld = _selection.begin(); itOld != _selection.end(); ++itOld)
-      (*itOld)->clearDecoration();
+    //for (AnnotationVector::iterator itOld = _selection.begin(); itOld != _selection.end(); ++itOld)
+    //  (*itOld)->clearDecoration();
 
     _selection.clear();
   }

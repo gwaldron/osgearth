@@ -46,7 +46,9 @@ namespace
 
             for(unsigned i=0; i<code.size(); ++i)
             {
-                std::string fn = code[i]._uri.isSet() ? code[i]._uri->full() : "$code." + i;
+		std::ostringstream oss;
+		oss << i;
+                std::string fn = code[i]._uri.isSet() ? code[i]._uri->full() : "$code." + oss.str();
                 _package.add( fn, code[i]._source );
             }
         }

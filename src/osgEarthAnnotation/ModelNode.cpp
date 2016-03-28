@@ -142,7 +142,7 @@ ModelNode::init()
                 // auto scaling?
                 if ( sym->autoScale() == true )
                 {
-                    this->addCullCallback( new GeoPositionNodeAutoScaler() );
+                    this->addCullCallback( new GeoPositionNodeAutoScaler( osg::Vec3d(1,1,1), sym->minAutoScale().value(), sym->maxAutoScale().value() ));
                 } 
 
                 // rotational offsets?

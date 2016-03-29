@@ -60,6 +60,14 @@ namespace osgEarth { namespace Symbology
         optional<bool>& autoScale() { return _autoScale; }
         const optional<bool>& autoScale() const { return _autoScale; }
 
+		/** minimum scale of the model when autoscale is enabled */
+        optional<double>& minAutoScale() { return _minAutoScale; }
+        const optional<double>& minAutoScale() const { return _minAutoScale; }
+		
+		/** maximum scale of the model when autoscale is enabled */
+        optional<double>& maxAutoScale() { return _maxAutoScale; }
+        const optional<double>& maxAutoScale() const { return _maxAutoScale; }
+		
         /** Name of a specific model in the catalog */
         optional<StringExpression>& name() { return _name; }
         const optional<StringExpression>& name() const { return _name; }
@@ -104,6 +112,8 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _pitch;
         optional<NumericExpression>  _roll;
         optional<bool>               _autoScale;
+		optional<double>			 _minAutoScale;
+		optional<double>			 _maxAutoScale;
         osg::ref_ptr<osg::Node>      _node;
         optional<StringExpression>   _name;
         optional<float>              _maxSizeX;

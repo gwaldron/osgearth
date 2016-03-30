@@ -48,7 +48,7 @@ _frameCulled( true )
 }
 
 void
-DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
+DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path, const osg::FrameStamp* fs)
 {
     // Reset the set if this is the first push after a cull.
     if ( _frameCulled )
@@ -63,6 +63,7 @@ DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
     entry._node = node;
     entry._path.setNodePath( path );
     entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
+    entry._frame = fs ? fs->getFrameNumber() : 0;
     _bs.expandBy( node->getBound() );
 }
 
@@ -77,8 +78,13 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
         // of common ancestors
         const osg::NodePath& nvPath = nv.getNodePath();
 
+        int frame = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber() : 0u;
+
         for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
         {
+            if ( frame - entry->_frame > 1 )
+                continue;
+
             // If there's an active (non-identity matrix), apply it
             if ( entry->_matrix.valid() )
             {

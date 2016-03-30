@@ -31,6 +31,8 @@ _heading(rhs._heading),
 _pitch(rhs._pitch),
 _roll(rhs._roll),
 _autoScale(rhs._autoScale),
+_minAutoScale(rhs._minAutoScale),
+_maxAutoScale(rhs._maxAutoScale),
 _name(rhs._name),
 _node(rhs._node),
 _maxSizeX(rhs._maxSizeX),
@@ -48,6 +50,8 @@ _heading  ( NumericExpression(0.0) ),
 _pitch    ( NumericExpression(0.0) ),
 _roll     ( NumericExpression(0.0) ),
 _autoScale( false ),
+_minAutoScale	( 0.0 ),
+_maxAutoScale	( DBL_MAX ),
 _maxSizeX ( FLT_MAX ),
 _maxSizeY ( FLT_MAX ),
 _scaleX    ( NumericExpression(1.0) ),
@@ -68,6 +72,8 @@ ModelSymbol::getConfig() const
     conf.addObjIfSet( "name",       _name );
     
     conf.addIfSet( "auto_scale", _autoScale );
+	conf.addIfSet( "min_auto_scale", _minAutoScale );
+	conf.addIfSet( "max_auto_scale", _maxAutoScale );
     conf.addIfSet( "alias_map", _uriAliasMap );
 
     conf.addIfSet( "max_size_x", _maxSizeX );
@@ -93,6 +99,8 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "max_size_y", _maxSizeY );
 
     conf.getIfSet( "auto_scale", _autoScale );
+	conf.getIfSet( "min_auto_scale", _minAutoScale);
+	conf.getIfSet( "max_auto_scale", _maxAutoScale);
     conf.getIfSet( "alias_map", _uriAliasMap );
     
     conf.getObjIfSet( "scale_x", _scaleX );
@@ -140,6 +148,12 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
         else
             style.getOrCreate<ModelSymbol>()->scale() = NumericExpression(c.value());
     }
+	else if (match(c.key(), "model-min-auto-scale")) {
+		style.getOrCreate<ModelSymbol>()->minAutoScale() = as<double>(c.value(), 0.0f);
+	}
+	else if (match(c.key(), "model-max-auto-scale")) {
+		style.getOrCreate<ModelSymbol>()->maxAutoScale() = as<double>(c.value(), DBL_MAX);
+	}
     else if ( match(c.key(), "model-scale-x") ) {
         style.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression(c.value());
     }

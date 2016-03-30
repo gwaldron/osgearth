@@ -142,8 +142,8 @@ VerticalDatum::transform(const VerticalDatum* from,
     osg::Vec3d sw(extent.west(), extent.south(), 0.0);
     osg::Vec3d ne(extent.east(), extent.north(), 0.0);
     
-    double xstep = abs(extent.east() - extent.west()) / double(cols-1);
-    double ystep = abs(extent.north() - extent.south()) / double(rows-1);
+    double xstep = std::abs(extent.east() - extent.west()) / double(cols-1);
+    double ystep = std::abs(extent.north() - extent.south()) / double(rows-1);
 
     if ( !extent.getSRS()->isGeographic() )
     {

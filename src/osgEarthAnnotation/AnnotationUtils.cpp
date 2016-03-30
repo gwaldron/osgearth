@@ -179,16 +179,18 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         break;
     }
 
-    if ( symbol && symbol->pixelOffset().isSet() )
-    {
-        pos += osg::Vec3f(symbol->pixelOffset()->x(), symbol->pixelOffset()->y(), 0.0f);
-    }
+    //if ( symbol && symbol->pixelOffset().isSet() )
+    //{
+    //    pos += osg::Vec3f(symbol->pixelOffset()->x(), symbol->pixelOffset()->y(), 0.0f);
+    //}
 
     t->setPosition( pos );
     t->setAlignment( align );
 
+    t->setAutoRotateToScreen(false);
 
-    t->setAutoRotateToScreen( false );
+    t->setCullingActive(false);
+
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;
     t->setCharacterSize( size );

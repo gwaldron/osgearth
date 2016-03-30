@@ -127,7 +127,9 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::Geode> _geode;
 
         /** Copy constructor */
-        LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : GeoPositionNode(rhs, op) { }
+        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+
+        void updateLayoutData();
     };
 
 } } // namespace osgEarth::Annotation

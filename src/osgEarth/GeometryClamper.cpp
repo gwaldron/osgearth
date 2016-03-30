@@ -123,7 +123,7 @@ GeometryClamper::apply(osg::Geode& geode)
 
                         if ( buildZOffsets )
                         {
-                            zOffsets->push_back( float(hae) );
+                            zOffsets->push_back( (*verts)[k].z() );
                         }
 
                         if ( _scale != 1.0 )

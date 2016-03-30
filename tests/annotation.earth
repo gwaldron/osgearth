@@ -51,6 +51,18 @@ osgEarth Sample - Annotations
             </circle>
             <label text="Draped circle" lat="34.051" long="-117.974"/>
             
+            <circle name="scene-clamped circle">
+                <position lat="22.074" long="-159.606"/>
+                <radius value="1.2" units="km"/>
+                <style type="text/css">
+                    stroke:             #ffffff;
+                    stroke-width:       2px;
+                    altitude-clamping:  terrain-scene;
+                    altitude-binding:   vertex;
+                </style>
+            </circle>
+            <label text="scene-clamped circle" lat="22.074" long="-159.606"/>
+            
             <ellipse name="ellipse relative">
                 <position lat="40" long="-100" hat="5000"/>
                 <radius_major value="50" units="km"/>

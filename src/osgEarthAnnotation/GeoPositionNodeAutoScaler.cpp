@@ -30,8 +30,10 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-GeoPositionNodeAutoScaler::GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale) :
-_baseScale( baseScale )
+GeoPositionNodeAutoScaler::GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale, double minScale, double maxScale) :
+_baseScale( baseScale ),
+_minScale( minScale ),
+_maxScale( maxScale )
 {
     //nop
 }
@@ -42,6 +44,10 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
     GeoPositionNode* geo = static_cast<GeoPositionNode*>(node);
     osgUtil::CullVisitor* cs = static_cast<osgUtil::CullVisitor*>(nv);
     double size = 1.0/cs->pixelSize( node->getBound().center(), 0.5f );
+	if (size < _minScale)
+		size = _minScale;
+	else if (size>_maxScale)
+		size = _maxScale;
     geo->getPositionAttitudeTransform()->setScale( osg::componentMultiply(_baseScale, osg::Vec3d(size,size,size)) );
     traverse(node, nv);
 }

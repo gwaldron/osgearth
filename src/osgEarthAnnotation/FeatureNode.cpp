@@ -307,9 +307,13 @@ FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
 {
     if ( terrain && patch )
     {
+        const AltitudeSymbol* alt = getStyle().get<AltitudeSymbol>();
+        bool relative = alt && alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_SCENE;
+
         GeometryClamper clamper;
         clamper.setTerrainPatch( patch );
         clamper.setTerrainSRS( terrain->getSRS() );
+        clamper.setPreserveZ( relative );
 
         this->accept( clamper );
         this->dirtyBound();

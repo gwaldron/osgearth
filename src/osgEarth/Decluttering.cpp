@@ -276,8 +276,20 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             const osg::Drawable* drawable = leaf->getDrawable();
             const osg::Node*     drawableParent = drawable->getParent(0);
 
+            const LayoutData* layoutData = dynamic_cast<const LayoutData*>(drawable->getUserData());
+
             // transform the bounding box of the drawable into window-space.
             osg::BoundingBox box = Utils::getBoundingBox(drawable);
+
+            osg::Vec2f offset;
+            if (layoutData)
+            {
+                offset.set(layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y());
+                box.xMin() += layoutData->_pixelOffset.x();
+                box.xMax() += layoutData->_pixelOffset.x();
+                box.yMin() += layoutData->_pixelOffset.y();
+                box.yMax() += layoutData->_pixelOffset.y();
+            }
 
             static osg::Vec4d s_zero_w(0,0,0,1);
             osg::Matrix MVP = (*leaf->_modelview.get()) * (*leaf->_projection.get());
@@ -322,8 +334,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             if ( s_enabledGlobally )
             {
                 // A max priority => never occlude.
-                const DeclutteringData* data = dynamic_cast<const DeclutteringData*>(drawable->getUserData());
-                float priority = data ? data->_priority : 0.0f;
+                float priority = layoutData ? layoutData->_priority : 0.0f;
 
                 if ( priority == FLT_MAX )
                 {
@@ -380,7 +391,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
-            newModelView.makeTranslate( winPos.x(), winPos.y(), 0 );
+            newModelView.makeTranslate( winPos.x() + offset.x(), winPos.y() + offset.y(), 0 );
             newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
@@ -804,10 +815,10 @@ Decluttering::getOptions()
 bool
 DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
 {
-    const DeclutteringData* lhsdata = dynamic_cast<const DeclutteringData*>(lhs->getDrawable()->getUserData());
+    const LayoutData* lhsdata = dynamic_cast<const LayoutData*>(lhs->getDrawable()->getUserData());
     float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
     
-    const DeclutteringData* rhsdata = dynamic_cast<const DeclutteringData*>(rhs->getDrawable()->getUserData());
+    const LayoutData* rhsdata = dynamic_cast<const LayoutData*>(rhs->getDrawable()->getUserData());
     float rhsPriority = rhsdata ? rhsdata->_priority : 0.0;
 
     float diff = lhsPriority - rhsPriority;

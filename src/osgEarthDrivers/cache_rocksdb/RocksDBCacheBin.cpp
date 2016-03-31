@@ -221,23 +221,23 @@ RocksDBCacheBin::timeEndGlobal()
 }
 
 ReadResult
-RocksDBCacheBin::readImage(const std::string& key)
+RocksDBCacheBin::readImage(const std::string& key, const osgDB::Options* readOptions)
 {
-    return read(key, ImageReader(_rw.get(), _rwOptions.get()));    
+    return read(key, ImageReader(_rw.get(), readOptions));  
 }
 
 ReadResult
-RocksDBCacheBin::readObject(const std::string& key)
+RocksDBCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
 {
     //OE_INFO << LC << "Read attempt: " << key << " from " << getID() << std::endl;
-    return read(key, ObjectReader(_rw.get(), _rwOptions.get()));
+    return read(key, ObjectReader(_rw.get(), readOptions));
 }
 
-ReadResult
-RocksDBCacheBin::readNode(const std::string& key)
-{
-    return read(key, NodeReader(_rw.get(), _rwOptions.get()));
-}
+//ReadResult
+//RocksDBCacheBin::readNode(const std::string& key)
+//{
+//    return read(key, NodeReader(_rw.get(), _rwOptions.get()));
+//}
 
 ReadResult
 RocksDBCacheBin::read(const std::string& key, const Reader& reader)
@@ -310,9 +310,9 @@ RocksDBCacheBin::read(const std::string& key, const Reader& reader)
 }
 
 ReadResult
-RocksDBCacheBin::readString(const std::string& key)
+RocksDBCacheBin::readString(const std::string& key, const osgDB::Options* readOptions)
 {
-    ReadResult r = readObject(key);
+    ReadResult r = readObject(key, readOptions);
     if ( r.succeeded() )
     {
         if ( r.get<StringObject>() )
@@ -327,7 +327,7 @@ RocksDBCacheBin::readString(const std::string& key)
 }
 
 bool
-RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta)
+RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* readOptions)
 {
     if ( !binValidForWriting() || !object ) 
         return false;
@@ -345,7 +345,7 @@ RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write image to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, _rwOptions.get() );
+        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, readOptions);
         objWriteOK = r.success();
     }
     else if ( dynamic_cast<const osg::Node*>(object) )
@@ -355,7 +355,7 @@ RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write node to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, _rwOptions.get() );
+        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, readOptions);
         objWriteOK = r.success();
     }
     else

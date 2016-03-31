@@ -81,7 +81,7 @@ CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>
 }
 
 void
-CachePolicy::apply( osgDB::Options* dbOptions )
+CachePolicy::apply(osgDB::Options* dbOptions) const
 {
     if ( dbOptions )
     {

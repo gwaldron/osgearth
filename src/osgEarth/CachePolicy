@@ -70,7 +70,7 @@ namespace osgEarth
         static bool fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out_policy );
 
         /** Stores this cache policy in a DB Options. */
-        void apply( osgDB::Options* options );
+        void apply( osgDB::Options* options ) const;
 
         /** Merges any set properties in another CP into this one, override existing values. */
         void mergeAndOverride(const CachePolicy& rhs);

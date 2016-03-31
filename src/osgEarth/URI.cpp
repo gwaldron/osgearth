@@ -296,7 +296,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readObject(key); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readObject(key, 0L); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -313,7 +313,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key ) { return bin->readObject(key); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key ) { return bin->readObject(key, 0L); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -337,7 +337,7 @@ namespace
             return r;
         }                
         ReadResult fromCache( CacheBin* bin, const std::string& key) { 
-            ReadResult r = bin->readImage(key);
+            ReadResult r = bin->readImage(key, 0L);
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
@@ -362,7 +362,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readString(key); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readString(key, 0L); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -531,7 +531,7 @@ namespace
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
-                                bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
+                                bin->write( uri.cacheKey(), result.getObject(), result.metadata(), 0L );
                             }
                         }
                     }

@@ -54,6 +54,7 @@ _numSegments ( 0 )
 {
     initCircleNode();
     setStyle( style );
+    setPosition( position );
 }
 
 

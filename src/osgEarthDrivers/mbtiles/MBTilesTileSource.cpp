@@ -414,7 +414,7 @@ MBTilesTileSource::storeImage(const TileKey&    key,
     if ( rc != SQLITE_OK )
     {
         OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
-        return NULL;
+        return false;
     }
 
     // bind parameters:

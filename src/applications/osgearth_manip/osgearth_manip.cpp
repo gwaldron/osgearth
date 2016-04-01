@@ -493,7 +493,7 @@ namespace
         {
             if ( !model )
             { 
-                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1)); //, 90.0f); //AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1));
             }
 
             _geo = new GeoPositionNode(mapnode);

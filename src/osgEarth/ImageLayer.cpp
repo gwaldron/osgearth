@@ -538,7 +538,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str() );
+        ReadResult result = bin->readObject(key.str(), 0L);
         if ( result.succeeded() )
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
@@ -570,7 +570,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // map profile, we can try this first.
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readImage( key.str() );
+        ReadResult r = cacheBin->readImage(key.str(), 0L);
         if ( r.succeeded() )
         {
             cachedImage = r.releaseImage();
@@ -615,7 +615,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     if ( result.valid() && _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-        bin->write(key.str(), result.getImage());
+        bin->write(key.str(), result.getImage(), 0L);
     }
 
     // If we got a result, the cache is valid and we are caching in the map profile,
@@ -629,7 +629,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
 
-        cacheBin->write( key.str(), result.getImage() );
+        cacheBin->write(key.str(), result.getImage(), 0L);
     }
 
     if ( result.valid() )

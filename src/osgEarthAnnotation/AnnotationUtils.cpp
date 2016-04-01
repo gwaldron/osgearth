@@ -179,11 +179,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         break;
     }
 
-    //if ( symbol && symbol->pixelOffset().isSet() )
-    //{
-    //    pos += osg::Vec3f(symbol->pixelOffset()->x(), symbol->pixelOffset()->y(), 0.0f);
-    //}
-
     t->setPosition( pos );
     t->setAlignment( align );
 

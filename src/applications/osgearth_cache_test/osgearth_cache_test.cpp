@@ -58,10 +58,10 @@ main(int argc, char** argv)
         std::string value( "What is the sound of one hand clapping?" );
         osg::ref_ptr<StringObject> s = new StringObject( value );
 
-        if ( !bin->write("string_key", s.get()) )
+        if ( !bin->write("string_key", s.get(), 0L) )
             return quit( "String write failed." );
 
-        ReadResult r = bin->readString("string_key");
+        ReadResult r = bin->readString("string_key", 0L);
         if ( r.failed() )
             return quit( Stringify() << "String read failed - " << r.getResultCodeString() );
 
@@ -75,10 +75,10 @@ main(int argc, char** argv)
     {
         osg::ref_ptr<osg::Image> image = ImageUtils::createOnePixelImage(osg::Vec4(1,0,0,1));
 
-        if ( !bin->write("image_key", image.get()) )
+        if ( !bin->write("image_key", image.get(), 0L) )
             return quit("Image write failed.");
 
-        ReadResult r = bin->readImage("image_key");
+        ReadResult r = bin->readImage("image_key", 0L);
         if ( r.failed() )
             return quit( Stringify() << "Image read failed - " << r.getResultCodeString() );
 

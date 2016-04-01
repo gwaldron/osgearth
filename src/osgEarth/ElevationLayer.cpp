@@ -384,7 +384,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult cacheResult = bin->readObject(key.str() );
+        ReadResult cacheResult = bin->readObject(key.str(), 0L);
         if ( cacheResult.succeeded() )
         {
             result = GeoHeightField(
@@ -425,7 +425,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
         if ( cacheBin && getCachePolicy().isCacheReadable() )
         {
-            ReadResult r = cacheBin->readObject( key.str() );
+            ReadResult r = cacheBin->readObject(key.str(), 0L);
             if ( r.succeeded() )
             {            
                 bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
@@ -472,7 +472,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                  !fromCache    &&
                  getCachePolicy().isCacheWriteable() )
             {
-                cacheBin->write( key.str(), hf );
+                cacheBin->write(key.str(), hf, 0L);
             }
 
             // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
@@ -508,7 +508,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( result.valid() && !fromMemCache && _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-        bin->write(key.str(), result.getHeightField());
+        bin->write(key.str(), result.getHeightField(), 0L);
     }
 
     // post-processing:

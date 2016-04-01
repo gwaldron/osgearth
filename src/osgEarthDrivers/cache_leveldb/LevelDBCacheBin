@@ -43,15 +43,15 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
     public: // CacheBin interface
 
-        ReadResult readObject(const std::string& key);
+        ReadResult readObject(const std::string& key, const osgDB::Options*);
 
-        ReadResult readImage(const std::string& key);
+        ReadResult readImage(const std::string& key, const osgDB::Options*);
 
-        ReadResult readNode(const std::string& key);
+        ReadResult readNode(const std::string& key, const osgDB::Options*);
 
-        ReadResult readString(const std::string& key);
+        ReadResult readString(const std::string& key, const osgDB::Options*);
 
-        bool write(const std::string& key, const osg::Object* object, const Config& meta);
+        bool write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options*);
 
         bool remove(const std::string& key);
 
@@ -90,25 +90,25 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         
         // adapter base for all the osg read functions...
         struct Reader {
-            osgDB::ReaderWriter* _rw;
-            osgDB::Options*      _op;
-            Reader(osgDB::ReaderWriter* rw, osgDB::Options* op) : _rw(rw), _op(op) { }
+            osgDB::ReaderWriter*   _rw;
+            const osgDB::Options*  _op;
+            Reader(osgDB::ReaderWriter* rw, const osgDB::Options* op) : _rw(rw), _op(op) { }
             virtual osgDB::ReaderWriter::ReadResult read(std::istream& in) const = 0;
             virtual std::string name() const = 0;
         };
 
         struct ImageReader : public Reader {
-            ImageReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            ImageReader(osgDB::ReaderWriter* rw, const osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readImage(in, _op); }
             std::string name() const { return "ImageReader"; }
         };
         struct NodeReader : public Reader {
-            NodeReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            NodeReader(osgDB::ReaderWriter* rw, const osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readNode(in, _op); }
             std::string name() const { return "NodeReader"; }
         };
         struct ObjectReader : public Reader {
-            ObjectReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            ObjectReader(osgDB::ReaderWriter* rw, const osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readObject(in, _op); }
             std::string name() const { return "ObjectReader"; }
         };

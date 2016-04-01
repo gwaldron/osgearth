@@ -327,7 +327,7 @@ RocksDBCacheBin::readString(const std::string& key, const osgDB::Options* readOp
 }
 
 bool
-RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* readOptions)
+RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* writeOptions)
 {
     if ( !binValidForWriting() || !object ) 
         return false;
@@ -345,7 +345,7 @@ RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write image to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, readOptions);
+        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, writeOptions);
         objWriteOK = r.success();
     }
     else if ( dynamic_cast<const osg::Node*>(object) )
@@ -355,7 +355,7 @@ RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write node to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, readOptions);
+        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, writeOptions);
         objWriteOK = r.success();
     }
     else
@@ -365,7 +365,7 @@ RocksDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write an object to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeObject( *object, datastream );
+        r = _rw->writeObject( *object, datastream, writeOptions );
         objWriteOK = r.success();
     }
 

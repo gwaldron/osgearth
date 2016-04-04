@@ -1055,6 +1055,22 @@ namespace
             stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
 
+            // vertex attribution
+            // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
+            osg::ref_ptr<osg::Vec4Array> surfaceAttribs = new osg::Vec4Array();
+            surfaceAttribs->reserve( trig->getInputPointArray()->size() );
+            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, surfaceAttribs );
+            stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
+            stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
+
+            // for each vertex, index 0 holds the interpolated elevation from the lower lod (for morphing)
+            osg::ref_ptr<osg::Vec4Array> surfaceAttribs2 = new osg::Vec4Array();
+            surfaceAttribs2->reserve( trig->getInputPointArray()->size() );
+            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, surfaceAttribs2 );
+            stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
+            stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
+
+
             //Initialize tex coords
             if ( d.renderLayers.size() > 0 )
             {
@@ -1077,6 +1093,7 @@ namespace
                 stitch_verts->push_back(model);
 
                 // calc normals
+                osg::Vec3d local_zero(*it);
                 osg::Vec3d local_one(*it);
                 local_one.z() += 1.0;
                 osg::Vec3d model_one;
@@ -1084,6 +1101,49 @@ namespace
                 model_one = (model_one*d.world2local) - model;
                 model_one.normalize();
                 (*stitch_norms)[++norm_i] = model_one;
+
+
+                // calculate and set vertext attributes for newly created mask geometry
+                osg::Vec3d model_up;
+                d.model->_tileLocator->unitToModel(local_one, model_up);
+                model_up = (model_up*d.world2local) - local_zero;
+                model_up.normalize();
+                (*d.normals).push_back(model_up);
+
+                // Calculate and store the "old height", i.e the height value from
+                // the parent LOD.
+                float heightValue = 0.0;
+                d.model->_elevationData.getHeight( local_zero, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
+
+                float     oldHeightValue = heightValue;
+                osg::Vec3 oldNormal;
+
+                // This only works if the tile size is an odd number in both directions.
+                if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel.valid())
+                {
+                    d.parentModel->_elevationData.getHeight( local_zero, d.model->_tileLocator.get(), oldHeightValue, INTERP_TRIANGULATE );
+                    d.parentModel->_elevationData.getNormal( local_zero, d.model->_tileLocator.get(), oldNormal, INTERP_TRIANGULATE );
+                }
+                else
+                {
+                    d.model->_elevationData.getNormal(local_zero, d.model->_tileLocator.get(), oldNormal, INTERP_TRIANGULATE );
+                }
+
+                // first attribute set has the unit extrusion vector and the
+                // raw height value.
+                (*surfaceAttribs).push_back( osg::Vec4f(
+                    model_up.x(),
+                    model_up.y(),
+                    model_up.z(),
+                    heightValue) );
+
+                // second attribute set has the old height value in "w"
+                (*surfaceAttribs2).push_back( osg::Vec4f(
+                    oldNormal.x(),
+                    oldNormal.y(),
+                    oldNormal.z(),
+                    oldHeightValue ) );
+
 
                 // set up text coords
                 if (d.renderLayers.size() > 0)

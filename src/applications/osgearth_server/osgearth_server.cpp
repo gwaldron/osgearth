@@ -145,17 +145,13 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
 
             void read()
             {
-                osg::GLBufferObject::Extensions* ext = osg::GLBufferObject::getExtensions(_gc->getState()->getContextID(),true);
+                osg::GLExtensions* ext = osg::GLExtensions::Get(_gc->getState()->getContextID(),true);
 
-                if (ext->isPBOSupported() && !_pboBuffer.empty())
+                if (ext->isPBOSupported && !_pboBuffer.empty())
                 {
                     if (_pboBuffer.size()==1)
                     {
                         singlePBO(ext);
-                    }
-                    else
-                    {
-                        multiPBO(ext);
                     }
                 }
                 else
@@ -166,10 +162,8 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
             
             void readPixels();
 
-            void singlePBO(osg::GLBufferObject::Extensions* ext);
-
-            void multiPBO(osg::GLBufferObject::Extensions* ext);
-        
+            void singlePBO(osg::GLExtensions* ext);
+       
             typedef std::vector< osg::ref_ptr<osg::Image> >             ImageBuffer;
             typedef std::vector< GLuint > PBOBuffer;
 
@@ -338,7 +332,7 @@ void WindowCaptureCallback::ContextData::readPixels()
     _currentPboIndex = nextPboIndex;
 }
 
-void WindowCaptureCallback::ContextData::singlePBO(osg::GLBufferObject::Extensions* ext)
+void WindowCaptureCallback::ContextData::singlePBO(osg::GLExtensions* ext)
 {
     // std::cout<<"singelPBO(  "<<_fileName<<" image "<<_currentImageIndex<<" "<<_currentPboIndex<<std::endl;
 
@@ -412,202 +406,6 @@ void WindowCaptureCallback::ContextData::singlePBO(osg::GLBufferObject::Extensio
     _lastImage = new osg::Image(*image);
 
     _currentImageIndex = nextImageIndex;
-}
-
-void WindowCaptureCallback::ContextData::multiPBO(osg::GLBufferObject::Extensions* ext)
-{
-    // std::cout<<"multiPBO(  "<<_fileName<<" image "<<_currentImageIndex<<" "<<_currentPboIndex<<std::endl;
-    unsigned int nextImageIndex = (_currentImageIndex+1)%_imageBuffer.size();
-    unsigned int nextPboIndex = (_currentPboIndex+1)%_pboBuffer.size();
-
-    int width=0, height=0;
-    getSize(_gc, width, height);
-    if (width!=_width || _height!=height)
-    {
-        std::cout<<"   Window resized "<<width<<", "<<height<<std::endl;
-        _width = width;
-        _height = height;
-    }
-
-    GLuint& copy_pbo = _pboBuffer[_currentPboIndex];
-    GLuint& read_pbo = _pboBuffer[nextPboIndex];
-    
-    osg::Image* image = _imageBuffer[_currentImageIndex].get();
-    if (image->s() != _width || 
-        image->t() != _height)
-    {
-        osg::notify(osg::NOTICE)<<"Allocating image "<<std::endl;
-        image->allocateImage(_width, _height, 1, _pixelFormat, _type);
-        
-        if (read_pbo!=0)
-        {
-            osg::notify(osg::NOTICE)<<"deleting pbo "<<read_pbo<<std::endl;
-            ext->glDeleteBuffers (1, &read_pbo);
-            read_pbo = 0;
-        }
-
-        if (copy_pbo!=0)
-        {
-            osg::notify(osg::NOTICE)<<"deleting pbo "<<copy_pbo<<std::endl;
-            ext->glDeleteBuffers (1, &copy_pbo);
-            copy_pbo = 0;
-        }
-    }
-    
-    
-    bool doCopy = copy_pbo!=0;
-    if (copy_pbo==0)
-    {
-        ext->glGenBuffers(1, &copy_pbo);
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, copy_pbo);
-        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, image->getTotalSizeInBytes(), 0, GL_STREAM_READ);
-
-        osg::notify(osg::NOTICE)<<"Generating pbo "<<read_pbo<<std::endl;
-    }
-
-    if (read_pbo==0)
-    {
-        ext->glGenBuffers(1, &read_pbo);
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, read_pbo);
-        ext->glBufferData(GL_PIXEL_PACK_BUFFER_ARB, image->getTotalSizeInBytes(), 0, GL_STREAM_READ);
-
-        osg::notify(osg::NOTICE)<<"Generating pbo "<<read_pbo<<std::endl;
-    }
-    else
-    {
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, read_pbo);
-    }
-
-    osg::Timer_t tick_start = osg::Timer::instance()->tick();
-
-#if 1
-    glReadPixels(0, 0, _width, _height, _pixelFormat, _type, 0);
-#endif
-
-    osg::Timer_t tick_afterReadPixels = osg::Timer::instance()->tick();
-
-    if (doCopy)
-    {
-
-        ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, copy_pbo);
-
-        GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,
-                                                  GL_READ_ONLY_ARB);
-        if(src)
-        {
-            memcpy(image->data(), src, image->getTotalSizeInBytes());
-            ext->glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-        }
-
-        if (!_fileName.empty())
-        {
-            // osgDB::writeImageFile(*image, _fileName);
-        }
-    }
-    
-    ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-
-    osg::Timer_t tick_afterMemCpy = osg::Timer::instance()->tick();
-    
-    updateTimings(tick_start, tick_afterReadPixels, tick_afterMemCpy, image->getTotalSizeInBytes());
-
-    _currentImageIndex = nextImageIndex;
-    _currentPboIndex = nextPboIndex;
-}
-
-void addCallbackToViewer(osgViewer::ViewerBase& viewer, WindowCaptureCallback* callback)
-{
-    
-    if (callback->getFramePosition()==WindowCaptureCallback::START_FRAME)
-    {
-        osgViewer::ViewerBase::Windows windows;
-        viewer.getWindows(windows);
-        for(osgViewer::ViewerBase::Windows::iterator itr = windows.begin();
-            itr != windows.end();
-            ++itr)
-        {
-            osgViewer::GraphicsWindow* window = *itr;
-            osg::GraphicsContext::Cameras& cameras = window->getCameras();
-            osg::Camera* firstCamera = 0;
-            for(osg::GraphicsContext::Cameras::iterator cam_itr = cameras.begin();
-                cam_itr != cameras.end();
-                ++cam_itr)
-            {
-                if (firstCamera)
-                {
-                    if ((*cam_itr)->getRenderOrder() < firstCamera->getRenderOrder())
-                    {
-                        firstCamera = (*cam_itr);
-                    }
-                    if ((*cam_itr)->getRenderOrder() == firstCamera->getRenderOrder() &&
-                        (*cam_itr)->getRenderOrderNum() < firstCamera->getRenderOrderNum())
-                    {
-                        firstCamera = (*cam_itr);
-                    }
-                }
-                else
-                {
-                    firstCamera = *cam_itr;
-                }
-            }
-
-            if (firstCamera)
-            {
-                osg::notify(osg::NOTICE)<<"First camera "<<firstCamera<<std::endl;
-
-                firstCamera->setInitialDrawCallback(callback);
-            }
-            else
-            {
-                osg::notify(osg::NOTICE)<<"No camera found"<<std::endl;
-            }
-        }
-    }
-    else
-    {    
-        osgViewer::ViewerBase::Windows windows;
-        viewer.getWindows(windows);
-        for(osgViewer::ViewerBase::Windows::iterator itr = windows.begin();
-            itr != windows.end();
-            ++itr)
-        {
-            osgViewer::GraphicsWindow* window = *itr;
-            osg::GraphicsContext::Cameras& cameras = window->getCameras();
-            osg::Camera* lastCamera = 0;
-            for(osg::GraphicsContext::Cameras::iterator cam_itr = cameras.begin();
-                cam_itr != cameras.end();
-                ++cam_itr)
-            {
-                if (lastCamera)
-                {
-                    if ((*cam_itr)->getRenderOrder() > lastCamera->getRenderOrder())
-                    {
-                        lastCamera = (*cam_itr);
-                    }
-                    if ((*cam_itr)->getRenderOrder() == lastCamera->getRenderOrder() &&
-                        (*cam_itr)->getRenderOrderNum() >= lastCamera->getRenderOrderNum())
-                    {
-                        lastCamera = (*cam_itr);
-                    }
-                }
-                else
-                {
-                    lastCamera = *cam_itr;
-                }
-            }
-
-            if (lastCamera)
-            {
-                osg::notify(osg::NOTICE)<<"Last camera "<<lastCamera<<std::endl;
-
-                lastCamera->setFinalDrawCallback(callback);
-            }
-            else
-            {
-                osg::notify(osg::NOTICE)<<"No camera found"<<std::endl;
-            }
-        }
-    }
 }
 
 

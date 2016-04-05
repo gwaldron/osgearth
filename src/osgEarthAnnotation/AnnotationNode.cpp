@@ -144,6 +144,16 @@ void
 AnnotationNode::applyStyle( const Style& style)
 {
     applyRenderSymbology(style);
+
+    // default priority if available.
+    const TextSymbol* ts = style.get<TextSymbol>();
+    if (ts)
+    {
+        if (ts->priority().isSet())
+        {
+            _priority = ts->priority()->eval();
+        }
+    }
 }
 
 void

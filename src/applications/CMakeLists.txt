@@ -95,6 +95,7 @@ ADD_SUBDIRECTORY(osgearth_ephemeris)
 ADD_SUBDIRECTORY(osgearth_computerangecallback)
 ADD_SUBDIRECTORY(osgearth_splat)
 ADD_SUBDIRECTORY(osgearth_skyview)
+ADD_SUBDIRECTORY(osgearth_server)
 
 IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt_simple)

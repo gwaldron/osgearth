@@ -29,7 +29,6 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgDB/ReaderWriter>
 #include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
@@ -62,16 +61,8 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
                 _width(0),
                 _height(0),
                 _currentImageIndex(0),
-                _currentPboIndex(0),
-                _reportTimingFrequency(100),
-                _numTimeValuesRecorded(0),
-                _timeForReadPixels(0.0),
-                _timeForFullCopy(0.0),
-                _timeForMemCpy(0.0)
-
+                _currentPboIndex(0)
             {
-                _previousFrameTick = osg::Timer::instance()->tick();
-
                 if (gc->getTraits())
                 {
                     if (gc->getTraits()->alpha)
@@ -123,9 +114,7 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
                         singlePBO(ext);
                 }
             }
-            
-            void readPixels();
-
+           
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
             void singlePBO(osg::GLExtensions* ext);
 #else
@@ -150,13 +139,6 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
             
             unsigned int            _currentPboIndex;
             PBOBuffer               _pboBuffer;
-
-            unsigned int            _reportTimingFrequency;
-            unsigned int            _numTimeValuesRecorded;
-            double                  _timeForReadPixels;
-            double                  _timeForFullCopy;
-            double                  _timeForMemCpy;
-            osg::Timer_t            _previousFrameTick;
 
             osg::ref_ptr< osg::Image > _lastImage;
         };
@@ -252,13 +234,9 @@ class WindowCaptureCallback : public osg::Camera::DrawCallback
         ext->glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, pbo);
     }
 
-    osg::Timer_t tick_start = osg::Timer::instance()->tick();
-
 #if 1
     glReadPixels(0, 0, _width, _height, _pixelFormat, _type, 0);
-#endif
-
-    osg::Timer_t tick_afterReadPixels = osg::Timer::instance()->tick();
+#endif    
 
     GLubyte* src = (GLubyte*)ext->glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,
                                               GL_READ_ONLY_ARB);
@@ -390,11 +368,19 @@ public:
           OE_DEBUG << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
           _viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
           _viewer->frame();
+          int numFrames = 0;
+
           while (_viewer->getDatabasePager()->getRequestsInProgress())
           {
-              OE_DEBUG << "Waiting...." << std::endl;
+              OE_DEBUG << "Waiting on key  " << key.str() << std::endl
+                        << "   file requests = " << _viewer->getDatabasePager()->getFileRequestListSize() << std::endl
+                        << "   data to compile = " << _viewer->getDatabasePager()->getDataToCompileListSize() << std::endl
+                        << "   data to merge = " << _viewer->getDatabasePager()->getDataToMergeListSize() << std::endl;
               _viewer->frame();
+              numFrames++;
           }
+
+          OE_DEBUG << "Took " << numFrames << " to load data for " << key.str() << std::endl;
 
           _viewer->getCamera()->setFinalDrawCallback(_windowCaptureCallback);
           _viewer->frame();
@@ -429,7 +415,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   case MG_EV_HTTP_REQUEST:
       {
           std::string url(hm->uri.p, hm->uri.len);
-          OE_DEBUG << "url=" << url << std::endl;
+          OE_NOTICE << "url=" << url << std::endl;
           StringTokenizer tok("/");
           StringVector tized;
           tok.tokenize(url, tized);            
@@ -440,10 +426,10 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
               unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
               std::string ext = osgDB::getFileExtension(tized[3]);
               
-              OE_DEBUG << "z=" << z << std::endl;
-              OE_DEBUG << "x=" << x << std::endl;
-              OE_DEBUG << "y=" << y << std::endl;              
-              OE_DEBUG << "ext=" << ext << std::endl;
+              OE_NOTICE << "z=" << z << std::endl;
+              OE_NOTICE << "x=" << x << std::endl;
+              OE_NOTICE << "y=" << y << std::endl;              
+              OE_NOTICE << "ext=" << ext << std::endl;
 
               osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y );
 
@@ -501,8 +487,6 @@ main(int argc, char** argv)
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
-
-
 
         // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    

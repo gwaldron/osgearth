@@ -25,7 +25,6 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgDB/ReaderWriter>
 #include <osgDB/ReadFile>
@@ -415,7 +414,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
   case MG_EV_HTTP_REQUEST:
       {
           std::string url(hm->uri.p, hm->uri.len);
-          OE_NOTICE << "url=" << url << std::endl;
+          OE_DEBUG << "url=" << url << std::endl;
           StringTokenizer tok("/");
           StringVector tized;
           tok.tokenize(url, tized);            
@@ -426,10 +425,10 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
               unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
               std::string ext = osgDB::getFileExtension(tized[3]);
               
-              OE_NOTICE << "z=" << z << std::endl;
-              OE_NOTICE << "x=" << x << std::endl;
-              OE_NOTICE << "y=" << y << std::endl;              
-              OE_NOTICE << "ext=" << ext << std::endl;
+              OE_DEBUG << "z=" << z << std::endl;
+              OE_DEBUG << "x=" << x << std::endl;
+              OE_DEBUG << "y=" << y << std::endl;              
+              OE_DEBUG << "ext=" << ext << std::endl;
 
               osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y );
 
@@ -484,6 +483,11 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+    int port = 8000;
+    if (arguments.read("--port", port));
+    OE_NOTICE << "Listening on port " << port << std::endl;
+
+
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
@@ -499,7 +503,6 @@ main(int argc, char** argv)
     }
 
     _server = new TileImageServer( mapNode.get() );
-
    
     struct mg_connection *nc;
     struct mg_mgr mgr;
@@ -507,8 +510,10 @@ main(int argc, char** argv)
     mg_mgr_init(&mgr, NULL);
 
     // Note that many connections can be added to a single event manager
-    // Connections can be created at any point, e.g. in event handler function
-    nc = mg_bind(&mgr, "8000", ev_handler);
+    // Connections can be created at any point, e.g. in event handler function    
+    std::string portStr = toString<unsigned int>(port);
+
+    nc = mg_bind(&mgr, portStr.c_str(), ev_handler);
     mg_set_protocol_http_websocket(nc);
 
     for (;;) {

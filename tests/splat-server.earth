@@ -1,0 +1,86 @@
+<!--
+|  Test for osgearth_server, generating tiles using the GPU in osgEarth and serving them out as TMS tiles!
+|  Run with osgearth_server.
+-->
+
+
+<!-- The map needs to be projected instead of geocentric -->
+<map type="projected">
+
+    <!-- We need to use a platte-carre projection and PIXEL_SIZE_ON_SCREEN so that the orthographic camera in osgearth_server can line up directly with
+         the requested tile extents.
+     -->
+
+    <options>
+        <terrain first_lod="0" tile_pixel_size="256" range_mode="PIXEL_SIZE_ON_SCREEN"/>
+        <profile>plate-carre</profile>
+   </options>
+
+<!-- Culling doesn't work correctly yet with elevation yet
+
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+-->
+     
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        <cache_policy usage="none"/>
+        <images>
+            <image name="ESA" driver="gdal" coverage="true">
+                <url>d:/geodata/splatting/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <warp>0.01</warp>
+            </image>
+        </images>
+    </image>
+
+    <extensions>   
+
+        <bumpmap>
+            <image>../data/rock_hard.jpg</image>
+            <octaves>8</octaves>
+            <intensity>2.2</intensity>
+        </bumpmap>
+   
+        <splat>        
+            <coverage>
+                <layer> CLASSMAP </layer>
+                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            </coverage>
+            
+            <zones>
+                <zone name="default" doc="Default Climate Zone">            
+                    <surface>
+                        <catalog>../data/splat/splat_catalog.xml</catalog>
+                    </surface>
+            
+                    <land_cover>
+                        <layers>
+                            <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5" cast_shadows="true">
+                                <biomes>
+                                    <biome classes="forest forest1 forest2 forest3 forest4">
+                                        <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                                        <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                                        <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                                    </biome>
+                                </biomes>
+                            </layer>
+                        
+                            <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
+                                <biomes>
+                                    <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
+                                        <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                                    </biome>
+                                </biomes>
+                            </layer>
+                        </layers>                    
+                    </land_cover>
+                </zone>                
+            </zones>
+            
+        </splat>        
+        
+    </extensions>
+
+</map>

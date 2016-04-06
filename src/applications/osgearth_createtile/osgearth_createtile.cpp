@@ -36,9 +36,11 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
+#include <osgEarth/GeoTransform>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/ExampleResources>
 #include <osg/TriangleFunctor>
 #include <osgDB/WriteFile>
 #include <iomanip>
@@ -48,6 +50,7 @@ using namespace osgEarth::Util;
 
 static MapNode*       s_mapNode     = 0L;
 static osg::Group*    s_root        = 0L;
+static osg::ref_ptr< osg::Node >  nathan = osgDB::readNodeFile("nathan.osg");
 
 struct CollectTriangles
 {
@@ -96,7 +99,8 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
             for (unsigned int j = 0; j < triangleCollector.verts->size(); j++)
             {
                 osg::Matrix& matrix = _matrixStack.back();
-                _vertices->push_back((*triangleCollector.verts)[j] * matrix);
+                osg::Vec3d v = (*triangleCollector.verts)[j];
+                _vertices->push_back(v * matrix);
             }
         }
     }
@@ -132,10 +136,12 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 
         osg::Geode* geode = new osg::Geode;
         geode->addDrawable(geom);
+        geode->setCullingActive( false );
         geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
         mt->addChild(geode);
-        mt->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+        //mt->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
         return mt;
     }
 
@@ -174,7 +180,8 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( s_mapNode->getMapSRS(), world );
 
-            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 13);
+            //TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 15);
+            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 14);
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
             osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
             if (node.valid())
@@ -184,10 +191,29 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
                 node->accept(v);
 
                 osg::ref_ptr<osg::Node> output = v.buildNode();
-                osgDB::writeNodeFile( *output.get(), "createtile.osgt" );
-                OE_NOTICE << "Wrote tile to createtile.osgt\n";
-                //osgDB::writeNodeFile(v.buildNode(
-                //s_root->addChild(v.buildNode());
+
+                if (_node.valid())
+                {
+                    s_root->removeChild( _node.get() );
+                }
+
+                osg::Group* group = new osg::Group;
+                osg::Node* node = v.buildNode();
+
+                // Show the actual mesh.
+                group->addChild( node );
+
+                _node = group;
+
+                double z = 0.0;
+                s_mapNode->getTerrain()->getHeight( node, s_mapNode->getMapSRS(), mapPoint.x(), mapPoint.y(), &z);
+
+                GeoTransform* xform = new GeoTransform();
+                xform->setPosition( osgEarth::GeoPoint(s_mapNode->getMapSRS(),mapPoint.x(),  mapPoint.y(), z, ALTMODE_ABSOLUTE) );
+                xform->addChild( nathan.get() );
+                group->addChild( xform );
+
+                s_root->addChild( _node.get() );
             }
             else
             {
@@ -206,6 +232,8 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
         return false;
     }
+
+    osg::ref_ptr< osg::Node > _node;
 };
 
 
@@ -215,7 +243,7 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-    s_mapNode = MapNode::load(arguments);
+    s_mapNode = MapNode::findMapNode(osgDB::readNodeFile("ElevationTestMP.earth"));
     if ( !s_mapNode )
     {
         OE_WARN << "Unable to load earth file." << std::endl;
@@ -223,21 +251,26 @@ int main(int argc, char** argv)
     }
 
     s_root = new osg::Group();
-    viewer.setSceneData( s_root );
-
+    
     // install the programmable manipulator.
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     // The MapNode will render the Map object in the scene graph.
-    s_root->addChild( s_mapNode );
+    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    s_root->addChild( node );
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    viewer.getCamera()->setNearFarRatio(0.0001);
+
 
     // An event handler that will respond to mouse clicks:
     viewer.addEventHandler( new CreateTileHandler() );
 
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+    viewer.setSceneData( s_root );
 
     return viewer.run();
 }

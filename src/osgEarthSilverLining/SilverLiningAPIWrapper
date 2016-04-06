@@ -1,0 +1,107 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SILVERLINING_API_WRAPPER
+#define OSGEARTH_SILVERLINING_API_WRAPPER 1
+
+#include "Common"
+
+
+namespace osgEarth { namespace SilverLining
+{
+    enum CloudTypes
+    {
+        CIRROCUMULUS,               /*!<  High planar cloud puffs */
+        CIRRUS_FIBRATUS,            /*!<  High, thicker and fibrous clouds that signal changing weather */
+        STRATUS,                    /*!<  Low clouds represented as a slab */
+        CUMULUS_MEDIOCRIS,          /*!<  Low, puffy clouds on fair days */
+        CUMULUS_CONGESTUS,          /*!<  Large cumulus clouds, built for performance. */
+        CUMULUS_CONGESTUS_HI_RES,   /*!<  Large cumulus clouds represented with high-resolution puff textures. */
+        CUMULONIMBUS_CAPPILATUS,    /*!<  Big storm clouds. */
+        STRATOCUMULUS,              /*!<  Low, dense, puffy clouds with some sun breaks between them. */
+        TOWERING_CUMULUS,           /*!<  Very large, tall cumulus clouds in the process of becoming a thunderstorm.*/
+        SANDSTORM,                  /*!<  A "haboob" cloud of dust intended to be positioned at ground level. */
+        NUM_CLOUD_TYPES             /*!<  Total number of cloud types. */
+    };
+
+    class OSGEARTHSILVERLINING_EXPORT AtmosphericConditions
+    {
+    public:
+        void AddCloudLayer(class CloudLayer&);
+
+    public:
+        AtmosphericConditions(uintptr_t handle) : _handle(handle) { }
+        uintptr_t _handle;
+    };
+
+    class OSGEARTHSILVERLINING_EXPORT Atmosphere
+    {
+    public:
+        void EnableLensFlare(bool value);
+        bool GetLensFlareEnabled() const;
+
+        AtmosphericConditions GetConditions() const;
+
+    public:
+        Atmosphere(uintptr_t handle) : _handle(handle) { }
+        uintptr_t _handle;
+    };
+
+    class OSGEARTHSILVERLINING_EXPORT CloudLayer
+    {
+    public:
+        CloudLayer(uintptr_t handle) : _handle(handle) { }
+        
+        void SetEnabled(bool value);
+        bool GetEnabled() const;
+        void SetBaseWidth(double value);
+        double GetBaseWidth() const;
+        void SetBaseLength(double value);
+        double GetBaseLength() const;
+        void SetBaseAltitude(double value);
+        double GetBaseAltitude() const;
+        void SetThickness(double value);
+        double GetThickness() const;
+        void SetDensity(double value);
+        double GetDensity() const;
+        void SetLayerPosition(double east, double north);
+        void GetLayerPosition(double& east, double& north) const;
+        void SetIsInfinite(bool value);
+        bool GetIsInfinite() const;
+        void SetCloudWrapping(bool value);
+        bool GetCloudWrapping() const;
+        void SetFadeTowardEdges(bool value);
+        bool GetFadeTowardEdges() const;
+        void SetAlpha(double value);
+        double GetAlpha() const;
+        void SetCloudAnimationEffects(double, bool, int c=0, int d=0);
+        void GetCloudAnimationEffects(double&, bool&, int&, int&);
+        void SeedClouds(Atmosphere&);
+
+        uintptr_t _handle;
+    };
+
+    class OSGEARTHSILVERLINING_EXPORT CloudLayerFactory
+    {
+    public:
+        static CloudLayer Create(int kind);
+    };
+
+} } // namespace osgEarth::SilverLining
+
+#endif // OSGEARTH_SILVERLINING_API_WRAPPER

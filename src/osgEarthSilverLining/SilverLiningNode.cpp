@@ -51,9 +51,10 @@ _lastAltitude(DBL_MAX)
     _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
 
     // The main silver lining data:
-    _SL = new SilverLiningContext( options, callback );
+    _SL = new SilverLiningContext( options );
     _SL->setLight( _light.get() );
     _SL->setSRS  ( map->getSRS() );
+    _SL->setInitializationCallback( callback );
 
     // Geode to hold each of the SL drawables:
     _geode = new osg::Geode();
@@ -91,6 +92,12 @@ SilverLiningNode::~SilverLiningNode()
 {
     if ( _lighting.valid() )
         _lighting->detach();
+}
+
+Atmosphere&
+SilverLiningNode::getAtmosphere() const
+{
+    return _SL->getAtmosphereWrapper();
 }
 
 void

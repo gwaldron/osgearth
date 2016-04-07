@@ -596,7 +596,11 @@ namespace
             { GL_RGBA32F_ARB,           GL_RGBA,      "GL_RGBA32F_ARB" }
         };           
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
         osg::GLExtensions* ext = osg::GLExtensions::Get(state.getContextID(), true);
+#else
+        osg::FBOExtensions* ext = osg::FBOExtensions::instance(state.getContextID(), true);
+#endif        
 
         osg::State::CheckForGLErrors check = state.getCheckForGLErrors();
         state.setCheckForGLErrors(state.NEVER_CHECK_GL_ERRORS);

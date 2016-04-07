@@ -161,153 +161,6 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 
 
 
-#if 1
-/**
- * Selects a sample size for the level of detail.
- */
-unsigned int computeSampleSize(int levelOfDetail)
-{
-     unsigned int maxLevel = 19;
-    unsigned int meshSize = 17;
-
-    unsigned int sampleSize = meshSize;
-    unsigned int level = maxLevel;
-
-    while( level >= 0 && levelOfDetail != level)
-    {
-        sampleSize = sampleSize * 2 - 1;
-        level--;
-    }
-
-    return sampleSize;    
-}
-
-osg::Vec3d getWorld( const GeoHeightField& geoHF, unsigned int c, unsigned int r)
-{
-    double x = geoHF.getExtent().xMin() + (double)c * geoHF.getXInterval();
-    double y = geoHF.getExtent().yMin() + (double)r * geoHF.getYInterval();
-    double h = geoHF.getHeightField()->getHeight(c,r);
-
-    osg::Vec3d world;
-    GeoPoint point(geoHF.getExtent().getSRS(), x, y, h );
-    point.toWorld( world );    
-    return world;
-}
-
-osg::Node* renderHeightField(const GeoHeightField& geoHF)
-{
-    osg::MatrixTransform* mt = new osg::MatrixTransform;
-
-    GeoPoint centroid;
-    geoHF.getExtent().getCentroid(centroid);
-
-    osg::Matrix world2local, local2world;
-    centroid.createWorldToLocal( world2local );
-    local2world.invert( world2local );
-
-    mt->setMatrix( local2world );
-
-    osg::Geometry* geometry = new osg::Geometry;
-    osg::Geode* geode = new osg::Geode;
-    geode->addDrawable( geometry );
-    mt->addChild( geode );
-
-    osg::Vec3Array* verts = new osg::Vec3Array;
-    geometry->setVertexArray( verts );
-
-    for (unsigned int c = 0; c < geoHF.getHeightField()->getNumColumns() - 1; c++)
-    {
-        for (unsigned int r = 0; r < geoHF.getHeightField()->getNumRows() - 1; r++)
-        {
-            // Add two triangles 
-            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
-            verts->push_back( getWorld( geoHF, c + 1, r    ) * world2local );
-            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
-
-            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
-            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
-            verts->push_back( getWorld( geoHF, c,     r + 1) * world2local );
-        }
-    }
-    geode->setCullingActive(false);
-    mt->setCullingActive(false);
-
-    geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));      
-
-    osg::Vec4ubArray* colors = new osg::Vec4ubArray();
-    colors->push_back(osg::Vec4ub(255,0,0,255));
-    geometry->setColorArray(colors, osg::Array::BIND_OVERALL);
-    mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");        
-
-    return mt;
-}
-
-osg::Node*
-createTile( const TileKey& key )
-{    
-    // Compute the sample size to use for the key's level of detail that will line up exactly with the tile size of the highest level of subdivision of the rex engine.
-    unsigned int sampleSize = computeSampleSize( key.getLevelOfDetail() );
-    OE_NOTICE << "Compute sample size of " << sampleSize << " for lod " << key.getLevelOfDetail() << std::endl;
-
-    TileKey sampleKey = key;
-
-    MapFrame _update_mapf( s_mapNode->getMap(), Map::ENTIRE_MODEL );
-
-    // ALWAYS use 257x257 b/c that is what rex always uses.
-    osg::ref_ptr< osg::HeightField > out_hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(), 257, 257, true );
-
-    sampleKey = key;
-
-    bool populated = false;
-    while (!populated)
-    {
-        // Populate heightfield should always use 
-        populated = _update_mapf.populateHeightField(
-            out_hf,
-            sampleKey,
-            true, // convertToHAE
-            0 );
-
-        if (!populated)
-        {
-            // Fallback on the parent
-            sampleKey = sampleKey.createParentKey();
-            if (!sampleKey.valid())
-            {
-                return 0;
-            }
-        }
-    }
-
-    if (!populated)
-    {
-        // We have no heightfield so just create a reference heightfield.
-        out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257);
-        sampleKey = key;
-    }
-
-    GeoHeightField geoHF( out_hf.get(), sampleKey.getExtent() );    
-    // Create a subsample if we had to fall back.
-    if (sampleKey != key)
-    {   
-        geoHF = geoHF.createSubSample( key.getExtent(), sampleSize, sampleSize, osgEarth::INTERP_BILINEAR);         
-    }
-
-    // We should now have a heightfield that matches up exactly with the requested key at the appropriate resolution.
-    // Turn it into triangles.
-    return renderHeightField( geoHF );    
-}
-
-#endif
-
-
-
-
-
-
-
 
 // An event handler that will create a tile that can be used for intersections
 struct CreateTileHandler : public osgGA::GUIEventHandler
@@ -331,18 +184,18 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( s_mapNode->getMapSRS(), world );
 
+            // Depending on the level of detail key you request, you will get a mesh that should line up exactly with the highest resolution mesh that the terrain engine will draw.
+            // At level 15 that is a 257x257 heightfield.  If you select a higher lod, the mesh will be less dense.
             TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 15);            
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
-            //osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
-            osg::ref_ptr<osg::Node> node = createTile( key );
+            osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
             if (node.valid())
             {   
-                /*
+                // Extract the triangles from the node that was created and do our own rendering.  Simulates what you would do when passing in the triangles to a physics engine.
                 OE_NOTICE << "Created tile for " << key.str() << std::endl;
                 CollectTrianglesVisitor v;
                 node->accept(v);
                 node = v.buildNode();
-                */
 
                 if (_node.valid())
                 {
@@ -356,6 +209,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
                 _node = group;
 
+                // Clamp the marker to the intersection of the triangles created by osgEarth.  This should line up with the mesh that is actually rendered.
                 double z = 0.0;
                 s_mapNode->getTerrain()->getHeight( node, s_mapNode->getMapSRS(), mapPoint.x(), mapPoint.y(), &z);
 

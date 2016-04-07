@@ -184,16 +184,6 @@ namespace osgEarth
 
         /** Copy ctor */
         ElevationLayerVector(const ElevationLayerVector& rhs);
-
-        /**
-         * Sets a tile size that createHeightField will always return.
-         * By default, it will return a heightfield whose tile size matches
-         * that of the largest tile size found in the source data layers.
-         */
-        void setExpressTileSize( unsigned tileSize );
-
-    private:
-        optional<unsigned> _expressTileSize;        
     };
 
 } // namespace osgEarth

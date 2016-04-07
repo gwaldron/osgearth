@@ -30,6 +30,7 @@ using namespace osgEarth::SilverLining;
 //................................
 #undef  HANDLE
 #define HANDLE ((::SilverLining::Atmosphere*)_handle)
+
 void Atmosphere::EnableLensFlare(bool value) { HANDLE->EnableLensFlare(value); }
 bool Atmosphere::GetLensFlareEnabled() const  { return HANDLE->GetLensFlareEnabled(); }
 AtmosphericConditions Atmosphere::GetConditions() const { return AtmosphericConditions((uintptr_t)HANDLE->GetConditions()); }
@@ -37,11 +38,13 @@ AtmosphericConditions Atmosphere::GetConditions() const { return AtmosphericCond
 //................................
 #undef  HANDLE
 #define HANDLE ((::SilverLining::AtmosphericConditions*)_handle)
+
 void AtmosphericConditions::AddCloudLayer(CloudLayer& layer) { HANDLE->AddCloudLayer((::SilverLining::CloudLayer*)layer._handle); }
 
 //................................
 #undef  HANDLE
 #define HANDLE ((::SilverLining::CloudLayer*)_handle)
+
 SETGET(CloudLayer, Enabled, bool)
 SETGET(CloudLayer, BaseWidth, double)
 SETGET(CloudLayer, BaseLength, double)
@@ -57,8 +60,8 @@ void CloudLayer::SetLayerPosition(double e, double n) { HANDLE->SetLayerPosition
 void CloudLayer::GetLayerPosition(double& e, double& n) const { HANDLE->GetLayerPosition(e, n); }
 
 void CloudLayer::SetCloudAnimationEffects(double a, bool b, int c, int d) { HANDLE->SetCloudAnimationEffects(a, b, c, d); }
-void CloudLayer::GetCloudAnimationEffects(double& a, bool& b, int& c, int& d) { HANDLE->SetCloudAnimationEffects(a, b, c, d);
-}
+void CloudLayer::GetCloudAnimationEffects(double& a, bool& b, int& c, int& d) { HANDLE->SetCloudAnimationEffects(a, b, c, d); }
+
 void CloudLayer::SeedClouds(Atmosphere& a) { HANDLE->SeedClouds(*(::SilverLining::Atmosphere*)a._handle); }
 
 //................................

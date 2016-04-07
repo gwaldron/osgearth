@@ -20,6 +20,7 @@
 #define OSGEARTH_SILVERLINING_API_WRAPPER 1
 
 #include "Common"
+#include <stdint.h> // for uintptr_t
 
 
 namespace osgEarth { namespace SilverLining

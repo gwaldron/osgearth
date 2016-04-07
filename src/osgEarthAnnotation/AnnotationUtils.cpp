@@ -184,7 +184,9 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setAutoRotateToScreen(false);
 
+#if OSG_MIN_VERSION_REQUIRED(3,4,0)
     t->setCullingActive(false);
+#endif
 
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;

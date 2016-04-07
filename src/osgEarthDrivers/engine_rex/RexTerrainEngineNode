@@ -136,6 +136,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setupRenderBindings();
 
+
+
+        /**
+         * Utility function to compute the heightfield sample size required to match the vertices at the highest level of detail in rex
+         * if a tile key was requested at the given level of detail.
+         */
+        unsigned int computeSampleSize(unsigned int levelOfDetail);
+
+
     private:
         RexTerrainEngineOptions _terrainOptions;
 

@@ -554,18 +554,12 @@ ElevationLayerVector::ElevationLayerVector()
 
 
 ElevationLayerVector::ElevationLayerVector(const ElevationLayerVector& rhs) :
-osg::MixinVector< osg::ref_ptr<ElevationLayer> >( rhs ),
-_expressTileSize( rhs._expressTileSize )
+osg::MixinVector< osg::ref_ptr<ElevationLayer> >( rhs )
 {
     //nop
 }
 
 
-void
-ElevationLayerVector::setExpressTileSize(unsigned tileSize)
-{
-    _expressTileSize = tileSize;
-}
 
 namespace
 {

@@ -30,7 +30,6 @@ DriverConfigOptions( options ),
 _tileSize( 17 ),
 _verticalScale( 1.0f ),
 _verticalOffset( 0.0f ),
-_heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 7.0 ),
 _combineLayers( true ),
 _maxLOD( 23 ),
@@ -59,11 +58,6 @@ TerrainOptions::getConfig() const
     Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain";
     
-    if ( _heightFieldSampleRatio.isSetTo( 0.0f ) )
-        conf.update( "sample_ratio", "auto" );
-    else
-        conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
-
     conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "vertical_scale", _verticalScale );
     conf.updateIfSet( "vertical_offset", _verticalOffset );
@@ -103,11 +97,6 @@ TerrainOptions::getConfig() const
 void
 TerrainOptions::fromConfig( const Config& conf )
 {
-    if ( conf.value("sample_ratio") == "auto" )
-        _heightFieldSampleRatio = 0.0f;
-    else
-        conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
-
     conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "vertical_scale", _verticalScale );
     conf.getIfSet( "vertical_offset", _verticalOffset );

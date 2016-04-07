@@ -291,7 +291,7 @@ osg::HeightField* CompositeTileSource::createHeightField(
     }  
 
     // Populate the heightfield and return it if it's valid
-    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_AVERAGE, progress))
+    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_BILINEAR, progress))
     {                
         return heightField.release();
     }

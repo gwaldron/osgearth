@@ -18,6 +18,7 @@
  */
 #include <SilverLining.h> // SilverLinking SDK
 #include "SilverLiningContext"
+#include "SilverLiningNode"
 #include <osg/Light>
 #include <osgEarth/SpatialReference>
 
@@ -26,28 +27,37 @@
 using namespace osgEarth::SilverLining;
 
 
-SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options, InitializationCallback* callback) :
+SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
 _options              ( options ),
-_initCallback         (callback),
 _initAttempted        ( false ),
 _initFailed           ( false ),
 _maxAmbientLightingAlt( -1.0 ),
 _atmosphere           ( 0L ),
-_clouds               ( 0L ),
 _minAmbient           ( 0,0,0,0 )
 {
     // Create a SL atmosphere (the main SL object).
     _atmosphere = new ::SilverLining::Atmosphere(
         options.user()->c_str(),
         options.licenseCode()->c_str() );
+
+    _atmosphereWrapper = new Atmosphere((uintptr_t)_atmosphere);// = new osgEarth::SilverLining::Atmosphere( (uintptr_t)_atmosphere );
 }
 
 SilverLiningContext::~SilverLiningContext()
 {
+    if ( _atmosphereWrapper )
+        delete _atmosphereWrapper;
+
     if ( _atmosphere )
         delete _atmosphere;
 
     OE_INFO << LC << "Destroyed\n";
+}
+
+void
+SilverLiningContext::setInitializationCallback(InitializationCallback* cb)
+{
+    _initCallback = cb;
 }
 
 void
@@ -115,7 +125,7 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
 
                 if (_initCallback.valid())
                 {
-                    (*_initCallback)(_atmosphere);
+                    (*_initCallback)(*_atmosphereWrapper);
                 }
             }
         }
@@ -125,22 +135,22 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
 void
 SilverLiningContext::setupClouds()
 {
-    _clouds = ::SilverLining::CloudLayerFactory::Create( CUMULUS_CONGESTUS );
-    _clouds->SetIsInfinite( true );
-    _clouds->SetFadeTowardEdges(true);
-    _clouds->SetBaseAltitude( 2000 );
-    _clouds->SetThickness( 200 );
-    _clouds->SetBaseLength( 100000 );
-    _clouds->SetBaseWidth( 100000 );
-    _clouds->SetDensity( 0.6 );
-    _clouds->SetAlpha( 0.8 );
+    ::SilverLining::CloudLayer* clouds = ::SilverLining::CloudLayerFactory::Create( ::CUMULUS_CONGESTUS );
+    clouds->SetIsInfinite( true );
+    clouds->SetFadeTowardEdges(true);
+    clouds->SetBaseAltitude( 2000 );
+    clouds->SetThickness( 200 );
+    clouds->SetBaseLength( 100000 );
+    clouds->SetBaseWidth( 100000 );
+    clouds->SetDensity( 0.6 );
+    clouds->SetAlpha( 0.8 );
 
-    _clouds->SeedClouds( *_atmosphere );
-    _clouds->GenerateShadowMaps( false );
+    clouds->SeedClouds( *_atmosphere );
+    clouds->GenerateShadowMaps( false );
     
-    _clouds->SetLayerPosition(0, 0);
+    clouds->SetLayerPosition(0, 0);
 
-    _atmosphere->GetConditions()->AddCloudLayer( _clouds );
+    _atmosphere->GetConditions()->AddCloudLayer( clouds );
 }
 
 void
@@ -228,19 +238,5 @@ SilverLiningContext::updateLocation()
         loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
 
         _atmosphere->GetConditions()->SetLocation( loc );
-
-#if 0
-        if ( _clouds )
-        {
-#if 1 //TODO: figure out why we need to call this a couple times before
-      //      it takes effect. -gw
-            static int c = 2;
-            if ( c > 0 ) {
-                --c;
-                _clouds->SetLayerPosition(0, 0);
-            }
-        }
-#endif
-#endif
     }
 }

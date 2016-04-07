@@ -85,10 +85,7 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        while(!viewer.done())
-        {
-            viewer.frame();
-        }
+        viewer.run();
     }
     else
     {

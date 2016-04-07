@@ -19,6 +19,7 @@
 
 #include "Common"
 #include "SilverLiningOptions"
+#include "SilverLiningAPIWrapper"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
 #include <osgEarth/PhongLightingEffect>
@@ -28,7 +29,15 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-    struct InitializationCallback;
+    
+    /**
+     * A callback that lets you execute code at initialization
+     */
+    class InitializationCallback : public osg::Referenced
+    {
+    public:
+        virtual void operator()(Atmosphere& atmosphere) = 0;
+    };
 
     /**
      * Node that roots the silverlining adapter.
@@ -43,7 +52,9 @@ namespace osgEarth { namespace SilverLining
 
     public: // SkyNode
 
-        SilverLiningContext* getContext() { return _SL.get(); }
+        Atmosphere& getAtmosphere() const;
+
+        //SilverLiningContext* getContext() { return _SL.get(); }
 
         osg::Light* getSunLight() { return _light.get(); }
 

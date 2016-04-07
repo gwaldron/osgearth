@@ -16,10 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#include <SilverLining.h>
-#include <Triton.h>
-
 #include <osg/GraphicsThread>
 
 #include <osgViewer/Viewer>
@@ -27,7 +23,6 @@
 #include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthSilverLining/SilverLiningContext>
 #include <osgEarthSilverLining/SilverLiningNode>
 #include <osgEarthSilverLining/SilverLiningOptions>
 #include <osgEarthTriton/TritonContext>
@@ -36,52 +31,39 @@
 
 #define LC "[osgearth_sundog] "
 
+using namespace osgEarth::SilverLining;
 
-struct SetupCloudsCallback : public osgEarth::SilverLining::InitializationCallback
+struct SetupSL : public osgEarth::SilverLining::InitializationCallback
 {
-    void operator()(::SilverLining::Atmosphere* atmosphere)
+    void operator()(Atmosphere& atmosphere)
     {
-        if (atmosphere)
-        {
-            // create a cirrus layer
-            SilverLining::CloudLayer* cirrusCloudLayer;
-            cirrusCloudLayer = SilverLining::CloudLayerFactory::Create(CIRRUS_FIBRATUS);
-            cirrusCloudLayer->SetIsInfinite( true );
-            cirrusCloudLayer->SetFadeTowardEdges(true);
-            cirrusCloudLayer->SetBaseAltitude(8000);
-            cirrusCloudLayer->SetThickness(500);
-            cirrusCloudLayer->SetDensity(0.4);
-            cirrusCloudLayer->SetBaseLength(100000);
-            cirrusCloudLayer->SetBaseWidth(100000);
-            cirrusCloudLayer->SetLayerPosition(0, 0);
-            cirrusCloudLayer->SeedClouds(*atmosphere);
-            atmosphere->GetConditions()->AddCloudLayer(cirrusCloudLayer);
+        CloudLayer cirrus = CloudLayerFactory::Create(CIRRUS_FIBRATUS);
+        cirrus.SetIsInfinite(true);
+        cirrus.SetFadeTowardEdges(true);
+        cirrus.SetBaseAltitude(8000);
+        cirrus.SetThickness(500);
+        cirrus.SetDensity(0.4);
+        cirrus.SetBaseLength(100000);
+        cirrus.SetBaseWidth(100000);
+        cirrus.SetLayerPosition(0, 0);
+        cirrus.SeedClouds(atmosphere);
+        atmosphere.GetConditions().AddCloudLayer(cirrus);
 
-            // create a cumulus layer
-            SilverLining::CloudLayer *cumulusCongestusLayer;
-            cumulusCongestusLayer = SilverLining::CloudLayerFactory::Create(CUMULUS_CONGESTUS);
-            cumulusCongestusLayer->SetIsInfinite(true);
-            cumulusCongestusLayer->SetBaseAltitude(1500);
-            cumulusCongestusLayer->SetThickness(100);
-            cumulusCongestusLayer->SetBaseLength(30000);
-            cumulusCongestusLayer->SetBaseWidth(30000);
-            cumulusCongestusLayer->SetDensity(0.4);
-            cumulusCongestusLayer->SetLayerPosition(0, 0);
-            cumulusCongestusLayer->SetFadeTowardEdges(true);
-            cumulusCongestusLayer->SetAlpha(0.8);
-            // Enable convection effects, but not growth:
-            cumulusCongestusLayer->SetCloudAnimationEffects(0.1, false, 0);
-            cumulusCongestusLayer->SeedClouds(*atmosphere);
-            atmosphere->GetConditions()->AddCloudLayer(cumulusCongestusLayer);
-
-            // set the wind conditions
-            //SilverLining::WindVolume wv;
-            //wv.SetDirection(90);
-            //wv.SetMinAltitude(0);
-            //wv.SetMaxAltitude(10000);
-            //wv.SetWindSpeed(50);
-            //atmosphere->GetConditions()->SetWind(wv);
-        }
+        CloudLayer cumulus = CloudLayerFactory::Create(CUMULUS_CONGESTUS);
+        cumulus.SetIsInfinite(true);
+        cumulus.SetBaseAltitude(1500);
+        cumulus.SetThickness(100);
+        cumulus.SetBaseLength(30000);
+        cumulus.SetBaseWidth(30000);
+        cumulus.SetDensity(2.0);
+        cumulus.SetLayerPosition(0,0);
+        cumulus.SetFadeTowardEdges(true);
+        cumulus.SetAlpha(0.8);
+        cumulus.SetCloudAnimationEffects(0.1, false, 0, 0);
+        cumulus.SeedClouds(atmosphere);
+        atmosphere.GetConditions().AddCloudLayer(cumulus);
+        
+        atmosphere.EnableLensFlare(true);
     }
 };
 
@@ -150,7 +132,9 @@ main(int argc, char** argv)
         }
 
         // TODO: uncommenting the callback on the following line results in a crash when SeedClouds is called.
-        osg::ref_ptr<osgEarth::SilverLining::SilverLiningNode> sky = new osgEarth::SilverLining::SilverLiningNode( mapNode->getMap(), slOptions/*, new SetupCloudsCallback()*/ );
+        osg::ref_ptr<osgEarth::SilverLining::SilverLiningNode> sky = new osgEarth::SilverLining::SilverLiningNode(
+            mapNode->getMap(), slOptions, new SetupSL() );
+
         node->addChild(sky);
 
 
@@ -179,6 +163,7 @@ main(int argc, char** argv)
                 << std::endl;
         }
 
+#if 0
         osg::ref_ptr<osgEarth::Triton::TritonNode> ocean = new osgEarth::Triton::TritonNode( mapNode, tritonOptions );
         sky->addChild( ocean );
 
@@ -197,6 +182,9 @@ main(int argc, char** argv)
             }
         }
         return 0;
+#else
+        return viewer.run();
+#endif
     }
     else
     {

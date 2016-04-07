@@ -125,7 +125,6 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
                 anchor = (*_vertices)[i];
                 first = false;
             }
-
             verts->push_back((*_vertices)[i] - anchor);
         }
 
@@ -142,6 +141,12 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         //mt->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
+
+        osg::BoundingSphere bs = mt->getBound();
+        bs.radius() = bs.radius() * 100;
+        mt->setInitialBound(bs);
+        mt->dirtyBound();
+
         return mt;
     }
 
@@ -153,6 +158,148 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
     osg::ref_ptr<osg::Vec3dArray>  _vertices;
     MatrixStack _matrixStack;
 };
+
+
+
+#if 1
+/**
+ * Selects a sample size for the level of detail.
+ */
+unsigned int computeSampleSize(int levelOfDetail)
+{
+     unsigned int maxLevel = 19;
+    unsigned int meshSize = 17;
+
+    unsigned int sampleSize = meshSize;
+    unsigned int level = maxLevel;
+
+    while( level >= 0 && levelOfDetail != level)
+    {
+        sampleSize = sampleSize * 2 - 1;
+        level--;
+    }
+
+    return sampleSize;    
+}
+
+osg::Vec3d getWorld( const GeoHeightField& geoHF, unsigned int c, unsigned int r)
+{
+    double x = geoHF.getExtent().xMin() + (double)c * geoHF.getXInterval();
+    double y = geoHF.getExtent().yMin() + (double)r * geoHF.getYInterval();
+    double h = geoHF.getHeightField()->getHeight(c,r);
+
+    osg::Vec3d world;
+    GeoPoint point(geoHF.getExtent().getSRS(), x, y, h );
+    point.toWorld( world );    
+    return world;
+}
+
+osg::Node* renderHeightField(const GeoHeightField& geoHF)
+{
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+
+    GeoPoint centroid;
+    geoHF.getExtent().getCentroid(centroid);
+
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal( world2local );
+    local2world.invert( world2local );
+
+    mt->setMatrix( local2world );
+
+    osg::Geometry* geometry = new osg::Geometry;
+    osg::Geode* geode = new osg::Geode;
+    geode->addDrawable( geometry );
+    mt->addChild( geode );
+
+    osg::Vec3Array* verts = new osg::Vec3Array;
+    geometry->setVertexArray( verts );
+
+    for (unsigned int c = 0; c < geoHF.getHeightField()->getNumColumns() - 1; c++)
+    {
+        for (unsigned int r = 0; r < geoHF.getHeightField()->getNumRows() - 1; r++)
+        {
+            // Add two triangles 
+            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
+
+            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
+            verts->push_back( getWorld( geoHF, c,     r + 1) * world2local );
+        }
+    }
+    geode->setCullingActive(false);
+    mt->setCullingActive(false);
+
+    geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));      
+
+    osg::Vec4ubArray* colors = new osg::Vec4ubArray();
+    colors->push_back(osg::Vec4ub(255,0,0,255));
+    geometry->setColorArray(colors, osg::Array::BIND_OVERALL);
+    mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");        
+
+    return mt;
+}
+
+osg::Node*
+createTile( const TileKey& key )
+{    
+    TileKey sampleKey = key;
+
+    MapFrame _update_mapf( s_mapNode->getMap(), Map::ENTIRE_MODEL );
+
+    // ALWAYS use 257x257 b/c that is what rex always uses.
+    osg::ref_ptr< osg::HeightField > out_hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(), 257, 257, true );
+
+    sampleKey = key;
+
+    bool populated = false;
+    while (!populated)
+    {
+        // Populate heightfield should always use 
+        populated = _update_mapf.populateHeightField(
+            out_hf,
+            sampleKey,
+            true, // convertToHAE
+            0 );
+
+        if (!populated)
+        {
+            // Fallback on the parent
+            sampleKey = sampleKey.createParentKey();
+            if (!sampleKey.valid())
+            {
+                return 0;
+            }
+        }
+    }
+
+    if (!populated)
+    {
+        // We have no heightfield so just create a reference heightfield.
+        out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257);
+        sampleKey = key;
+    }
+
+    GeoHeightField geoHF( out_hf.get(), sampleKey.getExtent() );    
+    // Create a subsample if we had to fall back.
+    if (sampleKey != key)
+    {   
+        geoHF = geoHF.createSubSample( key.getExtent(), osgEarth::INTERP_BILINEAR);         
+    }
+
+    // We should now have a heightfield that matches up exactly with the requested key at the appropriate resolution.
+    // Turn it into triangles.
+    return renderHeightField( geoHF );    
+}
+
+#endif
+
+
+
 
 
 
@@ -180,17 +327,19 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( s_mapNode->getMapSRS(), world );
 
-            //TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 15);
-            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 14);
+            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 17);
+            //TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 19);
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
-            osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
+            //osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
+            osg::ref_ptr<osg::Node> node = createTile( key );
             if (node.valid())
-            {
+            {   
+                /*
                 OE_NOTICE << "Created tile for " << key.str() << std::endl;
                 CollectTrianglesVisitor v;
                 node->accept(v);
-
-                osg::ref_ptr<osg::Node> output = v.buildNode();
+                node = v.buildNode();
+                */
 
                 if (_node.valid())
                 {
@@ -198,10 +347,9 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
                 }
 
                 osg::Group* group = new osg::Group;
-                osg::Node* node = v.buildNode();
-
+                
                 // Show the actual mesh.
-                group->addChild( node );
+                group->addChild( node.get() );
 
                 _node = group;
 
@@ -243,13 +391,6 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-    s_mapNode = MapNode::findMapNode(osgDB::readNodeFile("ElevationTestMP.earth"));
-    if ( !s_mapNode )
-    {
-        OE_WARN << "Unable to load earth file." << std::endl;
-        return -1;
-    }
-
     s_root = new osg::Group();
     
     // install the programmable manipulator.
@@ -257,6 +398,7 @@ int main(int argc, char** argv)
 
     // The MapNode will render the Map object in the scene graph.
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    s_mapNode = MapNode::findMapNode(node);
     s_root->addChild( node );
 
     // disable the small-feature culling
@@ -265,6 +407,7 @@ int main(int argc, char** argv)
     // set a near/far ratio that is smaller than the default. This allows us to get
     // closer to the ground without near clipping. If you need more, use --logdepth
     viewer.getCamera()->setNearFarRatio(0.0001);
+    viewer.getCamera()->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
 
 
     // An event handler that will respond to mouse clicks:

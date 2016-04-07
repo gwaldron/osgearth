@@ -50,7 +50,7 @@ using namespace osgEarth::Util;
 
 static MapNode*       s_mapNode     = 0L;
 static osg::Group*    s_root        = 0L;
-static osg::ref_ptr< osg::Node >  nathan = osgDB::readNodeFile("nathan.osg");
+static osg::ref_ptr< osg::Node >  marker = osgDB::readNodeFile("../data/red_flag.osg");
 
 struct CollectTriangles
 {
@@ -246,6 +246,10 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
 osg::Node*
 createTile( const TileKey& key )
 {    
+    // Compute the sample size to use for the key's level of detail that will line up exactly with the tile size of the highest level of subdivision of the rex engine.
+    unsigned int sampleSize = computeSampleSize( key.getLevelOfDetail() );
+    OE_NOTICE << "Compute sample size of " << sampleSize << " for lod " << key.getLevelOfDetail() << std::endl;
+
     TileKey sampleKey = key;
 
     MapFrame _update_mapf( s_mapNode->getMap(), Map::ENTIRE_MODEL );
@@ -288,7 +292,7 @@ createTile( const TileKey& key )
     // Create a subsample if we had to fall back.
     if (sampleKey != key)
     {   
-        geoHF = geoHF.createSubSample( key.getExtent(), osgEarth::INTERP_BILINEAR);         
+        geoHF = geoHF.createSubSample( key.getExtent(), sampleSize, sampleSize, osgEarth::INTERP_BILINEAR);         
     }
 
     // We should now have a heightfield that matches up exactly with the requested key at the appropriate resolution.
@@ -327,8 +331,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( s_mapNode->getMapSRS(), world );
 
-            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 17);
-            //TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 19);
+            TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 15);            
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
             //osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
             osg::ref_ptr<osg::Node> node = createTile( key );
@@ -358,7 +361,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
                 GeoTransform* xform = new GeoTransform();
                 xform->setPosition( osgEarth::GeoPoint(s_mapNode->getMapSRS(),mapPoint.x(),  mapPoint.y(), z, ALTMODE_ABSOLUTE) );
-                xform->addChild( nathan.get() );
+                xform->addChild( marker.get() );
                 group->addChild( xform );
 
                 s_root->addChild( _node.get() );

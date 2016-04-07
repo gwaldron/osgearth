@@ -190,12 +190,9 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             {
                 //OE_NOTICE << "Bilinear" << std::endl;
                 //Bilinear interpolate
-                float r1 = ((double)colMax - c) * llHeight + (c - (double)colMin) * lrHeight;
-                float r2 = ((double)colMax - c) * ulHeight + (c - (double)colMin) * urHeight;
-
-                //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-
-                result = ((double)rowMax - r) * r1 + (r - (double)rowMin) * r2;
+                double r1 = ((double)colMax - c) * (double)llHeight + (c - (double)colMin) * (double)lrHeight;
+                double r2 = ((double)colMax - c) * (double)ulHeight + (c - (double)colMin) * (double)urHeight;
+                result = ((double)rowMax - r) * (double)r1 + (r - (double)rowMin) * (double)r2;
             }
         }
         else if (interpolation == INTERP_AVERAGE)

@@ -51,8 +51,7 @@ namespace osgEarth
               _cachePolicy           ( ),
               _cstype                ( CSTYPE_GEOCENTRIC ),
               _referenceURI          ( "" ),
-              _elevationInterpolation( INTERP_BILINEAR ),
-              _elevTileSize          ( 17 )
+              _elevationInterpolation( INTERP_BILINEAR )
         {
             fromConfig(_conf);
         }
@@ -98,14 +97,7 @@ namespace osgEarth
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
         const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
 
-        /**
-         * Dimension of elevation tiles. By default, the engine will return 
-         * elevation tiles sized to the largest available source tile. This forces
-         * a set size.
-         */
-        optional<unsigned>& elevationTileSize() { return _elevTileSize; }
-        const optional<unsigned>& elevationTileSize() const { return _elevTileSize; }
-
+        
     public:
         /**
          * A reference location that drivers can use to load data from relative locations.
@@ -132,7 +124,6 @@ namespace osgEarth
         optional<CoordinateSystemType>   _cstype;
         optional<std::string>            _referenceURI;
         optional<ElevationInterpolation> _elevationInterpolation;
-        optional<unsigned>               _elevTileSize;
     };
 }
 

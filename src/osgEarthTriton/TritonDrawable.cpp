@@ -461,7 +461,15 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     // Now light and draw the ocean:
     if ( environment )
-    {
+    {        
+        // User pre-draw callback:
+        if (_TRITON->getCallback())
+        {
+            _TRITON->getCallback()->onDrawOcean(
+                _TRITON->getEnvironmentWrapper(),
+                _TRITON->getOceanWrapper());
+        }
+
         // The sun position is roughly where it is in our skybox texture:
 
         // Since this is a simple example we will just assume that Sun is the light from View light source

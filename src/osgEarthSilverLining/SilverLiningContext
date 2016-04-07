@@ -19,6 +19,7 @@
 #include "Common"
 #include "SilverLiningOptions"
 #include "SilverLiningAPIWrapper"
+#include "SilverLiningCallback"
 #include <osg/Referenced>
 #include <osg/Light>
 #include <osg/Camera>
@@ -34,12 +35,10 @@ namespace osgEarth {
 
 namespace osgEarth { namespace SilverLining
 {
-    class InitializationCallback;
-
     /**
      * Contains all the SilverLining SDK pointers.
      */
-    class /* OSGEARTHSILVERLINING_EXPORT */ SilverLiningContext : public osg::Referenced
+    class SilverLiningContext : public osg::Referenced
     {
     public:
         SilverLiningContext(const SilverLiningOptions& options);
@@ -53,7 +52,9 @@ namespace osgEarth { namespace SilverLining
         /** Sets the minimum ambient lighting value */
         void setMinimumAmbient(const osg::Vec4f& value);
 
-        void setInitializationCallback(InitializationCallback*);
+        /** Installs a user callback for SL initialization */
+        void setCallback(Callback*);
+        Callback* getCallback() const { return _callback.get(); }
 
     public: // accessors
 
@@ -111,7 +112,7 @@ namespace osgEarth { namespace SilverLining
 
         SilverLiningOptions _options;
 
-        osg::ref_ptr<InitializationCallback> _initCallback;
+        osg::ref_ptr<Callback> _callback;
 
         Atmosphere* _atmosphereWrapper;
     };

@@ -40,7 +40,7 @@ _minAmbient           ( 0,0,0,0 )
         options.user()->c_str(),
         options.licenseCode()->c_str() );
 
-    _atmosphereWrapper = new Atmosphere((uintptr_t)_atmosphere);// = new osgEarth::SilverLining::Atmosphere( (uintptr_t)_atmosphere );
+    _atmosphereWrapper = new Atmosphere((uintptr_t)_atmosphere);
 }
 
 SilverLiningContext::~SilverLiningContext()
@@ -55,9 +55,9 @@ SilverLiningContext::~SilverLiningContext()
 }
 
 void
-SilverLiningContext::setInitializationCallback(InitializationCallback* cb)
+SilverLiningContext::setCallback(Callback* cb)
 {
-    _initCallback = cb;
+    _callback = cb;
 }
 
 void
@@ -123,9 +123,10 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                     setupClouds();
                 }
 
-                if (_initCallback.valid())
+                // user callback for initialization
+                if (_callback.valid())
                 {
-                    (*_initCallback)(*_atmosphereWrapper);
+                    _callback->onInitialize( *_atmosphereWrapper );
                 }
             }
         }

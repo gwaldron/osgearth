@@ -43,16 +43,20 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     if ( camera )
     {
         renderInfo.getState()->disableAllVertexArrays();
+
         _SL->initialize( renderInfo );
 
+        // convey the sky box size (far plane) to SL:
         double fovy, ar, znear, zfar;
         _SL->setCamera(camera);
-
-        //renderInfo.getCurrentCamera()->setNearFarRatio(.00000001);
-
         camera->getProjectionMatrixAsPerspective(fovy, ar, znear, zfar);
         _SL->setSkyBoxSize( zfar < 100000.0 ? zfar : 100000.0 );
 
+        // invoke the user callback if it exists
+        if (_SL->getCallback())
+            _SL->getCallback()->onDrawSky(_SL->getAtmosphereWrapper());
+
+        // draw the sky.
         _SL->getAtmosphere()->DrawSky(
             true,
             _SL->getSRS()->isGeographic(),

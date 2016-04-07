@@ -16,52 +16,25 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TRITON_NODE
-#define OSGEARTH_TRITON_NODE 1
+#ifndef OSGEARTH_TRITON_CALLBACK_H
+#define OSGEARTH_TRITON_CALLBACK_H 1
 
 #include "Common"
-#include "TritonOptions"
 #include "TritonAPIWrapper"
-#include "TritonCallback"
-#include <osgEarthUtil/Ocean>
-#include <osgEarth/MapNode>
-#include <osg/Drawable>
 
 namespace osgEarth { namespace Triton
 {
-    class TritonContext;
-
     /**
-     * Node that roots the Triton adapter.
+     * A callback that lets you execute code in the proper context.
      */
-    class OSGEARTHTRITON_EXPORT TritonNode : public osgEarth::Util::OceanNode
+    class OSGEARTHTRITON_EXPORT Callback : public osg::Referenced
     {
     public:
-        TritonNode(
-            osgEarth::MapNode*   mapNode,
-            const TritonOptions& options,
-            Callback*            userCallback =0L);
+        virtual void onInitialize(Environment& env, Ocean& ocean) { }
 
-    protected: // OceanNode
-
-        void onSetSeaLevel();
-
-    public: // osg::Node
-
-        osg::BoundingSphere computeBound() const;
-
-        void traverse(osg::NodeVisitor&);
-
-    protected:
-        virtual ~TritonNode();
-
-        osg::ref_ptr<TritonContext> _TRITON;
-        TritonOptions               _options;
-        osg::Drawable*              _drawable;
-
-        //Environment* _environmentWrapper;
+        virtual void onDrawOcean(Environment& env, Ocean& ocean) { }
     };
 
 } } // namespace osgEarth::Triton
 
-#endif // OSGEARTH_TRITON_NODE
+#endif // OSGEARTH_TRITON_CALLBACK_H

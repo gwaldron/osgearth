@@ -39,6 +39,12 @@ AtmosphericConditions Atmosphere::GetConditions() const { return AtmosphericCond
 #undef  HANDLE
 #define HANDLE ((::SilverLining::AtmosphericConditions*)_handle)
 
+SETGET(AtmosphericConditions, Visibility, double);
+
+void AtmosphericConditions::SetPrecipitation(int type, double rate) {
+    HANDLE->SetPrecipitation((::CloudLayer::PrecipitationTypes)type, rate);
+}
+
 void AtmosphericConditions::AddCloudLayer(CloudLayer& layer) { HANDLE->AddCloudLayer((::SilverLining::CloudLayer*)layer._handle); }
 
 //................................

@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     SilverLiningSkyDrawable
     SilverLiningCloudsDrawable
     SilverLiningAPIWrapper
+    SilverLiningCallback
 )
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}

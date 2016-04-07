@@ -25,6 +25,8 @@
 
 namespace osgEarth { namespace SilverLining
 {
+    class Atmosphere;
+
     enum CloudTypes
     {
         CIRROCUMULUS,               /*!<  High planar cloud puffs */
@@ -40,10 +42,78 @@ namespace osgEarth { namespace SilverLining
         NUM_CLOUD_TYPES             /*!<  Total number of cloud types. */
     };
 
+    class OSGEARTHSILVERLINING_EXPORT CloudLayer
+    {
+    public:
+        enum PrecipitationTypes
+        {
+            NONE,
+            RAIN,
+            DRY_SNOW,
+            WET_SNOW,
+            SLEET,
+            NUM_PRECIP_TYPES
+        };
+
+    public:
+        CloudLayer(uintptr_t handle) : _handle(handle) { }
+        
+        void SetEnabled(bool value);
+        bool GetEnabled() const;
+
+        void SetBaseWidth(double value);
+        double GetBaseWidth() const;
+
+        void SetBaseLength(double value);
+        double GetBaseLength() const;
+
+        void SetBaseAltitude(double value);
+        double GetBaseAltitude() const;
+
+        void SetThickness(double value);
+        double GetThickness() const;
+
+        void SetDensity(double value);
+        double GetDensity() const;
+
+        void SetLayerPosition(double east, double north);
+        void GetLayerPosition(double& east, double& north) const;
+
+        void SetIsInfinite(bool value);
+        bool GetIsInfinite() const;
+
+        void SetCloudWrapping(bool value);
+        bool GetCloudWrapping() const;
+
+        void SetFadeTowardEdges(bool value);
+        bool GetFadeTowardEdges() const;
+
+        void SetAlpha(double value);
+        double GetAlpha() const;
+
+        void SetCloudAnimationEffects(double, bool, int c=0, int d=0);
+        void GetCloudAnimationEffects(double&, bool&, int&, int&);
+
+        void SeedClouds(Atmosphere&);
+
+        uintptr_t _handle;
+    };
+
+    class OSGEARTHSILVERLINING_EXPORT CloudLayerFactory
+    {
+    public:
+        static CloudLayer Create(int kind);
+    };
+
     class OSGEARTHSILVERLINING_EXPORT AtmosphericConditions
     {
     public:
         void AddCloudLayer(class CloudLayer&);
+        
+        void SetVisibility(double vis);
+        double GetVisibility() const;
+
+        void SetPrecipitation(int type, double rate);
 
     public:
         AtmosphericConditions(uintptr_t handle) : _handle(handle) { }
@@ -61,46 +131,6 @@ namespace osgEarth { namespace SilverLining
     public:
         Atmosphere(uintptr_t handle) : _handle(handle) { }
         uintptr_t _handle;
-    };
-
-    class OSGEARTHSILVERLINING_EXPORT CloudLayer
-    {
-    public:
-        CloudLayer(uintptr_t handle) : _handle(handle) { }
-        
-        void SetEnabled(bool value);
-        bool GetEnabled() const;
-        void SetBaseWidth(double value);
-        double GetBaseWidth() const;
-        void SetBaseLength(double value);
-        double GetBaseLength() const;
-        void SetBaseAltitude(double value);
-        double GetBaseAltitude() const;
-        void SetThickness(double value);
-        double GetThickness() const;
-        void SetDensity(double value);
-        double GetDensity() const;
-        void SetLayerPosition(double east, double north);
-        void GetLayerPosition(double& east, double& north) const;
-        void SetIsInfinite(bool value);
-        bool GetIsInfinite() const;
-        void SetCloudWrapping(bool value);
-        bool GetCloudWrapping() const;
-        void SetFadeTowardEdges(bool value);
-        bool GetFadeTowardEdges() const;
-        void SetAlpha(double value);
-        double GetAlpha() const;
-        void SetCloudAnimationEffects(double, bool, int c=0, int d=0);
-        void GetCloudAnimationEffects(double&, bool&, int&, int&);
-        void SeedClouds(Atmosphere&);
-
-        uintptr_t _handle;
-    };
-
-    class OSGEARTHSILVERLINING_EXPORT CloudLayerFactory
-    {
-    public:
-        static CloudLayer Create(int kind);
     };
 
 } } // namespace osgEarth::SilverLining

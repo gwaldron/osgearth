@@ -573,7 +573,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
             {
                 double y = workingExtent.yMin() + (double)r * ySample;
                 osg::Vec3d world;
-                GeoPoint(workingExtent.getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(world);
+                GeoPoint(workingExtent.getSRS(), x, y, center.z(), ALTMODE_ABSOLUTE).toWorld(world);
                 bs.expandBy(world);
             }
         }

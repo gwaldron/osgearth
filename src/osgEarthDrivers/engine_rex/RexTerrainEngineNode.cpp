@@ -595,14 +595,137 @@ RexTerrainEngineNode::getEngineContext()
     return context.get();
 }
 
+unsigned int
+RexTerrainEngineNode::computeSampleSize(unsigned int levelOfDetail)
+{    
+    unsigned maxLevel = std::min( *_terrainOptions.maxLOD(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
+    unsigned int meshSize = *_terrainOptions.tileSize();
 
-// no longer used.
+    unsigned int sampleSize = meshSize;
+    unsigned int level = maxLevel;
+
+    while( level >= 0 && levelOfDetail != level)
+    {
+        sampleSize = sampleSize * 2 - 1;
+        level--;
+    }
+
+    return sampleSize;    
+}
+
+osg::Vec3d getWorld( const GeoHeightField& geoHF, unsigned int c, unsigned int r)
+{
+    double x = geoHF.getExtent().xMin() + (double)c * geoHF.getXInterval();
+    double y = geoHF.getExtent().yMin() + (double)r * geoHF.getYInterval();
+    double h = geoHF.getHeightField()->getHeight(c,r);
+
+    osg::Vec3d world;
+    GeoPoint point(geoHF.getExtent().getSRS(), x, y, h );
+    point.toWorld( world );    
+    return world;
+}
+
+osg::Node* renderHeightField(const GeoHeightField& geoHF)
+{
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+
+    GeoPoint centroid;
+    geoHF.getExtent().getCentroid(centroid);
+
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal( world2local );
+    local2world.invert( world2local );
+
+    mt->setMatrix( local2world );
+
+    osg::Geometry* geometry = new osg::Geometry;
+    osg::Geode* geode = new osg::Geode;
+    geode->addDrawable( geometry );
+    mt->addChild( geode );
+
+    osg::Vec3Array* verts = new osg::Vec3Array;
+    geometry->setVertexArray( verts );
+
+    for (unsigned int c = 0; c < geoHF.getHeightField()->getNumColumns() - 1; c++)
+    {
+        for (unsigned int r = 0; r < geoHF.getHeightField()->getNumRows() - 1; r++)
+        {
+            // Add two triangles 
+            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
+
+            verts->push_back( getWorld( geoHF, c,     r    ) * world2local );
+            verts->push_back( getWorld( geoHF, c + 1, r + 1) * world2local );
+            verts->push_back( getWorld( geoHF, c,     r + 1) * world2local );
+        }
+    }
+    geode->setCullingActive(false);
+    mt->setCullingActive(false);
+
+    geometry->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));      
+
+    osg::Vec4ubArray* colors = new osg::Vec4ubArray();
+    colors->push_back(osg::Vec4ub(255,0,0,255));
+    geometry->setColorArray(colors, osg::Array::BIND_OVERALL);
+    mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");        
+
+    return mt;
+}
+
+
 osg::Node*
 RexTerrainEngineNode::createTile( const TileKey& key )
 {
-    // TODO: implement again.
-    OE_WARN << LC << "createTile is not implemented.\n";
-    return 0L;
+     // Compute the sample size to use for the key's level of detail that will line up exactly with the tile size of the highest level of subdivision of the rex engine.
+    unsigned int sampleSize = computeSampleSize( key.getLevelOfDetail() );    
+    OE_INFO << LC << "Computed a sample size of " << sampleSize << " for lod " << key.getLevelOfDetail() << std::endl;
+
+    TileKey sampleKey = key;
+
+    // ALWAYS use 257x257 b/c that is what rex always uses.
+    osg::ref_ptr< osg::HeightField > out_hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(), 257, 257, true );
+
+    sampleKey = key;
+
+    bool populated = false;
+    while (!populated)
+    {
+        populated = _update_mapf->populateHeightField(
+            out_hf,
+            sampleKey,
+            true, // convertToHAE
+            0 );
+
+        if (!populated)
+        {
+            // Fallback on the parent
+            sampleKey = sampleKey.createParentKey();
+            if (!sampleKey.valid())
+            {
+                return 0;
+            }
+        }
+    }
+
+    if (!populated)
+    {
+        // We have no heightfield so just create a reference heightfield.
+        out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257);
+        sampleKey = key;
+    }
+
+    GeoHeightField geoHF( out_hf.get(), sampleKey.getExtent() );    
+    if (sampleKey != key)
+    {   
+        geoHF = geoHF.createSubSample( key.getExtent(), sampleSize, sampleSize, osgEarth::INTERP_BILINEAR);         
+    }
+
+    // We should now have a heightfield that matches up exactly with the requested key at the appropriate resolution.
+    // Turn it into triangles.
+    return renderHeightField( geoHF );      
 }
 
 

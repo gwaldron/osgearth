@@ -40,7 +40,8 @@ VisParameters SelectionInfo::visParameters(unsigned lod) const
 {
     if (lod-_uiFirstLOD>=_vecVisParams.size())
     {
-        OE_INFO << LC <<"Index out of bounds"<<std::endl;
+        // note, this can happen if firstLOD() is set
+        OE_DEBUG << LC <<"Index out of bounds"<<std::endl;
         return VisParameters();
     }
     return _vecVisParams[lod-_uiFirstLOD];

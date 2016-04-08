@@ -11,11 +11,7 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="geocentric">
-    
-    <options>
-        <terrain first_lod="1"/>
-    </options>
+<map name="readymap.org" type="geocentric">    
     
     <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>

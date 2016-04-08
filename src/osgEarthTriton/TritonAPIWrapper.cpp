@@ -71,7 +71,7 @@ void Environment::SimulateSeaState(double bscale, double winddir) {
 #define HANDLE ((::Triton::Ocean*)_handle)
 
 SETGET(Ocean, Choppiness, float);
-SETGET(Ocean, MaximumWavePeriod, double);
+//SETGET(Ocean, MaximumWavePeriod, double);
 
 void Ocean::SetQuality(OceanQuality value) { HANDLE->SetQuality((::Triton::OceanQuality)value); }
 OceanQuality Ocean::GetQuality() const { return (OceanQuality)HANDLE->GetQuality(); }

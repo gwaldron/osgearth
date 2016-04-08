@@ -75,8 +75,8 @@ namespace osgEarth { namespace Triton
         void SetQuality(OceanQuality value);
         OceanQuality GetQuality() const;
 
-        void SetMaximumWavePeriod(double value);
-        double GetMaximumWavePeriod() const;
+        //void SetMaximumWavePeriod(double value);
+        //double GetMaximumWavePeriod() const;
 
     public:
         Ocean(uintptr_t handle) : _handle(handle) { }

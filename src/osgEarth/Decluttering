@@ -55,6 +55,7 @@ namespace osgEarth
     public:
         float      _priority;
         osg::Vec2s _pixelOffset;
+        float      _localRotationRad;
     public:
         virtual ~LayoutData() { }
     };

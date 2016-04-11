@@ -38,6 +38,8 @@ _content(rhs._content),
 _priority(rhs._priority),
 _removeDuplicateLabels(rhs._removeDuplicateLabels),
 _pixelOffset(rhs._pixelOffset),
+_onScreenRotation(rhs._onScreenRotation),
+_geographicCourse(rhs._geographicCourse),
 _provider(rhs._provider),
 _encoding(rhs._encoding),
 _alignment(rhs._alignment),
@@ -114,6 +116,9 @@ TextSymbol::getConfig() const
         conf.add( "pixel_offset_y", toString(_pixelOffset->y()) );
     }
 
+    conf.addObjIfSet( "rotation", _onScreenRotation );
+    conf.addObjIfSet( "geographic-course", _geographicCourse );
+
     conf.addIfSet( "text-occlusion-cull", _occlusionCull );
     conf.addIfSet( "text-occlusion-cull-altitude", _occlusionCullAltitude );
 
@@ -165,6 +170,9 @@ TextSymbol::mergeConfig( const Config& conf )
         _pixelOffset = osg::Vec2s( conf.value<short>("pixel_offset_x",0), 0 );
     if ( conf.hasValue( "pixel_offset_y" ) )
         _pixelOffset = osg::Vec2s( _pixelOffset->x(), conf.value<short>("pixel_offset_y",0) );
+
+    conf.getObjIfSet( "rotation", _onScreenRotation );
+    conf.getObjIfSet( "geographic-course", _geographicCourse );
 
     conf.getIfSet( "text-occlusion-cull", _occlusionCull );
     conf.getIfSet( "text-occlusion-cull-altitude", _occlusionCullAltitude );
@@ -280,5 +288,11 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-offset-y") ) {
         style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), defaults.pixelOffset()->y() );
+    }
+    else if ( match(c.key(), "text-rotation") ) {
+        style.getOrCreate<TextSymbol>()->onScreenRotation() = NumericExpression( c.value() );
+    }
+    else if ( match(c.key(), "text-geographic-course") ) {
+        style.getOrCreate<TextSymbol>()->geographicCourse() = NumericExpression( c.value() );
     }
 }

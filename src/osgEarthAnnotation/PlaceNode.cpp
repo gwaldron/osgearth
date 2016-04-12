@@ -28,7 +28,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/Decluttering>
+#include <osgEarth/GeoMath>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -51,7 +51,9 @@ GeoPositionNode( mapNode, position ),
 _image   ( image ),
 _text    ( text ),
 _style   ( style ),
-_geode   ( 0L )
+_geode            ( 0L ),
+_labelRotationRad ( 0. ),
+_followFixedCourse( false )
 {
     init();
 }
@@ -64,7 +66,9 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
 GeoPositionNode( mapNode, position ),
 _text    ( text ),
 _style   ( style ),
-_geode   ( 0L )
+_geode            ( 0L ),
+_labelRotationRad ( 0. ),
+_followFixedCourse( false )
 {
     init();
 }
@@ -75,7 +79,9 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const osgDB::Options* dbOptions ) :
 GeoPositionNode ( mapNode, position ),
 _style    ( style ),
-_dbOptions( dbOptions )
+_dbOptions        ( dbOptions ),
+_labelRotationRad ( 0. ),
+_followFixedCourse( false )
 {
     init();
 }
@@ -95,10 +101,42 @@ PlaceNode::init()
 
     osg::Drawable* text = 0L;
 
+    const TextSymbol* symbol = _style.get<TextSymbol>();
+
     // If there's no explicit text, look to the text symbol for content.
-    if ( _text.empty() && _style.has<TextSymbol>() )
+    if ( _text.empty() && symbol )
     {
-        _text = _style.get<TextSymbol>()->content()->eval();
+        _text = symbol->content()->eval();
+    }
+
+    // Handle the rotation if any
+    if ( symbol && symbol->onScreenRotation().isSet() )
+    {
+        _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->eval());
+    }
+
+    // In case of a label must follow a course on map, we project a point from the position
+    // with the given bearing. Then during culling phase we compute both points on the screen
+    // and then we can deduce the screen rotation
+    // may be optimized...
+    else if ( symbol && symbol->geographicCourse().isSet() )
+    {
+        _followFixedCourse = true;
+        _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
+
+        double latRad;
+        double longRad;
+        GeoMath::destination( osg::DegreesToRadians( getPosition().y() ),
+                              osg::DegreesToRadians( getPosition().x() ),
+                              _labelRotationRad,
+                              2500.,
+                              latRad,
+                              longRad );
+        _geoPointProj.set ( osgEarth::SpatialReference::get("wgs84"),
+                                       osg::RadiansToDegrees(longRad),
+                                       osg::RadiansToDegrees(latRad),
+                                       0,
+                                       osgEarth::ALTMODE_ABSOLUTE );
     }
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
@@ -257,15 +295,23 @@ PlaceNode::setPriority(float value)
 void
 PlaceNode::updateLayoutData()
 {
-    osg::ref_ptr<LayoutData> data = new LayoutData();
-    data->_priority = getPriority();
-    const TextSymbol* ts = getStyle().get<TextSymbol>();
-    if (ts) data->_pixelOffset = ts->pixelOffset().get();
+    if ( ! _dataLayout.valid() )
+    {
+        _dataLayout = new LayoutData();
 
     // re-apply annotation drawable-level stuff as neccesary.
     for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
     {
-        _geode->getDrawable(i)->setUserData(data.get());
+            _geode->getDrawable(i)->setUserData(_dataLayout.get());
+        }
+    }
+
+    _dataLayout->_priority = getPriority();
+    const TextSymbol* ts = getStyle().get<TextSymbol>();
+    if (ts)
+    {
+        _dataLayout->_pixelOffset = ts->pixelOffset().get();
+        _dataLayout->_localRotationRad = _labelRotationRad;
     }
 }
 
@@ -329,7 +375,40 @@ PlaceNode::setDynamic( bool value )
     }
 }
 
+void
+PlaceNode::traverse(osg::NodeVisitor &nv)
+{
+    if(_followFixedCourse)
+    {
+        osgUtil::CullVisitor* cv = NULL;
+        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        {
+            cv = Culling::asCullVisitor(nv);
+            osg::Camera* camera = cv->getCurrentCamera();
 
+            osg::Matrix matrix;
+            matrix.postMult(camera->getViewMatrix());
+            matrix.postMult(camera->getProjectionMatrix());
+            if (camera->getViewport())
+                matrix.postMult(camera->getViewport()->computeWindowMatrix());
+
+            GeoPoint pos( osgEarth::SpatialReference::get("wgs84"),
+                          getPosition().x(),
+                          getPosition().y(),
+                          0,
+                          osgEarth::ALTMODE_ABSOLUTE );
+
+            osg::Vec3d refOnWorld; pos.toWorld(refOnWorld);
+            osg::Vec3d projOnWorld; _geoPointProj.toWorld(projOnWorld);
+            osg::Vec3d refOnScreen = refOnWorld * matrix;
+            osg::Vec3d projOnScreen = projOnWorld * matrix;
+            projOnScreen -= refOnScreen;
+            _labelRotationRad = atan2 (projOnScreen.y(), projOnScreen.x());
+            updateLayoutData();
+        }
+    }
+    GeoPositionNode::traverse(nv);
+}
 
 //-------------------------------------------------------------------
 
@@ -340,7 +419,9 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
 GeoPositionNode ( mapNode, conf ),
-_dbOptions( dbOptions )
+_dbOptions( dbOptions ),
+_labelRotationRad ( 0. ),
+_followFixedCourse( false )
 {
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );

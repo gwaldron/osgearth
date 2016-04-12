@@ -111,6 +111,14 @@ namespace osgEarth { namespace Symbology
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
         const optional<osg::Vec2s>& pixelOffset() const { return _pixelOffset; }
 
+        /** On screen rotation **/
+        optional<NumericExpression>& onScreenRotation() { return _onScreenRotation; }
+        const optional<NumericExpression>& onScreenRotation() const { return _onScreenRotation; }
+
+        /** Label orientation for following a fixed course on the map. */
+        optional<NumericExpression>& geographicCourse() { return _geographicCourse; }
+        const optional<NumericExpression>& geographicCourse() const { return _geographicCourse; }
+
         /** Alignment of the label relative to (0,0) pixels */
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
@@ -158,6 +166,8 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression> _priority;
         optional<bool>              _removeDuplicateLabels;
         optional<osg::Vec2s>        _pixelOffset;
+        optional<NumericExpression> _onScreenRotation;
+        optional<NumericExpression> _geographicCourse;
         optional<std::string>       _provider;
         optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;

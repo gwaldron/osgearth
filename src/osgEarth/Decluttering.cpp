@@ -282,13 +282,33 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::BoundingBox box = Utils::getBoundingBox(drawable);
 
             osg::Vec2f offset;
+            osg::Quat rot;
             if (layoutData)
             {
+                // handle the local translation
                 offset.set(layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y());
                 box.xMin() += layoutData->_pixelOffset.x();
                 box.xMax() += layoutData->_pixelOffset.x();
                 box.yMin() += layoutData->_pixelOffset.y();
                 box.yMax() += layoutData->_pixelOffset.y();
+
+                // handle the local rotation and ensure that texts are always oriented to be readable
+                float angle = fmod(layoutData->_localRotationRad + 2. * osg::PI, 2. * osg::PI);
+                if (angle > osg::PI / 2. && angle < 3.*osg::PI / 2.)
+                    angle =  angle - osg::PI;
+                rot.makeRotate ( angle, osg::Vec3d(0, 0, 1) );
+                osg::Vec3f center(box.center());
+                osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) - center) + center;
+                osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) - center) + center;
+                osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) - center) + center;
+                osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) - center) + center;
+                box.set(
+                    std::min(ld.x(), lu.x()),
+                    std::min(ld.y(), rd.y()),
+                    0,
+                    std::max(rd.x(), ru.x()),
+                    std::max(lu.y(), ru.y()),
+                    0 );
             }
 
             static osg::Vec4d s_zero_w(0,0,0,1);
@@ -391,7 +411,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
-            newModelView.makeTranslate( winPos.x() + offset.x(), winPos.y() + offset.y(), 0 );
+            newModelView.makeRotate(rot);
+            newModelView.postMultTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
             newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 

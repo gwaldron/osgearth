@@ -226,7 +226,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         {
             // Always clone the cached instance so we're not processing data that's
             // already in the scene graph. -gw
-            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model);
+            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model, context.getDBOptions());
 
             // if icon decluttering is off, install an AutoTransform.
             if ( iconSymbol )

@@ -57,6 +57,11 @@ namespace osgEarth
         osg::Vec2s _pixelOffset;
         float      _localRotationRad;
     public:
+        LayoutData() :
+            _priority(0.0f),
+            _pixelOffset(0, 0),
+            _localRotationRad(0.0f) { }
+    public:
         virtual ~LayoutData() { }
     };
 

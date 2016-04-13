@@ -95,6 +95,12 @@ namespace osgEarth { namespace Util
         void setSeaLevel(float offsetMeters);
         float getSeaLevel() const { return _seaLevel; }
 
+        /** Sets the alpha of the ocean */
+        void setAlpha(float alpha);
+        float getAlpha() const { return _alpha; }
+
+
+
     public: // osg::Group
 
         virtual void traverse(osg::NodeVisitor&);
@@ -103,9 +109,13 @@ namespace osgEarth { namespace Util
 
         virtual void onSetSeaLevel() { }
 
+        virtual void onSetAlpha() { }
+
     private:
 
         float _seaLevel;
+        float _alpha;
+
         osg::ref_ptr<const SpatialReference> _srs;
         const OceanOptions _options;
     };

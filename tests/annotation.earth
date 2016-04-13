@@ -114,7 +114,12 @@ osgEarth Sample - Annotations
                     altitude-clamping:   terrain-gpu;
                 </style>
             </feature>
-            <label text="GPU-Clamped Line" lat="44" long="-115"/>
+            <label text="GPU-Clamped Line" lat="44" long="-115">
+                <style type="text/css">
+                    text-align:             center_center;
+					text-geographic-course: 45.0;
+                </style>
+            </label>
             
             <feature name="Draped Polygon">
                 <srs>wgs84</srs>
@@ -175,7 +180,13 @@ osgEarth Sample - Annotations
                     render-lighting:     false;
                 </style>
             </feature>
-            <label text="Tessellated line" lat="35" long="10"/>
+            
+            <label text="Tessellated line" lat="35" long="10">
+                <style type="text/css">
+                    text-align:              center_bottom;
+					text-geographic-course:  0;
+                </style>
+			</label>
             
         </annotations>
         

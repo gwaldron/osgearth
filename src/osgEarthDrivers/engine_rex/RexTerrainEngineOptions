@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio             ( 0.0f ),
             _color                  ( Color::White ),
-            _quickRelease           ( true ),
+            //_quickRelease           ( false ),
             _expirationThreshold    ( 300 ),
             _progressive            ( false ),
             _highResolutionFirst    ( true ),
@@ -67,10 +67,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
+#if 0
         /** Whether to run a post-render process that releases GL objects as quickly as
           * possible, freeing up memory faster */
         optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
         const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
+#endif
 
         /** Minimum distance at which tiles will page out of memory once loaded */
         optional<float>& expirationRange() { return _expirationRange; }

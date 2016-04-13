@@ -547,6 +547,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
     bool inspect       = args.read("--inspect");
+    bool useContourMap = args.read("--contourmap");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -828,9 +829,16 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Install a contour map effect.
-    if ( !contourMapConf.empty() )
+    if ( !contourMapConf.empty() || useContourMap )
     {
         mapNode->getTerrainEngine()->addEffect( new ContourMap(contourMapConf) );
+
+        // with the cmdline switch, hids all the image layer so we can see the contour map.
+        if (useContourMap) {
+            for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
+                mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
+            }
+        }
     }
 
     // Generic named value uniform with min/max.

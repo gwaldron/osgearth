@@ -67,6 +67,8 @@ _style      ( style )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
+    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     _geode = new osg::Geode();
@@ -103,10 +105,15 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
             const TrackNodeField& field = i->second;
             if ( field._symbol.valid() )
             {
+                osg::Vec3 offset(
+                    field._symbol->pixelOffset()->x(),
+                    field._symbol->pixelOffset()->y(),
+                    0.0);
+
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
                     field._symbol->content()->expr(),   // text
                     field._symbol.get(),                // symbol
-                    osg::Vec3(0,0,0) );                 // offset
+                    offset );                           // offset
 
                 if ( drawable )
                 {

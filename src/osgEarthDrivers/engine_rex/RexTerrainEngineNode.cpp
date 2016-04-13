@@ -251,12 +251,14 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
+#if 0
     if ( _terrainOptions.quickReleaseGLObjects() == true )
     {
         _deadTiles = new TileNodeRegistry("dead");
         _quickReleaseInstalled = false;
         ADJUST_UPDATE_TRAV_COUNT( this, +1 );
     }
+#endif
 
     // A shared geometry pool.
     if ( ::getenv("OSGEARTH_REX_NO_POOL") == 0L )
@@ -504,6 +506,7 @@ RexTerrainEngineNode::dirtyState()
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
+#if 0
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _quickReleaseInstalled == false )
     {
         osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
@@ -526,6 +529,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
     }
+#endif
 
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {

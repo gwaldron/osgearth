@@ -1063,7 +1063,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( wallSkin )
                 {
                     // Get a stateset for the individual wall stateset
-                    context.resourceCache()->getOrCreateStateSet( wallSkin, wallStateSet );
+                    context.resourceCache()->getOrCreateStateSet(wallSkin, wallStateSet, context.getDBOptions());
                 }
             }
 
@@ -1081,7 +1081,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( roofSkin )
                 {
                     // Get a stateset for the individual roof skin
-                    context.resourceCache()->getOrCreateStateSet( roofSkin, roofStateSet );
+                    context.resourceCache()->getOrCreateStateSet(roofSkin, roofStateSet, context.getDBOptions());
                 }
             }
 

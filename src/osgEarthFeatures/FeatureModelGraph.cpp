@@ -308,7 +308,8 @@ FeatureModelGraph::ctor()
     // take care in dealing with them in a multi-threaded environment.
     if ( !_session->getResourceCache() && _options.sessionWideResourceCache() == true )
     {
-        _session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
+        //_session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
+        _session->setResourceCache(new ResourceCache());
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.

@@ -45,7 +45,7 @@ namespace osgEarth { namespace Symbology
         /**
          * Creates a new Node representing the instance.
          */
-        osg::Node* createNode( const osgDB::Options* dbOptions ) const;
+        osg::Node* createNode(const osgDB::Options* readOptions) const;
 
         /** Whether this instance type is 2D (orthographic screen space) */
         virtual bool is2D() const =0;

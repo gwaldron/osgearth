@@ -63,7 +63,9 @@ _provider             ( "annotation" ),
 _encoding             ( ENCODING_ASCII ),
 _declutter            ( true ),
 _occlusionCull        ( false ),
-_occlusionCullAltitude( 200000 )
+_occlusionCullAltitude( 200000 ),
+_onScreenRotation     ( 0.0 ),
+_geographicCourse     ( 0.0 )
 {
     mergeConfig(conf);
 }

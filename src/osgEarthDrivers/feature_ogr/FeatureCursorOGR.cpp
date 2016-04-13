@@ -76,6 +76,7 @@ _spatialFilter    ( 0L ),
 _query            ( query ),
 _chunkSize        ( 500 ),
 _nextHandleToQueue( 0L ),
+_resultSetEndReached(false),
 _profile          ( profile ),
 _filters          ( filters )
 {
@@ -225,12 +226,10 @@ FeatureCursorOGR::readChunk()
     
     OGR_SCOPED_LOCK;
 
-    bool resultSetEndReached = false;
-
-    while( _queue.size() < _chunkSize && !resultSetEndReached )
+    while( _queue.size() < _chunkSize && !_resultSetEndReached )
     {
         FeatureList filterList;
-        while( filterList.size() < _chunkSize && !resultSetEndReached )
+        while( filterList.size() < _chunkSize && !_resultSetEndReached )
         {
             OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
             if ( handle )
@@ -247,7 +246,7 @@ FeatureCursorOGR::readChunk()
             }
             else
             {
-                resultSetEndReached = true;
+                _resultSetEndReached = true;
             }
         }
 

@@ -67,7 +67,7 @@ _style      ( style )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
-    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+    Decluttering::activate( this->getOrCreateStateSet() );
 
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 

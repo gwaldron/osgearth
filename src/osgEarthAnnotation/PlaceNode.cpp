@@ -89,7 +89,7 @@ _followFixedCourse( false )
 void
 PlaceNode::init()
 {
-    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+    Decluttering::activate( this->getOrCreateStateSet() );
 
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 

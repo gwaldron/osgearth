@@ -271,7 +271,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     {
         labels = new osg::Group();
         //TODO:  This is a bug, if you don't turn on decluttering the text labels are giant.  Need to determine what is wrong with LabelNodes without decluttering.
-        Decluttering::setEnabled( labels->getOrCreateStateSet(), true );
+        //Decluttering::activate( labels->getOrCreateStateSet() );
     }
 
     // spatial ref for features:

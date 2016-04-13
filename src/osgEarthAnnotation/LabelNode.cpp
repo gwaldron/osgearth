@@ -101,7 +101,7 @@ _followFixedCourse( false )
 void
 LabelNode::init( const Style& style )
 {
-    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+    Decluttering::activate( this->getOrCreateStateSet() );
 
     _geode = new osg::Geode();
 

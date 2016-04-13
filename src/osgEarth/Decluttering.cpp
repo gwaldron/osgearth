@@ -292,23 +292,26 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 box.yMin() += layoutData->_pixelOffset.y();
                 box.yMax() += layoutData->_pixelOffset.y();
 
-                // handle the local rotation and ensure that texts are always oriented to be readable
-                float angle = fmod(layoutData->_localRotationRad + 2. * osg::PI, 2. * osg::PI);
-                if (angle > osg::PI / 2. && angle < 3.*osg::PI / 2.)
-                    angle =  angle - osg::PI;
-                rot.makeRotate ( angle, osg::Vec3d(0, 0, 1) );
-                osg::Vec3f center(box.center());
-                osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) - center) + center;
-                osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) - center) + center;
-                osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) - center) + center;
-                osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) - center) + center;
-                box.set(
-                    std::min(ld.x(), lu.x()),
-                    std::min(ld.y(), rd.y()),
-                    0,
-                    std::max(rd.x(), ru.x()),
-                    std::max(lu.y(), ru.y()),
-                    0 );
+                if ( layoutData->_localRotationRad != 0.0 )
+                {
+                    // handle the local rotation and ensure that texts are always oriented to be readable
+                    float angle = fmod(layoutData->_localRotationRad + 2. * osg::PI, 2. * osg::PI);
+                    if (angle > osg::PI / 2. && angle < 3.*osg::PI / 2.)
+                        angle =  angle - osg::PI;
+                    rot.makeRotate ( angle, osg::Vec3d(0, 0, 1) );
+                    osg::Vec3f center(box.center());
+                    osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) - center) + center;
+                    osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) - center) + center;
+                    osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) - center) + center;
+                    osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) - center) + center;
+                    box.set(
+                        std::min(ld.x(), lu.x()),
+                        std::min(ld.y(), rd.y()),
+                        0,
+                        std::max(rd.x(), ru.x()),
+                        std::max(lu.y(), ru.y()),
+                        0 );
+                }
             }
 
             static osg::Vec4d s_zero_w(0,0,0,1);
@@ -705,62 +708,23 @@ public:
 #define STATESET_ID "osgEarth::Decluttering::prevStateSet"
 
 void
-Decluttering::setEnabled( osg::StateSet* stateSet, bool enable, int binNum )
+Decluttering::activate(osg::StateSet* stateSet, int binNum)
 {
-    // note: even though we're fiddling with the StateSet, I don't think we need
-    // to mark it as DYNAMIC .... but we'll see
     if ( stateSet )
     {
-        if ( enable )
-        {
-            osg::StateSet* prevStateSet = 0L;
-            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
-            unsigned index = udc->getUserObjectIndex( STATESET_ID );
-            if ( index < udc->getNumUserObjects() )
-            {
-                prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
-            }
+        // the OVERRIDE prevents subsequent statesets from disabling the layout bin
+        stateSet->setRenderBinDetails(
+            binNum,
+            OSGEARTH_DECLUTTER_BIN,
+            osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
 
-            if ( !prevStateSet )
-            {
-                prevStateSet = new osg::StateSet();
-                prevStateSet->setName( STATESET_ID );
-                prevStateSet->setBinName( stateSet->getBinName() );
-                prevStateSet->setBinNumber( stateSet->getBinNumber() );
-                prevStateSet->setRenderBinMode( stateSet->getRenderBinMode() );
-                prevStateSet->setNestRenderBins( stateSet->getNestRenderBins() );
-                udc->addUserObject( prevStateSet );
-            }
-
-            // the OVERRIDE prevents subsequent statesets from disabling the decluttering bin,
-            // I guess. This wasn't needed in OSG 3.1.4 but now it is.
-            stateSet->setRenderBinDetails(
-                binNum,
-                OSGEARTH_DECLUTTER_BIN,
-                osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
-
-            // Force a single shared decluttering bin per render stage
-            stateSet->setNestRenderBins( false );
-        }
-        else
-        {
-            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
-            unsigned index = udc->getUserObjectIndex( STATESET_ID );
-            if ( index < udc->getNumUserObjects() )
-            {
-                osg::StateSet* prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
-                stateSet->setBinName( prevStateSet->getBinName() );
-                stateSet->setBinNumber( prevStateSet->getBinNumber() );
-                stateSet->setRenderBinMode( prevStateSet->getRenderBinMode() );
-                stateSet->setNestRenderBins( prevStateSet->getNestRenderBins() );
-                udc->removeUserObject( index );
-            }
-        }
+        // Force a single shared layout bin per render stage
+        stateSet->setNestRenderBins( false );
     }
 }
 
 void
-Decluttering::setEnabled( bool enabled )
+Decluttering::setEnabled(bool enabled)
 {
     s_enabledGlobally = enabled;
 }

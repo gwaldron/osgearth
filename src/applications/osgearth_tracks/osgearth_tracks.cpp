@@ -193,7 +193,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         // add a priority
         track->setPriority( float(i) );
 
-        Decluttering::setEnabled(track->getOrCreateStateSet(), true);
+        //Decluttering::setEnabled(track->getOrCreateStateSet(), true);
 
         parent->addChild( track );
 
@@ -210,13 +210,13 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
 
 /** creates some UI controls for adjusting the decluttering parameters. */
-void
+Container*
 createControls( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
+    //ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
     
     // title bar
-    VBox* vbox = canvas->addControl(new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 ));
+    VBox* vbox = new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 );
     vbox->setBackColor( Color(Color::Black, 0.5) );
     vbox->addControl( new LabelControl("osgEarth Tracks Demo", Color::Yellow) );
     
@@ -285,6 +285,8 @@ createControls( osgViewer::View* view )
     LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.outAnimationTime()) );
     grid->setControl( 1, r, new HSliderControl( 
         0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );
+
+    return vbox;
 }
 
 
@@ -302,7 +304,8 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator );
 
     // load a map from an earth file.
-    osg::Node* earth = MapNodeHelper().load(arguments, &viewer);
+    osg::Node* earth = MapNodeHelper().load(arguments, &viewer, createControls(&viewer));
+
     MapNode* mapNode = MapNode::findMapNode(earth);
     if ( !mapNode )
         return usage("Missing required .earth file" );
@@ -338,9 +341,6 @@ main(int argc, char** argv)
     // attach the simulator to the viewer.
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
     viewer.setRunFrameScheme( viewer.CONTINUOUS );
-
-    // configure a UI for controlling the demo
-    createControls( &viewer );
     
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.run();

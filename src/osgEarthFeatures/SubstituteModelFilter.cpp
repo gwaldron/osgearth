@@ -233,7 +233,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
             {
                 if ( iconSymbol->declutter() == true )
                 {
-                    Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                    Decluttering::activate(model->getOrCreateStateSet());
                 }
                 else if ( dynamic_cast<osg::AutoTransform*>(model.get()) == 0L )
                 {
@@ -344,7 +344,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // activate decluttering for icons if requested
         if ( iconSymbol->declutter() == true )
         {
-            Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+            Decluttering::activate(attachPoint->getOrCreateStateSet());
         }
 
         // activate horizon culling if we are in geocentric space

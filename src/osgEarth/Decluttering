@@ -28,12 +28,6 @@
 #include <osgUtil/RenderLeaf>
 #include <limits.h>
 
-/**
- * To apply the "decluttering" algorithm to a subgraph, call
- *
- * Decluttering::setEnabled( node->getOrCreateStateSet(), true );
- */
-
 #define OSGEARTH_DECLUTTER_BIN "osgearth_declutter"
 
 namespace osgEarth
@@ -154,9 +148,12 @@ namespace osgEarth
     struct OSGEARTH_EXPORT Decluttering
     {
         /**
-         * Enables or disables decluttering on a stateset.
+         * Activates the layout engine for a stateset. I.e., geometry rendered while
+         * this stateset is active will render using the layout/decluttering engine.
+         * Note. This is not the same as toggling decluttering on a node. To disable
+         * decluttering on a particular object, set its priority to FLT_MAX.
          */
-        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =13 );
+        static void activate(osg::StateSet* stateSet, int binNum =13);
 
         /**
          * Enables or disables decluttering globally.

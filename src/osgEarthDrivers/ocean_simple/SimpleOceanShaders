@@ -114,6 +114,8 @@ namespace
         "uniform float ocean_max_range; \n"              // maximum visible distance of the ocean
         "uniform float ocean_fade_range; \n"             // distance over which to fade in the ocean
 
+        "uniform float oe_ocean_alpha; \n"               // The ocean alpha
+
         "void oe_ocean_fragment(inout vec4 color) \n"
         "{ \n"
         "    color = ocean_baseColor; \n"
@@ -144,7 +146,7 @@ namespace
         "    float terrainEffect = ocean_remap( terrainHeight, ocean_seaLevel+ocean_lowFeather, ocean_seaLevel+ocean_highFeather, 1.0, 0.0 ); \n" 
 
         // color it
-        "    color = vec4( color.rgb, terrainEffect * rangeEffect ); \n" //* color.a ); \n"
+        "    color = vec4( color.rgb, terrainEffect * rangeEffect * oe_ocean_alpha ); \n" //* color.a ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging
         "} \n";
@@ -231,6 +233,8 @@ namespace
         "uniform float ocean_max_range; \n"              // maximum visible distance of the ocean
         "uniform float ocean_fade_range; \n"             // distance over which to fade in the ocean
 
+        "uniform float oe_ocean_alpha; \n"               // The ocean alpha
+
         "void oe_ocean_fragment(inout vec4 color) \n"
         "{ \n"
         "    color = ocean_baseColor; \n"
@@ -258,7 +262,7 @@ namespace
         "    float maskEffect = texture2D(ocean_data, ocean_mask_tex_coord.xy).a; \n"
 
         // color it
-        "    color = vec4( color.rgb, maskEffect * rangeEffect * color.a ); \n"
+        "    color = vec4( color.rgb, maskEffect * rangeEffect * color.a * oe_ocean_alpha ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging
         "} \n";

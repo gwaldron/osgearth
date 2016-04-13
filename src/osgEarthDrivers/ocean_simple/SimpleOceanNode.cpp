@@ -206,6 +206,10 @@ SimpleOceanNode::rebuild()
         _fadeRange = new osg::Uniform(osg::Uniform::FLOAT, "ocean_fade_range");
         ss->addUniform( _fadeRange.get() );
 
+        _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_ocean_alpha");
+        ss->addUniform( _alphaUniform.get() );
+
+
         // trick to mitigate z-fighting..
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
         ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
@@ -267,11 +271,17 @@ SimpleOceanNode::applyOptions()
     _baseColor->set( *_options.baseColor() );
     _maxRange->set( *_options.maxRange() );
     _fadeRange->set( *_options.fadeRange() );
-
+    _alphaUniform->set(getAlpha());
 }
 
 void
 SimpleOceanNode::onSetSeaLevel()
 {
     _seaLevel->set( getSeaLevel() );
+}
+
+void
+SimpleOceanNode::onSetAlpha()
+{
+    _alphaUniform->set(getAlpha());
 }

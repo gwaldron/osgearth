@@ -46,6 +46,8 @@ _options ( options )
         _TRITON->setCallback( callback );
 
     _drawable = new TritonDrawable(mapNode, _TRITON);
+    _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
+    _alphaUniform->set(getAlpha());
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( _drawable );
@@ -69,6 +71,12 @@ TritonNode::onSetSeaLevel()
         _TRITON->getEnvironment()->SetSeaLevel( getSeaLevel() );
     }
     dirtyBound();
+}
+
+void
+TritonNode::onSetAlpha()
+{
+    _alphaUniform->set(getAlpha());
 }
 
 osg::BoundingSphere

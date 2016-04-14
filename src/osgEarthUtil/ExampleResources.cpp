@@ -726,7 +726,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Configure the de-cluttering engine for labels and annotations:
     if ( !declutterConf.empty() )
     {
-        Decluttering::setOptions( DeclutteringOptions(declutterConf) );
+        ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(declutterConf) );
     }
 
     // Configure the mouse coordinate readout:

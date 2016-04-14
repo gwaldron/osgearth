@@ -69,7 +69,7 @@ static MGRSFormatter s_format(MGRSFormatter::PRECISION_10000M);
 bool                g_showCoords        = true;
 optional<float>     g_duration          = 60.0;
 unsigned            g_numTracks         = 500;
-DeclutteringOptions g_dcOptions;
+ScreenSpaceLayoutOptions g_dcOptions;
 
 
 /** Prints an error message */
@@ -223,7 +223,7 @@ createControls( osgViewer::View* view )
     // checkbox that toggles decluttering of tracks
     struct ToggleDecluttering : public ControlEventHandler {
         void onValueChanged( Control* c, bool on ) {
-            Decluttering::setEnabled( on );
+            ScreenSpaceLayout::setDeclutteringEnabled( on );
         }
     };
     HBox* dcToggle = vbox->addControl( new HBox() );
@@ -256,7 +256,7 @@ createControls( osgViewer::View* view )
         void onValueChanged( Control* c, float value ) {
             _param = value;
             _label->setText( Stringify() << std::fixed << std::setprecision(1) << value );
-            Decluttering::setOptions( g_dcOptions );
+            ScreenSpaceLayout::setOptions( g_dcOptions );
         }
     };
 
@@ -332,11 +332,11 @@ main(int argc, char** argv)
     // sorting, which looks at the AnnotationData::priority field for each drawable.
     // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize 
     // a couple of the decluttering options to get the animation effects we want.
-    g_dcOptions = Decluttering::getOptions();
+    g_dcOptions = ScreenSpaceLayout::getOptions();
     g_dcOptions.inAnimationTime()  = 1.0f;
     g_dcOptions.outAnimationTime() = 1.0f;
     g_dcOptions.sortByPriority()   = true;
-    Decluttering::setOptions( g_dcOptions );
+    ScreenSpaceLayout::setOptions( g_dcOptions );
 
     // attach the simulator to the viewer.
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );

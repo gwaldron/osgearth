@@ -101,7 +101,7 @@ _followFixedCourse( false )
 void
 LabelNode::init( const Style& style )
 {
-    Decluttering::activate( this->getOrCreateStateSet() );
+    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
 
     _geode = new osg::Geode();
 
@@ -208,23 +208,23 @@ LabelNode::setPriority(float value)
 void
 LabelNode::updateLayoutData()
 {
-    if ( ! _dataLayout.valid() )
+    if (!_dataLayout.valid())
     {
-        _dataLayout = new LayoutData();
-
-    // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
-    {
-            _geode->getDrawable(i)->setUserData(_dataLayout.get());
-        }
+        _dataLayout = new ScreenSpaceLayoutData();
     }
 
-    _dataLayout->_priority = getPriority();
+    // re-apply annotation drawable-level stuff as neccesary.
+    for (unsigned i = 0; i < _geode->getNumDrawables(); ++i)
+    {
+        _geode->getDrawable(i)->setUserData(_dataLayout.get());
+    }
+    
+    _dataLayout->setPriority(getPriority());
     const TextSymbol* ts = getStyle().get<TextSymbol>();
     if (ts)
     {
-        _dataLayout->_pixelOffset = ts->pixelOffset().get();
-        _dataLayout->_localRotationRad = _labelRotationRad;
+        _dataLayout->setPixelOffset(ts->pixelOffset().get());
+        _dataLayout->setRotationRad(_labelRotationRad);
     }
 }
 

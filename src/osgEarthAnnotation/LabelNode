@@ -131,7 +131,7 @@ namespace osgEarth { namespace Annotation
         std::string              _text;
         Style                    _style;
         osg::ref_ptr<osg::Geode> _geode;
-        osg::ref_ptr<LayoutData> _dataLayout;
+        osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
 
         /** rotation of the label **/
         float                    _labelRotationRad;

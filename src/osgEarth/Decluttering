@@ -28,35 +28,52 @@
 #include <osgUtil/RenderLeaf>
 #include <limits.h>
 
-#define OSGEARTH_DECLUTTER_BIN "osgearth_declutter"
+#define OSGEARTH_SCREEN_SPACE_LAYOUT_BIN "osgearth_ScreenSpaceLayoutBin"
 
 namespace osgEarth
 {
     /**
-     * Marker class hinting that an implementation supports the decluttering
-     * render bin.
+     * Interface that exposes layout information.
      */
-    class SupportsDecluttering
+    class ScreenSpaceLayoutData : public osg::Referenced
     {
-        //nop
-    };
+    public:
+        /** Install and return a LayoutData on a drawable. */
+        static ScreenSpaceLayoutData* getOrCreate(osg::Drawable* drawable) {
+            if (!drawable) return 0L;
+            ScreenSpaceLayoutData* ld = dynamic_cast<ScreenSpaceLayoutData*>(drawable->getUserData());
+            if (!ld) {
+                ld = new ScreenSpaceLayoutData();
+                drawable->setUserData(ld);
+            }
+            return ld;
+        }
 
-    /**
-     * Interface that exposes set/getPriority for priority sorting
-     */
-    struct LayoutData : public osg::Referenced
-    {
+        /** Constructor */
+        ScreenSpaceLayoutData() :
+            _priority(0.0f),
+            _pixelOffset(0, 0),
+            _localRotationRad(0.0f) { }
+
+        /** Decluttering priority - FLT_MAX means don't declutter */
+        void setPriority(float value) { _priority = value; }
+        float getPriority() const     { return _priority; }
+
+        /** Offset from geoposition in screen pixels */
+        void setPixelOffset(const osg::Vec2s& value) { _pixelOffset = value; }
+        const osg::Vec2s& getPixelOffset() const     { return _pixelOffset; }
+
+        /** Rotation from geoposition in radians */
+        void setRotationRad(float value) { _localRotationRad = value; }
+        float getRotationRad() const     { return _localRotationRad; }
+
     public:
         float      _priority;
         osg::Vec2s _pixelOffset;
         float      _localRotationRad;
+
     public:
-        LayoutData() :
-            _priority(0.0f),
-            _pixelOffset(0, 0),
-            _localRotationRad(0.0f) { }
-    public:
-        virtual ~LayoutData() { }
+        virtual ~ScreenSpaceLayoutData() { }
     };
 
     /**
@@ -83,10 +100,10 @@ namespace osgEarth
     /**
      * Options to control the annotation decluttering engine.
      */
-    class OSGEARTH_EXPORT DeclutteringOptions
+    class OSGEARTH_EXPORT ScreenSpaceLayoutOptions
     {
     public:
-        DeclutteringOptions( const Config& conf =Config() )
+        ScreenSpaceLayoutOptions( const Config& conf =Config() )
             : _minAnimAlpha         ( 0.35f ),
               _minAnimScale         ( 0.45f ),
               _inAnimTime           ( 0.40f ),
@@ -98,7 +115,7 @@ namespace osgEarth
             fromConfig(conf);
         }
 
-        virtual ~DeclutteringOptions() { }
+        virtual ~ScreenSpaceLayoutOptions() { }
 
         /** Alpha value of a fully-occluded object */
         optional<float>& minAnimationAlpha() { return _minAnimAlpha; }
@@ -145,20 +162,36 @@ namespace osgEarth
         void fromConfig( const Config& conf );
     };
 
-    struct OSGEARTH_EXPORT Decluttering
+    struct OSGEARTH_EXPORT ScreenSpaceLayout
     {
         /**
-         * Activates the layout engine for a stateset. I.e., geometry rendered while
-         * this stateset is active will render using the layout/decluttering engine.
-         * Note. This is not the same as toggling decluttering on a node. To disable
-         * decluttering on a particular object, set its priority to FLT_MAX.
+         * Assigns a stateset to the screen-space layout engine.
+         * Drawables rendered while this stateset is active will be projected from
+         * scene space to 2D screen space with optional decluttering.
          */
         static void activate(osg::StateSet* stateSet, int binNum =13);
 
         /**
+         * Deactivates the use of the screen-space layout engine for a stateset.
+         */
+        static void deactivate(osg::StateSet* stateSet);
+
+        /**
          * Enables or disables decluttering globally.
          */
-        static void setEnabled( bool enabled );
+        static void setDeclutteringEnabled(bool enabled);
+
+        /**
+         * Applies the provided options to the layout engine.
+         */
+        static void setOptions(const ScreenSpaceLayoutOptions& options);
+
+        /**
+         * Fetches the current layout options
+         */
+        static const ScreenSpaceLayoutOptions& getOptions();
+
+    public: // advanced
 
         /**
          * Sets a functor to use to determine render leaf priority for declutter sorting.
@@ -170,16 +203,6 @@ namespace osgEarth
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
         static void clearSortFunctor();
-
-        /**
-         * Applies the provided options to the decluttering engine.
-         */
-        static void setOptions( const DeclutteringOptions& options );
-
-        /**
-         * Fetches the current decluttering options
-         */
-        static const DeclutteringOptions& getOptions();
     };
 
 } // namespace osgEarth

@@ -220,9 +220,6 @@ struct ProgressReporter : public osgEarth::ProgressCallback
 int
 main(int argc, char** argv)
 {
-    OE_INFO << "PRESS ENTER TO START.\n";
-    ::getchar();
-
     osg::ArgumentParser args(&argc,argv);
 
     if ( argc == 1 )

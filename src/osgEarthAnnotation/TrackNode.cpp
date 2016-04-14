@@ -25,7 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osg/Depth>
 #include <osgText/Text>
 

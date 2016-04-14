@@ -26,7 +26,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
@@ -192,8 +192,6 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
         // add a priority
         track->setPriority( float(i) );
-
-        //Decluttering::setEnabled(track->getOrCreateStateSet(), true);
 
         parent->addChild( track );
 

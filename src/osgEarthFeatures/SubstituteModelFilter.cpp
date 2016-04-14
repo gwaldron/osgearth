@@ -26,7 +26,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>

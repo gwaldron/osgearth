@@ -39,7 +39,7 @@
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/TerrainEngineNode>
 
 #include <osgEarth/XmlUtils>
@@ -603,7 +603,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     const Config& skyConf         = externals.child("sky");
     const Config& oceanConf       = externals.child("ocean");
-    const Config& declutterConf   = externals.child("decluttering");
+
+    const Config& screenSpaceLayoutConf = 
+        externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
+        externals.child("decluttering"); // backwards-compatibility
+
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.
@@ -724,9 +728,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Configure the de-cluttering engine for labels and annotations:
-    if ( !declutterConf.empty() )
+    if ( !screenSpaceLayoutConf.empty() )
     {
-        ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(declutterConf) );
+        ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(screenSpaceLayoutConf) );
     }
 
     // Configure the mouse coordinate readout:

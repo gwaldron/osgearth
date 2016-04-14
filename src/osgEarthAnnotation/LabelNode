@@ -26,7 +26,7 @@
 #include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Annotation

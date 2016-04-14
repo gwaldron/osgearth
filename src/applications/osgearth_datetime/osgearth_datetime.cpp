@@ -21,7 +21,7 @@
 */
 
 #include <osgEarth/MapNode>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 

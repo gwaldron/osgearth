@@ -105,8 +105,9 @@ struct ImageLayerToTileSource : public TileHandler
     {
         bool ok = false;
         GeoImage image = _source->createImage(key);
-        if ( image.valid() )
-            ok = _dest->storeImage(key, image.getImage(), 0L);
+        if (image.valid())
+            ok = _dest->storeImage(key, image.getImage(), 0L);        
+
         return ok;
     }
     
@@ -219,6 +220,9 @@ struct ProgressReporter : public osgEarth::ProgressCallback
 int
 main(int argc, char** argv)
 {
+    OE_INFO << "PRESS ENTER TO START.\n";
+    ::getchar();
+
     osg::ArgumentParser args(&argc,argv);
 
     if ( argc == 1 )

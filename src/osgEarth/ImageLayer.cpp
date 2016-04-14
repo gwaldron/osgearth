@@ -836,7 +836,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             {
                 // a tile completely failed, even with fallback. Eject.
                 OE_DEBUG << LC << "Couldn't fallback on tiles for ImageMosaic" << std::endl;
-                return GeoImage::INVALID;
+                // let it go. The empty areas will be filled with alpha by ImageMosaic.
             }
         }
 

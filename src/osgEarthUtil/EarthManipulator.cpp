@@ -1594,8 +1594,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             
                 setViewpointFrame( time_s_now );
             }
-            
-            aa.requestContinuousUpdate( isSettingViewpoint() );
 
             if (_thrown)
             {
@@ -1609,6 +1607,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 else            
                     handleMovementAction(_last_action._type, _throw_dx, _throw_dy, aa.asView());
             }
+            
+            aa.requestContinuousUpdate( isSettingViewpoint() || _thrown );
 
             if ( _continuous )
             {

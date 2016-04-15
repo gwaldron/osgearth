@@ -35,6 +35,7 @@ struct Settings
     TritonNode* triton;
     optional<double> chop;
     optional<double> seaState;
+    optional<float> alpha;
     
     void apply(Environment& env, Ocean& ocean)
     {
@@ -48,6 +49,11 @@ struct Settings
         {
             env.SimulateSeaState(seaState.get(), 0.0);
             seaState.unset();
+        }
+
+        if (alpha.isSet())
+        {
+            triton->setAlpha( alpha.get() );
         }
     }
 };
@@ -73,8 +79,12 @@ Container* createUI()
     ++r;
     grid->setControl(0, r, new LabelControl("Sea State"));
     grid->setControl(1, r, new HSliderControl(0, 12, 5, new Set<double>(s_settings.seaState)));
+    ++r;  
+    grid->setControl(0, r, new LabelControl("Alpha"));
+    grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_settings.alpha)));
     ++r;
     grid->getControl(1, r-1)->setHorizFill(true,200);
+
     return box;
 }
 

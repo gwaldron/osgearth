@@ -46,6 +46,8 @@ namespace osgEarth { namespace Triton
 
         void onSetSeaLevel();
 
+        void onSetAlpha();
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -58,6 +60,7 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<TritonContext> _TRITON;
         TritonOptions               _options;
         osg::Drawable*              _drawable;
+        osg::ref_ptr<osg::Uniform>  _alphaUniform;
 
         //Environment* _environmentWrapper;
     };

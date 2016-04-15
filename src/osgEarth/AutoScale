@@ -28,6 +28,9 @@
 namespace osgEarth
 {
     /**
+     * @deprecated
+     * Consider GeoPositionNodeAutoScaler instead
+     *
      * Usage: set your render bin to AUTO_SCALE_BIN and your
      * geometry will automatically draw at one pixel per meter.
      *

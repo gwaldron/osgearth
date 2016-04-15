@@ -26,7 +26,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
@@ -233,7 +233,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
             {
                 if ( iconSymbol->declutter() == true )
                 {
-                    Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                    ScreenSpaceLayout::activate(model->getOrCreateStateSet());
                 }
                 else if ( dynamic_cast<osg::AutoTransform*>(model.get()) == 0L )
                 {
@@ -344,7 +344,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // activate decluttering for icons if requested
         if ( iconSymbol->declutter() == true )
         {
-            Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+            ScreenSpaceLayout::activate(attachPoint->getOrCreateStateSet());
         }
 
         // activate horizon culling if we are in geocentric space

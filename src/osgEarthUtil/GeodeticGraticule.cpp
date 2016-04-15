@@ -23,7 +23,6 @@
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
 
-#include <osgEarth/Decluttering>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
@@ -270,8 +269,6 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     if ( hasText )
     {
         labels = new osg::Group();
-        //TODO:  This is a bug, if you don't turn on decluttering the text labels are giant.  Need to determine what is wrong with LabelNodes without decluttering.
-        Decluttering::setEnabled( labels->getOrCreateStateSet(), true );
     }
 
     // spatial ref for features:

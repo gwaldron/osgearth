@@ -24,7 +24,7 @@
 
 #include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 
 namespace osgEarth { namespace Annotation
 {
@@ -131,7 +131,7 @@ namespace osgEarth { namespace Annotation
         Style                              _style;
         class osg::Geode*                  _geode;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
-        osg::ref_ptr<LayoutData>           _dataLayout;
+        osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
 
         /** rotation of the label **/
         float                    _labelRotationRad;

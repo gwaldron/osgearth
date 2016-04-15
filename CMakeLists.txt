@@ -8,6 +8,9 @@ if(COMMAND cmake_policy)
     # Works around warnings about escaped quotes in ADD_DEFINITIONS
     # statements.
     cmake_policy(SET CMP0005 OLD)
+    
+    
+    cmake_policy(SET CMP0043 NEW)
 
     # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
     if(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)

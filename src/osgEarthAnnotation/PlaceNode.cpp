@@ -89,7 +89,7 @@ _followFixedCourse( false )
 void
 PlaceNode::init()
 {
-    Decluttering::setEnabled( this->getOrCreateStateSet(), true );
+    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
 
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 
@@ -295,23 +295,23 @@ PlaceNode::setPriority(float value)
 void
 PlaceNode::updateLayoutData()
 {
-    if ( ! _dataLayout.valid() )
+    if (!_dataLayout.valid())
     {
-        _dataLayout = new LayoutData();
-
-    // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
-    {
-            _geode->getDrawable(i)->setUserData(_dataLayout.get());
-        }
+        _dataLayout = new ScreenSpaceLayoutData();
     }
 
-    _dataLayout->_priority = getPriority();
+    // re-apply annotation drawable-level stuff as neccesary.
+    for (unsigned i = 0; i < _geode->getNumDrawables(); ++i)
+    {
+        _geode->getDrawable(i)->setUserData(_dataLayout.get());
+    }
+
+    _dataLayout->setPriority(getPriority());
     const TextSymbol* ts = getStyle().get<TextSymbol>();
     if (ts)
     {
-        _dataLayout->_pixelOffset = ts->pixelOffset().get();
-        _dataLayout->_localRotationRad = _labelRotationRad;
+        _dataLayout->setPixelOffset(ts->pixelOffset().get());
+        _dataLayout->setRotationRad(_labelRotationRad);
     }
 }
 

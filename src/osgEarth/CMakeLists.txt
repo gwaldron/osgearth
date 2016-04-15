@@ -66,7 +66,6 @@ SET(LIB_PUBLIC_HEADERS
     CullingUtils
     DateTime
 	DateTimeRange
-    Decluttering
     DepthOffset
     DPLineSegmentIntersector
     DrapeableNode
@@ -135,6 +134,7 @@ SET(LIB_PUBLIC_HEADERS
     Random
     Registry
     Revisioning
+    ScreenSpaceLayout
     Shaders
     ShaderFactory
     ShaderGenerator
@@ -228,7 +228,6 @@ set(TARGET_SRC
     CullingUtils.cpp
     DateTime.cpp
 	DateTimeRange.cpp
-    Decluttering.cpp
     DepthOffset.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
@@ -290,6 +289,7 @@ set(TARGET_SRC
     Random.cpp
     Registry.cpp
     Revisioning.cpp
+    ScreenSpaceLayout.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLoader.cpp

@@ -52,6 +52,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
 
         void onSetSeaLevel();
 
+        void onSetAlpha();
+
         virtual ~SimpleOceanNode() { }
 
     private:
@@ -61,6 +63,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
         osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
         osg::ref_ptr<osg::Uniform> _maxRange, _fadeRange;
         osg::ref_ptr<osg::Uniform> _baseColor;
+        osg::ref_ptr<osg::Uniform> _alphaUniform;
 
         void rebuild();
 

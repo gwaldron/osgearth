@@ -26,7 +26,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
@@ -69,7 +69,7 @@ static MGRSFormatter s_format(MGRSFormatter::PRECISION_10000M);
 bool                g_showCoords        = true;
 optional<float>     g_duration          = 60.0;
 unsigned            g_numTracks         = 500;
-DeclutteringOptions g_dcOptions;
+ScreenSpaceLayoutOptions g_dcOptions;
 
 
 /** Prints an error message */
@@ -193,8 +193,6 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         // add a priority
         track->setPriority( float(i) );
 
-        Decluttering::setEnabled(track->getOrCreateStateSet(), true);
-
         parent->addChild( track );
 
         // add a simulator for this guy
@@ -210,20 +208,20 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
 
 /** creates some UI controls for adjusting the decluttering parameters. */
-void
+Container*
 createControls( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
+    //ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
     
     // title bar
-    VBox* vbox = canvas->addControl(new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 ));
+    VBox* vbox = new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 );
     vbox->setBackColor( Color(Color::Black, 0.5) );
     vbox->addControl( new LabelControl("osgEarth Tracks Demo", Color::Yellow) );
     
     // checkbox that toggles decluttering of tracks
     struct ToggleDecluttering : public ControlEventHandler {
         void onValueChanged( Control* c, bool on ) {
-            Decluttering::setEnabled( on );
+            ScreenSpaceLayout::setDeclutteringEnabled( on );
         }
     };
     HBox* dcToggle = vbox->addControl( new HBox() );
@@ -256,7 +254,7 @@ createControls( osgViewer::View* view )
         void onValueChanged( Control* c, float value ) {
             _param = value;
             _label->setText( Stringify() << std::fixed << std::setprecision(1) << value );
-            Decluttering::setOptions( g_dcOptions );
+            ScreenSpaceLayout::setOptions( g_dcOptions );
         }
     };
 
@@ -285,6 +283,8 @@ createControls( osgViewer::View* view )
     LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.outAnimationTime()) );
     grid->setControl( 1, r, new HSliderControl( 
         0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );
+
+    return vbox;
 }
 
 
@@ -302,7 +302,8 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator );
 
     // load a map from an earth file.
-    osg::Node* earth = MapNodeHelper().load(arguments, &viewer);
+    osg::Node* earth = MapNodeHelper().load(arguments, &viewer, createControls(&viewer));
+
     MapNode* mapNode = MapNode::findMapNode(earth);
     if ( !mapNode )
         return usage("Missing required .earth file" );
@@ -329,18 +330,15 @@ main(int argc, char** argv)
     // sorting, which looks at the AnnotationData::priority field for each drawable.
     // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize 
     // a couple of the decluttering options to get the animation effects we want.
-    g_dcOptions = Decluttering::getOptions();
+    g_dcOptions = ScreenSpaceLayout::getOptions();
     g_dcOptions.inAnimationTime()  = 1.0f;
     g_dcOptions.outAnimationTime() = 1.0f;
     g_dcOptions.sortByPriority()   = true;
-    Decluttering::setOptions( g_dcOptions );
+    ScreenSpaceLayout::setOptions( g_dcOptions );
 
     // attach the simulator to the viewer.
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
     viewer.setRunFrameScheme( viewer.CONTINUOUS );
-
-    // configure a UI for controlling the demo
-    createControls( &viewer );
     
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.run();

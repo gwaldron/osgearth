@@ -71,7 +71,8 @@ _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
-_validate              ( false )
+_validate              ( false ),
+_maxPolyTilingAngle    ( 5.0f )
 {
    //nop
 }
@@ -91,7 +92,8 @@ _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
 _optimize              ( s_defaults.optimize().value() ),
-_validate              ( s_defaults.validate().value() )
+_validate              ( s_defaults.validate().value() ),
+_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
 {
     fromConfig(_conf);
 }
@@ -112,6 +114,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.getIfSet   ( "optimize", _optimize );
     conf.getIfSet   ( "validate", _validate );
+    conf.getIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -135,6 +138,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.addIfSet   ( "optimize", _optimize );
     conf.addIfSet   ( "validate", _validate );
+    conf.addIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -491,6 +495,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         BuildGeometryFilter filter( style );
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
+        filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
 
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();

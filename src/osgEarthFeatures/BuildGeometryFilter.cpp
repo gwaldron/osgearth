@@ -96,7 +96,8 @@ namespace
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 180.0 ),
-_geoInterp    ( GEOINTERP_RHUMB_LINE )
+_geoInterp    ( GEOINTERP_RHUMB_LINE ),
+_maxPolyTilingAngle_deg( 5.0 )
 {
     //nop
 }
@@ -798,7 +799,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                                          const osg::Matrixd      &world2local)
 {
 #define MAX_POINTS_PER_CROP_TILE 1024
-#define TARGET_TILE_SIZE_EXTENT_DEGREES 5.0
+//#define TARGET_TILE_SIZE_EXTENT_DEGREES 5
 
     if ( ring == 0L )
     {
@@ -808,7 +809,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
     // Tile the incoming polygon if necessary
     GeometryCollection tiles;
-    prepareForTesselation( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, MAX_POINTS_PER_CROP_TILE, tiles);    
+    prepareForTesselation( ring, featureSRS, _maxPolyTilingAngle_deg.get(), MAX_POINTS_PER_CROP_TILE, tiles);    
     //tiles.push_back( ring );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;

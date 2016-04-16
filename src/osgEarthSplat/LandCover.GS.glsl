@@ -228,9 +228,12 @@ oe_landcover_geom()
     // billboard width, which shrinks into the distance
     float width = billboard.width * falloff;
     
-    // vary the height of each instance and shrink it as it disappears into the distance.
     float height = billboard.height;
+#if 0 // customer requested this be removed
+    // vary the height of each instance and shrink it as it disappears into the distance.
     height *= abs(1.0 + noise[NOISE_RANDOM_2]);
+#endif
+    // shrink land cover as it dissappears into the distance:
     height *= falloff;
 
 	// compute the billboard corners in view space.

@@ -74,12 +74,20 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
+        /**
+         * When a geocentric polygon is very large, the filter has to tile it up in order to
+         * properly tessellate it. This is the maximum size of each tile (in degrees).
+         */        
+        optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle_deg; }
+        const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle_deg; }
+
     protected:
         Style                      _style;
 
         optional<double>           _maxAngle_deg;
         optional<GeoInterpolation> _geoInterp;
         optional<StringExpression> _featureNameExpr;
+        optional<float>            _maxPolyTilingAngle_deg;
         
         void tileAndBuildPolygon(
             Geometry*               input,

@@ -1,4 +1,4 @@
-/* -*-c++-*- */
+/* -*_maxPolyTilingAngle_deg-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2015 Pelican Mapping
  * http://osgearth.org
@@ -97,7 +97,7 @@ BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
-_maxPolyTilingAngle_deg( 5.0 )
+_maxPolyTilingAngle_deg( 45.0f )
 {
     //nop
 }

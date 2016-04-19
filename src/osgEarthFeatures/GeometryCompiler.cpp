@@ -72,7 +72,7 @@ _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
 _validate              ( false ),
-_maxPolyTilingAngle    ( 5.0f )
+_maxPolyTilingAngle    ( 45.0f )
 {
    //nop
 }

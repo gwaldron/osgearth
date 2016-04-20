@@ -62,6 +62,8 @@ bool
 {
     features.clear();
 
+#ifdef OSGEARTH_HAVE_MVT
+
     // Get the compressor
     osg::ref_ptr< osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
     if (!compressor.valid())
@@ -231,4 +233,8 @@ bool
     }
 
     return true;
+#else
+    OE_NOTICE << "Mapnik Vector Tiles NOT SUPPORTED - please compile osgEarth with protobuf to enable." << std::endl; }
+    return false;
+#endif
 }

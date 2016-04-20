@@ -404,7 +404,8 @@ PlaceNode::traverse(osg::NodeVisitor &nv)
             osg::Vec3d projOnScreen = projOnWorld * matrix;
             projOnScreen -= refOnScreen;
             _labelRotationRad = atan2 (projOnScreen.y(), projOnScreen.x());
-            updateLayoutData();
+            if (_dataLayout.valid())
+                _dataLayout->setRotationRad(_labelRotationRad);
         }
     }
     GeoPositionNode::traverse(nv);

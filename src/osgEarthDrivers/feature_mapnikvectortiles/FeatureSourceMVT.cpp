@@ -22,6 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/MVT>
 #include <osgEarthFeatures/Filter>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -31,7 +32,6 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 
-#include "MVT"
 
 #define LC "[MVT FeatureSource] "
 

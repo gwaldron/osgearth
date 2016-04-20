@@ -131,12 +131,25 @@ public:
         }
         else
         {
+            // Try to get the results from the settings instead
+            if ( !_options.profile().isSet())
+            {
+                OE_NOTICE << LC << "TFS driver needs an explicit profile set" << std::endl;
+                return 0;
+            }
 
-            result = new FeatureProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile()->getExtent());
+            if (!_options.minLevel().isSet() || !_options.maxLevel().isSet())
+            {
+                OE_NOTICE << LC << "TFS driver needs a min and max level set" << std::endl;
+                return 0;
+            }
+           
+            osg::ref_ptr<const Profile> profile = Profile::create( *_options.profile() );            
+            result = new FeatureProfile(profile->getExtent());
             result->setTiled( true );
-            result->setFirstLevel( 14 );
-            result->setMaxLevel( 14 );
-            result->setProfile( osgEarth::Registry::instance()->getSphericalMercatorProfile() );
+            result->setFirstLevel( *_options.minLevel() );
+            result->setMaxLevel( *_options.maxLevel() );
+            result->setProfile( profile );
             if ( _options.geoInterp().isSet() )
                 result->geoInterp() = _options.geoInterp().get();
         }
@@ -145,15 +158,14 @@ public:
 
 
     bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features )
-    {        
-        OE_NOTICE << "Getting tile " << key.str() << std::endl;
+    {            
         if (mimeType == "application/x-protobuf")
         {
             std::stringstream in(buffer);
             return MVT::read(in, key, features);
         }
         else
-        {
+        {            
             // find the right driver for the given mime type
             OGR_SCOPED_LOCK;
 
@@ -263,20 +275,20 @@ public:
             unsigned int level = key.getLevelOfDetail();
             
             // TFS follows the same protocol as TMS, with the origin in the lower left of the profile.
-            // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.
-            /*
-            unsigned int numRows, numCols;
-            key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
-            tileY  = numRows - tileY - 1;
-            */
-            
+            // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.            
+            if (_options.invertY() == false)
+            {                
+                unsigned int numRows, numCols;
+                key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+                tileY  = numRows - tileY - 1;            
+            }
+
             std::stringstream buf;
             std::string path = osgDB::getFilePath(_options.url()->full());
             buf << path << "/" << level << "/"
                                << tileX << "/"
                                << tileY
                                << "." << _options.format().get();            
-            OE_NOTICE << "TFS url " << buf.str() << std::endl;
             return buf.str();
         }
         return "";                       
@@ -318,14 +330,10 @@ public:
             }
             dataOK = getFeatures( buffer, *query.tileKey(), mimeType, features );
         }
-        else
-        {
-            OE_NOTICE << "No data read for " << query.tileKey().get().str() << std::endl;
-        }
 
         if ( dataOK )
         {
-            OE_NOTICE << LC << "Read " << features.size() << " features" << std::endl;
+            OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
         }
 
         //If we have any filters, process them here before the cursor is created

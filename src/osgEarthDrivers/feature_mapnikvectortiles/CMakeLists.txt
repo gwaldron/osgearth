@@ -8,11 +8,13 @@ PROTOBUF_GENERATE_CPP(PROTO_CPP PROTO_H vector_tile.proto)
 
 SET(TARGET_SRC
     FeatureSourceMVT.cpp
+    MVT.cpp
     ${PROTO_CPP}
 )
 
 SET(TARGET_H
     MVTFeatureOptions
+    MVT
     ${PROTO_H}
 )
 

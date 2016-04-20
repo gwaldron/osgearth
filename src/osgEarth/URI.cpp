@@ -271,7 +271,7 @@ namespace
         }
 
         // no archive; just read it normally
-        std::ifstream input( uri.c_str() );
+        std::ifstream input( uri.c_str(), std::ios::binary );
         if ( input.is_open() )
         {
             input >> std::noskipws;

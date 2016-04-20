@@ -15,7 +15,6 @@ SET(LIB_PUBLIC_HEADERS
 #   header files go here
     AGG.h
     AltitudeSymbol
-#    BBoxSymbol
     BillboardResource
     BillboardSymbol
     Common
@@ -63,7 +62,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     AltitudeSymbol.cpp
-#    BBoxSymbol.cpp
     BillboardResource.cpp
     BillboardSymbol.cpp
     Color.cpp

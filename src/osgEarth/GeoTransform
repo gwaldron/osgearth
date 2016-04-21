@@ -72,6 +72,32 @@ namespace osgEarth
          */
         void setAutoRecomputeHeights(bool value);
 
+    public:
+        /** Callback that lets the user intercept the compute*Matrix functions during a traversal. */
+        class OSGEARTH_EXPORT ComputeMatrixCallback : public osg::Referenced
+        {
+        public:
+            virtual bool computeLocalToWorldMatrix(const GeoTransform* xform, osg::Matrix& m, osg::NodeVisitor* nv) const;
+            virtual bool computeWorldToLocalMatrix(const GeoTransform* xform, osg::Matrix& m, osg::NodeVisitor* nv) const;
+        };
+
+        /** Installs a compute matrix callback */
+        void setComputeMatrixCallback(ComputeMatrixCallback* cb);
+
+
+    public: // osg::Transform
+
+        virtual bool computeLocalToWorldMatrix(osg::Matrix& m, osg::NodeVisitor* nv) const {
+            return _computeMatrixCallback.valid()
+                ? _computeMatrixCallback->computeLocalToWorldMatrix(this, m, nv)
+                : osg::MatrixTransform::computeLocalToWorldMatrix(m, nv);
+        }
+
+        virtual bool computeWorldToLocalMatrix(osg::Matrix& m, osg::NodeVisitor* nv) const {
+            return _computeMatrixCallback.valid()
+                ? _computeMatrixCallback->computeWorldToLocalMatrix(this, m, nv)
+                : osg::MatrixTransform::computeWorldToLocalMatrix(m, nv);
+        }
 
     public: // TerrainCallback interface
 
@@ -87,6 +113,8 @@ namespace osgEarth
         osg::observer_ptr<Terrain> _terrain;
         bool                       _autoRecompute;
         bool                       _autoRecomputeReady;
+
+        osg::ref_ptr<ComputeMatrixCallback> _computeMatrixCallback;
 
         void configureAutoRecompute(Terrain* terrain);
     };

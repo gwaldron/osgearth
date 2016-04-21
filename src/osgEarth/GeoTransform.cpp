@@ -149,3 +149,29 @@ GeoTransform::onTileAdded(const TileKey&          key,
 
    setPosition(_position);
 }
+
+void
+GeoTransform::setComputeMatrixCallback(GeoTransform::ComputeMatrixCallback* cb)
+{
+    _computeMatrixCallback = cb;
+}
+
+bool
+GeoTransform::ComputeMatrixCallback::computeLocalToWorldMatrix(const GeoTransform* xform, osg::Matrix& m, osg::NodeVisitor* nv) const
+{
+    if (xform->getReferenceFrame() == xform->RELATIVE_RF)
+        m.preMult(xform->getMatrix());
+    else
+        m = xform->getMatrix();
+    return true;
+}
+
+bool
+GeoTransform::ComputeMatrixCallback::computeWorldToLocalMatrix(const GeoTransform* xform, osg::Matrix& m, osg::NodeVisitor* nv) const
+{
+    if (xform->getReferenceFrame() == xform->RELATIVE_RF)
+        m.postMult(xform->getInverseMatrix());
+    else
+        m = xform->getInverseMatrix();
+    return true;
+}

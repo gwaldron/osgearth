@@ -568,7 +568,8 @@ namespace
                 if ( !m.valid() )
                     m = new osg::RefMatrix();
 
-                m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
+                //m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
+                m->makeOrtho( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1, -1000, 1000);
                 state.applyProjectionMatrix( m.get() );
             }
 

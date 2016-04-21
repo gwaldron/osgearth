@@ -43,6 +43,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/ScreenSpaceLayout>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -93,7 +94,8 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer"
+            "L :",                 "toggle log depth buffer",
+            ") :",                 "toggle sceen space layout"
         };
 
         Grid* g = new Grid();
@@ -186,6 +188,43 @@ namespace
         float _nfratio;
         bool _installed;
         osgEarth::Util::LogarithmicDepthBuffer _ldb;
+    };
+
+    /**
+     * Toggles screen space layout on the sismulated objects
+     */
+    struct ToggleSSL : public osgGA::GUIEventHandler
+    {
+        ToggleSSL(osg::Group* g, char key) : _group(g), _key(key), _installed(false) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( !_installed )
+                {
+                    ScreenSpaceLayout::activate(_group->getOrCreateStateSet());
+                }
+                else
+                {
+                    ScreenSpaceLayout::deactivate(_group->getOrCreateStateSet());
+                }
+
+                _installed = !_installed;
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle SSL"));
+        }
+
+        char _key;
+        osg::Group* _group;
+        bool _installed;
     };
 
     /**
@@ -555,9 +594,6 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        //osg::ref_ptr<osg::Camera>          _cam;
-        //osg::ref_ptr<GeoTransform>         _xform;
-        //osg::ref_ptr<osg::PositionAttitudeTransform> _pat;
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
         osg::Node*                         _model;
@@ -607,15 +643,18 @@ int main(int argc, char** argv)
     if (arguments.read("--model", modelFile))
         model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
 
+    osg::Group* sims = new osg::Group();
+    root->addChild( sims );
+
     // Simulator for tethering:
-    Simulator* sim1 = new Simulator(root, manip, mapNode, model, "Thing 1", '8');
+    Simulator* sim1 = new Simulator(sims, manip, mapNode, model, "Thing 1", '8');
     sim1->_lat0 = 55.0;
     sim1->_lon0 = 45.0;
     sim1->_lat1 = -55.0;
     sim1->_lon1 = -45.0;
     viewer.addEventHandler(sim1);
 
-    Simulator* sim2 = new Simulator(root, manip, mapNode, model, "Thing 2", '9');
+    Simulator* sim2 = new Simulator(sims, manip, mapNode, model, "Thing 2", '9');
     sim2->_name = "Thing 2";
     sim2->_lat0 = 54.0;
     sim2->_lon0 = 45.0;
@@ -656,6 +695,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new CycleTetherMode('t', manip));
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
+    viewer.addEventHandler(new ToggleSSL(sims, ')'));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

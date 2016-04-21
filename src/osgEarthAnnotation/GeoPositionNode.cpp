@@ -28,7 +28,6 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/Decluttering>
 
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>

@@ -44,15 +44,16 @@ namespace osgEarth { namespace Symbology
         /** 
          * Constructs a new resource cache.
          */
-        ResourceCache( 
-            const osgDB::Options* dbOptions );
+        ResourceCache();
+        //ResourceCache( 
+        //    const osgDB::Options* dbOptions );
 
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
          * @param skin   Skin resource for which to get or create a state set.
          * @param output Result goes here.
          */
-        bool getOrCreateStateSet( SkinResource* skin, osg::ref_ptr<osg::StateSet>& output );
+        bool getOrCreateStateSet(SkinResource* skin, osg::ref_ptr<osg::StateSet>& output, const osgDB::Options* readOptions);
 
         /**
          * Get the statistics collected from the skin cache.
@@ -64,20 +65,20 @@ namespace osgEarth { namespace Symbology
          * @param skin   Instance resource for which to get or create a Node.
          * @param output Result goes here.
          */
-        bool getOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
-        bool cloneOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
+        bool getOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output, const osgDB::Options* readOptions );
+        bool cloneOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output, const osgDB::Options* readOptions );
 
         /**
          * Fetches the StateSet implemention for an entire ResourceLibrary.  This will contain a Texture2DArray with all of the skins merged into it.
          * @param library    The library 
          * @param output     Result goes here. 
          */
-        bool getOrCreateStateSet( ResourceLibrary* library,  osg::ref_ptr<osg::StateSet>& output );
+        bool getOrCreateStateSet( ResourceLibrary* library,  osg::ref_ptr<osg::StateSet>& output, const osgDB::Options* readOptions );
 
     protected:
         virtual ~ResourceCache() { }
 
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        //osg::ref_ptr<const osgDB::Options> _dbOptions;
 
         //typedef LRUCache<std::string, osg::observer_ptr<osg::StateSet> > SkinCache;
         typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > SkinCache;

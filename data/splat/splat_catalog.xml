@@ -56,14 +56,14 @@
 			<image>rock_dark.jpg</image>
 		</class>
 		<class name="tundra">
-			<image>tundra.jpg</image>
-			<detail>
-				<image>rock_dark.jpg</image>
-				<slope>0.18</slope>
-				<contrast>2.8</contrast>
-				<scale>12.0</scale>
-			</detail>
-		</class>
+            <image>tundra.jpg</image>
+            <detail>
+                <image>rock_dark.jpg</image>
+                <slope>0.18</slope>
+                <contrast>2.8</contrast>
+                <scale>12.0</scale>
+            </detail>
+        </class>
 		<class name="urban">
 			<image>urban3.jpg</image>
 		</class>
@@ -74,7 +74,12 @@
             <image>sand.jpg</image>
         </class>
 		<class name="water">
-			<image>water.jpg</image>
+            <range min_range="1e6">
+                <image>water.jpg</image>
+            </range>
+            <range>
+                <image>water2.jpg</image>
+            </range>
 		</class>
 	</classes>
 </catalog>

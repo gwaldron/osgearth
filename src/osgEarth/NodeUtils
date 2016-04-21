@@ -236,6 +236,12 @@ namespace osgEarth
         return result;
     }
 
+    /** Find the top of the scene graph through parent 0 */
+    inline osg::Node* findTopOfGraph(osg::Node* node)
+    {
+        return node && node->getNumParents() > 0 ? findTopOfGraph(node->getParent(0)) : node;
+    }
+
     /**
      * Replace one group with another
      */
@@ -267,6 +273,25 @@ namespace osgEarth
             }
             parent->removeChildren(0, parent->getNumChildren());
             parent->addChild( newGroup );
+        }
+    }
+
+    /** Insert a group above a node. */
+    inline void insertParent(osg::Group* newParent, osg::Node* existingChild)
+    {
+        if ( newParent && existingChild )
+        {
+            newParent->addChild(existingChild);
+
+            for (unsigned i = 0; i < existingChild->getNumParents(); ++i)
+            {
+                osg::Group* parent = existingChild->getParent(i);
+                if ( parent != newParent )
+                {
+                    parent->removeChild( existingChild );
+                    parent->addChild( newParent );
+                }
+            }
         }
     }
 

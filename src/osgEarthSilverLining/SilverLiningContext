@@ -18,6 +18,8 @@
  */
 #include "Common"
 #include "SilverLiningOptions"
+#include "SilverLiningAPIWrapper"
+#include "SilverLiningCallback"
 #include <osg/Referenced>
 #include <osg/Light>
 #include <osg/Camera>
@@ -34,20 +36,12 @@ namespace osgEarth {
 namespace osgEarth { namespace SilverLining
 {
     /**
-     * A callback that lets you execute code at initialization
-     */
-    struct InitializationCallback : public osg::Referenced
-    {
-        virtual void operator()(::SilverLining::Atmosphere* atmosphere) = 0;
-    };
-
-    /**
      * Contains all the SilverLining SDK pointers.
      */
-    class OSGEARTHSILVERLINING_EXPORT SilverLiningContext : public osg::Referenced
+    class SilverLiningContext : public osg::Referenced
     {
     public:
-        SilverLiningContext(const SilverLiningOptions& options, InitializationCallback* callback=0);
+        SilverLiningContext(const SilverLiningOptions& options);
         
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
@@ -58,11 +52,17 @@ namespace osgEarth { namespace SilverLining
         /** Sets the minimum ambient lighting value */
         void setMinimumAmbient(const osg::Vec4f& value);
 
+        /** Installs a user callback for SL initialization */
+        void setCallback(Callback*);
+        Callback* getCallback() const { return _callback.get(); }
+
     public: // accessors
 
         bool ready() const { return _initAttempted && !_initFailed; }
 
         ::SilverLining::Atmosphere* getAtmosphere() { return _atmosphere; }
+
+        Atmosphere& getAtmosphereWrapper() { return *_atmosphereWrapper; }
 
         /** Spatial reference of the map */
         const SpatialReference* getSRS() const { return _srs.get(); }
@@ -94,7 +94,6 @@ namespace osgEarth { namespace SilverLining
 
     private:
         ::SilverLining::Atmosphere* _atmosphere;
-        ::SilverLining::CloudLayer* _clouds;
 
         double _skyBoxSize;
 
@@ -113,7 +112,9 @@ namespace osgEarth { namespace SilverLining
 
         SilverLiningOptions _options;
 
-        osg::ref_ptr<InitializationCallback> _initCallback;
+        osg::ref_ptr<Callback> _callback;
+
+        Atmosphere* _atmosphereWrapper;
     };
 
 } } // namespace osgEarth::SilverLining

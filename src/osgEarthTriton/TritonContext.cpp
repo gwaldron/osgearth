@@ -33,15 +33,41 @@ _initAttempted        ( false ),
 _initFailed           ( false ),
 _resourceLoader       ( 0L ),
 _environment          ( 0L ),
-_ocean                ( 0L )
-{
+_environmentWrapper   ( 0L ),
+_ocean                ( 0L ),
+_oceanWrapper         ( 0L )
+{    
     //nop
+}
+
+TritonContext::~TritonContext()
+{
+    if ( _oceanWrapper )
+        delete _oceanWrapper;
+
+    if ( _environmentWrapper )
+        delete _environmentWrapper;
+
+    if ( _ocean )
+        delete _ocean;
+
+    if ( _environment )
+        delete _environment;
+
+    if ( _resourceLoader )
+        delete _resourceLoader;
 }
 
 void
 TritonContext::setSRS(const osgEarth::SpatialReference* srs)
 {
     _srs = srs;
+}
+
+void
+TritonContext::setCallback(Callback* callback)
+{
+    _callback = callback;
 }
 
 bool
@@ -71,6 +97,8 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                 _options.resourcePath()->c_str() );
 
             _environment = new ::Triton::Environment();
+
+            _environmentWrapper = new Environment((uintptr_t)_environment);
 
             _environment->SetLicenseCode(
                 _options.user()->c_str(),
@@ -120,7 +148,15 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
 
             if ( _ocean )
             {
-                OE_INFO << LC << "Triton initialized OK!" << std::endl;
+                _oceanWrapper = new Ocean((uintptr_t)_ocean);
+
+                // fire init callback if available
+                if (_callback.valid())
+                {
+                    _callback->onInitialize(getEnvironmentWrapper(), getOceanWrapper());
+                }
+
+                OE_INFO << LC << "Triton initialized OK!" << std::endl;                
             }
             else
             {
@@ -139,16 +175,4 @@ TritonContext::update(double simTime)
         // fmod requires b/c CUDA is limited to single-precision values
         _ocean->UpdateSimulation( fmod(simTime, 86400.0) );
     }
-}
-
-TritonContext::~TritonContext()
-{
-    if ( _ocean )
-        delete _ocean;
-
-    if ( _environment )
-        delete _environment;
-
-    if ( _resourceLoader )
-        delete _resourceLoader;
 }

@@ -105,8 +105,9 @@ struct ImageLayerToTileSource : public TileHandler
     {
         bool ok = false;
         GeoImage image = _source->createImage(key);
-        if ( image.valid() )
-            ok = _dest->storeImage(key, image.getImage(), 0L);
+        if (image.valid())
+            ok = _dest->storeImage(key, image.getImage(), 0L);        
+
         return ok;
     }
     

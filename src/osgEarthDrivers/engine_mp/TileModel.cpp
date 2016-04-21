@@ -282,7 +282,6 @@ _tileKey         ( rhs._tileKey ),
 _tileLocator     ( rhs._tileLocator.get() ),
 _colorData       ( rhs._colorData ),
 _elevationData   ( rhs._elevationData ),
-_sampleRatio     ( rhs._sampleRatio ),
 _parentStateSet  ( rhs._parentStateSet ),
 _useParentData   ( rhs._useParentData )
 {

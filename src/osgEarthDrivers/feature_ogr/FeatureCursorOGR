@@ -75,6 +75,7 @@ private:
     std::queue< osg::ref_ptr<Feature> > _queue;
     osg::ref_ptr<Feature>               _lastFeatureReturned;
     const FeatureFilterList&            _filters;
+    bool                                _resultSetEndReached;
 
 private:
     void readChunk();    

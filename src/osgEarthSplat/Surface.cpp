@@ -95,25 +95,11 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
         return false;
     }
 
-    std::stringstream
-        weightBuf,
-        primaryBuf,
-        detailBuf,
-        brightnessBuf,
-        contrastBuf,
-        thresholdBuf,
-        slopeBuf;
+    std::stringstream buf;
 
-    unsigned
-        primaryCount    = 0,
-        detailCount     = 0,
-        brightnessCount = 0,
-        contrastCount   = 0,
-        thresholdCount  = 0,
-        slopeCount      = 0;
-
+    unsigned pindex = 0;
     const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
+    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
     {
         const CoverageValuePredicate* pred = p->get();
 
@@ -130,117 +116,69 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
 
                 OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
 
+                if ( pindex > 0 )
+                    buf << IND << "else\n";
+
+                buf << IND << "if (" << pred->_exactValue.get() << ".0 == value) {\n";
+
+                unsigned selectorIndex = 0;
                 for(SplatSelectorVector::const_iterator selector = selectors.begin();
                     selector != selectors.end();
-                    ++selector)
+                    ++selector, ++selectorIndex)
                 {
                     const std::string&    expression = selector->first;
                     const SplatRangeData& rangeData  = selector->second;
 
+                    bool closeBracket = false;
+
+                    if ( selectorIndex > 0 ) {
+                        buf << IND IND << "else";
+                        if ( expression.empty() ) {
+                            buf << " {\n";
+                            closeBracket = true;
+                        }
+                        else
+                            buf << "\n";
+                    }
+
+                    if ( !expression.empty() )
+                    {
+                        buf << IND IND << "if (" << expression << ") {\n";
+                        closeBracket = true;
+                    }
+
                     std::string val = pred->_exactValue.get();
 
-                    weightBuf
-                        << IND "float w" << val
-                        << " = (1.0-clamp(abs(value-" << val << ".0),0.0,1.0));\n";
-
-                    // Primary texture index:
-                    if ( primaryCount == 0 )
-                        primaryBuf << IND "primary += ";
-                    else
-                        primaryBuf << " + ";
-
-                    // the "+1" is because "primary" starts out at -1.
-                    primaryBuf << "w"<<val << "*" << (rangeData._textureIndex + 1) << ".0";
-                    primaryCount++;
-
-                    // Detail texture index:
-                    if ( rangeData._detail.isSet() )
-                    {
-                        if ( detailCount == 0 )
-                            detailBuf << IND "detail += ";
-                        else
-                            detailBuf << " + ";
-                        // the "+1" is because "detail" starts out at -1.
-                        detailBuf << "w"<<val << "*" << (rangeData._detail->_textureIndex + 1) << ".0";
-                        detailCount++;
-
+                    buf << IND IND IND << "primary    = " << (rangeData._textureIndex) << ".0;\n";
+                    if ( rangeData._detail.isSet() ) {
+                        buf << IND IND IND << "detail     = " << (rangeData._detail->_textureIndex) << ".0;\n";
                         if ( rangeData._detail->_brightness.isSet() )
-                        {
-                            if ( brightnessCount == 0 )
-                                brightnessBuf << IND "brightness += ";
-                            else
-                                brightnessBuf << " + ";
-                            brightnessBuf << "w"<<val << "*" << rangeData._detail->_brightness.get();
-                            brightnessCount++;
-                        }
-
+                            buf << IND IND IND << "brightness = " << rangeData._detail->_brightness.get() << ";\n";
                         if ( rangeData._detail->_contrast.isSet() )
-                        {
-                            if ( contrastCount == 0 )
-                                contrastBuf << IND "contrast += ";
-                            else
-                                contrastBuf << " + ";
-                            contrastBuf << "w"<<val << "*" << rangeData._detail->_contrast.get();
-                            contrastCount++;
-                        }
-
+                            buf << IND IND IND << "contrast   = " << rangeData._detail->_contrast.get() << ";\n";
                         if ( rangeData._detail->_threshold.isSet() )
-                        {
-                            if ( thresholdCount == 0 )
-                                thresholdBuf << IND "threshold += ";
-                            else
-                                thresholdBuf << " + ";
-                            thresholdBuf << "w"<<val << "*" << rangeData._detail->_threshold.get();
-                            thresholdCount++;
-                        }
-
+                            buf << IND IND IND << "threshold  = " << rangeData._detail->_threshold.get() << ";\n";
                         if ( rangeData._detail->_slope.isSet() )
-                        {
-                            if ( slopeCount == 0 )
-                                slopeBuf << IND "slope += ";
-                            else
-                                slopeBuf << " + ";
-                            slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
-                            slopeCount++;
-                        }
-                    }                    
+                            buf << IND IND IND << "slope = " << rangeData._detail->_slope.get() << ";\n";
+                    }
+
+                    if ( closeBracket )
+                    {
+                        buf << IND IND << "}\n";
+                    }
                 }
+
+                buf << IND << "}\n";
             }
         }
     }
-
-    if ( primaryCount > 0 )
-        primaryBuf << ";\n";
-
-    if ( detailCount > 0 )
-        detailBuf << ";\n";
-
-    if ( brightnessCount > 0 )
-        brightnessBuf << ";\n";
-
-    if ( contrastCount > 0 )
-        contrastBuf << ";\n";
-
-    if ( thresholdCount > 0 )
-        thresholdBuf << ";\n";
-
-    if ( slopeCount > 0 )
-        slopeBuf << ";\n";
 
     SplattingShaders splatting;
     std::string code = ShaderLoader::load(
         splatting.FragGetRenderInfo,
         splatting);
 
-    std::string codeToInject = Stringify()
-        << IND
-        << weightBuf.str()
-        << primaryBuf.str()
-        << detailBuf.str()
-        << brightnessBuf.str()
-        << contrastBuf.str()
-        << thresholdBuf.str()
-        << slopeBuf.str();
+    std::string codeToInject = buf.str();
 
     osgEarth::replaceIn(code, "$COVERAGE_SAMPLING_FUNCTION", codeToInject);
 

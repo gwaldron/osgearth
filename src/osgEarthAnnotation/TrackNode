@@ -156,6 +156,8 @@ namespace osgEarth { namespace Annotation
         TrackNode() { }
         TrackNode(const TrackNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
 
+        void updateLayoutData();
+
     };
 
 } } // namespace osgEarth::Annotation

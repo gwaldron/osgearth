@@ -320,6 +320,10 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
     if ( !_TRITON->ready() )
         return;
 
+    osg::ref_ptr<MapNode> mapNode;
+    if (!_mapNode.lock(mapNode))
+        return;
+
     const osg::Matrix& viewMatrix = renderInfo.getCurrentCamera()->getViewMatrix();
     const osg::Matrix& projectionMatrix = renderInfo.getCurrentCamera()->getProjectionMatrix();
 
@@ -335,12 +339,12 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
     double fovxDEG = osg::RadiansToDegrees( 2.0 * atan( tan(osg::DegreesToRadians(fovyDEG))/2.0 * aspectRatio ));
 
     double eyeLat=0.0, eyeLon=0.0, eyeHeight=0.0;
-    _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(eye.x(), eye.y(), eye.z(), eyeLat, eyeLon, eyeHeight);
+    mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(eye.x(), eye.y(), eye.z(), eyeLat, eyeLon, eyeHeight);
     double clampedEyeX=0.0, clampedEyeY=0.0,clampedEyeZ=0.0;
-    _mapNode->getMap()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(eyeLat, eyeLon, 0.0, clampedEyeX, clampedEyeY, clampedEyeZ);
+    mapNode->getMap()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(eyeLat, eyeLon, 0.0, clampedEyeX, clampedEyeY, clampedEyeZ);
     osg::Vec3 mslEye(clampedEyeX,clampedEyeY,clampedEyeZ);
     double lookAtLat=0.0, lookAtLon=0.0, lookAtHeight=0.0;
-    _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(center.x(), center.y(), center.z(), lookAtLat, lookAtLon, lookAtHeight);
+    mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(center.x(), center.y(), center.z(), lookAtLat, lookAtLon, lookAtHeight);
 
     // Calculate the distance to the horizon from the eyepoint
     double eyeLen = eye.length();
@@ -392,8 +396,8 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
     }
 
 #ifdef DEBUG_HEIGHTMAP
-    _mapNode->getParent(0)->removeChild(0 ,1);
-    _mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
+    mapNode->getParent(0)->removeChild(0, 1);
+    mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
 #endif /* DEBUG_HEIGHTMAP */
 }
 
@@ -409,8 +413,8 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         return;
 
     if ( _TRITON->passHeightMapToTriton() && !_terrainChangedCallback.valid() )
-    {
-        const_cast<TritonDrawable*>(this)->setupHeightMap(_mapNode.get(), *state);
+    {        
+        const_cast<TritonDrawable*>(this)->setupHeightMap(*state);
     }
 
     ::Triton::Environment* environment = _TRITON->getEnvironment();
@@ -457,7 +461,15 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     // Now light and draw the ocean:
     if ( environment )
-    {
+    {        
+        // User pre-draw callback:
+        if (_TRITON->getCallback())
+        {
+            _TRITON->getCallback()->onDrawOcean(
+                _TRITON->getEnvironmentWrapper(),
+                _TRITON->getOceanWrapper());
+        }
+
         // The sun position is roughly where it is in our skybox texture:
 
         // Since this is a simple example we will just assume that Sun is the light from View light source
@@ -584,7 +596,11 @@ namespace
             { GL_RGBA32F_ARB,           GL_RGBA,      "GL_RGBA32F_ARB" }
         };           
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
         osg::GLExtensions* ext = osg::GLExtensions::Get(state.getContextID(), true);
+#else
+        osg::FBOExtensions* ext = osg::FBOExtensions::instance(state.getContextID(), true);
+#endif        
 
         osg::State::CheckForGLErrors check = state.getCheckForGLErrors();
         state.setCheckForGLErrors(state.NEVER_CHECK_GL_ERRORS);
@@ -625,9 +641,10 @@ namespace
     }
 }
 
-void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode, osg::State& state)
+void TritonDrawable::setupHeightMap(osg::State& state)
 {
-    if ( !mapNode )
+    osg::ref_ptr<MapNode> mapNode;
+    if (!_mapNode.lock(mapNode))
         return;
 
     int textureUnit = 0;

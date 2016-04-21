@@ -56,7 +56,7 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
+    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
 
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
@@ -85,10 +85,7 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        while(!viewer.done())
-        {
-            viewer.frame();
-        }
+        viewer.run();
     }
     else
     {

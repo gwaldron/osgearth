@@ -308,7 +308,8 @@ FeatureModelGraph::ctor()
     // take care in dealing with them in a multi-threaded environment.
     if ( !_session->getResourceCache() && _options.sessionWideResourceCache() == true )
     {
-        _session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
+        //_session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
+        _session->setResourceCache(new ResourceCache());
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
@@ -533,32 +534,6 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-#if 0
-        // Convert the extent to lat/long and center it on the equator; this will ensure
-        // that all tiles in the same LOD have the same bounding radius.
-        GeoExtent eq = workingExtent.transform( workingExtent.getSRS()->getGeographicSRS() );
-
-        GeoExtent equatorialExtent(
-            eq.getSRS(),
-            eq.west(),
-            -eq.height()/2.0,
-            eq.east(),
-            eq.height()/2.0 );
-        
-        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
-        centerPoint.toWorld( center );
-
-        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
-#else
-        
-        /*
-        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
-        centerPoint.toWorld( center );
-        double radius = workingExtent.getBoundingGeoCircle().getRadius();
-        //OE_WARN << LC << "Extent=" << workingExtent.toString() << "; center=" << center << "; radius=" << radius << "\n";
-        return osg::BoundingSphered( center, radius );  
-        */
-
         // Compute the bounding sphere by sampling points along the extent.
         int samples = 6;
 
@@ -573,38 +548,11 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
             {
                 double y = workingExtent.yMin() + (double)r * ySample;
                 osg::Vec3d world;
-                GeoPoint(workingExtent.getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(world);
+                GeoPoint(workingExtent.getSRS(), x, y, center.z(), ALTMODE_ABSOLUTE).toWorld(world);
                 bs.expandBy(world);
             }
         }
         return bs;
-              
-
-        /*
-        // Compute the bounding sphere by sampling the corners.
-        osg::Vec3d sw, se, ne, nw, e, w, s, n;
-        GeoPoint(workingExtent.getSRS(), workingExtent.west(), workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(sw);
-        GeoPoint(workingExtent.getSRS(), workingExtent.east(), workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(se);
-        GeoPoint(workingExtent.getSRS(), workingExtent.east(), workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(ne);
-        GeoPoint(workingExtent.getSRS(), workingExtent.west(), workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
-        GeoPoint(workingExtent.getSRS(), workingExtent.west(), center.y(),            0, ALTMODE_ABSOLUTE).toWorld(w);
-        GeoPoint(workingExtent.getSRS(), workingExtent.east(), center.y(),            0, ALTMODE_ABSOLUTE).toWorld(e);
-        GeoPoint(workingExtent.getSRS(), center.x(),           workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(n);
-        GeoPoint(workingExtent.getSRS(), center.x(),           workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(s);
-      
-        osg::BoundingSphered bs;
-        bs.expandBy(center);
-        bs.expandBy(sw);
-        bs.expandBy(se);
-        bs.expandBy(ne);
-        bs.expandBy(nw);
-        bs.expandBy(w);
-        bs.expandBy(e);
-        bs.expandBy(n);
-        bs.expandBy(s);
-       
-        */ 
-#endif
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

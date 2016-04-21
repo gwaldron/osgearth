@@ -172,12 +172,6 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
     if ( _map.lock(map) )
     {        
         ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();    
-
-        if ( !hf.valid() )
-        {
-            hf = map->createReferenceHeightField(key, convertToHAE);
-        }
-
         return _elevationLayers.populateHeightField(
             hf.get(),
             key,

@@ -285,7 +285,8 @@ _useShaders          ( true ),
 _dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
-_totalOverlayChildren( 0 )
+_totalOverlayChildren( 0 ),
+_maxHeight           ( 500000.0 )
 {
     //nop.
 }
@@ -416,9 +417,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // height above sea level
     double hasl;
 
-    // weight of the HASL value when calculating extent compensation
-    double haslWeight;
-
     // approximate distance to the visible horizon
     double horizonDistance;
 
@@ -437,7 +435,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         
         //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
         double height;
-        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height)) // SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height))
         {
             geodetic.z() -= height;
         }
@@ -466,14 +464,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // update the shared horizon distance.
     pvd._sharedHorizonDistance = horizonDistance;
 
-    // create a "weighting" that weights HASL against the camera's pitch.
-    osg::Vec3d lookVector = cv->getLookVectorLocal();
-    haslWeight = osg::absolute(worldUp * lookVector);
-
     // unit look-vector of the eye:
     osg::Vec3d camEye, camTo, camUp;
     const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
-    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0); //eyeLen);
+    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0);
     osg::Vec3 camLook = camTo-camEye;
     camLook.normalize();
 
@@ -561,13 +555,16 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // the Ortho Z as mush as possible in order to maintain depth precision. Perhaps
     // later we can split this out and have each technique calculation its own View and
     // Proj matrix.
-
-    // For now: our RTT camera z range will be based on this equation:
-    double zspan = std::max(50000.0, hasl+25000.0);
+    
     osg::Vec3d up = camLook;
+    osg::Vec3d rttEye;
+
     if ( _isGeocentric )
     {
-        osg::Vec3d rttEye = eye+worldUp*zspan;
+        osg::Vec3d center = eye;
+        center.normalize();
+        center *= R;
+        rttEye = center + worldUp*_maxHeight;
         //establish a valid up vector
         osg::Vec3d rttLook = -rttEye;
         rttLook.normalize();
@@ -575,15 +572,18 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             up.set( camUp );
 
         // do NOT look at (0,0,0); must look down the ellipsoid up vector.
-        rttViewMatrix.makeLookAt( rttEye, rttEye-worldUp*zspan, up );
+        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
     else
     {
+        osg::Vec3d center( camEye.x(), camEye.y(), 0.0 );
+        rttEye = center + worldUp*_maxHeight;
+
         osg::Vec3d rttLook(0, 0, -1);
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
 
-        rttViewMatrix.makeLookAt( camEye + worldUp*zspan, camEye - worldUp*zspan, up );
+        rttViewMatrix.makeLookAt( rttEye, center, up );
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
@@ -658,32 +658,42 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // TODO: when verts = 0 should we do something different? or use the previous
         // frame's view matrix?
         if ( verts.size() > 0 )
-        {
-            // calculate an orthographic RTT projection matrix based on the view-space
-            // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
-            // that bounds all the polyherdron verts in its XY plane)
-            double xmin, ymin, xmax, ymax, maxDist;
-            getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+        {            
+            bool lockToOrthoFrustum = false; // experimental
 
-            // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
-            double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
+            double xmin, ymin, xmax, ymax, orthoNear, orthoFar, maxDist;
 
-            // in ecef it can't go past the horizon though, or you get bleed thru
-            if ( _isGeocentric )
-                dist = std::min(dist, eyeLen);
+            // testing "lock to ortho viewport".
+            if ( lockToOrthoFrustum && osg::equivalent(projMatrix(3,3), 1.0) )
+            {
+                projMatrix.getOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+            }
 
-            // Even through using xmin and xmax directly results in a tighter fit, 
-            // it offsets the eyepoint from the center of the projection frustum.
-            // This causes problems for the draping projection matrix optimizer, so
-            // for now instead of re-doing that code we will just center the eyepoint
-            // here by using the larger of xmin and xmax. -gw.
-#if 1
-            double x = std::max( fabs(xmin), fabs(xmax) );
-            rttProjMatrix.makeOrtho(-x, x, ymin, ymax, 0.0, dist+zspan);
-#else
-            //Note: this was the original setup, which is technically optimal:
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
-#endif
+            else
+            {
+                // calculate an orthographic RTT projection matrix based on the view-space
+                // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+                // that bounds all the polyherdron verts in its XY plane)
+                getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+
+                // Even through using xmin and xmax directly results in a tighter fit, 
+                // it offsets the eyepoint from the center of the projection frustum.
+                // This causes problems for the draping projection matrix optimizer, so
+                // for now instead of re-doing that code we will just center the eyepoint
+                // here by using the larger of xmin and xmax. -gw.                
+                double x = std::max( fabs(xmin), fabs(xmax) );
+                xmin = -x, xmax = x;
+            }
+
+            // extends the frustum as far as it will safely go.
+            // this may result in Z fighting. either ignore that, assuming that draped geometry
+            // should probaly not use depth testing anyway, or address it later
+            double rttLen = rttEye.length();
+            orthoNear = 0.0; // at the rtt camera
+            orthoFar  = _isGeocentric ? rttLen : (rttLen + _maxHeight);
+
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped
             // frustum is the one we'll send to the technique.
@@ -750,7 +760,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             dsgmt->addChild( dsg );
 
             osg::Group* g = new osg::Group();
-            g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
+            //g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
             //g->addChild(overlay);
             g->addChild(intersection);

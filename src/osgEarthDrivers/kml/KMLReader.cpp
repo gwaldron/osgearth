@@ -23,7 +23,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <stack>
 #include <iterator>
 

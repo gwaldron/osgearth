@@ -19,7 +19,7 @@ const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,  
  * out blend   = Blend factor between LOD0 and LOD1 [0..1]
  */
 void
-oe_splat_getLodBlend(in float range, in float baseLOD, out float out_LOD0, out float out_LOD1, out float out_blend)
+oe_splat_getLodBlend(in float range, in float baseLOD, out float out_LOD0, out float out_LOD1, out float out_range0, out float out_range1, out float out_blend)
 {
     float clampedRange = clamp(range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
 
@@ -30,6 +30,8 @@ oe_splat_getLodBlend(in float range, in float baseLOD, out float out_LOD0, out f
         {
             out_LOD0 = oe_SplatLevels[i]   + baseLOD;
             out_LOD1 = oe_SplatLevels[i+1] + baseLOD;
+            out_range0 = oe_SplatRanges[i];
+            out_range1 = oe_SplatRanges[i+1];
             out_blend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
         }
     }

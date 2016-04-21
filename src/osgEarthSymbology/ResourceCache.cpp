@@ -23,8 +23,8 @@ using namespace osgEarth::Symbology;
 
 
 // internal thread-safety not required since we mutex it in this object.
-ResourceCache::ResourceCache(const osgDB::Options* dbOptions ) :
-_dbOptions    ( dbOptions ),
+ResourceCache::ResourceCache() : // const osgDB::Options* dbOptions ) :
+//_dbOptions    ( dbOptions ),
 _skinCache    ( false ),
 _instanceCache( false ),
 _resourceLibraryCache( false )
@@ -34,7 +34,8 @@ _resourceLibraryCache( false )
 
 bool
 ResourceCache::getOrCreateStateSet(SkinResource*                skin,
-                                   osg::ref_ptr<osg::StateSet>& output)
+                                   osg::ref_ptr<osg::StateSet>& output,
+                                   const osgDB::Options*        readOptions)
 {
     output = 0L;
     //std::string key = skin->getConfig().toJSON(false);
@@ -58,7 +59,7 @@ ResourceCache::getOrCreateStateSet(SkinResource*                skin,
         else
         {
             // still not there, make it.
-            output = skin->createStateSet( _dbOptions.get() );
+            output = skin->createStateSet(readOptions);
             if ( output.valid() )
             {
                 _skinCache.insert( key, output.get() );
@@ -72,7 +73,8 @@ ResourceCache::getOrCreateStateSet(SkinResource*                skin,
 
 bool
 ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
-                                       osg::ref_ptr<osg::Node>& output)
+                                       osg::ref_ptr<osg::Node>& output,
+                                       const osgDB::Options*    readOptions)
 {
     output = 0L;
     std::string key = res->getConfig().toJSON(false);
@@ -90,7 +92,7 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
         else
         {
             // still not there, make it.
-            output = res->createNode( _dbOptions.get() );
+            output = res->createNode(readOptions);
             if ( output.valid() )
             {
                 _instanceCache.insert( key, output.get() );
@@ -103,7 +105,8 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
 
 bool
 ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
-                                         osg::ref_ptr<osg::Node>& output)
+                                         osg::ref_ptr<osg::Node>& output,
+                                         const osgDB::Options*    readOptions)
 {
     output = 0L;
     std::string key = res->getConfig().toJSON(false);
@@ -124,7 +127,7 @@ ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
         else
         {
             // still not there, make it.
-            output = res->createNode( _dbOptions.get() );
+            output = res->createNode(readOptions);
             if ( output.valid() )
             {
                 _instanceCache.insert( key, output.get() );

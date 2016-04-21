@@ -64,14 +64,20 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
     // Get the path to write to
     std::string path = getPathForTile( key );
 
+    // Get the user set TileSource for output if it is set
+    osgEarth::TileSource* tileSource = _packager->getTileSource();
+
     // Don't write out a new file if we're not overwriting
-    if (osgDB::fileExists(path) && !_packager->getOverwrite())
+    if (!tileSource && osgDB::fileExists(path) && !_packager->getOverwrite())
     {
         return true;
     }
 
-    // attempt to create the output folder:        
-    osgEarth::makeDirectoryForFile( path );       
+    if (!tileSource)
+    {
+        // attempt to create the output folder:        
+        osgEarth::makeDirectoryForFile( path );       
+    }
 
 
     if (imageLayer)
@@ -98,14 +104,24 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             }
 
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
-            osg::ref_ptr< const osg::Image > final = geoImage.getImage();                        
+            osg::ref_ptr< osg::Image > final = geoImage.getImage();                        
 
             // convert to RGB if necessary            
             if ( _packager->getExtension() == "jpg" && final->getPixelFormat() != GL_RGB )
             {
                 final = ImageUtils::convertToRGB8( final );
             }            
-            return osgDB::writeImageFile(*final, path, _packager->getOptions());
+
+            // use the TileSource provided if set, else use writeImageFile
+            if (tileSource)
+            {
+                tileSource->storeImage(key, final.get(), 0L);
+                return true;
+            }
+            else
+            {
+                return osgDB::writeImageFile(*final, path, _packager->getOptions());
+            }
         }            
     }
     else if (elevationLayer )
@@ -115,8 +131,18 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
         {
             // convert the HF to an image
             ImageToHeightFieldConverter conv;
-            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );				            
-            return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
+            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );	
+
+            // use the TileSource provided if set, else use writeImageFile
+            if (tileSource)
+            {
+                tileSource->storeImage(key, image.get(), 0L);
+                return true;
+            }
+            else
+            {
+                return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
+            }
         }            
     }
         
@@ -200,7 +226,8 @@ _visitor(new TileVisitor()),
     _height(0),
     _overwrite(false),
     _keepEmpties(false),
-    _applyAlphaMask(false)
+    _applyAlphaMask(false),
+    _tileSource(0L)
 {
 }
 
@@ -242,6 +269,16 @@ osgDB::Options* TMSPackager::getOptions() const
 void TMSPackager::setWriteOptions( osgDB::Options* options )
 {
     _writeOptions = options;
+}
+
+void TMSPackager::setTileSource( osgEarth::TileSource* source )
+{
+    _tileSource = source;
+}
+
+osgEarth::TileSource* TMSPackager::getTileSource() const
+{
+    return _tileSource.get();
 }
 
 const std::string& TMSPackager::getLayerName() const

@@ -62,6 +62,8 @@ CompositeTileSourceOptions::getConfig() const
     {
         if ( i->_imageLayerOptions.isSet() )
             conf.add( "image", i->_imageLayerOptions->getConfig() );
+        else if ( i->_elevationLayerOptions.isSet() )
+            conf.add( "elevation", i->_elevationLayerOptions->getConfig() );
     }
 
     return conf;
@@ -289,7 +291,7 @@ osg::HeightField* CompositeTileSource::createHeightField(
     }  
 
     // Populate the heightfield and return it if it's valid
-    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_AVERAGE, progress))
+    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_BILINEAR, progress))
     {                
         return heightField.release();
     }

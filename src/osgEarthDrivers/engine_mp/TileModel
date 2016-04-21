@@ -297,7 +297,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         ColorDataByUID               _colorData;
         ElevationData                _elevationData;
         NormalData                   _normalData;
-        float                        _sampleRatio;
         osg::ref_ptr<osg::Texture>   _elevationTexture;
         osg::ref_ptr<osg::Texture>   _normalTexture;
         bool                         _useParentData;

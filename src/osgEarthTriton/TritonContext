@@ -21,18 +21,15 @@
 
 #include "Common"
 #include "TritonOptions"
+#include "TritonAPIWrapper"
+#include "TritonCallback"
 #include <osg/Referenced>
 #include <osg/Light>
 #include <osgEarth/ThreadingUtils>
+#include <Triton.h>
 
 namespace osgEarth {
     class SpatialReference;
-}
-
-namespace Triton {
-    class ResourceLoader;
-    class Environment;
-    class Ocean;
 }
 
 namespace osgEarth { namespace Triton
@@ -40,13 +37,17 @@ namespace osgEarth { namespace Triton
     /**
      * Contains all the Triton SDK handles.
      */
-    class OSGEARTHTRITON_EXPORT TritonContext : public osg::Referenced
+    class TritonContext : public osg::Referenced
     {
     public:
         TritonContext(const TritonOptions& options);
 
         /** Sets the spatial reference system of the map */
         void setSRS(const osgEarth::SpatialReference* srs);
+
+        /** Sets the user callback */
+        void setCallback(Callback* callback);
+        Callback* getCallback() const { return _callback.get(); }
 
     public: // accessors
 
@@ -60,7 +61,10 @@ namespace osgEarth { namespace Triton
         void update(double simTime);
 
         ::Triton::Environment* getEnvironment() { return _environment; }
+        Environment& getEnvironmentWrapper() const { return *_environmentWrapper; }
+
         ::Triton::Ocean* getOcean() { return _ocean; }
+        Ocean& getOceanWrapper() const { return *_oceanWrapper; }
 
         bool passHeightMapToTriton() const;
 
@@ -83,6 +87,11 @@ namespace osgEarth { namespace Triton
         ::Triton::ResourceLoader* _resourceLoader;
         ::Triton::Environment*    _environment;
         ::Triton::Ocean*          _ocean;
+
+        Environment* _environmentWrapper;
+        Ocean*       _oceanWrapper;
+
+        osg::ref_ptr<Callback> _callback;
     };
 
 } } // namespace osgEarth::Triton

@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/Utils>
@@ -32,7 +32,7 @@
 #include <set>
 #include <algorithm>
 
-#define LC "[Declutter] "
+#define LC "[ScreenSpaceLayout] "
 
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
 
@@ -72,10 +72,10 @@ namespace
         }
     };
 
-    // Data structure shared across entire decluttering system.
-    struct DeclutterContext : public osg::Referenced
+    // Data structure shared across entire layout system.
+    struct ScreenSpaceLayoutContext : public osg::Referenced
     {
-        DeclutteringOptions _options;
+        ScreenSpaceLayoutOptions _options;
     };
 
     // records information about each drawable.
@@ -105,12 +105,11 @@ namespace
         std::vector<RenderLeafBox>         _used;
 
         // time stamp of the previous pass, for calculating animation speed
-        //double _lastTimeStamp;
         osg::Timer_t _lastTimeStamp;
         bool _firstFrame;
     };
 
-    static bool s_enabledGlobally = true;
+    static bool s_declutteringEnabledGlobally = true;
 
     static const char* s_faderFS =
         "#version " GLSL_VERSION_STR "\n"
@@ -124,7 +123,7 @@ namespace
 //----------------------------------------------------------------------------
 
 void
-DeclutteringOptions::fromConfig( const Config& conf )
+ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "min_animation_scale", _minAnimScale );
     conf.getIfSet( "min_animation_alpha", _minAnimAlpha );
@@ -136,7 +135,7 @@ DeclutteringOptions::fromConfig( const Config& conf )
 }
 
 Config
-DeclutteringOptions::getConfig() const
+ScreenSpaceLayoutOptions::getConfig() const
 {
     Config conf;
     conf.addIfSet( "min_animation_scale", _minAnimScale );
@@ -171,7 +170,7 @@ DeclutteringOptions::getConfig() const
 struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 {
     DeclutterSortFunctor* _customSortFunctor;
-    DeclutterContext*     _context;
+    ScreenSpaceLayoutContext* _context;
 
     PerObjectFastMap<osg::Camera*, PerCamInfo> _perCam;
 
@@ -180,7 +179,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
      * @param f Custom declutter sorting predicate. Pass NULL to use the 
      *          default sorter (sort by distance-to-camera).
      */
-    DeclutterSort( DeclutterContext* context, DeclutterSortFunctor* f = 0L )
+    DeclutterSort( ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f = 0L )
         : _context(context), _customSortFunctor(f)
     {
         //nop
@@ -193,7 +192,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
 
         // first, sort the leaves:
-        if ( _customSortFunctor && s_enabledGlobally )
+        if ( _customSortFunctor && s_declutteringEnabledGlobally )
         {
             // if there's a custom sorting function installed
             bin->copyLeavesFromStateGraphListToRenderLeafList();
@@ -259,7 +258,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // will be culled as a group.
         std::set<const osg::Node*> culledParents;
 
-        const DeclutteringOptions& options = _context->_options;
+        const ScreenSpaceLayoutOptions& options = _context->_options;
         unsigned limit = *options.maxObjects();
 
         bool snapToPixel = options.snapToPixel() == true;
@@ -276,8 +275,43 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             const osg::Drawable* drawable = leaf->getDrawable();
             const osg::Node*     drawableParent = drawable->getParent(0);
 
+            const ScreenSpaceLayoutData* layoutData = dynamic_cast<const ScreenSpaceLayoutData*>(drawable->getUserData());
+
             // transform the bounding box of the drawable into window-space.
             osg::BoundingBox box = Utils::getBoundingBox(drawable);
+
+            osg::Vec2f offset;
+            osg::Quat rot;
+            if (layoutData)
+            {
+                // handle the local translation
+                offset.set(layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y());
+                box.xMin() += layoutData->_pixelOffset.x();
+                box.xMax() += layoutData->_pixelOffset.x();
+                box.yMin() += layoutData->_pixelOffset.y();
+                box.yMax() += layoutData->_pixelOffset.y();
+
+                if ( layoutData->_localRotationRad != 0.0 )
+                {
+                    // handle the local rotation and ensure that texts are always oriented to be readable
+                    float angle = fmod(layoutData->_localRotationRad + 2. * osg::PI, 2. * osg::PI);
+                    if (angle > osg::PI / 2. && angle < 3.*osg::PI / 2.)
+                        angle =  angle - osg::PI;
+                    rot.makeRotate ( angle, osg::Vec3d(0, 0, 1) );
+                    osg::Vec3f center(box.center());
+                    osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) - center) + center;
+                    osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) - center) + center;
+                    osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) - center) + center;
+                    osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) - center) + center;
+                    box.set(
+                        std::min(ld.x(), lu.x()),
+                        std::min(ld.y(), rd.y()),
+                        0,
+                        std::max(rd.x(), ru.x()),
+                        std::max(lu.y(), ru.y()),
+                        0 );
+                }
+            }
 
             static osg::Vec4d s_zero_w(0,0,0,1);
             osg::Matrix MVP = (*leaf->_modelview.get()) * (*leaf->_projection.get());
@@ -319,11 +353,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 }
             }            
 
-            if ( s_enabledGlobally )
+            if ( s_declutteringEnabledGlobally )
             {
                 // A max priority => never occlude.
-                const DeclutteringData* data = dynamic_cast<const DeclutteringData*>(drawable->getUserData());
-                float priority = data ? data->_priority : 0.0f;
+                float priority = layoutData ? layoutData->_priority : 0.0f;
 
                 if ( priority == FLT_MAX )
                 {
@@ -380,7 +413,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
-            newModelView.makeTranslate( winPos.x(), winPos.y(), 0 );
+            newModelView.makeRotate(rot);
+            newModelView.postMultTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
             newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
@@ -392,7 +426,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
 
-        if ( s_enabledGlobally )
+        if ( s_declutteringEnabledGlobally )
         {
             leaves.clear();
             for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
@@ -482,148 +516,152 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     }
 };
 
-/**
- * Custom draw routine for our declutter render bin.
- */
-struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
+namespace
 {
-    DeclutterContext*                         _context;
-    PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
-    osg::ref_ptr<osg::Uniform>                _fade;
-
     /**
-     * Constructs the decluttering draw callback.
-     * @param context A shared context among all decluttering objects.
+     * Custom draw routine for our declutter render bin.
      */
-    DeclutterDraw( DeclutterContext* context )
-        : _context( context )
+    struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
     {
-        // create the fade uniform.
-        _fade = new osg::Uniform( osg::Uniform::FLOAT, FADE_UNIFORM_NAME );
-        _fade->set( 1.0f );
-    }
+        ScreenSpaceLayoutContext*                  _context;
+        PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
+        osg::ref_ptr<osg::Uniform>                _fade;
 
-    /**
-     * Draws a bin. Most of this code is copied from osgUtil::RenderBin::drawImplementation.
-     * The modifications are (a) skipping code to render child bins, (b) setting a bin-global
-     * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method 
-     * instead of RenderLeaf::render()
-     */
-    void drawImplementation( osgUtil::RenderBin* bin, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
-    {
-        osg::State& state = *renderInfo.getState();
-
-        unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
-        if (numToPop>1) --numToPop;
-        unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
-
-        if (bin->getStateSet())
+        /**
+         * Constructs the decluttering draw callback.
+         * @param context A shared context among all decluttering objects.
+         */
+        DeclutterDraw( ScreenSpaceLayoutContext* context )
+            : _context( context )
         {
-            state.insertStateSet(insertStateSetPosition, bin->getStateSet());
+            // create the fade uniform.
+            _fade = new osg::Uniform( osg::Uniform::FLOAT, FADE_UNIFORM_NAME );
+            _fade->set( 1.0f );
         }
 
-        // apply a window-space projection matrix.
-        const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
-        if ( vp )
+        /**
+         * Draws a bin. Most of this code is copied from osgUtil::RenderBin::drawImplementation.
+         * The modifications are (a) skipping code to render child bins, (b) setting a bin-global
+         * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method 
+         * instead of RenderLeaf::render()
+         */
+        void drawImplementation( osgUtil::RenderBin* bin, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
         {
-            //TODO see which is faster
+            osg::State& state = *renderInfo.getState();
 
-            osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
-            if ( !m.valid() )
-                m = new osg::RefMatrix();
+            unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+            if (numToPop>1) --numToPop;
+            unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
 
-            m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
-            state.applyProjectionMatrix( m.get() );
-        }
-
-        // render the list
-        osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
-        for(osgUtil::RenderBin::RenderLeafList::reverse_iterator rlitr = leaves.rbegin();
-            rlitr!= leaves.rend();
-            ++rlitr)
-        {
-            osgUtil::RenderLeaf* rl = *rlitr;
-            renderLeaf( rl, renderInfo, previous );
-            previous = rl;
-        }
-
-        if ( bin->getStateSet() )
-        {
-            state.removeStateSet(insertStateSetPosition);
-        }
-    }
-
-    /**
-     * Renders a single leaf. We already applied the projection matrix, so here we only
-     * need to apply a modelview matrix that specifies the ortho offset of the drawable.
-     *
-     * Most of this code is copied from RenderLeaf::draw() -- but I removed all the code
-     * dealing with nested bins, since decluttering does not support them.
-     */
-    void renderLeaf( osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
-    {
-        osg::State& state = *renderInfo.getState();
-
-        // don't draw this leaf if the abort rendering flag has been set.
-        if (state.getAbortRendering())
-        {
-            //cout << "early abort"<<endl;
-            return;
-        }
-
-        state.applyModelViewMatrix( leaf->_modelview.get() );
-
-        if (previous)
-        {
-            // apply state if required.
-            osgUtil::StateGraph* prev_rg = previous->_parent;
-            osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
-            osgUtil::StateGraph* rg = leaf->_parent;
-            if (prev_rg_parent!=rg->_parent)
+            if (bin->getStateSet())
             {
-                osgUtil::StateGraph::moveStateGraph(state,prev_rg_parent,rg->_parent);
-
-                // send state changes and matrix changes to OpenGL.
-                state.apply(rg->getStateSet());
-
+                state.insertStateSet(insertStateSetPosition, bin->getStateSet());
             }
-            else if (rg!=prev_rg)
+
+            // apply a window-space projection matrix.
+            const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
+            if ( vp )
             {
-                // send state changes and matrix changes to OpenGL.
-                state.apply(rg->getStateSet());
+                //TODO see which is faster
+
+                osg::ref_ptr<osg::RefMatrix>& m = _ortho2D.get();
+                if ( !m.valid() )
+                    m = new osg::RefMatrix();
+
+                //m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
+                m->makeOrtho( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1, -1000, 1000);
+                state.applyProjectionMatrix( m.get() );
+            }
+
+            // render the list
+            osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
+            for(osgUtil::RenderBin::RenderLeafList::reverse_iterator rlitr = leaves.rbegin();
+                rlitr!= leaves.rend();
+                ++rlitr)
+            {
+                osgUtil::RenderLeaf* rl = *rlitr;
+                renderLeaf( rl, renderInfo, previous );
+                previous = rl;
+            }
+
+            if ( bin->getStateSet() )
+            {
+                state.removeStateSet(insertStateSetPosition);
             }
         }
-        else
+
+        /**
+         * Renders a single leaf. We already applied the projection matrix, so here we only
+         * need to apply a modelview matrix that specifies the ortho offset of the drawable.
+         *
+         * Most of this code is copied from RenderLeaf::draw() -- but I removed all the code
+         * dealing with nested bins, since decluttering does not support them.
+         */
+        void renderLeaf( osgUtil::RenderLeaf* leaf, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
         {
-            // apply state if required.
-            osgUtil::StateGraph::moveStateGraph(state,NULL,leaf->_parent->_parent);
+            osg::State& state = *renderInfo.getState();
 
-            state.apply(leaf->_parent->getStateSet());
-        }
+            // don't draw this leaf if the abort rendering flag has been set.
+            if (state.getAbortRendering())
+            {
+                //cout << "early abort"<<endl;
+                return;
+            }
 
-        // if we are using osg::Program which requires OSG's generated uniforms to track
-        // modelview and projection matrices then apply them now.
-        if (state.getUseModelViewAndProjectionUniforms()) 
-            state.applyModelViewAndProjectionUniformsIfRequired();
+            state.applyModelViewMatrix( leaf->_modelview.get() );
+
+            if (previous)
+            {
+                // apply state if required.
+                osgUtil::StateGraph* prev_rg = previous->_parent;
+                osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+                osgUtil::StateGraph* rg = leaf->_parent;
+                if (prev_rg_parent!=rg->_parent)
+                {
+                    osgUtil::StateGraph::moveStateGraph(state,prev_rg_parent,rg->_parent);
+
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+
+                }
+                else if (rg!=prev_rg)
+                {
+                    // send state changes and matrix changes to OpenGL.
+                    state.apply(rg->getStateSet());
+                }
+            }
+            else
+            {
+                // apply state if required.
+                osgUtil::StateGraph::moveStateGraph(state,NULL,leaf->_parent->_parent);
+
+                state.apply(leaf->_parent->getStateSet());
+            }
+
+            // if we are using osg::Program which requires OSG's generated uniforms to track
+            // modelview and projection matrices then apply them now.
+            if (state.getUseModelViewAndProjectionUniforms()) 
+                state.applyModelViewAndProjectionUniformsIfRequired();
         
-        // apply the fading uniform
-        const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
-        if ( pcp )
-        {
-            // todo: find a way to optimize this..?
-            _fade->set( s_enabledGlobally ? leaf->_depth : 1.0f );
-            pcp->apply( *_fade.get() );
-        }
+            // apply the fading uniform
+            const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+            if ( pcp )
+            {
+                // todo: find a way to optimize this..?
+                _fade->set( s_declutteringEnabledGlobally ? leaf->_depth : 1.0f );
+                pcp->apply( *_fade.get() );
+            }
     
-        // draw the drawable
-        leaf->_drawable->draw(renderInfo);
+            // draw the drawable
+            leaf->_drawable->draw(renderInfo);
         
-        if (leaf->_dynamic)
-        {
-            state.decrementDynamicObjectCount();
+            if (leaf->_dynamic)
+            {
+                state.decrementDynamicObjectCount();
+            }
         }
-    }
-};
+    };
+}
 
 //----------------------------------------------------------------------------
 
@@ -632,13 +670,13 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
  * This wants to be in the global scope for the dynamic registration to work,
  * hence the annoyinging long class name
  */
-class osgEarthDeclutterRenderBin : public osgUtil::RenderBin
+class osgEarthScreenSpaceLayoutRenderBin : public osgUtil::RenderBin
 {
 public:
-    osgEarthDeclutterRenderBin()
+    osgEarthScreenSpaceLayoutRenderBin()
     {
-        this->setName( OSGEARTH_DECLUTTER_BIN );
-        _context = new DeclutterContext();
+        this->setName( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN );
+        _context = new ScreenSpaceLayoutContext();
         clearSortingFunctor();
         setDrawCallback( new DeclutterDraw(_context.get()) );
 
@@ -663,82 +701,49 @@ public:
     }
 
     osg::ref_ptr<DeclutterSortFunctor> _f;
-    osg::ref_ptr<DeclutterContext>     _context;
+    osg::ref_ptr<ScreenSpaceLayoutContext> _context;
 };
 
 //----------------------------------------------------------------------------
 
-//static
-
-#define STATESET_ID "osgEarth::Decluttering::prevStateSet"
-
 void
-Decluttering::setEnabled( osg::StateSet* stateSet, bool enable, int binNum )
+ScreenSpaceLayout::activate(osg::StateSet* stateSet, int binNum)
 {
-    // note: even though we're fiddling with the StateSet, I don't think we need
-    // to mark it as DYNAMIC .... but we'll see
     if ( stateSet )
     {
-        if ( enable )
-        {
-            osg::StateSet* prevStateSet = 0L;
-            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
-            unsigned index = udc->getUserObjectIndex( STATESET_ID );
-            if ( index < udc->getNumUserObjects() )
-            {
-                prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
-            }
+        // the OVERRIDE prevents subsequent statesets from disabling the layout bin
+        stateSet->setRenderBinDetails(
+            binNum,
+            OSGEARTH_SCREEN_SPACE_LAYOUT_BIN,
+            osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
 
-            if ( !prevStateSet )
-            {
-                prevStateSet = new osg::StateSet();
-                prevStateSet->setName( STATESET_ID );
-                prevStateSet->setBinName( stateSet->getBinName() );
-                prevStateSet->setBinNumber( stateSet->getBinNumber() );
-                prevStateSet->setRenderBinMode( stateSet->getRenderBinMode() );
-                prevStateSet->setNestRenderBins( stateSet->getNestRenderBins() );
-                udc->addUserObject( prevStateSet );
-            }
-
-            // the OVERRIDE prevents subsequent statesets from disabling the decluttering bin,
-            // I guess. This wasn't needed in OSG 3.1.4 but now it is.
-            stateSet->setRenderBinDetails(
-                binNum,
-                OSGEARTH_DECLUTTER_BIN,
-                osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
-
-            // Force a single shared decluttering bin per render stage
-            stateSet->setNestRenderBins( false );
-        }
-        else
-        {
-            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
-            unsigned index = udc->getUserObjectIndex( STATESET_ID );
-            if ( index < udc->getNumUserObjects() )
-            {
-                osg::StateSet* prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
-                stateSet->setBinName( prevStateSet->getBinName() );
-                stateSet->setBinNumber( prevStateSet->getBinNumber() );
-                stateSet->setRenderBinMode( prevStateSet->getRenderBinMode() );
-                stateSet->setNestRenderBins( prevStateSet->getNestRenderBins() );
-                udc->removeUserObject( index );
-            }
-        }
+        // Force a single shared layout bin per render stage
+        stateSet->setNestRenderBins( false );
     }
 }
 
 void
-Decluttering::setEnabled( bool enabled )
+ScreenSpaceLayout::deactivate(osg::StateSet* stateSet)
 {
-    s_enabledGlobally = enabled;
+    if (stateSet)
+    {
+        stateSet->setRenderBinToInherit();
+        stateSet->setNestRenderBins(true);
+    }
 }
 
 void
-Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
+ScreenSpaceLayout::setDeclutteringEnabled(bool enabled)
+{
+    s_declutteringEnabledGlobally = enabled;
+}
+
+void
+ScreenSpaceLayout::setSortFunctor( DeclutterSortFunctor* functor )
 {
     // pull our prototype
-    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
-        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+    osgEarthScreenSpaceLayoutRenderBin* bin = dynamic_cast<osgEarthScreenSpaceLayoutRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN ) );
 
     if ( bin )
     {
@@ -747,11 +752,11 @@ Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
 }
 
 void
-Decluttering::clearSortFunctor()
+ScreenSpaceLayout::clearSortFunctor()
 {
     // pull our prototype
-    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
-        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+    osgEarthScreenSpaceLayoutRenderBin* bin = dynamic_cast<osgEarthScreenSpaceLayoutRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN ) );
 
     if ( bin )
     {
@@ -760,11 +765,11 @@ Decluttering::clearSortFunctor()
 }
 
 void
-Decluttering::setOptions( const DeclutteringOptions& options )
+ScreenSpaceLayout::setOptions( const ScreenSpaceLayoutOptions& options )
 {
     // pull our prototype
-    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
-        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+    osgEarthScreenSpaceLayoutRenderBin* bin = dynamic_cast<osgEarthScreenSpaceLayoutRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN ) );
 
     if ( bin )
     {
@@ -772,7 +777,7 @@ Decluttering::setOptions( const DeclutteringOptions& options )
         if ( options.sortByPriority().isSetTo( true ) &&
              bin->_context->_options.sortByPriority() == false )
         {
-            Decluttering::setSortFunctor(new DeclutterByPriority());
+            ScreenSpaceLayout::setSortFunctor(new DeclutterByPriority());
         }
         
         // communicate the new options on the shared context.
@@ -780,14 +785,14 @@ Decluttering::setOptions( const DeclutteringOptions& options )
     }
 }
 
-const DeclutteringOptions&
-Decluttering::getOptions()
+const ScreenSpaceLayoutOptions&
+ScreenSpaceLayout::getOptions()
 {
-    static DeclutteringOptions s_defaultOptions;
+    static ScreenSpaceLayoutOptions s_defaultOptions;
 
     // pull our prototype
-    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
-        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+    osgEarthScreenSpaceLayoutRenderBin* bin = dynamic_cast<osgEarthScreenSpaceLayoutRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN ) );
 
     if ( bin )
     {
@@ -804,11 +809,11 @@ Decluttering::getOptions()
 bool
 DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
 {
-    const DeclutteringData* lhsdata = dynamic_cast<const DeclutteringData*>(lhs->getDrawable()->getUserData());
+    const ScreenSpaceLayoutData* lhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(lhs->getDrawable()->getUserData());
     float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
     
-    const DeclutteringData* rhsdata = dynamic_cast<const DeclutteringData*>(rhs->getDrawable()->getUserData());
-    float rhsPriority = rhsdata ? rhsdata->_priority : 0.0;
+    const ScreenSpaceLayoutData* rhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(rhs->getDrawable()->getUserData());
+    float rhsPriority = rhsdata ? rhsdata->_priority : 0.0f;
 
     float diff = lhsPriority - rhsPriority;
 
@@ -829,4 +834,4 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
-static osgEarthRegisterRenderBinProxy<osgEarthDeclutterRenderBin> s_regbin(OSGEARTH_DECLUTTER_BIN);
+static osgEarthRegisterRenderBinProxy<osgEarthScreenSpaceLayoutRenderBin> s_regbin(OSGEARTH_SCREEN_SPACE_LAYOUT_BIN);

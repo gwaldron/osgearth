@@ -32,13 +32,14 @@
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarthUtil/ContourMap>
 
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/TerrainEngineNode>
 
 #include <osgEarth/XmlUtils>
@@ -296,6 +297,18 @@ namespace
             _ocean->setSeaLevel( value );
         }
     };
+
+    struct ChangeSeaAlpha : public ControlEventHandler
+    {
+        ChangeSeaAlpha( OceanNode* ocean ) : _ocean(ocean) { }
+
+        OceanNode* _ocean;
+
+        virtual void onValueChanged( class Control* control, float value )
+        {
+            _ocean->setAlpha( value );
+        }
+    };
 }
 
 Control*
@@ -303,18 +316,32 @@ OceanControlFactory::create(OceanNode* ocean) const
 {
     VBox* main = new VBox();
 
-    HBox* oceanBox1 = main->addControl(new HBox());
-    oceanBox1->setChildVertAlign( Control::ALIGN_CENTER );
-    oceanBox1->setChildSpacing( 10 );
-    oceanBox1->setHorizFill( true );
+    HBox* sealLevelBox = main->addControl(new HBox());
+    sealLevelBox->setChildVertAlign( Control::ALIGN_CENTER );
+    sealLevelBox->setChildSpacing( 10 );
+    sealLevelBox->setHorizFill( true );
 
-    oceanBox1->addControl( new LabelControl("Sea Level: ", 16) );
+    sealLevelBox->addControl( new LabelControl("Sea Level: ", 16) );
 
-    HSliderControl* mslSlider = oceanBox1->addControl(new HSliderControl( -250.0f, 250.0f, 0.0f ));
+    HSliderControl* mslSlider = sealLevelBox->addControl(new HSliderControl( -250.0f, 250.0f, 0.0f ));
     mslSlider->setBackColor( Color::Gray );
     mslSlider->setHeight( 12 );
     mslSlider->setHorizFill( true, 200 );
     mslSlider->addEventHandler( new ChangeSeaLevel(ocean) );
+
+    HBox* alphaBox = main->addControl(new HBox());
+    alphaBox->setChildVertAlign( Control::ALIGN_CENTER );
+    alphaBox->setChildSpacing( 10 );
+    alphaBox->setHorizFill( true );
+    
+    alphaBox->addControl( new LabelControl("Sea Alpha: ", 16) );
+
+    HSliderControl* alphaSlider = alphaBox->addControl(new HSliderControl( 0.0, 1.0, 1.0));
+    alphaSlider->setBackColor( Color::Gray );
+    alphaSlider->setHeight( 12 );
+    alphaSlider->setHorizFill( true, 200 );
+    alphaSlider->addEventHandler( new ChangeSeaAlpha(ocean) );
+
 
     return main;
 }
@@ -520,6 +547,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
     bool inspect       = args.read("--inspect");
+    bool useContourMap = args.read("--contourmap");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -575,13 +603,18 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     const Config& skyConf         = externals.child("sky");
     const Config& oceanConf       = externals.child("ocean");
-    const Config& declutterConf   = externals.child("decluttering");
+
+    const Config& screenSpaceLayoutConf = 
+        externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
+        externals.child("decluttering"); // backwards-compatibility
+
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
 
+    const Config& contourMapConf = externals.child("contourmap");
     
 #if 0
     // Adding a sky model:
@@ -698,9 +731,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Configure the de-cluttering engine for labels and annotations:
-    if ( !declutterConf.empty() )
+    if ( !screenSpaceLayoutConf.empty() )
     {
-        Decluttering::setOptions( DeclutteringOptions(declutterConf) );
+        ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(screenSpaceLayoutConf) );
     }
 
     // Configure the mouse coordinate readout:
@@ -800,6 +833,19 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !vertScaleConf.empty() )
     {
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
+    }
+
+    // Install a contour map effect.
+    if ( !contourMapConf.empty() || useContourMap )
+    {
+        mapNode->getTerrainEngine()->addEffect( new ContourMap(contourMapConf) );
+
+        // with the cmdline switch, hids all the image layer so we can see the contour map.
+        if (useContourMap) {
+            for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
+                mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
+            }
+        }
     }
 
     // Generic named value uniform with min/max.

@@ -68,7 +68,8 @@ OceanOptions::getConfig() const
 
 OceanNode::OceanNode(const OceanOptions& options) :
 _options ( options ),
-_seaLevel( 0.0f )
+_seaLevel( 0.0f ),
+_alpha( 1.0f )
 {
     //NOP
 }
@@ -83,6 +84,13 @@ OceanNode::setSeaLevel(float value)
 {
     _seaLevel = value;
     onSetSeaLevel();
+}
+
+void
+OceanNode::setAlpha(float value)
+{
+    _alpha = value;
+    onSetAlpha();
 }
 
 void

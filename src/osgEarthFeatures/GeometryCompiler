@@ -105,6 +105,11 @@ namespace osgEarth { namespace Features
         optional<bool>& validate() { return _validate; }
         const optional<bool>& validate() const { return _validate; }
 
+        /** Maximum size (angle, degrees) of a polygon tile, when breaking up a large polygon for tessellation;
+        only applies to geocentric maps - detault = 5.0 */
+        optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle; }
+        const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle; }
+
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );
@@ -125,6 +130,7 @@ namespace osgEarth { namespace Features
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;
         optional<bool>                 _validate;
+        optional<float>                _maxPolyTilingAngle;
 
         void fromConfig( const Config& conf );
 

@@ -21,6 +21,8 @@
 
 #include "Common"
 #include "TritonOptions"
+#include "TritonAPIWrapper"
+#include "TritonCallback"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
 #include <osg/Drawable>
@@ -37,13 +39,14 @@ namespace osgEarth { namespace Triton
     public:
         TritonNode(
             osgEarth::MapNode*   mapNode,
-            const TritonOptions& options );
-
-        TritonContext* getContext() { return _TRITON.get(); }
+            const TritonOptions& options,
+            Callback*            userCallback =0L);
 
     protected: // OceanNode
 
         void onSetSeaLevel();
+
+        void onSetAlpha();
 
     public: // osg::Node
 
@@ -57,6 +60,9 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<TritonContext> _TRITON;
         TritonOptions               _options;
         osg::Drawable*              _drawable;
+        osg::ref_ptr<osg::Uniform>  _alphaUniform;
+
+        //Environment* _environmentWrapper;
     };
 
 } } // namespace osgEarth::Triton

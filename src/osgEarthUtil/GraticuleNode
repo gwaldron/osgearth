@@ -107,6 +107,7 @@ namespace osgEarth { namespace Util
         const GraticuleOptions _options;
         bool _visible;
         double _metersPerPixel;
+        osg::Matrixd _viewMatrix;
 
         std::vector< double > _resolutions;
 

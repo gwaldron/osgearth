@@ -70,7 +70,7 @@ namespace osgEarth
         static bool fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out_policy );
 
         /** Stores this cache policy in a DB Options. */
-        void apply( osgDB::Options* options );
+        void apply( osgDB::Options* options ) const;
 
         /** Merges any set properties in another CP into this one, override existing values. */
         void mergeAndOverride(const CachePolicy& rhs);
@@ -116,6 +116,15 @@ namespace osgEarth
 
         bool operator != ( const CachePolicy& rhs ) const {
             return ! operator==(rhs);
+        }
+
+        CachePolicy& operator = ( const CachePolicy& rhs )
+        {
+            _usage  = optional<Usage>(rhs._usage);
+            _maxAge = optional<TimeSpan>(rhs._maxAge);
+            _minTime = optional<TimeStamp>(rhs._minTime);
+
+            return *this;
         }
 
         // returns a readable string describing usage

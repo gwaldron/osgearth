@@ -45,22 +45,24 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Angle&       arcEnd,
                        const bool         pie):
 
-GeoPositionNode    ( mapNode, position ),
+LocalGeometryNode(mapNode),
 _radius      ( radius ),
-_style       ( style ),
 _arcStart    ( arcStart ),
 _arcEnd      ( arcEnd ),
 _pie         ( pie ),
 _numSegments ( 0 )
 {
     initCircleNode();
+    setStyle( style );
+    setPosition( position );
 }
 
 
 void
 CircleNode::initCircleNode()
 {
-    rebuild();
+    setName("Circle");
+    rebuildGeometry();
 }
 
 const Linear&
@@ -75,7 +77,7 @@ CircleNode::setRadius( const Linear& radius )
     if (_radius != radius )
     {
         _radius = radius;
-        rebuild();
+        rebuildGeometry();
     }
 }
 
@@ -91,21 +93,8 @@ CircleNode::setNumSegments(unsigned int numSegments )
     if (_numSegments != numSegments )
     {
         _numSegments = numSegments;
-        rebuild();
+        rebuildGeometry();
     }
-}
-
-const Style&
-CircleNode::getStyle() const
-{
-    return _style;
-}
-
-void
-CircleNode::setStyle( const Style& style )
-{
-    _style = style;
-    rebuild();
 }
 
 const Angle&
@@ -118,7 +107,7 @@ void
 CircleNode::setArcStart(const Angle& arcStart)
 {
 	_arcStart = arcStart;
-	rebuild();
+	rebuildGeometry();
 }
 
 const Angle&
@@ -131,7 +120,7 @@ void
 CircleNode::setArcEnd(const Angle& arcEnd)
 {
 	_arcEnd = arcEnd;
-	rebuild();
+	rebuildGeometry();
 }
 
 const bool&
@@ -144,14 +133,12 @@ void
 CircleNode::setPie(const bool& pie)
 {
     _pie = pie;
-    rebuild();
+    rebuildGeometry();
 }
 
 void
-CircleNode::rebuild()
+CircleNode::rebuildGeometry()
 {
-    osgEarth::clearChildren( getPositionAttitudeTransform() );
-
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = NULL;
@@ -166,17 +153,7 @@ CircleNode::rebuild()
 
     if ( geom )
     {
-        GeometryCompiler compiler;
-        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style );
-        if ( node.valid() )
-        {
-            node = AnnotationUtils::installOverlayParent( node.get(), _style );
-            getPositionAttitudeTransform()->addChild( node.get() );
-        }
-
-        applyRenderSymbology( _style );
-
-        setLightingIfNotSet( false );
+        setGeometry( geom );        
     }
 }
 
@@ -189,12 +166,11 @@ OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
-GeoPositionNode    ( mapNode, conf ),
+LocalGeometryNode( mapNode, conf, dbOptions ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _numSegments ( 0 )
 {
-    conf.getObjIfSet( "radius", _radius );
-    conf.getObjIfSet( "style",  _style );
+    conf.getObjIfSet( "radius",       _radius );
     conf.getIfSet   ( "num_segments", _numSegments );
     initCircleNode();
 }
@@ -202,11 +178,10 @@ _numSegments ( 0 )
 Config
 CircleNode::getConfig() const
 {
-    Config conf = GeoPositionNode::getConfig();
+    Config conf = LocalGeometryNode::getConfig();
     conf.key() = "circle";
 
     conf.addObj( "radius", _radius );
-    conf.addObj( "style",  _style );
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );

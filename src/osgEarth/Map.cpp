@@ -83,12 +83,6 @@ _dataModelRevision   ( 0 )
     _mapOptions.cachePolicy()->apply( _dbOptions.get() );
     URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
 
-    // apply an express tile size if there is one.
-    if ( _mapOptions.elevationTileSize().isSet() )
-    {
-        _elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
-    }
-
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
     _elevationLayerCB = new ElevationLayerCB(this);
@@ -1108,42 +1102,6 @@ Map::calculateProfile()
     }
 }
 
-osg::HeightField*
-Map::createReferenceHeightField(const TileKey& key,
-                                bool           expressHeightsAsHAE) const
-{
-    unsigned size = std::max(*_mapOptions.elevationTileSize(), 2u);
-    return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
-}
-
-#if 0
-bool
-Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
-                         const TileKey&                  key,
-                         bool                            convertToHAE,
-                         ElevationSamplePolicy           samplePolicy, // deprecated (unused)
-                         bool                            fallbackIfPossible,
-                         ProgressCallback*               progress) const
-{
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
-
-    ElevationInterpolation interp = getMapOptions().elevationInterpolation().get();    
-
-    if ( !hf.valid() )
-    {
-        hf = createReferenceHeightField(key, convertToHAE);
-    }
-
-    return _elevationLayers.populateHeightField(
-        hf.get(),
-        key,
-        convertToHAE ? _profileNoVDatum.get() : 0L,
-        interp,
-        fallbackIfPossible,
-        progress );
-}
-#endif
-
 const SpatialReference*
 Map::getWorldSRS() const
 {
@@ -1171,8 +1129,6 @@ Map::sync( MapFrame& frame ) const
         if ( frame._parts & ELEVATION_LAYERS )
         {
             frame._elevationLayers = _elevationLayers;
-            if ( _mapOptions.elevationTileSize().isSet() )
-                frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }
 
         if ( frame._parts & MODEL_LAYERS )

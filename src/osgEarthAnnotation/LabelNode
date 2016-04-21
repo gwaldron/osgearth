@@ -26,6 +26,7 @@
 #include <osgEarthAnnotation/GeoPositionNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Annotation
@@ -92,6 +93,9 @@ namespace osgEarth { namespace Annotation
             const Config&         conf,
             const osgDB::Options* dbOptions );
 
+        /**
+         * Destructor
+         */
         virtual ~LabelNode() { }
 
         /**
@@ -119,15 +123,25 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
+        virtual void traverse(osg::NodeVisitor &nv);
+
     protected:
         void init(const Style& style);
 
         std::string              _text;
         Style                    _style;
         osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<ScreenSpaceLayoutData> _dataLayout;
+
+        /** rotation of the label **/
+        float                    _labelRotationRad;
+        bool                     _followFixedCourse;
+        GeoPoint                 _geoPointProj;
 
         /** Copy constructor */
-        LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : GeoPositionNode(rhs, op) { }
+        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+
+        void updateLayoutData();
     };
 
 } } // namespace osgEarth::Annotation

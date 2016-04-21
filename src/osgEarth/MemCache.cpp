@@ -41,7 +41,7 @@ namespace
             //nop
         }
 
-        ReadResult readObject(const std::string& key )
+        ReadResult readObject(const std::string& key, const osgDB::Options*)
         {
             MemCacheLRU::Record rec;
             _lru.get(key, rec);
@@ -63,17 +63,17 @@ namespace
             }
         }
 
-        ReadResult readImage(const std::string& key)
+        ReadResult readImage(const std::string& key, const osgDB::Options* readOptions)
         {
-            return readObject( key );
+            return readObject(key, readOptions);
         }
 
-        ReadResult readString(const std::string& key)
+        ReadResult readString(const std::string& key, const osgDB::Options* readOptions)
         {
-            return readObject( key );
+            return readObject(key, readOptions);
         }
 
-        bool write( const std::string& key, const osg::Object* object, const Config& meta )
+        bool write( const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* writeOptions)
         {
             if ( object ) 
             {

@@ -41,7 +41,7 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT GeoPositionNodeAutoScaler : public osg::NodeCallback
     {
     public:
-        GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale = osg::Vec3d(1,1,1));
+        GeoPositionNodeAutoScaler(const osg::Vec3d& baseScale = osg::Vec3d(1,1,1), double minScale = 0.0, double maxScale = DBL_MAX);
 
     public: // osg::NodeCallback
 
@@ -49,6 +49,8 @@ namespace osgEarth { namespace Annotation
 
     protected:
         osg::Vec3d _baseScale;
+		double _minScale;
+		double _maxScale;
     };
 
 } } // namespace

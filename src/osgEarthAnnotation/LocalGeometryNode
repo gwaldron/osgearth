@@ -57,6 +57,12 @@ namespace osgEarth { namespace Annotation
             osg::Node*   node, 
             const Style& style  =Style() );
 
+        /**
+         * Construct an LGN connected to a mapnode.
+         */
+        LocalGeometryNode( MapNode* node );
+
+
         virtual ~LocalGeometryNode() { }
 
         /**
@@ -105,17 +111,41 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
+    public: // osg::Node
+
+        virtual osg::BoundingSphere computeBound() const;
+
+    protected: // GeoPositionNode
+
+        virtual void dirty();
+
     protected:
+        LocalGeometryNode() { }
 
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;
         osg::ref_ptr<Geometry>       _geom;
-
-        //osg::ref_ptr<osg::MatrixTransform> _xform;
+        
+        typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
+        osg::ref_ptr<ClampCallback> _clampCallback;
+        bool _clampRelative;
+        mutable osg::Polytope _boundingPT;
 
         void initNode();
         void initGeometry(const osgDB::Options*);
         void init(const osgDB::Options*);
+
+        void applyAltitudeSymbology(const Style&);
+
+    public:
+        void onTileAdded(
+            const TileKey&          key, 
+            osg::Node*              tile, 
+            TerrainCallbackContext& context);
+
+        virtual void clampToScene(
+            osg::Node*     tile,
+            const Terrain* terrain);
     };
 
 } } // namespace osgEarth::Annotation

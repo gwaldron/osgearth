@@ -95,13 +95,20 @@ ADD_SUBDIRECTORY(osgearth_ephemeris)
 ADD_SUBDIRECTORY(osgearth_computerangecallback)
 ADD_SUBDIRECTORY(osgearth_splat)
 ADD_SUBDIRECTORY(osgearth_skyview)
+ADD_SUBDIRECTORY(osgearth_server)
+
 
 IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt_simple)
     ADD_SUBDIRECTORY(osgearth_qt_windows)
 ENDIF()
 
-IF (TRITON_FOUND AND SILVERLINING_FOUND)
-    ADD_SUBDIRECTORY(osgearth_sundog)
-ENDIF()
+IF(SILVERLINING_FOUND)
+    ADD_SUBDIRECTORY(osgearth_silverlining)
+ENDIF(SILVERLINING_FOUND)
+
+IF(TRITON_FOUND)
+    ADD_SUBDIRECTORY(osgearth_triton)
+ENDIF(TRITON_FOUND)
+
 

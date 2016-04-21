@@ -50,7 +50,7 @@ void atmos_fragment_main(inout vec4 color)
 
     if (NdotL > 0.0 ) { 
         vec3 V = normalize(atmos_vert); 
-        vec3 H = normalize(L-V); 
+        vec3 H = reflect(-L, N);
         float HdotN = max(dot(H,N), 0.0); 
         float shine = clamp(gl_FrontMaterial.shininess, 1.0, 128.0); 
         sceneColor += gl_FrontLightProduct[0].specular * pow(HdotN, shine); 

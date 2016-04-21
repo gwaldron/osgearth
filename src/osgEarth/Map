@@ -288,33 +288,7 @@ namespace osgEarth
          * Gets the readable name of this map.
          */
         const std::string& getName() const { return _name; }
-        
-        /**
-         * Creates a flat heightfield (MSL) for the given tilekey.
-         */
-        osg::HeightField* createReferenceHeightField(
-            const TileKey& key,
-            bool           expressHeightsAsHAE =true) const;
-        
-#if 0
-        /**
-         * Populates a heightfield with data from the elevation layers
-         * in the map. The method will create a new heightfield if you
-         * don't supply one to populate.
-         *
-         * NOTE: By default, this method will populate the heightfield with HAE (height
-         * above ellipsoid) values, even if the TileKey profile has an MSL vertical
-         * datum. That is because this method is usually called to produce a renderable
-         * height field. You can override this behavior by passing in convertToHAE=false.
-         */
-        bool populateHeightField(
-            osg::ref_ptr<osg::HeightField>& hf,
-            const TileKey&                  key,
-            bool                            expressHeightsAsHAE =true,
-            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress            =0L) const;
-#endif
-
+              
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.
          */

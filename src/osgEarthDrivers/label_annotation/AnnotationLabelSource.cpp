@@ -61,6 +61,8 @@ public:
         StringExpression  textContentExpr ( text ? *text->content()  : StringExpression() );
         NumericExpression textPriorityExpr( text ? *text->priority() : NumericExpression() );
         NumericExpression textSizeExpr    ( text ? *text->size()     : NumericExpression() );
+        NumericExpression textRotationExpr( text ? *text->onScreenRotation() : NumericExpression() );
+        NumericExpression textCourseExpr  ( text ? *text->geographicCourse() : NumericExpression() );
         StringExpression  iconUrlExpr     ( icon ? *icon->url()      : StringExpression() );
         NumericExpression iconScaleExpr   ( icon ? *icon->scale()    : NumericExpression() );
         NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
@@ -102,6 +104,12 @@ public:
 
                 if ( text->size().isSet() )
                     tempStyle.get<TextSymbol>()->size()->setLiteral( feature->eval(textSizeExpr, &context) );
+
+                if ( text->onScreenRotation().isSet() )
+                    tempStyle.get<TextSymbol>()->onScreenRotation()->setLiteral( feature->eval(textRotationExpr, &context) );
+
+                if ( text->geographicCourse().isSet() )
+                    tempStyle.get<TextSymbol>()->geographicCourse()->setLiteral( feature->eval(textCourseExpr, &context) );
             }
 
             if ( icon )

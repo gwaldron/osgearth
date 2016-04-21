@@ -2100,47 +2100,38 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
 }
 
 GeoHeightField
-GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const
+GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const
 {
     double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )
         return GeoHeightField::INVALID;
 
-    int w = _heightField->getNumColumns();
-    int h = _heightField->getNumRows();
-    double xInterval = _extent.width() / (double)(_heightField->getNumColumns()-1);
-    double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
-    double dx = xInterval * div;
-    double dy = yInterval * div;
+    double dx = destEx.width()/(double)(width-1);
+    double dy = destEx.height()/(double)(height-1);    
 
     osg::HeightField* dest = new osg::HeightField();
-    dest->allocate( w, h );
+    dest->allocate( width, height );
     dest->setXInterval( dx );
     dest->setYInterval( dy );
-
-    // copy over the skirt height, adjusting it for tile size.
-    dest->setSkirtHeight( _heightField->getSkirtHeight() * div );
 
     double x, y;
     int col, row;
 
     double x0 = (destEx.xMin()-_extent.xMin())/_extent.width();
     double y0 = (destEx.yMin()-_extent.yMin())/_extent.height();
-    double xstep = div/double(w-1);
-    double ystep = div/double(h-1);
 
-    for( x = x0, col = 0; col < w; x += xstep, col++ )
+    double xstep = div / (double)(width-1);
+    double ystep = div / (double)(height-1);
+    
+    for( x = x0, col = 0; col < width; x += xstep, col++ )
     {
-        for( y = y0, row = 0; row < h; y += ystep, row++ )
+        for( y = y0, row = 0; row < height; y += ystep, row++ )
         {
             float height = HeightFieldUtils::getHeightAtNormalizedLocation(
                 _heightField.get(), x, y, interpolation );
             dest->setHeight( col, row, height );
         }
     }
-
-    osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
-    dest->setOrigin( orig );
 
     return GeoHeightField( dest, destEx ); // Q: is the VDATUM accounted for?
 }

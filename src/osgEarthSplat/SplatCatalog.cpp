@@ -71,6 +71,7 @@ _textureIndex( -1 )
 SplatRangeData::SplatRangeData(const Config& conf) :
 _textureIndex( -1 )
 {
+    conf.getIfSet("min_range",  _minRange);
     conf.getIfSet("image",      _imageURI);
     conf.getIfSet("model",      _modelURI);
     conf.getIfSet("modelCount", _modelCount);
@@ -84,6 +85,7 @@ Config
 SplatRangeData::getConfig() const
 {
     Config conf;
+    conf.addIfSet("min_range",  _minRange);
     conf.addIfSet("image",      _imageURI);
     conf.addIfSet("model",      _modelURI);
     conf.addIfSet("modelCount", _modelCount);
@@ -202,11 +204,29 @@ namespace
                 // In the future perhaps we can resize/convert instead.
                 if ( !ImageUtils::textureArrayCompatible(result.getImage(), firstImage) )
                 {
-                    OE_WARN << LC << "Image " << uri.base()
-                        << " was found, but cannot be used because it is not compatible with "
-                        << "other splat images (same dimensions, pixel format, etc.)\n";
+                    osg::ref_ptr<osg::Image> conv = ImageUtils::convert(result.getImage(), firstImage->getPixelFormat(), firstImage->getDataType());
 
-                    return 0L;
+                    if ( conv->s() != firstImage->s() || conv->t() != firstImage->t() )
+                    {
+                        osg::ref_ptr<osg::Image> conv2;
+                        if ( ImageUtils::resizeImage(conv.get(), firstImage->s(), firstImage->t(), conv2) )
+                        {
+                            conv = conv2.get();
+                        }
+                    }
+
+                    if ( ImageUtils::textureArrayCompatible(conv.get(), firstImage) )
+                    {
+                        conv->setInternalTextureFormat( firstImage->getInternalTextureFormat() );
+                        return conv.release();
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Image " << uri.base()
+                            << " was found, but cannot be used because it is not compatible with "
+                            << "other splat images (same dimensions, pixel format, etc.)\n";
+                        return 0L;
+                    }
                 }
             }
         }

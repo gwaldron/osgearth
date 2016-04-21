@@ -43,6 +43,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/ScreenSpaceLayout>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -93,7 +94,8 @@ namespace
             "a :",                 "toggle viewpoint arcing",
             "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
-            "L :",                 "toggle log depth buffer"
+            "L :",                 "toggle log depth buffer",
+            ") :",                 "toggle sceen space layout"
         };
 
         Grid* g = new Grid();
@@ -186,6 +188,43 @@ namespace
         float _nfratio;
         bool _installed;
         osgEarth::Util::LogarithmicDepthBuffer _ldb;
+    };
+
+    /**
+     * Toggles screen space layout on the sismulated objects
+     */
+    struct ToggleSSL : public osgGA::GUIEventHandler
+    {
+        ToggleSSL(osg::Group* g, char key) : _group(g), _key(key), _installed(false) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( !_installed )
+                {
+                    ScreenSpaceLayout::activate(_group->getOrCreateStateSet());
+                }
+                else
+                {
+                    ScreenSpaceLayout::deactivate(_group->getOrCreateStateSet());
+                }
+
+                _installed = !_installed;
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle SSL"));
+        }
+
+        char _key;
+        osg::Group* _group;
+        bool _installed;
     };
 
     /**
@@ -493,29 +532,25 @@ namespace
         {
             if ( !model )
             { 
-                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1)); //, 90.0f); //AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1));
             }
-            
-            _xform = new GeoTransform();
-            _xform->setTerrain(mapnode->getTerrain());
 
-            _pat = new osg::PositionAttitudeTransform();
-            _pat->addChild( _model );
-
-            _xform->addChild( _pat );
-
-            _cam = new osg::Camera();
-            _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
-            _cam->addChild( _xform );
+            _geo = new GeoPositionNode(mapnode);
+            _geo->getPositionAttitudeTransform()->addChild(_model);
 
             Style style;
-            style.getOrCreate<TextSymbol>()->size() = 32.0f;
-            style.getOrCreate<TextSymbol>()->declutter() = false;
-            _label = new LabelNode(_mapnode, GeoPoint(), _name, style);
+            TextSymbol* text = style.getOrCreate<TextSymbol>();
+            text->size() = 32.0f;
+            text->declutter() = false;
+            text->pixelOffset()->set(50, 50);
+            
+            _label = new LabelNode(_name, style);
             _label->setDynamic( true );
-            _cam->addChild( _label );
+            _label->setHorizonCulling(false);
 
-            root->addChild( _cam.get() );
+            _geo->getPositionAttitudeTransform()->addChild(_label);
+
+            root->addChild(_geo.get());
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -523,30 +558,29 @@ namespace
             if ( ea.getEventType() == ea.FRAME )
             {
                 double t0 = osg::Timer::instance()->time_s();
-                double t = fmod( t0, 600.0 ) / 600.0;
+                double t = fmod( t0, 6000.0 ) / 6000.0;
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
                 double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
 
                 float a = sin(t0*0.2);
-                bearing += a * 0.5 * osg::PI;
-                float pitch = 0.0; //a * 0.1 * osg::PI;
+                //bearing += a * 0.5 * osg::PI;
+                float pitch = 0.0;
 
-                _xform->setPosition( p );
+                _geo->setPosition(p);
 
-                _pat->setAttitude(
-                    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
-                    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
-
-                _label->setPosition( p );
+                _geo->setLocalRotation(
+                    osg::Quat(pitch, osg::Vec3d(1, 0, 0)) *
+                    osg::Quat(bearing, osg::Vec3d(0, 0, -1)));
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
                 if ( ea.getKey() == _key )
                 {                                
                     Viewpoint vp = _manip->getViewpoint();
-                    vp.setNode( _pat.get() );
+                    //vp.setNode( _pat.get() );
+                    vp.setNode(_model);
                     vp.range() = 25000.0;
                     vp.pitch() = -45.0;
                     _manip->setViewpoint(vp, 2.0);
@@ -560,14 +594,13 @@ namespace
         char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
-        osg::ref_ptr<osg::Camera>          _cam;
-        osg::ref_ptr<GeoTransform>         _xform;
-        osg::ref_ptr<osg::PositionAttitudeTransform> _pat;
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
         osg::Node*                         _model;
         float                              _heading;
         float                              _pitch;
+
+        osg::ref_ptr<GeoPositionNode>      _geo;
     };
 }
 
@@ -608,17 +641,20 @@ int main(int argc, char** argv)
     osg::Node* model = 0L;
     std::string modelFile;
     if (arguments.read("--model", modelFile))
-        model = osgDB::readNodeFile(modelFile);
+        model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
+
+    osg::Group* sims = new osg::Group();
+    root->addChild( sims );
 
     // Simulator for tethering:
-    Simulator* sim1 = new Simulator(root, manip, mapNode, model, "Thing 1", '8');
+    Simulator* sim1 = new Simulator(sims, manip, mapNode, model, "Thing 1", '8');
     sim1->_lat0 = 55.0;
     sim1->_lon0 = 45.0;
     sim1->_lat1 = -55.0;
     sim1->_lon1 = -45.0;
     viewer.addEventHandler(sim1);
 
-    Simulator* sim2 = new Simulator(root, manip, mapNode, model, "Thing 2", '9');
+    Simulator* sim2 = new Simulator(sims, manip, mapNode, model, "Thing 2", '9');
     sim2->_name = "Thing 2";
     sim2->_lat0 = 54.0;
     sim2->_lon0 = 45.0;
@@ -659,6 +695,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new CycleTetherMode('t', manip));
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
+    viewer.addEventHandler(new ToggleSSL(sims, ')'));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

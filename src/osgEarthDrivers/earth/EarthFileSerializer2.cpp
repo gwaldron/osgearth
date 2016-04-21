@@ -371,6 +371,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 {
     // First, pre-load any extension DLLs.
     preloadExtensionLibs(conf);
+    preloadExtensionLibs(conf.child("extensions"));
+    preloadExtensionLibs(conf.child("external"));
 
     MapOptions mapOptions( conf.child( "options" ) );
 

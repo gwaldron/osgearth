@@ -76,7 +76,9 @@ AnnotationNode::setLightingIfNotSet( bool lighting )
 
     if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
     {
-        this->getOrCreateStateSet()->setMode(GL_LIGHTING, lighting? 1 : 0);
+        this->getOrCreateStateSet()->setMode(GL_LIGHTING,
+            lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                       osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
 }
 
@@ -142,6 +144,16 @@ void
 AnnotationNode::applyStyle( const Style& style)
 {
     applyRenderSymbology(style);
+
+    // default priority if available.
+    const TextSymbol* ts = style.get<TextSymbol>();
+    if (ts)
+    {
+        if (ts->priority().isSet())
+        {
+            _priority = ts->priority()->eval();
+        }
+    }
 }
 
 void

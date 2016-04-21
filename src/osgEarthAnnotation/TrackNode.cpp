@@ -25,7 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/Decluttering>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osg/Depth>
 #include <osgText/Text>
 
@@ -67,6 +67,11 @@ _style      ( style )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
+    // tracknodes draw in screen space at their geoposition.
+    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
+
+    osgEarth::clearChildren( getPositionAttitudeTransform() );
+
     _geode = new osg::Geode();
 
     IconSymbol* icon = _style.get<IconSymbol>();
@@ -85,7 +90,10 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );
-            imageGeom->setUserData( new DeclutteringData(getPriority()) );
+
+            ScreenSpaceLayoutData* layout = new ScreenSpaceLayoutData();
+            layout->setPriority(getPriority());
+            imageGeom->setUserData(layout);
         }
     }
 
@@ -98,10 +106,15 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
             const TrackNodeField& field = i->second;
             if ( field._symbol.valid() )
             {
+                osg::Vec3 offset(
+                    field._symbol->pixelOffset()->x(),
+                    field._symbol->pixelOffset()->y(),
+                    0.0);
+
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
                     field._symbol->content()->expr(),   // text
                     field._symbol.get(),                // symbol
-                    osg::Vec3(0,0,0) );                 // offset
+                    offset );                           // offset
 
                 if ( drawable )
                 {
@@ -139,12 +152,19 @@ void
 TrackNode::setPriority(float value)
 {
     GeoPositionNode::setPriority( value );
+    updateLayoutData();
+}
+
+void
+TrackNode::updateLayoutData()
+{
+    osg::ref_ptr<ScreenSpaceLayoutData> data = new ScreenSpaceLayoutData();
+    data->setPriority(getPriority());
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
     {
-        //_geode->getDrawable(i)->setUserData( this );
-        _geode->getDrawable(i)->setUserData( new DeclutteringData(getPriority()) );
+        _geode->getDrawable(i)->setUserData(data.get());
     }
 }
 
@@ -178,10 +198,9 @@ TrackNode::setFieldValue( const std::string& name, const osgText::String& value 
 void
 TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
 {
-    //drawable->setUserData( this );
-    drawable->setUserData( new DeclutteringData(getPriority()) );
     _namedDrawables[name] = drawable;
     _geode->addDrawable( drawable );
+    updateLayoutData();
 }
 
 osg::Drawable*

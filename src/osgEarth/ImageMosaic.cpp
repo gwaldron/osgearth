@@ -74,15 +74,24 @@ ImageMosaic::createImage()
         return 0;
     }
 
-    unsigned int tileWidth = _images[0]._image->s();
-    unsigned int tileHeight = _images[0]._image->t();
+    // find the first valid tile and use its size as the mosaic tile size
+    TileImage* tile = 0L;
+    for (int i = 0; i<_images.size() && !tile; ++i)
+        if (_images[i]._image.valid())
+            tile = &_images[i];
+
+    if ( !tile )
+        return 0L;
+
+    unsigned int tileWidth = tile->_image->s();
+    unsigned int tileHeight = tile->_image->t();
 
     //OE_NOTICE << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
 
-    unsigned int minTileX = _images[0]._tileX;
-    unsigned int minTileY = _images[0]._tileY;
-    unsigned int maxTileX = _images[0]._tileX;
-    unsigned int maxTileY = _images[0]._tileY;
+    unsigned int minTileX = tile->_tileX;
+    unsigned int minTileY = tile->_tileY;
+    unsigned int maxTileX = tile->_tileX;
+    unsigned int maxTileY = tile->_tileY;
 
     //Compute the tile size.
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
@@ -101,22 +110,30 @@ ImageMosaic::createImage()
     unsigned int pixelsHigh = tilesHigh * tileHeight;
 
     osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(pixelsWide, pixelsHigh, 1, _images[0]._image->getPixelFormat(), _images[0]._image->getDataType());
-    image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat());
-    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(_images[0].getImage()));
+    image->allocateImage(pixelsWide, pixelsHigh, 1, tile->_image->getPixelFormat(), tile->_image->getDataType());
+    image->setInternalTextureFormat(tile->_image->getInternalTextureFormat());
+    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(tile->getImage()));
 
     //Initialize the image to be completely white!
-    memset(image->data(), 0xFF, image->getImageSizeInBytes());
+    //memset(image->data(), 0xFF, image->getImageSizeInBytes());
+
+    ImageUtils::PixelWriter write(image.get());
+    for (unsigned t = 0; t < pixelsHigh; ++t)
+        for (unsigned s = 0; s < pixelsWide; ++s)
+            write(osg::Vec4(1,1,1,0), s, t);
 
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
-        osg::Image* sourceTile = i->getImage();
-
         //Determine the indices in the master image for this image
         int dstX = (i->_tileX - minTileX) * tileWidth;
         int dstY = (maxTileY - i->_tileY) * tileHeight;
-        ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);
+
+        osg::Image* sourceTile = i->getImage();
+        if ( sourceTile )
+        {
+            ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);
+        }
     }
 
     return image.release();

@@ -290,6 +290,7 @@ void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
     if (_supported                             && 
+        _light.valid()                         &&
         nv.getVisitorType() == nv.CULL_VISITOR && 
         _castingGroup->getNumChildren() > 0    && 
         _shadowmap.valid() )

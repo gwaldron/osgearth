@@ -221,22 +221,22 @@ LevelDBCacheBin::timeEndGlobal()
 }
 
 ReadResult
-LevelDBCacheBin::readImage(const std::string& key)
+LevelDBCacheBin::readImage(const std::string& key, const osgDB::Options* readOptions)
 {
-    return read(key, ImageReader(_rw.get(), _rwOptions.get()));    
+    return read(key, ImageReader(_rw.get(), readOptions));
 }
 
 ReadResult
-LevelDBCacheBin::readObject(const std::string& key)
+LevelDBCacheBin::readObject(const std::string& key, const osgDB::Options* readOptions)
 {
     //OE_INFO << LC << "Read attempt: " << key << " from " << getID() << std::endl;
-    return read(key, ObjectReader(_rw.get(), _rwOptions.get()));
+    return read(key, ObjectReader(_rw.get(), readOptions));
 }
 
 ReadResult
-LevelDBCacheBin::readNode(const std::string& key)
+LevelDBCacheBin::readNode(const std::string& key, const osgDB::Options* readOptions)
 {
-    return read(key, NodeReader(_rw.get(), _rwOptions.get()));
+    return read(key, NodeReader(_rw.get(), readOptions));
 }
 
 ReadResult
@@ -310,9 +310,9 @@ LevelDBCacheBin::read(const std::string& key, const Reader& reader)
 }
 
 ReadResult
-LevelDBCacheBin::readString(const std::string& key)
+LevelDBCacheBin::readString(const std::string& key, const osgDB::Options* readOptions)
 {
-    ReadResult r = readObject(key);
+    ReadResult r = readObject(key, readOptions);
     if ( r.succeeded() )
     {
         if ( r.get<StringObject>() )
@@ -327,7 +327,7 @@ LevelDBCacheBin::readString(const std::string& key)
 }
 
 bool
-LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta)
+LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta, const osgDB::Options* writeOptions)
 {
     if ( !binValidForWriting() || !object ) 
         return false;
@@ -345,7 +345,7 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write image to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, _rwOptions.get() );
+        r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, writeOptions );
         objWriteOK = r.success();
     }
     else if ( dynamic_cast<const osg::Node*>(object) )
@@ -355,7 +355,7 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write node to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, _rwOptions.get() );
+        r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, writeOptions );
         objWriteOK = r.success();
     }
     else
@@ -365,7 +365,7 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             OE_WARN << LC << "Internal: tried to write an object to " << _rw->className() << "\n";
             return false;
         }
-        r = _rw->writeObject( *object, datastream );
+        r = _rw->writeObject( *object, datastream, writeOptions );
         objWriteOK = r.success();
     }
 

@@ -80,6 +80,8 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     // Explicitly cache images so that models that share images will only load one copy.
     if ( options.valid() )
     {
+        // does this REALLY belong here? Or should we rely on the incoming dboptions instead
+        // so the user/caller can decide if and how to cache images like texture atlases?
         options->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
     }
     osg::Node* node = 0L;

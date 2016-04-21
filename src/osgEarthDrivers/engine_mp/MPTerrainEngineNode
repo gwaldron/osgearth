@@ -173,8 +173,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         int        _elevationTextureUnit;
         int        _normalMapUnit;
 
-        osg::Uniform* _verticalScaleUniform;
-
         osg::ref_ptr< TileModelFactory > _tileModelFactory;
 
         Threading::Mutex _renderBinMutex;

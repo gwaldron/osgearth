@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
+#include <osgEarthFeatures/MVT>
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthUtil/TFS>
 #include <osg/Notify>
@@ -128,61 +129,93 @@ public:
             if ( _options.geoInterp().isSet() )
                 result->geoInterp() = _options.geoInterp().get();
         }
+        else
+        {
+            // Try to get the results from the settings instead
+            if ( !_options.profile().isSet())
+            {
+                OE_NOTICE << LC << "TFS driver needs an explicit profile set" << std::endl;
+                return 0;
+            }
+
+            if (!_options.minLevel().isSet() || !_options.maxLevel().isSet())
+            {
+                OE_NOTICE << LC << "TFS driver needs a min and max level set" << std::endl;
+                return 0;
+            }
+           
+            osg::ref_ptr<const Profile> profile = Profile::create( *_options.profile() );            
+            result = new FeatureProfile(profile->getExtent());
+            result->setTiled( true );
+            result->setFirstLevel( *_options.minLevel() );
+            result->setMaxLevel( *_options.maxLevel() );
+            result->setProfile( profile );
+            if ( _options.geoInterp().isSet() )
+                result->geoInterp() = _options.geoInterp().get();
+        }
         return result;        
     }
 
 
-    bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
-    {        
-        // find the right driver for the given mime type
-        OGR_SCOPED_LOCK;
-                
-        // find the right driver for the given mime type
-        OGRSFDriverH ogrDriver =
-            isJSON(mimeType) ? OGRGetDriverByName( "GeoJSON" ) :
-            isGML(mimeType)  ? OGRGetDriverByName( "GML" ) :
-            0L;
-
-        // fail if we can't find an appropriate OGR driver:
-        if ( !ogrDriver )
+    bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features )
+    {            
+        if (mimeType == "application/x-protobuf")
         {
-            OE_WARN << LC << "Error reading TFS response; cannot grok content-type \"" << mimeType << "\""
-                << std::endl;
-            return false;
+            std::stringstream in(buffer);
+            return MVT::read(in, key, features);
         }
+        else
+        {            
+            // find the right driver for the given mime type
+            OGR_SCOPED_LOCK;
 
-        OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &ogrDriver );
-        
-        if ( !ds )
-        {
-            OE_WARN << LC << "Error reading TFS response" << std::endl;
-            return false;
-        }
+            // find the right driver for the given mime type
+            OGRSFDriverH ogrDriver =
+                isJSON(mimeType) ? OGRGetDriverByName( "GeoJSON" ) :
+                isGML(mimeType)  ? OGRGetDriverByName( "GML" ) :
+                0L;
 
-        // read the feature data.
-        OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
-        if ( layer )
-        {
-            const SpatialReference* srs = _layer.getSRS();
-
-            OGR_L_ResetReading(layer);                                
-            OGRFeatureH feat_handle;
-            while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
+            // fail if we can't find an appropriate OGR driver:
+            if ( !ogrDriver )
             {
-                if ( feat_handle )
+                OE_WARN << LC << "Error reading TFS response; cannot grok content-type \"" << mimeType << "\""
+                    << std::endl;
+                return false;
+            }
+
+            OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &ogrDriver );
+
+            if ( !ds )
+            {
+                OE_WARN << LC << "Error reading TFS response" << std::endl;
+                return false;
+            }
+
+            // read the feature data.
+            OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
+            if ( layer )
+            {
+                const SpatialReference* srs = _layer.getSRS();
+
+                OGR_L_ResetReading(layer);                                
+                OGRFeatureH feat_handle;
+                while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, getFeatureProfile() );
-                    if ( f.valid() && !isBlacklisted(f->getFID()) )
+                    if ( feat_handle )
                     {
-                        features.push_back( f.release() );
+                        osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, getFeatureProfile() );
+                        if ( f.valid() && !isBlacklisted(f->getFID()) )
+                        {
+                            features.push_back( f.release() );
+                        }
+                        OGR_F_Destroy( feat_handle );
                     }
-                    OGR_F_Destroy( feat_handle );
                 }
             }
-        }
 
-        // Destroy the datasource
-        OGR_DS_Destroy( ds );
+            // Destroy the datasource
+            OGR_DS_Destroy( ds );
+        }
         
         return true;
     }
@@ -242,18 +275,20 @@ public:
             unsigned int level = key.getLevelOfDetail();
             
             // TFS follows the same protocol as TMS, with the origin in the lower left of the profile.
-            // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.
-            unsigned int numRows, numCols;
-            key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
-            tileY  = numRows - tileY - 1;
-            
+            // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.            
+            if (_options.invertY() == false)
+            {                
+                unsigned int numRows, numCols;
+                key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+                tileY  = numRows - tileY - 1;            
+            }
+
             std::stringstream buf;
             std::string path = osgDB::getFilePath(_options.url()->full());
             buf << path << "/" << level << "/"
                                << tileX << "/"
                                << tileY
                                << "." << _options.format().get();            
-            OE_DEBUG << "TFS url " << buf.str() << std::endl;
             return buf.str();
         }
         return "";                       
@@ -291,8 +326,9 @@ public:
             {
                 if (_options.format().value() == "json") mimeType = "json";
                 else if (_options.format().value().compare("gml") == 0) mimeType = "text/xml";
+                else if (_options.format().value().compare("pbf") == 0) mimeType = "application/x-protobuf";
             }
-            dataOK = getFeatures( buffer, mimeType, features );
+            dataOK = getFeatures( buffer, *query.tileKey(), mimeType, features );
         }
 
         if ( dataOK )

@@ -174,8 +174,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         osg::ref_ptr<osg::Group> _terrain;
 
-        osg::Uniform* _verticalScaleUniform;
-
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
 

@@ -87,13 +87,13 @@ AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding)
     return text_encoding;
 }
 
-osg::Drawable* 
+osg::Drawable*
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
-                                    const osg::BoundingBox& box)                                    
+                                    const osg::BoundingBox& box)
 {
     osgText::Text* t = new osgText::Text();
-    
+
     osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
     if ( symbol && symbol->encoding().isSet() )
     {
@@ -162,17 +162,17 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         pos.x() = box.xMin();
         pos.y() = box.yMax();
         break;
-        
+
     case osgText::Text::CENTER_TOP:
         pos.x() = box.center().x();
         pos.y() = box.yMin();
-        break;        
+        break;
     case osgText::Text::CENTER_BOTTOM:
     case osgText::Text::CENTER_BOTTOM_BASE_LINE:
     case osgText::Text::CENTER_BASE_LINE:
         pos.x() = box.center().x();
         pos.y() = box.yMax();
-        break;        
+        break;
     case osgText::Text::CENTER_CENTER:
     default:
         pos = box.center();
@@ -215,7 +215,19 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     if ( symbol && symbol->halo().isSet() )
     {
         t->setBackdropColor( symbol->halo()->color() );
-        t->setBackdropType( osgText::Text::OUTLINE );
+        if ( symbol->haloBackdropType().isSet() )
+        {
+            t->setBackdropType( *symbol->haloBackdropType() );
+        }
+        else
+        {
+            t->setBackdropType( osgText::Text::OUTLINE );
+        }
+
+        if ( symbol->haloImplementation().isSet() )
+        {
+            t->setBackdropImplementation( *symbol->haloImplementation() );
+        }
 
         if ( symbol->haloOffset().isSet() )
         {
@@ -263,7 +275,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);    
+    geom->setUseVertexBufferObjects(true);
     geom->setStateSet(dstate);
 
     float s = scale * image->s();
@@ -322,7 +334,7 @@ AnnotationUtils::createHighlightUniform()
     return u;
 }
 
-osg::Node* 
+osg::Node*
 AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
@@ -381,7 +393,7 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
       return geode;
 }
 
-osg::Node* 
+osg::Node*
 AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
@@ -436,10 +448,10 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
 
 // constructs an ellipsoidal mesh
 osg::Geometry*
-AnnotationUtils::createEllipsoidGeometry(float xRadius, 
+AnnotationUtils::createEllipsoidGeometry(float xRadius,
                                          float yRadius,
                                          float zRadius,
-                                         const osg::Vec4f& color, 
+                                         const osg::Vec4f& color,
                                          float maxAngle,
                                          float minLat,
                                          float maxLat,
@@ -491,7 +503,7 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
             float sin_u = sinf(u);
             float cos_v = cosf(v);
             float sin_v = sinf(v);
-            
+
             verts->push_back(osg::Vec3(
                 xRadius * cos_u * cos_v,
                 yRadius * sin_u * cos_v,
@@ -535,11 +547,11 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
     return geom;
 }
 
-osg::Node* 
-AnnotationUtils::createEllipsoid(float xRadius, 
+osg::Node*
+AnnotationUtils::createEllipsoid(float xRadius,
                                  float yRadius,
                                  float zRadius,
-                                 const osg::Vec4f& color, 
+                                 const osg::Vec4f& color,
                                  float maxAngle,
                                  float minLat,
                                  float maxLat,
@@ -570,7 +582,7 @@ AnnotationUtils::createEllipsoid(float xRadius,
     return geode;
 }
 
-osg::Node* 
+osg::Node*
 AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
@@ -724,7 +736,7 @@ AnnotationUtils::installTwoPassAlpha(osg::Node* node)
 }
 
 
-bool 
+bool
 AnnotationUtils::styleRequiresAlphaBlending( const Style& style )
 {
     if (style.has<PolygonSymbol>() &&
@@ -768,7 +780,7 @@ AnnotationUtils::getAltitudePolicy(const Style& style, AltitudePolicy& out)
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
         if ( alt )
         {
-            if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+            if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
                 alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
             {
                 out.sceneClamping = alt->technique() == AltitudeSymbol::TECHNIQUE_SCENE;

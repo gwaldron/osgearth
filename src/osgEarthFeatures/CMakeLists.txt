@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     LabelSource
+    MVT
     OgrUtils
     OptimizerHints
     PolygonizeLines
@@ -78,6 +79,7 @@ SET(TARGET_SRC
     GeometryCompiler.cpp
     GeometryUtils.cpp
     LabelSource.cpp
+    MVT.cpp
     OgrUtils.cpp
     OptimizerHints.cpp
     PolygonizeLines.cpp
@@ -100,13 +102,11 @@ IF(PROTOBUF_FOUND AND PROTOBUF_PROTOC_EXECUTABLE)
 
   SET(LIB_PUBLIC_HEADERS
     ${LIB_PUBLIC_HEADERS}
-    MVT
     ${PROTO_VECTOR_TILE_H}
   )
 
   SET(TARGET_SRC
     ${TARGET_SRC}
-    MVT.cpp
     ${PROTO_VECTOR_TILE_CPP}
   )
 

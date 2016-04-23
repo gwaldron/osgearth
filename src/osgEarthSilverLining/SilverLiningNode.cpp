@@ -76,12 +76,7 @@ SilverLiningNode::attach(osg::View* view, int lightNum)
 void
 SilverLiningNode::onSetDateTime()
 {
-    // set the SL local time to UTC/epoch.
-    //::SilverLining::LocalTime utcTime;
-    //utcTime.SetFromEpochSeconds( getDateTime().asTimeStamp() );
-    //_SL->getAtmosphere()->GetConditions()->SetTime( utcTime );
-
-	for (osg::NodeList::iterator itr = _children.begin();
+  for (osg::NodeList::iterator itr = _children.begin();
 		itr != _children.end();
 		++itr)
 	{
@@ -94,7 +89,14 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::onSetMinimumAmbient()
 {
-    //_SL->setMinimumAmbient( getMinimumAmbient() );
+  for (osg::NodeList::iterator itr = _children.begin();
+		itr != _children.end();
+		++itr)
+	{
+		SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+		if(node)
+			node->onSetMinimumAmbient(); 
+	}
 }
 
 void
@@ -102,7 +104,6 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
 	if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
 	{
-		//Check why this is needed CHECKTHIS
 		for (osg::NodeList::iterator itr = _children.begin();
 			itr != _children.end();
 			++itr)

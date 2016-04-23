@@ -19,6 +19,7 @@
 #include <SilverLining.h>
 #include "SilverLiningSkyDrawable"
 #include "SilverLiningContext"
+#include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
 
 #define LC "[SilverLining:SkyDrawable] "
@@ -40,7 +41,11 @@ void
 SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::Camera* camera = renderInfo.getCurrentCamera();
-    if ( camera )
+	SilverLiningContextNode *sl_node = NULL;
+	if(camera)
+		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
+
+	if ( camera && sl_node->getSLContext() == _SL.get())
     {
         renderInfo.getState()->disableAllVertexArrays();
 

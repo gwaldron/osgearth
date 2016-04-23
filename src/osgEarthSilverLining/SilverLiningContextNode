@@ -30,40 +30,48 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
+	class SilverLiningNode;
 
     /**
      * Node that roots the silverlining adapter.
      */
-    class OSGEARTHSILVERLINING_EXPORT SilverLiningNode : public osgEarth::Util::SkyNode
+    class SilverLiningContextNode : public osg::Geode
     {
     public:
-        SilverLiningNode(
+        SilverLiningContextNode(SilverLiningNode* node,
             const osgEarth::Map*       map,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
-    public: // SkyNode
+    public: 
 
-        osg::Light* getSunLight() { return _light.get(); }
+        //osg::Light* getSunLight() { return _light.get(); }
 
         void attach(osg::View* view, int lightNum);
 
-        // callbacks from base class.
+        // callbacks from SilverLiningNode.
         void onSetDateTime();
         void onSetMinimumAmbient();
 
+		osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}
+		SilverLiningContext* getSLContext() {return _SL.get();}
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);
 
     protected:
-        virtual ~SilverLiningNode();
-    
-		osg::ref_ptr<osg::LightSource> _lightSource;
-        osg::ref_ptr<osg::Light> _light;
+        virtual ~SilverLiningContextNode();
+
+        osg::ref_ptr<SilverLiningContext> _SL;
+		osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<osg::LightSource> _lightSource;
+        osg::ref_ptr<osg::Drawable> _skyDrawable;
+		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
+		SilverLiningNode* _silverLiningNode;
+        //osg::ref_ptr<osg::Light> _light;
+		double _lastAltitude;
 		const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
-		const osgEarth::Map* _map;
     };
 
 } } // namespace osgEarth::SilverLining

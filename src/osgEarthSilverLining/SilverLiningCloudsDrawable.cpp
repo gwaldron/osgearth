@@ -19,6 +19,7 @@
 #include <SilverLining.h>
 #include "SilverLiningCloudsDrawable"
 #include "SilverLiningContext"
+#include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
 
 #undef  LC
@@ -40,9 +41,14 @@ _SL( SL )
 void
 CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
-    if( _SL->ready() )
-    {
-        osg::State* state = renderInfo.getState();
+	osg::Camera* camera = renderInfo.getCurrentCamera();
+	SilverLiningContextNode *sl_node = NULL;
+	if(camera)
+		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
+
+	if ( _SL->ready() && sl_node->getSLContext() == _SL.get())
+	{
+	    osg::State* state = renderInfo.getState();
 
         // adapt the SL shaders so they can accept OSG uniforms:
         osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.

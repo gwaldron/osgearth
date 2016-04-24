@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/BboxDrawable>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
@@ -251,11 +252,18 @@ PlaceNode::init()
         if ( !textSymbol->alignment().isSet() )
             textSymbol->alignment() = textSymbol->ALIGN_LEFT_CENTER;
     }
-    
+
     text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
             imageBox );
+
+    const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
+    if ( bboxsymbol && text )
+    {
+        osg::Drawable* bboxGeom = new BboxDrawable( text->getBoundingBox(), *bboxsymbol );
+        _geode->addDrawable(bboxGeom);
+    }
 
     if ( text )
         _geode->addDrawable( text );

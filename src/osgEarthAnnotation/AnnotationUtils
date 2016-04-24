@@ -24,6 +24,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarthSymbology/Style>
 #include <osg/AutoTransform>
 #include <osg/CullStack>
@@ -66,7 +67,7 @@ namespace osgEarth { namespace Annotation
             const std::string& text,
             const TextSymbol*  symbol,
             const osg::BoundingBox& alignmentBox);
-        
+
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
@@ -74,6 +75,7 @@ namespace osgEarth { namespace Annotation
         {
             return createTextDrawable(text, symbol, osg::BoundingBox(pos,pos));
         }
+
 
         /**
          * Creates the basic geometry to draw an image texture-mapped to
@@ -116,6 +118,8 @@ namespace osgEarth { namespace Annotation
         static osg::Drawable* create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
 
         static osg::Node* createFullScreenQuad( const osg::Vec4& color );
+
+        static osg::Drawable* createBboxDrawable( const osg::BoundingBox& box, const BBoxSymbol &bboxSymbol );
 
         /**
          * Builds a sphere geometry.

@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
@@ -31,13 +32,14 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 
-#include <osgText/Text>
 #include <osg/Depth>
 #include <osg/BlendFunc>
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
 #include <osg/LightModel>
 #include <osg/Projection>
+#include <osg/LineWidth>
+#include <osgText/Text>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -686,6 +688,41 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     return geom;
 }
 
+osg::Drawable*
+AnnotationUtils::createBboxDrawable( const osg::BoundingBox& box, const BBoxSymbol &bboxSymbol )
+{
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(box.xMin(), box.yMin(), 0) );
+    v->push_back( osg::Vec3(box.xMax(), box.yMin(), 0) );
+    v->push_back( osg::Vec3(box.xMax(), box.yMax(), 0) );
+    v->push_back( osg::Vec3(box.xMin(), box.yMax(), 0) );
+    geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
+    osg::Vec4Array* c = new osg::Vec4Array(2);
+    (*c)[0] = osg::Vec4f(1., 1., 1., 1.);
+    (*c)[1] = osg::Vec4f(1., 0., 0., 1.);
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_PER_PRIMITIVE_SET );
+
+    geom->addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4) );
+
+    geom->getOrCreateStateSet()->setAttribute( new osg::LineWidth(5.0f) );
+    geom->addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, 0, 4) );
+
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isTextUniform->set( false );
+    geom->getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
+
+    return geom;
+}
 
 osg::Node*
 AnnotationUtils::installTwoPassAlpha(osg::Node* node)

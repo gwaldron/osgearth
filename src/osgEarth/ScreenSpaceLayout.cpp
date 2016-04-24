@@ -24,6 +24,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarthAnnotation/BboxDrawable>
 #include <osgUtil/RenderBin>
 #include <osgUtil/StateGraph>
 #include <osgText/Text>
@@ -480,6 +481,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 DrawableInfo& info = local._memory[drawable];
 
                 bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
+                bool isBbox = dynamic_cast<const osgEarth::Annotation::BboxDrawable*>(drawable) != 0L;
                 bool fullyOut = true;
 
                 if ( info._lastScale != *options.minAnimationScale() )
@@ -500,7 +502,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                 leaf->_depth = info._lastAlpha;
 
-                if ( !isText || !fullyOut )
+                if ( (!isText && !isBbox) || !fullyOut )
                 {
                     if ( info._lastAlpha > 0.01f && info._lastScale >= 0.0f )
                     {

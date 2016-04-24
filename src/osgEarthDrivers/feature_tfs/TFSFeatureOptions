@@ -42,6 +42,15 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }        
 
+        optional<bool>& invertY() { return _invertY; }
+        const optional<bool>& invertY() const { return _invertY; }
+
+        optional<int>& minLevel() { return _minLevel; }
+        const optional<int>& minLevel() const { return _minLevel; }
+
+        optional<int>& maxLevel() { return _maxLevel; }
+        const optional<int>& maxLevel() const { return _maxLevel; }
+
     public:
         TFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
           FeatureSourceOptions( opt ),
@@ -57,7 +66,10 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
             conf.updateIfSet( "url", _url ); 
-            conf.updateIfSet( "format", _format );            
+            conf.updateIfSet( "format", _format );
+            conf.updateIfSet( "invert_y", _invertY);
+            conf.updateIfSet( "min_level", _minLevel);
+            conf.updateIfSet( "max_level", _maxLevel);
             return conf;
         }
 
@@ -71,10 +83,16 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
             conf.getIfSet( "format", _format );
+            conf.getIfSet( "invert_y", _invertY );
+            conf.getIfSet( "min_level", _minLevel);
+            conf.getIfSet( "max_level", _maxLevel);
         }
 
         optional<URI>         _url;        
         optional<std::string> _format;
+        optional<bool>        _invertY;
+        optional<int>         _minLevel;
+        optional<int>         _maxLevel;
     };
 
 } } // namespace osgEarth::Drivers

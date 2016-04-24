@@ -169,12 +169,7 @@ public:
             return NULL;
         }
 
-        int tileSize = _options.tileSize().value();
-
-        //Allocate the heightfield
-        osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
-        hf->allocate(tileSize, tileSize);
-        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+        int tileSize = _options.tileSize().value();        
 
 	    if (intersects(key))
         {
@@ -207,6 +202,11 @@ public:
 		    
 			if (!featureList.empty())
 			{
+                //Only allocate the heightfield if we actually intersect any features.
+                osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
+                hf->allocate(tileSize, tileSize);
+                for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+
 				// Iterate over the output heightfield and sample the data that was read into it.
 				double dx = (xmax - xmin) / (tileSize-1);
 				double dy = (ymax - ymin) / (tileSize-1);
@@ -280,9 +280,10 @@ public:
 						hf->setHeight(c, r, h + _offset);
 					}
 				}
+                return hf.release();
 			}	
         }
-        return hf.release();
+        return 0;        
     }
 
 

@@ -40,7 +40,9 @@ KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 
         if ( !iconHref.empty() )
         {
-            icon->url() = StringExpression( iconHref, URIContext(cx._referrer) );
+            // We set a literal here to avoid filenames with spaces being evaluated.
+            icon->url()->setLiteral(iconHref);
+            icon->url()->setURIContext(URIContext(cx._referrer));
         }
 			
         // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram
@@ -52,6 +54,12 @@ KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 
 		std::string scale = getValue(node, "scale");
         if ( !scale.empty() )
-            icon->scale() = NumericExpression( scale );
+        {
+            icon->scale() = NumericExpression(NumericExpression( scale ).eval() * finalScale);
+        }
+        else
+        {
+            icon->scale() = NumericExpression(finalScale);
+        }
     }
 }

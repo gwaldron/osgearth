@@ -102,18 +102,7 @@ SilverLiningNode::onSetMinimumAmbient()
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
-	if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-	{
-		for (osg::NodeList::iterator itr = _children.begin();
-			itr != _children.end();
-			++itr)
-		{
-			SilverLiningContextNode* sky_node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
-			if(sky_node)
-				sky_node->traverse(nv); 
-		}
-	}
-	else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+	if ( nv.getVisitorType() == nv.CULL_VISITOR )
 	{
 		osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 		osg::Camera* camera  = cv->getCurrentCamera();
@@ -123,12 +112,13 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 			if (!camera_node) 
 			{
 				camera_node = new SilverLiningContextNode(this,_map, _options);
-				static bool first_camera = true;
+				camera_node->getSLContext()->setLight(_light);
+				/*static bool first_camera = true;
 				if (first_camera)
 				{
 					camera_node->getSLContext()->setLight(_light);
 					first_camera = false;
-				}
+				}*/
 			
 				static int nodeMask = 0x1;
 				camera_node->getSLGeode()->setNodeMask(nodeMask);

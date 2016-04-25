@@ -17,6 +17,6 @@
     </elevation>
     
     <extensions>
-        <detail image="../data/noise3.png" lod="24" alpha="0.5">        
+        <detail image="../data/noise3.png" lod="24" alpha="0.5"/>        
     </extensions>
 </map>

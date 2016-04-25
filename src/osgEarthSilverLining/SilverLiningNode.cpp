@@ -108,24 +108,16 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 		osg::Camera* camera  = cv->getCurrentCamera();
 		if ( camera )
 		{
-			SilverLiningContextNode *camera_node = dynamic_cast<SilverLiningContextNode *>(camera->getUserData());
-			if (!camera_node) 
+			SilverLiningContextNode *slContextNode = dynamic_cast<SilverLiningContextNode *>(camera->getUserData());
+			if (!slContextNode) 
 			{
-				camera_node = new SilverLiningContextNode(this,_map, _options);
-				camera_node->getSLContext()->setLight(_light);
-				/*static bool first_camera = true;
-				if (first_camera)
-				{
-					camera_node->getSLContext()->setLight(_light);
-					first_camera = false;
-				}*/
-			
+				slContextNode = new SilverLiningContextNode(this, _light, _map, _options);
 				static int nodeMask = 0x1;
-				camera_node->getSLGeode()->setNodeMask(nodeMask);
+				slContextNode->getSLGeode()->setNodeMask(nodeMask);
 				camera->setNodeMask(nodeMask);
 				nodeMask = nodeMask << 1;
-				camera->setUserData(camera_node);
-				addChild(camera_node);
+				camera->setUserData(slContextNode);
+				addChild(slContextNode);
 			}
 		}
 	}

@@ -39,6 +39,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         SilverLiningContextNode(SilverLiningNode* node,
+			osg::Light*                light,
             const osgEarth::Map*       map,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);

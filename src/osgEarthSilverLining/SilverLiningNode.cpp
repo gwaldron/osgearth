@@ -112,10 +112,14 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 			if (!slContextNode) 
 			{
 				slContextNode = new SilverLiningContextNode(this, _light, _map, _options);
-				static int nodeMask = 0x1;
+
+				//don't get this to work
+				/*static int nodeMask = 0x1;
 				slContextNode->getSLGeode()->setNodeMask(nodeMask);
-				camera->setNodeMask(nodeMask);
-				nodeMask = nodeMask << 1;
+				slContextNode->setNodeMask(nodeMask);
+				camera->setCullMask(nodeMask);
+				nodeMask = nodeMask << 1;*/
+
 				camera->setUserData(slContextNode);
 				addChild(slContextNode);
 			}

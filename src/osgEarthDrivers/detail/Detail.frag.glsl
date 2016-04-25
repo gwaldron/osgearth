@@ -6,9 +6,10 @@
 uniform sampler2D oe_detail_tex; // uniform of detail texture
 uniform float oe_detail_alpha;   // The detail textures alpha.
 in vec2 detailCoords;            // input from vertex stage
+in float detailIntensity;        // The intensity of the detail effect.
                 
 void oe_detail_fragment(inout vec4 color)
 {
     vec4 texel = texture(oe_detail_tex, detailCoords);
-    color.rgb = mix(color.rgb, texel.rgb, oe_detail_alpha);
+    color.rgb = mix(color.rgb, texel.rgb, oe_detail_alpha * detailIntensity);
 }                

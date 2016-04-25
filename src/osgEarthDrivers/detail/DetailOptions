@@ -41,16 +41,22 @@ namespace osgEarth { namespace Detail
         optional<float>& alpha() { return _alpha; }
         const optional<float>& alpha() const { return _alpha; }
 
+        // The max range of the detail texture.
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
 
-
-
+        // The attenutation distance of the detail texture.
+        optional<float>& attenDist() { return _attenDist; }
+        const optional<float>& attenDist() const { return _attenDist; }
 
     public:
         DetailOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "detail" );
             _lod.init( 23u );            
-            _alpha.init( 0.5 );            
+            _alpha.init( 0.5 ); 
+            _maxRange.init(6000.0);
+            _attenDist.init(2000.0f);
             fromConfig( _conf );
         }
 
@@ -62,6 +68,8 @@ namespace osgEarth { namespace Detail
             conf.updateIfSet("image", _imageURI);
             conf.updateIfSet("lod", _lod);
             conf.updateIfSet("alpha", _alpha);
+            conf.updateIfSet("max_range", _maxRange);
+            conf.updateIfSet("attenuation", _attenDist);
             return conf;
         }
 
@@ -76,11 +84,15 @@ namespace osgEarth { namespace Detail
             conf.getIfSet( "image", _imageURI );
             conf.getIfSet( "lod", _lod );
             conf.getIfSet( "alpha", _alpha );
+            conf.getIfSet( "max_range", _maxRange );
+            conf.getIfSet( "attenuation", _attenDist);
         }
 
         optional<URI> _imageURI;
         optional<unsigned int> _lod;
         optional<float> _alpha;
+        optional<float> _maxRange;
+        optional<float> _attenDist;
     };
 
 } } // namespace osgEarth::Detail

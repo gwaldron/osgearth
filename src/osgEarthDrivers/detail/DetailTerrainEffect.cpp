@@ -74,6 +74,8 @@ DetailTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( new osg::Uniform(SAMPLER_NAME, _texImageUnit) );
             stateset->addUniform( new osg::Uniform("oe_detail_lod", (float)_options.lod().get()));
             stateset->addUniform( new osg::Uniform("oe_detail_alpha", _options.alpha().get()));
+            stateset->addUniform( new osg::Uniform("oe_detail_maxRange", _options.maxRange().get()));
+            stateset->addUniform( new osg::Uniform("oe_detail_attenDist", _options.attenDist().get()));
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

@@ -50,6 +50,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _texMatrixUniformNameID;
         unsigned _texMatrixParentUniformNameID;
         unsigned _texParentExistsUniformNameID;
+        unsigned _minRangeUniformNameID;
+        unsigned _maxRangeUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {

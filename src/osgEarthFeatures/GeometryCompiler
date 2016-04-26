@@ -84,10 +84,6 @@ namespace osgEarth { namespace Features
         optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
         const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
 
-        /** Whether to combine resource library textures into a single texture array */        
-        optional<bool>& useTextureArrays() { return _useTextureArrays;}
-        const optional<bool>& useTextureArrays() const { return _useTextureArrays;}
-
         /** Whether to generate shader components on compiled geometry */
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
@@ -126,7 +122,6 @@ namespace osgEarth { namespace Features
         optional<bool>                 _ignoreAlt;
         optional<bool>                 _useVertexBufferObjects;
         optional<ShaderPolicy>         _shaderPolicy;
-        optional<bool>                 _useTextureArrays;
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;
         optional<bool>                 _validate;

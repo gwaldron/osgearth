@@ -23,7 +23,6 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
@@ -32,14 +31,13 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
 
+#include <osgText/Text>
 #include <osg/Depth>
 #include <osg/BlendFunc>
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
 #include <osg/LightModel>
 #include <osg/Projection>
-#include <osg/LineWidth>
-#include <osgText/Text>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -699,6 +697,7 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
 
     return geom;
 }
+
 
 osg::Node*
 AnnotationUtils::installTwoPassAlpha(osg::Node* node)

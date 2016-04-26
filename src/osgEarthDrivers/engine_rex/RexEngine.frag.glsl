@@ -22,6 +22,8 @@ in float oe_rex_morphFactor;
 
 in vec4 oe_layer_texc;
 
+in float oe_layer_rangeOpacity;
+
 void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
@@ -51,7 +53,7 @@ void oe_rexEngine_frag(inout vec4 color)
 #endif
 
     // Integrate layer opacity into the texture:
-    texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);
+    texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, applyImagery);
 
     float firstLayer = (applyImagery == 1.0 && oe_layer_order == 0) ? 1.0 : 0.0;
 

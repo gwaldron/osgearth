@@ -41,11 +41,14 @@ void
 SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::Camera* camera = renderInfo.getCurrentCamera();
+#ifndef SL_USE_CULL_MASK
 	SilverLiningContextNode *sl_node = NULL;
 	if(camera)
 		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
-
-	if ( camera && sl_node->getSLContext() == _SL.get())
+	if(sl_node && sl_node->getSLContext() == _SL.get())
+#endif 
+	{
+	if ( camera)
     {
         renderInfo.getState()->disableAllVertexArrays();
 
@@ -85,6 +88,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
         renderInfo.getState()->apply();
     }
+	}
 }
 
 osg::BoundingBox

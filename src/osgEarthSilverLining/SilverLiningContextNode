@@ -67,7 +67,6 @@ namespace osgEarth { namespace SilverLining
 		SilverLiningNode* _silverLiningNode;
         double _lastAltitude;
 		const SilverLiningOptions _options;
-        osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
     };
 
 } } // namespace osgEarth::SilverLining

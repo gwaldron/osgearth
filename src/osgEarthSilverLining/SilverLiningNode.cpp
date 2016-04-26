@@ -113,13 +113,21 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 			{
 				slContextNode = new SilverLiningContextNode(this, _light, _map, _options);
 
-				//don't get this to work
-				/*static int nodeMask = 0x1;
+//Use camera cull mask that will remove the need for context check 
+//in SilverLiningContextNode, SilverLiningSkyDrawable and SilverLiningCloudsDrawable
+#ifdef SL_USE_CULL_MASK 
+				static int nodeMask = 0x1;
 				slContextNode->getSLGeode()->setNodeMask(nodeMask);
 				slContextNode->setNodeMask(nodeMask);
-				camera->setCullMask(nodeMask);
-				nodeMask = nodeMask << 1;*/
 
+				int inheritanceMask = 
+					(osg::CullSettings::VariablesMask::ALL_VARIABLES &
+					~osg::CullSettings::VariablesMask::CULL_MASK);
+
+				camera->setInheritanceMask(inheritanceMask);
+				camera->setCullMask(nodeMask);
+				nodeMask = nodeMask << 1;
+#endif
 				camera->setUserData(slContextNode);
 				addChild(slContextNode);
 			}

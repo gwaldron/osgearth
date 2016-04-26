@@ -62,12 +62,6 @@ _lastAltitude(DBL_MAX)
     _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "DepthSortedBin" );
     _geode->addDrawable(_cloudsDrawable.get());
 
-    // scene lighting
-    osg::StateSet* stateset = this->getOrCreateStateSet();
-    _lighting = new PhongLightingEffect();
-    _lighting->setCreateLightingUniform( false );
-    _lighting->attach( stateset );
-
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
@@ -129,9 +123,11 @@ SilverLiningContextNode::traverse(osg::NodeVisitor& nv)
 			osg::Camera* camera  = cv->getCurrentCamera();
 			if ( camera )
 			{
+#ifndef SL_USE_CULL_MASK
 				SilverLiningContextNode *sky_node = dynamic_cast<SilverLiningContextNode *>(camera->getUserData());
 				if(sky_node == this)
-				{
+#endif
+     			{
 
 					// TODO: make this multi-camera safe
 					_SL->setCameraPosition( nv.getEyePoint() );

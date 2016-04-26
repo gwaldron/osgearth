@@ -42,11 +42,14 @@ void
 CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
 	osg::Camera* camera = renderInfo.getCurrentCamera();
+#ifndef SL_USE_CULL_MASK
 	SilverLiningContextNode *sl_node = NULL;
 	if(camera)
 		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
-
-	if ( _SL->ready() && sl_node->getSLContext() == _SL.get())
+	if(sl_node && sl_node->getSLContext() == _SL.get())
+#endif
+	{
+	if ( _SL->ready())
 	{
 	    osg::State* state = renderInfo.getState();
 
@@ -78,6 +81,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
         state->apply();
     }
+	}
 }
 
 osg::BoundingBox

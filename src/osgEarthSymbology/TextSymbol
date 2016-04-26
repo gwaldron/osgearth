@@ -20,6 +20,7 @@
 #ifndef OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H 1
 
+#include <osgText/Text>
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Fill>
@@ -53,16 +54,16 @@ namespace osgEarth { namespace Symbology
             ALIGN_RIGHT_TOP,
             ALIGN_RIGHT_CENTER,
             ALIGN_RIGHT_BOTTOM,
-            
+
             ALIGN_LEFT_BASE_LINE,
             ALIGN_CENTER_BASE_LINE,
             ALIGN_RIGHT_BASE_LINE,
-        
+
             ALIGN_LEFT_BOTTOM_BASE_LINE,
             ALIGN_CENTER_BOTTOM_BASE_LINE,
             ALIGN_RIGHT_BOTTOM_BASE_LINE,
-        
-            ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
+
+            ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.
         };
 
         enum Layout {
@@ -90,6 +91,14 @@ namespace osgEarth { namespace Symbology
         /** Text outline offset */
         optional<float>& haloOffset() { return _haloOffset; }
         const optional<float>& haloOffset() const { return _haloOffset; }
+
+        /** Halo backdrop type */
+        optional<osgText::Text::BackdropType>& haloBackdropType() { return _haloBackdropType; }
+        const optional<osgText::Text::BackdropType>& haloBackdropType() const { return _haloBackdropType; }
+
+        /** Halo backdrop implementation */
+        optional<osgText::Text::BackdropImplementation>& haloImplementation() { return _haloImplementation; }
+        const optional<osgText::Text::BackdropImplementation>& haloImplementation() const { return _haloImplementation; }
 
         /** Name of text font. */
         optional<std::string>& font() { return _font; }
@@ -160,6 +169,8 @@ namespace osgEarth { namespace Symbology
         optional<Fill>              _fill;
         optional<Stroke>            _halo;
         optional<float>             _haloOffset;
+        optional<osgText::Text::BackdropType> _haloBackdropType;
+        optional<osgText::Text::BackdropImplementation> _haloImplementation;
         optional<std::string>       _font;
         optional<NumericExpression> _size;
         optional<StringExpression>  _content;

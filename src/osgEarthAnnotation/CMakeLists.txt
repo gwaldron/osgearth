@@ -16,6 +16,7 @@ set(LIB_PUBLIC_HEADERS
     AnnotationNode
     AnnotationRegistry
     AnnotationUtils
+	BboxDrawable
     CircleNode
     Common
     Decoration
@@ -46,6 +47,7 @@ set(LIB_COMMON_FILES
     AnnotationNode.cpp
     AnnotationRegistry.cpp
     AnnotationUtils.cpp
+	BboxDrawable.cpp
     CircleNode.cpp
     Decoration.cpp
     Draggers.cpp

@@ -90,9 +90,10 @@ GeoPositionNode::setMapNode( MapNode* mapNode )
     {
         AnnotationNode::setMapNode( mapNode );
 
+        bool occlusionCullingRequested = _occlusionCullingRequested;
         // the occlusion culler depends on the mapnode, so re-initialize it:
         setOcclusionCulling( false );
-        if ( _occlusionCullingRequested )
+        if ( occlusionCullingRequested )
         {
             setOcclusionCulling( true );
         }

@@ -119,8 +119,6 @@ namespace osgEarth { namespace Annotation
 
         static osg::Node* createFullScreenQuad( const osg::Vec4& color );
 
-        static osg::Drawable* createBboxDrawable( const osg::BoundingBox& box, const BBoxSymbol &bboxSymbol );
-
         /**
          * Builds a sphere geometry.
          * @param r        Radius

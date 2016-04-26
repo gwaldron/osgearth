@@ -28,7 +28,8 @@ BBoxSymbol::BBoxSymbol( const Config& conf ) :
 Symbol                ( conf ),
 _fill                 ( Fill( 1, 1, 1, 1 ) ),
 _border               ( Stroke( 0.3, 0.3, 0.3, 1) ),
-_margin               ( 3 )
+_margin               ( 3 ),
+_bboxGeom             ( GEOM_BOX )
 {
     mergeConfig(conf);
 }
@@ -37,7 +38,8 @@ BBoxSymbol::BBoxSymbol(const BBoxSymbol& rhs,const osg::CopyOp& copyop):
 Symbol(rhs, copyop),
 _fill                 ( rhs._fill ),
 _border               ( rhs._border ),
-_margin               ( rhs._margin )
+_margin               ( rhs._margin ),
+_bboxGeom             ( rhs._bboxGeom )
 {
 
 }
@@ -51,6 +53,9 @@ BBoxSymbol::getConfig() const
     conf.addObjIfSet( "border", _border );
     conf.addIfSet( "margin", _margin );
 
+    conf.addIfSet( "geom", "box", _bboxGeom, GEOM_BOX );
+    conf.addIfSet( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
+
     return conf;
 }
 
@@ -60,6 +65,9 @@ BBoxSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "fill", _fill );
     conf.getObjIfSet( "border", _border );
     conf.getIfSet( "margin", _margin );
+
+    conf.getIfSet( "geom", "box", _bboxGeom, GEOM_BOX );
+    conf.getIfSet( "geom", "box_oriented", _bboxGeom, GEOM_BOX_ORIENTED );
 }
 
 void
@@ -76,5 +84,11 @@ BBoxSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-bbox-margin") ) {
         style.getOrCreate<BBoxSymbol>()->margin() = as<float>(c.value(), 3.0f);
+    }
+    else if ( match(c.key(), "text-bbox-geom") ) {
+        if      ( match(c.value(), "box") )
+            style.getOrCreate<BBoxSymbol>()->geom() = GEOM_BOX;
+        else if ( match(c.value(), "box_oriented") )
+            style.getOrCreate<BBoxSymbol>()->geom() = GEOM_BOX_ORIENTED;
     }
 }

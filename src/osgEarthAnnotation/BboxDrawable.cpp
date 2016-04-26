@@ -37,11 +37,15 @@ osg::Geometry()
 
     float margin = bboxSymbol.margin().isSet() ? bboxSymbol.margin().value() : 2.f;
     osg::Vec3Array* v = new osg::Vec3Array();
-    v->reserve(4);
-    v->push_back( osg::Vec3(box.xMin()-margin, box.yMin()-margin, 0) );
-    v->push_back( osg::Vec3(box.xMax()+margin, box.yMin()-margin, 0) );
+    if ( bboxSymbol.geom().isSet() && bboxSymbol.geom().value() == BBoxSymbol::BboxGeom::GEOM_BOX_ORIENTED )
+    {
+        float h = box.yMax() - box.yMin() + 2.f * margin;
+        v->push_back( osg::Vec3(box.xMax()+margin+h/2.f, box.yMax()+margin-h/2.f, 0) );
+    }
     v->push_back( osg::Vec3(box.xMax()+margin, box.yMax()+margin, 0) );
     v->push_back( osg::Vec3(box.xMin()-margin, box.yMax()+margin, 0) );
+    v->push_back( osg::Vec3(box.xMin()-margin, box.yMin()-margin, 0) );
+    v->push_back( osg::Vec3(box.xMax()+margin, box.yMin()-margin, 0) );
     setVertexArray(v);
     if ( v->getVertexBufferObject() )
         v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
@@ -50,7 +54,7 @@ osg::Geometry()
     if ( bboxSymbol.fill().isSet() )
     {
         c->push_back( bboxSymbol.fill()->color() );
-        addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4) );
+        addPrimitiveSet( new osg::DrawArrays(GL_POLYGON, 0, v->getNumElements()) );
     }
 
     if ( bboxSymbol.border().isSet() )
@@ -58,7 +62,7 @@ osg::Geometry()
         c->push_back( bboxSymbol.border()->color() );
         if ( bboxSymbol.border()->width().isSet() )
             getOrCreateStateSet()->setAttribute( new osg::LineWidth( bboxSymbol.border()->width().value() ));
-        addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, 0, 4) );
+        addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, 0, v->getNumElements()) );
     }
 
     setColorArray( c );

@@ -180,7 +180,7 @@ namespace
     void
     FileSystemCache::init()
     {
-        //nop
+        OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
     }
 
     CacheBin*

@@ -24,6 +24,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarthAnnotation/BboxDrawable>
 #include <osgUtil/RenderBin>
 #include <osgUtil/StateGraph>
 #include <osgText/Text>
@@ -280,36 +281,49 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // transform the bounding box of the drawable into window-space.
             osg::BoundingBox box = Utils::getBoundingBox(drawable);
 
-            osg::Vec2f offset;
+            osg::Vec3f offset;
             osg::Quat rot;
             if (layoutData)
             {
-                // handle the local translation
-                offset.set(layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y());
-                box.xMin() += layoutData->_pixelOffset.x();
-                box.xMax() += layoutData->_pixelOffset.x();
-                box.yMin() += layoutData->_pixelOffset.y();
-                box.yMax() += layoutData->_pixelOffset.y();
 
-                if ( layoutData->_localRotationRad != 0.0 )
+                // local transformation data
+                // and management of the label orientation (must be always readable)
+                bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
+                float angle = layoutData->_localRotationRad;
+                if ( isText && (angle < - osg::PI / 2. || angle > osg::PI / 2.) )
                 {
-                    // handle the local rotation and ensure that texts are always oriented to be readable
-                    float angle = fmod(layoutData->_localRotationRad + 2. * osg::PI, 2. * osg::PI);
-                    if (angle > osg::PI / 2. && angle < 3.*osg::PI / 2.)
-                        angle =  angle - osg::PI;
+                    // avoid the label characters to be inverted:
+                    // use a symetric translation and adapt the rotation to be in the desired angles
+                    offset.set( -layoutData->_pixelOffset.x() - box.xMax() - box.xMin(),
+                                -layoutData->_pixelOffset.y() - box.yMax() - box.yMin(),
+                                0.f );
+                    angle -= osg::PI;
+                }
+                else
+                {
+                    offset.set( layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y(), 0.f );
+                }
+
+                // handle the local translation
+                box.xMin() += offset.x();
+                box.xMax() += offset.x();
+                box.yMin() += offset.y();
+                box.yMax() += offset.y();
+
+                // handle the local rotation
+                if ( angle != 0.f )
+                {
                     rot.makeRotate ( angle, osg::Vec3d(0, 0, 1) );
-                    osg::Vec3f center(box.center());
-                    osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) - center) + center;
-                    osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) - center) + center;
-                    osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) - center) + center;
-                    osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) - center) + center;
-                    box.set(
-                        std::min(ld.x(), lu.x()),
-                        std::min(ld.y(), rd.y()),
-                        0,
-                        std::max(rd.x(), ru.x()),
-                        std::max(lu.y(), ru.y()),
-                        0 );
+                    osg::Vec3f ld = rot * ( osg::Vec3f(box.xMin(), box.yMin(), 0.) );
+                    osg::Vec3f lu = rot * ( osg::Vec3f(box.xMin(), box.yMax(), 0.) );
+                    osg::Vec3f ru = rot * ( osg::Vec3f(box.xMax(), box.yMax(), 0.) );
+                    osg::Vec3f rd = rot * ( osg::Vec3f(box.xMax(), box.yMin(), 0.) );
+                    if ( angle > - osg::PI / 2. && angle < osg::PI / 2.)
+                        box.set( std::min(ld.x(), lu.x()), std::min(ld.y(), rd.y()), 0,
+                            std::max(rd.x(), ru.x()), std::max(lu.y(), ru.y()), 0 );
+                    else
+                        box.set( std::min(ld.x(), lu.x()), std::min(lu.y(), ru.y()), 0,
+                            std::max(ld.x(), lu.x()), std::max(ld.y(), rd.y()), 0 );
                 }
             }
 
@@ -413,8 +427,16 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
-            newModelView.makeRotate(rot);
-            newModelView.postMultTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
+            if ( rot.zeroRotation() )
+            {
+                newModelView.makeTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
+            }
+            else
+            {
+                offset = rot * offset;
+                newModelView.makeTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
+                newModelView.preMultRotate( rot );
+            }
             newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
@@ -480,6 +502,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 DrawableInfo& info = local._memory[drawable];
 
                 bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
+                bool isBbox = dynamic_cast<const osgEarth::Annotation::BboxDrawable*>(drawable) != 0L;
                 bool fullyOut = true;
 
                 if ( info._lastScale != *options.minAnimationScale() )
@@ -500,7 +523,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                 leaf->_depth = info._lastAlpha;
 
-                if ( !isText || !fullyOut )
+                if ( (!isText && !isBbox) || !fullyOut )
                 {
                     if ( info._lastAlpha > 0.01f && info._lastScale >= 0.0f )
                     {

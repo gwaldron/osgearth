@@ -23,7 +23,9 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/BboxDrawable>
 #include <osgEarthSymbology/Color>
+#include <osgEarthSymbology/BBoxSymbol>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
@@ -183,9 +185,17 @@ LabelNode::setStyle( const Style& style )
     }
 
     osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+
+    const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
+    if ( bboxsymbol && t )
+    {
+        osg::Drawable* bboxGeom = new BboxDrawable( t->getBoundingBox(), *bboxsymbol );
+        _geode->addDrawable(bboxGeom);
+    }
+
     _geode->addDrawable(t);
     _geode->setCullingActive(false);
-    
+
     applyStyle( _style );
 
     setLightingIfNotSet( false );

@@ -33,7 +33,8 @@ namespace osgEarth
         optional() : _set(false), _value(T()), _defaultValue(T()) { }
         optional(T defaultValue) : _set(false), _value(defaultValue), _defaultValue(defaultValue) { }
         optional(T defaultValue, T value) : _set(true), _value(value), _defaultValue(defaultValue) { }
-        optional(const optional<T>& rhs) { (*this)=rhs; }
+        //optional(const optional<T>& rhs) { (*this)=rhs; }
+        optional(const optional<T>& rhs) { operator=(rhs); }
         virtual ~optional() { }
         optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; _defaultValue=rhs._defaultValue; return *this; }
         const T& operator =(const T& value) { _set=true; _value=value; return _value; }

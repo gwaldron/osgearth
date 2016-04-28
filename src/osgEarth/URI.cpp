@@ -531,7 +531,7 @@ namespace
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
-                                bin->write( uri.cacheKey(), result.getObject(), result.metadata(), 0L );
+                                bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions );
                             }
                         }
                     }

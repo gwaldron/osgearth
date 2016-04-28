@@ -1848,3 +1848,68 @@ ImageUtils::PixelWriter::supports( GLenum pixelFormat, GLenum dataType )
 {
     return getWriter(pixelFormat, dataType) != 0L;
 }
+
+TextureAndImageVisitor::TextureAndImageVisitor() :
+osg::NodeVisitor()
+{
+    setNodeMaskOverride( ~0L );
+    setTraversalMode(TRAVERSE_ALL_CHILDREN);
+}
+
+void
+TextureAndImageVisitor::apply(osg::Texture& texture)
+{
+    for (unsigned k = 0; k < texture.getNumImages(); ++k)
+    {
+        osg::Image* image = texture.getImage(k);
+        if (image)
+        {
+            apply(*image);
+        }
+    }
+}
+
+void
+TextureAndImageVisitor::apply(osg::Node& node)
+{
+    if (node.getStateSet())
+        apply(*node.getStateSet());
+
+    traverse(node);
+}
+
+void
+TextureAndImageVisitor::apply(osg::Geode& geode)
+{
+    if (geode.getStateSet())
+        apply(*geode.getStateSet());
+
+    for (unsigned i = 0; i < geode.getNumDrawables(); ++i) {
+        if (geode.getDrawable(i) && geode.getDrawable(i)->getStateSet())
+            apply(*geode.getDrawable(i)->getStateSet());
+    }
+
+    traverse(geode);
+}
+
+void
+TextureAndImageVisitor::apply(osg::StateSet& stateSet)
+{
+    osg::StateSet::TextureAttributeList& a = stateSet.getTextureAttributeList();
+    for (osg::StateSet::TextureAttributeList::iterator i = a.begin(); i != a.end(); ++i)
+    {
+        osg::StateSet::AttributeList& b = *i;
+        for (osg::StateSet::AttributeList::iterator j = b.begin(); j != b.end(); ++j)
+        {
+            osg::StateAttribute* sa = j->second.first.get();
+            if (sa)
+            {
+                osg::Texture* tex = dynamic_cast<osg::Texture*>(sa);
+                if (tex)
+                {
+                    apply(*tex);
+                }
+            }
+        }
+    }
+}

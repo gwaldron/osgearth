@@ -118,14 +118,7 @@ namespace osgEarth
             return ! operator==(rhs);
         }
 
-        CachePolicy& operator = ( const CachePolicy& rhs )
-        {
-            _usage  = optional<Usage>(rhs._usage);
-            _maxAge = optional<TimeSpan>(rhs._maxAge);
-            _minTime = optional<TimeStamp>(rhs._minTime);
-
-            return *this;
-        }
+        CachePolicy& operator = ( const CachePolicy& rhs );
 
         // returns a readable string describing usage
         std::string usageString() const;

@@ -37,7 +37,7 @@ osg::Geometry()
 
     float margin = bboxSymbol.margin().isSet() ? bboxSymbol.margin().value() : 2.f;
     osg::Vec3Array* v = new osg::Vec3Array();
-    if ( bboxSymbol.geom().isSet() && bboxSymbol.geom().value() == BBoxSymbol::BboxGeom::GEOM_BOX_ORIENTED )
+    if ( bboxSymbol.geom().isSet() && bboxSymbol.geom().value() == BBoxSymbol::GEOM_BOX_ORIENTED )
     {
         float h = box.yMax() - box.yMin() + 2.f * margin;
         v->push_back( osg::Vec3(box.xMax()+margin+h/2.f, box.yMax()+margin-h/2.f, 0) );

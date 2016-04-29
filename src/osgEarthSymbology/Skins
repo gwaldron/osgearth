@@ -52,7 +52,7 @@ namespace osgEarth { namespace Symbology
         /**
          * Creates an image for this SkinResource.
          */
-        osg::Image* createImage( const osgDB::Options* options ) const;
+        osg::ref_ptr<osg::Image> createImage( const osgDB::Options* options ) const;
 
         /** 
          * A key string that can uniquely identify this object for the purposes

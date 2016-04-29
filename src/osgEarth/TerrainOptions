@@ -180,6 +180,15 @@ namespace osgEarth
 
         optional<int>& binNumber() { return _binNumber; }
         const optional<int>& binNumber() const { return _binNumber; }
+
+        /**
+         * Terrain tile expiration
+         */
+        optional<int>& minExpiryFrames() { return _minExpiryFrames; }
+        const optional<int>& minExpiryFrames() const { return _minExpiryFrames; }
+
+        optional<double>& minExpiryTime() { return _minExpiryTime; }
+        const optional<double>& minExpiryTime() const { return _minExpiryTime; }
    
     public:
         virtual Config getConfig() const;
@@ -217,6 +226,8 @@ namespace osgEarth
         optional<bool> _gpuTessellation;
         optional<bool> _debug;
         optional<int> _binNumber;
+        optional<int> _minExpiryFrames;
+        optional<double> _minExpiryTime;
     };
 }
 

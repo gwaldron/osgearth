@@ -137,7 +137,7 @@ LevelDBCacheImpl::init()
 
     if ( _active )
     {
-        OE_INFO << LC << "Opened DB at " << _rootPath << std::endl;
+        OE_INFO << LC << "Opened a cache at \"" << _rootPath << "\"" << std::endl;
     }
 }
 

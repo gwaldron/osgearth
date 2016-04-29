@@ -25,6 +25,7 @@
 #include <osg/Image>
 #include <osg/Texture>
 #include <osg/GL>
+#include <osg/NodeVisitor>
 #include <vector>
 
 //These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
@@ -493,6 +494,26 @@ namespace osgEarth
                 return true;
             }
         };
+    };
+
+    /** Visitor that finds and operates on textures and images */
+    class OSGEARTH_EXPORT TextureAndImageVisitor : public osg::NodeVisitor
+    {
+    public:
+        TextureAndImageVisitor();
+        virtual ~TextureAndImageVisitor() { }
+
+    public:
+        /** Visits a texture and, by default, all its components images */
+        virtual void apply(osg::Texture& texture);
+
+        /** Visits an image inside a texture */
+        virtual void apply(osg::Image& image) { }
+
+    public: // osg::NodeVisitor
+        virtual void apply(osg::Node& node);
+        virtual void apply(osg::Geode& geode);
+        virtual void apply(osg::StateSet& stateSet);
     };
 }
 

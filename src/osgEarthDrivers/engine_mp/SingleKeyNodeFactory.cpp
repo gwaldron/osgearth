@@ -118,6 +118,17 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
 
+        // Setup expiration.
+        if (_options.minExpiryFrames().isSet())
+        {
+            plod->setMinimumExpiryFrames(1, *_options.minExpiryFrames());
+        }
+        
+        if (_options.minExpiryTime().isSet())
+        {         
+            plod->setMinimumExpiryTime(1, *_options.minExpiryTime());
+        }      
+
         if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
             //Compute the min range based on the 2D size of the tile

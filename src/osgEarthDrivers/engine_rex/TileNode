@@ -108,6 +108,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
+        double getMinimumExpiryTime() const { return _minExpiryTime; }
+        void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
+        
+        unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
+        void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -125,11 +132,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
+        double                             _lastTraversalTime;
         OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;
         bool                               _childrenReady;
+        unsigned int                       _minExpiryFrames;
+        double                             _minExpiryTime;
 
     private:
 

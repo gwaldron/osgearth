@@ -30,6 +30,7 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
+#include <osgEarth/VerticalDatum>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
@@ -45,6 +46,7 @@ static LabelControl*  s_posLabel    = 0L;
 static LabelControl*  s_vdaLabel    = 0L;
 static LabelControl*  s_mslLabel    = 0L;
 static LabelControl*  s_haeLabel    = 0L;
+static LabelControl*  s_egm96Label  = 0L;
 static LabelControl*  s_mapLabel    = 0L;
 static LabelControl*  s_resLabel    = 0L;
 
@@ -79,7 +81,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             mapPoint.fromWorld( _terrain->getSRS(), world );
 
             // do an elevation query:
-            double query_resolution = 0; // 1/10th of a degree
+            double query_resolution = 0; // max.
             double out_hamsl        = 0.0;
             double out_resolution   = 0.0;
 
@@ -107,6 +109,17 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );
                 s_resLabel->setText( Stringify() << out_resolution );
 
+                double egm96z = mapPoint.z();
+
+                VerticalDatum::transform(
+                    mapPointGeodetic.getSRS()->getVerticalDatum(),
+                    VerticalDatum::get("egm96"),
+                    mapPointGeodetic.y(),
+                    mapPointGeodetic.x(),
+                    egm96z);
+                
+                s_egm96Label->setText(Stringify() << egm96z);
+
                 yes = true;
             }
 
@@ -122,6 +135,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             s_mslLabel->setText( "-" );
             s_haeLabel->setText( "-" );
             s_resLabel->setText( "-" );
+            s_egm96Label->setText("-");
         }
     }
 
@@ -174,18 +188,20 @@ int main(int argc, char** argv)
     // Make the readout:
     Grid* grid = new Grid();
     grid->setControl(0,0,new LabelControl("Coords (Lat, Long):"));
-    grid->setControl(0,1,new LabelControl("Vertical Datum:"));
-    grid->setControl(0,2,new LabelControl("Height (MSL):"));
-    grid->setControl(0,3,new LabelControl("Height (HAE):"));
-    grid->setControl(0,4,new LabelControl("Isect  (HAE):"));
-    grid->setControl(0,5,new LabelControl("Resolution:"));
+    grid->setControl(0,1,new LabelControl("Map vertical datum:"));
+    grid->setControl(0,2,new LabelControl("Height above geoid:"));
+    grid->setControl(0,3,new LabelControl("Height above ellipsoid:"));
+    grid->setControl(0,4,new LabelControl("Scene graph intersection:"));
+    grid->setControl(0,5,new LabelControl("EGM96 elevation:"));
+    grid->setControl(0,6,new LabelControl("Query resolution:"));
 
     s_posLabel = grid->setControl(1,0,new LabelControl(""));
     s_vdaLabel = grid->setControl(1,1,new LabelControl(""));
     s_mslLabel = grid->setControl(1,2,new LabelControl(""));
     s_haeLabel = grid->setControl(1,3,new LabelControl(""));
     s_mapLabel = grid->setControl(1,4,new LabelControl(""));
-    s_resLabel = grid->setControl(1,5,new LabelControl(""));
+    s_egm96Label = grid->setControl(1,5,new LabelControl(""));
+    s_resLabel = grid->setControl(1,6,new LabelControl(""));
 
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
     s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 

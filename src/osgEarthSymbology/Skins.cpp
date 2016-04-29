@@ -163,7 +163,10 @@ SkinResource::createStateSet( osg::Image* image ) const
         tex->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
         tex->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
 
-        tex->setUnRefImageDataAfterApply(true);
+        // skin textures are likely to be shared, paged, etc. so keep them in memory.
+        tex->setUnRefImageDataAfterApply(false);
+
+        // don't resize them, let it be
         tex->setResizeNonPowerOfTwoHint(false);
 
         if ( _texEnvMode.isSet() )

@@ -214,6 +214,7 @@ set(TARGET_SRC
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp
+    CacheBin.cpp
     CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp

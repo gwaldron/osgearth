@@ -1105,7 +1105,8 @@ VirtualProgram::apply( osg::State& state ) const
     }
     else if ( !_active.isSet() )
     {
-        _active = Registry::capabilities().supportsGLSL();
+        // cannot use capabilities here; it breaks serialization.
+        _active = true; //Registry::capabilities().supportsGLSL();
     }
     
     const unsigned contextID = state.getContextID();
@@ -1818,3 +1819,164 @@ void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
         _tessevalShader->resizeGLObjectBuffers(maxSize);
     }
 }
+
+//.......................................................................
+// SERIALIZERS for VIRTUALPROGRAM
+
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+#define PROGRAM_LIST_FUNC( PROP, TYPE, DATA ) \
+    static bool check##PROP(const osgEarth::VirtualProgram& attr) \
+    { return attr.get##TYPE().size()>0; } \
+    static bool read##PROP(osgDB::InputStream& is, osgEarth::VirtualProgram& attr) { \
+        unsigned int size = is.readSize(); is >> is.BEGIN_BRACKET; \
+        for ( unsigned int i=0; i<size; ++i ) { \
+            std::string key; unsigned int value; \
+            is >> key >> value; attr.add##DATA(key, value); \
+        } \
+        is >> is.END_BRACKET; \
+        return true; \
+    } \
+    static bool write##PROP( osgDB::OutputStream& os, const osgEarth::VirtualProgram& attr ) \
+    { \
+        const osg::Program::TYPE& plist = attr.get##TYPE(); \
+        os.writeSize(plist.size()); os << os.BEGIN_BRACKET << std::endl; \
+        for ( osg::Program::TYPE::const_iterator itr=plist.begin(); \
+              itr!=plist.end(); ++itr ) { \
+            os << itr->first << itr->second << std::endl; \
+        } \
+        os << os.END_BRACKET << std::endl; \
+        return true; \
+    }
+
+PROGRAM_LIST_FUNC( AttribBinding, AttribBindingList, BindAttribLocation );
+//PROGRAM_LIST_FUNC( FragDataBinding, FragDataBindingList, BindFragDataLocation );
+
+// functions
+static bool checkFunctions( const osgEarth::VirtualProgram& attr )
+{
+    osgEarth::ShaderComp::FunctionLocationMap functions;
+    attr.getFunctions(functions);
+
+    unsigned count = 0;
+    for (osgEarth::ShaderComp::FunctionLocationMap::const_iterator loc = functions.begin(); loc != functions.end(); ++loc)
+        count += loc->second.size();
+    return count > 0;
+}
+
+static bool readFunctions( osgDB::InputStream& is, osgEarth::VirtualProgram& attr )
+{
+    unsigned int size = is.readSize();
+    is >> is.BEGIN_BRACKET;
+
+    for ( unsigned int i=0; i<size; ++i )
+    {
+        std::string name;
+        is >> name >> is.BEGIN_BRACKET;
+        OE_DEBUG << "Name = " << name << std::endl;
+        {
+            unsigned location;
+            is >> is.PROPERTY("Location") >> location;
+            OE_DEBUG << "Location = " << location << std::endl;
+
+            float order;
+            is >> is.PROPERTY("Order") >> order;
+            OE_DEBUG << "Order = " << order << std::endl;
+
+            std::string source;
+            is >> is.PROPERTY("Source");
+            unsigned lines = is.readSize();
+            is >> is.BEGIN_BRACKET;
+            {
+                for (unsigned j=0; j<lines; ++j)
+                {
+                    std::string line;
+                    is.readWrappedString(line);
+                    source.append(line); source.append(1, '\n');
+                }
+            }
+            OE_DEBUG << "Source = " << source << std::endl;
+            is >> is.END_BRACKET;
+
+            attr.setFunction(name, source, (osgEarth::ShaderComp::FunctionLocation)location, order);
+        }
+        is >> is.END_BRACKET;
+    }
+    is >> is.END_BRACKET;
+    return true;
+}
+
+static bool writeFunctions( osgDB::OutputStream& os, const osgEarth::VirtualProgram& attr )
+{
+    osgEarth::ShaderComp::FunctionLocationMap functions;
+    attr.getFunctions(functions);
+
+    osgEarth::VirtualProgram::ShaderMap shaders;
+    attr.getShaderMap(shaders);
+    
+    unsigned count = 0;
+    for (osgEarth::ShaderComp::FunctionLocationMap::const_iterator loc = functions.begin(); loc != functions.end(); ++loc)
+        count += loc->second.size();       
+
+    os.writeSize(count);
+    os << os.BEGIN_BRACKET << std::endl;
+    {
+        for (osgEarth::ShaderComp::FunctionLocationMap::const_iterator loc = functions.begin(); loc != functions.end(); ++loc)
+        {
+            const osgEarth::ShaderComp::OrderedFunctionMap& ofm = loc->second;
+            for (osgEarth::ShaderComp::OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k)
+            {
+                os << k->second._name << os.BEGIN_BRACKET << std::endl;
+                {
+                    os << os.PROPERTY("Location") << (unsigned)loc->first << std::endl;
+                    os << os.PROPERTY("Order") << k->first << std::endl;
+                    // todo: min/max range?
+
+                    osgEarth::VirtualProgram::ShaderID shaderId = MAKE_SHADER_ID(k->second._name);
+                    const osgEarth::VirtualProgram::ShaderEntry* m = shaders.find(shaderId);
+                    if (m)
+                    {                    
+                        std::vector<std::string> lines;
+                        std::istringstream iss(m->_shader->getShaderSource());
+                        std::string line;
+                        while ( std::getline(iss, line) )
+                            lines.push_back( line );
+
+                        os << os.PROPERTY("Source");
+                        os.writeSize(lines.size());
+                        os << os.BEGIN_BRACKET << std::endl;
+                        {
+                            for (std::vector<std::string>::const_iterator itr = lines.begin(); itr != lines.end(); ++itr)
+                            {
+                                os.writeWrappedString(*itr);
+                                os << std::endl;
+                            }
+                        }
+                        os << os.END_BRACKET << std::endl;
+                    }
+                }
+                os << os.END_BRACKET << std::endl;
+            }
+        }
+    }
+    os << os.END_BRACKET << std::endl;
+
+    return true;
+}
+
+REGISTER_OBJECT_WRAPPER(
+    VirtualProgram,
+    new osgEarth::VirtualProgram,
+    osgEarth::VirtualProgram,
+    "osg::Object osg::StateAttribute osgEarth::VirtualProgram")
+{
+    ADD_BOOL_SERIALIZER( InheritShaders, true );
+    ADD_UINT_SERIALIZER( Mask, ~0 );
+
+    ADD_USER_SERIALIZER( AttribBinding );
+    //ADD_USER_SERIALIZER( FragDataBinding );
+    ADD_USER_SERIALIZER( Functions );
+}
+

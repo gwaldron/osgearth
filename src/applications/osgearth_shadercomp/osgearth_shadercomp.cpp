@@ -31,6 +31,7 @@
 #include <osg/Notify>
 #include <osg/CullFace>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -58,6 +59,7 @@ int usage( const std::string& msg )
         << "           [--test5]    : Run the Program state set test \n"
         << "           [--test6]    : Run the 2-camera test \n"
         << "           [--test7]    : Run the geometry shader injection test \n"
+        << "           [--test8]    : Run the VP serialization test \n"
         << std::endl;
 
     return -1;
@@ -444,6 +446,27 @@ namespace TEST_7
 
 //-------------------------------------------------------------------------
 
+namespace TEST_8
+{
+    osg::Node* run()
+    {
+        osg::ref_ptr<osg::Node> node = TEST_5::run();
+        osgDB::writeNodeFile(*node, "out.osgt");
+        OE_NOTICE << "Wrote to out.osgt" << std::endl;
+
+        node = 0L;
+        node = osgDB::readNodeFile("out.osgt");
+        if (!node) {
+            OE_WARN << "Readback failed!!" << std::endl;
+            exit(0);
+        }
+
+        return node.release();
+    }
+}
+
+//-------------------------------------------------------------------------
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
@@ -456,7 +479,10 @@ int main(int argc, char** argv)
     bool test5 = arguments.read("--test5");
     bool test6 = arguments.read("--test6");
     bool test7 = arguments.read("--test7");
-    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7;
+    bool test8 = arguments.read("--test8");
+    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7 || test8;
+
+    bool ui = !arguments.read("--noui");
 
     if ( !ok )
     {
@@ -465,14 +491,17 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-
-    // add a canvas:
-    ControlCanvas* canvas = new ControlCanvas();
-    root->addChild( canvas );
-
-    // and a label:
+    
     LabelControl* label = new LabelControl();
-    canvas->addControl(label);
+    if ( ui )
+    {
+        // add a canvas:
+        ControlCanvas* canvas = new ControlCanvas();
+        root->addChild( canvas );
+
+        // and a label:
+        canvas->addControl(label);
+    }
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
@@ -485,27 +514,27 @@ int main(int argc, char** argv)
         if ( test1 )
         {
             root->addChild( TEST_1::run(earthNode) );
-            label->setText( "Function injection test: the map appears hazy at high altitude." );
+            if (ui) label->setText( "Function injection test: the map appears hazy at high altitude." );
         }
         else if ( test2 )
         {
             root->addChild( TEST_2::run(earthNode) );
-            label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
+            if (ui) label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
         }
         else if ( test3 )
         {
             root->addChild( TEST_3::run(earthNode) );
-            label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
+            if (ui) label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
         }
         else if ( test4 )
         {
             root->addChild( TEST_4::run(earthNode) );
-            label->setText("Memory management test; monitor memory for stability");
+            if (ui) label->setText("Memory management test; monitor memory for stability");
         }
         else if ( test6 )
         {
             root->addChild( TEST_6::run(earthNode) );
-            label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
+            if (ui) label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
         }
         
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
@@ -514,17 +543,22 @@ int main(int argc, char** argv)
     {
         osgEarth::Registry::instance()->getCapabilities();
         root->addChild( TEST_5::run() );
-        label->setText( "Leakage test: red tri on the left, blue on the right." );
+        if (ui) label->setText( "Leakage test: red tri on the left, blue on the right." );
     }
     else if ( test7 )
     {
         root->addChild( TEST_7::run( osgDB::readNodeFiles(arguments) ) );
-        label->setText("Geometry Shader Injection Test.");
+        if (ui) label->setText("Geometry Shader Injection Test.");
+    }
+    else if (test8)
+    {
+        root->addChild( TEST_8::run() );
+        if (ui) label->setText("Serialization test");
     }
 
 
     // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
+    //viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));

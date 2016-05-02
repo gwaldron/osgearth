@@ -217,7 +217,7 @@ namespace
                     // TODO: adding the .osgb here works with the file system cache only.
                     // We need to use a pseudoloader to route this load to a cache bin
                     image.setFileName(cacheKey + ".osgearth_cachebin");
-                    image.setWriteHint(osg::Image::WriteHint::EXTERNAL_FILE);
+                    image.setWriteHint(osg::Image::EXTERNAL_FILE);
 
                     // If an object with the same key is already cached, skip it.
                     CacheBin::RecordStatus rs = _bin->getRecordStatus(cacheKey);

@@ -158,7 +158,12 @@ These options control the rendering of the terrain surface.
 |                       | appearance of higher-resolution terrain than can be represented    |
 |                       | with triangles alone. Default is engine-dependent.                 |
 +-----------------------+--------------------------------------------------------------------+
-
+| min_expiry_frames     | The number of frames that a terrain tile hasn't been seen before   |
+|                       | it can be considered for expiration. Default = 0                   |
++-----------------------+--------------------------------------------------------------------+
+| min_expiry_time       | The number of seconds that a terrain tile hasn't been culled before|
+|                       | it can be considered for expiration. Default = 0                   |
++-----------------------+--------------------------------------------------------------------+
 
 
 .. _ImageLayer:

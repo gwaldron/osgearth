@@ -24,6 +24,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
+#include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -114,3 +115,5 @@ CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const
 CacheDriver::~CacheDriver()
 {
 }
+
+//------------------------------------------------------------------------

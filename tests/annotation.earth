@@ -27,6 +27,10 @@ osgEarth Sample - Annotations
                     text-size:      20;
                     text-declutter: true;
                     text-halo:      #777;
+					text-bbox-fill: #00FF0033;
+					text-bbox-margin: 3;
+					text-bbox-border: #FFFFFFFF;
+					text-bbox-border-width: 1;
                 </style>
             </label>
             
@@ -118,6 +122,10 @@ osgEarth Sample - Annotations
                 <style type="text/css">
                     text-align:             center_center;
 					text-geographic-course: 45.0;
+					text-bbox-fill: #FFFF0033;
+					text-bbox-margin: 8;
+					text-bbox-border: #FFFF00;
+					text-bbox-border-width: 0.5;
                 </style>
             </label>
             

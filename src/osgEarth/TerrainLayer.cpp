@@ -274,7 +274,7 @@ TerrainLayer::setCache( Cache* cache )
 void
 TerrainLayer::setCachePolicy( const CachePolicy& cp )
 {
-    _runtimeOptions->cachePolicy() = optional<CachePolicy>(cp);
+    _runtimeOptions->cachePolicy().init(cp);
     _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
 
     // if an effective policy was previously set, clear it out

@@ -136,6 +136,16 @@ CachePolicy::operator == (const CachePolicy& rhs) const
         (_minTime.get() == rhs._minTime.get());
 }
 
+CachePolicy&
+CachePolicy::operator = ( const CachePolicy& rhs )
+{
+    _usage  = optional<Usage>(rhs._usage);
+    _maxAge = optional<TimeSpan>(rhs._maxAge);
+    _minTime = optional<TimeStamp>(rhs._minTime);
+
+    return *this;
+}
+
 std::string
 CachePolicy::usageString() const
 {

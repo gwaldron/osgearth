@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_DETAIL_OPTIONS
+#define OSGEARTH_DRIVER_DETAIL_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+
+namespace osgEarth { namespace Detail
+{
+    using namespace osgEarth;
+
+    class DetailOptions : public DriverConfigOptions // NO EXPORT; header only
+    {
+    public:
+        // The lod that the detail texture is displayed at.
+        optional<unsigned>& lod() { return _lod; }
+        const optional<unsigned>& size() const { return _lod; }
+
+        // detail texture.
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
+
+        // The alpha of the detail texture.
+        optional<float>& alpha() { return _alpha; }
+        const optional<float>& alpha() const { return _alpha; }
+
+        // The max range of the detail texture.
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        // The attenutation distance of the detail texture.
+        optional<float>& attenDist() { return _attenDist; }
+        const optional<float>& attenDist() const { return _attenDist; }
+
+    public:
+        DetailOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        {
+            setDriver( "detail" );
+            _lod.init( 23u );            
+            _alpha.init( 0.5 ); 
+            _maxRange.init(6000.0);
+            _attenDist.init(2000.0f);
+            fromConfig( _conf );
+        }
+
+        virtual ~DetailOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.updateIfSet("image", _imageURI);
+            conf.updateIfSet("lod", _lod);
+            conf.updateIfSet("alpha", _alpha);
+            conf.updateIfSet("max_range", _maxRange);
+            conf.updateIfSet("attenuation", _attenDist);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "image", _imageURI );
+            conf.getIfSet( "lod", _lod );
+            conf.getIfSet( "alpha", _alpha );
+            conf.getIfSet( "max_range", _maxRange );
+            conf.getIfSet( "attenuation", _attenDist);
+        }
+
+        optional<URI> _imageURI;
+        optional<unsigned int> _lod;
+        optional<float> _alpha;
+        optional<float> _maxRange;
+        optional<float> _attenDist;
+    };
+
+} } // namespace osgEarth::Detail
+
+#endif // OSGEARTH_DRIVER_DETAIL_OPTIONS
+

@@ -462,6 +462,14 @@ RexTerrainEngineNode::dirtyTerrain()
     for( unsigned i=0; i<keys.size(); ++i )
     {
         TileNode* tileNode = new TileNode();
+        if (context->getOptions().minExpiryFrames().isSet())
+        {
+            tileNode->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+        }
+        if (context->getOptions().minExpiryTime().isSet())
+        {         
+            tileNode->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+        }
                 
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], context );
@@ -1048,6 +1056,7 @@ RexTerrainEngineNode::updateState()
             // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", -1.0f) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
             
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",

@@ -26,7 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef OSGEARTH_HAVE_MVT
 #include "vector_tile.pb.h"
+#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -234,7 +236,7 @@ bool
 
     return true;
 #else
-    OE_NOTICE << "Mapnik Vector Tiles NOT SUPPORTED - please compile osgEarth with protobuf to enable." << std::endl; }
+    OE_NOTICE << "Mapnik Vector Tiles NOT SUPPORTED - please compile osgEarth with protobuf to enable." << std::endl;
     return false;
 #endif
 }

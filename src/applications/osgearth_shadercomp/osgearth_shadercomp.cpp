@@ -60,6 +60,7 @@ int usage( const std::string& msg )
         << "           [--test6]    : Run the 2-camera test \n"
         << "           [--test7]    : Run the geometry shader injection test \n"
         << "           [--test8]    : Run the VP serialization test \n"
+        << "           [--test9]    : Run the 64-bit shader test \n"
         << std::endl;
 
     return -1;
@@ -488,7 +489,7 @@ namespace TEST_9
         // the single-precision capacity and cause "jumping verts" at the 
         // camera make small movements.
         const char* vs32 =
-            "#version 330 compatibility \n"
+            "#version 330 \n"
             "uniform mat4 osg_ViewMatrixInverse; \n"
             "flat out float isRed; \n"
 

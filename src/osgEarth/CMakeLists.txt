@@ -308,6 +308,7 @@ set(TARGET_SRC
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
+    TextureBufferSerializer.cpp
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp

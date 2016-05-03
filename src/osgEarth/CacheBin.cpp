@@ -27,6 +27,7 @@
 #include <osg/NodeVisitor>
 #include <osg/Texture>
 #include <osg/Image>
+#include <osg/TextureBuffer>
 
 using namespace osgEarth;
 
@@ -194,6 +195,20 @@ namespace
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
             setNodeMaskOverride( ~0L );
+        }
+
+        void apply(osg::Texture& tex)
+        {
+            if (dynamic_cast<osg::TextureBuffer*>(&tex) != 0L)
+            {
+                // skip texture buffers, they need no prep and 
+                // will be inlined as long as they have a write hint
+                // set to STORE_INLINE.
+            }
+            else
+            {
+                osgEarth::TextureAndImageVisitor::apply(tex);
+            }
         }
 
         void apply(osg::Image& image)

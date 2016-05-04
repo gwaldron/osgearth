@@ -519,6 +519,7 @@ namespace TEST_9
             "#extension GL_ARB_gpu_shader_fp64 : enable \n"
             "uniform dmat4 u_ViewMatrixInverse64; \n"            // must use a 64-bit VMI.
             "flat out float isRed; \n"
+            "flat out double vary64; \n"
 
             "void vertex(inout vec4 v32) \n"
             "{ \n"
@@ -537,7 +538,9 @@ namespace TEST_9
         // frag shader: color the terrain red if the incoming varying is non-zero.
         const char* fs =
             "#version 330 \n"
+            "#extension GL_ARB_gpu_shader_fp64 : enable \n"
             "flat in float isRed; \n"
+            "flat in double vary64; \n"
             "void fragment(inout vec4 color) \n"
             "{ \n"
             "    if (isRed > 0.0f) { \n"

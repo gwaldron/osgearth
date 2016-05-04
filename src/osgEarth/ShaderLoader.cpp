@@ -139,9 +139,9 @@ ShaderLoader::load(const std::string&    filename,
     // If we're using inline source, we have to post-process the string.
     if ( useInlineSource )
     {
-        // reinstate preprocessor macros since GCC doesn't like them in the inlines shaders.
-        // The token was inserted in the CMakeModules/ConfigureShaders.cmake.in script.
-        osgEarth::replaceIn(output, "$__HASHTAG__", "#");
+        // Replace tokens inserted in the CMakeModules/ConfigureShaders.cmake.in script.
+        osgEarth::replaceIn(output, "%EOL%",   "\n");
+        osgEarth::replaceIn(output, "%QUOTE%", "\"");
     }
 
     // Process any "#pragma include" statements
@@ -255,9 +255,9 @@ ShaderLoader::load(const std::string&    filename,
     // If we're using inline source, we have to post-process the string.
     if ( useInlineSource )
     {
-        // reinstate preprocessor macros since GCC doesn't like them in the inlines shaders.
-        // The token was inserted in the CMakeModules/ConfigureShaders.cmake.in script.
-        osgEarth::replaceIn(output, "$__HASHTAG__", "#");
+        // Replace tokens inserted in the CMakeModules/ConfigureShaders.cmake.in script.
+        osgEarth::replaceIn(output, "%EOL%",   "\n");
+        osgEarth::replaceIn(output, "%QUOTE%", "\"");
     }
 
     return output;

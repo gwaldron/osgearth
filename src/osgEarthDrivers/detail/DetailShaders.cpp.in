@@ -8,8 +8,8 @@ using namespace osgEarth::Detail;
 Shaders::Shaders()
 {
     VertexView = "Detail.vert.view.glsl";
-    _sources[VertexView] = MULTILINE(@Detail.vert.view.glsl@);
+    _sources[VertexView] = "@Detail.vert.view.glsl@";
 
     Fragment = "Detail.frag.glsl";
-    _sources[Fragment] = MULTILINE(@Detail.frag.glsl@);
+    _sources[Fragment] = "@Detail.frag.glsl@";
 };

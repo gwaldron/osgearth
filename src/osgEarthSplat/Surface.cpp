@@ -77,8 +77,35 @@ Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
     return true;
 }
 
-#undef  IND
-#define IND "    "
+namespace
+{
+#define INDENTATION 4
+    struct indent {
+        indent(int level) :_level(level){}
+        int _level;
+        friend std::ostream& operator<<(std::ostream& os, const indent& val) {
+            for (int i=0; i<val._level * INDENTATION; ++i) 
+                os << ' ';
+            return os;
+        }
+    };
+
+    void write(std::ostream& buf, SplatRangeDataVector::const_iterator& rangeData, int I)
+    {
+        buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
+        if (rangeData->_detail.isSet()) {
+            buf << indent(I) << "detail = " << (rangeData->_detail->_textureIndex) << ".0;\n";
+            if (rangeData->_detail->_brightness.isSet())
+                buf << indent(I) << "brightness = " << rangeData->_detail->_brightness.get() << ";\n";
+            if (rangeData->_detail->_contrast.isSet())
+                buf << indent(I) << "contrast = " << rangeData->_detail->_contrast.get() << ";\n";
+            if (rangeData->_detail->_threshold.isSet())
+                buf << indent(I) << "threshold = " << rangeData->_detail->_threshold.get() << ";\n";
+            if (rangeData->_detail->_slope.isSet())
+                buf << indent(I) << "slope = " << rangeData->_detail->_slope.get() << ";\n";
+        }
+    }
+}
 
 bool
 Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) const
@@ -95,92 +122,159 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
         return false;
     }
 
-    std::stringstream buf;
+    std::string loside, hiside;
 
-    unsigned pindex = 0;
-    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
+    // loside.
     {
-        const CoverageValuePredicate* pred = p->get();
+        int I = 2;
+        std::stringstream buf;
 
-        if ( pred->_exactValue.isSet() )
+        unsigned pindex = 0;
+        const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
+        for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
         {
-            // Look up by class name:
-            const std::string& className = pred->_mappedClassName.get();
-            const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
-            if ( i != _textureDef._splatLUT.end() )
+            const CoverageValuePredicate* pred = p->get();
+
+            if ( pred->_exactValue.isSet() )
             {
-                // found it; loop over the range selectors:
-                int selectorCount = 0;
-                const SplatSelectorVector& selectors = i->second;
-
-                OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
-
-                if ( pindex > 0 )
-                    buf << IND << "else\n";
-
-                buf << IND << "if (" << pred->_exactValue.get() << ".0 == value) {\n";
-
-                unsigned selectorIndex = 0;
-                for(SplatSelectorVector::const_iterator selector = selectors.begin();
-                    selector != selectors.end();
-                    ++selector, ++selectorIndex)
+                // Look up by class name:
+                const std::string& className = pred->_mappedClassName.get();
+                const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
+                if ( i != _textureDef._splatLUT.end() )
                 {
-                    const std::string&    expression = selector->first;
-                    const SplatRangeData& rangeData  = selector->second;
+                    if (pindex > 0)
+                        buf << indent(I) << "else\n";
 
-                    bool closeBracket = false;
+                    buf << indent(I) << "if (" << pred->_exactValue.get() << ".0 == value) {\n"; ++I;
 
-                    if ( selectorIndex > 0 ) {
-                        buf << IND IND << "else";
-                        if ( expression.empty() ) {
-                            buf << " {\n";
-                            closeBracket = true;
+                    const SplatRangeDataVector& rangeDataVector = i->second;
+
+                    // single range data:
+                    if (rangeDataVector.size() == 1)
+                    {
+                        write(buf, i->second.begin(), I);
+                    }
+
+                    // multiple ranges:
+                    else
+                    {
+                        unsigned rangeExpressionIndex = 0;
+
+                        // if the final range isn't 0, we need to plug it in as the default.
+                        if (rangeDataVector.back()._minRange.get() > 0.0f)
+                        {
+                            write(buf, rangeDataVector.end()-1, I);
                         }
-                        else
-                            buf << "\n";
+
+                        for (SplatRangeDataVector::const_iterator rangeData = rangeDataVector.begin();
+                            rangeData !=rangeDataVector.end();
+                            ++rangeData, ++rangeExpressionIndex)
+                        {
+                            if (rangeExpressionIndex > 0)
+                                buf << indent(I) << "else\n";
+
+                            buf << indent(I) << "if (env.range >= float(" << rangeData->_minRange.get() << ")) {\n"; ++I;
+                            buf << indent(I) << "env.rangeLo = " << rangeData->_minRange.get() << ";\n";
+                            
+                            write(buf, rangeData, I);
+
+                            --I; buf << indent(I) << "}\n"; 
+                        }
                     }
 
-                    if ( !expression.empty() )
-                    {
-                        buf << IND IND << "if (" << expression << ") {\n";
-                        closeBracket = true;
-                    }
-
-                    std::string val = pred->_exactValue.get();
-
-                    buf << IND IND IND << "primary    = " << (rangeData._textureIndex) << ".0;\n";
-                    if ( rangeData._detail.isSet() ) {
-                        buf << IND IND IND << "detail     = " << (rangeData._detail->_textureIndex) << ".0;\n";
-                        if ( rangeData._detail->_brightness.isSet() )
-                            buf << IND IND IND << "brightness = " << rangeData._detail->_brightness.get() << ";\n";
-                        if ( rangeData._detail->_contrast.isSet() )
-                            buf << IND IND IND << "contrast   = " << rangeData._detail->_contrast.get() << ";\n";
-                        if ( rangeData._detail->_threshold.isSet() )
-                            buf << IND IND IND << "threshold  = " << rangeData._detail->_threshold.get() << ";\n";
-                        if ( rangeData._detail->_slope.isSet() )
-                            buf << IND IND IND << "slope = " << rangeData._detail->_slope.get() << ";\n";
-                    }
-
-                    if ( closeBracket )
-                    {
-                        buf << IND IND << "}\n";
-                    }
+                   --I; buf << indent(I) << "}\n";
                 }
-
-                buf << IND << "}\n";
             }
         }
+
+        loside = buf.str();
     }
+
+    // hiside.
+    {
+        std::stringstream buf;
+
+        int I = 2;
+        unsigned pindex = 0;
+        const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
+        for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
+        {
+            const CoverageValuePredicate* pred = p->get();
+
+            if ( pred->_exactValue.isSet() )
+            {
+                // Look up by class name:
+                const std::string& className = pred->_mappedClassName.get();
+                const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
+                if ( i != _textureDef._splatLUT.end() )
+                {
+                    if (pindex > 0)
+                        buf << indent(I) << "else\n";
+
+                    buf << indent(I) << "if (" << pred->_exactValue.get() << ".0 == value) {\n"; ++I;
+                    
+                    const SplatRangeDataVector& rangeDataVector = i->second;
+
+                    // single range data:
+                    if (rangeDataVector.size() == 1)
+                    {
+                        write(buf, i->second.begin(), I);
+                    }
+
+                    // multiple ranges:
+                    else
+                    {
+                        unsigned rangeIndex = 0;
+                        int nest = 0;
+                        unsigned numRanges = i->second.size();
+
+                        for (SplatRangeDataVector::const_iterator rangeData = i->second.begin();
+                            rangeData != i->second.end();
+                            ++rangeData, ++rangeIndex)
+                        {
+                            if (rangeIndex == 0)
+                            {
+                                // first one defines the high range.
+                                buf << indent(I) << "env.rangeHi = " << rangeData->_minRange.get() << ";\n";
+                            }
+                            else
+                            {
+                                // not the first one
+                                if (rangeIndex-1 < numRanges)
+                                {
+                                    // not the last one:
+                                    buf << indent(I) << "if (env.range < float(" << rangeData->_minRange.get() << ")) {\n"; ++I;
+                                    buf << indent(I) << "env.rangeHi = " << rangeData->_minRange.get() << ";\n";
+                                    ++nest;
+                                }
+                                else break; // last one, we're done
+                            }
+
+                            write(buf, rangeData, I);
+                        }
+
+                        while (nest--) {
+                            --I; buf << indent(I) << "}\n";
+                        }
+                    }
+
+                   --I; buf << indent(I) << "}\n";
+                }
+            }
+        }
+
+        hiside = buf.str();
+    }
+
 
     SplattingShaders splatting;
     std::string code = ShaderLoader::load(
         splatting.FragGetRenderInfo,
         splatting);
 
-    std::string codeToInject = buf.str();
 
-    osgEarth::replaceIn(code, "$COVERAGE_SAMPLING_FUNCTION", codeToInject);
+    osgEarth::replaceIn(code, "%LOSIDE_SAMPLING_FUNCTION%", loside);
+    osgEarth::replaceIn(code, "%HISIDE_SAMPLING_FUNCTION%", hiside);
 
     output = code;
 

@@ -63,7 +63,8 @@ SplatDetailData::getConfig() const
 //............................................................................
 
 SplatRangeData::SplatRangeData() :
-_textureIndex( -1 )
+_textureIndex( -1 ),
+_minRange( 0.0f )
 {
     //nop
 }
@@ -109,8 +110,10 @@ SplatClass::SplatClass(const Config& conf)
 
     if ( conf.hasChild("range") )
     {
+        ConfigSet children = conf.children("range");
+
         // read the data definitions in order:
-        for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+        for(ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
         {
             if ( !i->empty() )
             {
@@ -329,6 +332,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     {
         const SplatClass& c = i->second;
 
+#if 0
         // selectors for this class (ordered):
         SplatSelectorVector selectors;
 
@@ -350,6 +354,9 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
                 out._splatLUT[c._name].push_back( SplatSelector(expression, *range) );
             }
         }
+#else
+        out._splatLUT[c._name] = c._ranges;
+#endif
     }
 
     // Create the texture array.

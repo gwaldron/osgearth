@@ -3,7 +3,7 @@
 #pragma include Splat.types.glsl
 
 // Samples the coverage data and returns main and detail indices.
-oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env)
+oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env)
 {
     float primary = -1.0;   // primary texture index
     float detail = -1.0;    // detail texture index
@@ -12,7 +12,12 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env)
     float threshold = 0.0;  // default noise function threshold
     float slope = 0.0;      // default minimum slope
 
-    $COVERAGE_SAMPLING_FUNCTION
+    if (env.side == 0.0) {
+%LOSIDE_SAMPLING_FUNCTION%
+    }
+    else {
+%HISIDE_SAMPLING_FUNCTION%
+    }
 
     return oe_SplatRenderInfo(primary, detail, brightness, contrast, threshold, slope);
 }

@@ -5,9 +5,9 @@ uniform vec4 oe_tile_key;  // osgEarth TileKey
 
 
 // Mapping of view ranges to splat texture levels of detail.
-#define RANGE_COUNT 11
-const float oe_SplatRanges[RANGE_COUNT] = float[](  50.0, 125.0, 250.0, 500.0, 1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );
-const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       4.0 );
+#define RANGE_COUNT 14
+const float oe_SplatRanges[RANGE_COUNT] = float[](  50.0, 125.0, 250.0, 500.0, 1000.0, 2500.0, 4000.0, 30000.0, 80000.0, 150000.0, 225000.0, 300000.0, 1000000.0, 5000000.0 );
+const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,   16.0,   15.0,   14.0,    12.0,    11.0,     10.0,      9.0,      8.0,       6.0,       4.0 );
 
 /**
  * Given a camera distance, return the two LODs it falls between and
@@ -19,20 +19,21 @@ const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,  
  * out blend   = Blend factor between LOD0 and LOD1 [0..1]
  */
 void
-oe_splat_getLodBlend(in float range, in float baseLOD, out float out_LOD0, out float out_LOD1, out float out_range0, out float out_range1, out float out_blend)
+oe_splat_getLodBlend(in float range, in float baseLOD, out float out_LOD0, out float out_LOD1, out float out_rangeLo, out float out_rangeHi, out float out_clampedRange)
 {
-    float clampedRange = clamp(range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
+    out_clampedRange = clamp(range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
 
-    out_blend = -1.0;
-    for(int i=0; i<RANGE_COUNT-1 && out_blend < 0; ++i)
+    //out_blend = -1.0;
+    for(int i=0; i<RANGE_COUNT-1; ++i)
     {
-        if ( clampedRange >= oe_SplatRanges[i] && clampedRange <= oe_SplatRanges[i+1] )
+        if ( out_clampedRange >= oe_SplatRanges[i] && out_clampedRange <= oe_SplatRanges[i+1] )
         {
             out_LOD0 = oe_SplatLevels[i]   + baseLOD;
             out_LOD1 = oe_SplatLevels[i+1] + baseLOD;
-            out_range0 = oe_SplatRanges[i];
-            out_range1 = oe_SplatRanges[i+1];
-            out_blend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
+            out_rangeLo = oe_SplatRanges[i];
+            out_rangeHi = oe_SplatRanges[i+1];
+            //out_blend = clamp((out_range-out_rangeLo)/(out_rangeHi-out_rangeLo), 0.0, 1.0);
+            break;
         }
     }
 }

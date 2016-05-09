@@ -463,6 +463,14 @@ RexTerrainEngineNode::dirtyTerrain()
     for( unsigned i=0; i<keys.size(); ++i )
     {
         TileNode* tileNode = new TileNode();
+        if (context->getOptions().minExpiryFrames().isSet())
+        {
+            tileNode->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+        }
+        if (context->getOptions().minExpiryTime().isSet())
+        {         
+            tileNode->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+        }
                 
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], context );

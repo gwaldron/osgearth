@@ -214,6 +214,7 @@ set(TARGET_SRC
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp
+    CacheBin.cpp
     CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
@@ -307,6 +308,7 @@ set(TARGET_SRC
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
+    TextureBufferSerializer.cpp
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp

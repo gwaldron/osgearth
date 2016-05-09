@@ -122,6 +122,10 @@ osgEarth Sample - Annotations
                 <style type="text/css">
                     text-align:             center_center;
 					text-geographic-course: 45.0;
+					text-bbox-fill: #FFFF0033;
+					text-bbox-margin: 8;
+					text-bbox-border: #FFFF00;
+					text-bbox-border-width: 0.5;
                 </style>
             </label>
             

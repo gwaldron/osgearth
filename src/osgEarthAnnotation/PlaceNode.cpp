@@ -261,7 +261,7 @@ PlaceNode::init()
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && text )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( text->getBoundingBox(), *bboxsymbol );
+        osg::Drawable* bboxGeom = new BboxDrawable( osgEarth::Utils::getBoundingBox(text), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
     }
 

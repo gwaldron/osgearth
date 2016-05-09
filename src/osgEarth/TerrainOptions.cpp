@@ -76,6 +76,8 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "gpu_tessellation", _gpuTessellation );
     conf.updateIfSet( "debug", _debug );
     conf.updateIfSet( "bin_number", _binNumber );
+    conf.updateIfSet( "min_expiry_time", _minExpiryTime);
+    conf.updateIfSet( "min_expiry_frames", _minExpiryFrames);
 
     //Save the filter settings
 	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -115,6 +117,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "gpu_tessellation", _gpuTessellation );
     conf.getIfSet( "debug", _debug );
     conf.getIfSet( "bin_number", _binNumber );
+    conf.getIfSet( "min_expiry_time", _minExpiryTime);
+    conf.getIfSet( "min_expiry_frames", _minExpiryFrames);
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

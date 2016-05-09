@@ -119,7 +119,8 @@ osg::StateSet*
 SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {
     OE_DEBUG << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
-    return createStateSet( createImage(dbOptions) );
+    osg::ref_ptr<osg::Image> image = createImage(dbOptions);
+    return createStateSet(image.get());
 }
 
 osg::StateSet*
@@ -189,7 +190,7 @@ SkinResource::createStateSet( osg::Image* image ) const
     return stateSet;
 }
 
-osg::Image*
+osg::ref_ptr<osg::Image>
 SkinResource::createImage( const osgDB::Options* dbOptions ) const
 {
     return _imageURI->readImage(dbOptions).releaseImage();

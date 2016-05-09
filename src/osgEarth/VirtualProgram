@@ -291,6 +291,7 @@ namespace osgEarth
          * the normal operation. You can set this to "false" to "reset" the VP.
          */
         void setInheritShaders( bool value );
+        bool getInheritShaders() const { return _inherit; }
 
     public: 
         /**
@@ -369,6 +370,10 @@ namespace osgEarth
         /** Sets whether the accept callbacks vary per frame */
         void setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame);
 
+        /** Inheritance mask */
+        void setMask(unsigned mask) { _mask = mask; }
+        unsigned getMask() const { return _mask; }
+
     public: // StateAttribute
         virtual void compileGLObjects(osg::State& state) const;
         virtual void resizeGLObjectBuffers(unsigned maxSize);
@@ -429,7 +434,8 @@ namespace osgEarth
             const osg::State&                        state,
             std::vector<osg::ref_ptr<PolyShader> >&  output);
 
-    protected:
+    public: // INTERNAL USE ONLY
+
         // thread-safe functions map getter
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
 
@@ -439,18 +445,23 @@ namespace osgEarth
         // thread-safe shader accumulator
         void addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap, const osg::State& state) const;
 
-    protected:
+    protected: // serializable members
+
         // holds "template" data that should be installed in every auto-generated
         // Program, like uniform buffer bindings, etc.
         osg::ref_ptr<osg::Program> _template;
 
         unsigned int       _mask;
         AttribBindingList  _attribBindingList;
-        AttribAliasMap     _attribAliases;
 
         // holds the injection points the user has added to this VP.
         // _dataModelMutex protects access to this member.
         ShaderComp::FunctionLocationMap _functions;
+
+        // whether this VP inherits its state
+        bool _inherit;
+
+    protected: // non-serializable members
 
         // holds a map of each named shader installed in this VP.
         // _dataModelMutex protects access to this member.
@@ -476,11 +487,12 @@ namespace osgEarth
         mutable Threading::Mutex _programCacheMutex;
 
         mutable optional<bool> _active;
-        bool _inherit;
         bool _inheritSet;
 
         bool _logShaders;
         std::string _logPath;
+
+        AttribAliasMap _attribAliases;
 
         // whether to use the "attribute stack memory" feature. default = true.
         // see below.

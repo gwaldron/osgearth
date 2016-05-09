@@ -38,6 +38,10 @@ using namespace osgEarth::Threading;
 #   include <unistd.h>
 #endif
 
+#define OSG_FORMAT "osgb"
+#define OSG_EXT   ".osgb"
+#define OSG_COMPRESS
+
 namespace
 {
     /** 
@@ -283,12 +287,14 @@ namespace
         _binPath = osgDB::concatPaths( rootPath, binID );
         _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );
 
-        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension(OSG_FORMAT);
 
+#ifdef OSG_COMPRESS
 #ifdef OSGEARTH_HAVE_ZLIB
         _zlibOptions = Registry::instance()->cloneOrCreateOptions();
         _zlibOptions->setPluginStringData("Compressor", "zlib");
 #endif        
+#endif
     }
 
     const osgDB::Options*
@@ -318,7 +324,7 @@ namespace
 
         // mangle "key" into a legal path name
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path = fileURI.full() + ".osgb";
+        std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
@@ -354,7 +360,7 @@ namespace
 
         // mangle "key" into a legal path name
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path = fileURI.full() + ".osgb";
+        std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
@@ -391,7 +397,7 @@ namespace
 
         // mangle "key" into a legal path name
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path = fileURI.full() + ".osgb";
+        std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
@@ -459,19 +465,19 @@ namespace
 
             if ( dynamic_cast<const osg::Image*>(object) )
             {
-                std::string filename = fileURI.full() + ".osgb";
+                std::string filename = fileURI.full() + OSG_EXT;
                 r = _rw->writeImage( *static_cast<const osg::Image*>(object), filename, dbo.get() );
                 objWriteOK = r.success();
             }
             else if ( dynamic_cast<const osg::Node*>(object) )
             {
-                std::string filename = fileURI.full() + ".osgb";
+                std::string filename = fileURI.full() + OSG_EXT;
                 r = _rw->writeNode(*static_cast<const osg::Node*>(object), filename, dbo.get());
                 objWriteOK = r.success();
             }
             else
             {
-                std::string filename = fileURI.full() + ".osgb";
+                std::string filename = fileURI.full() + OSG_EXT;
                 r = _rw->writeObject(*object, filename, dbo.get());
                 objWriteOK = r.success();
             }
@@ -504,7 +510,7 @@ namespace
             return STATUS_NOT_FOUND;
 
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path( fileURI.full() + ".osgb" );
+        std::string path( fileURI.full() + OSG_EXT );
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
 
@@ -516,7 +522,7 @@ namespace
     {
         if ( !binValidForReading() ) return false;
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path( fileURI.full() + ".osgb" );
+        std::string path( fileURI.full() + OSG_EXT );
         return ::unlink( path.c_str() ) == 0;
     }
 
@@ -525,7 +531,7 @@ namespace
     {
         if ( !binValidForReading() ) return false;
         URI fileURI( getValidKey(key), _metaPath );
-        std::string path( fileURI.full() + ".osgb" );
+        std::string path( fileURI.full() + OSG_EXT );
         return osgEarth::touchFile( path );
     }
 

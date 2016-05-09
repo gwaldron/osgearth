@@ -31,6 +31,7 @@
 #include <osg/Notify>
 #include <osg/CullFace>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -58,6 +59,8 @@ int usage( const std::string& msg )
         << "           [--test5]    : Run the Program state set test \n"
         << "           [--test6]    : Run the 2-camera test \n"
         << "           [--test7]    : Run the geometry shader injection test \n"
+        << "           [--test8]    : Run the VP serialization test \n"
+        << "           [--test9]    : Run the 64-bit shader test \n"
         << std::endl;
 
     return -1;
@@ -71,7 +74,7 @@ osg::Geode* makeGeom( float v )
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->push_back( osg::Vec3(v-1, 0, 0) );
     verts->push_back( osg::Vec3(v+1, 0, 0) );
-    verts->push_back( osg::Vec3(  0, 0, 2) );
+    verts->push_back( osg::Vec3(  v, 0, 2) );
     geom->setVertexArray( verts );
     geom->setUseDisplayList(false);
     geom->setUseVertexBufferObjects(true);
@@ -444,6 +447,141 @@ namespace TEST_7
 
 //-------------------------------------------------------------------------
 
+// Serialization test.
+namespace TEST_8
+{
+    osg::Node* run()
+    {
+        osg::ref_ptr<osg::Node> node = TEST_5::run();
+        osgDB::writeNodeFile(*node, "out.osgt");
+        OE_NOTICE << "Wrote to out.osgt" << std::endl;
+
+        node = 0L;
+        node = osgDB::readNodeFile("out.osgt");
+        if (!node) {
+            OE_WARN << "Readback failed!!" << std::endl;
+            exit(0);
+        }
+
+        return node.release();
+    }
+}
+
+//-------------------------------------------------------------------------
+
+// Double-precision GLSL Test.
+//
+// This test will turn terrain verts RED if their distance from the earth's
+// center exceeds a certain number. Zoom down to a region where there is a
+// boundary between red verts and normally-colored verts. If you use the 32-bit
+// version of the vertex shader, small movements in the camera will cause 
+// red triangles to jump in and out as the world vertex position overflows
+// the 32-bit values. If you use the 64-bit version, this no longer happens.
+//
+// For the 64-bit version, the OSG built-in uniform osg_ViewMatrixInverse is
+// insufficient (since it's only single-precision). So we have to install a
+// 64-bit version using a cull callback.
+namespace TEST_9
+{
+    osg::Node* run(osg::Node* earthfile)
+    {
+        // 32-bit vertex shader, for reference only. This shader will exceed
+        // the single-precision capacity and cause "jumping verts" at the 
+        // camera make small movements.
+        const char* vs32 =
+            "#version 330 \n"
+            "uniform mat4 osg_ViewMatrixInverse; \n"
+            "flat out float isRed; \n"
+
+            "void vertex(inout vec4 v32) \n"
+            "{ \n"
+            "    vec4 world = osg_ViewMatrixInverse * v32; \n"
+            "    world /= world.w; \n"
+            "    float len = length(world); \n"
+
+            "    const float R = 6371234.5678; \n"
+            
+            "    isRed = 0.0; \n"
+            "    if (len > R) \n"
+            "        isRed = 1.0;"
+
+            "}\n";
+
+        // 64-bit vertex shader. This shader uses a double-precision inverse
+        // view matrix and calculates the altitude all in double precision;
+        // therefore the "jumping verts" problem in the 32-bit version is 
+        // resolved. (Mostly-- you will still see the jumping if you view the 
+        // earth from orbit, because the 32-bit vertex itself is very far from
+        // the camera in view coordinates. If that is an issue, you need to pass
+        // in 64-bit vertex attributes.)
+        const char* vs64 = 
+            "#version 330 \n"
+            "#extension GL_ARB_gpu_shader_fp64 : enable \n"
+            "uniform dmat4 u_ViewMatrixInverse64; \n"            // must use a 64-bit VMI.
+            "flat out float isRed; \n"
+            "flat out double vary64; \n"
+
+            "void vertex(inout vec4 v32) \n"
+            "{ \n"
+            "    dvec4 v64 = dvec4(v32); \n"                     // upcast to 64-bit, no precision loss
+                                                                 // unless camera is very far away
+
+            "    dvec4 world = u_ViewMatrixInverse64 * v64; \n"  // xform into world coords
+            "    world /= world.w; \n"                           // divide by w
+            "    double len = length(world.xyz); \n"             // get double-precision vector length.
+
+            "    const double R = 6371234.5678; \n"              // arbitrary earth radius threshold
+            
+            "    isRed = (len > R) ? 1.0 : 0.0; \n"
+            "}\n";
+
+        // frag shader: color the terrain red if the incoming varying is non-zero.
+        const char* fs =
+            "#version 330 \n"
+            "#extension GL_ARB_gpu_shader_fp64 : enable \n"
+            "flat in float isRed; \n"
+            "flat in double vary64; \n"
+            "void fragment(inout vec4 color) \n"
+            "{ \n"
+            "    if (isRed > 0.0f) { \n"
+            "        color.r = 1.0; \n"
+            "        color.gb *= 0.5; \n"
+            "    } \n"
+            "} \n";
+
+        // installs a double-precision inverse view matrix for our shader to use.
+        struct VMI64Callback : public osg::NodeCallback
+        {
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+                osg::Uniform* u = new osg::Uniform(osg::Uniform::DOUBLE_MAT4, "u_ViewMatrixInverse64");
+                u->set(cv->getCurrentCamera()->getInverseViewMatrix());
+                
+                osg::ref_ptr<osg::StateSet> ss = new osg::StateSet();
+                ss->addUniform(u);
+                cv->pushStateSet(ss.get());
+
+                traverse(node, nv);
+
+                cv->popStateSet();
+            }
+        };
+        earthfile->setCullCallback(new VMI64Callback());
+
+        osg::StateSet* ss = earthfile->getOrCreateStateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+        vp->setFunction("vertex",   vs64, ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction("fragment", fs,   ShaderComp::LOCATION_FRAGMENT_COLORING);
+
+
+        return earthfile;
+    }
+}
+
+//-------------------------------------------------------------------------
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
@@ -456,7 +594,11 @@ int main(int argc, char** argv)
     bool test5 = arguments.read("--test5");
     bool test6 = arguments.read("--test6");
     bool test7 = arguments.read("--test7");
-    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7;
+    bool test8 = arguments.read("--test8");
+    bool test9 = arguments.read("--test9");
+    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7 || test8||test9;
+
+    bool ui = !arguments.read("--noui");
 
     if ( !ok )
     {
@@ -465,14 +607,17 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-
-    // add a canvas:
-    ControlCanvas* canvas = new ControlCanvas();
-    root->addChild( canvas );
-
-    // and a label:
+    
     LabelControl* label = new LabelControl();
-    canvas->addControl(label);
+    if ( ui )
+    {
+        // add a canvas:
+        ControlCanvas* canvas = new ControlCanvas();
+        root->addChild( canvas );
+
+        // and a label:
+        canvas->addControl(label);
+    }
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
@@ -485,27 +630,27 @@ int main(int argc, char** argv)
         if ( test1 )
         {
             root->addChild( TEST_1::run(earthNode) );
-            label->setText( "Function injection test: the map appears hazy at high altitude." );
+            if (ui) label->setText( "Function injection test: the map appears hazy at high altitude." );
         }
         else if ( test2 )
         {
             root->addChild( TEST_2::run(earthNode) );
-            label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
+            if (ui) label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
         }
         else if ( test3 )
         {
             root->addChild( TEST_3::run(earthNode) );
-            label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
+            if (ui) label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
         }
         else if ( test4 )
         {
             root->addChild( TEST_4::run(earthNode) );
-            label->setText("Memory management test; monitor memory for stability");
+            if (ui) label->setText("Memory management test; monitor memory for stability");
         }
         else if ( test6 )
         {
             root->addChild( TEST_6::run(earthNode) );
-            label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
+            if (ui) label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
         }
         
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
@@ -514,12 +659,29 @@ int main(int argc, char** argv)
     {
         osgEarth::Registry::instance()->getCapabilities();
         root->addChild( TEST_5::run() );
-        label->setText( "Leakage test: red tri on the left, blue on the right." );
+        if (ui) label->setText( "Leakage test: red tri on the left, blue on the right." );
     }
     else if ( test7 )
     {
         root->addChild( TEST_7::run( osgDB::readNodeFiles(arguments) ) );
-        label->setText("Geometry Shader Injection Test.");
+        if (ui) label->setText("Geometry Shader Injection Test.");
+    }
+    else if (test8)
+    {
+        root->addChild( TEST_8::run() );
+        if (ui) label->setText("Serialization test");
+    }
+    else if (test9)
+    {
+        osg::Node* earthNode = osgDB::readNodeFile( "readymap.earth" );
+        if (!earthNode)
+        {
+            return usage( "Unable to load earth model." );
+        }
+        
+        root->addChild(TEST_9::run(earthNode));
+        if (ui) label->setText("DP Shader Test - see code comments");
+        viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }
 
 

@@ -224,11 +224,17 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_FrontColor                = "gl_FrontColor",
         gl_FragColor                 = "gl_FragColor";
 
-    #define VS_GLSL_VERSION  "330 compatibility"
-    #define FS_GLSL_VERSION  "330 compatibility"
-    #define GS_GLSL_VERSION  "330 compatibility"
-    #define TCS_GLSL_VERSION "400 compatibility"
-    #define TES_GLSL_VERSION "400 compatibility"
+    #define GLSL_330 "330 compatibility"
+    #define GLSL_400 "400 compatibility"
+
+    bool use400 = Registry::capabilities().getGLSLVersionInt() >= 400;
+
+    std::string tcs_glsl_version(GLSL_400);
+    std::string tes_glsl_version(GLSL_400);
+
+    std::string vs_glsl_version = use400 ? GLSL_400 : GLSL_330;
+    std::string fs_glsl_version = use400 ? GLSL_400 : GLSL_330;
+    std::string gs_glsl_version = use400 ? GLSL_400 : GLSL_330;
 
     // build the vertex data interface block definition:
     std::string vertdata;
@@ -252,7 +258,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf <<
-            "#version " VS_GLSL_VERSION "\n"
+            "#version " << vs_glsl_version << "\n"
             "#pragma vp_name VP Vertex Shader Main\n"
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
@@ -393,7 +399,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         stages |= ShaderComp::STAGE_TESSCONTROL;
         std::stringstream buf;
 
-        buf << "#version " TCS_GLSL_VERSION "\n"
+        buf << "#version " << tcs_glsl_version << "\n"
             << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n"
             // For gl_MaxPatchVertices
             << "#extension GL_NV_gpu_shader5 : enable\n";
@@ -470,7 +476,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " TES_GLSL_VERSION "\n"
+        buf << "#version " << tes_glsl_version << "\n"
             << "#pragma vp_name VP Tessellation Evaluation (TES) Shader MAIN\n";
 
         buf << "\n// TES stage inputs (required):\n"
@@ -671,7 +677,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " GS_GLSL_VERSION "\n"
+        buf << "#version " << gs_glsl_version << "\n"
             << "#pragma vp_name VP Geometry Shader Main\n";
 
         if ( hasVS || hasTCS || hasTES )
@@ -859,7 +865,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " FS_GLSL_VERSION "\n"
+        buf << "#version " << fs_glsl_version << "\n"
             << "#pragma vp_name VP Fragment Shader Main\n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 
@@ -957,243 +963,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     }
 
     return stages;
-}
-
-
-
-
-
-
-
-
-
-
-osg::Shader*
-ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) const
-{
-    // collect the "model" stage functions:
-    FunctionLocationMap::const_iterator i = functions.find( LOCATION_VERTEX_MODEL );
-    const OrderedFunctionMap* modelStage = i != functions.end() ? &i->second : 0L;
-
-    // collect the "view" stage functions:
-    FunctionLocationMap::const_iterator j = functions.find( LOCATION_VERTEX_VIEW );
-    const OrderedFunctionMap* viewStage = j != functions.end() ? &j->second : 0L;
-
-    // collect the "clip" stage functions:
-    FunctionLocationMap::const_iterator k = functions.find( LOCATION_VERTEX_CLIP );
-    const OrderedFunctionMap* clipStage = k != functions.end() ? &k->second : 0L;
-
-    // header:
-    std::stringstream buf;
-    buf << 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float " << RANGE << ";\n";
-
-    // prototypes for model stage methods:
-    if ( modelStage )
-    {
-        for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
-        {
-            buf << "void " << i->second._name << "(inout vec4); \n";
-        }
-    }
-
-    // prototypes for view stage methods:
-    if ( viewStage )
-    {
-        for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-        {
-            buf << "void " << i->second._name << "(inout vec4); \n";
-        }
-    }
-
-    // prototypes for clip stage methods:
-    if ( clipStage )
-    {
-        for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-        {
-            buf << "void " << i->second._name << "(inout vec4); \n";
-        }
-    }
-
-    // main:
-    buf <<
-        "varying vec4 osg_FrontColor; \n"
-        "varying vec3 vp_Normal; \n"
-        "void main(void) \n"
-        "{ \n"
-        INDENT "osg_FrontColor = gl_Color; \n"
-        INDENT "vec4 vertex = gl_Vertex; \n";
-
-    // call Model stage methods.
-    if ( modelStage )
-    {
-        buf << INDENT "vp_Normal = gl_Normal; \n";
-
-        for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
-        {
-            insertRangeConditionals( i->second, buf );
-            buf << INDENT << i->second._name << "(vertex); \n";
-        }
-
-        buf << INDENT << "vp_Normal = normalize(gl_NormalMatrix * vp_Normal); \n";
-    }
-    else
-    {
-        buf << INDENT << "vp_Normal = normalize(gl_NormalMatrix * gl_Normal); \n";
-    }
-
-    // call View stage methods.
-    if ( viewStage )
-    {
-        buf << INDENT "vertex = gl_ModelViewMatrix * vertex; \n";
-
-        for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-        {
-            insertRangeConditionals( i->second, buf );
-            buf << INDENT << i->second._name << "(vertex); \n";
-        }
-    }
-
-    // call Clip stage methods.
-    if ( clipStage )
-    {
-        if ( viewStage )
-        {
-            buf << INDENT "vertex = gl_ProjectionMatrix * vertex; \n";
-        }
-        else
-        {
-            buf << INDENT "vertex = gl_ModelViewProjectionMatrix * vertex; \n";
-        }
-
-        for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-        {
-            insertRangeConditionals( i->second, buf );
-            buf << INDENT << i->second._name << "(vertex); \n";
-        }
-    }
-
-    // finally, emit the position vertex.
-    if ( clipStage )
-    {
-        buf << INDENT "gl_Position = vertex; \n";
-    }
-    else if ( viewStage )
-    {
-        buf << INDENT "gl_Position = gl_ProjectionMatrix * vertex; \n";
-    }
-    else
-    {
-        buf << INDENT "gl_Position = gl_ModelViewProjectionMatrix * vertex; \n";
-    }
-
-    buf << "} \n";
-
-    std::string str;
-    str = buf.str();
-    osg::Shader* shader = new osg::Shader( osg::Shader::VERTEX, str );
-    shader->setName( "main(vert)" );
-    return shader;
-}
-
-
-osg::Shader*
-ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) const
-{
-    FunctionLocationMap::const_iterator i = functions.find( LOCATION_FRAGMENT_COLORING );
-    const OrderedFunctionMap* coloring = i != functions.end() ? &i->second : 0L;
-
-    FunctionLocationMap::const_iterator j = functions.find( LOCATION_FRAGMENT_LIGHTING );
-    const OrderedFunctionMap* lighting = j != functions.end() ? &j->second : 0L;
-
-    FunctionLocationMap::const_iterator k = functions.find( LOCATION_FRAGMENT_OUTPUT );
-    const OrderedFunctionMap* output = k != functions.end() ? &k->second : 0L;
-
-    std::stringstream buf;
-    buf << "#version " << GLSL_VERSION_STR << "\n"
-        << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
-        << "uniform float " << RANGE << ";\n";
-
-    if ( coloring )
-    {
-        for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-        {
-            buf << "void " << i->second._name << "( inout vec4 color ); \n";
-        }
-    }
-
-    if ( lighting )
-    {
-        for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-        {
-            buf << "void " << i->second._name << "( inout vec4 color ); \n";
-        }
-    }
-
-    if ( output )
-    {
-        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
-        {
-            buf << "void " << i->second._name << "( inout vec4 color ); \n";
-        }
-    }
-
-    buf << 
-        "varying vec4 osg_FrontColor; \n"
-        "varying vec3 vp_Normal; \n"
-        "vec3 oe_global_Normal; \n" // stage-global
-        "void main(void) \n"
-        "{ \n"
-        INDENT "vec4 color = osg_FrontColor; \n"
-        INDENT "oe_global_Normal = normalize(vp_Normal); \n";
-
-    int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
-    int lightingPass = 1-coloringPass;
-
-    for(int pass=0; pass<2; ++pass)
-    {
-        if ( coloring && (pass == coloringPass) )
-        {
-            for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-            {
-                insertRangeConditionals( i->second, buf );
-                buf << INDENT << i->second._name << "( color ); \n";
-            }
-        }
-
-        if ( lighting && (pass == lightingPass) )
-        {
-            for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-            {
-                insertRangeConditionals( i->second, buf );
-                buf << INDENT << i->second._name << "( color ); \n";
-            }
-        }
-    }
-
-    if ( output )
-    {
-        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
-        {
-            insertRangeConditionals( i->second, buf );
-            buf << INDENT << i->second._name << "( color ); \n";
-        }
-    }
-    else
-    {
-        // in the absense of any output functions, generate a default output statement
-        // that simply writes to gl_FragColor.
-        buf << INDENT "gl_FragColor = color;\n";
-    }
-    buf << "}\n";
-
-    std::string str;
-    str = buf.str();
-    osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
-    shader->setName( "main(frag)" );
-    return shader;
 }
 
 

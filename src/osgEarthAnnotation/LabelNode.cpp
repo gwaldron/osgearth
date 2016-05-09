@@ -29,6 +29,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
+#include <osgEarth/Utils>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -189,7 +190,7 @@ LabelNode::setStyle( const Style& style )
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
     if ( bboxsymbol && t )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( t->getBoundingBox(), *bboxsymbol );
+        osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(t), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
     }
 

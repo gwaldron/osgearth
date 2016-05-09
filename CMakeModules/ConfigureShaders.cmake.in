@@ -19,11 +19,21 @@ foreach(file ${glsl_files})
     set(contents "${contents}\n")
 
     # replace hashtags with a marker string to avoid breaking the MULTILINE macro:
-	string(REGEX REPLACE "#" "$__HASHTAG__" tempString "${contents}")
+	# string(REGEX REPLACE "#" "$__HASHTAG__" tempString "${contents}")
+
+    # replace comment symbols to avoid breaking the MULTILINE macro:
+    # string(REGEX REPLACE "//"   "$__BEGINEOLCOMMENT__"   tempString2 "${tempString}")
+    # string(REGEX REPLACE "/\\*" "$__BEGINBLOCKCOMMENT__" tempString  "${tempString2}")
+    # string(REGEX REPLACE "\\*/" "$__ENDBLOCKCOMMENT__"   tempString2 "${tempString}")
+    # string(REGEX REPLACE "'"    "$__APOSTROPHE__"        tempString  "${tempString2}")
+    # string(REGEX REPLACE "\""   "$__QUOTE__"             tempString2 "${tempString}")
 
     # replace newlines with printable newlines, and overwrite the original
     # file name with the processed contents.
-	string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${tempString}")
+	# string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${tempString2}")
+
+	string(REGEX REPLACE  "\n"  "%EOL%"    tempString  "${contents}"   )
+    string(REGEX REPLACE  "\""  "%QUOTE%"  ${file}     "${tempString}" )
 
 endforeach(file)
 

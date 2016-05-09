@@ -148,9 +148,19 @@ namespace osgEarth { namespace Features
                                                            public FeatureIndexBuilder
     {
     public:
+        META_Node(osgEarth::Features, FeatureSourceIndexNode);
+
+        /** default ctor */
+        FeatureSourceIndexNode();
+
+        /** Construct with an index */
         FeatureSourceIndexNode(FeatureSourceIndex* index);
 
+        /** Copy */
+        FeatureSourceIndexNode(const FeatureSourceIndexNode& rhs, const osg::CopyOp& copy);
+
         /** The index referenced by this node. */
+        void setIndex(FeatureSourceIndex* index) { _index = index; }
         FeatureSourceIndex* getIndex() { return _index.get(); }
 
         /** Fetches the entire set of FIDs registered with the index by this node. */
@@ -172,9 +182,9 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSourceIndex> _index;
         FIDMap _fids;
 
-    public:
-        virtual const char* className()   const { return "FeatureSourceIndexNode"; }
-        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+    //public:
+        //virtual const char* className()   const { return "FeatureSourceIndexNode"; }
+        //virtual const char* libraryName() const { return "osgEarthFeatures"; }
     };
 
 } } // namespace osgEarth::Features

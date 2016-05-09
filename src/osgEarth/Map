@@ -352,7 +352,7 @@ namespace osgEarth
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::Options> _globalOptions;
-        Threading::ReadWriteMutex _mapDataMutex;
+        mutable Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
         osg::ref_ptr<Cache> _cache;

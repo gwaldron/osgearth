@@ -227,7 +227,11 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     #define GLSL_330 "330 compatibility"
     #define GLSL_400 "400 compatibility"
 
-    bool use400 = Registry::capabilities().getGLSLVersionInt() >= 400;
+    // use GLSL 400 if it's avaiable since that will give the developer
+    // access to double-precision types.
+    bool use400 = 
+        Registry::instance()->hasCapabilities() &&
+        Registry::capabilities().getGLSLVersionInt() >= 400;
 
     std::string tcs_glsl_version(GLSL_400);
     std::string tes_glsl_version(GLSL_400);

@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/DrapeableNode>
 #include <osg/Notify>
+#include <osgDB/ObjectCache>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -122,6 +123,8 @@ FeatureModelSource::setFeatureSource( FeatureSource* source )
 void 
 FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 {
+    _dbOptions = osg::clone(dbOptions, osg::CopyOp::SHALLOW_COPY);
+
     ModelSource::initialize( dbOptions );
     
     // the data source from which to pull features:
@@ -191,6 +194,8 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
         return 0L;
     }
 
+    _dbOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
+
     // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         map, 
@@ -211,6 +216,10 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _postMergeOps.get() );
 
     graph->setName( session->getName() );
+
+    CacheBin* bin = CacheBin::get(_dbOptions.get());
+    if ( bin )
+        OE_WARN << LC << "Found a cache bin in FeatureModelSource\n";
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

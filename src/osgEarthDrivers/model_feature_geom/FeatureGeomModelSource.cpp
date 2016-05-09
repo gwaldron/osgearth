@@ -35,6 +35,8 @@ using namespace osgEarth::Drivers;
 
 //------------------------------------------------------------------------
 
+#define LC "[FeatureGeomModelSource] "
+
 namespace
 {
     //------------------------------------------------------------------------
@@ -61,7 +63,7 @@ namespace
 
         FeatureNodeFactory* createFeatureNodeFactory()
         {
-            return new GeomFeatureNodeFactory( _options.compilerOptions() );
+            return new GeomFeatureNodeFactory(_options.compilerOptions());
         }
 
     private:

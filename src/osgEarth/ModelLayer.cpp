@@ -73,7 +73,10 @@ ModelLayerOptions::setDefaults()
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
-    _cachePolicy.init ( CachePolicy() );
+
+    //_cachePolicy.init ( CachePolicy::NO_CACHE );
+    // Expressly set it here since we want no caching by default on a model layer.
+    _cachePolicy = CachePolicy::NO_CACHE;
 }
 
 Config
@@ -187,6 +190,16 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
         if ( _modelSource.valid() )
         {
             _modelSource->setName( this->getName() );
+
+            // set up a cache if appropriate.
+            Cache* cache = Cache::get(dbOptions);
+            if (cache && getCachePolicy().isCacheReadable())
+            {
+                std::string binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                CacheBin* cacheBin = cache->addBin(binID);
+                cacheBin->put(_dbOptions.get());
+                OE_INFO << LC << "Layer " << getName() << " opened cache bin " << binID << "\n";
+            }
 
             _modelSource->initialize( _dbOptions.get() );
 

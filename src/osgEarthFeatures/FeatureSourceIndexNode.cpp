@@ -74,13 +74,22 @@ FeatureSourceIndexOptions::getConfig() const
 #undef  LC
 #define LC "[FeatureSourceIndexNode] "
 
+FeatureSourceIndexNode::FeatureSourceIndexNode()
+{
+    //nop
+}
+
+FeatureSourceIndexNode::FeatureSourceIndexNode(const FeatureSourceIndexNode& rhs, const osg::CopyOp& copy) :
+osg::Group(rhs, copy)
+{
+    _index = rhs._index.get();
+    _fids  = rhs._fids;
+}
+
 FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSourceIndex* index) :
 _index( index )
 {
-    if ( !index )
-    {
-        OE_WARN << LC << "INTERNAL ERROR: created a feature source index node with a NULL index.\n";
-    }
+    //nop
 }
 
 FeatureSourceIndexNode::~FeatureSourceIndexNode()
@@ -136,6 +145,26 @@ FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
 
     return true;
 }
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[FeatureSourceIndex Serializer] "
+
+// OSG SERIALIZER for FeatureSourceIndexNode
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+REGISTER_OBJECT_WRAPPER(
+    FeatureSourceIndexNode,
+    new osgEarth::Features::FeatureSourceIndexNode,
+    osgEarth::Features::FeatureSourceIndexNode,
+    "osg::Object osg::Node osg::Group osgEarth::Features::FeatureSourceIndexNode")
+{
+    // todo/nop
+}
+
 
 //-----------------------------------------------------------------------------
 

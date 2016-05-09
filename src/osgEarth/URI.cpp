@@ -206,10 +206,10 @@ namespace
         if ( !bin )
         {
             Cache* cache = Cache::get( o );
-            if ( !cache )
-            {
-                cache = Registry::instance()->getCache();
-            }
+            //if ( !cache )
+            //{
+            //    cache = Registry::instance()->getCache();
+            //}
 
             if ( cache )
             {

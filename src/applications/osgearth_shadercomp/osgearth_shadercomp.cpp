@@ -519,7 +519,7 @@ namespace TEST_9
             "#extension GL_ARB_gpu_shader_fp64 : enable \n"
             "uniform dmat4 u_ViewMatrixInverse64; \n"            // must use a 64-bit VMI.
             "flat out float isRed; \n"
-            "flat out double vary64; \n"
+            "flat out double vary64; \n"                         // just to test shadercomp framework
 
             "void vertex(inout vec4 v32) \n"
             "{ \n"

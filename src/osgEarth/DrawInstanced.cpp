@@ -432,6 +432,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         instanceGroup->addChild( node );
 
         parent->addChild( instanceGroup );
+
+        //OE_INFO << LC << "ConvertToDI: instances=" << numInstancesToStore << "\n";
     }
 
     return true;

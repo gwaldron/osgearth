@@ -317,23 +317,30 @@ Map::getCache() const
 {
     if ( !_cache.valid() )
     {
-        Cache* cache = 0L;
+        Threading::ScopedWriteLock lock(_mapDataMutex);
+
+        if (!_cache.valid())
+        {
+            osg::ref_ptr<Cache> cache = 0L;
         
-        // if there's a cache in the registry, install it now.
-        if ( Registry::instance()->getCache() )
-        {
-            cache = Registry::instance()->getCache();
-        }
+            // if the registry/environment has cache settings, use them to
+            // create the cache:
+            cache = Registry::instance()->createCache();
 
-        // or, if a cache is defined in the options, use that.
-        else if ( _mapOptions.cache().isSet() )
-        {
-            cache = CacheFactory::create( _mapOptions.cache().get() );
-        }
+            //if ( Registry::instance()->getCache() )
+            //{
+            //    cache = Registry::instance()->getCache();
+            //}
 
-        if ( cache )
-        {
-            const_cast<Map*>(this)->setCache( cache );
+            if ( !cache.valid() && _mapOptions.cache().isSet() )
+            {
+                cache = CacheFactory::create( _mapOptions.cache().get() );
+            }
+
+            if (cache.valid())
+            {
+                const_cast<Map*>(this)->setCache(cache.get());
+            }
         }
     }
     return _cache.get();

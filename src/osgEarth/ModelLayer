@@ -238,6 +238,12 @@ namespace osgEarth
          * Gets a scene graph what was previously created with getOrCreateSceneGraph.
          */
         osg::Node* getSceneGraph(const UID& mapUID) const;
+
+        /**
+         * Sets a cache to use with this model layer.
+         */
+//        void setCache(Cache* cache);
+//        Cache* getCache() const { return _cache.get(); }
         
         /**
          * This layer's caching policy

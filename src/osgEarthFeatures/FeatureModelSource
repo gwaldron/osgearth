@@ -168,7 +168,9 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT GeomFeatureNodeFactory : public FeatureNodeFactory
     {
     public:
-        GeomFeatureNodeFactory( const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+        GeomFeatureNodeFactory(
+            const GeometryCompilerOptions& options);
+
 
         bool createOrUpdateNode(       
             FeatureCursor*            features,
@@ -240,7 +242,7 @@ namespace osgEarth { namespace Features
         osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::Options>       _dbOptions;
 
     };
 

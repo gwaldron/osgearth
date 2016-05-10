@@ -19,7 +19,7 @@
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env);
 
 // from: Splat.util.glsl
-void oe_splat_getLodBlend(in float range, in float baseLOD, out float lod0, out float lod1, out float rangeLo, out float rangeHi, out float clampedRange);
+void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
 vec2 oe_splat_getSplatCoords(in vec2 coords, in float lod);
 
 // from the terrain engine:
@@ -254,29 +254,21 @@ void oe_splat_complex(inout vec4 color)
     // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
     // it's quite possible for a single triangle to span more than 2 LODs.
     float lod0, lod1;
-    float range0, range1;
-    oe_splat_getLodBlend(oe_splat_range, scaleOffset, lod0, lod1, env.rangeLo, env.rangeHi, env.range);
+    float rangeOuter, rangeInner;
+    oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
     
-    //env.range = oe_splat_range;
-    float lo = env.rangeLo;
-    float hi = env.rangeHi;
-
     // Sample the two LODs:
-    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0);
-    env.side = 0; // lo side
+    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + scaleOffset);
+    env.lod = lod0;
     vec4 texel0 = oe_splat_bilinear(tc0, env);
     
-    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod1);
-    env.side = 1.0; // hi side
+    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
+    env.lod = lod0+1.0;
     vec4 texel1 = oe_splat_bilinear(tc1, env);
 
     // recalcluate blending ratio
-    //env.rangeLo = min(env.rangeLo, lo);
-    //env.rangeHi = max(env.rangeHi, hi);
-    float span = env.rangeHi - env.rangeLo;
-    //float lodBlend = span > 0.0 ? clamp((env.range-env.rangeLo)/span, 0.0, 1.0) : 1.0;
-    float lodBlend = (env.range-lo)/(hi-lo);
-        
+    float lodBlend = clamp((rangeOuter - env.range) / (rangeOuter - rangeInner), 0, 1);
+       
     // Blend:
     vec4 texel = mix(texel0, texel1, lodBlend);
 

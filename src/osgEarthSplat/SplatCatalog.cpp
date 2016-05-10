@@ -63,8 +63,7 @@ SplatDetailData::getConfig() const
 //............................................................................
 
 SplatRangeData::SplatRangeData() :
-_textureIndex( -1 ),
-_minRange( 0.0f )
+_textureIndex( -1 )
 {
     //nop
 }
@@ -72,7 +71,7 @@ _minRange( 0.0f )
 SplatRangeData::SplatRangeData(const Config& conf) :
 _textureIndex( -1 )
 {
-    conf.getIfSet("min_range",  _minRange);
+    conf.getIfSet("max_lod",    _maxLOD);
     conf.getIfSet("image",      _imageURI);
     conf.getIfSet("model",      _modelURI);
     conf.getIfSet("modelCount", _modelCount);
@@ -86,7 +85,7 @@ Config
 SplatRangeData::getConfig() const
 {
     Config conf;
-    conf.addIfSet("min_range",  _minRange);
+    conf.addIfSet("max_lod",    _maxLOD);
     conf.addIfSet("image",      _imageURI);
     conf.addIfSet("model",      _modelURI);
     conf.addIfSet("modelCount", _modelCount);
@@ -331,32 +330,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     for(SplatClassMap::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
     {
         const SplatClass& c = i->second;
-
-#if 0
-        // selectors for this class (ordered):
-        SplatSelectorVector selectors;
-
-        // check each data element:
-        for(SplatRangeDataVector::const_iterator range = c._ranges.begin(); range != c._ranges.end(); ++range)
-        {
-            // If the primary image exists, look up its index and add it to the selector set.
-            ImageIndexTable::const_iterator k = imageIndices.find( range->_imageURI.get() );
-            if ( k != imageIndices.end() )
-            {
-                std::string expression;
-                if ( range->_minRange.isSet() )
-                {
-                    expression = Stringify()
-                        << "env.range >= float(" << range->_minRange.get() << ")";
-                }
-
-                // insert into the lookup table.
-                out._splatLUT[c._name].push_back( SplatSelector(expression, *range) );
-            }
-        }
-#else
         out._splatLUT[c._name] = c._ranges;
-#endif
     }
 
     // Create the texture array.

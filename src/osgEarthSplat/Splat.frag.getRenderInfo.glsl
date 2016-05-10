@@ -12,12 +12,7 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env)
     float threshold = 0.0;  // default noise function threshold
     float slope = 0.0;      // default minimum slope
 
-    if (env.side == 0.0) {
-%LOSIDE_SAMPLING_FUNCTION%
-    }
-    else {
-%HISIDE_SAMPLING_FUNCTION%
-    }
+%SAMPLING_FUNCTION%
 
     return oe_SplatRenderInfo(primary, detail, brightness, contrast, threshold, slope);
 }

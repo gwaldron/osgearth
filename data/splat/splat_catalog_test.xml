@@ -75,10 +75,16 @@
         </class>
 		<class name="water">
             <range max_lod="10">
-                <image>water.jpg</image>
+                <image>test/blue.png</image>
+            </range>
+            <range max_lod="12">
+                <image>test/yellow.png</image>
+            </range>
+            <range max_lod="14">
+                <image>test/green.png</image>
             </range>
             <range>
-                <image>water2.jpg</image>
+                <image>test/red.png</image>
             </range>
 		</class>
 	</classes>

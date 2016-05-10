@@ -4,6 +4,10 @@
 struct oe_SplatEnv {
     float lod;
     float range;
+    float lod0;
+    float lod1;
+    float lodLo;
+    float lodHi;
     float rangeHi;
     float rangeLo;
     float elevation;

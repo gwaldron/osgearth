@@ -90,7 +90,7 @@ namespace
         }
     };
 
-    void write(std::ostream& buf, SplatRangeDataVector::const_iterator& rangeData, int I)
+    void write(std::ostream& buf, const SplatRangeData* rangeData, int I)
     {
         buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
         if (rangeData->_detail.isSet()) {
@@ -122,9 +122,7 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
         return false;
     }
 
-    std::string loside, hiside;
-
-    // loside.
+    std::string snippet;
     {
         int I = 2;
         std::stringstream buf;
@@ -147,115 +145,28 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
 
                     buf << indent(I) << "if (" << pred->_exactValue.get() << ".0 == value) {\n"; ++I;
 
-                    const SplatRangeDataVector& rangeDataVector = i->second;
+                    const SplatRangeDataVector& ranges = i->second;
 
-                    // single range data:
-                    if (rangeDataVector.size() == 1)
+                    if (ranges.size() == 1)
                     {
-                        write(buf, i->second.begin(), I);
+                        write(buf, &ranges.front(), I);
                     }
 
-                    // multiple ranges:
                     else
                     {
-                        unsigned rangeExpressionIndex = 0;
-
-                        // if the final range isn't 0, we need to plug it in as the default.
-                        if (rangeDataVector.back()._minRange.get() > 0.0f)
+                        for (int i = 0; i < ranges.size()-1; ++i)
                         {
-                            write(buf, rangeDataVector.end()-1, I);
-                        }
-
-                        for (SplatRangeDataVector::const_iterator rangeData = rangeDataVector.begin();
-                            rangeData !=rangeDataVector.end();
-                            ++rangeData, ++rangeExpressionIndex)
-                        {
-                            if (rangeExpressionIndex > 0)
-                                buf << indent(I) << "else\n";
-
-                            buf << indent(I) << "if (env.range >= float(" << rangeData->_minRange.get() << ")) {\n"; ++I;
-                            buf << indent(I) << "env.rangeLo = " << rangeData->_minRange.get() << ";\n";
-                            
-                            write(buf, rangeData, I);
-
-                            --I; buf << indent(I) << "}\n"; 
-                        }
-                    }
-
-                   --I; buf << indent(I) << "}\n";
-                }
-            }
-        }
-
-        loside = buf.str();
-    }
-
-    // hiside.
-    {
-        std::stringstream buf;
-
-        int I = 2;
-        unsigned pindex = 0;
-        const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-        for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
-        {
-            const CoverageValuePredicate* pred = p->get();
-
-            if ( pred->_exactValue.isSet() )
-            {
-                // Look up by class name:
-                const std::string& className = pred->_mappedClassName.get();
-                const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
-                if ( i != _textureDef._splatLUT.end() )
-                {
-                    if (pindex > 0)
-                        buf << indent(I) << "else\n";
-
-                    buf << indent(I) << "if (" << pred->_exactValue.get() << ".0 == value) {\n"; ++I;
-                    
-                    const SplatRangeDataVector& rangeDataVector = i->second;
-
-                    // single range data:
-                    if (rangeDataVector.size() == 1)
-                    {
-                        write(buf, i->second.begin(), I);
-                    }
-
-                    // multiple ranges:
-                    else
-                    {
-                        unsigned rangeIndex = 0;
-                        int nest = 0;
-                        unsigned numRanges = i->second.size();
-
-                        for (SplatRangeDataVector::const_iterator rangeData = i->second.begin();
-                            rangeData != i->second.end();
-                            ++rangeData, ++rangeIndex)
-                        {
-                            if (rangeIndex == 0)
-                            {
-                                // first one defines the high range.
-                                buf << indent(I) << "env.rangeHi = " << rangeData->_minRange.get() << ";\n";
-                            }
-                            else
-                            {
-                                // not the first one
-                                if (rangeIndex-1 < numRanges)
-                                {
-                                    // not the last one:
-                                    buf << indent(I) << "if (env.range < float(" << rangeData->_minRange.get() << ")) {\n"; ++I;
-                                    buf << indent(I) << "env.rangeHi = " << rangeData->_minRange.get() << ";\n";
-                                    ++nest;
-                                }
-                                else break; // last one, we're done
-                            }
-
-                            write(buf, rangeData, I);
-                        }
-
-                        while (nest--) {
+                            const SplatRangeData& r = ranges[i];
+                            buf << indent(I);
+                            if (i>0) buf << "else ";
+                            buf << "if(env.lod <= float(" << r._maxLOD.get() << ")) {\n"; ++I;
+                            write(buf, &r, I);
                             --I; buf << indent(I) << "}\n";
                         }
+
+                        buf << indent(I) << "else {\n"; ++I;
+                        write(buf, &ranges.back(), I);
+                        --I; buf << indent(I) << "}\n";
                     }
 
                    --I; buf << indent(I) << "}\n";
@@ -263,9 +174,8 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
             }
         }
 
-        hiside = buf.str();
+        snippet = buf.str();
     }
-
 
     SplattingShaders splatting;
     std::string code = ShaderLoader::load(
@@ -273,8 +183,7 @@ Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) c
         splatting);
 
 
-    osgEarth::replaceIn(code, "%LOSIDE_SAMPLING_FUNCTION%", loside);
-    osgEarth::replaceIn(code, "%HISIDE_SAMPLING_FUNCTION%", hiside);
+    osgEarth::replaceIn(code, "%SAMPLING_FUNCTION%", snippet);
 
     output = code;
 

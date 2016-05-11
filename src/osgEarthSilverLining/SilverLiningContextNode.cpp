@@ -126,6 +126,7 @@ SilverLiningContextNode::traverse(osg::NodeVisitor& nv)
 			if ( camera )
 			{
 #ifndef SL_USE_CULL_MASK
+				//Check if this is the target camera for this context
 				if(getTargetCamera() == camera)
 #endif	
      			{

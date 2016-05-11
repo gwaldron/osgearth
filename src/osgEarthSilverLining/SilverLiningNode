@@ -65,6 +65,7 @@ namespace osgEarth { namespace SilverLining
 		const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
 		const osgEarth::Map* _map;
+		//used for camera-context bookkeeping
 		std::map<osg::Camera*,SilverLiningContextNode*> _cameraNodeMap; 
     };
 

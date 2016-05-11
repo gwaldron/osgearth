@@ -44,7 +44,8 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::Camera* camera = renderInfo.getCurrentCamera();
 #ifndef SL_USE_CULL_MASK
-	if (_contextNode->getTargetCamera() == camera)
+	//Check if this is the target camera
+	if (_contextNode->getTargetCamera() == camera) 
 #endif 
 	{
 	if ( camera)

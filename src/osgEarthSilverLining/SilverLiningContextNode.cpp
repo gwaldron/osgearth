@@ -34,12 +34,14 @@
 using namespace osgEarth::SilverLining;
 
 SilverLiningContextNode::SilverLiningContextNode(SilverLiningNode* node,
+								   osg::Camera*               camera,
                                    osg::Light*                light,
 	                               const osgEarth::Map*       map,
                                    const SilverLiningOptions& options,
                                    Callback*                  callback) :
-_silverLiningNode(node),
-_options     (options),
+_silverLiningNode (node),
+_camera           (camera),
+_options          (options),
 _lastAltitude(DBL_MAX)
 {
     // The main silver lining data:
@@ -53,12 +55,12 @@ _lastAltitude(DBL_MAX)
     _geode->setCullingActive( false );
 
     // Draws the sky before everything else
-    _skyDrawable = new SkyDrawable( _SL.get() );
+    _skyDrawable = new SkyDrawable(this);
     _skyDrawable->getOrCreateStateSet()->setRenderBinDetails( -99, "RenderBin" );
     _geode->addDrawable(_skyDrawable.get());
 
     // Clouds draw after everything else
-    _cloudsDrawable = new CloudsDrawable( _SL.get() );
+    _cloudsDrawable = new CloudsDrawable(this);
     _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "DepthSortedBin" );
     _geode->addDrawable(_cloudsDrawable.get());
 
@@ -124,9 +126,8 @@ SilverLiningContextNode::traverse(osg::NodeVisitor& nv)
 			if ( camera )
 			{
 #ifndef SL_USE_CULL_MASK
-				SilverLiningContextNode *sky_node = dynamic_cast<SilverLiningContextNode *>(camera->getUserData());
-				if(sky_node == this)
-#endif
+				if(getTargetCamera() == camera)
+#endif	
      			{
 
 					// TODO: make this multi-camera safe

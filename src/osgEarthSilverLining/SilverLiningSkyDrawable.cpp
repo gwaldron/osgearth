@@ -27,8 +27,10 @@
 using namespace osgEarth::SilverLining;
 
 
-SkyDrawable::SkyDrawable(SilverLiningContext* SL) :
-_SL( SL )
+SkyDrawable::SkyDrawable(SilverLiningContextNode* contexNode) :
+_SL(contexNode->getSLContext()),
+_contextNode(contexNode)
+
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -42,10 +44,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::Camera* camera = renderInfo.getCurrentCamera();
 #ifndef SL_USE_CULL_MASK
-	SilverLiningContextNode *sl_node = NULL;
-	if(camera)
-		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
-	if(sl_node && sl_node->getSLContext() == _SL.get())
+	if (_contextNode->getTargetCamera() == camera)
 #endif 
 	{
 	if ( camera)

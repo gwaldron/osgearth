@@ -108,11 +108,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 		osg::Camera* camera  = cv->getCurrentCamera();
 		if ( camera )
 		{
-			SilverLiningContextNode *slContextNode = dynamic_cast<SilverLiningContextNode *>(camera->getUserData());
-			if (!slContextNode) 
-			{
-				slContextNode = new SilverLiningContextNode(this, _light, _map, _options);
-
+			if(_cameraNodeMap.find(camera) == _cameraNodeMap.end())
+			{ 
+				SilverLiningContextNode *slContextNode = new SilverLiningContextNode(this, camera, _light, _map, _options);
+				_cameraNodeMap[camera] = slContextNode;
 //Use camera cull mask that will remove the need for context check 
 //in SilverLiningContextNode, SilverLiningSkyDrawable and SilverLiningCloudsDrawable
 #ifdef SL_USE_CULL_MASK 
@@ -128,7 +127,6 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 				camera->setCullMask(nodeMask);
 				nodeMask = nodeMask << 1;
 #endif
-				camera->setUserData(slContextNode);
 				addChild(slContextNode);
 			}
 		}

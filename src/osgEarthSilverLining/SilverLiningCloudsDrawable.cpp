@@ -28,8 +28,9 @@
 using namespace osgEarth::SilverLining;
 
 
-CloudsDrawable::CloudsDrawable(SilverLiningContext* SL) :
-_SL( SL )
+CloudsDrawable::CloudsDrawable(SilverLiningContextNode* contexNode) :
+_SL(contexNode->getSLContext()),
+_contextNode(contexNode)
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -43,10 +44,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
 	osg::Camera* camera = renderInfo.getCurrentCamera();
 #ifndef SL_USE_CULL_MASK
-	SilverLiningContextNode *sl_node = NULL;
-	if(camera)
-		sl_node = dynamic_cast<SilverLiningContextNode*>(camera->getUserData());
-	if(sl_node && sl_node->getSLContext() == _SL.get())
+	if(_contextNode->getTargetCamera() == camera)
 #endif
 	{
 	if ( _SL->ready())

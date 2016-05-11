@@ -30,6 +30,7 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
+	class SilverLiningContextNode;
 
     /**
      * Node that roots the silverlining adapter.
@@ -64,6 +65,7 @@ namespace osgEarth { namespace SilverLining
 		const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
 		const osgEarth::Map* _map;
+		std::map<osg::Camera*,SilverLiningContextNode*> _cameraNodeMap; 
     };
 
 } } // namespace osgEarth::SilverLining

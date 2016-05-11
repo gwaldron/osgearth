@@ -39,6 +39,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         SilverLiningContextNode(SilverLiningNode* node,
+		    osg::Camera*               camera,
 			osg::Light*                light,
             const osgEarth::Map*       map,
             const SilverLiningOptions& options,
@@ -50,7 +51,8 @@ namespace osgEarth { namespace SilverLining
         // callbacks from SilverLiningNode.
         void onSetDateTime();
         void onSetMinimumAmbient();
-
+		//get target camera
+		osg::Camera* getTargetCamera() const {return _camera;}
 		osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}
 		SilverLiningContext* getSLContext() {return _SL.get();}
     public: // osg::Node
@@ -67,6 +69,7 @@ namespace osgEarth { namespace SilverLining
 		SilverLiningNode* _silverLiningNode;
         double _lastAltitude;
 		const SilverLiningOptions _options;
+		osg::Camera* _camera;
     };
 
 } } // namespace osgEarth::SilverLining

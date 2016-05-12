@@ -76,6 +76,7 @@ SkinResource::mergeConfig( const Config& conf )
     conf.getIfSet( "image_scale_t",       _imageScaleT );
 
     conf.getIfSet( "atlas", _atlasHint );
+    conf.getIfSet( "read_options", _readOptions );
 }
 
 Config
@@ -105,6 +106,7 @@ SkinResource::getConfig() const
     conf.updateIfSet( "image_scale_t",       _imageScaleT );
     
     conf.updateIfSet( "atlas", _atlasHint );
+    conf.updateIfSet( "read_options", _readOptions );
 
     return conf;
 }
@@ -115,11 +117,64 @@ SkinResource::getUniqueID() const
     return imageURI()->full();
 }
 
+osg::Texture*
+SkinResource::createTexture(const osgDB::Options* readOptions) const
+{
+    OE_DEBUG << LC << "Creating skin texture for " << imageURI()->full() << std::endl;
+    osg::ref_ptr<osg::Image> image = createImage(readOptions);
+    return createTexture(image.get());
+}
+
+osg::Texture*
+SkinResource::createTexture(osg::Image* image) const
+{
+    if ( !image ) return 0L;
+
+    osg::Texture* tex;
+
+    if (image->r() > 1)
+    {
+        osg::Texture2DArray* ta = new osg::Texture2DArray();
+
+        ta->setTextureDepth(image->r());
+        ta->setTextureWidth(image->s());
+        ta->setTextureHeight(image->t());
+        ta->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+        tex = ta;
+
+        std::vector<osg::ref_ptr<osg::Image> > layers;
+        ImageUtils::flattenImage(image, layers);
+        for (unsigned i = 0; i < layers.size(); ++i)
+        {
+            tex->setImage(i, layers[i].get());
+        }
+        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+    }
+    else
+    {
+        tex = new osg::Texture2D(image);
+        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+    }
+
+    tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+    tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+
+    // skin textures are likely to be shared, paged, etc. so keep them in memory.
+    tex->setUnRefImageDataAfterApply(false);
+
+    // don't resize them, let it be
+    tex->setResizeNonPowerOfTwoHint(false);
+
+    return tex;
+}
+
 osg::StateSet*
-SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
+SkinResource::createStateSet(const osgDB::Options* readOptions) const
 {
     OE_DEBUG << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
-    osg::ref_ptr<osg::Image> image = createImage(dbOptions);
+    osg::ref_ptr<osg::Image> image = createImage(readOptions);
     return createStateSet(image.get());
 }
 
@@ -131,59 +186,26 @@ SkinResource::createStateSet( osg::Image* image ) const
     {
         stateSet = new osg::StateSet();
         
-        osg::Texture* tex;
-
-        if ( image->r() > 1 )
+        osg::Texture* tex = createTexture(image);
+        if ( tex )
         {
-            osg::Texture2DArray* ta = new osg::Texture2DArray();
-            
-            ta->setTextureDepth( image->r() );
-            ta->setTextureWidth( image->s() );
-            ta->setTextureHeight( image->t() );
-            ta->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
-            tex = ta;
+            stateSet->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
 
-            std::vector<osg::ref_ptr<osg::Image> > layers;
-            ImageUtils::flattenImage(image, layers);
-            for(unsigned i=0; i<layers.size(); ++i)
+            if ( _texEnvMode.isSet() )
             {
-                tex->setImage(i, layers[i].get());
+                osg::TexEnv* texenv = new osg::TexEnv();
+                texenv = new osg::TexEnv();
+                texenv->setMode( *_texEnvMode );
+                stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
             }
-            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-            stateSet->setTextureAttribute( 0, tex, osg::StateAttribute::ON );
-        }
-        else
-        {
-            tex = new osg::Texture2D( image );
-            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );     
-            stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
-        }
-        
-        tex->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
-        tex->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
 
-        // skin textures are likely to be shared, paged, etc. so keep them in memory.
-        tex->setUnRefImageDataAfterApply(false);
-
-        // don't resize them, let it be
-        tex->setResizeNonPowerOfTwoHint(false);
-
-        if ( _texEnvMode.isSet() )
-        {
-            osg::TexEnv* texenv = new osg::TexEnv();
-            texenv = new osg::TexEnv();
-            texenv->setMode( *_texEnvMode );
-            stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-        }
-
-        if ( ImageUtils::hasAlphaChannel( image ) )
-        {
-            osg::BlendFunc* blendFunc = new osg::BlendFunc();
-            blendFunc->setFunction( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-            stateSet->setAttributeAndModes( blendFunc, osg::StateAttribute::ON );
-            stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+            if ( ImageUtils::hasAlphaChannel( image ) )
+            {
+                osg::BlendFunc* blendFunc = new osg::BlendFunc();
+                blendFunc->setFunction( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+                stateSet->setAttributeAndModes( blendFunc, osg::StateAttribute::ON );
+                stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+            }
         }
     }
 
@@ -193,7 +215,18 @@ SkinResource::createStateSet( osg::Image* image ) const
 osg::ref_ptr<osg::Image>
 SkinResource::createImage( const osgDB::Options* dbOptions ) const
 {
-    return _imageURI->readImage(dbOptions).releaseImage();
+    ReadResult result;
+    if (_readOptions.isSet())
+    {
+        osg::ref_ptr<osgDB::Options> ro = dbOptions ? osg::clone(dbOptions) : new osgDB::Options();
+        ro->setOptionString(Stringify() << _readOptions.get() << " " << ro->getOptionString());
+        result = _imageURI->readImage(ro.get());
+    }
+    else
+    {
+        result = _imageURI->readImage(dbOptions);
+    }
+    return result.releaseImage();
 }
 
 //---------------------------------------------------------------------------

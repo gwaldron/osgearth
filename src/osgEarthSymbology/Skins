@@ -53,6 +53,10 @@ namespace osgEarth { namespace Symbology
          * Creates an image for this SkinResource.
          */
         osg::ref_ptr<osg::Image> createImage( const osgDB::Options* options ) const;
+        
+        osg::Texture* createTexture(const osgDB::Options* readOptions) const;
+
+        osg::Texture* createTexture(osg::Image* image) const;
 
         /** 
          * A key string that can uniquely identify this object for the purposes
@@ -121,6 +125,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>& atlasHint() { return _atlasHint; }
         const optional<bool>& atlasHint() const { return _atlasHint; }
 
+        /** Options string to pass in when reading the image */
+        optional<std::string>& readOptions() { return _readOptions; }
+        const optional<std::string>& readOptions() const { return _readOptions; }
+
     public: // serialization methods
 
         virtual Config getConfig() const;
@@ -147,6 +155,7 @@ namespace osgEarth { namespace Symbology
         optional<float>             _imageScaleS;
         optional<float>             _imageScaleT;
         optional<bool>              _atlasHint;
+        optional<std::string>       _readOptions;
 
         osg::ref_ptr<osg::Image>    _image;
     };

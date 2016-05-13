@@ -6,16 +6,6 @@
 <map type="flat">
         
     <options>
-       <terrain driver                = "rex"
-                 tile_size             = "17"
-                 merges_per_frame      = "4"
-                 morph_terrain         = "true"
-                 morph_imagery         = "true"
-                 high_resolution_first = "true"
-                 skirt_ratio           = "0.0"
-                 normal_maps           = "true">
-        </terrain>
-
         <profile>spherical-mercator</profile>
    </options>
    

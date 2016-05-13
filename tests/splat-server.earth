@@ -101,7 +101,7 @@
             <zones>
                 <zone name="default" doc="Default Climate Zone">            
                     <surface>
-                        <catalog>../data/splat/splat_catalog_rangetest.xml</catalog>
+                        <catalog>../data/splat/splat_catalog.xml</catalog>
                     </surface>
                 </zone>                
             </zones>

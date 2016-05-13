@@ -284,6 +284,39 @@ static std::string response(std::string const &content
     return out.str();
   }
 
+#define LOD_COUNT 26
+
+// Note:  These are taken from Splat.frag.glsl so they line up exactly.
+const float oe_LODRanges[LOD_COUNT] = {
+       100000000.0, // 0
+        75000000.0, // 1
+        50000000.0, // 2
+        10000000.0, // 3
+         7500000.0, // 4
+         5000000.0, // 5
+         2500000.0, // 6
+         1000000.0, // 7
+          500000.0, // 8
+          225000.0, // 9
+          150000.0, // 10
+           80000.0, // 11
+           30000.0, // 12
+           14000.0, // 13
+            4000.0, // 14
+            2500.0, // 15
+            1000.0, // 16
+             500.0, // 17
+             250.0, // 18
+             125.0, // 19
+              50.0, // 20
+              25.0, // 21
+              12.0, // 22
+               6.0, // 23
+               3.0, // 24
+               1.0  // 25
+};
+
+
 
 
 class TileImageServer
@@ -365,7 +398,14 @@ public:
 
           // Set the projection matrix to capture the tile.                    
           OE_DEBUG << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
-          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
+          //_viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
+          unsigned int heightIndex = osg::clampBetween(z, 0u, LOD_COUNT -1u);
+          double height = oe_LODRanges[heightIndex];
+          osg::Vec3d center = key.getExtent().getCentroid();
+          osg::Vec3d eye = center + osg::Vec3d(0,0,height);
+          _viewer->getCamera()->setViewMatrixAsLookAt(eye, center, osg::Vec3d(0,1,0));
+          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(-key.getExtent().width()/2.0,  key.getExtent().width()/2.0,
+                                                             -key.getExtent().height()/2.0, key.getExtent().height()/2.0);
           _viewer->frame();
           int numFrames = 0;
 

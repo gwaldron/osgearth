@@ -71,7 +71,7 @@ _textureIndex( -1 )
 SplatRangeData::SplatRangeData(const Config& conf) :
 _textureIndex( -1 )
 {
-    conf.getIfSet("min_range",  _minRange);
+    conf.getIfSet("max_lod",    _maxLOD);
     conf.getIfSet("image",      _imageURI);
     conf.getIfSet("model",      _modelURI);
     conf.getIfSet("modelCount", _modelCount);
@@ -85,7 +85,7 @@ Config
 SplatRangeData::getConfig() const
 {
     Config conf;
-    conf.addIfSet("min_range",  _minRange);
+    conf.addIfSet("max_lod",    _maxLOD);
     conf.addIfSet("image",      _imageURI);
     conf.addIfSet("model",      _modelURI);
     conf.addIfSet("modelCount", _modelCount);
@@ -109,8 +109,10 @@ SplatClass::SplatClass(const Config& conf)
 
     if ( conf.hasChild("range") )
     {
+        ConfigSet children = conf.children("range");
+
         // read the data definitions in order:
-        for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+        for(ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
         {
             if ( !i->empty() )
             {
@@ -328,28 +330,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     for(SplatClassMap::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
     {
         const SplatClass& c = i->second;
-
-        // selectors for this class (ordered):
-        SplatSelectorVector selectors;
-
-        // check each data element:
-        for(SplatRangeDataVector::const_iterator range = c._ranges.begin(); range != c._ranges.end(); ++range)
-        {
-            // If the primary image exists, look up its index and add it to the selector set.
-            ImageIndexTable::const_iterator k = imageIndices.find( range->_imageURI.get() );
-            if ( k != imageIndices.end() )
-            {
-                std::string expression;
-                if ( range->_minRange.isSet() )
-                {
-                    expression = Stringify()
-                        << "env.range >= float(" << range->_minRange.get() << ")";
-                }
-
-                // insert into the lookup table.
-                out._splatLUT[c._name].push_back( SplatSelector(expression, *range) );
-            }
-        }
+        out._splatLUT[c._name] = c._ranges;
     }
 
     // Create the texture array.

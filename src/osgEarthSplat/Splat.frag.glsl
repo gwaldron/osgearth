@@ -16,10 +16,10 @@
 #pragma include Splat.frag.common.glsl
 
 // ref: Splat.getRenderInfo.frag.glsl
-oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
+oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env);
 
 // from: Splat.util.glsl
-void oe_splat_getLodBlend(in float range, in float baseLOD, out float lod0, out float lod1, out float range0, out float range1, out float blend);
+void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
 vec2 oe_splat_getSplatCoords(in vec2 coords, in float lod);
 
 // from the terrain engine:
@@ -106,7 +106,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 }
 
 // Generates a texel using nearest-neighbor coverage sampling.
-vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
+vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
 {
     vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
     float coverageValue = texture2D(oe_splat_coverageTex, tc).r;
@@ -118,7 +118,7 @@ vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 }
 
 // Generates a texel using bilinear filtering on the coverage data.
-vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
+vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
 {
     vec4 texel = vec4(0,0,0,1);
 
@@ -254,19 +254,21 @@ void oe_splat_complex(inout vec4 color)
     // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
     // it's quite possible for a single triangle to span more than 2 LODs.
     float lod0, lod1;
-    float range0, range1;
-    float lodBlend = -1.0;
-    oe_splat_getLodBlend(oe_splat_range, scaleOffset, lod0, lod1, range0, range1, lodBlend);
-
+    float rangeOuter, rangeInner;
+    oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
+    
     // Sample the two LODs:
-    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0);
-    env.range = range0;
+    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + scaleOffset);
+    env.lod = lod0;
     vec4 texel0 = oe_splat_bilinear(tc0, env);
     
-    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod1);
-    env.range = range1;
+    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
+    env.lod = lod0+1.0;
     vec4 texel1 = oe_splat_bilinear(tc1, env);
-    
+
+    // recalcluate blending ratio
+    float lodBlend = clamp((rangeOuter - env.range) / (rangeOuter - rangeInner), 0, 1);
+       
     // Blend:
     vec4 texel = mix(texel0, texel1, lodBlend);
 

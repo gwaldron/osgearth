@@ -70,22 +70,6 @@ namespace osgEarth
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**
-         * Creates a vertex shader main() function for use with VirtualPrograms.
-         * Do not call this function directly; VirtualProgram will call it to
-         * install its main() vertex function.
-         */
-        virtual osg::Shader* createVertexShaderMain(
-            const ShaderComp::FunctionLocationMap& functions) const;
-        
-        /**
-         * Creates a fragment shader main() function for use with VirtualPrograms.
-         * Do not call this function directly; VirtualProgram will call it to
-         * install its main() fragment function.
-         */
-        virtual osg::Shader* createFragmentShaderMain(
-            const ShaderComp::FunctionLocationMap& functions) const;
-
-        /**
          * Builds a shader function that executes an image filter chain.
          * @param functionName Name to give to the resulting shader function
          * @param chain        Color filter chain to execute

@@ -8,35 +8,35 @@ namespace osgEarth
     {
         // AlphaEffect
         AlphaEffectFragment = "AlphaEffect.frag.glsl";
-        _sources[AlphaEffectFragment] = OE_MULTILINE(@AlphaEffect.frag.glsl@);
+        _sources[AlphaEffectFragment] = "@AlphaEffect.frag.glsl@";
 
 
         // Depth Offset
         DepthOffsetVertex = "DepthOffset.vert.glsl";
-       _sources[DepthOffsetVertex] = OE_MULTILINE(@DepthOffset.vert.glsl@);
+       _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";
 
 
        // Draping
        DrapingVertex = "Draping.vert.glsl";
-       _sources[DrapingVertex] = OE_MULTILINE(@Draping.vert.glsl@);
+       _sources[DrapingVertex] = "@Draping.vert.glsl@";
 
        DrapingFragment = "Draping.frag.glsl";
-       _sources[DrapingFragment] = OE_MULTILINE(@Draping.frag.glsl@);
+       _sources[DrapingFragment] = "@Draping.frag.glsl@";
 
 
         // GPU Clamping
         GPUClampingVertex = "GPUClamping.vert.glsl";
-        _sources[GPUClampingVertex] = OE_MULTILINE(@GPUClamping.vert.glsl@);
+        _sources[GPUClampingVertex] = "@GPUClamping.vert.glsl@";
 
         GPUClampingFragment = "GPUClamping.frag.glsl";
-        _sources[GPUClampingFragment] = OE_MULTILINE(@GPUClamping.frag.glsl@);
+        _sources[GPUClampingFragment] = "@GPUClamping.frag.glsl@";
 
         GPUClampingVertexLib = "GPUClamping.vert.lib.glsl";
-        _sources[GPUClampingVertexLib] = OE_MULTILINE(@GPUClamping.vert.lib.glsl@);
+        _sources[GPUClampingVertexLib] = "@GPUClamping.vert.lib.glsl@";
 
 
         // DrawInstanced
         InstancingVertex = "Instancing.vert.glsl";
-        _sources[InstancingVertex] = OE_MULTILINE(@Instancing.vert.glsl@);
+        _sources[InstancingVertex] = "@Instancing.vert.glsl@";
     }
 };

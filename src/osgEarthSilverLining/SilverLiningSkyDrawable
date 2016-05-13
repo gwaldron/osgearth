@@ -23,14 +23,14 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-
+	class SilverLiningContextNode;
     /**
      * Custom drawable for rendering the SilverLining effects
      */
     class SkyDrawable : public osg::Drawable
     {
     public:
-        SkyDrawable(SilverLiningContext* SL =0L);
+        SkyDrawable(SilverLiningContextNode* contextNode =0L);
         META_Object(SilverLining, SkyDrawable);
      
     public: // osg::Drawable
@@ -49,6 +49,7 @@ namespace osgEarth { namespace SilverLining
         virtual ~SkyDrawable() { }
 
         osg::observer_ptr<SilverLiningContext> _SL;
+		SilverLiningContextNode* _contextNode;
         
         SkyDrawable(const SkyDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

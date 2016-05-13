@@ -1,0 +1,55 @@
+<!--
+|  Procedural terrain splatting.
+|  Run with splat.bat, (or splat-edit.bat for tweakery)
+-->
+
+<map>
+        
+    <options>
+        <terrain driver="rex" 
+                 tile_size="17"
+                 high_resolution_first="true" 
+                 merges_per_frame="50"
+                 skirt_ratio="0.01">
+        </terrain>
+    </options>
+    
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+     
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        <cache_policy usage="none"/>
+        <images>
+            <image name="ESA" driver="gdal" coverage="true">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <warp>0.01</warp>
+            </image>
+        </images>
+    </image>
+
+    <extensions>
+   
+        <splat>        
+            <coverage>
+                <layer> CLASSMAP </layer>
+                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            </coverage>
+            
+            <zones>
+                <zone name="default" doc="Default Climate Zone">            
+                    <surface>
+                        <catalog>../data/splat/splat_catalog_rangetest.xml</catalog>
+                    </surface>
+                </zone>                
+            </zones>
+            
+        </splat>
+            
+        <xi:include href="viewpoints.xml"/>
+        
+    </extensions>
+
+</map>

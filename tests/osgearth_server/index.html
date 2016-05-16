@@ -14,7 +14,7 @@ body, #map {
 <script>
   var map = new L.Map('map', {maxZoom: 25});
   map.fitWorld();
-  var splat = new L.tileLayer("http://localhost:8000/{z}/{x}/{y}.png", {tms: true}).addTo(map);  
+  var splat = new L.tileLayer("http://localhost:8000/{z}/{x}/{y}.png", {tms: true, maxZoom: 25}).addTo(map);  
 </script>
 </body>
 </html>

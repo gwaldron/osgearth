@@ -252,6 +252,9 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                 if (_rangeMode==DISTANCE_FROM_EYE_POINT)
                 {
                     required_range = nv.getDistanceToViewPoint(getCenter(),true);
+
+                    if (_rangeFactor.isSet())
+                        required_range /= _rangeFactor.get();
                 }
                 else
                 {

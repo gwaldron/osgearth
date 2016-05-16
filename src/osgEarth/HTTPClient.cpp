@@ -34,9 +34,8 @@
 #include <algorithm>
 #include <curl/curl.h>
 
-// Whether to use WinInet instead of cURL
-//#define USE_WININET
-#ifdef USE_WININET
+// Whether to use WinInet instead of cURL - CMAKE option
+#ifdef OSGEARTH_USE_WININET_FOR_HTTP
 #include <WinInet.h>
 #pragma comment(lib, "wininet.lib")
 #endif
@@ -707,7 +706,7 @@ HTTPClient::download(const std::string& uri,
 }
 
 
-#ifdef USE_WININET
+#ifdef OSGEARTH_USE_WININET_FOR_HTTP
 
 namespace
 {
@@ -944,7 +943,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     return response;
 }
 
-#else // USE_WININET
+#else // OSGEARTH_USE_WININET_FOR_HTTP
 
 HTTPResponse
 HTTPClient::doGet(const HTTPRequest&    request,

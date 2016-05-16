@@ -43,7 +43,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
             _smoothing         ( false ),
-            _normalMaps        ( false )
+            _normalMaps        ( false ),
+            _adaptivePolarRangeFactor( false )
          {
             setDriver( "mp" );
             fromConfig( _conf );

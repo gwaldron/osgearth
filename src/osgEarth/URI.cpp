@@ -153,10 +153,20 @@ URI::URI()
     //nop
 }
 
+URI::URI(const URI& rhs) :
+_baseURI(rhs._baseURI),
+_fullURI(rhs._fullURI),
+_context(rhs._context),
+_cacheKey(rhs._cacheKey)
+{
+    //nop
+}
+
 URI::URI( const std::string& location )
 {
     _baseURI = location;
     _fullURI = location;
+    ctorCacheKey();
 }
 
 URI::URI( const std::string& location, const URIContext& context )
@@ -164,12 +174,14 @@ URI::URI( const std::string& location, const URIContext& context )
     _context = context;
     _baseURI = location;
     _fullURI = context.getOSGPath( _baseURI );
+    ctorCacheKey();
 }
 
 URI::URI( const char* location )
 {
     _baseURI = std::string(location);
     _fullURI = _baseURI;
+    ctorCacheKey();
 }
 
 URI
@@ -179,7 +191,14 @@ URI::append( const std::string& suffix ) const
     result._baseURI = _baseURI + suffix;
     result._fullURI = _fullURI + suffix;
     result._context = _context;
+    result.ctorCacheKey();
     return result;
+}
+
+void
+URI::ctorCacheKey()
+{
+    _cacheKey = Stringify() << std::hex << std::setw(8) << std::setfill('0') << osgEarth::hashString(_fullURI);
 }
 
 bool

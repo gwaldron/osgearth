@@ -62,6 +62,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         void setDebug(bool value) { _debug = value; }
 
+        void setRangeFactor(double f) { _rangeFactor = f; }
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
@@ -84,6 +86,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         Threading::Mutex               _updateMutex;
         std::vector<osg::BoundingBox>  _childBBoxes;
         std::vector<osg::Matrix>       _childBBoxMatrices;
+        optional<double>               _rangeFactor;
 
         struct MyProgressCallback : public ProgressCallback
         {

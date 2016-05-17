@@ -26,6 +26,7 @@
 #include <osgEarthUtil/AtlasBuilder>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Skins>
+#include <osgEarth/Utils>
 
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
@@ -137,8 +138,11 @@ build(osg::ArgumentParser& arguments)
     if ( !builder.build(lib.get(), outImageFile, atlas) )
         return usage("Failed to build atlas");
 
-    // write the atlas images.
-    osgDB::writeImageFile(*atlas._images.begin()->get(), outImageFile);
+    // write the atlas images. don't flip DDS's.
+    osg::ref_ptr<osgDB::Options> writeOptions = new osgDB::Options();
+    writeOptions->setOptionString("ddsNoAutoFlipWrite");
+
+    osgDB::writeImageFile(*atlas._images.begin()->get(), outImageFile, writeOptions.get());
     OE_INFO << LC << "Wrote output image to \"" << outImageFile << "\"" << std::endl;
     
     // write any aux images.
@@ -150,7 +154,7 @@ build(osg::ArgumentParser& arguments)
             "_" + auxPatterns[i] + "." +
             osgDB::getFileExtension(outImageFile);
 
-        osgDB::writeImageFile(*atlas._images[i+1].get(), auxAtlasFile);
+        osgDB::writeImageFile(*atlas._images[i + 1].get(), auxAtlasFile, writeOptions.get());
         
         OE_INFO << LC << "Wrote auxiliary image to \"" << auxAtlasFile << "\"" << std::endl;
     }
@@ -219,6 +223,10 @@ show(osg::ArgumentParser& arguments)
     osgEarth::ImageUtils::flattenImage(image, images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
 
+    const osg::BoundingBox& bbox = osgEarth::Utils::getBoundingBox(geode->getDrawable(0));
+    float width = bbox.xMax() - bbox.xMin();
+    float height = bbox.zMax() - bbox.zMin();
+
     // geometry for the skins in that layer:
     osg::Geode* geode2 = new osg::Geode();
     osg::Geometry* geom = new osg::Geometry();
@@ -231,15 +239,16 @@ show(osg::ArgumentParser& arguments)
     geom->setColorBinding(geom->BIND_OVERALL);
     osgEarth::Symbology::SkinResourceVector skins;
     lib->getSkins(skins);
+    OE_WARN << "num = " << skins.size() << "\n";
+
     for(unsigned k=0; k<skins.size(); ++k)
     {
-        if (skins[k]->imageLayer() == layer &&
-            skins[k]->isTiled() == false)
+        if (skins[k]->imageLayer() == layer && skins[k]->atlasHint() != false)
         {
-            float x = -1.0f + 2.0*skins[k]->imageBiasS().value();
-            float y = -1.0f + 2.0*skins[k]->imageBiasT().value();
-            float s = 2.0*skins[k]->imageScaleS().value();
-            float t = 2.0*skins[k]->imageScaleT().value();
+            float x = bbox.xMin() + width*skins[k]->imageBiasS().value();
+            float y = bbox.zMin() + height*skins[k]->imageBiasT().value();
+            float s = width*skins[k]->imageScaleS().value();
+            float t = height*skins[k]->imageScaleT().value();
 
             v->push_back(osg::Vec3(x,     -0.01f, y    ));
             v->push_back(osg::Vec3(x + s, -0.01f, y    ));

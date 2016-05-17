@@ -250,7 +250,7 @@ namespace osgEarth
 
     public:
         /** Copier */
-        URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }
+        URI( const URI& rhs );
 
 
     public: // config methods
@@ -275,6 +275,8 @@ namespace osgEarth
         std::string _cacheKey;
         URIContext  _context;
         optional<std::string> _optionString;
+
+        void ctorCacheKey();
     };
     
 

@@ -19,6 +19,7 @@
 #include <SilverLining.h>
 #include "SilverLiningSkyDrawable"
 #include "SilverLiningContext"
+#include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
 
 #define LC "[SilverLining:SkyDrawable] "
@@ -26,8 +27,10 @@
 using namespace osgEarth::SilverLining;
 
 
-SkyDrawable::SkyDrawable(SilverLiningContext* SL) :
-_SL( SL )
+SkyDrawable::SkyDrawable(SilverLiningContextNode* contexNode) :
+_SL(contexNode->getSLContext()),
+_contextNode(contexNode)
+
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -40,7 +43,12 @@ void
 SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::Camera* camera = renderInfo.getCurrentCamera();
-    if ( camera )
+#ifndef SL_USE_CULL_MASK
+	//Check if this is the target camera
+	if (_contextNode->getTargetCamera() == camera) 
+#endif 
+	{
+	if ( camera)
     {
         renderInfo.getState()->disableAllVertexArrays();
 
@@ -80,6 +88,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
         renderInfo.getState()->apply();
     }
+	}
 }
 
 osg::BoundingBox

@@ -1,0 +1,20 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui" />
+<link rel="stylesheet" href="leaflet.css" />
+<script src="leaflet.js"></script>
+<style type="text/css">
+body, #map {
+  height: 100%;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  var map = new L.Map('map', {maxZoom: 25});
+  map.fitWorld();
+  var splat = new L.tileLayer("http://localhost:8000/{z}/{x}/{y}.png", {tms: true, maxZoom: 25}).addTo(map);  
+</script>
+</body>
+</html>

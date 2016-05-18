@@ -275,7 +275,7 @@ void
 TerrainLayer::setCachePolicy( const CachePolicy& cp )
 {
     _runtimeOptions->cachePolicy().init(cp);
-    _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
+    _runtimeOptions->cachePolicy()->store( _dbOptions.get() );
 
     // if an effective policy was previously set, clear it out
     _effectiveCachePolicy.unset();
@@ -623,10 +623,13 @@ TerrainLayer::createTileSource()
         if ( !_dbOptions.valid() )
         {
             _dbOptions = Registry::instance()->cloneOrCreateOptions();
+
             if ( _cache.valid() )
-                _cache->apply( _dbOptions.get() );
-            _initOptions.cachePolicy()->apply( _dbOptions.get() );
-            URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
+                _cache->store( _dbOptions.get() );
+
+            _initOptions.cachePolicy()->store( _dbOptions.get() );
+
+            URIContext( _runtimeOptions->referrer() ).store( _dbOptions.get() );
         }
 
         // add the osgDB options string if it's set.
@@ -819,8 +822,7 @@ void
 TerrainLayer::initializeCachePolicy(const osgDB::Options* options)
 {
     // Start with the cache policy passed in by the Map.
-    optional<CachePolicy> cp;
-    CachePolicy::fromOptions(options, cp);
+    optional<CachePolicy> cp = CachePolicy::get(options);
 
     // if this layer specifies cache policy info, that will override 
     // whatever the map passed in:

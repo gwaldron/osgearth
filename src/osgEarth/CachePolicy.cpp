@@ -62,9 +62,10 @@ _minTime( rhs._minTime )
     //nop
 }
 
-bool
-CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
+optional<CachePolicy>
+CachePolicy::get(const osgDB::Options* dbOptions)
 {
+    optional<CachePolicy> result;
     if ( dbOptions )
     {
         std::string jsonString = dbOptions->getPluginStringData( "osgEarth::CachePolicy" );
@@ -73,15 +74,14 @@ CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>
             Config conf;
             conf.fromJSON( jsonString );
             CachePolicy temp( conf );
-            out->mergeAndOverride( temp );
-            return true;
+            result->mergeAndOverride(temp);
         }
     }
-    return false;
+    return result;
 }
 
 void
-CachePolicy::apply(osgDB::Options* dbOptions) const
+CachePolicy::store(osgDB::Options* dbOptions) const
 {
     if ( dbOptions )
     {

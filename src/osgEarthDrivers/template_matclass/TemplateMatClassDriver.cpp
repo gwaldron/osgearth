@@ -90,7 +90,7 @@ public: // TileSource interface
         }
 
         // set up the IO options so that we do not cache input data:
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        CachePolicy::NO_CACHE.store( _dbOptions.get() );
         return STATUS_OK;
     }
 

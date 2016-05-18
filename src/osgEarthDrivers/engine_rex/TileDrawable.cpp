@@ -256,7 +256,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
                 ext->glUniform1f( minRangeLocation, minRange );
                 ext->glUniform1f( maxRangeLocation, maxRange );
 
-                for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+                for (unsigned i=0; i < _geom->getNumPrimitiveSets(); i++)
                     _geom->getPrimitiveSet(i)->draw(state, true);
 
                 ++layersDrawn;
@@ -278,7 +278,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
 
         if ( renderColor )
         {
-            for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+            for (unsigned i=0; i < _geom->getNumPrimitiveSets(); i++)
             {
                 _geom->getPrimitiveSet(i)->draw(state, true);
             }
@@ -292,7 +292,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
             glDrawElements(GL_TRIANGLES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
         
             // draw the remaining primsets normally
-            for (int i=1; i < _geom->getNumPrimitiveSets(); i++)
+            for (unsigned i=1; i < _geom->getNumPrimitiveSets(); i++)
             {
                 _geom->getPrimitiveSet(i)->draw(state, true);
             }

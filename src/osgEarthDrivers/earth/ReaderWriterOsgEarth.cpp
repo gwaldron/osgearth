@@ -131,7 +131,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( out.is_open() )
             {
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext( fileName ).apply( myOptions.get() );
+                URIContext( fileName ).store( myOptions.get() );
 
                 return writeNode( node, out, myOptions.get() );
             }
@@ -215,7 +215,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 // reference URI as well..
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
 
-                URIContext( fullFileName ).apply( myOptions.get() );
+                URIContext( fullFileName ).store( myOptions.get() );
 
                 std::stringstream in( r.getString() );
                 return readNode( in, myOptions.get() );

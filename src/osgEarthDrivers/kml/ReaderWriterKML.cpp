@@ -75,7 +75,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         {
             // propagate the source URI along to the stream reader
             osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-            URIContext(url).apply( myOptions.get() );
+            URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }
     }

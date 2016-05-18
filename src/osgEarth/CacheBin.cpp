@@ -82,6 +82,25 @@ namespace
             if (!drawable) return;
             apply(drawable->getStateSet());
             applyUserData(*drawable);
+            
+            osg::Geometry* geom = drawable->asGeometry();
+            if (geom)
+                apply(geom);
+        }
+
+        void apply(osg::Geometry* geom)
+        {
+            // This detects any NULL vertex attribute arrays and then populates them.
+            // Do this because a NULL VAA will crash the OSG serialization reader (osg 3.4.0)
+            osg::Geometry::ArrayList& arrays = geom->getVertexAttribArrayList();
+            for (osg::Geometry::ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
+            {
+                if (i->get() == 0L)
+                {
+                    *i = new osg::FloatArray();
+                    i->get()->setBinding( osg::Array::BIND_OFF );
+                }
+            }
         }
 
         void apply(osg::StateSet* ss)

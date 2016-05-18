@@ -47,7 +47,7 @@ public:
     {
         // no caching of source tiles.  Yahoo TOS does not allow it.
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        CachePolicy::NO_CACHE.store( _dbOptions.get() );
 
         // always a sperhical mercator profile
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );

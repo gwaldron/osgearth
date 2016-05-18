@@ -114,7 +114,7 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
     }
 
     // set up the IO options so that we do not cache input data.
-    CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+    CachePolicy::NO_CACHE.store( _dbOptions.get() );
 
     // set up the noise generator.
     const float F[4] = { 4.0f, 16.0f, 4.0f, 8.0f };

@@ -890,8 +890,9 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
     CacheBin* cacheBin = CacheBin::get(readOptions);
     if (cacheBin)
     {
-        optional<CachePolicy> policy;
-        CachePolicy::fromOptions(readOptions, policy);
+        ++_cacheReads;
+
+        optional<CachePolicy> policy = CachePolicy::get(readOptions);
         
         ReadResult rr = cacheBin->readObject(cacheKey, readOptions);
 
@@ -904,12 +905,21 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
         if (rr.succeeded())
         {
             group = dynamic_cast<osg::Group*>(rr.getNode());
-            OE_INFO << LC << "Loaded from the cache (key = " << cacheKey << ")\n";
+            OE_DEBUG << LC << "Loaded from the cache (key = " << cacheKey << ")\n";
+            ++_cacheHits;
+        }
+        else if (rr.code() == ReadResult::RESULT_NOT_FOUND)
+        {
+            //nop -- object not in cache
+            OE_DEBUG << LC << "Object not in cache (cacheKey=" << cacheKey << ") " << rr.getResultCodeString() << "; " << rr.errorDetail() << "\n";
         }
         else
         {
-            OE_WARN << LC << "Error (cacheKey=" << cacheKey << ") " << rr.getResultCodeString() << "; " << rr.errorDetail() << "\n";
+            // some other error.
+            OE_WARN << LC << "Cache read error (cacheKey=" << cacheKey << ") " << rr.getResultCodeString() << "; " << rr.errorDetail() << "\n";
         }
+
+        OE_DEBUG << "cache hit ratio = " << float(_cacheHits) / float(_cacheReads) << "\n";
     }
     else
     {
@@ -929,7 +939,7 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
     if (cacheBin)
     {
         cacheBin->writeNode(cacheKey, node, Config(), writeOptions);
-        OE_INFO << LC << "Wrote " << cacheKey << " to cache\n";
+        OE_DEBUG << LC << "Wrote " << cacheKey << " to cache\n";
     }
     return true;
 }

@@ -117,7 +117,7 @@ URIContext::add( const std::string& sub ) const
 }
 
 void
-URIContext::apply( osgDB::Options* options )
+URIContext::store( osgDB::Options* options )
 {
     if ( options )
     {
@@ -484,8 +484,7 @@ namespace
                     bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
                     // establish the caching policy.
-                    optional<CachePolicy> cp;
-                    CachePolicy::fromOptions(localOptions.get(), cp);
+                    optional<CachePolicy> cp = CachePolicy::get(localOptions.get());
                     Registry::instance()->resolveCachePolicy( cp );                    
 
                     // get a cache bin if we need it:

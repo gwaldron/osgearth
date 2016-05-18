@@ -226,8 +226,7 @@ void
 ModelLayer::initializeCachePolicy(const osgDB::Options* options)
 {
     // Start with the cache policy passed in by the Map.
-    optional<CachePolicy> cp;
-    CachePolicy::fromOptions(options, cp);
+    optional<CachePolicy> cp = CachePolicy::get(options);
 
     // if this layer specifies cache policy info, that will override 
     // whatever the map passed in:
@@ -244,7 +243,7 @@ void
 ModelLayer::setCachePolicy( const CachePolicy& cp )
 {
     _runtimeOptions.cachePolicy() = cp;
-    _runtimeOptions.cachePolicy()->apply( _dbOptions.get() );
+    _runtimeOptions.cachePolicy()->store( _dbOptions.get() );
 }
 
 const CachePolicy&

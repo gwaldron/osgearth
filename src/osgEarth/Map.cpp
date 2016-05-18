@@ -80,8 +80,8 @@ _dataModelRevision   ( 0 )
     _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // store the IO information in the top-level DB Options:
-    _mapOptions.cachePolicy()->apply( _dbOptions.get() );
-    URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
+    _mapOptions.cachePolicy()->store( _dbOptions.get() );
+    URIContext( _mapOptions.referrer() ).store( _dbOptions.get() );
 
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
@@ -355,7 +355,7 @@ Map::setCache( Cache* cache )
 
         if ( _cache.valid() )
         {
-            _cache->apply( _dbOptions.get() );
+            _cache->store( _dbOptions.get() );
         }
 
         // Propagate the cache to any of our layers

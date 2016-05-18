@@ -219,7 +219,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
 
     CacheBin* bin = CacheBin::get(_dbOptions.get());
     if ( bin )
-        OE_WARN << LC << "Found a cache bin in FeatureModelSource\n";
+        OE_DEBUG << LC << "Found a cache bin in FeatureModelSource\n";
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

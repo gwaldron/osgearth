@@ -268,16 +268,16 @@ Registry::setDefaultCachePolicy( const CachePolicy& value )
 {
     _defaultCachePolicy = value;
     if ( !_overrideCachePolicy.isSet() )
-        _defaultCachePolicy->apply(_defaultOptions.get());
+        _defaultCachePolicy->store(_defaultOptions.get());
     else
-        _overrideCachePolicy->apply(_defaultOptions.get());
+        _overrideCachePolicy->store(_defaultOptions.get());
 }
 
 void
 Registry::setOverrideCachePolicy( const CachePolicy& value )
 {
     _overrideCachePolicy = value;
-    _overrideCachePolicy->apply( _defaultOptions.get() );
+    _overrideCachePolicy->store( _defaultOptions.get() );
 }
 
 bool

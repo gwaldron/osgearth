@@ -58,7 +58,7 @@ BYOTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
 
         // no caching for this terrain.
         osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
-        CachePolicy::NO_CACHE.apply( dbOptions.get() );
+        CachePolicy::NO_CACHE.store( dbOptions.get() );
 
         osg::Node* node = myoptions.url()->getNode( dbOptions.get() );
         if ( node )

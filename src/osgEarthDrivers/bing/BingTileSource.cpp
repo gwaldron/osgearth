@@ -84,7 +84,7 @@ public:
     {
         // Always apply the NO CACHE policy.  Bing doesn't allow caching of their data.
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        CachePolicy::NO_CACHE.store( _dbOptions.get() );
 
         // If the user did not include an API key, fail.
         if ( !_options.key().isSet() )

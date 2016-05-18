@@ -221,6 +221,9 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<DrapeableNode>      _drapeable;
         DepthOffsetAdapter               _depthOffsetAdapter;
 
+        OpenThreads::Atomic _cacheReads;
+        OpenThreads::Atomic _cacheHits;
+
         enum OverlayChange {
             OVERLAY_NO_CHANGE,
             OVERLAY_INSTALL_PLACEHOLDER,

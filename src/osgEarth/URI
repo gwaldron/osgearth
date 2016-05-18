@@ -67,7 +67,7 @@ namespace osgEarth
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
             is the preferred way to communicate the context information. */
-        void apply( osgDB::Options* options );
+        void store( osgDB::Options* options );
 
         /** Creates a context from the serialized version in an Options structure (see above) */
         URIContext( const osgDB::Options* options );

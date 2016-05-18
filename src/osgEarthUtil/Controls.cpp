@@ -1656,6 +1656,27 @@ Container::addControls( const ControlVector& controls )
     }
 }
 
+
+
+
+
+
+void Container::setVisible(bool visibility) 
+{ 
+        Control::setVisible(visibility); 
+        std::vector<osgEarth::Util::Controls::Control*> out; 
+        getChildren(out); 
+        for (int i = 0; i < (int) out.size(); i++) 
+        { 
+                Container* container = dynamic_cast<Container*>( out.at(i) ); 
+                if (container) { 
+                        container->setVisible(visibility); 
+                } else { 
+                        out.at(i)->setVisible(visibility); 
+                } 
+        } 
+}
+
 // ---------------------------------------------------------------------------
 
 VBox::VBox()
@@ -1778,8 +1799,7 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 void
 VBox::draw( const ControlContext& cx )
 {
-    if ( visible() )
-    {
+   
         Container::draw( cx );
 
         for( unsigned i=1; i<getNumChildren(); ++i )
@@ -1788,7 +1808,7 @@ VBox::draw( const ControlContext& cx )
             if ( c )
                 c->draw( cx );
         }
-    }
+     
 }
 
 // ---------------------------------------------------------------------------
@@ -1847,6 +1867,10 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
 
         Container::calcSize( cx, out_size );
+    }
+    else
+    {
+        out_size.set(0,0);
     }
 }
 
@@ -1912,8 +1936,7 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 void
 HBox::draw( const ControlContext& cx )
 {
-    if ( visible() )
-    {
+    
         Container::draw( cx );
 
         for( unsigned i=1; i<getNumChildren(); ++i )
@@ -1922,7 +1945,7 @@ HBox::draw( const ControlContext& cx )
             if ( c )
                 c->draw( cx );
         }
-    }
+    
 }
 
 // ---------------------------------------------------------------------------
@@ -2165,22 +2188,6 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 
 
 
-
-void Grid::setVisible(bool visibility) 
-{ 
-        Control::setVisible(visibility); 
-        std::vector<osgEarth::Util::Controls::Control*> out; 
-        getChildren(out); 
-        for (int i = 0; i < (int) out.size(); i++) 
-        { 
-                Grid* g = dynamic_cast<Grid*>( out.at(i) ); 
-                if (g) { 
-                        g->setVisible(visibility); 
-                } else { 
-                        out.at(i)->setVisible(visibility); 
-                } 
-        } 
-}
 
 
 void

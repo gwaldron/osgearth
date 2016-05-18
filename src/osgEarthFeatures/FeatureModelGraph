@@ -34,7 +34,6 @@
 
 namespace osgEarth {
     class ClampableNode;
-    class DrapeableNode;
 }
 
 namespace osgEarth { namespace Features
@@ -218,7 +217,6 @@ namespace osgEarth { namespace Features
         osg::Group*                      _overlayInstalled;
         osg::ref_ptr<osg::Group>         _overlayPlaceholder;
         osg::ref_ptr<ClampableNode>      _clampable;
-        osg::ref_ptr<DrapeableNode>      _drapeable;
         DepthOffsetAdapter               _depthOffsetAdapter;
 
         OpenThreads::Atomic _cacheReads;
@@ -243,6 +241,7 @@ namespace osgEarth { namespace Features
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
+        void applyRenderSymbology(const Style& style, osg::Node* node);
         void checkForGlobalStyles(const Style& style);
         void changeOverlay();
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output);

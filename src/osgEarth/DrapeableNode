@@ -38,10 +38,15 @@ namespace osgEarth
     class OSGEARTH_EXPORT DrapeableNode : public osg::Group
     {
     public:
+        META_Object(osgEarth, DrapeableNode);
+
         /**
          * Constructs a new drapeable node.
          */
         DrapeableNode();
+
+        /** Copy */
+        DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy);
 
         /**
          * Whether draping is enabled.
@@ -58,8 +63,7 @@ namespace osgEarth
         /** dtor */
         virtual ~DrapeableNode() { }
 
-        bool          _drapingEnabled;
-        optional<int> _renderOrder;
+        bool _drapingEnabled;
     };
 
 } // namespace osgEarth

@@ -27,7 +27,6 @@
 #include <osgEarth/Clamping>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/FadeEffect>
@@ -961,7 +960,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
     // Try to read it from a cache:
     std::string cacheKey = makeCacheKey(level, extent, key);
     group = readTileFromCache(cacheKey, readOptions);
-
+    
     // Not there? Build it
     if (!group.valid())
     {
@@ -1497,6 +1496,7 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         }
     }
 
+#if 0
     else 
     {
         if ( render && render->depthOffset().isSet() )
@@ -1527,8 +1527,44 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             ss->setRenderingHint( ss->TRANSPARENT_BIN );
         }
     }
+#endif
 }
 
+void
+FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
+{
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if (render && node)
+    {
+        if ( render->depthOffset().isSet() )
+        {
+            _depthOffsetAdapter.setGraph( this );
+            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
+        }
+
+        if ( render->renderBin().isSet() )
+        {
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            ss->setRenderBinDetails(
+                ss->getBinNumber(),
+                render->renderBin().get() );
+        }
+
+        if ( render->order().isSet() )
+        {
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            ss->setRenderBinDetails(
+                (int)render->order()->eval(),
+                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
+        }
+
+        if ( render->transparent() == true )
+        {
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            ss->setRenderingHint( ss->TRANSPARENT_BIN );
+        }
+    }
+}
 
 osg::Group*
 FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
@@ -1537,7 +1573,11 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 
     // Check the style and see if we need to active GPU clamping. GPU clamping
     // is currently all-or-nothing for a single FMG.
+    // Warning. This needs attention w.r.t. caching, since the "global" styles don't cache. -gw
     checkForGlobalStyles( style );
+
+    // Apply render symbology at the style group level.
+    applyRenderSymbology(style, styleGroup);
 
     return styleGroup;
 }
@@ -1622,23 +1662,23 @@ FeatureModelGraph::changeOverlay()
         runPostMergeOperations( _clampable.get() );
         osgEarth::replaceGroup( _overlayInstalled, _clampable.get() );
         _overlayInstalled   = _clampable.get();
-        _drapeable          = 0L;
+        //_drapeable          = 0L;
         _overlayPlaceholder = 0L;
         OE_DEBUG << LC << "Installed clampable decorator on layer " << getName() << std::endl;
     }
 
-    else if (
-        _overlayChange == OVERLAY_INSTALL_DRAPEABLE && 
-        _drapeable.valid()                          && 
-        _drapeable.get() != _overlayInstalled )
-    {
-        runPostMergeOperations( _drapeable.get() );
-        osgEarth::replaceGroup( _overlayInstalled, _drapeable.get() );
-        _overlayInstalled   = _drapeable.get();
-        _overlayPlaceholder = 0L;
-        _clampable          = 0L;
-        OE_DEBUG << LC << "Installed drapeable decorator on layer " << getName() << std::endl;
-    }
+    //else if (
+    //    _overlayChange == OVERLAY_INSTALL_DRAPEABLE && 
+    //    _drapeable.valid()                          && 
+    //    _drapeable.get() != _overlayInstalled )
+    //{
+    //    runPostMergeOperations( _drapeable.get() );
+    //    osgEarth::replaceGroup( _overlayInstalled, _drapeable.get() );
+    //    _overlayInstalled   = _drapeable.get();
+    //    _overlayPlaceholder = 0L;
+    //    _clampable          = 0L;
+    //    OE_DEBUG << LC << "Installed drapeable decorator on layer " << getName() << std::endl;
+    //}
 
     else if (
         _overlayChange == OVERLAY_INSTALL_PLACEHOLDER && 
@@ -1649,7 +1689,7 @@ FeatureModelGraph::changeOverlay()
         osgEarth::replaceGroup( _overlayInstalled, _overlayPlaceholder.get() );
         _overlayInstalled = _overlayPlaceholder.get();
         _clampable        = 0L;
-        _drapeable        = 0L;
+        //_drapeable        = 0L;
         OE_INFO << LC << "Installed null decorator on layer " << getName() << std::endl;
     }
 }
@@ -1672,7 +1712,7 @@ FeatureModelGraph::redraw()
 
     // zero out any decorators
     _clampable          = 0L;
-    _drapeable          = 0L;
+    //_drapeable          = 0L;
     _overlayPlaceholder = new osg::Group();
     _overlayInstalled   = _overlayPlaceholder;
 

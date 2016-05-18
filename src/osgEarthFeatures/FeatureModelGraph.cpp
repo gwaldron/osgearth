@@ -1313,7 +1313,10 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         if ( feature.valid() )
         {
             const std::string& styleString = feature->eval( styleExprCopy, &context );
-            styleBins[styleString].push_back( feature.get() );
+            if (!styleString.empty() && styleString != "null")
+            {
+                styleBins[styleString].push_back( feature.get() );
+            }
         }
     }
 

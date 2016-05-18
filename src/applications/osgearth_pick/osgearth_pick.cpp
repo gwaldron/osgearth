@@ -171,7 +171,7 @@ const char* highlightFrag =
     "void highlightFragment(inout vec4 color) \n"
     "{ \n"
     "    if ( selected == 1 ) \n"
-    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
+    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
     "} \n";
 
 void installHighlighter(osg::StateSet* stateSet, int attrLocation)

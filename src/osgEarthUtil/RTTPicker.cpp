@@ -44,7 +44,7 @@ namespace
         "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
 
         "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
-        "flat out int oe_pick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
+        "flat out int oe_pick_color_contains_objectid; \n"  // whether color already contains oid (written by another RTT camera)
 
         "void oe_pick_encodeObjectID(inout vec4 vertex) \n"
         "{ \n"

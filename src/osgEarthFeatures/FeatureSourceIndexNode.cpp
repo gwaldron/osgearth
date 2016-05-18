@@ -156,15 +156,17 @@ FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-REGISTER_OBJECT_WRAPPER(
-    FeatureSourceIndexNode,
-    new osgEarth::Features::FeatureSourceIndexNode,
-    osgEarth::Features::FeatureSourceIndexNode,
-    "osg::Object osg::Node osg::Group osgEarth::Features::FeatureSourceIndexNode")
+namespace
 {
-    // todo/nop
+    REGISTER_OBJECT_WRAPPER(
+        FeatureSourceIndexNode,
+        new osgEarth::Features::FeatureSourceIndexNode,
+        osgEarth::Features::FeatureSourceIndexNode,
+        "osg::Object osg::Node osg::Group osgEarth::Features::FeatureSourceIndexNode")
+    {
+        // todo/nop
+    }
 }
-
 
 //-----------------------------------------------------------------------------
 

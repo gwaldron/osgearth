@@ -81,11 +81,14 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-REGISTER_OBJECT_WRAPPER(
-    DrapeableNode,
-    new osgEarth::DrapeableNode,
-    osgEarth::DrapeableNode,
-    "osg::Object osg::Node osg::Group osgEarth::DrapeableNode")
+namespace
 {
-    ADD_BOOL_SERIALIZER(DrapingEnabled, true);
+    REGISTER_OBJECT_WRAPPER(
+        DrapeableNode,
+        new osgEarth::DrapeableNode,
+        osgEarth::DrapeableNode,
+        "osg::Object osg::Node osg::Group osgEarth::DrapeableNode")
+    {
+        ADD_BOOL_SERIALIZER(DrapingEnabled, true);
+    }
 }

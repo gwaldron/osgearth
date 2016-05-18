@@ -704,6 +704,9 @@ namespace osgEarth { namespace Util { namespace Controls
     public: // Container
         virtual void clearControls();
 
+	// change the visibility of the grid and its controls
+	void setVisible( bool value );
+
         // adds the controls as a row at the bottom of the grid.
         virtual void addControls( const ControlVector& controls );
 

@@ -2069,8 +2069,7 @@ Grid::clearControls()
 void
 Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
 {
-    if ( visible() )
-    {
+    
         _renderSize.set( 0, 0 );
 
         int nRows = (int)getNumRows();
@@ -2109,7 +2108,7 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
         }
 
         Container::calcSize( cx, out_size );
-    }
+    
 }
 
 void
@@ -2164,11 +2163,30 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
     }
 }
 
+
+
+
+void Grid::setVisible(bool visibility) 
+{ 
+        Control::setVisible(visibility); 
+        std::vector<osgEarth::Util::Controls::Control*> out; 
+        getChildren(out); 
+        for (int i = 0; i < (int) out.size(); i++) 
+        { 
+                Grid* g = dynamic_cast<Grid*>( out.at(i) ); 
+                if (g) { 
+                        g->setVisible(visibility); 
+                } else { 
+                        out.at(i)->setVisible(visibility); 
+                } 
+        } 
+}
+
+
 void
 Grid::draw( const ControlContext& cx )
 {
-    if ( visible() )
-    {
+    
         Container::draw( cx );
 
         for( unsigned i=1; i<getNumChildren(); ++i )
@@ -2186,7 +2204,7 @@ Grid::draw( const ControlContext& cx )
                 }
             }
         }
-    }
+ 
 }
 
 // ---------------------------------------------------------------------------

@@ -356,7 +356,8 @@ void
 RTTPicker::checkForPickResult(Pick& pick)
 {
     // turn the camera off:
-    pick._context->_pickCamera->setNodeMask( 0 );
+    // gw: suddenly this no longer works.. disabling for now.
+    //pick._context->_pickCamera->setNodeMask( 0 );
 
     // decode the results
     osg::Image* image = pick._context->_image.get();

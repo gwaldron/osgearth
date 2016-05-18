@@ -75,5 +75,5 @@ osg::Geometry()
     getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
 
     // Disable culling since this bounding box will eventually be drawn in screen space.
-    setCullingActive(false);
+    //setCullingActive(false);
 }

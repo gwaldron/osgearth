@@ -129,8 +129,8 @@ struct MyPickCallback : public RTTPicker::Callback
             // None of the above.. clear.
             else
             {
-                s_fidLabel->setText( Stringify() << "oid = " << id );
-                s_nameLabel->setText( "Name = " );
+                s_fidLabel->setText( Stringify() << "unknown oid = " << id );
+                s_nameLabel->setText( " " );
             }
         }
 
@@ -140,7 +140,7 @@ struct MyPickCallback : public RTTPicker::Callback
     void onMiss()
     {
         s_fidLabel->setText( "No pick." );
-        s_nameLabel->setText( "Name = " );
+        s_nameLabel->setText( " " );
         s_highlightUniform->set( 0u );
     }
 

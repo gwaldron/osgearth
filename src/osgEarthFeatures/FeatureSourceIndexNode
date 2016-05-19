@@ -137,6 +137,11 @@ namespace osgEarth { namespace Features
         OIDMap     _oids;
         FIDMap     _fids;
         FeatureMap _embeddedFeatures;
+
+        void update(osg::Drawable*, std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
+        void update(osg::Node*,     std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
+
+        friend class FeatureSourceIndexNode;
     };
 
 
@@ -149,6 +154,7 @@ namespace osgEarth { namespace Features
     {
     public:
         META_Node(osgEarth::Features, FeatureSourceIndexNode);
+        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
 
         /** default ctor */
         FeatureSourceIndexNode();
@@ -172,15 +178,31 @@ namespace osgEarth { namespace Features
         ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
         ObjectID tagNode        (osg::Node*     node,     Feature* feature);
 
+    public: // To support serialization only
+
+        const FIDMap& getFIDMap() const { return _fids; }
+        void setFIDMap(const FIDMap& fids);
+
+        void reIndex(std::map<ObjectID,ObjectID>&);
+        void reIndexDrawable(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
+        void reIndexNode(osg::Node* node, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
+
+        /**
+         * Call this after deserializing a scene graph that may contain FeatureSourceIndexNodes.
+         * It will locate them, assign the index, and reconsistute the object IDs in the index.
+         */
+        static void reconstitute(osg::Node* graph, FeatureSourceIndex* index);
+
     protected:
         
         /** dtor - unregisters any FIDs added by this node. */
         virtual ~FeatureSourceIndexNode();
 
-    private:
-        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
-        osg::ref_ptr<FeatureSourceIndex> _index;
+    private: // serializable
         FIDMap _fids;
+
+    private: // transient
+        osg::ref_ptr<FeatureSourceIndex> _index;
 
     //public:
         //virtual const char* className()   const { return "FeatureSourceIndexNode"; }

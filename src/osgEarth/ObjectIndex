@@ -147,6 +147,16 @@ namespace osgEarth
          */
         const ShaderPackage& getShaderPackage() const { return _shaders; }
 
+        /**
+         * Returns a set of ObjectIDs used in a drawable. Returns false is none are found
+         */
+        bool getObjectIDs(const osg::Drawable* drawable, std::set<ObjectID>& output) const;
+
+        /**
+         * Returns an ObjectID set on a node. Returns false if none is found
+         */
+        bool getObjectID(osg::Node* node, ObjectID& output) const;
+
 
     public: // ObjectIndexBuilder<osg::Referenced>
 
@@ -188,6 +198,18 @@ namespace osgEarth
          */
         void tagNode(osg::Node* node, ObjectID id) const;
 
+        /**
+         * For each ObjectID found in a drawable, update it with a new Object ID and
+         * populate an output table that maps the old ID to the new ID. Internal function
+         * used for serialization support.
+         */
+        bool updateObjectIDs(osg::Drawable* drawable, std::map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
+
+        /**
+         * On a node, replace an existing objectID with a new one and return the mapping.
+         * Internal function used for serialization support.
+         */
+        bool updateObjectID(osg::Node* node, std::map<ObjectID, ObjectID>& oldNewTable, osg::Referenced* obj);
 
     protected:
         virtual ~ObjectIndex() { }

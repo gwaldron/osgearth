@@ -906,6 +906,9 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
             group = dynamic_cast<osg::Group*>(rr.getNode());
             OE_DEBUG << LC << "Loaded from the cache (key = " << cacheKey << ")\n";
             ++_cacheHits;
+
+            // remap the feature index.
+            FeatureSourceIndexNode::reconstitute(group.get(), _featureIndex.get());
         }
         else if (rr.code() == ReadResult::RESULT_NOT_FOUND)
         {

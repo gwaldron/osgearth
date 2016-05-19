@@ -502,6 +502,9 @@ FeatureSourceIndex::getObjectID(FeatureID fid) const
         return OSGEARTH_OBJECTID_EMPTY;
 }
 
+// When Feature index data is deserialized, the old serialized ObjectIDs are 
+// no longer valid. This method will re-install the mappings in the master index
+// and write new local mappings with new ObjectIDs.
 void
 FeatureSourceIndex::update(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldToNew, const FIDMap& oldFIDMap, FIDMap& newFIDMap)
 {
@@ -529,6 +532,9 @@ FeatureSourceIndex::update(osg::Drawable* drawable, std::map<ObjectID,ObjectID>&
     }
 }
 
+// When Feature index data is deserialized, the old serialized ObjectIDs are 
+// no longer valid. This method will re-install the mappings in the master index
+// and write new local mappings with new ObjectIDs.
 void
 FeatureSourceIndex::update(osg::Node* node, std::map<ObjectID,ObjectID>& oldToNew, const FIDMap& oldFIDMap, FIDMap& newFIDMap)
 {

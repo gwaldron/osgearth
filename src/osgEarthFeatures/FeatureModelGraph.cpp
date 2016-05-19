@@ -908,7 +908,10 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
             ++_cacheHits;
 
             // remap the feature index.
-            FeatureSourceIndexNode::reconstitute(group.get(), _featureIndex.get());
+            if (group.valid() && _featureIndex.valid())
+            {
+                FeatureSourceIndexNode::reconstitute(group.get(), _featureIndex.get());
+            }
         }
         else if (rr.code() == ReadResult::RESULT_NOT_FOUND)
         {

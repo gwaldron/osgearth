@@ -539,7 +539,6 @@ void
 FeatureSourceIndex::update(osg::Node* node, std::map<ObjectID,ObjectID>& oldToNew, const FIDMap& oldFIDMap, FIDMap& newFIDMap)
 {
     unsigned count = 0;
-    ObjectID oldOID, newOID;
     if (_masterIndex->updateObjectID(node, oldToNew, this))
     {
         for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldToNew.end(); ++i)

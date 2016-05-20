@@ -48,6 +48,13 @@ void
 ScriptFilter::ctor()
 {
     _engine = ScriptEngineFactory::create(language().get());
+    if (_engine.valid())
+    {
+        if (profile().isSet())
+        {
+            _engine->setProfile(profile().get());
+        }
+    }
 }
 
 bool

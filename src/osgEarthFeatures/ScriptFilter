@@ -48,21 +48,28 @@ namespace osgEarth { namespace Features
         optional<std::string>& language() { return _language; }
         const optional<std::string>& language() const { return _language; }
 
+        /** Profile - set to "full" to enable property and geometry editing. */
+        optional<std::string>& profile() { return _profile; }
+        const optional<std::string>& profile() const { return _profile; }
+
         void fromConfig(const Config& conf) {
             _expression = conf.value();
             conf.getIfSet("language", _language);
+            conf.getIfSet("profile", _profile);
         }
 
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.value() = _expression.get();
             conf.addIfSet("language", _language);
+            conf.addIfSet("profile", _profile);
             return conf;
         }
 
     protected:
         optional<std::string> _expression;
         optional<std::string> _language;
+        optional<std::string> _profile;
     };
 
     /**

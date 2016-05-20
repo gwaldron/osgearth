@@ -74,6 +74,7 @@ namespace osgEarth { namespace Features
             const FilterContext&    context, 
             PointSet*               output);
 
+
     private:
         float    _density;
         bool     _random;

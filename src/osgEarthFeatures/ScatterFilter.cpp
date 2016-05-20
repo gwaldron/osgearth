@@ -202,24 +202,24 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
 
         const SpatialReference* geomSRS = context.profile()->getSRS();
 
-        PointSet* points = new PointSet();
+        osg::ref_ptr< PointSet > points = new PointSet();
 
         if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
         {
-            polyScatter( geom, geomSRS, context, points );
+            polyScatter( geom, geomSRS, context, points.get() );
         }
         else if (
             geom->getComponentType() == Geometry::TYPE_LINESTRING ||
             geom->getComponentType() == Geometry::TYPE_RING )            
         {
-            lineScatter( geom, geomSRS, context, points );
+            lineScatter( geom, geomSRS, context, points.get() );
         }
-        else {
-            OE_WARN << LC << "Sorry, don't know how to scatter a PointSet yet" << std::endl;
+        else {            
+            points = static_cast< PointSet*>(geom->cloneAs(Geometry::TYPE_POINTSET));
         }
 
         // replace the source geometry with the scattered points.
-        f->setGeometry( points );
+        f->setGeometry( points.get() );
     }
 
     return context;

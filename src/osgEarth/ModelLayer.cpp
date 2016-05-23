@@ -74,7 +74,6 @@ ModelLayerOptions::setDefaults()
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
 
-    //_cachePolicy.init ( CachePolicy::NO_CACHE );
     // Expressly set it here since we want no caching by default on a model layer.
     _cachePolicy = CachePolicy::NO_CACHE;
 }
@@ -93,6 +92,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "patch",          _terrainPatch );  
 
     conf.updateObjIfSet( "cache_policy", _cachePolicy );  
+    conf.updateIfSet("cacheid", _cacheId);
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -117,6 +117,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "patch",          _terrainPatch );
 
     conf.getObjIfSet( "cache_policy", _cachePolicy );  
+    conf.getIfSet("cacheid", _cacheId);
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -195,7 +196,15 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
             Cache* cache = Cache::get(dbOptions);
             if (cache && getCachePolicy().isCacheReadable())
             {
-                std::string binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                std::string binID;
+                if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
+                {
+                    binID = Stringify() << "model_" << _initOptions.cacheId().get();
+                }
+                else
+                {
+                    binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                }
                 CacheBin* cacheBin = cache->addBin(binID);
                 cacheBin->put(_dbOptions.get());
                 OE_INFO << LC << "Layer " << getName() << " opened cache bin " << binID << "\n";

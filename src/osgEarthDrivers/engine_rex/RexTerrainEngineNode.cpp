@@ -560,9 +560,10 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
+        VisitorData::store(nv, ENGINE_CONTEXT_TAG, this->getEngineContext());
         // Pass the tile creation context to the traversal.
-        osg::ref_ptr<osg::Referenced> data = nv.getUserData();
-        nv.setUserData( this->getEngineContext() );
+        //osg::ref_ptr<osg::Referenced> data = nv.getUserData();
+        //nv.setUserData( this->getEngineContext() );
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
@@ -572,8 +573,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         TerrainEngineNode::traverse( nv );
         this->getEngineContext()->endCull( cv );
 
-        if ( data.valid() )
-            nv.setUserData( data.get() );
+        //if ( data.valid() )
+        //    nv.setUserData( data.get() );
     }
 
     else

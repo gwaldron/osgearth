@@ -118,6 +118,12 @@ namespace osgEarth
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
+        /**
+         * Express cacheid (overrides an automatically generated cache id)
+         */
+        optional<std::string>& cacheId() { return _cacheId; }
+        const optional<std::string>& cacheId() const { return _cacheId; }
+
 
     public:
         virtual Config getConfig() const;
@@ -137,6 +143,7 @@ namespace osgEarth
         optional<unsigned>           _maskMinLevel;
         optional<bool>               _terrainPatch;
         optional<CachePolicy>        _cachePolicy;
+        optional<std::string>        _cacheId;
     };
 
     /**

@@ -132,7 +132,16 @@ LabelNode::setText( const std::string& text )
     osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
     if ( d )
     {
-        d->setText( text );
+        const TextSymbol* symbol = _style.get<TextSymbol>();
+
+        osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
+        if (symbol && symbol->encoding().isSet())
+        {
+            textEncoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+        }
+
+        d->setText(text, textEncoding);
+
         d->dirtyDisplayList();
         _text = text;
     }

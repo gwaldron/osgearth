@@ -252,6 +252,11 @@ FeatureSourceIndexNode::reIndexNode(osg::Node* node, std::map<ObjectID,ObjectID>
     _index->update(node, oldNew, _fids, newFIDMap);
 }
 
+FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
+{
+    return graph ? osgEarth::findTopMostNodeOfType<FeatureSourceIndexNode>(graph) : 0L;
+}
+
 //-----------------------------------------------------------------------------
 
 #undef  LC

@@ -111,7 +111,6 @@ namespace osgEarth { namespace Annotation
         void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
-
     public: // GeoPositionNode override
 
         virtual void setPriority( float value );
@@ -124,8 +123,7 @@ namespace osgEarth { namespace Annotation
     protected:
 
         virtual ~PlaceNode() { }
-        
-    private:
+
         osg::ref_ptr<osg::Image>           _image;
         std::string                        _text;
         Style                              _style;

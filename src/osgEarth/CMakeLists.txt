@@ -93,6 +93,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
 	GeoTransform
     GeometryClamper
+    GLSLChunker
     HeightFieldUtils
     Horizon
     HTTPClient
@@ -254,6 +255,7 @@ set(TARGET_SRC
     GeoMath.cpp
 	GeoTransform.cpp
     GeometryClamper.cpp
+    GLSLChunker.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
     HTTPClient.cpp

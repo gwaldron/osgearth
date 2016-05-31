@@ -38,15 +38,15 @@ Demonstrates how to select a style name using javascript.
                 function getStyleClass()
                 {
 					// Exclude any countries beginning with the letter A: 
-					if ( feature.attributes['cntry_name'].charAt(0) === 'A' )
+					if ( feature.properties.cntry_name.charAt(0) === 'A' )
 						return null;
 						
 					// If it starts with the letter C, return an inline style:
-					if ( feature.attributes['cntry_name'].charAt(0) == 'C' )
-						return '{ fill: #ffc8389f; }';
+					if ( feature.properties.cntry_name.charAt(0) == 'C' )
+						return '{ fill: #ffc838; stroke: #8f8838; extrusion-height: 250000; }';
 						
 					// Otherwise, color by population and return a stylesheet style:
-                    var pop = parseFloat(feature.attributes['pop_cntry']);
+                    var pop = parseFloat(feature.properties.pop_cntry);
                     if      ( pop <= 14045470 )  return "p1";
                     else if ( pop <= 43410900 )  return "p2";
                     else if ( pop <= 97228750 )  return "p3";

@@ -52,6 +52,9 @@ namespace osgEarth
             const std::string&        name, 
             const ModelSourceOptions& driverOptions =ModelSourceOptions() );
 
+        /** Copy ctor"/
+        ModelLayerOption(const ModelLayerOptions& rhs);
+
         /** dtor */
         virtual ~ModelLayerOptions() { }
 

@@ -55,6 +55,9 @@ namespace osgEarth
         /** dtor */
         virtual ~ModelLayerOptions() { }
 
+        /** Assignment operator */
+        ModelLayerOptions& operator = (const ModelLayerOptions&);
+
         /**
          * The readable name of the layer.
          */

@@ -65,7 +65,7 @@ ConfigOptions()
 }
 
 ModelLayerOption::ModelLayerOption(const ModelLayerOptions& rhs) :
-ConfigOptions(rhs.getConfig()
+ConfigOptions(rhs.getConfig())
 {
     _name = optional<std::string>(rhs._name);
     _driver = optional<ModelSourceOptions>(rhs._driver);

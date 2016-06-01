@@ -35,7 +35,7 @@ osgEarth Sample - Graticule Extension.
             <label_color>#ffff00ff</label_color>
             
             <!-- Specify the line width -->
-            <line_width>2</line_width>
+            <line_width>2.5</line_width>
         </graticule>
     </extensions>
 </map>

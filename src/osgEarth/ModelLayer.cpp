@@ -64,6 +64,41 @@ ConfigOptions()
     _driver = driverOptions;
 }
 
+ModelLayerOption::ModelLayerOption(const ModelLayerOptions& rhs) :
+ConfigOptions(rhs.getConfig())
+{
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+}
+
+osgEarth::ModelLayerOptions& ModelLayerOptions::operator =(const osgEarth::ModelLayerOptions& rhs)
+{
+    ConfigOptions::operator =(rhs);
+
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+
+    return *this;
+}
+
 void
 ModelLayerOptions::setDefaults()
 {

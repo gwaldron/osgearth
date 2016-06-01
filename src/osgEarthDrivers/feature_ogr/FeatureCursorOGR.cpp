@@ -54,7 +54,7 @@ namespace
         for (Geometry::iterator i = geometry->begin(); i != geometry->end(); ++i)
         {
             // a "NaN" Z value is automatically changed to zero:
-            if (::isnan(i->z()))
+            if (std::isnan(i->z()))
                 i->z() = 0.0;
 
             // then we test for a valid point.

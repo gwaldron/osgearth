@@ -84,7 +84,7 @@ namespace osgEarth { namespace Util {
              * Called after a new tile is created, but before it's merged into the live
              * scene graph. Runs in a pager thread.
              */
-            void onCreateNode(const TileKey& key, osg::Node* node) { }
+            virtual void onCreateNode(const TileKey& key, osg::Node* node) { }
         };
 
         /** Adds a pager callback. */

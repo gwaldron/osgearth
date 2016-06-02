@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
+#include <osg/Math>
 #include <algorithm>
 
 #define LC "[FeatureCursorOGR] "
@@ -54,7 +55,7 @@ namespace
         for (Geometry::iterator i = geometry->begin(); i != geometry->end(); ++i)
         {
             // a "NaN" Z value is automatically changed to zero:
-            if (std::isnan(i->z()))
+            if (osg::isNaN(i->z()))
                 i->z() = 0.0;
 
             // then we test for a valid point.

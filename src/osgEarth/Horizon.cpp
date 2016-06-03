@@ -75,27 +75,11 @@ bool
 Horizon::put(osg::NodeVisitor& nv)
 {
     return VisitorData::store( nv, OSGEARTH_HORIZON_UDC_NAME, this );
-//#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-//    osg::UserDataContainer* udc = nv.getOrCreateUserDataContainer();
-//    unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
-//    if (i < udc->getNumUserObjects()) udc->setUserObject( i, this );
-//    else udc->addUserObject(this);
-//    return true;
-//#else
-//    return false;
-//#endif
 }
 
 Horizon* Horizon::get(osg::NodeVisitor& nv)
 {
     return VisitorData::fetch<Horizon>( nv, OSGEARTH_HORIZON_UDC_NAME );
-//#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-//    osg::UserDataContainer* udc = nv.getUserDataContainer();
-//    if ( !udc ) return 0L;
-//    unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
-//    if ( i < udc->getNumUserObjects() ) return static_cast<Horizon*>(udc->getUserObject(i));
-//#endif
-//    return 0L;
 }
 
 void

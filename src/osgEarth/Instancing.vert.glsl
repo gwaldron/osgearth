@@ -28,9 +28,11 @@ void oe_di_setInstancePosition(inout vec4 VertexMODEL)
     
     // rebuild positioning matrix and transform the vert. (Note, the matrix is actually
     // transposed so we have to reverse the multiplication order.)
-    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, vec4(0,0,0,1));
+    mat4 xform = mat4(m0, m1, m2, vec4(0,0,0,1));
+
+    VertexMODEL = VertexMODEL * xform;
 
     // rotate the normal vector in the same manner.
-    vp_Normal = vp_Normal * mat3(m0.xyz, m1.xyz, m2.xyz);
+    vp_Normal = vp_Normal * mat3(xform);
 }
 

@@ -412,7 +412,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     osg::Vec3d worldUp;
 
     // Radius at eyepoint (geocentric)
-    double R;
+    double R = 0;
 
     // height above sea level
     double hasl;

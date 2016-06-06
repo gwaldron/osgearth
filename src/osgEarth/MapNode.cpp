@@ -759,12 +759,13 @@ MapNode::traverse( osg::NodeVisitor& nv )
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
-    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR || nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
-        nv.setUserData( this );
+        VisitorData::store(nv, "osgEarth::MapNode", this);
+        //osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
+        //nv.setUserData( this );
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-        nv.setUserData( oldUserData.get() );
+        //nv.setUserData( oldUserData.get() );
     }
 
     else

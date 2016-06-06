@@ -38,6 +38,7 @@ struct Settings
     optional<double> visibility;
     optional<double> rain;
     optional<double> snow;
+    optional<bool>   lighting;
     
     void apply(Atmosphere& atmo)
     {
@@ -60,6 +61,12 @@ struct Settings
             atmo.GetConditions().SetPrecipitation(CloudLayer::DRY_SNOW, snow.get());
             snow.unset();
         }
+
+        if (lighting.isSet())
+        {
+            sky->setLighting(lighting.get());
+            lighting.unset();
+        }
     }
 };
 Settings s_settings;
@@ -69,7 +76,7 @@ template<typename T> struct Set : public ui::ControlEventHandler
 {
     optional<T>& _var;
     Set(optional<T>& var) : _var(var) { }
-    void onValueChanged(ui::Control*, double value) { _var = value; }
+    void onValueChanged(ui::Control*, T value) { _var = value; }
 };
 
 struct SetDateTime : public ui::ControlEventHandler
@@ -102,6 +109,9 @@ Container* createUI()
     ++r;
     grid->setControl(0, r, new LabelControl("Time"));
     grid->setControl(1, r, new HSliderControl(0, 24, 0, new SetDateTime()));
+    ++r;
+    grid->setControl(0, r, new LabelControl("Lighting"));
+    grid->setControl(1, r, new CheckBoxControl(false, new Set<bool>(s_settings.lighting)));
     ++r;
     grid->getControl(1, r-1)->setHorizFill(true,200);
     return box;

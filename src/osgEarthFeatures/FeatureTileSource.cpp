@@ -175,11 +175,15 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 
     preProcess( image.get(), buildData.get() );
 
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
     // figure out if and how to style the geometry.
     if ( _features->hasEmbeddedStyles() )
     {
+
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery);
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -206,18 +210,20 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
             {
                 const StyleSelector& sel = *i;
                 const Style* style = styles->getStyle( sel.getSelectedStyleName() );
-                queryAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get(), key.getExtent(), image.get() );
+                Query query = sel.query().get();
+                query.tileKey() = key;
+                queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get() );
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle( *style, Query(), buildData.get(), key.getExtent(), image.get() );
+            queryAndRenderFeaturesForStyle( *style, defaultQuery, buildData.get(), key.getExtent(), image.get() );
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key.getExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( Style(), defaultQuery, buildData.get(), key.getExtent(), image.get() );
     }
 
     // final tile processing after all styles are done

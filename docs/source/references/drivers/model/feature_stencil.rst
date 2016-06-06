@@ -29,10 +29,6 @@ Properties:
 
 .. include:: feature_model_shared_props.rst
 
-Also see:
-
-    ``feature_stencil_line_draping.earth`` sample in the repo
-    
 Notes:
 
 * This plugin does NOT support paging (display layouts).

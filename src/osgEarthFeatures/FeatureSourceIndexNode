@@ -172,13 +172,16 @@ namespace osgEarth { namespace Features
         /** Fetches the entire set of FIDs registered with the index by this node. */
         bool getAllFIDs(std::vector<FeatureID>& output) const;
 
+        /** Finds a FeatureSourceIndexNode in a scene graph. */
+        static FeatureSourceIndexNode* get(osg::Node* graph);
+
     public: // FeatureIndexBuilder
 
         ObjectID tagDrawable    (osg::Drawable* drawable, Feature* feature);
         ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
         ObjectID tagNode        (osg::Node*     node,     Feature* feature);
 
-    public: // To support serialization only
+    public: // To support serialization only - do not use directly
 
         const FIDMap& getFIDMap() const { return _fids; }
         void setFIDMap(const FIDMap& fids);
@@ -203,10 +206,6 @@ namespace osgEarth { namespace Features
 
     private: // transient
         osg::ref_ptr<FeatureSourceIndex> _index;
-
-    //public:
-        //virtual const char* className()   const { return "FeatureSourceIndexNode"; }
-        //virtual const char* libraryName() const { return "osgEarthFeatures"; }
     };
 
 } } // namespace osgEarth::Features

@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
+#include <osg/Math>
 #include <algorithm>
 
 #define LC "[FeatureCursorOGR] "
@@ -42,16 +43,22 @@ namespace
     }
 
     /**
-     * Checks to see if all points in the Geometry are valid.
+     * Checks to see if all points in the Geometry are valid, and makes minor repairs
+     * if necessary. Returns false if the geometry cannot be validated.
      */
-    inline bool isGeometryValid( Geometry* geometry )
+    inline bool validateGeometry( Geometry* geometry )
     {        
         if (!geometry) return false;
 
         if (!geometry->isValid()) return false;
 
-        for (Geometry::const_iterator i = geometry->begin(); i != geometry->end(); ++i)
+        for (Geometry::iterator i = geometry->begin(); i != geometry->end(); ++i)
         {
+            // a "NaN" Z value is automatically changed to zero:
+            if (osg::isNaN(i->z()))
+                i->z() = 0.0;
+
+            // then we test for a valid point.
             if (!isPointValid( *i ))
             {
                 return false;
@@ -238,7 +245,7 @@ FeatureCursorOGR::readChunk()
 
                 if (feature.valid() &&
                     !_source->isBlacklisted( feature->getFID() ) &&
-                    isGeometryValid( feature->getGeometry() ))
+                    validateGeometry( feature->getGeometry() ))
                 {
                     filterList.push_back( feature.release() );
                 }

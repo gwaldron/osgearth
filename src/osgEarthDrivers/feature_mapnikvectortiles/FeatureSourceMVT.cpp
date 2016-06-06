@@ -108,6 +108,12 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
+        if (!query.tileKey().isSet())
+        {
+            OE_WARN << LC << "No tile key in query; no features will be returned\n";
+            return 0L;
+        }
+
         TileKey key = *query.tileKey();
 
         int z = key.getLevelOfDetail();

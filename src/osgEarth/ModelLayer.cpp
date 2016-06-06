@@ -48,6 +48,8 @@ namespace
 
 //------------------------------------------------------------------------
 
+namespace osgEarth
+{
 ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
 ConfigOptions( options )
 {
@@ -64,6 +66,41 @@ ConfigOptions()
     _driver = driverOptions;
 }
 
+ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
+ConfigOptions(rhs.getConfig())
+{
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+}
+
+ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
+{
+    ConfigOptions::operator =(rhs);
+
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+
+    return *this;
+}
+
 void
 ModelLayerOptions::setDefaults()
 {
@@ -74,7 +111,6 @@ ModelLayerOptions::setDefaults()
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
 
-    //_cachePolicy.init ( CachePolicy::NO_CACHE );
     // Expressly set it here since we want no caching by default on a model layer.
     _cachePolicy = CachePolicy::NO_CACHE;
 }
@@ -93,6 +129,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "patch",          _terrainPatch );  
 
     conf.updateObjIfSet( "cache_policy", _cachePolicy );  
+    conf.updateIfSet("cacheid", _cacheId);
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -117,6 +154,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "patch",          _terrainPatch );
 
     conf.getObjIfSet( "cache_policy", _cachePolicy );  
+    conf.getIfSet("cacheid", _cacheId);
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -195,7 +233,15 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
             Cache* cache = Cache::get(dbOptions);
             if (cache && getCachePolicy().isCacheReadable())
             {
-                std::string binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                std::string binID;
+                if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
+                {
+                    binID = Stringify() << "model_" << _initOptions.cacheId().get();
+                }
+                else
+                {
+                    binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                }
                 CacheBin* cacheBin = cache->addBin(binID);
                 cacheBin->put(_dbOptions.get());
                 OE_INFO << LC << "Layer " << getName() << " opened cache bin " << binID << "\n";
@@ -452,4 +498,5 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
     }
 
     return _maskBoundary.get();
+}
 }

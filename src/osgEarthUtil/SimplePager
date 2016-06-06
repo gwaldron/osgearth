@@ -76,19 +76,22 @@ namespace osgEarth { namespace Util {
         virtual osg::Node* createNode(const TileKey& key, ProgressCallback* progress);
 
         /**
-        * Gets the bounding sphere for a given TileKey.
-        */
-        osg::BoundingSphere getBounds(const TileKey& key) const;
+         * Callback structure for pager events
+         */
+        struct Callback : public osg::Referenced
+        {
+            /**
+             * Called after a new tile is created, but before it's merged into the live
+             * scene graph. Runs in a pager thread.
+             */
+            virtual void onCreateNode(const TileKey& key, osg::Node* node) { }
+        };
 
-        /**
-        * The root node is a special node.
-        */
-        osg::Node* buildRootNode();
+        /** Adds a pager callback. */
+        void addCallback(Callback* callback);
 
-        /**
-        * Creates a PagedLOD for the given TileKEy
-        */
-        osg::Node* createPagedNode(const TileKey& key, ProgressCallback* progress);
+        /** Removes a pager callback. */
+        void removeCallback(Callback* callback);
 
     public:
         struct ProgressTracker : public osg::NodeCallback {
@@ -104,6 +107,21 @@ namespace osgEarth { namespace Util {
 
     protected:
 
+        /**
+        * Gets the bounding sphere for a given TileKey.
+        */
+        osg::BoundingSphere getBounds(const TileKey& key) const;
+
+        /**
+        * The root node is a special node.
+        */
+        osg::Node* buildRootNode();
+
+        /**
+        * Creates a PagedLOD for the given TileKEy
+        */
+        osg::Node* createPagedNode(const TileKey& key, ProgressCallback* progress);
+
         bool _additive;
         double _rangeFactor;
         unsigned int _minLevel;
@@ -113,6 +131,12 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
         float _priorityScale;
         float _priorityOffset;
+        
+        mutable Threading::Mutex _mutex;
+        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        Callbacks _callbacks;
+
+        void fire_onCreateNode(const TileKey& key, osg::Node* node);
     };
 
 } } // namespace osgEarth::Util

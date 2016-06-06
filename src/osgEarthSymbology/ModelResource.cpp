@@ -89,15 +89,17 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
 {
     osg::ref_ptr< osgDB::Options > options = dbOptions ? new osgDB::Options( *dbOptions ) : 0L;
 
-#if 0
     // Explicitly cache images so that models that share images will only load one copy.
+    // If the options struture doesn't contain an object cache, OSG will use the global
+    // object cache stored in the Registry. Without this, models that share textures or
+    // use an atlas will duplicate memory usage.
+    //
+    // I don't like having this here - it seems like it belongs elsewhere and the caller
+    // should be passing it in. But it needs to be set, so keep for now.
     if ( options.valid() )
     {
-        // does this REALLY belong here? Or should we rely on the incoming dboptions instead
-        // so the user/caller can decide if and how to cache images like texture atlases?
         options->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
     }
-#endif
 
     osg::Node* node = 0L;
 

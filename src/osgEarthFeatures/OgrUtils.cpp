@@ -83,17 +83,15 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
 {
     Symbology::Geometry* output = 0L;
 
-    OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
+    OGRwkbGeometryType wkbType = wkbFlatten(OGR_G_GetGeometryType( geomHandle ));        
 
     if (
-        wkbType == wkbPolygon ||
-        wkbType == wkbPolygon25D )
+        wkbType == wkbPolygon )
     {
         output = createPolygon( geomHandle );
     }
     else if (
-        wkbType == wkbLineString ||
-        wkbType == wkbLineString25D )
+        wkbType == wkbLineString  )
     {
         int numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::LineString( numPoints );
@@ -107,8 +105,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
         populate( geomHandle, output, numPoints );
     }
     else if ( 
-        wkbType == wkbPoint ||
-        wkbType == wkbPoint25D )
+        wkbType == wkbPoint )
     {
         int numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::PointSet( numPoints );
@@ -116,13 +113,9 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     }
     else if (
         wkbType == wkbGeometryCollection ||
-        wkbType == wkbGeometryCollection25D ||
         wkbType == wkbMultiPoint ||
-        wkbType == wkbMultiPoint25D ||
         wkbType == wkbMultiLineString ||
-        wkbType == wkbMultiLineString25D ||
-        wkbType == wkbMultiPolygon ||
-        wkbType == wkbMultiPolygon25D )
+        wkbType == wkbMultiPolygon )
     {
         Symbology::MultiGeometry* multi = new Symbology::MultiGeometry();
 

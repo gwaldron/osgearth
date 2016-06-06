@@ -42,6 +42,8 @@ namespace
 
     typedef std::list<const osg::StateSet*> StateSetStack;
 
+#if 0
+
     static osg::StateAttribute::GLModeValue 
     getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
     {
@@ -65,7 +67,9 @@ namespace
         }
         return base_val;
     }
+#endif
     
+#if 0
     static const osg::Light*
     getLightByID(const StateSetStack& statesetStack, int id)
     {
@@ -98,6 +102,7 @@ namespace
         }
         return base_light;
     }
+#endif
     
     static const osg::Material*
     getFrontMaterial(const StateSetStack& statesetStack)

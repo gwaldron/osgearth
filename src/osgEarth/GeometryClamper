@@ -29,8 +29,6 @@
 
 namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Utility that takes existing OSG geometry and modifies it so that
      * it "conforms" with a terrain patch.

@@ -250,16 +250,14 @@ public:
 
                     initSchema();
 
-                    OGRwkbGeometryType wkbType = OGR_FD_GetGeomType( OGR_L_GetLayerDefn( _layerHandle ) );
+					OGRwkbGeometryType wkbType = wkbFlatten(OGR_FD_GetGeomType(OGR_L_GetLayerDefn(_layerHandle)));
                     if (
-                        wkbType == wkbPolygon ||
-                        wkbType == wkbPolygon25D )
+                        wkbType == wkbPolygon  )
                     {
                         _geometryType = Geometry::TYPE_POLYGON;
                     }
                     else if (
-                        wkbType == wkbLineString ||
-                        wkbType == wkbLineString25D )
+                        wkbType == wkbLineString  )
                     {
                         _geometryType = Geometry::TYPE_LINESTRING;
                     }
@@ -269,20 +267,15 @@ public:
                         _geometryType = Geometry::TYPE_RING;
                     }
                     else if ( 
-                        wkbType == wkbPoint ||
-                        wkbType == wkbPoint25D )
+                        wkbType == wkbPoint  )
                     {
                         _geometryType = Geometry::TYPE_POINTSET;
                     }
                     else if (
                         wkbType == wkbGeometryCollection ||
-                        wkbType == wkbGeometryCollection25D ||
                         wkbType == wkbMultiPoint ||
-                        wkbType == wkbMultiPoint25D ||
                         wkbType == wkbMultiLineString ||
-                        wkbType == wkbMultiLineString25D ||
-                        wkbType == wkbMultiPolygon ||
-                        wkbType == wkbMultiPolygon25D )
+                        wkbType == wkbMultiPolygon )
                     {
                         _geometryType = Geometry::TYPE_MULTI;
                     }

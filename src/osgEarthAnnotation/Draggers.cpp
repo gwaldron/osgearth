@@ -339,16 +339,10 @@ namespace
             osg::Matrix mvm = ri.getState()->getModelViewMatrix();
             osg::Matrix pm = ri.getState()->getProjectionMatrix();
             double l, r, b, t, n, f;
-            pm.getFrustum(l, r, b, t, n, f);
-            const osg::Viewport* vp = ri.getState()->getCurrentViewport();
+            pm.getFrustum(l, r, b, t, n, f);            
 
-            double xr = (r-l) / ((double)vp->width());
-            double yr = (t-b) / ((double)vp->height());
+            ri.getState()->applyModelViewMatrix( new osg::RefMatrix(pm) );            
 
-
-            ri.getState()->applyModelViewMatrix( new osg::RefMatrix(pm) );
-            //ri.getState()->applyProjectionMatrix(new osg::RefMatrix(pm));
-            
             drawable->drawImplementation( ri );
         }
     };

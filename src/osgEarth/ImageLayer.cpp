@@ -423,7 +423,7 @@ ImageLayer::getOrCreatePreCacheOp()
                 _targetProfileHint->isEquivalentTo( getProfile() );
 
             ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
-            op->_processor.init( _runtimeOptions, _dbOptions.get(), layerInTargetProfile );
+            op->_processor.init( _runtimeOptions, _readOptions.get(), layerInTargetProfile );
 
             _preCacheOp = op;
         }
@@ -432,14 +432,14 @@ ImageLayer::getOrCreatePreCacheOp()
 }
 
 
-CacheBin*
-ImageLayer::getCacheBin( const Profile* profile)
-{
-    // specialize ImageLayer to only consider the horizontal signature (ignore vertical
-    // datum component for images)
-    std::string binId = *_runtimeOptions.cacheId() + "_" + profile->getHorizSignature();
-    return TerrainLayer::getCacheBin( profile, binId );
-}
+//CacheBin*
+//ImageLayer::getCacheBin( const Profile* profile)
+//{
+//    // specialize ImageLayer to only consider the horizontal signature (ignore vertical
+//    // datum component for images)
+//    std::string binId = *_runtimeOptions.cacheId() + "_" + profile->getHorizSignature();
+//    return TerrainLayer::getCacheBin( profile, binId );
+//}
 
 
 GeoImage

@@ -120,12 +120,13 @@ FeatureModelSource::setFeatureSource( FeatureSource* source )
     }
 }
 
-void 
-FeatureModelSource::initialize(const osgDB::Options* dbOptions)
+void
+FeatureModelSource::initialize(const osgDB::Options* readOptions)
 {
-    _dbOptions = osg::clone(dbOptions, osg::CopyOp::SHALLOW_COPY);
+    if (readOptions)
+        setReadOptions(readOptions);
 
-    ModelSource::initialize( dbOptions );
+    ModelSource::initialize( readOptions );
     
     // the data source from which to pull features:
     if ( _options.featureSource().valid() )
@@ -144,7 +145,7 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
     // initialize the feature source if it exists:
     if ( _features.valid() )
     {
-        _features->initialize( dbOptions );
+        _features->initialize( _readOptions.get() );
 
         // Try to fill the DataExtent list using the FeatureProfile
         const FeatureProfile* featureProfile = _features->getFeatureProfile();
@@ -165,6 +166,20 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
     else
     {
         OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
+    }
+}
+
+void
+FeatureModelSource::setReadOptions(const osgDB::Options* readOptions)
+{
+    _readOptions = readOptions ? osg::clone(readOptions) : new osgDB::Options();
+    
+    // for texture atlas support
+    _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
+
+    if (_features.valid())
+    {
+        _features->setReadOptions(_readOptions.get());
     }
 }
 
@@ -194,14 +209,12 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
         return 0L;
     }
 
-    _dbOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
-
     // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         map, 
         _options.styles().get(), 
         _features.get(), 
-        _dbOptions.get() );
+        _readOptions.get() );
 
     // Name the session (for debugging purposes)
     session->setName( this->getName() );
@@ -217,7 +230,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
 
     graph->setName( session->getName() );
 
-    CacheBin* bin = CacheBin::get(_dbOptions.get());
+    CacheBin* bin = CacheBin::get(_readOptions.get());
     if ( bin )
         OE_DEBUG << LC << "Found a cache bin in FeatureModelSource\n";
 

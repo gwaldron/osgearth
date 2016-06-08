@@ -197,13 +197,19 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
 }
 
 
-
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
 AnnotationNode          ( conf ),
 _horizonCullingRequested( true )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
+    setConfig(conf);
+}
+
+void
+GeoPositionNode::setConfig(const Config& conf)
+{
+    //AnnotationNode::setConfig(conf);
 
     if ( conf.hasChild( "position" ) )
     {

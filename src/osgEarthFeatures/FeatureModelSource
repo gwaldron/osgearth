@@ -197,7 +197,9 @@ namespace osgEarth { namespace Features
 
     public: // ModelSource
 
-        virtual void initialize( const osgDB::Options* dbOptions =0L );
+        virtual void initialize(const osgDB::Options* readOptions);
+
+        virtual void setReadOptions(const osgDB::Options* readOptions);
 
         virtual osg::Node* createNodeImplementation(
             const Map*        map,
@@ -242,7 +244,7 @@ namespace osgEarth { namespace Features
         osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;
-        osg::ref_ptr<osgDB::Options>       _dbOptions;
+        osg::ref_ptr<osgDB::Options>       _readOptions;
 
     };
 

@@ -188,12 +188,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
         return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
-
-    /** User data structure for traversing the feature graph. */
-    struct CullUserData : public osg::Referenced
-    {
-        double _cameraElevation;
-    };
 };
 
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
@@ -886,12 +880,12 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
     osg::ref_ptr<osg::Group> group;
 
     // first, make a cache key and try to load it from the cache.
-    CacheBin* cacheBin = CacheBin::get(readOptions);
-    if (cacheBin)
+    CacheBin*             cacheBin = CacheBin::get(readOptions);
+    optional<CachePolicy> policy   = CachePolicy::get(readOptions);
+
+    if (cacheBin && policy->isCacheReadable())
     {
         ++_cacheReads;
-
-        optional<CachePolicy> policy = CachePolicy::get(readOptions);
         
         ReadResult rr = cacheBin->readObject(cacheKey, readOptions);
 
@@ -940,8 +934,10 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
                                     const osgDB::Options* writeOptions)
 {
     
-    CacheBin* cacheBin = CacheBin::get(writeOptions);
-    if (cacheBin)
+    CacheBin*             cacheBin = CacheBin::get(writeOptions);
+    optional<CachePolicy> policy   = CachePolicy::get(writeOptions);
+
+    if (cacheBin && policy->isCacheWriteable())
     {
         cacheBin->writeNode(cacheKey, node, Config(), writeOptions);
         OE_DEBUG << LC << "Wrote " << cacheKey << " to cache\n";

@@ -216,28 +216,13 @@ namespace
     // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
     // default CacheBin of a Cache found in the dboptions; failing that, call back on
     // the default CacheBin of the registry-wide cache.
-    CacheBin* s_getCacheBin(const osgDB::Options* dbOptions)
+    CacheBin* s_getCacheBin(const osgDB::Options* readOptions)
     {
-        const osgDB::Options* o = dbOptions;
-        
-        if ( o == 0L )
+        CacheBin* bin = 0L;
+        CacheManager* cacheManager = CacheManager::get(readOptions);
+        if (cacheManager && cacheManager->getCache())
         {
-            o = Registry::instance()->getDefaultOptions();
-        }
-
-        CacheBin* bin = CacheBin::get( o );
-        if ( !bin )
-        {
-            Cache* cache = Cache::get( o );
-            //if ( !cache )
-            //{
-            //    cache = Registry::instance()->getCache();
-            //}
-
-            if ( cache )
-            {
-                bin = cache->getOrCreateDefaultBin();
-            }
+            bin = cacheManager->getCache()->getOrCreateDefaultBin();
         }
         return bin;
     }

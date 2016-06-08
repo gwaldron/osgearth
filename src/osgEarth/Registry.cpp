@@ -267,17 +267,18 @@ void
 Registry::setDefaultCachePolicy( const CachePolicy& value )
 {
     _defaultCachePolicy = value;
-    if ( !_overrideCachePolicy.isSet() )
-        _defaultCachePolicy->store(_defaultOptions.get());
-    else
-        _overrideCachePolicy->store(_defaultOptions.get());
+
+    //if ( !_overrideCachePolicy.isSet() )
+    //    _defaultCachePolicy->store(_defaultOptions.get());
+    //else
+    //    _overrideCachePolicy->store(_defaultOptions.get());
 }
 
 void
 Registry::setOverrideCachePolicy( const CachePolicy& value )
 {
     _overrideCachePolicy = value;
-    _overrideCachePolicy->store( _defaultOptions.get() );
+    //_overrideCachePolicy->store( _defaultOptions.get() );
 }
 
 bool
@@ -371,39 +372,37 @@ Registry::overrideCachePolicy() const
 }
 
 osgEarth::Cache*
-Registry::createCache() const
+Registry::getDefaultCache() const
 {
-    Cache* cache = 0L;
-
-    // see if there's a cache in the envvar; if so, create a cache.
-    // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
-    // it's used in the driver(s) itself.
-    const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
-    if (cachePath)
+    if (!_defaultCache.valid())
     {
-        CacheOptions cacheOptions;
-        cacheOptions.setDriver(getDefaultCacheDriverName());
-        cache = CacheFactory::create(cacheOptions);
+        Threading::ScopedMutexLock lock(_regMutex);
+        if (!_defaultCache.valid())
+        {
+            // see if there's a cache in the envvar; if so, create a cache.
+            // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
+            // it's used in the driver(s) itself.
+            const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+            if (cachePath)
+            {
+                const char* driverName = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
+                if (driverName)
+                {
+                    CacheOptions cacheOptions;
+                    cacheOptions.setDriver(driverName);
+                    _defaultCache = CacheFactory::create(cacheOptions);
+                }
+            }
+        }
     }
-
-    return cache;
-}
-
-#if 0
-osgEarth::Cache*
-Registry::getCache() const
-{
-	return _cache.get();
+    return _defaultCache.get();
 }
 
 void
-Registry::setCache( osgEarth::Cache* cache )
+Registry::setDefaultCache(Cache* cache)
 {
-	_cache = cache;
-    if ( cache )
-        cache->apply( _defaultOptions.get() );
+    _defaultCache = cache;
 }
-#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)

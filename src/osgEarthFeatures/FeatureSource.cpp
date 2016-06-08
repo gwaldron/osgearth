@@ -96,12 +96,12 @@ FeatureSourceOptions::getConfig() const
 //------------------------------------------------------------------------
 
 FeatureSource::FeatureSource(const ConfigOptions&  options,
-                             const osgDB::Options* dbOptions) :
+                             const osgDB::Options* readOptions) :
 _options( options )
 {    
-    _dbOptions  = dbOptions;
-    _uriContext = URIContext( dbOptions );
-    _cache      = Cache::get( dbOptions );
+    _readOptions  = readOptions;
+    _uriContext  = URIContext( _readOptions.get() );
+    //_cache      = Cache::get( dbOptions );
 }
 
 FeatureSource::~FeatureSource()
@@ -110,10 +110,10 @@ FeatureSource::~FeatureSource()
 }
 
 void
-FeatureSource::initialize(const osgDB::Options* dbo)
+FeatureSource::initialize(const osgDB::Options* readOptions)
 {
-    if ( dbo )
-        _dbOptions = dbo;
+    if ( readOptions )
+        _readOptions = readOptions;
     
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
@@ -123,7 +123,7 @@ FeatureSource::initialize(const osgDB::Options* dbo)
         if ( filter )
         {
             _filters.push_back( filter );
-            filter->initialize( dbo );
+            filter->initialize( readOptions );
         }
     }
 }

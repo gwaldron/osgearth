@@ -493,8 +493,8 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
         if ( options )
             extension->setDBOptions( options );
 
-        else if ( getMap()->getDBOptions() )
-            extension->setDBOptions( getMap()->getDBOptions() );
+        else if ( getMap()->getReadOptions() )
+            extension->setDBOptions( getMap()->getReadOptions() );
         
         // start it.
         ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
@@ -589,8 +589,8 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     }
 
     // create the scene graph:
-    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
-    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
+    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
+    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
 
     if ( node )
     {

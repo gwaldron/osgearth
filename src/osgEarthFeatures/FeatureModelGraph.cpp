@@ -1469,6 +1469,8 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
 void
 FeatureModelGraph::checkForGlobalStyles( const Style& style )
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
     {
@@ -1664,6 +1666,8 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::changeOverlay()
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+
     if (_overlayChange == OVERLAY_INSTALL_CLAMPABLE &&
         _clampable.valid()                          && 
         _clampable.get() != _overlayInstalled )
@@ -1707,6 +1711,8 @@ FeatureModelGraph::changeOverlay()
 void
 FeatureModelGraph::redraw()
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+
     // clear it out
     removeChildren( 0, getNumChildren() );
 

@@ -272,7 +272,7 @@ ModelLayer::setReadOptions(const osgDB::Options* readOptions)
             CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
             if (bin)
             {
-                OE_INFO << LC << "Layer " << getName() << " opened cache bin " << binID << "\n";
+                OE_INFO << LC << "Layer " << getName() << " opened cache bin [" << binID << "]\n";
                 _cacheSettings->setCacheBin( bin );
                 _cacheSettings->integrateCachePolicy(_initOptions.cachePolicy());
             }

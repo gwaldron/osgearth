@@ -214,9 +214,17 @@ namespace
     FileSystemCacheBin::getValidKey(const std::string& key)
     {
         if ( getHashKeys() )
-            return Stringify() << std::hex << std::setw(8) << std::setfill('0') << osgEarth::hashString(key);
+        {
+            unsigned hash = osgEarth::hashString(key);
+            unsigned b1 = (hash & 0xfff00000) >> 20;
+            unsigned b2 = (hash & 0x000fff00) >> 8;
+            unsigned b3 = (hash & 0x000000ff);
+            return Stringify() << std::hex << std::setfill('0') << std::setw(3) << b1 << "/" << b2 << "/" << std::setw(2) << b3;
+        }
         else
+        {
             return osgEarth::toLegalFileName(key);
+        }
     }
 
     bool

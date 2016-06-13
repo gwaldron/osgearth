@@ -62,7 +62,7 @@ _styleSheet        ( styleSheet )
     _features.push_back( feature );
 
     FeatureNode::setMapNode( mapNode );
-    
+
     Style style = in_style;
     if (style.empty() && feature->style().isSet())
     {
@@ -72,7 +72,7 @@ _styleSheet        ( styleSheet )
     setStyle( style );
 }
 
-FeatureNode::FeatureNode(MapNode* mapNode, 
+FeatureNode::FeatureNode(MapNode* mapNode,
                          FeatureList& features,
                          const Style& style,
                          const GeometryCompilerOptions& options,
@@ -108,7 +108,7 @@ FeatureNode::build()
 
     // compilation options.
     GeometryCompilerOptions options = _options;
-    
+
     // figure out what kind of altitude manipulation we need to perform.
     AnnotationUtils::AltitudePolicy ap;
     AnnotationUtils::getAltitudePolicy( style, ap );
@@ -175,7 +175,7 @@ FeatureNode::build()
         {
             node = AnnotationUtils::installTwoPassAlpha( node );
         }
-        
+
         _attachPoint = new osg::Group();
         _attachPoint->addChild( node );
 
@@ -201,7 +201,7 @@ FeatureNode::build()
             }
         }
 
-        else 
+        else
         {
             this->addChild( _attachPoint );
 
@@ -211,14 +211,17 @@ FeatureNode::build()
             applyRenderSymbology( style );
         }
 
-        if ( ap.sceneClamping )
+        if ( getMapNode()->getTerrain() )
         {
-            getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-            clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
-        }
-        else
-        {
-            getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
+            if ( ap.sceneClamping )
+            {
+                getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
+                clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
+            }
+            else
+            {
+                getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
+            }
         }
     }
 }
@@ -228,7 +231,7 @@ FeatureNode::setMapNode( MapNode* mapNode )
 {
     if ( getMapNode() != mapNode )
     {
-        if (_clampCallback.valid() && getMapNode())
+        if (_clampCallback.valid() && getMapNode() && getMapNode()->getTerrain())
             getMapNode()->getTerrain()->removeTerrainCallback( _clampCallback.get() );
 
         AnnotationNode::setMapNode( mapNode );
@@ -292,8 +295,8 @@ void FeatureNode::init()
 
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::onTileAdded(const TileKey&          key, 
-                         osg::Node*              tile, 
+FeatureNode::onTileAdded(const TileKey&          key,
+                         osg::Node*              tile,
                          TerrainCallbackContext& context)
 {
     if ( !tile || _featurePolytope.contains( tile->getBound() ) )
@@ -338,7 +341,7 @@ AnnotationNode(conf)
         if ( !geom.valid() )
             OE_WARN << LC << "Config is missing required 'geometry' element" << std::endl;
     }
-    
+
     osg::ref_ptr<const SpatialReference> srs;
     srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
     if ( !srs.valid() )
@@ -364,7 +367,7 @@ AnnotationNode(conf)
 
 Config
 FeatureNode::getConfig() const
-{    
+{
     Config conf("feature");
 
     if ( !_features.empty() )

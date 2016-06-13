@@ -536,7 +536,7 @@ _findNodeTraversalMask  ( rhs._findNodeTraversalMask )
 EarthManipulator::~EarthManipulator()
 {
     osg::ref_ptr<MapNode> mapNode = _mapNode;
-    if (mapNode.valid() && _terrainCallback)
+    if (mapNode.valid() && _terrainCallback && mapNode->getTerrain())
     {
         mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
     }
@@ -677,12 +677,13 @@ EarthManipulator::established()
         return false;
 
     // resetablish the terrain callback on the map node:
-    if ( _terrainCallback.valid() )
+    if ( _terrainCallback.valid() && _mapNode->getTerrain() )
     {
         _mapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
     }
     _terrainCallback = new ManipTerrainCallback( this );
-    _mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
+    if (_mapNode->getTerrain())
+        _mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
 
     // Cache the SRS.
     _srs = _mapNode->getMapSRS();
@@ -1327,7 +1328,7 @@ bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const
 {
     osg::ref_ptr<MapNode> mapNode;
-    if ( _mapNode.lock(mapNode) )
+    if ( _mapNode.lock(mapNode) && mapNode->getTerrainEngine() )
     {
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
@@ -1356,7 +1357,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
     bool success = false;
 
     osg::ref_ptr<MapNode> mapNode;
-    if ( _mapNode.lock(mapNode) )
+    if ( _mapNode.lock(mapNode) && mapNode->getTerrainEngine() )
     {
         double R = _centerHeight;
 
@@ -2605,7 +2606,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
         return false;
 
     osg::ref_ptr<MapNode> mapNode;
-    if ( !_mapNode.lock(mapNode) )
+    if ( !_mapNode.lock(mapNode) || !mapNode->getTerrain() )
         return false;
 
     return mapNode->getTerrain()->getWorldCoordsUnderMouse(view, x, y, out_coords);

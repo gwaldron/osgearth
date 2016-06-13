@@ -52,7 +52,7 @@ namespace osgEarth
         typedef std::string BinID;
 #define DEFAULT_BIN_ID ""
 
-        CacheSettings();
+        CacheSettings() { }
         
         /** Cache used by these settings */
         Cache* getCache() const { return _cache.get(); }
@@ -61,6 +61,10 @@ namespace osgEarth
         /** Sets the active cache bin to use under these settings. */
         void setCacheBin(CacheBin* bin) { _activeBin = bin; }
         CacheBin* getCacheBin() { return _activeBin.get(); }
+
+        /** Owner-specific metadata associated with these cache settings. */
+        //void setMetadata(osg::Referenced* metadata) { _metadata = metadata; }
+        //template<typename T> T* getMetadata() const { return dynamic_cast<T*>(_metadata.get()); }
 
         /** The caching policy in effect for all bins; this starts out the same as
           * defaultCachePolicy() but you can change it. */
@@ -83,6 +87,7 @@ namespace osgEarth
 
         osg::ref_ptr<Cache>    _cache;
         osg::ref_ptr<CacheBin> _activeBin;
+        //osg::ref_ptr<osg::Referenced > _metadata;
         optional<CachePolicy>  _policy;
         optional<CachePolicy>  _defaultPolicy;
         Threading::Mutex       _mutex;

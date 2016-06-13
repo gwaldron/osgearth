@@ -366,7 +366,8 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             i->_imageLayerOptions->driver()->L2CacheSize() = 0;
 
             osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_imageLayerOptions);
-            if (!layer->getTileSource())
+            layer->setReadOptions(_dbOptions.get());
+            if (!layer->open())
             {
                 OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
             }
@@ -381,8 +382,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
             i->_elevationLayerOptions->driver()->L2CacheSize() = 0;
 
-            osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);            
-            if (!layer->getTileSource())
+            osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);   
+            layer->setReadOptions(_dbOptions.get());
+            if (!layer->open())
             {
                    OE_WARN << LC << "Could not find a TileSource for driver [" << i->_elevationLayerOptions->driver()->getDriver() << "]" << std::endl;
             }

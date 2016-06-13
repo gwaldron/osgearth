@@ -879,9 +879,13 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
 {
     osg::ref_ptr<osg::Group> group;
 
-    // first, make a cache key and try to load it from the cache.
-    CacheBin*             cacheBin = CacheBin::get(readOptions);
-    optional<CachePolicy> policy   = CachePolicy::get(readOptions);
+    osg::ref_ptr<CacheBin> cacheBin;
+    optional<CachePolicy> policy;
+    if (CacheSettings* cacheSettings = CacheSettings::get(readOptions))
+    {
+        policy = cacheSettings->cachePolicy();
+        cacheBin = cacheSettings->getCacheBin();
+    }
 
     if (cacheBin && policy->isCacheReadable())
     {
@@ -933,9 +937,13 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
                                     osg::Group*           node,
                                     const osgDB::Options* writeOptions)
 {
-    
-    CacheBin*             cacheBin = CacheBin::get(writeOptions);
-    optional<CachePolicy> policy   = CachePolicy::get(writeOptions);
+    osg::ref_ptr<CacheBin> cacheBin;
+    optional<CachePolicy> policy;
+    if (CacheSettings* cacheSettings = CacheSettings::get(writeOptions))
+    {
+        policy = cacheSettings->cachePolicy();
+        cacheBin = cacheSettings->getCacheBin();
+    }
 
     if (cacheBin && policy->isCacheWriteable())
     {

@@ -67,7 +67,7 @@ namespace osgEarth
         CachePolicy( const Config& conf );
 
         /** construct a cache policy be reading it from an osgDB::Options */
-        static optional<CachePolicy> get(const osgDB::Options* options);
+        //static optional<CachePolicy> get(const osgDB::Options* options);
 
         /** Stores this cache policy in a DB Options. */
         //void store( osgDB::Options* options ) const;

@@ -399,6 +399,8 @@ Map::addImageLayer( ImageLayer* layer )
             layer->setTargetProfileHint( _profile.get() );
         }
 
+        layer->open();
+
         int newRevision;
 
         // Add the layer to our stack.
@@ -470,12 +472,11 @@ Map::addElevationLayer( ElevationLayer* layer )
         //Set options for the map from the layer
         layer->setReadOptions( _readOptions.get() );
 
-        //Set the Cache for the MapLayer to our cache.
-        layer->setCache( this->getCache() );
-        
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
             layer->setTargetProfileHint( _profile.get() );
+
+        layer->open();
 
         int newRevision;
 
@@ -684,7 +685,7 @@ Map::addModelLayer( ModelLayer* layer )
 
         // initialize the model layer
         layer->setReadOptions(_readOptions.get());
-        layer->initialize();
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -709,7 +710,7 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
 
         // initialize the model layer
         layer->setReadOptions(_readOptions.get());
-        layer->initialize();
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )

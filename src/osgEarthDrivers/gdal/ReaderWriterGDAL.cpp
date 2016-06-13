@@ -684,7 +684,7 @@ public:
             if (cacheManager && cacheManager->getCache())
             {
                 std::string binId = Stringify() << std::hex << hashString(_options.getConfig().toJSON());
-                _cacheBin = cacheManager->getCache()->getOrCreateBin(binId);
+                _cacheBin = cacheManager->getCache()->addBin(binId);
             }
         }
 

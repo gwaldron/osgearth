@@ -300,6 +300,8 @@ _runtimeOptions( options )
 void
 ImageLayer::init()
 {
+    TerrainLayer::init();
+
     // Set the tile size to 256 if it's not explicitly set.
     if (!_runtimeOptions.driver()->tileSize().isSet())
     {
@@ -307,7 +309,6 @@ ImageLayer::init()
     }
 
     _emptyImage = ImageUtils::createEmptyImage();
-    //*((unsigned*)_emptyImage->data()) = 0x7F0000FF;
 
     if ( _runtimeOptions.shareTexUniformName().isSet() )
         _shareTexUniformName = _runtimeOptions.shareTexUniformName().get();
@@ -533,49 +534,56 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
 
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
+
+    // the cache key combines the Key and the horizontal profile.
+    std::string cacheKey = Stringify() << key.str() << "_" << key.getProfile()->getHorizSignature();
+    const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
     
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
-        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str(), 0L);
+        CacheBin* bin = _memCache->getOrCreateDefaultBin();
+        ReadResult result = bin->readObject(cacheKey, 0L);
         if ( result.succeeded() )
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
-        //_memCache->dumpStats(key.getProfile()->getFullSignature());
     }
 
     // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.
-    if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
+    if (getTileSource() || (cacheBin && policy.isCacheOnly()))
+    {
+        //nop = OK.
+    }
+    else
     {
         OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create image " << std::endl;
-        _runtimeOptions.enabled() = false;
+        disable();
         return GeoImage::INVALID;
     }
 
     // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
     // case there is no layer profile)
-    if ( !isCacheOnly() && !getProfile() )
+    if ( !policy.isCacheOnly() && !getProfile() )
     {
         OE_WARN << LC << "Could not establish a valid profile" << std::endl;
-        _runtimeOptions.enabled() = false;
+        disable();
         return GeoImage::INVALID;
     }
 
-    osg::ref_ptr< osg::Image > cachedImage;        
+    osg::ref_ptr< osg::Image > cachedImage;
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
-    if ( cacheBin && getCachePolicy().isCacheReadable() )
+    if ( cacheBin && policy.isCacheReadable() )
     {
-        ReadResult r = cacheBin->readImage(key.str(), 0L);
+        ReadResult r = cacheBin->readImage(cacheKey, 0L);
         if ( r.succeeded() )
         {
             cachedImage = r.releaseImage();
             ImageUtils::fixInternalFormat( cachedImage.get() );            
-            bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+            bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
             {
                 OE_DEBUG << "Got cached image for " << key.str() << std::endl;                
@@ -589,7 +597,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently
-    if ( isCacheOnly() )
+    if ( policy.isCacheOnly() )
     {
         // If it's cache only and we have an expired but cached image, just return it.
         if (cachedImage.valid())
@@ -614,22 +622,22 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // memory cache first:
     if ( result.valid() && _memCache.valid() )
     {
-        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-        bin->write(key.str(), result.getImage(), 0L);
+        CacheBin* bin = _memCache->getOrCreateDefaultBin();
+        bin->write(cacheKey, result.getImage(), 0L);
     }
 
     // If we got a result, the cache is valid and we are caching in the map profile,
     // write to the map cache.
     if (result.valid()  &&
         cacheBin        && 
-        getCachePolicy().isCacheWriteable() )
+        policy.isCacheWriteable())
     {
         if ( key.getExtent() != result.getExtent() )
         {
             OE_INFO << LC << "WARNING! mismatched extents." << std::endl;
         }
 
-        cacheBin->write(key.str(), result.getImage(), 0L);
+        cacheBin->write(cacheKey, result.getImage(), 0L);
     }
 
     if ( result.valid() )

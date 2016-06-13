@@ -51,7 +51,7 @@ namespace osgEarth
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
         CacheBin( const std::string& binID )
-            : _binID(binID), _hashKeys(false), _minTime(0) { }
+            : _binID(binID), _hashKeys(true), _minTime(0) { }
 
         /** dtor */
         virtual ~CacheBin() { }

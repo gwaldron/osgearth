@@ -230,8 +230,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
 
     graph->setName( session->getName() );
 
-    CacheBin* bin = CacheBin::get(_readOptions.get());
-    if ( bin )
+    if (CacheManager::get(_readOptions.get()))
         OE_DEBUG << LC << "Found a cache bin in FeatureModelSource\n";
 
     // then run the ops on the staring graph:

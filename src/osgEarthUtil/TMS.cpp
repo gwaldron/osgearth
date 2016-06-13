@@ -470,7 +470,7 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWrite
     ReadResult r = URI(location).readString();
     if ( r.failed() )
     {
-        OE_WARN << LC << "Failed to read TMS tile map file from " << location << std::endl;
+        OE_DEBUG << LC << "Failed to read TMS tile map file from " << location << std::endl;
         return 0L;
     }
     

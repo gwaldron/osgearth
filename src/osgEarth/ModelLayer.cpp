@@ -213,7 +213,7 @@ ModelLayer::copyOptions()
 }
 
 void
-ModelLayer::initialize()
+ModelLayer::open()
 {
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
@@ -260,11 +260,12 @@ ModelLayer::setReadOptions(const osgDB::Options* readOptions)
             std::string binID;
             if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
             {
-                binID = Stringify() << "model_" << _initOptions.cacheId().get();
+                binID = _initOptions.cacheId().get();
             }
             else
             {
-                binID = Stringify() << "model_" << osgEarth::hashString(_initOptions.driver()->getConfig().toJSON(false));
+                Config conf = _initOptions.driver()->getConfig();
+                binID = hashToString(conf.toJSON(false));
             }
 
             // make our cacheing bin!
@@ -281,22 +282,12 @@ ModelLayer::setReadOptions(const osgDB::Options* readOptions)
                 OE_WARN << LC << "Layer " << getName() << " failed to open a cache bin [" << binID << "], disabling caching\n";
                 _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
             }
+
+            // Store it so subobjects can find it!
+            _cacheSettings->store(_readOptions.get());
         }
     }
 }
-
-//void
-//ModelLayer::setCachePolicy( const CachePolicy& cp )
-//{
-//    _runtimeOptions.cachePolicy() = cp;
-//    _runtimeOptions.cachePolicy()->store( _readOptions.get() );
-//}
-//
-//const CachePolicy&
-//ModelLayer::getCachePolicy() const
-//{
-//    return _runtimeOptions.cachePolicy().value();
-//}
 
 osg::Node*
 ModelLayer::getSceneGraph(const UID& mapUID) const

@@ -376,6 +376,8 @@ Registry::getDefaultCache() const
 {
     if (!_defaultCache.valid())
     {
+        std::string driverName = getDefaultCacheDriverName();
+
         Threading::ScopedMutexLock lock(_regMutex);
         if (!_defaultCache.valid())
         {
@@ -383,15 +385,11 @@ Registry::getDefaultCache() const
             // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
             // it's used in the driver(s) itself.
             const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
-            if (cachePath)
+            if (cachePath && !driverName.empty())
             {
-                const char* driverName = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
-                if (driverName)
-                {
-                    CacheOptions cacheOptions;
-                    cacheOptions.setDriver(driverName);
-                    _defaultCache = CacheFactory::create(cacheOptions);
-                }
+                CacheOptions cacheOptions;
+                cacheOptions.setDriver(driverName);
+                _defaultCache = CacheFactory::create(cacheOptions);
             }
         }
     }

@@ -468,17 +468,18 @@ namespace
                 {
                     bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
-                    // establish the caching policy.
-                    optional<CachePolicy> cp = CachePolicy::get(localOptions.get());
-                    Registry::instance()->resolveCachePolicy( cp );                    
+                    optional<CachePolicy> cp;
+                    osg::ref_ptr<CacheBin> bin;
 
-                    // get a cache bin if we need it:
-                    CacheBin* bin = 0L;
-                    if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+                    CacheSettings* cacheSettings = CacheSettings::get(localOptions.get());
+                    if (cacheSettings)
                     {
-                        bin = s_getCacheBin( localOptions.get() );
-                    }                    
-
+                        cp = cacheSettings->cachePolicy();
+                        if (cp->isCacheEnabled() && callbackCachingOK)
+                        {
+                            bin = cacheSettings->getCacheBin(); 
+                        }
+                    }
 
                     bool expired = false;
                     // first try to go to the cache if there is one:

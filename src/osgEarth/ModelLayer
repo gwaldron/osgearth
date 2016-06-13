@@ -245,7 +245,7 @@ namespace osgEarth
         /**
          * Perform one-time initialization of the model layer.
          */
-        void initialize();
+        void open();
 
         /**
          * Creates the scene graph representing this model layer for the given Map,

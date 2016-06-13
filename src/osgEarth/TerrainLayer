@@ -288,14 +288,14 @@ namespace osgEarth
         virtual void setTargetProfileHint( const Profile* profile );
 
         /**
-         * Convenience function to check for cache_only mode
+         * Disable this layer.
          */
-        bool isCacheOnly() const;
-        
+        void disable();
+
         /**
-         * Convenience check for no-cache mode.
+         * Sets the I/O options to use. This data may include cache information.
          */
-        bool isNoCache() const;
+        void setReadOptions(const osgDB::Options* readOptions);
 
 
     public: // Layer interface
@@ -379,6 +379,11 @@ namespace osgEarth
          */
         CacheBinMetadata* getCacheBinMetadata(const Profile* profile);
 
+        /**
+         * Cache Settings for this layer - guaranteed to return an object
+         */
+        CacheSettings* getCacheSettings() const;
+
     protected:
 
         /** Creates the driver the supplies the actual data. Internal function. */
@@ -402,10 +407,8 @@ namespace osgEarth
         // profile to use
         mutable osg::ref_ptr<const Profile> _profile;
 
-        void setCachePolicy( const CachePolicy& cp );
-        const CachePolicy& getCachePolicy() const;
-
-        CacheSettings* getCacheSettings();
+        // CTOR initialization; call from subclass.
+        void init();
 
     private:
         std::string                    _name;
@@ -416,38 +419,25 @@ namespace osgEarth
         mutable Threading::Mutex       _initTileSourceMutex;
         osg::ref_ptr<TileSource>       _tileSource;
 
-        osg::ref_ptr<Cache>            _cache;
         std::string                    _cacheId;
         
         // cache policy that may be automatically set by the layer and will 
         // override the runtime options policy if set.
         optional<CachePolicy>          _effectiveCachePolicy;
 
-
-        //// maps profile signature to cache bin pointer.
-        //struct CacheBinInfo
-        //{
-        //    osg::ref_ptr<CacheBin>     _bin;
-        //    optional<CacheBinMetadata> _metadata;
-        //};
-        //typedef std::map< std::string, CacheBinInfo > CacheBinInfoMap; // indexed by profile signature
-
-        //CacheBinInfoMap                _cacheBins;
-        //Threading::ReadWriteMutex      _cacheBinsMutex;
+        typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
+        CacheBinMetadataMap _cacheBinMetadata;
 
         mutable Threading::Mutex    _mutex;
 
-        osg::ref_ptr<CacheSettings> _cacheSettings;
+        mutable osg::ref_ptr<CacheSettings> _cacheSettings;
 
         bool _openCalled;
-
-        void init();
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
 
         // methods accesible by Map:
         friend class Map;
-        void setReadOptions(const osgDB::Options* readOptions);
         void initializeCachePolicy( const osgDB::Options* );
         void storeProxySettings( osgDB::Options* );
 

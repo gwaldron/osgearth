@@ -79,19 +79,19 @@ CompositeTileSourceOptions::mergeConfig( const Config& conf )
 void 
 CompositeTileSourceOptions::fromConfig( const Config& conf )
 {    
-    const ConfigSet& images = conf.children("image");
+    const ConfigSet& images = conf.hasChild("images") ? conf.child("images").children() : conf.children("image");
     for( ConfigSet::const_iterator i = images.begin(); i != images.end(); ++i )
     {
         add( ImageLayerOptions( *i ) );
     }
 
-    const ConfigSet& elevations = conf.children("elevation");
+    const ConfigSet& elevations = conf.hasChild("elevations") ? conf.child("elevations").children() : conf.children("elevation");
     for( ConfigSet::const_iterator i = elevations.begin(); i != elevations.end(); ++i )
     {
         add( ElevationLayerOptions( *i ) );
     }
-
-    const ConfigSet& heightfields = conf.children("heightfield");
+    
+    const ConfigSet& heightfields = conf.hasChild("heightfields") ? conf.child("heightfields").children() : conf.children("heightfield");
     for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); ++i )
     {
         add( ElevationLayerOptions( *i ) );
@@ -375,6 +375,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             {
                 i->_layer = layer;
                 _imageLayers.push_back( layer );
+                OE_INFO << LC << " .. added image layer " << layer->getName() << " (" << i->_imageLayerOptions->driver()->getDriver() << ")\n";
             }            
         }
         else if (i->_elevationLayerOptions.isSet())

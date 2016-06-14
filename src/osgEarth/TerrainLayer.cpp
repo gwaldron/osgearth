@@ -495,6 +495,15 @@ TerrainLayer::isDynamic() const
     return ts ? ts->isDynamic() : false;
 }
 
+std::string
+TerrainLayer::getMetadataKey(const Profile* profile) const
+{
+    if (profile)
+        return Stringify() << profile->getHorizSignature() << "_metadata";
+    else
+        return "_metadata";
+}
+
 CacheBin*
 TerrainLayer::getCacheBin(const Profile* profile)
 {
@@ -516,7 +525,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
         return 0L;
 
     // does the metadata need initializing?
-    std::string metaKey = Stringify() << profile->getHorizSignature() << "_metadata";
+    std::string metaKey = getMetadataKey(profile);
 
     Threading::ScopedMutexLock lock(_mutex);
 
@@ -654,8 +663,7 @@ TerrainLayer::getCacheBinMetadata(const Profile* profile)
 
     Threading::ScopedMutexLock lock(_mutex);
 
-    std::string metaKey = profile->getHorizSignature();
-    CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(metaKey);
+    CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(getMetadataKey(profile));
     return i != _cacheBinMetadata.end() ? i->second.get() : 0L;
 }
 

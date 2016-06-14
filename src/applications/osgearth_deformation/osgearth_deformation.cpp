@@ -66,17 +66,13 @@ public:
 
 typedef std::vector< Deformation > DeformationList;
 
-
+typedef std::map< TileKey, osg::ref_ptr< osg::HeightField > > HeightFieldMap;
 
 class DeformationTileSource : public TileSource
 {
-public:
-
-    
-
-
+public: 
     // Constructor that takes the user-provided options.
-    DeformationTileSource() : TileSource(TileSourceOptions())
+    DeformationTileSource(const TileSourceOptions& options) : TileSource(options)
     {
     }
 
@@ -98,91 +94,20 @@ public:
 
     osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress)
     {
-        if (key.getLevelOfDetail() < 3)
+        if (key.getLevelOfDetail() > 13)
         {
             return 0;
         }
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
-        DeformationList intersectingDeformations;
+
+        // See if we have a neightfield in the cache
+        HeightFieldMap::iterator itr = _heightfields.find( key );
+        if (itr != _heightfields.end())
         {
-            for (DeformationList::iterator itr = _deformations.begin(); itr != _deformations.end(); ++itr)
-            {                
-                GeoExtent ext(itr->_feature->getSRS(), itr->_feature->getGeometry()->getBounds());
-                if (key.getExtent().intersects(ext, false))
-                {
-                    intersectingDeformations.push_back( *itr );
-                }
-            }
+            osg::HeightField* hf = itr->second.get();
+            return hf;
         }
-
-        //OE_NOTICE << "Checking " << intersectingDeformations.size() << " of " << _deformations.size() << " deformations " << std::endl;
-
-        if (intersectingDeformations.empty())
-        {
-            return 0;
-        }
-
-        
-
-        //Get the extents of the tile
-        double xmin, ymin, xmax, ymax;
-        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
-
-        int tileSize = 257;
-
-        //Only allocate the heightfield if we actually intersect any features.
-        osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
-        hf->allocate(tileSize, tileSize);
-        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
-
-        // Iterate over the output heightfield and sample the data that was read into it.
-        double dx = (xmax - xmin) / (tileSize-1);
-        double dy = (ymax - ymin) / (tileSize-1);
-
-
-
-        
-
-
-        for (int c = 0; c < tileSize; ++c)
-        {
-            double geoX = xmin + (dx * (double)c);
-            for (int r = 0; r < tileSize; ++r)
-            {
-                double geoY = ymin + (dy * (double)r);
-
-                float h = NO_DATA_VALUE;
-
-                for (DeformationList::iterator itr = intersectingDeformations.begin(); itr != intersectingDeformations.end(); ++itr)
-                {
-                    osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>(itr->_feature->getGeometry());
-                    //OE_NOTICE << "Checking " << itr->_feature->getGeoJSON() << std::endl;
-
-                    if (!boundary)
-                    {
-                        OE_WARN << "NOT A POLYGON" << std::endl;
-                    }
-                    else
-                    {
-                        GeoPoint geo(SpatialReference::create("wgs84"), geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
-                        if ( boundary->contains2D(geo.x(), geo.y()) )
-                        {
-                            if (h == NO_DATA_VALUE)
-                            {
-                                h = itr->_offset;
-                            }
-                            else
-                            {
-                                h += itr->_offset;
-                            }
-                        }
-                    }
-                }
-                hf->setHeight(c, r, h);
-                
-            }
-        }
-        return hf.release();
+        return 0;        
     }
 
   
@@ -191,6 +116,22 @@ public:
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
         _deformations.push_back( deformation );
+
+        // Get the heightfields that might be effect by the deformation
+        HeightFieldMap heightfields;
+        for (unsigned int i = 0; i < 14; i++)
+        {
+            getOrCreateHeightFieldsForDeformation( deformation, i, heightfields);
+        }
+
+        OE_NOTICE << "Applying deformation to " << heightfields.size() << " heightfields" << std::endl;
+
+        // Actually apply the deformation
+        for (HeightFieldMap::iterator itr = heightfields.begin(); itr != heightfields.end(); ++itr)
+        {
+            applyDeformation( deformation, itr->first, itr->second.get());
+        }
+
     }
 
     virtual int getPixelsPerTile() const
@@ -198,8 +139,103 @@ public:
         return 257;
     }
 
+    /**
+     * Gets or creates the heightfields that would be effected by the given deformation
+     */
+    void getOrCreateHeightFieldsForDeformation(const Deformation& deformation, unsigned int level, HeightFieldMap& results)
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
+
+        // Get the extent of the deformation feature.
+        GeoExtent extent(deformation._feature->getSRS(), deformation._feature->getGeometry()->getBounds());
+
+        TileKey ll = getProfile()->createTileKey(extent.xMin(), extent.yMin(), level);
+        TileKey ur = getProfile()->createTileKey(extent.xMax(), extent.yMax(), level);        
+
+        for (unsigned int c = ll.getTileX(); c <= ur.getTileX(); c++)
+        {
+            for (unsigned int r = ur.getTileY(); r <= ll.getTileY(); r++)
+            {
+                TileKey key(level, c, r, getProfile());
+
+                osg::ref_ptr< osg::HeightField > hf;
+
+                HeightFieldMap::iterator itr = _heightfields.find( key );
+                if (itr == _heightfields.end())
+                {
+                    //Allocate a new heightfield
+                    hf = new osg::HeightField;
+                    hf->allocate(getPixelsPerTile(), getPixelsPerTile());
+                    for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+                    _heightfields[ key ] = hf.get();
+                    results[ key ] = hf.get();
+                }
+                else
+                {                
+                    results[ key ] = itr->second.get();
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Applies the deformation to the heightfield with the given key.
+     */
+    void applyDeformation(const Deformation& deformation, const TileKey& key, osg::HeightField* heightField)
+    {   
+        osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>(deformation._feature->getGeometry());
+        if (!boundary)
+        {
+            OE_WARN << "NOT A POLYGON" << std::endl;
+            return;
+        }
+
+        //Get the extents of the tile
+        double xmin, ymin, xmax, ymax;
+        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+        int tileSize = heightField->getNumColumns();
+
+        // Iterate over the output heightfield and sample the data that was read into it.
+        double dx = (xmax - xmin) / (tileSize-1);
+        double dy = (ymax - ymin) / (tileSize-1);     
+
+        
+        const SpatialReference* srs = SpatialReference::create("wgs84");
+
+        for (int c = 0; c < tileSize; ++c)
+        {
+            double geoX = xmin + (dx * (double)c);
+            for (int r = 0; r < tileSize; ++r)
+            {
+                double geoY = ymin + (dy * (double)r);
+
+                GeoPoint geo(srs, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
+                if ( boundary->contains2D(geo.x(), geo.y()) )
+                {
+                    float h = heightField->getHeight( c, r );
+                    if (h == NO_DATA_VALUE)
+                    {
+                        h = deformation._offset;
+                    }
+                    else
+                    {
+                        h += deformation._offset;
+                    }
+                    heightField->setHeight(c, r, h);
+                }                
+            }
+        }
+    }
+
+
+
     OpenThreads::Mutex _mutex;
     std::vector< Deformation > _deformations;
+
+    HeightFieldMap _heightfields;
+
 };
 
 static MapNode*       s_mapNode     = 0L;
@@ -216,15 +252,9 @@ struct DeformationHandler : public osgGA::GUIEventHandler
     DeformationHandler()
         : _mouseDown( false ),
           _terrain  ( s_mapNode->getTerrain() ),
-          _query    ( s_mapNode->getMap() ),
-          _deformationsAdded(0),
-          _framesSinceLastUpdate(0),
           _tool(TOOL_RECTANGLE)
     {
         _map = s_mapNode->getMap();
-        _query.setMaxTilesToCache(10);
-        _query.setFallBackOnNoData( false );
-        _path.push_back( s_mapNode->getTerrainEngine() );
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -242,8 +272,6 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( _terrain->getSRS(), world );
 
-            OE_NOTICE << "Got hit " << mapPoint.x() << ", " << mapPoint.y() << std::endl;
-
             GeometryFactory factory(SpatialReference::create("wgs84"));
             Geometry* geom = 0;
             double radius = 500;
@@ -259,7 +287,6 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             Feature* feature = new Feature(geom, SpatialReference::create("wgs84"));
             OE_NOTICE << "Adding deformation " << feature->getGeoJSON() << std::endl;
             s_deformations->addDeformation(Deformation(feature, -100));
-            _deformationsAdded++;
             osgEarth::Registry::instance()->clearBlacklist();
             s_mapNode->getTerrainEngine()->dirtyTerrain();            
         }
@@ -286,19 +313,6 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         {
             _mouseDown = false;
         }
-        /*
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::FRAME)
-        {
-
-            _framesSinceLastUpdate++;
-            if (_deformationsAdded > 0 && _framesSinceLastUpdate > 5)
-            {
-                _framesSinceLastUpdate = 0;
-                _deformationsAdded = 0;
-                s_mapNode->getTerrainEngine()->dirtyTerrain();
-            }
-        }
-        */
         else if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
         {
             if (ea.getKey() == 'k')
@@ -322,10 +336,6 @@ struct DeformationHandler : public osgGA::GUIEventHandler
     const Map*       _map;
     const Terrain*   _terrain;
     bool             _mouseDown;
-    ElevationQuery   _query;
-    osg::NodePath    _path;
-    int _framesSinceLastUpdate;
-    int _deformationsAdded;
     Tool _tool;
 };
 
@@ -347,13 +357,17 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    s_deformations = new DeformationTileSource();
-    ElevationLayerOptions opt;
-    opt.offset() = true;
-    opt.cachePolicy() = CachePolicy::NO_CACHE;
-    opt.name() = "deformation";
-    opt.cacheId() = "deformation";
-    ElevationLayer* layer = new ElevationLayer(opt, s_deformations);
+    TileSourceOptions tileSourceOptions;
+    tileSourceOptions.L2CacheSize() = 0;
+    s_deformations = new DeformationTileSource(tileSourceOptions);
+
+    ElevationLayerOptions elevationOpt;
+    elevationOpt.offset() = true;
+    elevationOpt.name() = "deformation";
+    // This is the only way to get the l2 cache size to pass down even though we're not actually creating a tilesource from the options.
+    elevationOpt.driver() = tileSourceOptions;
+
+    ElevationLayer* layer = new ElevationLayer(elevationOpt, s_deformations);
     s_mapNode->getMap()->addElevationLayer(layer);
 
     osg::Group* root = new osg::Group();

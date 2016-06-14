@@ -41,11 +41,13 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <iomanip>
 
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
@@ -249,10 +251,13 @@ enum Tool
 
 struct DeformationHandler : public osgGA::GUIEventHandler 
 {
-    DeformationHandler()
+    DeformationHandler(osg::Group* root)
         : _mouseDown( false ),
           _terrain  ( s_mapNode->getTerrain() ),
-          _tool(TOOL_RECTANGLE)
+          _tool(TOOL_RECTANGLE),
+          _root(root),
+          _offset(-100.0f),
+          _radius(100.0)
     {
         _map = s_mapNode->getMap();
     }
@@ -271,24 +276,36 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             // convert to map coords:
             GeoPoint mapPoint;
             mapPoint.fromWorld( _terrain->getSRS(), world );
+            mapPoint.z() = 0;
 
             GeometryFactory factory(SpatialReference::create("wgs84"));
             Geometry* geom = 0;
-            double radius = 500;
             if (_tool == TOOL_RECTANGLE)
             {
-                geom = factory.createRectangle(mapPoint.vec3d(), radius,radius);
+                geom = factory.createRectangle(mapPoint.vec3d(), _radius,_radius);
             }
             else if (_tool == TOOL_CIRCLE)
             {
-                geom = factory.createCircle(mapPoint.vec3d(), radius);
+                geom = factory.createCircle(mapPoint.vec3d(), _radius);
             }
             
             Feature* feature = new Feature(geom, SpatialReference::create("wgs84"));
-            OE_NOTICE << "Adding deformation " << feature->getGeoJSON() << std::endl;
-            s_deformations->addDeformation(Deformation(feature, -100));
-            osgEarth::Registry::instance()->clearBlacklist();
-            s_mapNode->getTerrainEngine()->dirtyTerrain();            
+
+            if (_featureNode.valid())
+            {
+                _root->removeChild( _featureNode );
+                _featureNode = 0;
+            }
+
+            Style style;
+            style.getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            style.getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+            style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+
+            _featureNode = new FeatureNode( s_mapNode,
+                                            feature,
+                                            style);
+            _root->addChild( _featureNode );
         }
     }
 
@@ -297,10 +314,11 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE ||
             ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
         {
+            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+            update( ea.getX(), ea.getY(), view );
             if (_mouseDown)
-            {
-                osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-                update( ea.getX(), ea.getY(), view );
+            {                
+                applyDeformation();
             }
         }
         if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH && ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
@@ -308,6 +326,7 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             _mouseDown = true;
             osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
             update( ea.getX(), ea.getY(), view );
+            applyDeformation();
         }
         if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
         {
@@ -327,16 +346,55 @@ struct DeformationHandler : public osgGA::GUIEventHandler
                     OE_NOTICE << "Switching to rectangle tool" << std::endl;
                     _tool = TOOL_RECTANGLE;
                 }
+                return true;
+            }
+            else if (ea.getKey() == 'o')
+            {
+                _offset -= 10;
+                OE_NOTICE << "Offset " << _offset << std::endl;
+                return true;
+            }
+            else if (ea.getKey() == 'O')
+            {
+                _offset += 10;
+                OE_NOTICE << "Offset " << _offset << std::endl;
+                return true;
+            }
+            else if (ea.getKey() == 'r')
+            {
+                _radius = osg::clampAbove(_radius - 10.0, 1.0);
+                OE_NOTICE << "Radius = " << _radius << std::endl;
+            }
+            else if (ea.getKey() == 'R')
+            {
+                _radius += 10;
+                OE_NOTICE << "Radius = " << _radius << std::endl;
             }
         }
 
         return false;
     }
 
+    void applyDeformation()
+    {
+        if (_featureNode)
+        {
+            Feature* feature = _featureNode->getFeature();
+            OE_NOTICE << "Adding deformation " << feature->getGeoJSON() << std::endl;
+            s_deformations->addDeformation(Deformation(feature, _offset));
+            osgEarth::Registry::instance()->clearBlacklist();
+            s_mapNode->getTerrainEngine()->dirtyTerrain();            
+        }
+    }
+
     const Map*       _map;
     const Terrain*   _terrain;
     bool             _mouseDown;
     Tool _tool;
+    osg::Group* _root;
+    float _offset;
+    double _radius;
+    osg::ref_ptr < FeatureNode > _featureNode;
 };
 
 
@@ -379,7 +437,7 @@ int main(int argc, char** argv)
     // The MapNode will render the Map object in the scene graph.
     root->addChild( earthFile );
 
-    viewer.addEventHandler( new DeformationHandler() );
+    viewer.addEventHandler( new DeformationHandler(root) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

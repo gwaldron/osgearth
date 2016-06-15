@@ -70,6 +70,134 @@ typedef std::vector< Deformation > DeformationList;
 
 typedef std::map< TileKey, osg::ref_ptr< osg::HeightField > > HeightFieldMap;
 
+
+/**
+* Applies the deformation to the heightfield with the given key.
+*/
+static void deformHeightField(const Deformation& deformation, const TileKey& key, osg::HeightField* heightField)
+{   
+    osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>(deformation._feature->getGeometry());
+    if (!boundary)
+    {
+        OE_WARN << "NOT A POLYGON" << std::endl;
+        return;
+    }
+
+    //Get the extents of the tile
+    double xmin, ymin, xmax, ymax;
+    key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+    int tileSize = heightField->getNumColumns();
+
+    // Iterate over the output heightfield and sample the data that was read into it.
+    double dx = (xmax - xmin) / (tileSize-1);
+    double dy = (ymax - ymin) / (tileSize-1);     
+
+
+    const SpatialReference* srs = SpatialReference::create("wgs84");
+
+    for (int c = 0; c < tileSize; ++c)
+    {
+        double geoX = xmin + (dx * (double)c);
+        for (int r = 0; r < tileSize; ++r)
+        {
+            double geoY = ymin + (dy * (double)r);
+
+            GeoPoint geo(srs, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
+            if ( boundary->contains2D(geo.x(), geo.y()) )
+            {
+                heightField->setHeight(c, r, deformation._offset);
+            }                
+        }
+    }
+}
+
+static void applyBlast(GeoPoint& center, double radius, double offset, const TileKey& key, osg::HeightField* heightField)
+{
+    //Get the extents of the tile
+    double xmin, ymin, xmax, ymax;
+    key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+    int tileSize = heightField->getNumColumns();
+
+    // Iterate over the output heightfield and sample the data that was read into it.
+    double dx = (xmax - xmin) / (tileSize-1);
+    double dy = (ymax - ymin) / (tileSize-1);     
+
+    const SpatialReference* srs = SpatialReference::create("wgs84");
+
+    for (int c = 0; c < tileSize; ++c)
+    {
+        double geoX = xmin + (dx * (double)c);
+        for (int r = 0; r < tileSize; ++r)
+        {
+            double geoY = ymin + (dy * (double)r);
+
+            GeoPoint geo(srs, geoX, geoY, center.z(), ALTMODE_ABSOLUTE);
+
+            double distance = geo.distanceTo( center );
+            double ratio = distance / radius;
+            if (ratio <= 1.0)
+            {
+                double weight = 1.0 - osg::clampBetween(ratio, 0.0, 1.0);
+                if (weight > 0)
+                {
+                    float h = center.z() + offset * weight;
+                    heightField->setHeight(c, r, h);
+                }
+            }
+            
+            /*
+
+
+            if ( boundary->contains2D(geo.x(), geo.y()) )
+            {
+                float h = heightField->getHeight( c, r );
+                if (h == NO_DATA_VALUE)
+                {
+                    //h = deformation._offset;
+                }
+                else
+                {
+                    //h += deformation._offset;                    
+                    h = deformation._offset;
+                }
+                heightField->setHeight(c, r, h);
+            } 
+            */
+        }
+    }
+}
+
+/*
+void getHeightFieldsForDeformation(const Deformation& deformation, MapFrame& map, unsigned int level, HeightFieldMap& results)
+{
+    // Get the extent of the deformation feature.
+    GeoExtent extent(deformation._feature->getSRS(), deformation._feature->getGeometry()->getBounds());
+
+    TileKey ll = map.getProfile()->createTileKey(extent.xMin(), extent.yMin(), level);
+    TileKey ur = map.getProfile()->createTileKey(extent.xMax(), extent.yMax(), level);        
+
+    for (unsigned int c = ll.getTileX(); c <= ur.getTileX(); c++)
+    {
+        for (unsigned int r = ur.getTileY(); r <= ll.getTileY(); r++)
+        {
+            TileKey key(level, c, r, map.getProfile());
+            //Allocate a new heightfield
+            osg::ref_ptr< osg::HeightField > hf = new osg::HeightField;
+            hf->allocate(257, 257);
+            for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+            // We don't actually need to populate it unless we are doing some logic on it, right?
+            //map.populateHeightField(hf, key, false, 0);
+            results[ key ] = hf.get();            
+        }
+    }
+}
+*/
+
+
+
+
 class DeformationTileSource : public TileSource
 {
 public: 
@@ -96,10 +224,6 @@ public:
 
     osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress)
     {
-        if (key.getLevelOfDetail() > 13)
-        {
-            return 0;
-        }
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
 
         // See if we have a neightfield in the cache
@@ -112,8 +236,7 @@ public:
         return 0;        
     }
 
-  
-
+    /*
     void addDeformation(const Deformation& deformation)
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
@@ -121,7 +244,7 @@ public:
 
         // Get the heightfields that might be effect by the deformation
         HeightFieldMap heightfields;
-        for (unsigned int i = 0; i < 14; i++)
+        for (unsigned int i = 5; i < 10; i++)
         {
             getOrCreateHeightFieldsForDeformation( deformation, i, heightfields);
         }
@@ -131,9 +254,15 @@ public:
         // Actually apply the deformation
         for (HeightFieldMap::iterator itr = heightfields.begin(); itr != heightfields.end(); ++itr)
         {
-            applyDeformation( deformation, itr->first, itr->second.get());
+            deformHeightField( deformation, itr->first, itr->second.get());
         }
+    }
+    */
 
+    void addHeightField(const TileKey& key, osg::HeightField* heightfield)
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
+        _heightfields[ key ] = heightfield;
     }
 
     virtual int getPixelsPerTile() const
@@ -142,8 +271,8 @@ public:
     }
 
     /**
-     * Gets or creates the heightfields that would be effected by the given deformation
-     */
+    * Gets or creates the heightfields that would be effected by the given deformation
+    */
     void getOrCreateHeightFieldsForDeformation(const Deformation& deformation, unsigned int level, HeightFieldMap& results)
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
@@ -181,55 +310,7 @@ public:
     }
 
 
-    /**
-     * Applies the deformation to the heightfield with the given key.
-     */
-    void applyDeformation(const Deformation& deformation, const TileKey& key, osg::HeightField* heightField)
-    {   
-        osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>(deformation._feature->getGeometry());
-        if (!boundary)
-        {
-            OE_WARN << "NOT A POLYGON" << std::endl;
-            return;
-        }
 
-        //Get the extents of the tile
-        double xmin, ymin, xmax, ymax;
-        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
-
-        int tileSize = heightField->getNumColumns();
-
-        // Iterate over the output heightfield and sample the data that was read into it.
-        double dx = (xmax - xmin) / (tileSize-1);
-        double dy = (ymax - ymin) / (tileSize-1);     
-
-        
-        const SpatialReference* srs = SpatialReference::create("wgs84");
-
-        for (int c = 0; c < tileSize; ++c)
-        {
-            double geoX = xmin + (dx * (double)c);
-            for (int r = 0; r < tileSize; ++r)
-            {
-                double geoY = ymin + (dy * (double)r);
-
-                GeoPoint geo(srs, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
-                if ( boundary->contains2D(geo.x(), geo.y()) )
-                {
-                    float h = heightField->getHeight( c, r );
-                    if (h == NO_DATA_VALUE)
-                    {
-                        h = deformation._offset;
-                    }
-                    else
-                    {
-                        h += deformation._offset;
-                    }
-                    heightField->setHeight(c, r, h);
-                }                
-            }
-        }
-    }
 
 
 
@@ -246,20 +327,24 @@ static DeformationTileSource* s_deformations = 0L;
 enum Tool
 {
     TOOL_CIRCLE,
-    TOOL_RECTANGLE
+    TOOL_RECTANGLE,
+    TOOL_BLAST
 };
 
 struct DeformationHandler : public osgGA::GUIEventHandler 
 {
     DeformationHandler(osg::Group* root)
         : _mouseDown( false ),
-          _terrain  ( s_mapNode->getTerrain() ),
-          _tool(TOOL_RECTANGLE),
-          _root(root),
-          _offset(-100.0f),
-          _radius(100.0)
+        _terrain  ( s_mapNode->getTerrain() ),
+        _tool(TOOL_CIRCLE),
+        _root(root),
+        _offset(-100.0f),
+        _radius(100.0),
+        _query( s_mapNode->getMap() )
     {
         _map = s_mapNode->getMap();
+        _query.setMaxTilesToCache(10);
+        _query.setFallBackOnNoData( false );
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -278,17 +363,32 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             mapPoint.fromWorld( _terrain->getSRS(), world );
             mapPoint.z() = 0;
 
+            // do an elevation query:
+            double query_resolution = 0; // max.
+            double out_hamsl        = 0.0;
+            double out_resolution   = 0.0;
+
+            bool ok = _query.getElevation( 
+                mapPoint,
+                out_hamsl,
+                query_resolution, 
+                &out_resolution );
+            mapPoint.z() = out_hamsl;
+            _mapPoint = mapPoint;
+
+            
+
             GeometryFactory factory(SpatialReference::create("wgs84"));
             Geometry* geom = 0;
             if (_tool == TOOL_RECTANGLE)
             {
                 geom = factory.createRectangle(mapPoint.vec3d(), _radius,_radius);
             }
-            else if (_tool == TOOL_CIRCLE)
+            else if (_tool == TOOL_CIRCLE || _tool == TOOL_BLAST)
             {
                 geom = factory.createCircle(mapPoint.vec3d(), _radius);
             }
-            
+
             Feature* feature = new Feature(geom, SpatialReference::create("wgs84"));
 
             if (_featureNode.valid())
@@ -300,11 +400,18 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             Style style;
             style.getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
             style.getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-            style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+            if (_tool != TOOL_BLAST)
+            {
+                style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+            }
+            else
+            {
+                style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
+            }
 
             _featureNode = new FeatureNode( s_mapNode,
-                                            feature,
-                                            style);
+                feature,
+                style);
             _root->addChild( _featureNode );
         }
     }
@@ -336,15 +443,20 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         {
             if (ea.getKey() == 'k')
             {
-                if (_tool == TOOL_RECTANGLE)
-                {
-                    OE_NOTICE << "Switching to circle tool" << std::endl;
-                    _tool = TOOL_CIRCLE;
-                }
-                else
+                if (_tool == TOOL_CIRCLE)
                 {
                     OE_NOTICE << "Switching to rectangle tool" << std::endl;
                     _tool = TOOL_RECTANGLE;
+                }
+                else if (_tool == TOOL_RECTANGLE)
+                {
+                    OE_NOTICE << "Switching to blast tool" << std::endl;
+                    _tool = TOOL_BLAST;
+                }
+                else if (_tool == TOOL_BLAST)
+                {
+                    OE_NOTICE << "Switching to circle tool" << std::endl;
+                    _tool = TOOL_CIRCLE;
                 }
                 return true;
             }
@@ -381,8 +493,43 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         {
             Feature* feature = _featureNode->getFeature();
             OE_NOTICE << "Adding deformation " << feature->getGeoJSON() << std::endl;
-            s_deformations->addDeformation(Deformation(feature, _offset));
+
+            Deformation deformation(feature, _offset);
+            // Instead of applying the deformation, we are going to add a heightfield ourselves.
+            //s_deformations->addDeformation(Deformation(feature, _offset));
+
+
+            MapFrame frame(s_mapNode->getMap());
+            // Get the heightfields that might be effect by the deformation
+            HeightFieldMap heightfields;
+            for (unsigned int i = 0; i < 14; i++)
+            {
+                //getHeightFieldsForDeformation(deformation, frame, i, heightfields);
+                s_deformations->getOrCreateHeightFieldsForDeformation(deformation, i, heightfields);
+            }
+
+            OE_NOTICE << "Deforming " << heightfields.size() << std::endl;
+
+            // Actually apply the deformation
+            for (HeightFieldMap::iterator itr = heightfields.begin(); itr != heightfields.end(); ++itr)
+            {
+                // Deform heightfield based on a polygon
+                if (_tool == TOOL_CIRCLE || _tool == TOOL_RECTANGLE)
+                {
+                    // Set the offset to be absolute since we aren't using offset heightfield anymore.
+                    deformation._offset = _mapPoint.z() + _offset;
+                    deformHeightField( deformation, itr->first, itr->second.get());
+                }
+                else if (_tool == TOOL_BLAST)
+                {
+                    // Apply a simple blast radius
+                    applyBlast(_mapPoint, _radius, _radius, itr->first, itr->second);
+                }
+                s_deformations->addHeightField( itr->first, itr->second.get());
+            }
+
             osgEarth::Registry::instance()->clearBlacklist();
+            s_deformations->getBlacklist()->clear();
             s_mapNode->getTerrainEngine()->dirtyTerrain();            
         }
     }
@@ -394,7 +541,9 @@ struct DeformationHandler : public osgGA::GUIEventHandler
     osg::Group* _root;
     float _offset;
     double _radius;
+    GeoPoint _mapPoint;
     osg::ref_ptr < FeatureNode > _featureNode;
+    ElevationQuery   _query;
 };
 
 
@@ -420,7 +569,7 @@ int main(int argc, char** argv)
     s_deformations = new DeformationTileSource(tileSourceOptions);
 
     ElevationLayerOptions elevationOpt;
-    elevationOpt.offset() = true;
+    //elevationOpt.offset() = true;
     elevationOpt.name() = "deformation";
     // This is the only way to get the l2 cache size to pass down even though we're not actually creating a tilesource from the options.
     elevationOpt.driver() = tileSourceOptions;
@@ -430,7 +579,7 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
-    
+
     // install the programmable manipulator.
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 

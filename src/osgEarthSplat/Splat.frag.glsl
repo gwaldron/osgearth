@@ -16,7 +16,7 @@
 #pragma include Splat.frag.common.glsl
 
 // ref: Splat.getRenderInfo.frag.glsl
-oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env);
+//oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env);
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
@@ -47,6 +47,31 @@ uniform float oe_splat_contrast;
 uniform float oe_splat_threshold;
 uniform float oe_splat_minSlope;
 #endif
+
+
+uniform samplerBuffer oe_splat_coverageLUT;
+
+// reads the encoded splatting render information for a coverage value.
+// this data was encoded in Surface::createLUTBUffer().
+void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRenderInfo ri)
+{
+    const int num_lods = 26;
+    const int lod_size = 1; //6;
+    const int class_size = lod_size * num_lods;
+
+    int index = int(value)*class_size + int(env.lod)*lod_size;
+
+    vec4 t = texelFetch(oe_splat_coverageLUT, index);
+    ri.primaryIndex = t.r;
+    ri.detailIndex = -1.0;
+
+    //ri.primaryIndex = texelFetch(oe_splat_coverageLUT, index).r;
+    //ri.detailIndex = texelFetch(oe_splat_coverageLUT, index+1).r;
+    //ri.brightness = texelFetch(oe_splat_coverageLUT, index+2).r;
+    //ri.contrast = texelFetch(oe_splat_coverageLUT, index+3).r;
+    //ri.threshold = texelFetch(oe_splat_coverageLUT, index+4).r;
+    //ri.minSlope = texelFetch(oe_splat_coverageLUT, index+5).r;
+}
 
 // Warps the coverage sampling coordinates to mitigate blockiness.
 vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc, in oe_SplatEnv env)
@@ -110,7 +135,8 @@ vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
 {
     vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
     float coverageValue = texture2D(oe_splat_coverageTex, tc).r;
-    oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
+    oe_SplatRenderInfo ri;
+    oe_splat_getRenderInfo(coverageValue, env, ri);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
     vec4 detail  = oe_splat_getDetailTexel(ri, splat_tc, env) * detailToggle;    
@@ -135,7 +161,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     vec2 rem = mod(tc, pixelWidth);
     vec2 sw;
     sw.x = tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
-    sw.y = tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    sw.y = tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth); 
     vec2 ne = sw + pixelWidth;
     vec2 nw = vec2(sw.x, ne.y);
     vec2 se = vec2(ne.x, sw.y);
@@ -165,10 +191,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     float value_nw = texture2D(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
 
     // Build the render info data for each corner:
-    oe_SplatRenderInfo ri_sw = oe_splat_getRenderInfo(value_sw, env);
-    oe_SplatRenderInfo ri_se = oe_splat_getRenderInfo(value_se, env);
-    oe_SplatRenderInfo ri_ne = oe_splat_getRenderInfo(value_ne, env);
-    oe_SplatRenderInfo ri_nw = oe_splat_getRenderInfo(value_nw, env);
+    oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(value_sw, env, ri_sw);
+    oe_SplatRenderInfo ri_se; oe_splat_getRenderInfo(value_se, env, ri_se);
+    oe_SplatRenderInfo ri_ne; oe_splat_getRenderInfo(value_ne, env, ri_ne);
+    oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(value_nw, env, ri_nw);
 
     // Primary splat:
     vec3 sw_primary = oe_splat_getTexel(ri_sw.primaryIndex, splat_tc).rgb;

@@ -2,6 +2,11 @@
 
 #pragma include Splat.types.glsl
 
+layout(std140) uniform oe_splat_RenderInfoLUT
+{
+    float data[256 * 6 * 26]; // coverage values * renderInfo components * LODs
+}
+
 // Samples the coverage data and returns main and detail indices.
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env)
 {
@@ -14,5 +19,5 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, inout oe_SplatEnv env)
 
 %SAMPLING_FUNCTION%
 
-    return oe_SplatRenderInfo(primary, detail, brightness, contrast, threshold, slope);
+    //return oe_SplatRenderInfo(primary, detail, brightness, contrast, threshold, slope);
 }

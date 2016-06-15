@@ -20,7 +20,9 @@
 #include "SplatCatalog"
 #include "SplatShaders"
 #include <osgEarth/Map>
+#include <osgEarth/ShaderGenerator>
 #include <osgDB/Options>
+#include <osg/TextureBuffer>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -58,6 +60,8 @@ Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
 
     if ( _catalog->createSplatTextureDef(dbo, _textureDef) )
     {
+        _textureDef._splatLUTBuffer = createLUTBuffer(coverage);
+#if 0
         // loaded, now create a sampling function.
         std::string code;
         if ( !createGLSLSamplingCode(coverage, code) )
@@ -67,6 +71,7 @@ Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
         }
 
         _textureDef._samplingFunction = code;
+#endif
     }
     else
     {
@@ -93,101 +98,132 @@ namespace
     void write(std::ostream& buf, const SplatRangeData* rangeData, int I)
     {
         buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
-        if (rangeData->_detail.isSet()) {
-            buf << indent(I) << "detail = " << (rangeData->_detail->_textureIndex) << ".0;\n";
-            if (rangeData->_detail->_brightness.isSet())
-                buf << indent(I) << "brightness = " << rangeData->_detail->_brightness.get() << ";\n";
-            if (rangeData->_detail->_contrast.isSet())
-                buf << indent(I) << "contrast = " << rangeData->_detail->_contrast.get() << ";\n";
-            if (rangeData->_detail->_threshold.isSet())
-                buf << indent(I) << "threshold = " << rangeData->_detail->_threshold.get() << ";\n";
-            if (rangeData->_detail->_slope.isSet())
-                buf << indent(I) << "slope = " << rangeData->_detail->_slope.get() << ";\n";
-        }
+        //if (rangeData->_detail.isSet()) {
+        //    buf << indent(I) << "detail = " << (rangeData->_detail->_textureIndex) << ".0;\n";
+        //    if (rangeData->_detail->_brightness.isSet())
+        //        buf << indent(I) << "brightness = " << rangeData->_detail->_brightness.get() << ";\n";
+        //    if (rangeData->_detail->_contrast.isSet())
+        //        buf << indent(I) << "contrast = " << rangeData->_detail->_contrast.get() << ";\n";
+        //    if (rangeData->_detail->_threshold.isSet())
+        //        buf << indent(I) << "threshold = " << rangeData->_detail->_threshold.get() << ";\n";
+        //    if (rangeData->_detail->_slope.isSet())
+        //        buf << indent(I) << "slope = " << rangeData->_detail->_slope.get() << ";\n";
+        //}
     }
 }
 
-bool
-Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) const
+#define NUM_FLOATS_PER_LOD 6
+#define NUM_LODS 26
+#define NUM_CLASSES 256
+
+namespace
 {
-    if ( !coverage )
-    {
-        OE_WARN << LC << "Sampling function: illegal state (no coverage or legend); \n";
-        return false;
-    }
+    struct LOD {
+        LOD() : primary(-1.0f), detail(-1.0f), brightness(1.0f), contrast(1.0f), threshold(0.0f), slope(0.0f) { }
+        float primary, detail, brightness, contrast, threshold, slope;
+    };
 
-    if ( !_textureDef._texture.valid() )
+    void write(LOD& lod, const SplatRangeData& data)
     {
-        OE_WARN << LC << "Internal: texture is not set; cannot create a sampling function\n";
-        return false;
-    }
-
-    std::string snippet;
-    {
-        int I = 2;
-        std::stringstream buf;
-
-        unsigned pindex = 0;
-        const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-        for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++pindex)
+        lod.primary = (float)data._textureIndex;
+        if (data._detail.isSet())
         {
-            const CoverageValuePredicate* pred = p->get();
+            lod.detail = (float)data._detail->_textureIndex;
+            if (data._detail->_brightness.isSet())
+                lod.brightness = data._detail->_brightness.get();
+            if (data._detail->_contrast.isSet())
+                lod.contrast = data._detail->_contrast.get();
+            if (data._detail->_threshold.isSet())
+                lod.threshold = data._detail->_threshold.get();
+            if (data._detail->_slope.isSet())
+                lod.slope = data._detail->_slope.get();
+        }
+    }
 
-            if ( pred->_exactValue.isSet() )
+    float pack4(float f1, float f2, float f3, float f4)
+    {
+        return 
+            f1*(1.0f) +
+            f2*(1.0f/255.0f) +
+            f3*(1.0f/65025.0f) +
+            f4*(1.0f/160581375.0f);
+    }
+}
+
+osg::Texture*
+Surface::createLUTBuffer(const Coverage* coverage) const
+{
+    typedef LOD CoverageClass[NUM_LODS];
+
+    typedef CoverageClass LUT[NUM_CLASSES];
+
+    LUT lut;
+
+    // Build the LUT!
+    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
+    for (SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
+    {
+        const CoverageValuePredicate* pred = p->get();
+
+        if (pred->_exactValue.isSet())
+        {
+            int coverageIndex = (int)(::atoi(pred->_exactValue.get().c_str()));
+            if (coverageIndex >= 0 && coverageIndex < NUM_CLASSES)
             {
+                CoverageClass& coverageClass = lut[coverageIndex];
+            
                 // Look up by class name:
                 const std::string& className = pred->_mappedClassName.get();
                 const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
-                if ( i != _textureDef._splatLUT.end() )
+                if (i != _textureDef._splatLUT.end())
                 {
-                    if (pindex > 0)
-                        buf << indent(I) << "else\n";
-
-                    buf << indent(I) << "if (" << pred->_exactValue.get() << ".0 == value) {\n"; ++I;
-
                     const SplatRangeDataVector& ranges = i->second;
-
-                    if (ranges.size() == 1)
+                    unsigned r = 0;
+                    for (unsigned lod = 0; lod < NUM_LODS; ++lod)
                     {
-                        write(buf, &ranges.front(), I);
+                        const SplatRangeData& range = ranges[r];
+                        write(coverageClass[lod], range);
+                        if (range._maxLOD.isSet() && lod == range._maxLOD.get() && (r + 1) < ranges.size())
+                            ++r;
                     }
-
-                    else
-                    {
-                        for (int i = 0; i < ranges.size()-1; ++i)
-                        {
-                            const SplatRangeData& r = ranges[i];
-                            buf << indent(I);
-                            if (i>0) buf << "else ";
-                            buf << "if(env.lod <= float(" << r._maxLOD.get() << ")) {\n"; ++I;
-                            write(buf, &r, I);
-                            --I; buf << indent(I) << "}\n";
-                        }
-
-                        buf << indent(I) << "else {\n"; ++I;
-                        write(buf, &ranges.back(), I);
-                        --I; buf << indent(I) << "}\n";
-                    }
-
-                   --I; buf << indent(I) << "}\n";
                 }
             }
         }
-
-        snippet = buf.str();
     }
 
-    SplattingShaders splatting;
-    std::string code = ShaderLoader::load(
-        splatting.FragGetRenderInfo,
-        splatting);
+    // Encode the LUT into a texture buffer.
+    osg::Image* image = new osg::Image();
+    //image->allocateImage(NUM_CLASSES * NUM_LODS * NUM_FLOATS_PER_LOD, 1, 1, GL_LUMINANCE32F_ARB, GL_FLOAT);
+    image->allocateImage(NUM_CLASSES * NUM_LODS, 1, 1, GL_RGB32F_ARB, GL_FLOAT);
 
+    // populate the values
+    GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
+    for (unsigned c=0; c<NUM_CLASSES; ++c)
+    {
+        for (unsigned lod=0; lod<NUM_LODS; ++lod)
+        {
+            LOD& record = lut[c][lod];
+            *ptr++ = record.primary;
+            *ptr++ = record.detail;
+            *ptr++ = pack4(record.brightness, record.contrast, record.threshold, record.slope);
+            //*ptr++ = record.brightness;
+            //*ptr++ = record.contrast;
+            //*ptr++ = record.threshold;
+            //*ptr++ = record.slope;
+        }
+    }
+    image->dirty();
 
-    osgEarth::replaceIn(code, "%SAMPLING_FUNCTION%", snippet);
+    // create a buffer object
+    osg::TextureBuffer* buf = new osg::TextureBuffer();
+    buf->setImage(image);
+    //buf->setInternalFormat(GL_LUMINANCE32F_ARB);
+    buf->setInternalFormat(GL_RGB32F_ARB);
+    buf->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+    buf->setUnRefImageDataAfterApply(true);
 
-    output = code;
+    // Tell the shader generator to skip the positioning texture.
+    ShaderGenerator::setIgnoreHint(buf, true);
 
-    OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
-
-    return true;
+    return buf;
 }

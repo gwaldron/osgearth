@@ -142,11 +142,12 @@ namespace
 
     float pack4(float f1, float f2, float f3, float f4)
     {
+        const float S = 32768.0f;
         return 
-            f1*(1.0f) +
-            f2*(1.0f/255.0f) +
-            f3*(1.0f/65025.0f) +
-            f4*(1.0f/160581375.0f);
+            S*f1*(1.0f) +
+            S*f2*(1.0f/255.0f) +
+            S*f3*(1.0f/65025.0f) +
+            S*f4*(1.0f/160581375.0f);
     }
 }
 
@@ -194,7 +195,7 @@ Surface::createLUTBuffer(const Coverage* coverage) const
     // Encode the LUT into a texture buffer.
     osg::Image* image = new osg::Image();
     //image->allocateImage(NUM_CLASSES * NUM_LODS * NUM_FLOATS_PER_LOD, 1, 1, GL_LUMINANCE32F_ARB, GL_FLOAT);
-    image->allocateImage(NUM_CLASSES * NUM_LODS, 1, 1, GL_RGB32F_ARB, GL_FLOAT);
+    image->allocateImage(NUM_CLASSES * NUM_LODS, 1, 1, GL_RGBA32F_ARB, GL_FLOAT);
 
     // populate the values
     GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
@@ -206,6 +207,7 @@ Surface::createLUTBuffer(const Coverage* coverage) const
             *ptr++ = record.primary;
             *ptr++ = record.detail;
             *ptr++ = pack4(record.brightness, record.contrast, record.threshold, record.slope);
+            *ptr++ = 0.0f;
             //*ptr++ = record.brightness;
             //*ptr++ = record.contrast;
             //*ptr++ = record.threshold;
@@ -218,7 +220,7 @@ Surface::createLUTBuffer(const Coverage* coverage) const
     osg::TextureBuffer* buf = new osg::TextureBuffer();
     buf->setImage(image);
     //buf->setInternalFormat(GL_LUMINANCE32F_ARB);
-    buf->setInternalFormat(GL_RGB32F_ARB);
+    buf->setInternalFormat(GL_RGBA32F_ARB);
     buf->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     buf->setUnRefImageDataAfterApply(true);
 

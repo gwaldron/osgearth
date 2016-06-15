@@ -62,8 +62,19 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
     int index = int(value)*class_size + int(env.lod)*lod_size;
 
     vec4 t = texelFetch(oe_splat_coverageLUT, index);
-    ri.primaryIndex = t.r;
-    ri.detailIndex = -1.0;
+    ri.primaryIndex = t[0];
+    ri.detailIndex = t[1];
+
+    vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * t[2];
+    enc = fract(enc);
+    enc -= enc.yzww * vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);
+
+    const float S = 1.0/32768.0;
+
+    ri.brightness = enc[0]*S;
+    ri.contrast = enc[1]*S;
+    ri.threshold = enc[2]*S;
+    ri.minSlope = enc[3]*S;    
 
     //ri.primaryIndex = texelFetch(oe_splat_coverageLUT, index).r;
     //ri.detailIndex = texelFetch(oe_splat_coverageLUT, index+1).r;

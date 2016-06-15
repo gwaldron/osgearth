@@ -87,7 +87,7 @@ vec4 oe_splat_getTexel(in float index, in vec2 tc)
 // Returns the weighting factor in the alpha channel.
 vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env)
 {
-    float hasDetail = ri.detailIndex >= 0.0 ? 1.0 : 0.0;
+    float hasDetail = clamp(ri.detailIndex+1.0, 0.0, 1.0); //ri.detailIndex >= 0.0 ? 1.0 : 0.0;
 
 #ifdef SPLAT_EDIT
     float brightness = oe_splat_brightness;
@@ -122,7 +122,8 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 	n = n < threshold ? 0.0 : n;
 
     // sample the texel and return it.
-    vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc);
+    vec4 result = oe_splat_getTexel( ri.detailIndex, tc);
+    //vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc);
     return vec4(result.rgb, hasDetail*n);
 }
 
@@ -181,10 +182,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     nw_weight *= invTotalWeight;
 
     // Sample coverage values using quantized corner coords:
-    float value_sw = texture2D(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
-    float value_se = texture2D(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
-    float value_ne = texture2D(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
-    float value_nw = texture2D(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
+    float value_sw = texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
+    float value_se = texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
+    float value_ne = texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
+    float value_nw = texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
 
     // Build the render info data for each corner:
     oe_SplatRenderInfo ri_sw; oe_splat_getRenderInfo(value_sw, env, ri_sw);

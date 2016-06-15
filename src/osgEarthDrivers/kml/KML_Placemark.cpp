@@ -87,9 +87,6 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 
                 GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
 
-                bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
-                bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
-
                 // check for symbols.
                 ModelSymbol*    model = style.get<ModelSymbol>();
                 IconSymbol*     icon  = style.get<IconSymbol>();
@@ -168,8 +165,6 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 // multiple coords? feature:
                 if ( geom->getTotalPointCount() > 1 )
                 {
-                    ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
-
                     // Remove symbols that we have already processed so the geometry
                     // compiler doesn't get confused.
                     if ( model )

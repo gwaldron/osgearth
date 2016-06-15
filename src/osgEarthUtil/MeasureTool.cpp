@@ -194,7 +194,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
     {        
         float eps = 1.0f;
         _mouseDown = false;
-        if (osg::equivalent(ea.getX(), _mouseDownX) && osg::equivalent(ea.getY(), _mouseDownY))
+        if (osg::equivalent(ea.getX(), _mouseDownX, eps) && osg::equivalent(ea.getY(), _mouseDownY, eps))
         {
             double lon, lat;
             if (getLocationAt(view, ea.getX(), ea.getY(), lon, lat))

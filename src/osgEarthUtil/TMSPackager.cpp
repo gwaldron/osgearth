@@ -333,12 +333,6 @@ void TMSPackager::setVisitor(TileVisitor* visitor)
 
 void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 {    
-    // Get a test image from the root keys
-
-    // collect the root tile keys in preparation for packaging:
-    std::vector<TileKey> rootKeys;
-    map->getProfile()->getRootKeys( rootKeys );
-
     // fetch one tile to see what the image size should be
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);

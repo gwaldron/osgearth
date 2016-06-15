@@ -142,12 +142,12 @@ namespace
 
     float pack4(float f1, float f2, float f3, float f4)
     {
-        const float S = 32768.0f;
+        const float S = 1.0/3.0;
         return 
-            S*f1*(1.0f) +
-            S*f2*(1.0f/255.0f) +
-            S*f3*(1.0f/65025.0f) +
-            S*f4*(1.0f/160581375.0f);
+            S*f1/(1.0f) +
+            S*f2/(255.0f) +
+            S*f3/(65025.0f) +
+            S*f4/(160581375.0f);
     }
 }
 
@@ -206,8 +206,8 @@ Surface::createLUTBuffer(const Coverage* coverage) const
             LOD& record = lut[c][lod];
             *ptr++ = record.primary;
             *ptr++ = record.detail;
-            *ptr++ = pack4(record.brightness, record.contrast, record.threshold, record.slope);
-            *ptr++ = 0.0f;
+            *ptr++ = (255.0f*record.brightness) + (record.contrast/255.0f); // (record.brightness, record.contrast, record.threshold, record.slope);
+            *ptr++ = (255.0f*record.threshold)  + (record.slope/255.0f); //0.0f;
             //*ptr++ = record.brightness;
             //*ptr++ = record.contrast;
             //*ptr++ = record.threshold;

@@ -56,32 +56,17 @@ uniform samplerBuffer oe_splat_coverageLUT;
 void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRenderInfo ri)
 {
     const int num_lods = 26;
-    const int lod_size = 1; //6;
-    const int class_size = lod_size * num_lods;
+    const float inv255 = 1.0/255.0;
 
-    int index = int(value)*class_size + int(env.lod)*lod_size;
+    int index = int(value)*num_lods + int(env.lod);
 
     vec4 t = texelFetch(oe_splat_coverageLUT, index);
     ri.primaryIndex = t[0];
-    ri.detailIndex = t[1];
-
-    vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * t[2];
-    enc = fract(enc);
-    enc -= enc.yzww * vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0);
-
-    const float S = 1.0/32768.0;
-
-    ri.brightness = enc[0]*S;
-    ri.contrast = enc[1]*S;
-    ri.threshold = enc[2]*S;
-    ri.minSlope = enc[3]*S;    
-
-    //ri.primaryIndex = texelFetch(oe_splat_coverageLUT, index).r;
-    //ri.detailIndex = texelFetch(oe_splat_coverageLUT, index+1).r;
-    //ri.brightness = texelFetch(oe_splat_coverageLUT, index+2).r;
-    //ri.contrast = texelFetch(oe_splat_coverageLUT, index+3).r;
-    //ri.threshold = texelFetch(oe_splat_coverageLUT, index+4).r;
-    //ri.minSlope = texelFetch(oe_splat_coverageLUT, index+5).r;
+    ri.detailIndex  = t[1];
+    ri.brightness   = trunc(t[2])*inv255;
+    ri.contrast     = fract(t[2])*255.0;
+    ri.threshold    = trunc(t[3])*inv255;
+    ri.minSlope     = fract(t[3])*255.0;
 }
 
 // Warps the coverage sampling coordinates to mitigate blockiness.

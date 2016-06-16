@@ -29,12 +29,6 @@
 using namespace osgEarth;
 
 static bool
-isNoData( short s )
-{
-  return s == SHRT_MAX || s == -SHRT_MAX;
-}
-
-static bool
 isNoData( float f )
 {
   return f == FLT_MAX || f == -FLT_MAX;

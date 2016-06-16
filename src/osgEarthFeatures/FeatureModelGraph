@@ -213,6 +213,7 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
+        OpenThreads::Mutex               _clampableMutex;
 
         osg::Group*                      _overlayInstalled;
         osg::ref_ptr<osg::Group>         _overlayPlaceholder;

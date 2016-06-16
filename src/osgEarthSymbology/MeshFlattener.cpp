@@ -166,10 +166,9 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         }
 
         // Run MERGE_GEOMETRY so that it will merge all the primitive sets
-        osgUtil::Optimizer opt;
-        opt.optimize( result, 
-            osgUtil::Optimizer::MERGE_GEOMETRY
-            );
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        result->accept( mg );
        
         //osgDB::writeNodeFile(*result, "clustered.osg");
 

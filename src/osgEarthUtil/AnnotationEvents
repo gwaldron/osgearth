@@ -35,7 +35,6 @@
  */
 namespace osgEarth { namespace Util
 {	
-    using namespace osgEarth::Util;
     using namespace osgEarth::Annotation;
 
     /**

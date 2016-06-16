@@ -301,25 +301,6 @@ usage(const char* name)
     return 0;
 }
 
-static std::string response(std::string const &content
-    , std::string const &content_type= "text/plain"
-    , std::string const &status= "200 OK"
-    , std::string const &cookie= "")
-  {
-    std::ostringstream out;
-    out<< "HTTP/1.1 "<< status<< "\r\n"
-      << "Content-Type: "<< content_type<< "; charset=utf-8\r\n"
-      << "Content-Length: "<< content.size()<< "\r\n"
-      << "Connection: keep-alive\r\n"
-      << "Cache-Control: no-cache\r\n"
-      << "Access-Control-Allow-Origin: *\r\n";
-    if(!cookie.empty())
-      out<< "Set-Cookie: "<< cookie<< ";max-age=315569260\r\n";
-    out<< "Server: osgearth_server\r\n\r\n"
-      << content;
-    return out.str();
-  }
-
 #define LOD_COUNT 26
 
 // Note:  These are taken from Splat.frag.glsl so they line up exactly.

@@ -218,11 +218,8 @@ ImageOverlay::init()
 
     if ( getMapNode() )
     {
-        double height = 0;
         osg::Geometry* geometry = new osg::Geometry();
         geometry->setUseVertexBufferObjects(true);
-
-        const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
 
         const SpatialReference* mapSRS = getMapNode()->getMapSRS();
 

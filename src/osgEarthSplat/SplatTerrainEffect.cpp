@@ -33,6 +33,7 @@
 #include <osgEarthUtil/SimplexNoise>
 
 #include <osg/Texture2D>
+#include <osg/TextureBuffer>
 #include <osgDB/WriteFile>
 
 #include "SplatShaders"
@@ -42,6 +43,7 @@
 #define COVERAGE_SAMPLER "oe_splat_coverageTex"
 #define SPLAT_SAMPLER    "oe_splatTex"
 #define NOISE_SAMPLER    "oe_noise_tex"
+#define LUT_SAMPLER      "oe_splat_coverageLUT"
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -112,8 +114,12 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 }
             }
 
+            bool coverageOK =  engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data");
+
+            bool lutOK = engine->getResources()->reserveTextureImageUnit(_lutTexUnit, "Splat LUT");
+
             // Set up surface splatting:
-            if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data") )
+            if ( coverageOK && lutOK )
             {
                 // Set up the zone-specific elements:
                 for(Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
@@ -123,12 +129,17 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                     // The texture array for the zone:
                     const SplatTextureDef& texdef = zone->getSurface()->getTextureDef();
                     osg::StateSet* zoneStateset = zone->getOrCreateStateSet();
+
+                    // apply the splatting texture catalog:
                     zoneStateset->setTextureAttribute( _splatTexUnit, texdef._texture.get() );
-                    
+
+                    // apply the buffer containing the coverage-to-splat LUT:
+                    zoneStateset->setTextureAttribute(_lutTexUnit, texdef._splatLUTBuffer.get());
+
                     // The zone's sampling function:
-                    VirtualProgram* vp = VirtualProgram::cloneOrCreate( zoneStateset );
-                    osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, texdef._samplingFunction);
-                    vp->setShader( "oe_splat_getRenderInfo", shader );
+                    //VirtualProgram* vp = VirtualProgram::cloneOrCreate( zoneStateset );
+                    //osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, texdef._samplingFunction);
+                    //vp->setShader( "oe_splat_getRenderInfo", shader );
 
                     OE_INFO << LC << "Installed getRenderInfo for zone \"" << zone->getName() << "\" (uid=" << zone->getUID() << ")\n";
                 }
@@ -139,6 +150,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 // Bind the texture image unit:
                 _splatTexUniform = new osg::Uniform(SPLAT_SAMPLER, _splatTexUnit);
                 stateset->addUniform( _splatTexUniform.get() );
+
+                // install the uniform for the splat LUT.
+                _lutTexUniform = stateset->getOrCreateUniform( LUT_SAMPLER, osg::Uniform::SAMPLER_BUFFER );
+                _lutTexUniform->set(_lutTexUnit);
 
                 // coverage code sampler:
                 osg::ref_ptr<ImageLayer> coverageLayer;

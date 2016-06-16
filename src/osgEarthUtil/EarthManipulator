@@ -37,11 +37,11 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
-    /** 
+    /**
      * A programmable manipulator suitable for use with geospatial terrains.
      *
      * You can use the "Settings" class to define custom input device bindings
-     * and navigation parameters. Create one or more of these and call 
+     * and navigation parameters. Create one or more of these and call
      * applySettings() to "program" the manipulator at runtime.
      */
     class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::CameraManipulator
@@ -93,7 +93,7 @@ namespace osgEarth { namespace Util
 
         /** Action options. Certain options are only meaningful to certain Actions.
             See the bind* documentation for information. */
-        enum ActionOptionType {            
+        enum ActionOptionType {
             OPTION_SCALE_X,             // Sensitivity multiplier for horizontal input movements
             OPTION_SCALE_Y,             // Sensitivity multiplier for vertical input movements
             OPTION_CONTINUOUS,          // Whether to act as long as the button or key is depressed
@@ -144,7 +144,7 @@ namespace osgEarth { namespace Util
         };
 
     protected:
-        struct InputSpec 
+        struct InputSpec
         {
             InputSpec( int event_type, int input_mask, int modkey_mask )
                 : _event_type(event_type), _input_mask(input_mask), _modkey_mask( modkey_mask ) { }
@@ -152,8 +152,8 @@ namespace osgEarth { namespace Util
                 : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
 
             bool operator == ( const InputSpec& rhs ) const {
-                return _event_type == rhs._event_type && 
-                       _input_mask == rhs._input_mask && 
+                return _event_type == rhs._event_type &&
+                       _input_mask == rhs._input_mask &&
                        ((_modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK) == (rhs._modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK));
             }
 
@@ -195,7 +195,7 @@ namespace osgEarth { namespace Util
         };
 
         void dumpActionInfo( const Action& action, osg::NotifySeverity level ) const;
-        
+
         static Action NullAction;
 
     public:
@@ -227,13 +227,13 @@ namespace osgEarth { namespace Util
              *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
              *
              * @param modkey_mask (default = 0L)
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key
              *      combination to associate with the action.
              *
              * @param options
              *      Action options. Valid options are:
              *      OPTION_CONTINUOUS, OPTION_SCALE_X, OPTION_SCALE_Y
-             */             
+             */
             void bindMouse(
                 ActionType action, int button_mask,
                 int modkey_mask = 0L,
@@ -250,7 +250,7 @@ namespace osgEarth { namespace Util
              *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
              *
              * @param modkey_mask (default = 0L)
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key
              *      combination to associate with the action.
              *
              * @param options
@@ -273,7 +273,7 @@ namespace osgEarth { namespace Util
              *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
              *
              * @param modkey_mask (default = 0L)
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key
              *      combination to associate with the action.
              *
              * @param options
@@ -296,7 +296,7 @@ namespace osgEarth { namespace Util
              *      A osgGA::GUIEventAdapter::KeySymbol value
              *
              * @param modkey_mask (default = 0L)
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key
              *      combination to associate with the action.
              *
              * @param options
@@ -307,7 +307,7 @@ namespace osgEarth { namespace Util
                 ActionType action, int key,
                 int modkey_mask =0L,
                 const ActionOptions& options =ActionOptions() );
-            
+
             /**
              * Assigns a bevahior to operation of the mouse's scroll wheel.
              *
@@ -319,7 +319,7 @@ namespace osgEarth { namespace Util
              *      A osgGA::GUIEventAdapter::ScrollingMotion value
              *
              * @param modkey_mask (default = 0L)
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key
              *      combination to associate with the action.
              *
              * @param options
@@ -334,11 +334,11 @@ namespace osgEarth { namespace Util
 
             void bindPinch(
                 ActionType action, const ActionOptions& =ActionOptions() );
-                
+
             void bindTwist(
                 ActionType action, const ActionOptions& =ActionOptions() );
 
-   
+
             void bindMultiDrag(
                 ActionType action, const ActionOptions& =ActionOptions() );
 
@@ -355,7 +355,7 @@ namespace osgEarth { namespace Util
              * Gets the overall mouse sensitivity scale factor. Default = 1.0.
              */
             double getMouseSensitivity() const { return _mouse_sens; }
-            
+
             /**
              * Sets an overall touch sensitivity factor.
              *
@@ -390,7 +390,7 @@ namespace osgEarth { namespace Util
             /**
              * Sets the scroll-wheel sensitivity factor. This applies to navigation actions
              * that are bound to scrolling events. For example, you may bind the scroll wheel to
-             * the ACTION_ZOOM_IN action; this factor adjusts how much zooming will occur each time 
+             * the ACTION_ZOOM_IN action; this factor adjusts how much zooming will occur each time
              * you click the scroll wheel.
              *
              * @param value
@@ -404,8 +404,8 @@ namespace osgEarth { namespace Util
              */
             double getScrollSensitivity() const { return _scroll_sens; }
 
-            /** 
-             * When set to true, prevents simultaneous control of pitch and azimuth. 
+            /**
+             * When set to true, prevents simultaneous control of pitch and azimuth.
              *
              * Usually you can alter pitch and azimuth at the same time. When this flag
              * is set, you can only control one at a time - if you start slewing the azimuth of the camera,
@@ -415,7 +415,7 @@ namespace osgEarth { namespace Util
              */
             void setSingleAxisRotation( bool value ) { _single_axis_rotation = value; }
 
-            /** 
+            /**
              * Gets whether simultaneous control over pitch and azimuth is disabled.
              * Default = false.
              */
@@ -447,21 +447,21 @@ namespace osgEarth { namespace Util
             double getMinPitch() const { return _min_pitch; }
 
             /** Gets the maximum allowable local pitch, in degrees. */
-            double getMaxPitch() const { return _max_pitch; }        
+            double getMaxPitch() const { return _max_pitch; }
 
-            /** Gets the max x offset in world coordates */
+            /** Gets the max x offset in world coordinates */
             double getMaxXOffset() const { return _max_x_offset; }
 
-            /** Gets the max y offset in world coordates */
+            /** Gets the max y offset in world coordinates */
             double getMaxYOffset() const { return _max_y_offset; }
 
             /** Gets the minimum distance from the focal point in world coordinates */
             double getMinDistance() const {return _min_distance; }
-            
+
             /** Gets the maximum distance from the focal point in world coordinates */
             double getMaxDistance() const {return _max_distance; }
 
-            /** Sets the min and max distance from the focal point in world coordiantes */
+            /** Sets the min and max distance from the focal point in world coordinates */
             void setMinMaxDistance( double min_distance, double max_distance);
 
             /**
@@ -498,8 +498,8 @@ namespace osgEarth { namespace Util
 
             /** Frustum offset (in pixels) */
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }     
-#endif       
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
+#endif
 
             /** Whether to automatically adjust an orthographic camera so that it "tracks" the last known FOV and Aspect Ratio. */
             bool getOrthoTracksPerspective() const { return _orthoTracksPerspective; }
@@ -509,9 +509,13 @@ namespace osgEarth { namespace Util
             bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
             void setTerrainAvoidanceEnabled( bool value ) { _terrainAvoidanceEnabled = value; }
 
+            /** Minimum range for terrain avoidance checks in world coordinates */
+            double getTerrainAvoidanceMinimumDistance() const {return _terrainAvoidanceMinDistance; }
+            void setTerrainAvoidanceMinimumDistance(double minDistance) { _terrainAvoidanceMinDistance = minDistance; }
+
             void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
             bool getThrowingEnabled () const { return _throwingEnabled; }
-            
+
             void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
             double getThrowDecayRate () const { return _throwDecayRate; }
 
@@ -556,6 +560,7 @@ namespace osgEarth { namespace Util
             bool _orthoTracksPerspective;
 
             bool _terrainAvoidanceEnabled;
+            double _terrainAvoidanceMinDistance;
 
             bool _throwingEnabled;
             double _throwDecayRate;
@@ -579,13 +584,13 @@ namespace osgEarth { namespace Util
         /**
          * Gets the current camera position.
          */
-        Viewpoint getViewpoint() const;        
+        Viewpoint getViewpoint() const;
 
         /**
          * Sets the camera position, optionally moving it there over time.
          */
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
-        
+
         /**
          * @deprecated Please use clearViewpoint() instead.
          *
@@ -627,11 +632,11 @@ namespace osgEarth { namespace Util
          *      The duration that the camera should transition when tethering to the node.
          */
         void setTetherNode(osg::Node* node, double duration_s =0.0);
-        
+
         /**
          * @deprecated Please use setViewpoint() instead.
          *
-         * Same as setTether(node, duration) but you also specify the final 
+         * Same as setTether(node, duration) but you also specify the final
          * heading, pitch, and range offset from the tethered node.
          */
         void setTetherNode(
@@ -685,7 +690,7 @@ namespace osgEarth { namespace Util
          * Drag the earth using deltas
          */
         virtual void drag( double dx, double dy, osg::View* view);
-        
+
         /**
          * Converts screen coordinates (relative to the view's viewpoint) to world
          * coordinates. Note, this method will use the mask set by setTraversalMask().
@@ -727,15 +732,15 @@ namespace osgEarth { namespace Util
         osg::Node::NodeMask getFindNodeTraversalMask( ) { return _findNodeTraversalMask; }
 
         /**
-         * Sets the traversal node mask used to find root MapNode and CoordinateSystemNode. Default is 0x1. 
-         * Use this method if you change MapNode or CoordinateSystemNode mask and want manipulator to work with them correctly.  
+         * Sets the traversal node mask used to find root MapNode and CoordinateSystemNode. Default is 0x1.
+         * Use this method if you change MapNode or CoordinateSystemNode mask and want manipulator to work with them correctly.
          */
         void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
     public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
-        
+
         /** set the position of the matrix manipulator using a 4x4 Matrix.*/
         virtual void setByMatrix(const osg::Matrixd& matrix);
 
@@ -767,7 +772,7 @@ namespace osgEarth { namespace Util
         // Move the camera to the default position.
         virtual void home(double /*unused*/);
         virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
-        
+
         // Start/restart the manipulator.
         virtual void init(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
 
@@ -778,7 +783,7 @@ namespace osgEarth { namespace Util
         virtual void getUsage(osg::ApplicationUsage& usage) const;
 
         virtual void computeHomePosition();
-        
+
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
@@ -788,7 +793,7 @@ namespace osgEarth { namespace Util
     protected:
 
         virtual ~EarthManipulator();
-        
+
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const;
 
         bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
@@ -867,7 +872,7 @@ namespace osgEarth { namespace Util
         void updateHandCam( const osg::Timer_t& now );
 
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
-        
+
         void applyOptionsToDeltas( const Action& action, double& dx, double& dy );
 
         void configureDefaultSettings();
@@ -886,7 +891,7 @@ namespace osgEarth { namespace Util
         ActionType getActionTypeForEvent( const osgGA::GUIEventAdapter& ea ) const;
 
     public:
-            
+
         void recalculateCenter() { recalculateCenter(_centerLocalToWorld); }
 
         const GeoPoint& centerMap() const { return _centerMap; }
@@ -938,8 +943,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
         double                  _time_s_last_frame;
-        double                  _time_s_now;        
-        double                  _delta_t;        
+        double                  _time_s_now;
+        double                  _delta_t;
         bool                    _thrown;
         double                  _throw_dx;
         double                  _throw_dy;
@@ -1020,16 +1025,16 @@ namespace osgEarth { namespace Util
 
         unsigned _frameCount;
 
-        osg::ref_ptr<Settings> _settings;		
+        osg::ref_ptr<Settings> _settings;
 
         osgEarth::optional<Viewpoint> _homeViewpoint;
         double _homeViewpointDuration;
 
         Action _last_action;
-        
+
         EventType _last_event;
         double    _time_s_last_event;
-        
+
         double _vfov;
 
         /** updates a camera to switch between prospective and ortho. */

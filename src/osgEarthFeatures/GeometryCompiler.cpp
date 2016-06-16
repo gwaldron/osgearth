@@ -575,13 +575,18 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             osgUtil::Optimizer::REMOVE_REDUNDANT_NODES |
             osgUtil::Optimizer::COMBINE_ADJACENT_LODS |
             osgUtil::Optimizer::SHARE_DUPLICATE_STATE |
-            osgUtil::Optimizer::MERGE_GEOMETRY |
+            //osgUtil::Optimizer::MERGE_GEOMETRY |
             osgUtil::Optimizer::CHECK_GEOMETRY |
             osgUtil::Optimizer::MERGE_GEODES |
             osgUtil::Optimizer::STATIC_OBJECT_DETECTION;
 
         osgUtil::Optimizer opt;
         opt.optimize(resultGroup.get(), optimizations);
+
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        resultGroup->accept(mg);
+
         OE_DEBUG << LC << "optimize complete" << std::endl;
 
         if ( trackHistory ) history.push_back( "optimize" );

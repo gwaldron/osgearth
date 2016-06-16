@@ -31,8 +31,115 @@ using namespace osgEarth::Threading;
 
 #define LC "[Cache] "
 
+//------------------------------------------------------------------------
+
 CacheOptions::~CacheOptions()
 {
+}
+
+void
+CacheSettings::integrateCachePolicy(const optional<CachePolicy>& policy)
+{
+    // integrate the fields that are passed in first:
+    if ( policy.isSet() )
+        cachePolicy()->mergeAndOverride( policy );
+
+    // then resolve with global overrides from the registry.
+    Registry::instance()->resolveCachePolicy( cachePolicy() );
+}
+
+void
+CacheSettings::store(osgDB::Options* readOptions)
+{
+    if (readOptions)
+    {
+        readOptions->setPluginData("osgEarth::CacheSettings", this);
+    }
+}
+ 
+CacheSettings*
+CacheSettings::get(const osgDB::Options* readOptions)
+{
+    CacheSettings* obj = 0L;
+    if (readOptions)
+    {
+        obj = static_cast<CacheSettings*>(const_cast<void*>((readOptions->getPluginData("osgEarth::CacheSettings"))));
+    }
+    return obj;
+}
+
+//------------------------------------------------------------------------
+
+CacheManager::CacheManager()
+{
+    // Check the regsitry for a default cache.
+    Cache* cache = Registry::instance()->getDefaultCache();
+    if (cache)
+        setCache(cache);
+
+    // .. and a default policy.
+    if (Registry::instance()->defaultCachePolicy().isSet())
+        defaultCachePolicy() = Registry::instance()->defaultCachePolicy();
+}
+        
+void
+CacheManager::store(osgDB::Options* readOptions)
+{
+    if (readOptions)
+    {
+        readOptions->setPluginData("osgEarth::CacheManager", this);
+    }
+}
+ 
+CacheManager*
+CacheManager::get(const osgDB::Options* readOptions)
+{
+    CacheManager* obj = 0L;
+    if (readOptions)
+    {
+        obj = static_cast<CacheManager*>(const_cast<void*>((readOptions->getPluginData("osgEarth::CacheManager"))));
+    }
+    return obj;
+}
+        
+osg::ref_ptr<CacheSettings>
+CacheManager::getOrCreateSettings(const CacheSettings::ID& id)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    int size = _lut.size();
+    osg::ref_ptr<CacheSettings>& settings = _lut[id];
+    if (_lut.size() > size)
+    {
+        // new entry - propagate some properties
+        settings = new CacheSettings();
+        settings->setCache(_cache.get());
+        settings->defaultCachePolicy() = _policy;
+        settings->cachePolicy() = _policy;
+    }
+    return settings;
+}
+
+void 
+CacheManager::close(const CacheSettings::ID& id)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    _lut.erase(id);
+}
+
+void
+CacheManager::setCache(Cache* cache)
+{
+    if (_cache.get() != cache)
+    {
+        _cache = cache;
+
+        Threading::ScopedMutexLock lock(_mutex);
+        for (LUT::iterator i = _lut.begin(); i != _lut.end(); ++i)
+        {
+            i->second->setCache(cache);
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -66,6 +173,18 @@ void
 Cache::removeBin( CacheBin* bin )
 {
     _bins.remove( bin );
+}
+
+Cache*
+Cache::get(const osgDB::Options* readOptions)
+{
+    Cache* cache = 0L;
+    if (readOptions)
+    {
+        const CacheManager* cacheManager = CacheManager::get(readOptions);
+        cache = cacheManager ? cacheManager->getCache() : 0L;
+    }
+    return cache;
 }
 
 //------------------------------------------------------------------------

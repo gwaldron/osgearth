@@ -335,7 +335,7 @@ namespace osgEarth
 
     public: // TerrainLayer override
 
-        CacheBin* getCacheBin( const Profile* profile );
+        //CacheBin* getCacheBin( const Profile* profile );
 
     protected:
 

@@ -89,9 +89,13 @@ public: // TileSource interface
             _featureSource->initialize( _dbOptions.get() );
         }
 
-        // set up the IO options so that we do not cache input data:
-        CachePolicy::NO_CACHE.store( _dbOptions.get() );
         return STATUS_OK;
+    }
+
+    // Tells the layer not to cache data from this tile source.
+    CachePolicy getCachePolicyHint(const Profile* profile) const 
+    {
+        return CachePolicy::NO_CACHE;
     }
 
     // override

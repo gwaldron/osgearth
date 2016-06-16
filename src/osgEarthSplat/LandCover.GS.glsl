@@ -148,8 +148,7 @@ oe_landcover_geom()
         tileUV.x += b[i] * oe_layer_tilec.x;
         tileUV.y += b[i] * oe_layer_tilec.y;
     }
-    
-#if 1
+   
     // Look up the biome at this point:
     int biomeIndex = oe_landcover_getBiomeIndex(vec4(tileUV,0,1));
     if ( biomeIndex < 0 )
@@ -157,9 +156,6 @@ oe_landcover_geom()
         // No biome defined; bail out without emitting any geometry.
         return;
     }
-#else
-    int biomeIndex = oe_landcover_biomeIndex;
-#endif
     
     // If we're using a mask texture, sample it now:
     if ( oe_landcover_useMask )

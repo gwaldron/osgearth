@@ -50,7 +50,7 @@ _dbOptions     ( dbOptions )
 
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
-        _dbOptions = map->getDBOptions();
+        _dbOptions = map->getReadOptions();
 
     // A new cache to optimize state changes. Since the cache lives in the Session, any
     // geometry created under this session takes advantage of it. That's reasonable since

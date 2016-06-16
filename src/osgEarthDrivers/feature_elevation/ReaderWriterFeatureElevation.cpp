@@ -66,30 +66,9 @@ public:
     virtual ~FeatureElevationTileSource() { }
 
 
-    Status initialize( const osgDB::Options* dbOptions )
+    Status initialize(const osgDB::Options* readOptions)
     {
         Cache* cache = 0;
-
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-
-        if ( _dbOptions.valid() )
-        {
-            // Set up a Custom caching bin for this TileSource
-            cache = Cache::get( _dbOptions.get() );
-            if ( cache )
-            {
-                Config optionsConf = _options.getConfig();
-
-                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());
-                _cacheBin = cache->addBin( binId );
-
-                if ( _cacheBin.valid() )
-                {
-                    _cacheBin->put( _dbOptions.get() );
-                }
-            }
-        }
-
 
         if ( !_options.featureOptions().isSet() )
         {
@@ -102,22 +81,8 @@ public:
             return Status::Error( Stringify() << "Illegal: no valid feature source provided");
         }
 
-        //if ( _features->getGeometryType() != osgEarth::Symbology::Geometry::TYPE_POLYGON )
-        //{
-        //    Status::Error( Stringify() << "Illegal: only polygon features are currently supported");
-        //    return false;
-        //}
+        _features->initialize(readOptions);
 
-        _features->initialize( _dbOptions );
-
-        // populate feature list
-        //osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
-        //while ( cursor.valid() && cursor->hasMore() )
-        //{
-        //    Feature* f = cursor->nextFeature();
-        //    if ( f && f->getGeometry() )
-        //        _featureList.push_back(f);
-        //}
         if (_features->getFeatureProfile())
         {
 			if (getProfile() && !getProfile()->getSRS()->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
@@ -147,14 +112,11 @@ public:
             return Status::Error( Stringify() << "Failed to establish a profile for " <<  this->getName() );
         }
 
-        //getDataExtents().push_back( DataExtent(_extents, 0, _maxDataLevel) );
-
         return STATUS_OK;
     }
 
 
-    osg::Image* createImage( const TileKey&        key,
-                             ProgressCallback*     progress)
+    osg::Image* createImage(const TileKey& key, ProgressCallback* progress)
     {
         return 0L;
     }
@@ -298,11 +260,7 @@ private:
     GeoExtent _extents;
 
     const FeatureElevationOptions _options;
-
     osg::ref_ptr<FeatureSource> _features;
-
-    osg::ref_ptr< CacheBin > _cacheBin;
-    osg::ref_ptr< osgDB::Options > _dbOptions;
 
     unsigned int _maxDataLevel;
 

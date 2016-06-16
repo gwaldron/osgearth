@@ -124,6 +124,9 @@ namespace osgEarth
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );
 
+    /** Same as hashString but returns a string value. */
+    extern OSGEARTH_EXPORT std::string hashToString(const std::string& input);
+
     /**
     * Gets the total number of seconds formatted as H:M:S
     */

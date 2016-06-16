@@ -363,18 +363,6 @@ TerrainLayer::getCacheSettings() const
     return _cacheSettings.get();
 }
 
-//CacheSettings*
-//TerrainLayer::getCacheSettings()
-//{
-//    return getCacheSettingsImpl();
-//}
-//
-//const CacheSettings*
-//TerrainLayer::getCacheSettings() const
-//{
-//    return getCacheSettingsImpl();
-//}
-
 void
 TerrainLayer::setTargetProfileHint( const Profile* profile )
 {

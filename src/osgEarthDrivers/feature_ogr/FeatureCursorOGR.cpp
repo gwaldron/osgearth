@@ -262,6 +262,14 @@ FeatureCursorOGR::readChunk()
         {
             FilterContext cx;
             cx.setProfile( _profile.get() );
+            if (_query.bounds().isSet())
+            {
+                cx.extent() = GeoExtent(_profile->getSRS(), _query.bounds().get());
+            }
+            else
+            {
+                cx.extent() = _profile->getExtent();
+            }
 
             for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
             {

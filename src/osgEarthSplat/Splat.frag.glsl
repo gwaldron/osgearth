@@ -60,13 +60,19 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
 
     int index = int(value)*num_lods + int(env.lod);
 
+    // fetch the splatting parameters:
     vec4 t = texelFetch(oe_splat_coverageLUT, index);
+
     ri.primaryIndex = t[0];
     ri.detailIndex  = t[1];
-    ri.brightness   = trunc(t[2])*inv255;
-    ri.contrast     = fract(t[2])*255.0;
-    ri.threshold    = trunc(t[3])*inv255;
-    ri.minSlope     = fract(t[3])*255.0;
+
+    // brightness and contrast are packed into one float:
+    ri.brightness   = trunc(t[2])/100.0;
+    ri.contrast     = fract(t[2])*100.0;
+
+    // threshold and slope are packed into one float:
+    ri.threshold    = trunc(t[3])/100.0;
+    ri.minSlope     = fract(t[3])*100.0;
 }
 
 // Warps the coverage sampling coordinates to mitigate blockiness.

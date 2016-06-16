@@ -139,16 +139,6 @@ namespace
                 lod.slope = data._detail->_slope.get();
         }
     }
-
-    float pack4(float f1, float f2, float f3, float f4)
-    {
-        const float S = 1.0/3.0;
-        return 
-            S*f1/(1.0f) +
-            S*f2/(255.0f) +
-            S*f3/(65025.0f) +
-            S*f4/(160581375.0f);
-    }
 }
 
 osg::Texture*
@@ -194,32 +184,38 @@ Surface::createLUTBuffer(const Coverage* coverage) const
 
     // Encode the LUT into a texture buffer.
     osg::Image* image = new osg::Image();
-    //image->allocateImage(NUM_CLASSES * NUM_LODS * NUM_FLOATS_PER_LOD, 1, 1, GL_LUMINANCE32F_ARB, GL_FLOAT);
     image->allocateImage(NUM_CLASSES * NUM_LODS, 1, 1, GL_RGBA32F_ARB, GL_FLOAT);
 
-    // populate the values
+    // Populate the LUT image. Each LOD fits into a single RGBA GL_FLOAT vec4
+    // by packing 6 floats into 4. See below for packing approach
     GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
     for (unsigned c=0; c<NUM_CLASSES; ++c)
     {
         for (unsigned lod=0; lod<NUM_LODS; ++lod)
         {
             LOD& record = lut[c][lod];
+
             *ptr++ = record.primary;
             *ptr++ = record.detail;
-            *ptr++ = (255.0f*record.brightness) + (record.contrast/255.0f); // (record.brightness, record.contrast, record.threshold, record.slope);
-            *ptr++ = (255.0f*record.threshold)  + (record.slope/255.0f); //0.0f;
-            //*ptr++ = record.brightness;
-            //*ptr++ = record.contrast;
-            //*ptr++ = record.threshold;
-            //*ptr++ = record.slope;
+
+            // Pack two values into one float. First each value is truncated to a maximum
+            // of 2 decimal places; then the first value goes left of the decimal, and the
+            // second value goes to the right. The shader will unpack after reading.
+            // We do this so that a single texelFetch call will retrieve the entire record.
+
+            float b = (int)(record.brightness*100.0);
+            float c = (int)(record.contrast*100.0);
+            *ptr++ = b + (c/1000.0f);
+
+            float t = (int)(record.threshold*100.0);
+            float s = (int)(record.slope*100.0);
+            *ptr++ = t + (s/1000.0f);
         }
     }
-    image->dirty();
 
     // create a buffer object
     osg::TextureBuffer* buf = new osg::TextureBuffer();
     buf->setImage(image);
-    //buf->setInternalFormat(GL_LUMINANCE32F_ARB);
     buf->setInternalFormat(GL_RGBA32F_ARB);
     buf->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     buf->setUnRefImageDataAfterApply(true);

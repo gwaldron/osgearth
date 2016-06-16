@@ -344,6 +344,7 @@ public:
             {
                 FilterContext cx;
                 cx.setProfile( getFeatureProfile() );
+                cx.extent() = query.tileKey()->getExtent();
 
                 for( FeatureFilterList::const_iterator i = getFilters().begin(); i != getFilters().end(); ++i )
                 {

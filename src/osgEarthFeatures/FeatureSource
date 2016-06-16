@@ -274,7 +274,7 @@ namespace osgEarth { namespace Features
         Cache* getCache() const { return _cache.get(); }   
 
         /** Convenience function to apply the filters to a FeatureList */
-        void applyFilters(FeatureList& features) const;
+        void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
     private:
         const FeatureSourceOptions         _options;

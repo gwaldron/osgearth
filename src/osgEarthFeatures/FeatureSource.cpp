@@ -189,13 +189,14 @@ FeatureSource::isBlacklisted( FeatureID fid ) const
 }
 
 void
-FeatureSource::applyFilters(FeatureList& features) const
+FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) const
 {
     // apply filters before returning.
     if ( !getFilters().empty() )
     {
         FilterContext cx;
         cx.setProfile( getFeatureProfile() );
+        cx.extent() = extent;
         for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
         {
             cx = filter->get()->push( features, cx );

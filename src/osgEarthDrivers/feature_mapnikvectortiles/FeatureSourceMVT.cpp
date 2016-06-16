@@ -162,7 +162,7 @@ public:
         sqlite3_finalize( select );
 
         // apply filters before returning.
-        applyFilters( features );
+        applyFilters( features, query.tileKey()->getExtent() );
 
         if (!features.empty())
         {

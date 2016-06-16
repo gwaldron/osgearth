@@ -910,25 +910,6 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     _cacheBinMetadata.clear();
 }
 
-#if 0
-void
-TerrainLayer::initializeCachePolicy(const osgDB::Options* options)
-{
-    // Start with the cache policy passed in by the Map.
-    optional<CachePolicy> cp = CachePolicy::get(options);
-
-    // if this layer specifies cache policy info, that will override 
-    // whatever the map passed in:
-    if ( _initOptions.cachePolicy().isSet() )
-        cp->mergeAndOverride( _initOptions.cachePolicy() );
-
-    // finally resolve with global overrides:
-    Registry::instance()->resolveCachePolicy( cp );
-
-    setCachePolicy( cp.get() );
-}
-#endif
-
 void
 TerrainLayer::storeProxySettings(osgDB::Options* readOptions)
 {

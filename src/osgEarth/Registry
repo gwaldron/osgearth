@@ -81,19 +81,19 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /**
-         * Creates a cache based on environment settings.
-         * Returns NULL if no caching information is defined in the global environment.
-         */
+        /** Gets a default cache object - based on environment settings - unless setDefaultCache
+            was called to override it. */
         Cache* getDefaultCache() const;
+
+        /** Sets a default cache that a CacheManager will use. */
         void setDefaultCache(Cache* cache);
 
         /** The default cache policy (used when no policy is set elsewhere) */
-        const optional<CachePolicy>& defaultCachePolicy() const; // { return _defaultCachePolicy; }
+        const optional<CachePolicy>& defaultCachePolicy() const;
         void setDefaultCachePolicy( const CachePolicy& policy );
 
         /** The override cache policy (overrides all others if set) */
-        const optional<CachePolicy>& overrideCachePolicy() const; // { return _overrideCachePolicy; }
+        const optional<CachePolicy>& overrideCachePolicy() const;
         void setOverrideCachePolicy( const CachePolicy& policy );
 
         /** The default cache driver. */

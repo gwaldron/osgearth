@@ -28,6 +28,8 @@
 
 namespace osgEarth { namespace Symbology
 {
+    using namespace osgEarth;
+
     /**
      * A query filter that you can use to limit a set of symbology to process.
      */
@@ -35,6 +37,8 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Query( const Config& conf =Config() );
+
+        Query(const Query& rhs);
 
         virtual ~Query() { }
 

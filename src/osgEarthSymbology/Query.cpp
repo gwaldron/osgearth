@@ -27,6 +27,16 @@ _map(0)
     mergeConfig( conf );
 }
 
+Query::Query(const Query& rhs) :
+_bounds(rhs._bounds),
+_expression(rhs._expression),
+_orderby(rhs._orderby),
+_tileKey(rhs._tileKey),
+_map(rhs._map)
+{
+    //nop
+}
+
 void
 Query::mergeConfig( const Config& conf )
 {

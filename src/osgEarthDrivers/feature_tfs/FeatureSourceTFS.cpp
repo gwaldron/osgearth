@@ -71,11 +71,12 @@ public:
     }
 
     //override
-    void initialize( const osgDB::Options* dbOptions )
+    void initialize(const osgDB::Options* readOptions)
     {
-        FeatureSource::initialize( dbOptions );
+        FeatureSource::initialize( readOptions );
 
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        _readOptions = readOptions ? osg::clone(readOptions) : 0L;
+#if 0
         if ( _dbOptions.valid() )
         {
             // Set up a Custom caching bin for this source:
@@ -106,7 +107,9 @@ public:
                 }
             }
         }     
-        _layerValid = TFSReaderWriter::read(_options.url().get(), _dbOptions.get(), _layer);
+#endif
+
+        _layerValid = TFSReaderWriter::read(_options.url().get(), _readOptions.get(), _layer);
         if (_layerValid)
         {
             OE_INFO << LC <<  "Read layer TFS " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
@@ -294,7 +297,7 @@ public:
         return "";                       
     }
 
-    FeatureCursor* createFeatureCursor( const Symbology::Query& query )
+    FeatureCursor* createFeatureCursor(const Symbology::Query& query)
     {
         FeatureCursor* result = 0L;
 
@@ -309,7 +312,7 @@ public:
         URI uri(url);
 
         // read the data:
-        ReadResult r = uri.readString( _dbOptions.get() );
+        ReadResult r = uri.readString( _readOptions.get() );
 
         const std::string& buffer = r.getString();
         const Config&      meta   = r.metadata();
@@ -396,7 +399,7 @@ private:
     const TFSFeatureOptions         _options;    
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
-    osg::ref_ptr<osgDB::Options>    _dbOptions;    
+    osg::ref_ptr<osgDB::Options>    _readOptions;    
     TFSLayer                        _layer;
     bool                            _layerValid;
 };

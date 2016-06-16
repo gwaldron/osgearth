@@ -26,7 +26,7 @@ void oe_landcover_configureTess()
 {
 	if (gl_InvocationID == 0)
 	{
-        float d = 0.0;
+        float d = oe_landcover_density;
 
         VP_LoadVertex(0);
         if ( oe_landcover_getBiomeIndex(oe_layer_tilec) >= 0 ) {

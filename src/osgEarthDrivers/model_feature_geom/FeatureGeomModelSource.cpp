@@ -56,11 +56,6 @@ namespace
 
     public: // FeatureModelSource
 
-        void initialize( const osgDB::Options* dbOptions )
-        {
-            FeatureModelSource::initialize( dbOptions );
-        }
-
         FeatureNodeFactory* createFeatureNodeFactory()
         {
             return new GeomFeatureNodeFactory(_options.compilerOptions());

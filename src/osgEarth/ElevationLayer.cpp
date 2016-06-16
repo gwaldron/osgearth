@@ -157,7 +157,7 @@ _runtimeOptions( options )
 void
 ElevationLayer::init()
 {
-    //nop
+    TerrainLayer::init();
 }
 
 void
@@ -381,10 +381,15 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
     // Check the memory cache first
     bool fromMemCache = false;
+
+    // cache key combines the key with the full signature (incl vdatum)
+    std::string cacheKey = Stringify() << key.str() << "_" << key.getProfile()->getFullSignature();
+    const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
+
     if ( _memCache.valid() )
     {
-        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult cacheResult = bin->readObject(key.str(), 0L);
+        CacheBin* bin = _memCache->getOrCreateDefaultBin();
+        ReadResult cacheResult = bin->readObject(cacheKey, 0L);
         if ( cacheResult.succeeded() )
         {
             result = GeoHeightField(
@@ -393,7 +398,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
             fromMemCache = true;
         }
-        //_memCache->dumpStats(key.getProfile()->getFullSignature());
     }
 
     if ( !result.valid() )
@@ -402,18 +406,18 @@ ElevationLayer::createHeightField(const TileKey&    key,
         CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
         // validate that we have either a valid tile source, or we're cache-only.
-        if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
+        if ( ! (getTileSource() || (policy.isCacheOnly() && cacheBin) ) )
         {
             OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
-            _runtimeOptions.enabled() = false;
+            disable();
             return GeoHeightField::INVALID;
         }
 
         // validate the existance of a valid layer profile.
-        if ( !isCacheOnly() && !getProfile() )
+        if ( !policy.isCacheOnly() && !getProfile() )
         {
             OE_WARN << LC << "Could not establish a valid profile" << std::endl;
-            _runtimeOptions.enabled() = false;
+            disable();
             return GeoHeightField::INVALID;
         }
 
@@ -423,12 +427,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
         osg::ref_ptr< osg::HeightField > cachedHF;
 
-        if ( cacheBin && getCachePolicy().isCacheReadable() )
+        if ( cacheBin && policy.isCacheReadable() )
         {
-            ReadResult r = cacheBin->readObject(key.str(), 0L);
+            ReadResult r = cacheBin->readObject(cacheKey, 0L);
             if ( r.succeeded() )
             {            
-                bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+                bool expired = policy.isExpired(r.lastModifiedTime());
                 cachedHF = r.get<osg::HeightField>();
                 if ( cachedHF && validateHeightField(cachedHF) )
                 {
@@ -442,7 +446,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         }
 
         // if we're cache-only, but didn't get data from the cache, fail silently.
-        if ( !hf.valid() && isCacheOnly() )
+        if ( !hf.valid() && policy.isCacheOnly() )
         {
             return GeoHeightField::INVALID;
         }
@@ -470,9 +474,9 @@ ElevationLayer::createHeightField(const TileKey&    key,
             if ( hf            && 
                  cacheBin      && 
                  !fromCache    &&
-                 getCachePolicy().isCacheWriteable() )
+                 policy.isCacheWriteable() )
             {
-                cacheBin->write(key.str(), hf, 0L);
+                cacheBin->write(cacheKey, hf, 0L);
             }
 
             // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
@@ -507,8 +511,8 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // write to mem cache if needed:
     if ( result.valid() && !fromMemCache && _memCache.valid() )
     {
-        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-        bin->write(key.str(), result.getHeightField(), 0L);
+        CacheBin* bin = _memCache->getOrCreateDefaultBin();
+        bin->write(cacheKey, result.getHeightField(), 0L);
     }
 
     // post-processing:

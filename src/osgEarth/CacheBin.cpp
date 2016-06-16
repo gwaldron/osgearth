@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Cache>
 
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
@@ -302,7 +303,30 @@ CacheBin::writeNode(const std::string&    key,
     return true;
 }
 
+CacheBin*
+CacheBin::get(const osgDB::Options* readOptions)
+{
+    if (!readOptions)
+        return 0L;
 
+    CacheBin* bin = 0L;
+    CacheSettings* settings = CacheSettings::get(readOptions);
+    if (settings)
+    {
+        bin = settings->getCacheBin();
+        if (!bin && settings->getCache())
+        {
+            bin = settings->getCache()->getOrCreateDefaultBin();
+        }
+    }
+    else
+    {
+        CacheManager* cacheManager = CacheManager::get(readOptions);
+        if (cacheManager)
+            bin = cacheManager->getCache()->getOrCreateDefaultBin();
+    }
+    return bin;
+}
 
 
 #undef  LC

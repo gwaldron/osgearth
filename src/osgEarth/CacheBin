@@ -51,7 +51,7 @@ namespace osgEarth
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
         CacheBin( const std::string& binID )
-            : _binID(binID), _hashKeys(false), _minTime(0) { }
+            : _binID(binID), _hashKeys(true), _minTime(0) { }
 
         /** dtor */
         virtual ~CacheBin() { }
@@ -154,18 +154,15 @@ namespace osgEarth
         virtual unsigned getStorageSize() { return 0u; }
 
         /**
-         * Store this pointer in an options structure
-         */
-        void put( osgDB::Options* options ) const {
-            if ( options ) options->setPluginData( "osgEarth::CacheBin", (void*)this );
-        }
-
-        /**
          * Retrieve pointer from an options struture
          */
-        static CacheBin* get( const osgDB::Options* options ) {
-            return options ? const_cast<CacheBin*>(static_cast<const CacheBin*>(options->getPluginData("osgEarth::CacheBin"))) : 0L;
-        }
+        static CacheBin* get(const osgDB::Options* readOptions);
+
+        /**
+         * Metadata associated with a cache bin.
+         */
+        void setMetadata(osg::Referenced* data) { _metadata = data; }
+        osg::Referenced* getMetadata() { return _metadata.get(); }
 
     public: //deprecated
 
@@ -177,6 +174,7 @@ namespace osgEarth
         std::string _binID;
         bool        _hashKeys;
         TimeStamp   _minTime;
+        osg::ref_ptr<osg::Referenced> _metadata;
     };
 }
 

@@ -416,17 +416,18 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 #define LC "[MapNodeHelper] "
 
 osg::Group*
-MapNodeHelper::load(osg::ArgumentParser& args,
-                    osgViewer::View*     view,
-                    Container*           userContainer ) const
+MapNodeHelper::load(osg::ArgumentParser&  args,
+                    osgViewer::View*      view,
+                    Container*            userContainer,
+                    const osgDB::Options* readOptions) const
 {
     // do this first before scanning for an earth file
     std::string outEarth;
     args.read( "--out-earth", outEarth );
 
-    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    osg::ref_ptr<osgDB::Options> myReadOptions =
+        readOptions ? osg::clone(readOptions) : new osgDB::Options();
     
-#if 1
     Config c;
     c.add("elevation_smoothing", false);
     TerrainOptions to(c);
@@ -434,11 +435,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     MapNodeOptions defMNO;
     defMNO.setTerrainOptions( to );
 
-    options->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
-#endif
+    myReadOptions->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
 
     // read in the Earth file:
-    osg::Node* node = osgDB::readNodeFiles(args);
+    osg::Node* node = osgDB::readNodeFiles(args, myReadOptions.get());
 
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )

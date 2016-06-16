@@ -220,9 +220,20 @@ namespace
                         {
                             Config& c = i->second[0];
                             if ( c.isSimple() )
+                            {
                                 value[i->first] = c.value();
+                            }
                             else
-                                value[i->first] = conf2json(c, nicer, depth+1);
+                            {
+                                Json::Value child = conf2json(c, nicer, depth+1);
+                                if (child.isObject())
+                                {
+                                    value[i->first] = child;
+                                }
+                                else                               
+                                    OE_WARN << "No no no no no!\n";
+    
+                            }
                         }
                         else
                         {
@@ -232,7 +243,8 @@ namespace
                             {
                                 array_value.append( conf2json(*j, nicer, depth+1) );
                             }
-                            value = array_value;
+                            value[array_key] = array_value;
+                            //value = array_value;
                         }
                     }
                 }

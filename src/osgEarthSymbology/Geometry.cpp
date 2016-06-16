@@ -428,6 +428,35 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+bool
+Geometry::intersects(
+            const class Geometry* other
+            ) const
+{
+#ifdef OSGEARTH_HAVE_GEOS
+
+    GEOSContext gc;
+
+    //Create the GEOS Geometries
+    geom::Geometry* inGeom   = gc.importGeometry( this );
+    geom::Geometry* otherGeom = gc.importGeometry( other );
+
+    bool intersects = inGeom->intersects( otherGeom );
+
+    //Destroy the geometry
+    gc.disposeGeometry( otherGeom );
+    gc.disposeGeometry( inGeom );
+
+    return intersects;
+
+#else // OSGEARTH_HAVE_GEOS
+
+    OE_WARN << LC << "Intersects failed - GEOS not available" << std::endl;
+    return false;
+
+#endif // OSGEARTH_HAVE_GEOS
+}
+
 osg::Vec3d
 Geometry::localize()
 {

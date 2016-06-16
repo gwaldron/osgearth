@@ -208,9 +208,9 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 GeoExtent extent(
                     osgEarth::SpatialReference::get("wgs84"),
                     osgEarth::as<double>(tokens[0], 0.0),
-                    osgEarth::as<double>(tokens[3], 0.0), // south
+                    osgEarth::as<double>(tokens[1], 0.0), // south
                     osgEarth::as<double>(tokens[2], 0.0), // east
-                    osgEarth::as<double>(tokens[1], 0.0)  // north
+                    osgEarth::as<double>(tokens[3], 0.0)  // north
                     );
 
                 this->getDataExtents().push_back(DataExtent(extent));

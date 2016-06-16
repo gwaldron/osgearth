@@ -39,32 +39,12 @@ using namespace osgEarth::Symbology;
 class IntersectFeatureFilter : public FeatureFilter, public IntersectFeatureFilterOptions
 {
 private:
-    Threading::Mutex _transformMutex;
-    bool _transformed;
-
-    osg::ref_ptr<const SpatialReference> _boundarySRS;
-    std::vector< osg::ref_ptr<Ring> >    _boundaries;
-    std::vector< Bounds >                _bboxes;
-    Bounds                               _overallbbox;
+    osg::ref_ptr< FeatureSource > _featureSource;
 
 public:
     IntersectFeatureFilter(const ConfigOptions& options)
         : FeatureFilter(), IntersectFeatureFilterOptions(options)
     {
-        _transformed = false;
-    }
-
-    void transform(const SpatialReference* srs)
-    {
-        if ( !_boundarySRS || !srs ) return;
-
-        for(unsigned i=0; i<_boundaries.size(); ++i)
-        {
-            Ring& ring = *_boundaries[i].get();
-            _boundarySRS->transform( ring.asVector(), srs );
-            _bboxes.push_back( ring.getBounds() );
-            _overallbbox.expandBy( _bboxes.back() );
-        }
     }
 
 public: // FeatureFilter
@@ -72,122 +52,120 @@ public: // FeatureFilter
     void initialize(const osgDB::Options* dbo)
     {
         // Load the feature source containing the intersection geometry.
-        osg::ref_ptr<FeatureSource> fs = FeatureSourceFactory::create( features().get() );
-        if ( !fs.valid() )
+        _featureSource = FeatureSourceFactory::create( features().get() );
+        if ( !_featureSource.valid() )
         {
             OE_WARN << LC << "Failed to load the intersect feature source.\n";
             return;
         }
 
-        fs->initialize( dbo );
+        _featureSource->initialize( dbo );
 
-        if ( !fs->getFeatureProfile() )
+        if ( !_featureSource->getFeatureProfile() )
         {
             OE_WARN << LC << "Failed to establish the feature profile.\n";
             return;
         }
+    }
 
-        _boundarySRS = fs->getFeatureProfile()->getSRS();
-
-        // Read in the testing features:
-        osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor();
-        if ( cursor.valid() )
+    /**
+     * Gets all the features that intersect the extent
+     */
+    void getFeatures(const GeoExtent& extent, FeatureList& features)
+    {
+        GeoExtent localExtent = extent.transform( _featureSource->getFeatureProfile()->getSRS() );
+        Query query;
+        query.bounds() = localExtent.bounds();
+        if (localExtent.intersects( _featureSource->getFeatureProfile()->getExtent()))
         {
-            while( cursor->hasMore() )
+            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor( query );
+            if (cursor)
             {
-                Feature* next = cursor->nextFeature();
-                if ( next && next->getGeometry() )
-                {
-                    Ring* ring = dynamic_cast<Ring*>(next->getGeometry());
-                    if ( ring )
-                        _boundaries.push_back( ring );
-                }
+                cursor->fill( features );
             }
-        }
-
-        OE_INFO << LC << this << " : " "Read " << _boundaries.size() << " boundary geometries.\n";
+        }     
     }
 
     FilterContext push(FeatureList& input, FilterContext& context)
     {
-        if ( !_boundaries.empty() )
+        if (_featureSource.valid())
         {
-            // First time, transform the bounary set into the FeatureProfile SRS.
-            if ( !_transformed )
+            // Get any features that intersect this query.
+            FeatureList boundaries;
+            getFeatures(context.extent().get(), boundaries );
+            
+            
+            // The list of output features
+            FeatureList output;
+
+            if (boundaries.empty())
             {
-                Threading::ScopedMutexLock lock(_transformMutex);
-                if ( !_transformed )
+                // No intersecting features.  If contains is false, then just the output to the input.
+                if (contains() == false)
                 {
-                    transform(context.profile()->getSRS());
-                    _transformed = true;
+                    output = input;
                 }
             }
-
-            FeatureList output;
-            for(FeatureList::const_iterator f = input.begin(); f != input.end(); ++f)
+            else
             {
-                Feature* feature = f->get();
-                if ( feature && feature->getGeometry() )
+                // Transform the boundaries into the coordinate system of the features
+                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                 {
-                    osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
+                    itr->get()->transform( context.profile()->getSRS() );
+                }
 
-                    if ( contains() == true )
+                for(FeatureList::const_iterator f = input.begin(); f != input.end(); ++f)
+                {
+                    Feature* feature = f->get();
+                    if ( feature && feature->getGeometry() )
                     {
-                        // coarsest:
-                        if ( _overallbbox.contains(c.x(), c.y()) )
+                        osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
+
+                        if ( contains() == true )
                         {
-                            for(unsigned b=0; b<_boundaries.size(); ++b)
+                            // coarsest:
+                            if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                             {
-                                // finer:
-                                if ( _bboxes[b].contains(c.x(), c.y()) )
+                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                                 {
-                                    // finest:
-                                    if ( exact()==false || _boundaries[b]->contains2D(c.x(), c.y()) )
+                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
+                                    if (ring && ring->contains2D(c.x(), c.y()))
                                     {
                                         output.push_back( feature );
-                                        break;
                                     }
-                                }
+                                }                        
                             }
                         }
-                    }
 
-                    else
-                    {    
-                        bool contained = false;
+                        else
+                        {    
+                            bool contained = false;
 
-                        // coarsest:
-                        if ( _overallbbox.contains(c.x(), c.y()) )
-                        {
-                            // finer:
-                            for(unsigned b=0; b<_boundaries.size() && !contained; ++b)
+                            // coarsest:
+                            if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                             {
-                                if ( _bboxes[b].contains(c.x(), c.y()) )
+                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                                 {
-                                    // finest:
-                                    if ( exact()==false || _boundaries[b]->contains2D(c.x(), c.y()) )
-                                    {
+                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
+                                    if (ring && ring->contains2D(c.x(), c.y()))
+                                    {                             
                                         contained = true;
                                         break;
                                     }
                                 }
                             }
-                        }
-                        if ( !contained )
-                        {
-                            output.push_back( feature );
+                            if ( !contained )
+                            {
+                                output.push_back( feature );
+                            }
                         }
                     }
                 }
             }
 
-            OE_DEBUG << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
-        
+            OE_INFO << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
+
             input = output;
-        }
-        else
-        {
-            OE_INFO << LC << this << " : ""No boundaries; all pass\n";
         }
 
         return context;

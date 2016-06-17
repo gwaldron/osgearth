@@ -199,6 +199,7 @@ namespace osgEarth { namespace Features
         void set( const std::string& name, double value );
         void set( const std::string& name, int value );
         void set( const std::string& name, bool value );
+        void set( const std::string& name, const AttributeValue& value);
 
         /** Sets the attribute to NULL */         
         void setNull( const std::string& name );

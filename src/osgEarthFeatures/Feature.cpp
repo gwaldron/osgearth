@@ -238,6 +238,12 @@ Feature::set( const std::string& name, int value )
 }
 
 void
+Feature::set( const std::string& name, const AttributeValue& value)
+{
+    _attrs[ name ] = value;
+}
+
+void
 Feature::set( const std::string& name, bool value )
 {
     AttributeValue& a = _attrs[name];

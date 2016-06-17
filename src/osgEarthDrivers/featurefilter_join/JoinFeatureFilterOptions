@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS
+#define OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    class JoinFeatureFilterOptions : public ConfigOptions // NO EXPORT; header only
+    {
+    public:
+        JoinFeatureFilterOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
+        {
+            _conf.set("driver", "join");            
+            fromConfig( _conf );
+        }
+
+        /** Features to load and use as boundary geometries */
+        optional<FeatureSourceOptions>& features() { return _features; }
+        const optional<FeatureSourceOptions>& features() const { return _features; }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "join";
+            conf.addObjIfSet( "features", _features );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getObjIfSet( "features", _features );
+        }
+
+        optional<FeatureSourceOptions> _features;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS

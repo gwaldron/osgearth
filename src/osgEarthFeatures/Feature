@@ -156,6 +156,11 @@ namespace osgEarth { namespace Features
         FeatureID getFID() const;
 
         /**
+         * Set the FID of this feature.
+         */
+        void setFID(FeatureID fid);
+
+        /**
          * The geometry in this feature.
          */
         void setGeometry( Symbology::Geometry* geom );

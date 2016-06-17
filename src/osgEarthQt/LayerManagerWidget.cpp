@@ -619,7 +619,7 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
   if (!_doubleClick.valid() && _layer.valid() && _map.valid())
   {
-    osg::ref_ptr<osg::Node> temp = _layer->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
+    osg::ref_ptr<osg::Node> temp = _layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
     if (temp.valid())
     {
       osg::NodePathList nodePaths = temp->getParentalNodePaths();

@@ -113,9 +113,8 @@ public: // FeatureFilter
                         {
                             for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                             {
-                                // TODO:  Could use intersects here instead of contains2D to be more accurate.
-                                Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
-                                if (ring && ring->contains2D(c.x(), c.y()))
+                                //if (ring && ring->contains2D(c.x(), c.y()))
+                                if (itr->get()->getGeometry()->intersects( feature->getGeometry() ) )
                                 {
                                     // Copy the attributes in the boundary to the feature
                                     for (AttributeTable::const_iterator attrItr = itr->get()->getAttrs().begin();

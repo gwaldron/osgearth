@@ -113,7 +113,7 @@ namespace
           osgEarth::ModelLayer* model = dynamic_cast<osgEarth::ModelLayer*>(_layer.get());
           if (model && _map.valid())
           {
-            osg::ref_ptr<osg::Node> temp = model->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
+            osg::ref_ptr<osg::Node> temp = model->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
             if (temp.valid())
             {
               osg::NodePathList nodePaths = temp->getParentalNodePaths();

@@ -37,6 +37,8 @@ using namespace geos;
 using namespace geos::operation;
 #endif
 
+#define GEOS_OUT OE_DEBUG
+
 #define LC "[Geometry] "
 
 
@@ -251,8 +253,14 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
                 cropGeom,
                 overlay::OverlayOp::opINTERSECTION );
         }
+        catch (const geos::util::TopologyException& ex) {
+            GEOS_OUT << LC << "Crop(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
+            outGeom = 0L;
+        }
         catch(const geos::util::GEOSException& ex) {
-            OE_NOTICE << LC << "Crop(GEOS): "
+            OE_INFO << LC << "Crop(GEOS): "
                 << (ex.what()? ex.what() : " no error message")
                 << std::endl;
             outGeom = 0L;
@@ -324,8 +332,14 @@ Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) cons
                 otherGeom,
                 overlay::OverlayOp::opUNION );
         }
+        catch (const geos::util::TopologyException& ex) {
+            GEOS_OUT << LC << "Crop(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
+            outGeom = 0L;
+        }
         catch(const geos::util::GEOSException& ex) {
-            OE_NOTICE << LC << "Union(GEOS): "
+            OE_INFO << LC << "Union(GEOS): "
                 << (ex.what()? ex.what() : " no error message")
                 << std::endl;
             outGeom = 0L;
@@ -395,8 +409,14 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
                 diffGeom,
                 overlay::OverlayOp::opDIFFERENCE );
         }
+        catch (const geos::util::TopologyException& ex) {
+            GEOS_OUT << LC << "Crop(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
+            outGeom = 0L;
+        }
         catch(const geos::util::GEOSException& ex) {
-            OE_NOTICE << LC << "Diff(GEOS): "
+            OE_INFO << LC << "Diff(GEOS): "
                 << (ex.what()? ex.what() : " no error message")
                 << std::endl;
             outGeom = 0L;

@@ -67,11 +67,10 @@ namespace osgEarth
         CachePolicy( const Config& conf );
 
         /** construct a cache policy be reading it from an osgDB::Options */
-        //static bool fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out_policy );
-        static optional<CachePolicy> get(const osgDB::Options* options);
+        //static optional<CachePolicy> get(const osgDB::Options* options);
 
         /** Stores this cache policy in a DB Options. */
-        void store( osgDB::Options* options ) const;
+        //void store( osgDB::Options* options ) const;
 
         /** Merges any set properties in another CP into this one, override existing values. */
         void mergeAndOverride(const CachePolicy& rhs);
@@ -105,12 +104,24 @@ namespace osgEarth
 
     public: // convenience functions.
 
+        bool isCacheEnabled() const {
+            return isCacheReadable() || isCacheWriteable();
+        }
+
+        bool isCacheDisabled() const {
+            return !isCacheEnabled();
+        }
+
         bool isCacheReadable() const { 
             return *_usage == USAGE_READ_WRITE || *_usage == USAGE_CACHE_ONLY || *_usage == USAGE_READ_ONLY;
         }
 
         bool isCacheWriteable() const {
             return *_usage == USAGE_READ_WRITE;
+        }
+
+        bool isCacheOnly() const {
+            return *_usage == USAGE_CACHE_ONLY;
         }
 
         bool operator == ( const CachePolicy& rhs ) const;

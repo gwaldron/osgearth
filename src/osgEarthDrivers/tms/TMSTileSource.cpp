@@ -60,7 +60,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
     // A repo is writable only if it's local.
     if ( tmsURI.isRemote() )
     {
-        OE_INFO << LC << "Repo is remote; opening in read-only mode" << std::endl;
+        OE_DEBUG << LC << "Repo is remote; opening in read-only mode" << std::endl;
     }
 
     // Is this a new repo? (You can only create a new repo at a local non-archive URI.)

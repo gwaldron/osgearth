@@ -216,28 +216,13 @@ namespace
     // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
     // default CacheBin of a Cache found in the dboptions; failing that, call back on
     // the default CacheBin of the registry-wide cache.
-    CacheBin* s_getCacheBin(const osgDB::Options* dbOptions)
+    CacheBin* s_getCacheBin(const osgDB::Options* readOptions)
     {
-        const osgDB::Options* o = dbOptions;
-        
-        if ( o == 0L )
+        CacheBin* bin = 0L;
+        CacheManager* cacheManager = CacheManager::get(readOptions);
+        if (cacheManager && cacheManager->getCache())
         {
-            o = Registry::instance()->getDefaultOptions();
-        }
-
-        CacheBin* bin = CacheBin::get( o );
-        if ( !bin )
-        {
-            Cache* cache = Cache::get( o );
-            //if ( !cache )
-            //{
-            //    cache = Registry::instance()->getCache();
-            //}
-
-            if ( cache )
-            {
-                bin = cache->getOrCreateDefaultBin();
-            }
+            bin = cacheManager->getCache()->getOrCreateDefaultBin();
         }
         return bin;
     }
@@ -483,17 +468,18 @@ namespace
                 {
                     bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
-                    // establish the caching policy.
-                    optional<CachePolicy> cp = CachePolicy::get(localOptions.get());
-                    Registry::instance()->resolveCachePolicy( cp );                    
+                    optional<CachePolicy> cp;
+                    osg::ref_ptr<CacheBin> bin;
 
-                    // get a cache bin if we need it:
-                    CacheBin* bin = 0L;
-                    if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+                    CacheSettings* cacheSettings = CacheSettings::get(localOptions.get());
+                    if (cacheSettings)
                     {
-                        bin = s_getCacheBin( localOptions.get() );
-                    }                    
-
+                        cp = cacheSettings->cachePolicy();
+                        if (cp->isCacheEnabled() && callbackCachingOK)
+                        {
+                            bin = cacheSettings->getCacheBin(); 
+                        }
+                    }
 
                     bool expired = false;
                     // first try to go to the cache if there is one:

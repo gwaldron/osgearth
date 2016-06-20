@@ -298,6 +298,10 @@ TerrainLayer::open()
                     }
                 }
             }
+            else
+            {
+                _profile = _tileSource->getProfile();
+            }
 
             _openCalled = true;
                         

@@ -164,6 +164,17 @@ public:
         // apply filters before returning.
         applyFilters( features, query.tileKey()->getExtent() );
 
+        // If we have any features and we have an fid attribute, override the fid of the features
+        if (_options.fidAttribute().isSet())
+        {
+            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            {
+                std::string attr = itr->get()->getString(_options.fidAttribute().get());                
+                FeatureID fid = as<long>(attr, 0);
+                itr->get()->setFID( fid );
+            }
+        }
+
         if (!features.empty())
         {
             //OE_NOTICE << "Returning " << features.size() << " features" << std::endl;

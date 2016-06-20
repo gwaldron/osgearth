@@ -74,6 +74,10 @@ namespace osgEarth { namespace Features
         optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
+        /** The feature attribute to use as the fid for the features from this FeatureSource*/
+        optional<std::string>& fidAttribute() { return _fidAttribute; }
+        const optional<std::string>& fidAttribute() const { return _fidAttribute; }
+
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
         virtual ~FeatureSourceOptions();
@@ -94,6 +98,7 @@ namespace osgEarth { namespace Features
         optional<ProfileOptions>   _profile;
         optional<CachePolicy>      _cachePolicy;
         optional<GeoInterpolation> _geoInterp;
+        optional<std::string>      _fidAttribute;
     };
 
     /**

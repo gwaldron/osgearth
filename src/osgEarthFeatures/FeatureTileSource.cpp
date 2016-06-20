@@ -209,10 +209,73 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                const Style* style = styles->getStyle( sel.getSelectedStyleName() );
-                Query query = sel.query().get();
-                query.tileKey() = key;
-                queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get() );
+
+                if ( sel.styleExpression().isSet() )
+                {
+                    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+
+                    // establish the working bounds and a context:
+                    FilterContext context( _session.get(), featureProfile);
+                    StringExpression styleExprCopy(  sel.styleExpression().get() );
+                    
+                    // Run the style expression on each feature
+                    osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery);
+                    while( cursor.valid() && cursor->hasMore() )
+                    {
+                        osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                        if ( feature )
+                        {
+                            const std::string& styleString = feature->eval( styleExprCopy, &context );
+                            if (!styleString.empty() && styleString != "null")
+                            {
+                                // resolve the style:
+                                Style combinedStyle;
+
+                                // if the style string begins with an open bracket, it's an inline style definition.
+                                if ( styleString.length() > 0 && styleString.at(0) == '{' )
+                                {
+                                    Config conf( "style", styleString );
+                                    conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
+                                    conf.set( "type", "text/css" );
+                                    combinedStyle = Style(conf);
+                                }
+
+                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                                // style in this case: for style expressions, the user must be explicity about 
+                                // default styling; this is because there is no other way to exclude unwanted
+                                // features.
+                                else
+                                {
+                                    const Style* selectedStyle = _session->styles()->getStyle(styleString, false);
+                                    if ( selectedStyle )
+                                        combinedStyle = *selectedStyle;
+                                }
+
+                                if (!combinedStyle.empty())
+                                {
+                                    FeatureList list;
+                                    list.push_back( feature );
+
+                                    renderFeaturesForStyle(
+                                        _session.get(),
+                                        combinedStyle,
+                                        list,
+                                        buildData.get(),
+                                        key.getExtent(),
+                                        image.get() );
+                                }
+                            }
+                        }
+                    }
+
+                }
+                else
+                {
+                    const Style* style = styles->getStyle( sel.getSelectedStyleName() );
+                    Query query = sel.query().get();
+                    query.tileKey() = key;
+                    queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get() );
+                }
             }
         }
         else

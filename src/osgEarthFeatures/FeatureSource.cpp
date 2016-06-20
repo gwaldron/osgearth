@@ -53,6 +53,7 @@ FeatureSourceOptions::fromConfig(const Config& conf)
     conf.getObjIfSet( "cache_policy", _cachePolicy );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "fid_attribute", _fidAttribute );
 
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
@@ -79,7 +80,8 @@ FeatureSourceOptions::getConfig() const
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
     conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    
+    conf.updateIfSet   ( "fid_attribute", _fidAttribute );
+
     if ( !_filterOptions.empty() )
     {
         Config filters;

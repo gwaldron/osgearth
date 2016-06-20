@@ -183,6 +183,12 @@ Feature::getFID() const
 }
 
 void
+Feature::setFID(FeatureID fid)
+{
+    _fid = fid;
+}
+
+void
 Feature::setSRS( const SpatialReference* srs )
 {
     _srs = srs;
@@ -229,6 +235,12 @@ Feature::set( const std::string& name, int value )
     a.first = ATTRTYPE_INT;
     a.second.intValue = value;
     a.second.set = true;
+}
+
+void
+Feature::set( const std::string& name, const AttributeValue& value)
+{
+    _attrs[ name ] = value;
 }
 
 void

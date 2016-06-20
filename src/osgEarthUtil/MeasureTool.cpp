@@ -93,13 +93,12 @@ MeasureToolHandler::rebuild()
     // clamp to the terrain skin as it pages in
     AltitudeSymbol* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
-    //alt->technique() = alt->TECHNIQUE_GPU;
     alt->technique() = alt->TECHNIQUE_SCENE;
 
     // offset to mitigate Z fighting
     RenderSymbol* render = _feature->style()->getOrCreate<RenderSymbol>();
     render->depthOffset()->enabled() = true;
-    render->depthOffset()->minBias() = 1000;
+    render->depthOffset()->automatic() = true;
 
     // define a style for the line
     LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();

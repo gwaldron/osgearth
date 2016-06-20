@@ -85,7 +85,7 @@ namespace osgEarth
             was called to override it. */
         Cache* getDefaultCache() const;
 
-        /** Sets a default cache that a CacheManager will use. */
+        /** Sets a default cache that a Map will use if none other is specified. */
         void setDefaultCache(Cache* cache);
 
         /** The default cache policy (used when no policy is set elsewhere) */

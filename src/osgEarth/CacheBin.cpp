@@ -191,10 +191,8 @@ namespace
 #undef  LC
 #define LC "[WriteImagesToCache] "
         
-#define IMAGE_PREFIX "i_"
-
     /**
-     * Traverses a graph, located externally referneced images, and writes
+     * Traverses a graph, located externally referenced images, and writes
      * them to the cache using a unique cache key. Then this will change the
      * image's FileName to point at the cached image instead of the original
      * source. The caches image key includes the .osgearth_cachebin extension,
@@ -239,18 +237,20 @@ namespace
                 OE_WARN << LC << "ERROR image with blank filename.\n";
             }
 
-            if (!osgEarth::startsWith(path, IMAGE_PREFIX))
+            if (!osgEarth::endsWith(path, ".osgearth_cachebin"))
             {
                 // take a plugin-global mutex to avoid two threads altering the image
                 // at the same time
                 Threading::ScopedMutexLock lock(_globalMutex);
 
-                if (!osgEarth::startsWith(path, IMAGE_PREFIX))
+                if (!osgEarth::endsWith(path, ".osgearth_cachebin"))
                 {
-                    std::string cacheKey = Stringify() << IMAGE_PREFIX << std::hex << osgEarth::hashString(path);
+                    // get the hashed key that the cache bin will use to actually write the image,
+                    // and replace the image filename with it.
+                    std::string cacheKey = path;
+                    std::string hashKey = _bin->getHashedKey(cacheKey);
 
-                    // TODO: adding the .osgb here works with the file system cache only.
-                    // We need to use a pseudoloader to route this load to a cache bin
+                    // Append the pseudoloader suffix so our PL can locate the image in the cache.
                     image.setFileName(cacheKey + ".osgearth_cachebin");
                     image.setWriteHint(osg::Image::EXTERNAL_FILE);
 
@@ -262,7 +262,7 @@ namespace
                         osg::ref_ptr<osgDB::Options> dbo = Registry::cloneOrCreateOptions(_writeOptions);
                         dbo->setPluginStringData("WriteImageHint", "IncludeData");
 
-                        OE_INFO << LC << "Writing image \"" << path << "\" to the cache as \"" << cacheKey << "\"\n";
+                        OE_INFO << LC << "Writing image \"" << image.getFileName() << "\" to the cache\n";
 
                         if (!_bin->write(cacheKey, &image, dbo.get()))
                         {
@@ -303,31 +303,6 @@ CacheBin::writeNode(const std::string&    key,
     return true;
 }
 
-CacheBin*
-CacheBin::get(const osgDB::Options* readOptions)
-{
-    if (!readOptions)
-        return 0L;
-
-    CacheBin* bin = 0L;
-    CacheSettings* settings = CacheSettings::get(readOptions);
-    if (settings)
-    {
-        bin = settings->getCacheBin();
-        if (!bin && settings->getCache())
-        {
-            bin = settings->getCache()->getOrCreateDefaultBin();
-        }
-    }
-    else
-    {
-        CacheManager* cacheManager = CacheManager::get(readOptions);
-        if (cacheManager)
-            bin = cacheManager->getCache()->getOrCreateDefaultBin();
-    }
-    return bin;
-}
-
 
 #undef  LC
 #define LC "[ReadImageFromCachePseudoLoader] "
@@ -358,15 +333,17 @@ namespace
             if (osgDB::getLowerCaseFileExtension(url) != "osgearth_cachebin")
                 return ReadResult::FILE_NOT_HANDLED;
 
-            CacheBin* bin = CacheBin::get(readOptions);
-            if ( !bin )
+            CacheSettings* cacheSettings = CacheSettings::get(readOptions);
+            if (!cacheSettings || !cacheSettings->isCacheEnabled() || !cacheSettings->getCacheBin())
+            {
                 return ReadResult::FILE_NOT_FOUND;
+            }
 
             std::string key = osgDB::getNameLessExtension(url);
             
             OE_DEBUG << LC << "Reading \"" << key << "\"\n";
 
-            osgEarth::ReadResult rr = bin->readObject(key, readOptions);
+            osgEarth::ReadResult rr = cacheSettings->getCacheBin()->readObject(key, readOptions);
             
             return rr.succeeded() ?
                 ReadResult(rr.getObject()) :
@@ -377,16 +354,19 @@ namespace
         {
             if (osgDB::getLowerCaseFileExtension(url) != "osgearth_cachebin")
                 return ReadResult::FILE_NOT_HANDLED;
-
-            CacheBin* bin = CacheBin::get(readOptions);
-            if ( !bin )
+            
+            CacheSettings* cacheSettings = CacheSettings::get(readOptions);
+            if (!cacheSettings || !cacheSettings->isCacheEnabled() || !cacheSettings->getCacheBin())
+            {
+                OE_DEBUG << LC << "Cache not enabled...!\n";
                 return ReadResult::FILE_NOT_FOUND;
+            }
 
             std::string key = osgDB::getNameLessExtension(url);
             
             OE_DEBUG << LC << "Reading \"" << key << "\"\n";
 
-            osgEarth::ReadResult rr = bin->readImage(key, readOptions);
+            osgEarth::ReadResult rr = cacheSettings->getCacheBin()->readImage(key, readOptions);
             
             return rr.succeeded() ?
                 ReadResult(rr.getImage()) :

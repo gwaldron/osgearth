@@ -170,12 +170,7 @@ _openCalled( false )
 
 TerrainLayer::~TerrainLayer()
 {
-    // remove this object's CacheSettings.
-    CacheManager* cm = CacheManager::get(_readOptions.get());
-    if ( cm )
-    {
-        cm->close(this->getUID());
-    }
+    //nop
 }
 
 void
@@ -253,6 +248,8 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        CacheSettings* cacheSettings = getCacheSettings(); // guaranteed to return non-null
+
         Threading::ScopedMutexLock lock(_mutex);
         if (!_openCalled)
         {
@@ -262,7 +259,7 @@ TerrainLayer::open()
                 osg::ref_ptr<TileSource> ts;
 
                 // as long as we're not in cache-only mode, try to create the TileSource.
-                if (getCacheSettings()->cachePolicy()->isCacheOnly())
+                if (cacheSettings->cachePolicy()->isCacheOnly())
                 {
                     OE_INFO << LC << "Opening in cache-only mode\n";
                 }
@@ -274,26 +271,24 @@ TerrainLayer::open()
 
                 if ( ts.valid() )
                 {
-                    // read the cache policy hint from the tile source unless user expressly set 
-                    // a policy in the initialization options. In other words, the hint takes
-                    // ultimate priority (even over the Registry override) unless expressly
-                    // overridden in the layer options!
-                    refreshTileSourceCachePolicyHint( ts.get() );
+                    if (cacheSettings->isCacheEnabled())
+                    {
+                        // read the cache policy hint from the tile source unless user expressly set 
+                        // a policy in the initialization options. In other words, the hint takes
+                        // ultimate priority (even over the Registry override) unless expressly
+                        // overridden in the layer options!
+                        refreshTileSourceCachePolicyHint( ts.get() );
 
-                    // Unless the user has already configured an expiration policy, use the "last modified"
-                    // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-                    CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
-                    if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
-                    {
-                        // The "effective" policy overrides the runtime policy, but it does not get serialized.
-                        _effectiveCachePolicy = cp;
-                        _effectiveCachePolicy->minTime() = ts->getLastModifiedTime();
-                        OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
-                        OE_INFO << LC << "cache policy = " << _effectiveCachePolicy->usageString() << std::endl;
-                    }
-                    else
-                    {
-                        OE_INFO << LC << "cache policy = " << cp.usageString() << std::endl;
+                        // Unless the user has already configured an expiration policy, use the "last modified"
+                        // timestamp of the TileSource to set a minimum valid cache entry timestamp.
+                        CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
+                        if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
+                        {
+                            // The "effective" policy overrides the runtime policy, but it does not get serialized.
+                            _effectiveCachePolicy = cp;
+                            _effectiveCachePolicy->minTime() = ts->getLastModifiedTime();
+                            OE_INFO << LC << "driver says min valid timestamp = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
+                        }
                     }
 
                     // All is well - set the tile source.
@@ -305,6 +300,8 @@ TerrainLayer::open()
             }
 
             _openCalled = true;
+                        
+            OE_INFO << LC << cacheSettings->toString() << "\n";
         }
 
     }
@@ -320,44 +317,27 @@ TerrainLayer::getCacheSettings() const
         Threading::ScopedMutexLock lock(_mutex);
         if (!_cacheSettings.valid())
         {
-            // Locate a cache manager in the read options:
-            CacheManager* cm = CacheManager::get(_readOptions.get());
-            if (cm)
+            // clone the existing one if it exists:
+            CacheSettings* oldSettings = CacheSettings::get(_readOptions.get());
+            _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
+
+            // install the effective policy (which comes from the tile source). We don't call
+            // integrateCachePolicy here because we want this to take precedend over the registry's
+            // global overrides.
+            _cacheSettings->cachePolicy()->mergeAndOverride(_effectiveCachePolicy);
+
+            // install the layer policy
+            _cacheSettings->integrateCachePolicy(_runtimeOptions->cachePolicy());
+
+            // if all it well, open and activate a caching bin for this layer.
+            if (_cacheSettings->isCacheEnabled())
             {
-                // create a new cache settings object for this layer:
-                _cacheSettings = cm->getOrCreateSettings(this->getUID());
-                if (_cacheSettings.valid())
-                {
-                    // if we calculated an effective policy based on the tile source, apply it:
-                    _cacheSettings->cachePolicy()->mergeAndOverride(_effectiveCachePolicy);
-
-                    // merge in any cache policy specified for this layer in particular:
-                    _cacheSettings->cachePolicy()->mergeAndOverride(_runtimeOptions->cachePolicy());
-                    
-                    if (_cacheSettings->cachePolicy()->isCacheEnabled())
-                    {
-                        // add a cache bin 
-                        CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeOptions->cacheId().get());
-
-                        // and assign it as active in these settings.
-                        if (bin)
-                        {
-                            _cacheSettings->setCacheBin(bin);
-                            OE_INFO << LC << "Opened cache bin [" << _runtimeOptions->cacheId().get() << "]\n";
-                        }
-                    }
-
-                    // Store the settings in the local readOptions
-                    _cacheSettings->store(_readOptions.get());
-                }
+                CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeOptions->cacheId().get());
+                if (bin) 
+                    _cacheSettings->setCacheBin(bin);
             }
 
-            // backup plan:
-            if (!_cacheSettings.valid())
-            {
-                _cacheSettings = new CacheSettings();
-                _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
-            }
+            _cacheSettings->store(_readOptions.get());
         }
     }
     return _cacheSettings.get();
@@ -393,79 +373,10 @@ TerrainLayer::getTileSource() const
     return _tileSource.get();
 }
 
-#if 0
-TileSource* 
-TerrainLayer::getTileSource() const
-{
-    if ( !_tileSourceInitAttempted )
-    {
-        // Lock and double check:
-        Threading::ScopedMutexLock lock( _initTileSourceMutex );
-        if ( !_tileSourceInitAttempted )
-        {
-            // Continue with thread-safe initialization.
-            TerrainLayer* this_nc = const_cast<TerrainLayer*>(this);
-
-            osg::ref_ptr<TileSource> ts;
-            if ( !isCacheOnly() )
-            {
-                // Initialize the tile source once and only once.
-                ts = this_nc->createTileSource();
-            }
-
-            if ( ts.valid() )
-            {
-                // read the cache policy hint from the tile source unless user expressly set 
-                // a policy in the initialization options. In other words, the hint takes
-                // ultimate priority (even over the Registry override) unless expressly
-                // overridden in the layer options!
-                this_nc->refreshTileSourceCachePolicyHint( ts.get() );
-
-                // Unless the user has already configured an expiration policy, use the "last modified"
-                // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-                if ( ts )
-                {
-                    CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
-                    if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
-                    {
-                        // The "effective" policy overrides the runtime policy, but it does not
-                        // get serialized.
-                        this_nc->_effectiveCachePolicy = cp;
-                        this_nc->_effectiveCachePolicy->minTime() = ts->getLastModifiedTime();
-                        OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
-                    }
-                    OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
-                }
-
-                if ( !_tileSource.valid() )
-                    this_nc->_tileSource = ts.release();
-            }
-
-            // finally, set this whether we succeeded or failed
-            _tileSourceInitAttempted = true;
-        }
-    }
-
-    return _tileSource.get();
-}
-#endif
-
 const Profile*
 TerrainLayer::getProfile() const
 {
     return _profile.get();
-
-    //// NB: in cache-only mode, there IS NO layer profile.
-    //if ( !_profile.valid() && !isCacheOnly() )
-    //{
-    //    if ( !_tileSourceInitAttempted )
-    //    {
-    //        // Call getTileSource to make sure the TileSource is initialized
-    //        getTileSource();
-    //    }
-    //}
-    //
-    //return _profile.get();
 }
 
 unsigned
@@ -772,7 +683,7 @@ TerrainLayer::createTileSource()
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
-    else if (getCacheSettings()->cachePolicy()->isCacheEnabled())
+    else if (getCacheSettings()->isCacheEnabled())
     {
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists, so we will use it in cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
@@ -780,7 +691,7 @@ TerrainLayer::createTileSource()
 
     // Finally: if we could not open a TileSource, and there's no cache available, 
     // just disable the layer.
-    if (!ts.valid() && getCacheSettings()->cachePolicy()->isCacheDisabled())
+    if (!ts.valid() && getCacheSettings()->isCacheDisabled())
     {
         disable();
     }
@@ -860,7 +771,7 @@ bool
 TerrainLayer::isCached(const TileKey& key) const
 {
     // first consult the policy:
-    if (getCacheSettings()->cachePolicy()->isCacheDisabled())
+    if (getCacheSettings()->isCacheDisabled())
         return false;
 
     else if (getCacheSettings()->cachePolicy()->isCacheOnly())
@@ -885,7 +796,7 @@ void
 TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
 {
     // clone the options, or create it not set
-    _readOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
 
     // store HTTP proxy settings in the options:
     storeProxySettings( _readOptions );

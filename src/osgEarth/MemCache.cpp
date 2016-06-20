@@ -109,6 +109,11 @@ namespace
             return true;
         }
 
+        std::string getHashedKey(const std::string& key) const
+        {
+            return key;
+        }
+
         MemCacheLRU _lru;
     };
     

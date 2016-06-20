@@ -154,15 +154,16 @@ namespace osgEarth
         virtual unsigned getStorageSize() { return 0u; }
 
         /**
-         * Retrieve pointer from an options struture
-         */
-        static CacheBin* get(const osgDB::Options* readOptions);
-
-        /**
          * Metadata associated with a cache bin.
          */
         void setMetadata(osg::Referenced* data) { _metadata = data; }
         osg::Referenced* getMetadata() { return _metadata.get(); }
+        
+        /**
+         * If key-hashing is enabled, this method returns the hashed key
+         * corresponding to a raw input key.
+         */
+        virtual std::string getHashedKey(const std::string& key) const =0;
 
     public: //deprecated
 

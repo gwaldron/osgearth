@@ -248,45 +248,46 @@ ModelLayer::open()
 void
 ModelLayer::setReadOptions(const osgDB::Options* readOptions)
 {
-    _readOptions = readOptions ? osg::clone(readOptions) : new osgDB::Options();
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
 
     // Create some local cache settings for this layer:
-    CacheManager* cacheManager = CacheManager::get(_readOptions.get());
-    if (cacheManager)
+    CacheSettings* oldSettings = CacheSettings::get(readOptions);
+    _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
+
+    // bring in the new policy for this layer if there is one:
+    _cacheSettings->integrateCachePolicy(_initOptions.cachePolicy());
+
+    // if caching is a go, install a bin.
+    if (_cacheSettings->isCacheEnabled())
     {
-        _cacheSettings = cacheManager->getOrCreateSettings(this->getUID());
-        if (_cacheSettings.valid())
+        std::string binID;
+        if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
         {
-            std::string binID;
-            if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
-            {
-                binID = _initOptions.cacheId().get();
-            }
-            else
-            {
-                Config conf = _initOptions.driver()->getConfig();
-                binID = hashToString(conf.toJSON(false));
-            }
+            binID = _initOptions.cacheId().get();
+        }
+        else
+        {
+            Config conf = _initOptions.driver()->getConfig();
+            binID = hashToString(conf.toJSON(false));
+        }
 
-            // make our cacheing bin!
-            CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
-            if (bin)
-            {
-                OE_INFO << LC << "Layer " << getName() << " opened cache bin [" << binID << "]\n";
-                _cacheSettings->setCacheBin( bin );
-                _cacheSettings->integrateCachePolicy(_initOptions.cachePolicy());
-            }
-            else
-            {
-                // failed to create the bin, so fall back on no cache mode.
-                OE_WARN << LC << "Layer " << getName() << " failed to open a cache bin [" << binID << "], disabling caching\n";
-                _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
-            }
-
-            // Store it so subobjects can find it!
-            _cacheSettings->store(_readOptions.get());
+        // make our cacheing bin!
+        CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
+        if (bin)
+        {
+            OE_INFO << LC << "Layer " << getName() << " opened cache bin [" << binID << "]\n";
+            _cacheSettings->setCacheBin( bin );
+        }
+        else
+        {
+            // failed to create the bin, so fall back on no cache mode.
+            OE_WARN << LC << "Layer " << getName() << " failed to open a cache bin [" << binID << "], disabling caching\n";
+            _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
         }
     }
+
+    // Store it for further propagation!
+    _cacheSettings->store(_readOptions.get());
 }
 
 osg::Node*

@@ -74,8 +74,8 @@ public:
     void initialize(const osgDB::Options* readOptions)
     {
         FeatureSource::initialize( readOptions );
-
-        _readOptions = readOptions ? osg::clone(readOptions) : 0L;
+        
+        _readOptions = Registry::cloneOrCreateOptions(readOptions);
 #if 0
         if ( _dbOptions.valid() )
         {

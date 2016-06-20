@@ -37,6 +37,31 @@ CacheOptions::~CacheOptions()
 {
 }
 
+//------------------------------------------------------------------------
+
+#define CACHESETTINGS_UDC_NAME "osgEarth.CacheSettings"
+
+CacheSettings::CacheSettings()
+{
+    setName(CACHESETTINGS_UDC_NAME);
+}
+
+CacheSettings::CacheSettings(const CacheSettings& rhs, const osg::CopyOp& copy) :
+osg::Object(*this, copy),
+_cache(rhs._cache.get()),
+_policy(rhs._policy),
+_activeBin(rhs._activeBin.get())
+{
+    // for some unknown reason, the copy CTOR is not getting the name.
+    setName(CACHESETTINGS_UDC_NAME);
+}
+        
+bool
+CacheSettings::isCacheEnabled() const
+{
+    return _cache.valid() && _policy->isCacheEnabled();
+}
+
 void
 CacheSettings::integrateCachePolicy(const optional<CachePolicy>& policy)
 {
@@ -53,7 +78,10 @@ CacheSettings::store(osgDB::Options* readOptions)
 {
     if (readOptions)
     {
-        readOptions->setPluginData("osgEarth::CacheSettings", this);
+        osg::UserDataContainer* udc = readOptions->getOrCreateUserDataContainer();
+        unsigned index = udc->getUserObjectIndex(CACHESETTINGS_UDC_NAME);
+        udc->removeUserObject(index);
+        udc->addUserObject(this);
     }
 }
  
@@ -63,83 +91,22 @@ CacheSettings::get(const osgDB::Options* readOptions)
     CacheSettings* obj = 0L;
     if (readOptions)
     {
-        obj = static_cast<CacheSettings*>(const_cast<void*>((readOptions->getPluginData("osgEarth::CacheSettings"))));
-    }
-    return obj;
-}
-
-//------------------------------------------------------------------------
-
-CacheManager::CacheManager()
-{
-    // Check the regsitry for a default cache.
-    Cache* cache = Registry::instance()->getDefaultCache();
-    if (cache)
-        setCache(cache);
-
-    // .. and a default policy.
-    if (Registry::instance()->defaultCachePolicy().isSet())
-        defaultCachePolicy() = Registry::instance()->defaultCachePolicy();
-}
-        
-void
-CacheManager::store(osgDB::Options* readOptions)
-{
-    if (readOptions)
-    {
-        readOptions->setPluginData("osgEarth::CacheManager", this);
-    }
-}
- 
-CacheManager*
-CacheManager::get(const osgDB::Options* readOptions)
-{
-    CacheManager* obj = 0L;
-    if (readOptions)
-    {
-        obj = static_cast<CacheManager*>(const_cast<void*>((readOptions->getPluginData("osgEarth::CacheManager"))));
-    }
-    return obj;
-}
-        
-osg::ref_ptr<CacheSettings>
-CacheManager::getOrCreateSettings(const CacheSettings::ID& id)
-{
-    Threading::ScopedMutexLock lock(_mutex);
-    
-    int size = _lut.size();
-    osg::ref_ptr<CacheSettings>& settings = _lut[id];
-    if (_lut.size() > size)
-    {
-        // new entry - propagate some properties
-        settings = new CacheSettings();
-        settings->setCache(_cache.get());
-        settings->defaultCachePolicy() = _policy;
-        settings->cachePolicy() = _policy;
-    }
-    return settings;
-}
-
-void 
-CacheManager::close(const CacheSettings::ID& id)
-{
-    Threading::ScopedMutexLock lock(_mutex);
-    _lut.erase(id);
-}
-
-void
-CacheManager::setCache(Cache* cache)
-{
-    if (_cache.get() != cache)
-    {
-        _cache = cache;
-
-        Threading::ScopedMutexLock lock(_mutex);
-        for (LUT::iterator i = _lut.begin(); i != _lut.end(); ++i)
-        {
-            i->second->setCache(cache);
+        const osg::UserDataContainer* udc = readOptions->getUserDataContainer();
+        if (udc) {
+            osg::Object* temp = const_cast<osg::Object*>(udc->getUserObject(CACHESETTINGS_UDC_NAME));
+            obj = dynamic_cast<CacheSettings*>(temp);
         }
     }
+    return obj;
+}
+
+std::string
+CacheSettings::toString() const
+{
+    return Stringify()
+        << "cache=" << (_cache.valid() ? _cache->className() : "none")
+        << "; policy=" << _policy->usageString()
+        << "; bin=" << (_activeBin.get() ? "yes" : "no");
 }
 
 //------------------------------------------------------------------------
@@ -173,18 +140,6 @@ void
 Cache::removeBin( CacheBin* bin )
 {
     _bins.remove( bin );
-}
-
-Cache*
-Cache::get(const osgDB::Options* readOptions)
-{
-    Cache* cache = 0L;
-    if (readOptions)
-    {
-        const CacheManager* cacheManager = CacheManager::get(readOptions);
-        cache = cacheManager ? cacheManager->getCache() : 0L;
-    }
-    return cache;
 }
 
 //------------------------------------------------------------------------

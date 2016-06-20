@@ -357,7 +357,6 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
-        mutable osg::ref_ptr<CacheManager> _cacheManager;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

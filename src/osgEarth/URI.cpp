@@ -213,20 +213,6 @@ URI::isRemote() const
 
 namespace
 {
-    // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
-    // default CacheBin of a Cache found in the dboptions; failing that, call back on
-    // the default CacheBin of the registry-wide cache.
-    CacheBin* s_getCacheBin(const osgDB::Options* readOptions)
-    {
-        CacheBin* bin = 0L;
-        CacheManager* cacheManager = CacheManager::get(readOptions);
-        if (cacheManager && cacheManager->getCache())
-        {
-            bin = cacheManager->getCache()->getOrCreateDefaultBin();
-        }
-        return bin;
-    }
-
     // convert an osgDB::ReaderWriter::ReadResult to an osgEarth::ReadResult
     ReadResult toReadResult( osgDB::ReaderWriter::ReadResult& rr )
     {
@@ -405,7 +391,7 @@ namespace
             // if we have an option string, incorporate it.
             if ( inputURI.optionString().isSet() )
             {
-                osgDB::Options* newLocalOptions = osg::clone(localOptions.get());
+                osgDB::Options* newLocalOptions = Registry::cloneOrCreateOptions(localOptions.get());
                 newLocalOptions->setOptionString(
                     inputURI.optionString().get() + " " + localOptions->getOptionString());
                 localOptions = newLocalOptions;

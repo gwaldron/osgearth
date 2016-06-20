@@ -67,7 +67,7 @@ public:
     {        
         FeatureSource::initialize( dbOptions );
 
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
         std::string fullFilename = _options.url()->full();
 
         int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, SQLITE_OPEN_READONLY, 0L );

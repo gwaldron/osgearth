@@ -289,11 +289,11 @@ void oe_splat_complex(inout vec4 color)
     // Sample the two LODs:
     vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + scaleOffset);
     env.lod = lod0;
-    vec4 texel0 = oe_splat_bilinear(tc0, env);
+    vec4 texel0 = oe_splat_nearest(tc0, env);
     
     vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
     env.lod = lod0+1.0;
-    vec4 texel1 = oe_splat_bilinear(tc1, env);
+    vec4 texel1 = oe_splat_nearest(tc1, env);
 
     // recalcluate blending ratio
     float lodBlend = clamp((rangeOuter - env.range) / (rangeOuter - rangeInner), 0, 1);

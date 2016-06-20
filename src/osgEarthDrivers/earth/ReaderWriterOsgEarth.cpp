@@ -292,10 +292,10 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if (mapNode)
             {
                 // If the user passed in a cache object, apply it to the map now
-                Cache* cache = Cache::get(readOptions);
-                if ( cache )
+                CacheSettings* cacheSettings = CacheSettings::get(readOptions);
+                if (cacheSettings && cacheSettings->getCache())
                 {
-                    mapNode->getMap()->setCache( cache );
+                    mapNode->getMap()->setCache( cacheSettings->getCache() );
                     OE_INFO << LC << "Applied user-supplied cache to the Map\n";
                 }
             }

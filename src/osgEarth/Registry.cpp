@@ -267,18 +267,12 @@ void
 Registry::setDefaultCachePolicy( const CachePolicy& value )
 {
     _defaultCachePolicy = value;
-
-    //if ( !_overrideCachePolicy.isSet() )
-    //    _defaultCachePolicy->store(_defaultOptions.get());
-    //else
-    //    _overrideCachePolicy->store(_defaultOptions.get());
 }
 
 void
 Registry::setOverrideCachePolicy( const CachePolicy& value )
 {
     _overrideCachePolicy = value;
-    //_overrideCachePolicy->store( _defaultOptions.get() );
 }
 
 bool
@@ -381,15 +375,19 @@ Registry::getDefaultCache() const
         Threading::ScopedMutexLock lock(_regMutex);
         if (!_defaultCache.valid())
         {
-            // see if there's a cache in the envvar; if so, create a cache.
-            // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
-            // it's used in the driver(s) itself.
-            const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
-            if (cachePath && !driverName.empty())
+            const char* noCache = ::getenv(OSGEARTH_ENV_NO_CACHE);
+            if (noCache == 0L)
             {
-                CacheOptions cacheOptions;
-                cacheOptions.setDriver(driverName);
-                _defaultCache = CacheFactory::create(cacheOptions);
+                // see if there's a cache in the envvar; if so, create a cache.
+                // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
+                // it's used in the driver(s) itself.
+                const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+                if (cachePath && !driverName.empty())
+                {
+                    CacheOptions cacheOptions;
+                    cacheOptions.setDriver(driverName);
+                    _defaultCache = CacheFactory::create(cacheOptions);
+                }
             }
         }
     }
@@ -532,7 +530,7 @@ osgDB::Options*
 Registry::cloneOrCreateOptions(const osgDB::Options* input)
 {
     osgDB::Options* newOptions = 
-        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::DEEP_COPY_USERDATA)) : 
         new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil

@@ -101,7 +101,6 @@ _options( options )
 {    
     _readOptions  = readOptions;
     _uriContext  = URIContext( _readOptions.get() );
-    //_cache      = Cache::get( dbOptions );
 }
 
 FeatureSource::~FeatureSource()

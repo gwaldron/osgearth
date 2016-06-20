@@ -425,8 +425,7 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
     std::string outEarth;
     args.read( "--out-earth", outEarth );
 
-    osg::ref_ptr<osgDB::Options> myReadOptions =
-        readOptions ? osg::clone(readOptions) : new osgDB::Options();
+    osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
     
     Config c;
     c.add("elevation_smoothing", false);

@@ -74,26 +74,23 @@ _dataModelRevision   ( 0 )
 
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer.
-    _cacheManager = new CacheManager();
-    _cacheManager->store(_readOptions.get());
+    CacheSettings* cacheSettings = new CacheSettings();
 
-    // if there's a cache set up in the map options, install it:
+    // Set up a cache if there's one in the options:
     if (_mapOptions.cache().isSet())
-    {
-        Cache* cache = CacheFactory::create( _mapOptions.cache().get() );
-        if (cache)
-            _cacheManager->setCache(cache);
-    }
+        cacheSettings->setCache(CacheFactory::create(_mapOptions.cache().get()));
 
-    // if there's a policy set up in the map options, install it:
-    if (_mapOptions.cachePolicy().isSet())
-    {
-        _cacheManager->defaultCachePolicy() = _mapOptions.cachePolicy().get();
-    }
+    // Otherwise use the registry default cache if there is one:
+    if (cacheSettings->getCache() == 0L)
+        cacheSettings->setCache(Registry::instance()->getDefaultCache());
 
-    // Combine the CachePolicy in the map options with the settings in
-    // the registry.
-    Registry::instance()->resolveCachePolicy( _cacheManager->defaultCachePolicy() );
+    // Integrate local cache policy (which can be overridden by the environment)
+    cacheSettings->integrateCachePolicy(_mapOptions.cachePolicy());
+
+    // store in the options so we can propagate it to layers, etc.
+    cacheSettings->store(_readOptions.get());
+
+    OE_INFO << LC << cacheSettings->toString() << "\n";
 
 
     // remember the referrer for relative-path resolution:
@@ -332,16 +329,17 @@ Map::getProfile() const
 Cache*
 Map::getCache() const
 {
-    return _cacheManager.valid() ? _cacheManager->getCache() : 0L;
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    return cacheSettings ? cacheSettings->getCache() : 0L;
 }
 
 void
 Map::setCache(Cache* cache)
 {
-    if (cache != getCache() && _cacheManager.valid())
-    {
-        _cacheManager->setCache(cache);
-    }
+    // note- probably unsafe to do this after initializing the terrain. so don't.
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    if (cacheSettings && cacheSettings->getCache() != cache)
+        cacheSettings->setCache(cache);
 }
 
 void 

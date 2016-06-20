@@ -677,16 +677,16 @@ public:
         GDAL_SCOPED_LOCK;
 
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        if ( _dbOptions.valid() )
-        {
-            // Set up a custom cache bin
-            CacheManager* cacheManager = CacheManager::get(dbOptions);
-            if (cacheManager && cacheManager->getCache())
-            {
-                std::string binId = Stringify() << std::hex << hashString(_options.getConfig().toJSON());
-                _cacheBin = cacheManager->getCache()->addBin(binId);
-            }
-        }
+        //if ( _dbOptions.valid() )
+        //{
+        //    // Set up a custom cache bin
+        //    CacheManager* cacheManager = CacheManager::get(dbOptions);
+        //    if (cacheManager && cacheManager->getCache())
+        //    {
+        //        std::string binId = Stringify() << std::hex << hashString(_options.getConfig().toJSON());
+        //        _cacheBin = cacheManager->getCache()->addBin(binId);
+        //    }
+        //}
 
         // Is a valid external GDAL dataset specified ?
         bool useExternalDataset = false;

@@ -172,7 +172,7 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
 void
 FeatureModelSource::setReadOptions(const osgDB::Options* readOptions)
 {
-    _readOptions = readOptions ? osg::clone(readOptions) : new osgDB::Options();
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
     
     // for texture atlas support
     _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
@@ -229,9 +229,6 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _postMergeOps.get() );
 
     graph->setName( session->getName() );
-
-    if (CacheManager::get(_readOptions.get()))
-        OE_DEBUG << LC << "Found a cache bin in FeatureModelSource\n";
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

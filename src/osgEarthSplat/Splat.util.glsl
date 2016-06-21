@@ -84,14 +84,14 @@ oe_splat_getSplatCoords(in vec2 tc, float lod)
     vec2 result = tc * scale;
 
     // For upsampling we need to calculate an offset as well
-    if ( factor >= 1.0 )
-    {
-        vec2 a = floor(oe_tile_key.xy * invFactor);
-        vec2 b = a * factor;
-        vec2 c = (a+1.0) * factor;
-        vec2 offset = (oe_tile_key.xy-b)/(c-b);
-        result += offset;
-    }
+    vec2 a = floor(oe_tile_key.xy * invFactor);
+    vec2 b = a * factor;
+    vec2 c = (a+1.0) * factor;
+    vec2 offset = (oe_tile_key.xy-b)/(c-b);
+
+    // only apply offset if factor >= 1.0
+    float m = floor(clamp(factor,0.0,1.0));
+    result += (m*offset);
 
     return result;
 }

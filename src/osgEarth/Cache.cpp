@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
+#include <osg/UserDataContainer>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>

@@ -18,7 +18,7 @@ before_install:
 #    - make -j3
 
 script:
-  - cmake -DCMAKE_BUILD_TYPE=Release . && ./configure && make -j3
+  - cmake -DCMAKE_BUILD_TYPE=Release . && make -j3
 
 notifications:
   email:

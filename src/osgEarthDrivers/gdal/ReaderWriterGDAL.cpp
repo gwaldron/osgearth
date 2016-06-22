@@ -1912,23 +1912,68 @@ public:
                 band = _warpedDS->GetRasterBand(1);
             }
 
-            double dx = (xmax - xmin) / (tileSize-1);
-            double dy = (ymax - ymin) / (tileSize-1);
+            if (_options.interpolation() == INTERP_NEAREST)
+            {
+                double colMin, colMax;
+                double rowMin, rowMax;
+                geoToPixel( xmin, ymin, colMin, rowMax );
+                geoToPixel( xmax, ymax, colMax, rowMin );
+                std::vector<float> buffer(tileSize * tileSize, NO_DATA_VALUE);
 
+                int iColMin = floor(colMin);
+                int iColMax = ceil(colMax);
+                int iRowMin = floor(rowMin);
+                int iRowMax = ceil(rowMax);
+                int iNumCols = iColMax - iColMin + 1;
+                int iNumRows = iRowMax - iRowMin + 1;
+
+                int iWinColMin = max(0, iColMin);
+                int iWinColMax = min(_warpedDS->GetRasterXSize()-1, iColMax);
+                int iWinRowMin = max(0, iRowMin);
+                int iWinRowMax = min(_warpedDS->GetRasterYSize()-1, iRowMax);
+                int iNumWinCols = iWinColMax - iWinColMin + 1;
+                int iNumWinRows = iWinRowMax - iWinRowMin + 1;
+
+                int iBufColMin = osg::round((iWinColMin - iColMin) / double(iNumCols - 1) * (tileSize - 1));
+                int iBufColMax = osg::round((iWinColMax - iColMin) / double(iNumCols - 1) * (tileSize - 1));
+                int iBufRowMin = osg::round((iWinRowMin - iRowMin) / double(iNumRows - 1) * (tileSize - 1));
+                int iBufRowMax = osg::round((iWinRowMax - iRowMin) / double(iNumRows - 1) * (tileSize - 1));
+                int iNumBufCols = iBufColMax - iBufColMin + 1;
+                int iNumBufRows = iBufRowMax - iBufRowMin + 1;
+
+                int startOffset = iBufRowMin * tileSize + iBufColMin;
+                int lineSpace = tileSize * sizeof(float);
+
+                band->RasterIO(GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
+
+                for (int r = 0, ir = tileSize - 1; r < tileSize; ++r, --ir)
+                {
+                    for (int c = 0; c < tileSize; ++c)
+                    {
+                        hf->setHeight(c, ir, buffer[r * tileSize + c]);
+                    }
+                }
+            }
+            else
+            {
+                double dx = (xmax - xmin) / (tileSize-1);
+                double dy = (ymax - ymin) / (tileSize-1);
                 for (int r = 0; r < tileSize; ++r)
                 {
                     double geoY = ymin + (dy * (double)r);
-                for (int c = 0; c < tileSize; ++c)
-                {
-                    double geoX = xmin + (dx * (double)c);
-                    float h = getInterpolatedValue(band, geoX, geoY);
-                    hf->setHeight(c, r, h);
+                    for (int c = 0; c < tileSize; ++c)
+                    {
+                        double geoX = xmin + (dx * (double)c);
+                        float h = getInterpolatedValue(band, geoX, geoY);
+                        hf->setHeight(c, r, h);
+                    }
                 }
             }
         }
         else
         {
-            for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+            std::vector<float>& heightList = hf->getHeightList();
+            std::fill(heightList.begin(), heightList.end(), NO_DATA_VALUE);
         }
         return hf.release();
     }

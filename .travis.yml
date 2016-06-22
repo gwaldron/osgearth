@@ -13,9 +13,12 @@ before_install:
     - sudo apt-get install -y libgdal-dev
     - sudo apt-get install -y libgeos-dev
 
-install:
-    - cmake -DCMAKE_BUILD_TYPE=Release .
-    - make -j3
+#install:
+#    - cmake -DCMAKE_BUILD_TYPE=Release .
+#    - make -j3
+
+script:
+  - cmake -DCMAKE_BUILD_TYPE=Release . && ./configure && make -j3
 
 notifications:
   email:

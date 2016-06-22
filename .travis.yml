@@ -18,18 +18,16 @@ notifications:
   email:
     recipients:
     - jasonbeverage@pelicanmapping.com
-env:
-  global:
-    secure: WMC2Gbt3x71rLyQ07LNRqnjbE0cO7d2O4Rk6ybeuv3hqN/junpho4emrIceKnhQM296n12xjqzY41llpnfpzG4mcDBD/QVqZDPXwKETIDox/zQJr5btmqyBvWfJAbo3HuamqWUOaBRB6KEOpjgvW+wqev8L06pzuzdIAOSpb1wPAYaoUsrlo7SFPu+oHvWrA09SGoiWgPYp5ppffhU7hlxJOG9a6fu/ze95kIPeMfnNzZ00BFFVVnp+G2B08/VbnYIqt6aHi91BfCo9FT1cMilPMUgGGCr5KX1+PbCdjgtezUzhr+WrS7F2KsyJlBHDOGF33vpeaWF86xZAYVICv7BKnA6bZ/q0CaaXWpHds1uhczKXb9ndF+GtLBMI5/g5ggFYm1Z8AM87qw2l8UfcGH75PYUQZnfsPJpCxFrXr21/783Ra7fSUTZXeoTHvXlZURUYBaQn/obvPC0pS46/+cPfZLIcYOdPUmuBqbgVQ2ejcPNA4QitL9SS+eyGZouw6mVKuZ9QPkB6JOyeiDL7/Q62DKsDJeeyJ6007t4MyIGGx41d+FrYXeE9pTUyd1Q+deq0lO7kV8o5/QKGCqMauVzIK6gBAKQxVkHp7W/wnW9uE3DN70VA2K2HJX9YgJHs02LwGq7xxcwara+FPlh0Qql74bSRTDO5pdRHApTjPlOs=
 addons:
   coverity_scan:
-    
     project:
       name: gwaldron/osgearth
       version: 1.0
       description: osgEarth
-
     notification_email: jasonbeverage@pelicanmapping.com
-    build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Release ."
-    build_command:   "make -j3"
+    build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release .
+    build_command: make -j3
     branch_pattern: coverity_scan
+env:
+  global:
+    secure: XQJJEQp4zYlPWhweq76CrA3tyxmCwq5kr99FEpNw8pVcp4BMLDsMZXfyk4s9lKpHB+hUlV67mK2JMFY7gi1G19AjqymfEpg3j99atzki2v1IYvQtcLIo8Q1UOO8c6+nTMoE1OL5LRnSGK6kI+EOy3RaCvh0mRcfI1BPpN9K401JEepznxKmgoEBMTH7vfd4ShlhpVe8oMcQEEPK0JkzLe6MIvKSH+gUj9ECaQbTsCyE9Y3sWO+xWXkTHS+1BVC12mfoxW6bk2+G1iu5ZqyuAnGhVxIgqbsu0o8fXtxC1BHeYfuK9bqzW4zvqxf++3joeLuXfRBphPllVVXaHvsniO6gPVfGXdBUU1FEGq5wywaDgXmulMJQ6v9tajsMflvpYRmpsvPjyHn8uS3aNunGYyqWYeZPRzgJU0qLKgsh03IP3KNQbl+RuByTiZHb64MvwMXFqn0n+KRLN9xGzwtsCIrqKtBgEL00B37jGseZPdnPRsq+IkMrkhAyIpomk8pl22NNiPm6HrIYKmf7cijobkEgEPPA79/XfApuWTai70XkR8B1I4vRfNtX9e3wOZUv87RzdTnGylhWzZOtxH3sMaexbssTXbud51RCjHbBdQYA8T0asoHTQkOOfbhAOw4y5gJNhrQLy4sgJMk9hFoQwNyDH6vvY+o71D5JHcMijDKA=

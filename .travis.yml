@@ -1,25 +1,35 @@
-#Linux build
 os: linux
 dist: trusty
 language: cpp
 compiler:
-    - gcc
-
+- gcc
 before_install:
-    - sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
-    - sudo apt-get update -qq
-    - sudo apt-get install -y cmake
-    - sudo apt-get install -y libopenscenegraph-dev
-    - sudo apt-get install -y libgdal-dev
-    - sudo apt-get install -y libgeos-dev
-    - sudo apt-get install -y libsqlite3-dev
-    - sudo apt-get install -y protobuf-compiler libprotobuf-dev
-
-
+- sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
+- sudo apt-get update -qq
+- sudo apt-get install -y cmake
+- sudo apt-get install -y libopenscenegraph-dev
+- sudo apt-get install -y libgdal-dev
+- sudo apt-get install -y libgeos-dev
+- sudo apt-get install -y libsqlite3-dev
+- sudo apt-get install -y protobuf-compiler libprotobuf-dev
 script:
-  - cmake -DCMAKE_BUILD_TYPE=Release . && make -j3
-
+- cmake -DCMAKE_BUILD_TYPE=Release . && make -j3
 notifications:
   email:
     recipients:
-      - jasonbeverage@pelicanmapping.com
+    - jasonbeverage@pelicanmapping.com
+env:
+  global:
+    secure: WMC2Gbt3x71rLyQ07LNRqnjbE0cO7d2O4Rk6ybeuv3hqN/junpho4emrIceKnhQM296n12xjqzY41llpnfpzG4mcDBD/QVqZDPXwKETIDox/zQJr5btmqyBvWfJAbo3HuamqWUOaBRB6KEOpjgvW+wqev8L06pzuzdIAOSpb1wPAYaoUsrlo7SFPu+oHvWrA09SGoiWgPYp5ppffhU7hlxJOG9a6fu/ze95kIPeMfnNzZ00BFFVVnp+G2B08/VbnYIqt6aHi91BfCo9FT1cMilPMUgGGCr5KX1+PbCdjgtezUzhr+WrS7F2KsyJlBHDOGF33vpeaWF86xZAYVICv7BKnA6bZ/q0CaaXWpHds1uhczKXb9ndF+GtLBMI5/g5ggFYm1Z8AM87qw2l8UfcGH75PYUQZnfsPJpCxFrXr21/783Ra7fSUTZXeoTHvXlZURUYBaQn/obvPC0pS46/+cPfZLIcYOdPUmuBqbgVQ2ejcPNA4QitL9SS+eyGZouw6mVKuZ9QPkB6JOyeiDL7/Q62DKsDJeeyJ6007t4MyIGGx41d+FrYXeE9pTUyd1Q+deq0lO7kV8o5/QKGCqMauVzIK6gBAKQxVkHp7W/wnW9uE3DN70VA2K2HJX9YgJHs02LwGq7xxcwara+FPlh0Qql74bSRTDO5pdRHApTjPlOs=
+addons:
+  coverity_scan:
+    
+    project:
+      name: gwaldron/osgearth
+      version: 1.0
+      description: osgEarth
+
+    notification_email: jasonbeverage@pelicanmapping.com
+    build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Release ."
+    build_command:   "make -j3"
+    branch_pattern: coverity_scan

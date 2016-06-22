@@ -29,6 +29,8 @@
 
 using namespace osgEarth;
 
+#define LC "[AlphaEffect] "
+
 AlphaEffect::AlphaEffect()
 {
     init();
@@ -43,12 +45,9 @@ AlphaEffect::AlphaEffect(osg::StateSet* stateset)
 void
 AlphaEffect::init()
 {
-    _active = Registry::capabilities().supportsGLSL(110u);
-    if ( _active )
-    {
-        _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaEffect_alpha");
-        _alphaUniform->set( 1.0f );
-    }
+    _installed = false;
+    _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaEffect_alpha");
+    _alphaUniform->set( 1.0f );
 }
 
 AlphaEffect::~AlphaEffect()
@@ -59,56 +58,71 @@ AlphaEffect::~AlphaEffect()
 void
 AlphaEffect::setAlpha(float value)
 {
-    if ( _active )
+    float oldValue;
+    _alphaUniform->get(oldValue);
+
+    if (value != oldValue)
+    {        
         _alphaUniform->set( value );
+
+        if (!_installed)
+        {
+            for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
+            {
+                osg::ref_ptr<osg::StateSet> stateset;
+                if ((*it).lock(stateset))
+                {
+                    install(stateset.get());
+                }
+            }
+            _installed = true;
+        }
+    }
 }
 
 float
 AlphaEffect::getAlpha() const
 {
     float value = 1.0f;
-    if (_active)
-        _alphaUniform->get(value);
+    _alphaUniform->get(value);
     return value;
 }
 
 void
 AlphaEffect::attach(osg::StateSet* stateset)
 {
-    if ( stateset && _active )
+    if ( stateset )
     {
         _statesets.push_back(stateset);
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName( "osgEarth.AlphaEffect" );
-        Shaders pkg;
-        pkg.load( vp, pkg.AlphaEffectFragment );
-        stateset->addUniform( _alphaUniform.get() );
+        if (_installed)
+        {
+            install(stateset);
+        }
     }
 }
 
 void
 AlphaEffect::detach()
 {
-    if (!_active)
-        return;
-
-    for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
+    if (_installed)
     {
-        osg::ref_ptr<osg::StateSet> stateset;
-        if ( (*it).lock(stateset) )
+        for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
         {
-            detach( stateset );
-            (*it) = 0L;
+            osg::ref_ptr<osg::StateSet> stateset;
+            if ( (*it).lock(stateset) )
+            {
+                detach( stateset );
+                (*it) = 0L;
+            }
         }
     }
-
     _statesets.clear();
 }
 
 void
 AlphaEffect::detach(osg::StateSet* stateset)
 {
-    if ( stateset && _active )
+    if ( stateset && _installed )
     {
         stateset->removeUniform( _alphaUniform.get() );
         VirtualProgram* vp = VirtualProgram::get( stateset );
@@ -116,6 +130,22 @@ AlphaEffect::detach(osg::StateSet* stateset)
         {
             Shaders pkg;
             pkg.unload( vp, pkg.AlphaEffectFragment );
+        }
+    }
+}
+
+void
+AlphaEffect::install(osg::StateSet* stateset)
+{
+    if (stateset)
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        if (vp)
+        {
+            vp->setName( "osgEarth.AlphaEffect" );
+            Shaders pkg;
+            pkg.load(vp, pkg.AlphaEffectFragment);
+            stateset->addUniform(_alphaUniform.get());
         }
     }
 }

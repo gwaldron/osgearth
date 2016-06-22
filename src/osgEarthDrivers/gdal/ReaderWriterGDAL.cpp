@@ -676,27 +676,17 @@ public:
     {
         GDAL_SCOPED_LOCK;
 
-        Cache* cache = 0;
-
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-
-        if ( _dbOptions.valid() )
-        {
-            // Set up a Custom caching bin for this TileSource
-            cache = Cache::get( _dbOptions.get() );
-            if ( cache )
-            {
-                Config optionsConf = _options.getConfig();
-
-                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());
-                _cacheBin = cache->addBin( binId );
-
-                if ( _cacheBin.valid() )
-                {
-                    _cacheBin->put( _dbOptions.get() );
-                }
-            }
-        }
+        //if ( _dbOptions.valid() )
+        //{
+        //    // Set up a custom cache bin
+        //    CacheManager* cacheManager = CacheManager::get(dbOptions);
+        //    if (cacheManager && cacheManager->getCache())
+        //    {
+        //        std::string binId = Stringify() << std::hex << hashString(_options.getConfig().toJSON());
+        //        _cacheBin = cacheManager->getCache()->addBin(binId);
+        //    }
+        //}
 
         // Is a valid external GDAL dataset specified ?
         bool useExternalDataset = false;

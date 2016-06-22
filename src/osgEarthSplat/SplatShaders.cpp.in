@@ -26,9 +26,6 @@ SplattingShaders::SplattingShaders()
     FragCommon = "Splat.frag.common.glsl";
     _sources[FragCommon] = "@Splat.frag.common.glsl@";
 
-    FragGetRenderInfo = "Splat.frag.getRenderInfo.glsl";
-    _sources[FragGetRenderInfo] = "@Splat.frag.getRenderInfo.glsl@";
-
     Util = "Splat.util.glsl";
     _sources[Util] = "@Splat.util.glsl@";
 }

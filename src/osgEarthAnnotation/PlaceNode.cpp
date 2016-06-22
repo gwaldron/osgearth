@@ -447,6 +447,26 @@ _followFixedCourse( false )
     init();
 }
 
+void
+PlaceNode::setConfig(const Config& conf)
+{
+    GeoPositionNode::setConfig(conf);
+
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "text",   _text );
+
+    optional<URI> imageURI;
+    conf.getIfSet( "icon", imageURI );
+    if ( imageURI.isSet() )
+    {
+        _image = imageURI->getImage();
+        if ( _image.valid() )
+            _image->setFileName( imageURI->base() );
+    }
+
+    init();
+}
+
 Config
 PlaceNode::getConfig() const
 {
@@ -461,4 +481,46 @@ PlaceNode::getConfig() const
     }
 
     return conf;
+}
+
+
+#undef  LC
+#define LC "[PlaceNode Serializer] "
+
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+namespace
+{
+    // functions
+    static bool checkConfig(const osgEarth::Annotation::PlaceNode& node)
+    {
+        return true;
+    }
+
+    static bool readConfig(osgDB::InputStream& is, osgEarth::Annotation::PlaceNode& node)
+    {
+        std::string json;
+        is >> json;
+        Config conf;
+        conf.fromJSON(json);
+        node.setConfig(conf);
+        return true;
+    }
+
+    static bool writeConfig(osgDB::OutputStream& os, const osgEarth::Annotation::PlaceNode& node)
+    {
+        os << node.getConfig().toJSON(false) << std::endl;
+        return true;
+    }
+
+    REGISTER_OBJECT_WRAPPER(
+        PlaceNode,
+        new osgEarth::Annotation::PlaceNode,
+        osgEarth::Annotation::PlaceNode,
+        "osg::Object osg::Node osg::Group osgEarth::Annotation::AnnotationNode osgEarth::Annotation::GeoPositionNode osgEarth::Annotation::PlaceNode")
+    {
+        ADD_USER_SERIALIZER(Config);
+    }
 }

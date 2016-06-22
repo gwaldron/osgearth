@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gwaldron/osgearth.svg?branch=master)](https://travis-ci.org/gwaldron/osgearth)
+
 osgEarth - Dynamic map generation toolkit for OpenSceneGraph
 Copyright 2015 Pelican Mapping
 

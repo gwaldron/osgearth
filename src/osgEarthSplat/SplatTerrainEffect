@@ -83,6 +83,8 @@ namespace osgEarth { namespace Splat
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
+        int                                 _lutTexUnit;
+        osg::ref_ptr<osg::Uniform>          _lutTexUniform;
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;

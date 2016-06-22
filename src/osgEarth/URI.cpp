@@ -213,35 +213,6 @@ URI::isRemote() const
 
 namespace
 {
-    // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
-    // default CacheBin of a Cache found in the dboptions; failing that, call back on
-    // the default CacheBin of the registry-wide cache.
-    CacheBin* s_getCacheBin(const osgDB::Options* dbOptions)
-    {
-        const osgDB::Options* o = dbOptions;
-        
-        if ( o == 0L )
-        {
-            o = Registry::instance()->getDefaultOptions();
-        }
-
-        CacheBin* bin = CacheBin::get( o );
-        if ( !bin )
-        {
-            Cache* cache = Cache::get( o );
-            //if ( !cache )
-            //{
-            //    cache = Registry::instance()->getCache();
-            //}
-
-            if ( cache )
-            {
-                bin = cache->getOrCreateDefaultBin();
-            }
-        }
-        return bin;
-    }
-
     // convert an osgDB::ReaderWriter::ReadResult to an osgEarth::ReadResult
     ReadResult toReadResult( osgDB::ReaderWriter::ReadResult& rr )
     {
@@ -420,7 +391,7 @@ namespace
             // if we have an option string, incorporate it.
             if ( inputURI.optionString().isSet() )
             {
-                osgDB::Options* newLocalOptions = osg::clone(localOptions.get());
+                osgDB::Options* newLocalOptions = Registry::cloneOrCreateOptions(localOptions.get());
                 newLocalOptions->setOptionString(
                     inputURI.optionString().get() + " " + localOptions->getOptionString());
                 localOptions = newLocalOptions;
@@ -483,17 +454,18 @@ namespace
                 {
                     bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
-                    // establish the caching policy.
-                    optional<CachePolicy> cp = CachePolicy::get(localOptions.get());
-                    Registry::instance()->resolveCachePolicy( cp );                    
+                    optional<CachePolicy> cp;
+                    osg::ref_ptr<CacheBin> bin;
 
-                    // get a cache bin if we need it:
-                    CacheBin* bin = 0L;
-                    if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+                    CacheSettings* cacheSettings = CacheSettings::get(localOptions.get());
+                    if (cacheSettings)
                     {
-                        bin = s_getCacheBin( localOptions.get() );
-                    }                    
-
+                        cp = cacheSettings->cachePolicy();
+                        if (cp->isCacheEnabled() && callbackCachingOK)
+                        {
+                            bin = cacheSettings->getCacheBin(); 
+                        }
+                    }
 
                     bool expired = false;
                     // first try to go to the cache if there is one:

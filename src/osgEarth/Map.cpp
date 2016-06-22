@@ -69,19 +69,35 @@ _dataModelRevision   ( 0 )
             << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
     }
 
-    // Combine the CachePolicy in the map options with the settings in
-    // the registry.
-    Registry::instance()->resolveCachePolicy( _mapOptions.cachePolicy() );
-
     // the map-side dbOptions object holds I/O information for all components.
-    _dbOptions = osg::clone( Registry::instance()->getDefaultOptions() );
+    _readOptions = osg::clone( Registry::instance()->getDefaultOptions() );
+
+    // put the CacheSettings object in there. We will propogate this throughout
+    // the data model and the renderer.
+    CacheSettings* cacheSettings = new CacheSettings();
+
+    // Set up a cache if there's one in the options:
+    if (_mapOptions.cache().isSet())
+        cacheSettings->setCache(CacheFactory::create(_mapOptions.cache().get()));
+
+    // Otherwise use the registry default cache if there is one:
+    if (cacheSettings->getCache() == 0L)
+        cacheSettings->setCache(Registry::instance()->getDefaultCache());
+
+    // Integrate local cache policy (which can be overridden by the environment)
+    cacheSettings->integrateCachePolicy(_mapOptions.cachePolicy());
+
+    // store in the options so we can propagate it to layers, etc.
+    cacheSettings->store(_readOptions.get());
+
+    OE_INFO << LC << cacheSettings->toString() << "\n";
+
+
+    // remember the referrer for relative-path resolution:
+    URIContext( _mapOptions.referrer() ).store( _readOptions.get() );
 
     // we do our own caching
-    _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-
-    // store the IO information in the top-level DB Options:
-    _mapOptions.cachePolicy()->store( _dbOptions.get() );
-    URIContext( _mapOptions.referrer() ).store( _dbOptions.get() );
+    _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
@@ -299,8 +315,6 @@ Map::setName( const std::string& name ) {
 Revision
 Map::getDataModelRevision() const
 {
-    //Don't really need this here.
-    //Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     return _dataModelRevision;
 }
 
@@ -315,60 +329,17 @@ Map::getProfile() const
 Cache*
 Map::getCache() const
 {
-    if ( !_cache.valid() )
-    {
-        Threading::ScopedWriteLock lock(_mapDataMutex);
-
-        if (!_cache.valid())
-        {
-            osg::ref_ptr<Cache> cache = 0L;
-        
-            // if the registry/environment has cache settings, use them to
-            // create the cache:
-            cache = Registry::instance()->createCache();
-
-            //if ( Registry::instance()->getCache() )
-            //{
-            //    cache = Registry::instance()->getCache();
-            //}
-
-            if ( !cache.valid() && _mapOptions.cache().isSet() )
-            {
-                cache = CacheFactory::create( _mapOptions.cache().get() );
-            }
-
-            if (cache.valid())
-            {
-                const_cast<Map*>(this)->setCache(cache.get());
-            }
-        }
-    }
-    return _cache.get();
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    return cacheSettings ? cacheSettings->getCache() : 0L;
 }
 
 void
-Map::setCache( Cache* cache )
+Map::setCache(Cache* cache)
 {
-    if (_cache.get() != cache)
-    {
-        _cache = cache;
-
-        if ( _cache.valid() )
-        {
-            _cache->store( _dbOptions.get() );
-        }
-
-        // Propagate the cache to any of our layers
-        for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
-        {
-            i->get()->setDBOptions( _dbOptions.get() );
-        }
-
-        for (ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i)
-        {
-            i->get()->setDBOptions( _dbOptions.get() );
-        }
-    }
+    // note- probably unsafe to do this after initializing the terrain. so don't.
+    CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
+    if (cacheSettings && cacheSettings->getCache() != cache)
+        cacheSettings->setCache(cache);
 }
 
 void 
@@ -418,16 +389,15 @@ Map::addImageLayer( ImageLayer* layer )
     if ( layer )
     {
         // Set the DB options for the map from the layer, including the cache policy.
-        layer->setDBOptions( _dbOptions.get() );
-
-        // propagate the cache to the layer:
-        layer->setCache( this->getCache() );
+        layer->setReadOptions( _readOptions.get() );
 
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
         {
             layer->setTargetProfileHint( _profile.get() );
         }
+
+        layer->open();
 
         int newRevision;
 
@@ -457,10 +427,11 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
     if ( layer )
     {
         //Set options for the map from the layer
-        layer->setDBOptions( _dbOptions.get() );
+        layer->setReadOptions( _readOptions.get() );
 
         //Set the Cache for the MapLayer to our cache.
-        layer->setCache( this->getCache() );
+        //GW: already passed in the readoptions above.
+        //layer->setCache( this->getCache() );
 
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
@@ -497,14 +468,13 @@ Map::addElevationLayer( ElevationLayer* layer )
     if ( layer )
     {
         //Set options for the map from the layer
-        layer->setDBOptions( _dbOptions.get() );
+        layer->setReadOptions( _readOptions.get() );
 
-        //Set the Cache for the MapLayer to our cache.
-        layer->setCache( this->getCache() );
-        
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
             layer->setTargetProfileHint( _profile.get() );
+
+        layer->open();
 
         int newRevision;
 
@@ -712,7 +682,8 @@ Map::addModelLayer( ModelLayer* layer )
         }
 
         // initialize the model layer
-        layer->initialize( _dbOptions.get() );
+        layer->setReadOptions(_readOptions.get());
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -736,7 +707,8 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
         }
 
         // initialize the model layer
-        layer->initialize( _dbOptions.get() );
+        layer->setReadOptions(_readOptions.get());
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -836,7 +808,7 @@ Map::addTerrainMaskLayer( MaskLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        layer->initialize( _dbOptions.get(), this );
+        layer->initialize( _readOptions.get(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )

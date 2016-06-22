@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "IntersectFeatureFilterOptions"
+#include "JoinFeatureFilterOptions"
 
 #include <osgEarthFeatures/Filter>
 
@@ -36,14 +36,14 @@ using namespace osgEarth::Symbology;
 
 
 
-class IntersectFeatureFilter : public FeatureFilter, public IntersectFeatureFilterOptions
+class JoinFeatureFilter : public FeatureFilter, public JoinFeatureFilterOptions
 {
 private:
     osg::ref_ptr< FeatureSource > _featureSource;
 
 public:
-    IntersectFeatureFilter(const ConfigOptions& options)
-        : FeatureFilter(), IntersectFeatureFilterOptions(options)
+    JoinFeatureFilter(const ConfigOptions& options)
+        : FeatureFilter(), JoinFeatureFilterOptions(options)
     {
     }
 
@@ -93,20 +93,8 @@ public: // FeatureFilter
             // Get any features that intersect this query.
             FeatureList boundaries;
             getFeatures(context.extent().get(), boundaries );
-            
-            
-            // The list of output features
-            FeatureList output;
 
-            if (boundaries.empty())
-            {
-                // No intersecting features.  If contains is false, then just the output to the input.
-                if (contains() == false)
-                {
-                    output = input;
-                }
-            }
-            else
+            if (!boundaries.empty())
             {
                 // Transform the boundaries into the coordinate system of the features
                 for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
@@ -120,52 +108,28 @@ public: // FeatureFilter
                     if ( feature && feature->getGeometry() )
                     {
                         osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
-
-                        if ( contains() == true )
+                       
+                        if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                         {
-                            // coarsest:
-                            if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
+                            for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
                             {
-                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
+                                //if (ring && ring->contains2D(c.x(), c.y()))
+                                if (itr->get()->getGeometry()->intersects( feature->getGeometry() ) )
                                 {
-                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
-                                    if (ring && ring->contains2D(c.x(), c.y()))
+                                    // Copy the attributes in the boundary to the feature
+                                    for (AttributeTable::const_iterator attrItr = itr->get()->getAttrs().begin();
+                                         attrItr != itr->get()->getAttrs().end();
+                                         attrItr++)
                                     {
-                                        output.push_back( feature );
+                                        feature->set( attrItr->first, attrItr->second );
                                     }
-                                }                        
-                            }
-                        }
-
-                        else
-                        {    
-                            bool contained = false;
-
-                            // coarsest:
-                            if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
-                            {
-                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
-                                {
-                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
-                                    if (ring && ring->contains2D(c.x(), c.y()))
-                                    {                             
-                                        contained = true;
-                                        break;
-                                    }
+                                    break;
                                 }
-                            }
-                            if ( !contained )
-                            {
-                                output.push_back( feature );
-                            }
+                            }                        
                         }
                     }
                 }
             }
-
-            OE_INFO << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
-
-            input = output;
         }
 
         return context;
@@ -173,17 +137,17 @@ public: // FeatureFilter
 };
 
 
-class IntersectFeatureFilterPlugin : public FeatureFilterDriver
+class JoinFeatureFilterPlugin : public FeatureFilterDriver
 {
 public:
-    IntersectFeatureFilterPlugin() : FeatureFilterDriver()
+    JoinFeatureFilterPlugin() : FeatureFilterDriver()
     {
-        this->supportsExtension("osgearth_featurefilter_intersect", className() );
+        this->supportsExtension("osgearth_featurefilter_join", className() );
     }
     
     const char* className()
     {
-        return "IntersectFeatureFilterPlugin";
+        return "JoinFeatureFilterPlugin";
     }
 
     ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -191,11 +155,11 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new IntersectFeatureFilter( getConfigOptions(options) );
+        return new JoinFeatureFilter( getConfigOptions(options) );
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_featurefilter_intersect, IntersectFeatureFilterPlugin);
+REGISTER_OSGPLUGIN(osgearth_featurefilter_join, JoinFeatureFilterPlugin);
 
 //OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(intersect, IntersectFeatureFilter);
 

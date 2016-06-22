@@ -53,6 +53,7 @@ FeatureSourceOptions::fromConfig(const Config& conf)
     conf.getObjIfSet( "cache_policy", _cachePolicy );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "fid_attribute", _fidAttribute );
 
     // For backwards-compatibility (before adding the "filters" block)
     // TODO: Remove at some point in the distant future.
@@ -79,7 +80,8 @@ FeatureSourceOptions::getConfig() const
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
     conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    
+    conf.updateIfSet   ( "fid_attribute", _fidAttribute );
+
     if ( !_filterOptions.empty() )
     {
         Config filters;
@@ -96,12 +98,11 @@ FeatureSourceOptions::getConfig() const
 //------------------------------------------------------------------------
 
 FeatureSource::FeatureSource(const ConfigOptions&  options,
-                             const osgDB::Options* dbOptions) :
+                             const osgDB::Options* readOptions) :
 _options( options )
 {    
-    _dbOptions  = dbOptions;
-    _uriContext = URIContext( dbOptions );
-    _cache      = Cache::get( dbOptions );
+    _readOptions  = readOptions;
+    _uriContext  = URIContext( _readOptions.get() );
 }
 
 FeatureSource::~FeatureSource()
@@ -110,10 +111,10 @@ FeatureSource::~FeatureSource()
 }
 
 void
-FeatureSource::initialize(const osgDB::Options* dbo)
+FeatureSource::initialize(const osgDB::Options* readOptions)
 {
-    if ( dbo )
-        _dbOptions = dbo;
+    if ( readOptions )
+        _readOptions = readOptions;
     
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
@@ -123,7 +124,7 @@ FeatureSource::initialize(const osgDB::Options* dbo)
         if ( filter )
         {
             _filters.push_back( filter );
-            filter->initialize( dbo );
+            filter->initialize( readOptions );
         }
     }
 }
@@ -189,13 +190,14 @@ FeatureSource::isBlacklisted( FeatureID fid ) const
 }
 
 void
-FeatureSource::applyFilters(FeatureList& features) const
+FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) const
 {
     // apply filters before returning.
     if ( !getFilters().empty() )
     {
         FilterContext cx;
         cx.setProfile( getFeatureProfile() );
+        cx.extent() = extent;
         for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
         {
             cx = filter->get()->push( features, cx );

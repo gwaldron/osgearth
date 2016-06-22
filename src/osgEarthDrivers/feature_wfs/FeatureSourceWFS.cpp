@@ -70,39 +70,17 @@ public:
     }
 
     //override
-    void initialize( const osgDB::Options* dbOptions )
+    void initialize(const osgDB::Options* readOptions)
     {
-        FeatureSource::initialize( dbOptions );
+        // initialize the base class
+        FeatureSource::initialize(readOptions);
 
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
-        if ( _dbOptions.valid() )
-        {
-            // Set up a Custom caching bin for this source:
-            Cache* cache = Cache::get( _dbOptions.get() );
-            if ( cache )
-            {
-                Config optionsConf = _options.getConfig();
+        // store a reference to the read options so we can pass them along to
+        // later requests.
+        _readOptions = readOptions;
 
-                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_wfs";
-                _cacheBin = cache->addBin( binId );
-                _cacheBin->setHashKeys(true);
-                
-                // write a metadata record just for reference purposes.. we don't actually use it
-                Config metadata = _cacheBin->readMetadata();
-                if ( metadata.empty() )
-                {
-                    _cacheBin->writeMetadata( optionsConf );
-                }
-
-                if ( _cacheBin.valid() )
-                {
-                    _cacheBin->put( _dbOptions.get() );
-                }
-            }
-        }
-
+        // parse the WFS capabilities URL
         std::string capUrl;
-
         if ( _options.url().isSet() )
         {
             char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
@@ -113,7 +91,8 @@ public:
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
         }        
 
-        _capabilities = WFSCapabilitiesReader::read( capUrl, _dbOptions.get() );
+        // read the WFS capabilities:
+        _capabilities = WFSCapabilitiesReader::read( capUrl, _readOptions.get() );
         if ( !_capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
@@ -369,7 +348,7 @@ public:
         URI uri(url);
 
         // read the data:
-        ReadResult r = uri.readString( _dbOptions.get() );
+        ReadResult r = uri.readString( _readOptions.get() );
 
         const std::string& buffer = r.getString();
         const Config&      meta   = r.metadata();
@@ -403,6 +382,17 @@ public:
                     FeatureFilter* filter = i->get();
                     cx = filter->push( features, cx );
                 }
+            }
+        }
+
+        // If we have any features and we have an fid attribute, override the fid of the features
+        if (_options.fidAttribute().isSet())
+        {
+            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            {
+                std::string attr = itr->get()->getString(_options.fidAttribute().get());                
+                FeatureID fid = as<long>(attr, 0);
+                itr->get()->setFID( fid );
             }
         }
 
@@ -445,12 +435,11 @@ public:
 
 
 private:
-    const WFSFeatureOptions         _options;  
-    osg::ref_ptr< WFSCapabilities > _capabilities;
-    osg::ref_ptr< FeatureProfile >  _featureProfile;
-    FeatureSchema                   _schema;
-    osg::ref_ptr<CacheBin>          _cacheBin;
-    osg::ref_ptr<osgDB::Options>    _dbOptions;    
+    const WFSFeatureOptions            _options;  
+    osg::ref_ptr< WFSCapabilities >    _capabilities;
+    osg::ref_ptr< FeatureProfile >     _featureProfile;
+    FeatureSchema                      _schema;
+    osg::ref_ptr<const osgDB::Options> _readOptions;
 };
 
 
@@ -467,12 +456,12 @@ public:
         return "WFS Feature Reader";
     }
 
-    virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+    virtual ReadResult readObject(const std::string& file_name, const osgDB::Options* readOptions) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return ReadResult( new WFSFeatureSource( getFeatureSourceOptions(options) ) );
+        return ReadResult( new WFSFeatureSource( getFeatureSourceOptions(readOptions) ) );
     }
 };
 

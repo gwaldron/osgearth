@@ -69,6 +69,8 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
 
         bool writeMetadata( const Config& meta );
 
+        std::string getHashedKey(const std::string& key) const;
+
         bool purgeOldest(unsigned maxnum);
         
     protected:
@@ -118,22 +120,22 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
         void postWrite();
 
         // key generators
-        std::string binDataKeyTuple(const std::string& key);
-        std::string binPhrase();
-        std::string dataKey(const std::string& key);
-        std::string dataKeyFromTuple(const std::string& tuple);
-        std::string dataBegin();
-        std::string dataEnd();
-        std::string metaKey(const std::string& key);
-        std::string metaKeyFromTuple(const std::string& tuple);
-        std::string metaBegin();
-        std::string metaEnd();
-        std::string timeKey(const DateTime& t, const std::string& key);
-        std::string timeBegin();
-        std::string timeEnd();
-        std::string binKey();
-        std::string timeBeginGlobal();
-        std::string timeEndGlobal();
+        std::string binDataKeyTuple(const std::string& key) const;
+        std::string binPhrase() const;
+        std::string dataKey(const std::string& key) const;
+        std::string dataKeyFromTuple(const std::string& tuple) const;
+        std::string dataBegin() const;
+        std::string dataEnd() const;
+        std::string metaKey(const std::string& key) const;
+        std::string metaKeyFromTuple(const std::string& tuple) const;
+        std::string metaBegin() const;
+        std::string metaEnd() const;
+        std::string timeKey(const DateTime& t, const std::string& key) const;
+        std::string timeBegin() const;
+        std::string timeEnd() const;
+        std::string binKey() const;
+        std::string timeBeginGlobal() const;
+        std::string timeEndGlobal() const;
     };
 
 

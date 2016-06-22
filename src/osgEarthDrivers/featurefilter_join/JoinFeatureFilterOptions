@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_INTERSECT_FEATUREFILTER_OPTIONS
-#define OSGEARTH_DRIVER_INTERSECT_FEATUREFILTER_OPTIONS 1
+#ifndef OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS
+#define OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS 1
 
 #include <osgEarth/Common>
 #include <osgEarthFeatures/FeatureSource>
@@ -27,16 +27,12 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Features;
 
-    /**
-     * Options for the Raster feature driver.
-     */
-    class IntersectFeatureFilterOptions : public ConfigOptions // NO EXPORT; header only
+    class JoinFeatureFilterOptions : public ConfigOptions // NO EXPORT; header only
     {
     public:
-        IntersectFeatureFilterOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
+        JoinFeatureFilterOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
         {
-            _conf.set("driver", "intersect");
-            _contains.init( true );
+            _conf.set("driver", "join");            
             fromConfig( _conf );
         }
 
@@ -44,16 +40,11 @@ namespace osgEarth { namespace Drivers
         optional<FeatureSourceOptions>& features() { return _features; }
         const optional<FeatureSourceOptions>& features() const { return _features; }
 
-        /** If true (the default), accept features whose centroids are contained in the boundaries */
-        optional<bool>& contains() { return _contains; }
-        const optional<bool>& contains() const { return _contains; }
-
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.key() = "intersect";
+            conf.key() = "join";
             conf.addObjIfSet( "features", _features );
-            conf.addIfSet   ( "contains", _contains );
             return conf;
         }
 
@@ -66,13 +57,11 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getObjIfSet( "features", _features );
-            conf.getIfSet   ( "contains", _contains );
         }
 
         optional<FeatureSourceOptions> _features;
-        optional<bool>                 _contains;
     };
 
 } } // namespace osgEarth::Drivers
 
-#endif // OSGEARTH_DRIVER_INTERSECT_FEATUREFILTER_OPTIONS
+#endif // OSGEARTH_DRIVER_JOIN_FEATUREFILTER_OPTIONS

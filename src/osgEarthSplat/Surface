@@ -100,7 +100,9 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<SplatCatalog> _catalog;
         SplatTextureDef            _textureDef;
 
-        bool createGLSLSamplingCode(const Coverage* coverage, std::string& output) const;
+        //bool createGLSLSamplingCode(const Coverage* coverage, std::string& output) const;
+
+        osg::Texture* createLUTBuffer(const Coverage* coverage) const;
 
     public:
 

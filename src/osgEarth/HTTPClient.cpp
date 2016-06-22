@@ -424,6 +424,13 @@ HTTPClient::initializeImpl()
         OE_WARN << LC << "Simulating a network error with Response Code = " << _simResponseCode << std::endl;
     }
 
+    // Check to HTTP disabling (for testing)
+    const char* disable = getenv("OSGEARTH_HTTP_DISABLE");
+    if (disable)
+    {
+        _simResponseCode = 503L; // SERVICE UNAVAILABLE
+    }
+
     // Dumps out HTTP request/response info
     if ( ::getenv("OSGEARTH_HTTP_DEBUG") )
     {

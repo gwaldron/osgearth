@@ -115,6 +115,8 @@ namespace osgEarth { namespace Annotation
         /** called when someone calls one of the set functions */
         virtual void dirty() { }
 
+        virtual void setConfig(const Config&);
+
     private:
         GeoTransform*                   _geoxform;
         osg::PositionAttitudeTransform* _paxform;

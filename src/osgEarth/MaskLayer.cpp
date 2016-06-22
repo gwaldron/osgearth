@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Map>
+#include <osgEarth/Registry>
 
 #define LC "[MaskLayer] "
 
@@ -102,7 +103,7 @@ MaskLayer::copyOptions()
 void
 MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 {
-    _dbOptions = osg::clone(dbOptions);
+    _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
 
     if ( !_maskSource.valid() && _initOptions.driver().isSet() )
     {

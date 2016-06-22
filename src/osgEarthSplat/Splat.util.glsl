@@ -3,14 +3,6 @@
 
 uniform vec4 oe_tile_key;  // osgEarth TileKey
 
-
-#if 0
-// Mapping of view ranges to splat texture levels of detail.
-#define RANGE_COUNT 12
-const float oe_SplatRanges[RANGE_COUNT] = float[](  50.0, 125.0, 250.0, 500.0, 1000.0, 4000.0, 30000.0, 80000.0, 150000.0, 225000.0, 300000.0, 1000000.0, 5000000.0 );
-const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,   16.0,   14.0,    12.0,    11.0,     10.0,      9.0,      8.0,       6.0,       4.0 );
-#endif
-
 #define LOD_COUNT 26
 
 const float oe_SplatRanges[LOD_COUNT] = float[](
@@ -92,14 +84,14 @@ oe_splat_getSplatCoords(in vec2 tc, float lod)
     vec2 result = tc * scale;
 
     // For upsampling we need to calculate an offset as well
-    if ( factor >= 1.0 )
-    {
-        vec2 a = floor(oe_tile_key.xy * invFactor);
-        vec2 b = a * factor;
-        vec2 c = (a+1.0) * factor;
-        vec2 offset = (oe_tile_key.xy-b)/(c-b);
-        result += offset;
-    }
+    vec2 a = floor(oe_tile_key.xy * invFactor);
+    vec2 b = a * factor;
+    vec2 c = (a+1.0) * factor;
+    vec2 offset = (oe_tile_key.xy-b)/(c-b);
+
+    // only apply offset if factor >= 1.0
+    float m = floor(clamp(factor,0.0,1.0));
+    result += (m*offset);
 
     return result;
 }

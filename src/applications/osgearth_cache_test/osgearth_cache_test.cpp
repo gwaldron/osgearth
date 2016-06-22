@@ -42,7 +42,7 @@ quit(const std::string& msg)
 int
 main(int argc, char** argv)
 {
-    osg::ref_ptr<Cache> cache = Registry::instance()->createCache();
+    osg::ref_ptr<Cache> cache = Registry::instance()->getDefaultCache();
     if ( !cache.valid() )
     {
         return quit( "Please configure a cache path in your environment (OSGEARTH_CACHE_PATH)." );

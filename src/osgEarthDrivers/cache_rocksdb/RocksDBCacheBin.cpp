@@ -122,100 +122,106 @@ RocksDBCacheBin::binValidForWriting(bool silent)
     return ok;
 }
 
+std::string
+RocksDBCacheBin::getHashedKey(const std::string& key) const
+{
+    return dataKey(key);
+}
+
 #define SEP std::string("!")
 
 std::string
-RocksDBCacheBin::binPhrase()
+RocksDBCacheBin::binPhrase() const
 {
     return SEP + getID() + SEP;
 }
 
 std::string
-RocksDBCacheBin::binKey()
+RocksDBCacheBin::binKey() const
 {
     return "b" + SEP + getID();
 }
 
 std::string
-RocksDBCacheBin::dataKey(const std::string& key)
+RocksDBCacheBin::dataKey(const std::string& key) const
 {
     return "d" + SEP + binDataKeyTuple(key);
 }
 
 std::string
-RocksDBCacheBin::binDataKeyTuple(const std::string& key)
+RocksDBCacheBin::binDataKeyTuple(const std::string& key) const
 {
     return getID() + SEP + key;
 }
 
 std::string
-RocksDBCacheBin::dataKeyFromTuple(const std::string& tuple)
+RocksDBCacheBin::dataKeyFromTuple(const std::string& tuple) const
 {
     return "d" + SEP + tuple;
 }
 
 std::string
-RocksDBCacheBin::dataBegin()
+RocksDBCacheBin::dataBegin() const
 {
     return "d" + SEP + getID() + SEP;
 }
 
 std::string
-RocksDBCacheBin::dataEnd()
+RocksDBCacheBin::dataEnd() const
 {
     return "d" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-RocksDBCacheBin::metaKey(const std::string& key)
+RocksDBCacheBin::metaKey(const std::string& key) const
 {
     return "m" + SEP + binDataKeyTuple(key);
 }
 
 std::string
-RocksDBCacheBin::metaKeyFromTuple(const std::string& tuple)
+RocksDBCacheBin::metaKeyFromTuple(const std::string& tuple) const
 {
     return "m" + SEP + tuple;
 }
 
 std::string
-RocksDBCacheBin::metaBegin()
+RocksDBCacheBin::metaBegin() const
 {
     return "m" + SEP + getID() + SEP;
 }
 
 std::string
-RocksDBCacheBin::metaEnd()
+RocksDBCacheBin::metaEnd() const
 {
     return "m" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-RocksDBCacheBin::timeKey(const DateTime& t, const std::string& key)
+RocksDBCacheBin::timeKey(const DateTime& t, const std::string& key) const
 {
     return "t" + SEP + t.asCompactISO8601() + SEP + getID() + SEP + key;
 }
 
 std::string
-RocksDBCacheBin::timeBegin()
+RocksDBCacheBin::timeBegin() const
 {
     return "t" + SEP + getID() + SEP;
 }
 
 std::string
-RocksDBCacheBin::timeEnd()
+RocksDBCacheBin::timeEnd() const
 {
     return "t" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-RocksDBCacheBin::timeBeginGlobal()
+RocksDBCacheBin::timeBeginGlobal() const
 {
     return "t" + SEP;
 }
 
 std::string
-RocksDBCacheBin::timeEndGlobal()
+RocksDBCacheBin::timeEndGlobal() const
 {
     return "t" + SEP + "\xff";
 }
@@ -232,12 +238,6 @@ RocksDBCacheBin::readObject(const std::string& key, const osgDB::Options* readOp
     //OE_INFO << LC << "Read attempt: " << key << " from " << getID() << std::endl;
     return read(key, ObjectReader(_rw.get(), readOptions));
 }
-
-//ReadResult
-//RocksDBCacheBin::readNode(const std::string& key)
-//{
-//    return read(key, NodeReader(_rw.get(), _rwOptions.get()));
-//}
 
 ReadResult
 RocksDBCacheBin::read(const std::string& key, const Reader& reader)

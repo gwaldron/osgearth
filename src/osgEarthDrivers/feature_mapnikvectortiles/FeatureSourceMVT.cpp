@@ -67,7 +67,7 @@ public:
     {        
         FeatureSource::initialize( dbOptions );
 
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
         std::string fullFilename = _options.url()->full();
 
         int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, SQLITE_OPEN_READONLY, 0L );
@@ -162,7 +162,18 @@ public:
         sqlite3_finalize( select );
 
         // apply filters before returning.
-        applyFilters( features );
+        applyFilters( features, query.tileKey()->getExtent() );
+
+        // If we have any features and we have an fid attribute, override the fid of the features
+        if (_options.fidAttribute().isSet())
+        {
+            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            {
+                std::string attr = itr->get()->getString(_options.fidAttribute().get());                
+                FeatureID fid = as<long>(attr, 0);
+                itr->get()->setFID( fid );
+            }
+        }
 
         if (!features.empty())
         {

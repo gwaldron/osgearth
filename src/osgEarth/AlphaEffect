@@ -60,11 +60,12 @@ namespace osgEarth
 
         typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
 
-        bool                       _active;
+        bool                       _installed;
         StateSetList               _statesets;
         osg::ref_ptr<osg::Uniform> _alphaUniform;
 
         void init();
+        void install(osg::StateSet*);
     };
 
 } // namespace osgEarth::Util

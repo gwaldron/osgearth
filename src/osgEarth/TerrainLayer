@@ -297,6 +297,12 @@ namespace osgEarth
          */
         void setReadOptions(const osgDB::Options* readOptions);
 
+        /**
+         * Data Extents reported for this layer are copied into output.
+         * Returns true on success, false is there are no extents to report.
+         */
+        bool getDataExtents(DataExtentList& output) const;
+
 
     public: // Layer interface
 
@@ -309,60 +315,17 @@ namespace osgEarth
          * Metadata about the terrain layer that is stored in the cache, and read
          * when the cache is opened.
          */
-        struct CacheBinMetadata : public osg::Referenced
+        struct OSGEARTH_EXPORT CacheBinMetadata : public osg::Referenced
         {
-            CacheBinMetadata() :
-                _valid(false) { }
+            CacheBinMetadata();
 
-            CacheBinMetadata( const CacheBinMetadata& rhs ) :
-                _valid          ( rhs._valid ),
-                _cacheBinId     ( rhs._cacheBinId ),
-                _sourceName     ( rhs._sourceName ),
-                _sourceDriver   ( rhs._sourceDriver ),
-                _sourceTileSize ( rhs._sourceTileSize ),
-                _sourceProfile  ( rhs._sourceProfile ),
-                _cacheProfile   ( rhs._cacheProfile ),   
-                _cacheCreateTime( rhs._cacheCreateTime ) { }
+            CacheBinMetadata( const CacheBinMetadata& rhs );
 
-            CacheBinMetadata( const Config& conf )
-            {
-                _valid = !conf.empty();
-
-                conf.getIfSet   ( "cachebin_id",      _cacheBinId );
-                conf.getIfSet   ( "source_name",      _sourceName );
-                conf.getIfSet   ( "source_driver",    _sourceDriver );   
-                conf.getIfSet   ( "source_tile_size", _sourceTileSize );           
-                conf.getObjIfSet( "source_profile",   _sourceProfile );
-                conf.getObjIfSet( "cache_profile",    _cacheProfile ); 
-                conf.getIfSet   ( "cache_create_time", _cacheCreateTime ); 
-                
-                // check for validity. This will reject older caches that don't have
-                // sufficient attribution.
-                if ( _valid )
-                {
-                    if (!conf.hasValue("source_tile_size") ||
-                        !conf.hasChild("source_profile")   ||
-                        !conf.hasChild("cache_profile"))
-                    {
-                        _valid = false;
-                    }
-                }
-            }
+            CacheBinMetadata( const Config& conf );
 
             bool isOK() const { return _valid; }
 
-            Config getConfig() const
-            {
-                Config conf( "osgearth_terrainlayer_cachebin" );
-                conf.addIfSet   ( "cachebin_id",       _cacheBinId );
-                conf.addIfSet   ( "source_name",       _sourceName );
-                conf.addIfSet   ( "source_driver",     _sourceDriver );      
-                conf.addIfSet   ( "source_tile_size",  _sourceTileSize );
-                conf.addObjIfSet( "source_profile",    _sourceProfile );
-                conf.addObjIfSet( "cache_profile",     _cacheProfile );
-                conf.addIfSet   ( "cache_create_time", _cacheCreateTime );
-                return conf;
-            }
+            Config getConfig() const;
 
             bool                     _valid;
             optional<std::string>    _cacheBinId;
@@ -372,6 +335,7 @@ namespace osgEarth
             optional<ProfileOptions> _sourceProfile;
             optional<ProfileOptions> _cacheProfile;
             optional<TimeStamp>      _cacheCreateTime;
+            DataExtentList           _dataExtents;
         };
 
         /**

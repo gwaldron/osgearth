@@ -527,9 +527,11 @@ namespace osgEarth
         virtual ~DataExtent() { }
 
         /** The minimum LOD of the extent */
+        optional<unsigned>& minLevel() { return _minLevel; }
         const optional<unsigned>& minLevel() const { return _minLevel; }
 
         /** The maximum LOD of the extent */
+        optional<unsigned>& maxLevel() { return _maxLevel; }
         const optional<unsigned>& maxLevel() const { return _maxLevel; }
 
     private:

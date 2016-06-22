@@ -148,6 +148,115 @@ TerrainLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+TerrainLayer::CacheBinMetadata::CacheBinMetadata() :
+_valid(false)
+{
+    //nop
+}
+
+TerrainLayer::CacheBinMetadata::CacheBinMetadata(const TerrainLayer::CacheBinMetadata& rhs) :
+_valid          ( rhs._valid ),
+_cacheBinId     ( rhs._cacheBinId ),
+_sourceName     ( rhs._sourceName ),
+_sourceDriver   ( rhs._sourceDriver ),
+_sourceTileSize ( rhs._sourceTileSize ),
+_sourceProfile  ( rhs._sourceProfile ),
+_cacheProfile   ( rhs._cacheProfile ),   
+_cacheCreateTime( rhs._cacheCreateTime )
+{
+    //nop
+}
+
+TerrainLayer::CacheBinMetadata::CacheBinMetadata(const Config& conf)
+{
+    _valid = !conf.empty();
+
+    conf.getIfSet("cachebin_id", _cacheBinId);
+    conf.getIfSet("source_name", _sourceName);
+    conf.getIfSet("source_driver", _sourceDriver);
+    conf.getIfSet("source_tile_size", _sourceTileSize);
+    conf.getObjIfSet("source_profile", _sourceProfile);
+    conf.getObjIfSet("cache_profile", _cacheProfile);
+    conf.getIfSet("cache_create_time", _cacheCreateTime);
+
+    const Config* extentsRoot = conf.child_ptr("extents");
+    if ( extentsRoot )
+    {
+        const ConfigSet& extents = extentsRoot->children();
+
+        for (ConfigSet::const_iterator i = extents.begin(); i != extents.end(); ++i)
+        {
+            std::string srsString;
+            double xmin, ymin, xmax, ymax;
+            optional<unsigned> minLevel, maxLevel;
+        
+            srsString = i->value("srs");
+            xmin = i->value("xmin", 0.0f);
+            ymin = i->value("ymin", 0.0f);
+            xmax = i->value("xmax", 0.0f);
+            ymax = i->value("ymax", 0.0f);
+            i->getIfSet("minlevel", minLevel);
+            i->getIfSet("maxlevel", maxLevel);
+
+            const SpatialReference* srs = SpatialReference::get(srsString);
+            DataExtent e( GeoExtent(srs, xmin,  ymin, xmax, ymax) );
+            if (minLevel.isSet())
+                e.minLevel() = minLevel.get();
+            if (maxLevel.isSet())
+                e.maxLevel() = maxLevel.get();
+
+            _dataExtents.push_back(e);
+        }
+    }
+
+    // check for validity. This will reject older caches that don't have
+    // sufficient attribution.
+    if (_valid)
+    {
+        if (!conf.hasValue("source_tile_size") ||
+            !conf.hasChild("source_profile") ||
+            !conf.hasChild("cache_profile"))
+        {
+            _valid = false;
+        }
+    }
+}
+
+Config 
+TerrainLayer::CacheBinMetadata::getConfig() const
+{
+    Config conf("osgearth_terrainlayer_cachebin");
+    conf.addIfSet("cachebin_id", _cacheBinId);
+    conf.addIfSet("source_name", _sourceName);
+    conf.addIfSet("source_driver", _sourceDriver);
+    conf.addIfSet("source_tile_size", _sourceTileSize);
+    conf.addObjIfSet("source_profile", _sourceProfile);
+    conf.addObjIfSet("cache_profile", _cacheProfile);
+    conf.addIfSet("cache_create_time", _cacheCreateTime);
+
+    if (!_dataExtents.empty())
+    {
+        Config extents;
+        for (DataExtentList::const_iterator i = _dataExtents.begin(); i != _dataExtents.end(); ++i)
+        {
+            Config extent;
+            extent.set("srs", i->getSRS()->getHorizInitString());
+            extent.set("xmin", i->xMin());
+            extent.set("ymin", i->yMin());
+            extent.set("xmax", i->xMax());
+            extent.set("ymax", i->yMax());
+            extent.addIfSet("minlevel", i->minLevel());
+            extent.addIfSet("maxlevel", i->maxLevel());
+            extents.add("extent", extent);
+        }
+        conf.add("extents", extents);
+    }
+
+    return conf;
+}
+
+//------------------------------------------------------------------------
+
 TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
                            TerrainLayerOptions*       runtimeOptions ) :
 _initOptions   ( initOptions ),
@@ -503,6 +612,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
                 meta->_sourceProfile   = getProfile()->toProfileOptions();
                 meta->_cacheProfile    = profile->toProfileOptions();
                 meta->_cacheCreateTime = DateTime().asTimeStamp();
+                meta->_dataExtents     = getTileSource()->getDataExtents();
 
                 // store it in the cache bin.
                 std::string data = meta->getConfig().toJSON(false);
@@ -811,6 +921,23 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     Threading::ScopedMutexLock lock(_mutex);
     _cacheSettings = 0L;
     _cacheBinMetadata.clear();
+}
+
+bool
+TerrainLayer::getDataExtents(DataExtentList& output) const
+{
+    output.clear();
+
+    // if a tile source is available, get the extents directly from it:
+    if (getTileSource())
+        output = getTileSource()->getDataExtents();
+
+    // otherwise, try the cache. Extents are the same regardless of
+    // profile so just use the first one available:
+    else if (!_cacheBinMetadata.empty())
+        output = _cacheBinMetadata.begin()->second->_dataExtents;
+
+    return !output.empty();
 }
 
 void

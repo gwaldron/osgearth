@@ -1,0 +1,23 @@
+#Linux build
+os: linux
+dist: trusty
+language: cpp
+compiler:
+    - gcc
+
+before_install:
+    - sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
+    - sudo apt-get update -qq
+    - sudo apt-get install cmake
+    - sudo apt-get install libopenscenegraph-dev
+    - sudo apt-get install libgdal-dev
+    - sudo apt-get install libgeos-dev
+
+install:
+    - cmake -DCMAKE_BUILD_TYPE=Release .
+    - make -j3
+
+notifications:
+  email:
+    recipients:
+      - jasonbeverage@pelicanmapping.com

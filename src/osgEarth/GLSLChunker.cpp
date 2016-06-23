@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/GLSLChunker>
+#include <osgEarth/StringUtils>
 #include <sstream>
 
 using namespace osgEarth;
@@ -204,4 +205,24 @@ GLSLChunker::write(const Chunks& input, std::string& output) const
         buf << input[i].text << "\n";
     }
     output = buf.str();
+}
+
+GLSLChunker::Chunk
+GLSLChunker::chunkLine(const std::string& line) const
+{
+    Chunks chunks;
+    read(line, chunks);
+    return chunks.size() > 0 ? chunks[0] : Chunk();
+}
+
+void
+GLSLChunker::replace(Chunks& input, const std::string& pattern, const std::string& replacement) const
+{
+    for(int i=0; i<input.size(); ++i)
+    {
+        Chunk& chunk = input[i];
+        osgEarth::replaceIn(chunk.text, pattern, replacement);
+        for (unsigned t = 0; t<chunk.tokens.size(); ++t)
+            osgEarth::replaceIn(chunk.tokens[t], pattern, replacement);
+    }
 }

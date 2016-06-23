@@ -257,6 +257,62 @@ namespace
 
         return madeChanges;
     }
+
+    void applySupportForNoFFPImpl(GLSLChunker::Chunks& chunks)
+    {
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+        // for geometry and tessellation shaders, replace the built-ins with 
+        // osg uniform aliases.
+        const char* lines[4] = {
+            "uniform mat4 osg_ModelViewMatrix;",
+            "uniform mat4 osg_ProjectionMatrix;",
+            "uniform mat4 osg_ModelViewProjectionMatrix;",
+            "uniform mat3 osg_NormalMatrix;"
+        };
+    
+        GLSLChunker chunker;
+
+        for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
+        {
+            if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE)
+            {
+                for (unsigned line = 0; line < 4; ++line) {
+                    chunk = chunks.insert(chunk, chunker.chunkLine(lines[line]));
+                    ++chunk;
+                }
+                break;
+            }
+        }
+
+        chunker.replace(chunks, "gl_ModelViewMatrix", "osg_ModelViewMatrix");
+        chunker.replace(chunks, "gl_ProjectionMatrix", "osg_ProjectionMatrix");
+        chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg_ModelViewProjectionMatrix");
+        chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
+    
+#endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    }
+}
+
+void
+ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
+{
+    if (!shader)
+        return;
+            
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+    GLSLChunker chunker;
+    GLSLChunker::Chunks chunks;
+    chunker.read(shader->getShaderSource(), chunks);
+
+    applySupportForNoFFPImpl(chunks);
+
+    std::string output;
+    chunker.write(chunks, output);
+    shader->setShaderSource(output);
+
+#endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
 }
 
 void
@@ -290,47 +346,48 @@ ShaderPreProcessor::run(osg::Shader* shader)
             declPos = 0;
         }
 
-        // Perform the no-FFP replacements:
-        if ( s_NO_FFP )
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+        int maxLights = Registry::capabilities().getMaxLights();
+
+        for( int i=0; i<maxLights; ++i )
         {
-            int maxLights = Registry::capabilities().getMaxLights();
-
-            for( int i=0; i<maxLights; ++i )
+            if ( replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_LightSource[" << i << "]",
+                Stringify() << "osg_LightSource" << i,
+                Stringify() 
+                    << osg_LightSourceParameters::glslDefinition() << "\n"
+                    << "uniform osg_LightSourceParameters " ) )
             {
-                if ( replaceAndInsertDeclaration(
-                    source, declPos,
-                    Stringify() << "gl_LightSource[" << i << "]",
-                    Stringify() << "osg_LightSource" << i,
-                    Stringify() 
-                        << osg_LightSourceParameters::glslDefinition() << "\n"
-                        << "uniform osg_LightSourceParameters " ) )
-                {
-                    dirty = true;
-                }
+                dirty = true;
+            }
 
-                if ( replaceAndInsertDeclaration(
-                    source, declPos,
-                    Stringify() << "gl_FrontLightProduct[" << i << "]", 
-                    Stringify() << "osg_FrontLightProduct" << i,
-                    Stringify()
-                        << osg_LightProducts::glslDefinition() << "\n"
-                        << "uniform osg_LightProducts " ) )
-                {
-                    dirty = true;
-                }
+            if ( replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                Stringify() << "osg_FrontLightProduct" << i,
+                Stringify()
+                    << osg_LightProducts::glslDefinition() << "\n"
+                    << "uniform osg_LightProducts " ) )
+            {
+                dirty = true;
             }
         }
+#endif
 
         // Chunk the shader.
         GLSLChunker chunker;
         GLSLChunker::Chunks chunks;
         chunker.read( source, chunks );
-        dirty = replaceVaryings( shader->getType(), chunks );
-        if ( dirty )
-        {
-            chunker.write( chunks, source );
-            shader->setShaderSource( source );
-        }
+
+        applySupportForNoFFPImpl(chunks);
+
+        // Replace varyings with directives that the ShaderFactory can interpret
+        // when creating interface blocks.
+        replaceVaryings( shader->getType(), chunks );
+        chunker.write( chunks, source );
+        shader->setShaderSource( source );
     }
 }
 

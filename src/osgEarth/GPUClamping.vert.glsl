@@ -1,4 +1,4 @@
-#version 130
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint oe_clamp_vertex
 #pragma vp_location   vertex_view

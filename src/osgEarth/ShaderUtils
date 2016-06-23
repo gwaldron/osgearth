@@ -94,6 +94,8 @@ namespace osgEarth
     {
     public:
         static void run(osg::Shader* shader);
+
+        static void applySupportForNoFFP(osg::Shader* shader);
     };
 
     /**

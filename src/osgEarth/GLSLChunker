@@ -49,8 +49,14 @@ namespace osgEarth
         /** Write chunks (read using the read() method) back to GLSL */
         void write(const Chunks& input, std::string& output) const;
 
+        /** Search and replace a string */
+        void replace(Chunks& input, const std::string& target, const std::string& replacement) const;
+
         /** Dump chunks to notify (for debugging) */
         void dump(const std::string&, const Chunks&) const;
+
+        /** Create a chunk from a line. */
+        Chunk chunkLine(const std::string& line) const;
     };
 }
 

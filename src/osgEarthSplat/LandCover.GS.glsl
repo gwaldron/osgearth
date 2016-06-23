@@ -1,4 +1,4 @@
-#version 400 compatibility
+#version $GLSL_VERSION_STR
 #pragma vp_name       LandCover geometry shader
 #pragma vp_entryPoint oe_landcover_geom
 #pragma vp_location   geometry

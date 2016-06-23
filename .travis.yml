@@ -1,3 +1,8 @@
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "vLe6I4mS64oabuhMJ5NHyJLJHxudgErRoKpoXZP9/8A6rx/TmZ/gYCmtENmKublSIyOmjoVoZ8lvw10a1zCgnlQEjdijxwPvO1IN4XlesjhbxFRysmYAQZsFifZ91ta/0Ajw6NV6ofhmWCBRUc2yCEexnf+xvj80+v6tq2q3YFIL0shHjm7c3Z5nOuKPTsxLEAtHYurUM3ao4gcppc5lOeOT+r+ENE0MCQwSKOXiXh4BWCkP9cQvKel8ineBl3T6qRrT0OQQ/OBeSba/orVrf6Y3Ls+BYM48NjxG0TN2PIP68eJVQnvPNZ+j42MypkrFckcJDM/N/1pI6ZiY0PrzPMX3SisP5WDKimowWuyaI/pdOO2tBqPIIdZvuAoUyh5MYBBHLGeHf4jCD+YwY2JcOdStHgkp4NE2JqjXvP9V4TizFjrZ1jb+MXHwVKF4mleo6Eoq+qOdj8Y9iFhwmpuf9oGgoEIWR4uxgrGwiSRVVQ4o5uouP1MENvqaFB5JMTep/PSAWNLw18sgza3NiEhardI73bvl/xEvJssdeoGzpRl6YAo+sprZ93wsuzSh2beils8f1CjKQsuoDIASYre93qGEdUXRnhQvF8wmlYnQLJamYEMN37yduzZ2OHuA7+1kkMSTjPZAIoEsuyOG+25eHXnPQBECe6iqWFuKVgzdero="
 os: linux
 dist: trusty
 language: cpp
@@ -13,23 +18,17 @@ before_install:
 - sudo apt-get install -y libsqlite3-dev
 - sudo apt-get install -y protobuf-compiler libprotobuf-dev
 script:
-- cmake -DCMAKE_BUILD_TYPE=Release . && make -j3
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j 3 ; fi
 notifications:
   email:
     recipients:
     - jasonbeverage@pelicanmapping.com
-env:
-  global:
-    secure: WMC2Gbt3x71rLyQ07LNRqnjbE0cO7d2O4Rk6ybeuv3hqN/junpho4emrIceKnhQM296n12xjqzY41llpnfpzG4mcDBD/QVqZDPXwKETIDox/zQJr5btmqyBvWfJAbo3HuamqWUOaBRB6KEOpjgvW+wqev8L06pzuzdIAOSpb1wPAYaoUsrlo7SFPu+oHvWrA09SGoiWgPYp5ppffhU7hlxJOG9a6fu/ze95kIPeMfnNzZ00BFFVVnp+G2B08/VbnYIqt6aHi91BfCo9FT1cMilPMUgGGCr5KX1+PbCdjgtezUzhr+WrS7F2KsyJlBHDOGF33vpeaWF86xZAYVICv7BKnA6bZ/q0CaaXWpHds1uhczKXb9ndF+GtLBMI5/g5ggFYm1Z8AM87qw2l8UfcGH75PYUQZnfsPJpCxFrXr21/783Ra7fSUTZXeoTHvXlZURUYBaQn/obvPC0pS46/+cPfZLIcYOdPUmuBqbgVQ2ejcPNA4QitL9SS+eyGZouw6mVKuZ9QPkB6JOyeiDL7/Q62DKsDJeeyJ6007t4MyIGGx41d+FrYXeE9pTUyd1Q+deq0lO7kV8o5/QKGCqMauVzIK6gBAKQxVkHp7W/wnW9uE3DN70VA2K2HJX9YgJHs02LwGq7xxcwara+FPlh0Qql74bSRTDO5pdRHApTjPlOs=
 addons:
   coverity_scan:
-    
     project:
-      name: gwaldron/osgearth
-      version: 1.0
-      description: osgEarth
-
-    notification_email: jasonbeverage@pelicanmapping.com
-    build_command_prepend: "cmake -DCMAKE_BUILD_TYPE=Release ."
-    build_command:   "make -j3"
+      name: "gwaldron/osgearth"
+      description: "osgEarth"
+    notification_email: jasonbeverage@gmail.com
+    build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release .
+    build_command: make -j 3
     branch_pattern: coverity_scan

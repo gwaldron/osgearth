@@ -20,7 +20,7 @@ before_install:
 - sudo apt-get install -y libsqlite3-dev
 - sudo apt-get install -y protobuf-compiler libprotobuf-dev
 script:
-- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j 3 ; fi
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j4 ; fi
 notifications:
   email:
     recipients:
@@ -32,5 +32,5 @@ addons:
       description: "osgEarth"
     notification_email: jasonbeverage@gmail.com
     build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release .
-    build_command: make -j 3
+    build_command: make -j4
     branch_pattern: coverity_scan

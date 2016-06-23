@@ -38,8 +38,7 @@ addons:
 addons:
   apt:
     sources:
-      - sourceline: 'ppa:ubuntugis/ubuntugis-unstable'
-      - sourceline: 'ppa:ubuntu-toolchain-r/test'
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
       - libopenscenegraph-dev

@@ -327,6 +327,9 @@ ELSE (INSTALL_TO_OSG_DIR)
 ENDIF(INSTALL_TO_OSG_DIR)
 
 
+# osgEarth Examples
+OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
+
 INCLUDE(OsgEarthMacroUtils)
 
 DETECT_OSG_VERSION()

@@ -25,7 +25,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/DrapeableNode>
 #include <osg/Notify>
-#include <osgDB/ObjectCache>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

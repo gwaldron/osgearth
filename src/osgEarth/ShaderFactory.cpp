@@ -221,11 +221,15 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_ProjectionMatrix          = "gl_ProjectionMatrix",
         gl_ModelViewProjectionMatrix = "gl_ModelViewProjectionMatrix",
         gl_NormalMatrix              = "gl_NormalMatrix",
-        gl_FrontColor                = "gl_FrontColor",
-        gl_FragColor                 = "gl_FragColor";
+        gl_FrontColor                = "gl_FrontColor";
 
-    #define GLSL_330 "330 compatibility"
-    #define GLSL_400 "400 compatibility"
+    #define GLSL_330 GLSL_VERSION_STR // "330 compatibility"
+
+#if defined(OSG_GL3_AVAILABLE) || defined(OSG_GL4_AVAILABLE)
+#   define GLSL_400 "400"
+#else
+#   define GLSL_400 "400 compatibility"
+#endif
 
     // use GLSL 400 if it's avaiable since that will give the developer
     // access to double-precision types.
@@ -873,9 +877,16 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "#pragma vp_name VP Fragment Shader Main\n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 
+        // no output stage? Use default output
+        if (!outputStage)
+        {
+            buf << "\n// Fragment output\n"
+                << "out vec4 oe_FragColor;\n";
+        }
+
         buf << "\n// Fragment stage inputs:\n";
         buf << "in " << fragdata << " vp_in; \n";
-        
+                
         buf <<
             "\n// Fragment stage globals:\n";
 
@@ -955,7 +966,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             // in the absense of any output functions, generate a default output statement
             // that simply writes to gl_FragColor.
-            buf << INDENT << gl_FragColor << " = vp_Color;\n";
+            buf << INDENT << "oe_FragColor = vp_Color;\n";
         }
         buf << "}\n";
 

@@ -1,4 +1,4 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint oe_normalMapFragment
 #pragma vp_location   fragment_coloring

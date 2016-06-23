@@ -1,3 +1,3 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
 
 }

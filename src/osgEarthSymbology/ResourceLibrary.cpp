@@ -394,7 +394,6 @@ ResourceLibrary::getModels(const ModelSymbol* ms, ModelResourceVector& output, c
             ModelResource* m = dynamic_cast<ModelResource*>(i->second.get());
             if ( m )
             {
-                // check for matching tags:
                 if (ms && ms->tags().size() > 0 && !m->containsTags(ms->tags()) )
                     continue;
 

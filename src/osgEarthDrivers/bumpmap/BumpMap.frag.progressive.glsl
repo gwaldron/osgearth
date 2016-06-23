@@ -18,6 +18,7 @@ in vec3 oe_UpVectorView;
 
 // from BumpMap.model.vert.glsl
 in vec2 oe_bumpmap_coords;
+flat in mat3 oe_bumpmap_normalMatrix;
 
 // from BumpMap.view.vert.glsl
 in float oe_bumpmap_range;
@@ -49,7 +50,7 @@ void oe_bumpmap_fragment(inout vec4 color)
     }
 
     // finally, transform into view space and normalize the vector.
-    bump = normalize(gl_NormalMatrix*bump);
+    bump = normalize(oe_bumpmap_normalMatrix*bump);
     
     // calculate slope from normal:
     float slope = mix(1.0, 1.0 - dot(oe_UpVectorView, vp_Normal), oe_bumpmap_slopeFactor);

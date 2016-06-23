@@ -9,6 +9,8 @@ language: cpp
 compiler:
 - gcc
 before_install:
+# Try coverity workaround here:  https://github.com/travis-ci/travis-ci/issues/6142
+- echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
 - sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
 - sudo apt-get update -qq
 - sudo apt-get install -y cmake
@@ -18,7 +20,7 @@ before_install:
 - sudo apt-get install -y libsqlite3-dev
 - sudo apt-get install -y protobuf-compiler libprotobuf-dev
 script:
-- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j 3 ; fi
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j3 ; fi
 notifications:
   email:
     recipients:
@@ -30,5 +32,5 @@ addons:
       description: "osgEarth"
     notification_email: jasonbeverage@gmail.com
     build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release .
-    build_command: make -j 3
+    build_command: make -j3
     branch_pattern: coverity_scan

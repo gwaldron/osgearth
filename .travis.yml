@@ -37,8 +37,8 @@ addons:
     branch_pattern: coverity_scan
 addons:
   apt:
-    sources:
-      - ubuntu-toolchain-r-test
+    #sources:
+    #  - ubuntu-toolchain-r-test
     packages:
       - cmake
       - libopenscenegraph-dev

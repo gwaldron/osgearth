@@ -346,14 +346,21 @@ namespace
 
     void addExtension(const Config& conf, MapNode* mapNode)
     {
+        std::string name = conf.key();
         Extension* extension = Extension::create( conf.key(), conf );
-        if ( extension )
+        if ( !extension )
         {
-            mapNode->addExtension( extension );
+            name = conf.key() + "_" + conf.value("driver");
+            extension = Extension::create(name, conf);
+        }
+
+        if (extension)
+        {
+            mapNode->addExtension(extension);
         }
         else
-        {
-            OE_INFO << LC << "Failed to find an extension for \"" << conf.key() << "\"\n";
+        {            
+            OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
         }
     }
 }

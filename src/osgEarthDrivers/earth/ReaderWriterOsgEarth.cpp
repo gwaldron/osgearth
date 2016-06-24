@@ -290,6 +290,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }
             }
 
+            MapNode* mapNode = MapNode::get(node.get());
             if (mapNode)
             {
                 // If the user passed in a cache object, apply it to the map now
@@ -301,7 +302,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }
             }
 
-            return ReadResult(mapNode);
+            return ReadResult(node.get());
         }
 };
 

@@ -21,7 +21,5 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <extensions>
-        <xi:include href="viewpoints.xml"/>
-    </extensions>
+    <xi:include href="viewpoints.xml"/>
 </map>

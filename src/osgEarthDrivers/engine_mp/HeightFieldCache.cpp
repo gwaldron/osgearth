@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "HeightFieldCache"
+#include <cstdlib>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
@@ -32,6 +33,7 @@ _cache   ( true, 128 ),
 _tileSize( options.tileSize().get() )
 {
     _useParentAsReferenceHF = (options.elevationSmoothing() == true);
+    _enabled = (::getenv("OSGEARTH_MEMORY_PROFILE") == 0L);
 }
 
 

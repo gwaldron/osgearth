@@ -33,7 +33,7 @@ TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) 
 _options         ( options ),
 _heightFieldCache( true, 128 )
 {
-    // NOP
+    _heightFieldCacheEnabled = (::getenv("OSGEARTH_MEMORY_PROFILE") == 0L);
 }
 
 TerrainTileModel*
@@ -259,7 +259,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
     bool hit = false;
     HFCache::Record rec;
-    if ( _heightFieldCache.get(cachekey, rec) )
+    if ( _heightFieldCacheEnabled && _heightFieldCache.get(cachekey, rec) )
     {
         out_hf = rec.value().get();
 
@@ -316,7 +316,8 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         }
 
         // cache it.
-        _heightFieldCache.insert( cachekey, out_hf.get() );
+        if (_heightFieldCacheEnabled )
+            _heightFieldCache.insert( cachekey, out_hf.get() );
     }
 
     return populated;

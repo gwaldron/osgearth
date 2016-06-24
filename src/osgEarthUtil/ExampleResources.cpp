@@ -581,6 +581,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool kmlUI         = args.read("--kmlui");
     bool inspect       = args.read("--inspect");
     bool useContourMap = args.read("--contourmap");
+    bool useMonitor    = args.read("--monitor");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -909,6 +910,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( inspect )
     {
         mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
+    }
+
+    if (useMonitor)
+    {
+        mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
     }
     
 

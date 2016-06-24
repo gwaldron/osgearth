@@ -446,8 +446,11 @@ TerrainLayer::getCacheSettings() const
             if (_cacheSettings->isCacheEnabled())
             {
                 CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeOptions->cacheId().get());
-                if (bin) 
+                if (bin)
+                {
                     _cacheSettings->setCacheBin(bin);
+                    OE_INFO << LC << "Opened cache bin [" << bin->getID() << "]\n";
+                }
             }
 
             _cacheSettings->store(_readOptions.get());

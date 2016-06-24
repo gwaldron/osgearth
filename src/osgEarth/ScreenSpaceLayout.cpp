@@ -95,7 +95,7 @@ namespace
     // Data structure stored one-per-View.
     struct PerCamInfo
     {
-        PerCamInfo() : _firstFrame(true) { }
+        PerCamInfo() : _lastTimeStamp(0), _firstFrame(true) { }
 
         // remembers the state of each drawable from the previous pass
         DrawableMemory _memory;

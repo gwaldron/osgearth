@@ -290,7 +290,8 @@ namespace
     FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
                                            const std::string&   rootPath) :
     CacheBin            ( binID ),
-    _binPathExists      ( false )
+    _binPathExists      ( false ),
+    _ok( true )
     {
         _binPath = osgDB::concatPaths( rootPath, binID );
         _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );

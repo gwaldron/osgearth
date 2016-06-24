@@ -482,18 +482,20 @@ TileNode::accept_cull(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
     
-
-    // update the timestamp so this tile doesn't become dormant.
-    _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
-    _lastTraversalTime = cv->getFrameStamp()->getReferenceTime();
-
-    if ( !cv->isCulled(*this) )
+    if (cv)
     {
-        cv->pushStateSet( getStateSet() );
+        // update the timestamp so this tile doesn't become dormant.
+        _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
+        _lastTraversalTime = cv->getFrameStamp()->getReferenceTime();
 
-        visible = cull( cv );
+        if ( !cv->isCulled(*this) )
+        {
+            cv->pushStateSet( getStateSet() );
 
-        cv->popStateSet();
+            visible = cull( cv );
+
+            cv->popStateSet();
+        }
     }
 
     return visible;
@@ -504,7 +506,7 @@ TileNode::accept_cull_stealth(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
     
-    //if ( !cv->isCulled(*this) )
+    if (cv)
     {
         cv->pushStateSet( getStateSet() );
 

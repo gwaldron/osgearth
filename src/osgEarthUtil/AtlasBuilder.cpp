@@ -256,6 +256,10 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             maxT = t;
     }
 
+    // protecte against a div0
+    maxS = std::max(maxS, 1u);
+    maxT = std::max(maxT, 1u);
+
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
 

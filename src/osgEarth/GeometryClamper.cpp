@@ -157,7 +157,7 @@ GeometryClamper::apply(osg::Geode& geode)
                     {
                         fw += n_vector*_offset;
                     }
-                    if ( _preserveZ )
+                    if ( _preserveZ && (zOffsets != 0L) )
                     {
                         fw += n_vector * (*zOffsets)[k];
                     }

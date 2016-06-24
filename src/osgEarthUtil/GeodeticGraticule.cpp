@@ -473,7 +473,10 @@ namespace osgEarth { namespace Util
                     graticule = i->second.get();
             }
 
-            osg::Node* result = graticule->buildChildren( levelNum, x, y );
+            osg::Node* result = 0L;
+            if (graticule)
+                result = graticule->buildChildren( levelNum, x, y );
+
             return result ? ReadResult(result) : ReadResult::ERROR_IN_READING_FILE;
         }
     };

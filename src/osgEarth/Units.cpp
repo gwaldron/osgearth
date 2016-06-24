@@ -96,7 +96,9 @@ Units::Units( const std::string& name, const std::string& abbr, const Units::Typ
 _name  ( name ),
 _abbr  ( abbr ),
 _type  ( type ),
-_toBase( toBase )
+_toBase( toBase ),
+_distance(0L),
+_time(0L)
 {
     //nop
 }
@@ -105,6 +107,7 @@ Units::Units( const std::string& name, const std::string& abbr, const Units& dis
 _name    ( name ),
 _abbr    ( abbr ),
 _type    ( TYPE_SPEED ),
+_toBase  ( 1.0 ),
 _distance( &distance ),
 _time    ( &time )
 {

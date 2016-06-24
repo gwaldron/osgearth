@@ -1776,7 +1776,8 @@ Value::end()
 // //////////////////////////////////////////////////////////////////
 
 PathArgument::PathArgument()
-   : kind_( kindNone )
+   : index_(0)
+   , kind_( kindNone )
 {
 }
 
@@ -3235,6 +3236,7 @@ StyledStreamWriter::StyledStreamWriter( std::string indentation )
    : document_(NULL)
    , rightMargin_( 74 )
    , indentation_( indentation )
+   , addChildValues_(false)
 {
 }
 

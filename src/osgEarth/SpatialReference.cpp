@@ -132,7 +132,7 @@ SpatialReference::createFromPROJ4( const std::string& proj4, const std::string& 
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, proj4.c_str() ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "PROJ4" );
+        result = new SpatialReference( handle, std::string("PROJ4") );
 	}
 	else 
 	{
@@ -169,12 +169,21 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
     osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
     void* handle = OSRNewSpatialReference( NULL );
-    char buf[4096];
+    char buf[8192];
     char* buf_ptr = &buf[0];
-    strcpy( buf, wkt.c_str() );
+    if (wkt.length() < 8192)
+    {
+        strcpy( buf, wkt.c_str() );
+    }
+    else
+    {
+        OE_WARN << LC << "BUFFER OVERFLOW - INTERNAL ERROR\n";
+        return 0L;
+    }
+
     if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
     {
-        result = new SpatialReference( handle, "WKT" );
+        result = new SpatialReference( handle, std::string("WKT") );
         result = result->fixWKT();
     }
     else 
@@ -422,7 +431,8 @@ _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false ),
 _is_plate_carre ( false ),
-_is_spherical_mercator( false )
+_is_spherical_mercator( false ),
+_ellipsoidId(0u)
 {
     // nop
 }

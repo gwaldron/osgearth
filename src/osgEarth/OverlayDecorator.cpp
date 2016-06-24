@@ -659,17 +659,18 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // frame's view matrix?
         if ( verts.size() > 0 )
         {            
-            bool lockToOrthoFrustum = false; // experimental
-
             double xmin, ymin, xmax, ymax, orthoNear, orthoFar, maxDist;
 
+#if 0
             // testing "lock to ortho viewport".
+            bool lockToOrthoFrustum = false; // experimental
             if ( lockToOrthoFrustum && osg::equivalent(projMatrix(3,3), 1.0) )
             {
                 projMatrix.getOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
             }
 
             else
+#endif
             {
                 // calculate an orthographic RTT projection matrix based on the view-space
                 // bounds of the vertex list (i.e. the extents surrounding the RTT camera 

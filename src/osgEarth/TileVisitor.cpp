@@ -292,9 +292,10 @@ bool TaskList::load( const std::string &filename)
         StringTokenizer(line, parts, "," );
 
 
-        _keys.push_back( TileKey(as<unsigned int>(parts[0], 0), 
-            as<unsigned int>(parts[1], 0), 
-            as<unsigned int>(parts[2], 0),
+        _keys.push_back( TileKey(
+            as<unsigned int>(parts[0], 0u), 
+            as<unsigned int>(parts[1], 0u), 
+            as<unsigned int>(parts[2], 0u),
             _profile ) );
     }
 

@@ -451,7 +451,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
-    if ( symbol->library().isSet() )
+    if ( sheet && symbol->library().isSet() )
     {
         _resourceLib = sheet->getResourceLibrary( symbol->library()->expr() );
 

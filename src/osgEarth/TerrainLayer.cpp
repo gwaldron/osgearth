@@ -261,9 +261,10 @@ TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
                            TerrainLayerOptions*       runtimeOptions ) :
 _initOptions   ( initOptions ),
 _runtimeOptions( runtimeOptions ),
-_openCalled( false )
+_openCalled( false ),
+_tileSize( 256 )
 {
-    //init();
+    // nop
 }
 
 TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
@@ -272,9 +273,10 @@ TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
 _initOptions   ( initOptions ),
 _runtimeOptions( runtimeOptions ),
 _tileSource    ( tileSource ),
-_openCalled( false )
+_openCalled( false ),
+_tileSize( 256 )
 {
-    //init();
+    // nop
 }
 
 TerrainLayer::~TerrainLayer()
@@ -284,10 +286,7 @@ TerrainLayer::~TerrainLayer()
 
 void
 TerrainLayer::init()
-{
-    _tileSourceInitAttempted = false;
-    _tileSize                = 256;
-    
+{    
     // intiailize out read-options, which store caching and IO information.
     setReadOptions(0L);
 

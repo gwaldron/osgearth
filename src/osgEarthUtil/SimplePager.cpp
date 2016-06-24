@@ -39,6 +39,7 @@ namespace
         MyProgressCallback(ProgressMaster* master)
         {
             _master = master;
+            _lastFrame = 0u;
         }
 
         // override from ProgressCallback

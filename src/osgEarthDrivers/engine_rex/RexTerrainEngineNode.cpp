@@ -615,7 +615,7 @@ RexTerrainEngineNode::computeSampleSize(unsigned int levelOfDetail)
     unsigned int meshSize = *_terrainOptions.tileSize();
 
     unsigned int sampleSize = meshSize;
-    unsigned int level = maxLevel;
+    int level = maxLevel; // make sure it's signed for the loop below to work
 
     while( level >= 0 && levelOfDetail != level)
     {

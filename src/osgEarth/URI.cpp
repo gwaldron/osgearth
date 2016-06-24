@@ -512,7 +512,8 @@ namespace
                                 {                                    
                                     OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
                                     // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
-                                    bin->touch( uri.cacheKey() );
+                                    if (bin)
+                                        bin->touch( uri.cacheKey() );
                                 }
                                 else
                                 {
@@ -522,7 +523,7 @@ namespace
                             }
 
                             // write the result to the cache if possible:
-                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
+                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() && bin )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions );

@@ -360,7 +360,6 @@ namespace osgEarth
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
-        mutable bool                   _tileSourceInitAttempted;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _readOptions;
         osg::ref_ptr<MemCache>         _memCache;

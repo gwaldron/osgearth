@@ -139,7 +139,7 @@ namespace osgEarth { namespace Annotation
         GeoPoint                 _geoPointProj;
 
         /** Copy constructor */
-        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+        LabelNode(const LabelNode& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL);
 
         void updateLayoutData();
     };

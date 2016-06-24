@@ -118,7 +118,7 @@ osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& file
 
 ElevationQuery::ElevationQuery()
 {
-    //nop
+    postCTOR();
 }
 
 ElevationQuery::ElevationQuery(const Map* map) :

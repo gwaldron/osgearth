@@ -238,6 +238,8 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
         {
             osg::ref_ptr<MPTerrainEngineNode> engine;
             MPTerrainEngineNode::getEngineByUID( _engineUID, engine );
+            if (!engine.valid())
+                return;
 
             // Compute the required range.
             float required_range = -1.0;

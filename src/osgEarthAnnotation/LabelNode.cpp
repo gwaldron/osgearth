@@ -101,6 +101,14 @@ _followFixedCourse( false )
     init( style );
 }
 
+LabelNode::LabelNode(const LabelNode& rhs, const osg::CopyOp& op) :
+GeoPositionNode(rhs, op),
+_labelRotationRad(0.),
+_followFixedCourse(false)
+{
+    //nop - unused
+}
+
 void
 LabelNode::init( const Style& style )
 {

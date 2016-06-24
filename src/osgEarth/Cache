@@ -25,10 +25,12 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CacheBin>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
 #include <osgEarth/TileKey>
 #include <osgEarth/Containers>
 #include <sys/types.h>
+#include <map>
 
 // environment variables
 #define OSGEARTH_ENV_CACHE_DRIVER  "OSGEARTH_CACHE_DRIVER"
@@ -39,6 +41,70 @@
 
 namespace osgEarth
 {
+#define DEFAULT_BIN_ID ""
+
+    class Cache;
+    class CachePolicy;
+
+    /**
+     * CacheSettings is an object stored in the osgDB::Options structure that
+     * propagates throughout the osgEarth data model. It represents a Cache state
+     * that includes the actual Cache, the active CacheBin, and a policy.
+     */
+    class OSGEARTH_EXPORT CacheSettings : public osg::Object
+    {
+    public:
+        META_Object(osgEarth,CacheSettings);
+
+        typedef UID ID;
+
+        typedef std::string BinID;
+
+        /** default constructor */
+        CacheSettings();
+
+        /** copier */
+        CacheSettings(const CacheSettings& rhs, const osg::CopyOp& copy =osg::CopyOp::SHALLOW_COPY);
+
+        /** Whether this object support an active cache. */
+        bool isCacheEnabled() const;
+        bool isCacheDisabled() const { return !isCacheEnabled(); }
+        
+        /** Cache used by these settings */
+        Cache* getCache() const { return _cache.get(); }
+        void setCache(Cache* cache) { _cache = cache; }
+
+        /** Sets the active cache bin to use under these settings. */
+        void setCacheBin(CacheBin* bin) { _activeBin = bin; }
+        CacheBin* getCacheBin() { return _activeBin.get(); }
+
+        /** The caching policy in effect for all bins; this starts out the same as
+          * defaultCachePolicy() but you can change it. */
+        optional<CachePolicy>& cachePolicy() { return _policy; }
+        const optional<CachePolicy>& cachePolicy() const { return _policy; }
+
+        /** Integrates an outside cache policy with the one in these settings. This method
+          * also takes care of global (registry) override policy. */
+        void integrateCachePolicy(const optional<CachePolicy>& policy);
+        
+        /** Get/Set the settings in a read-options structure. */
+        static CacheSettings* get(const osgDB::Options* readOptions);
+        void store(osgDB::Options* readOptions);
+
+        /** for debugging */
+        std::string toString() const;
+
+    protected:
+        virtual ~CacheSettings() { }
+
+        osg::ref_ptr<Cache>      _cache;
+        osg::ref_ptr<CacheBin>   _activeBin;
+        optional<CachePolicy>    _policy;
+        mutable Threading::Mutex _mutex;
+    };
+
+//--------------------------------------------------------------------
+
     /**
      * Base class for Cache options.
      */
@@ -84,7 +150,6 @@ namespace osgEarth
     protected:
         Cache( const CacheOptions& options =CacheOptions() );
         Cache( const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
-        META_Object( osgEarth, Cache );
 
         /** dtor */
         virtual ~Cache();
@@ -110,11 +175,11 @@ namespace osgEarth
         virtual CacheBin* getOrCreateDefaultBin() { return _defaultBin.get(); }
 
         /**
-         * Creates (and returns a pointer to) a new Cache Bin.
+         * Creates (and returns a pointer to) a new Cache Bin, or returns an
+         * already-existing one with that ID.
          * @param binID Name of the new bin
-         * @param rw    Read/write driver that will handle serialization for the bin
          */
-        virtual CacheBin* addBin( const std::string& binID ) { return 0L; }
+        virtual CacheBin* addBin(const std::string& binID) =0;
 
         /**
          * Removes a cache bin from the cache.
@@ -143,20 +208,6 @@ namespace osgEarth
          * some time to complete.
          */
         virtual bool clear() { return false; }
-
-        /**
-         * Store this to an osgDB::Options
-         */
-        void apply( osgDB::Options* options ) {
-            if ( options ) options->setPluginData( "osgEarth::Cache", this );
-        }
-
-        /**
-         * Fetch pointer from a osgDB::Options
-         */
-        static Cache* get( const osgDB::Options* options ) {
-            return options ? const_cast<Cache*>( static_cast<const Cache*>( options->getPluginData("osgEarth::Cache") ) ) : 0L;
-        }
 
     protected:
         bool                   _ok;

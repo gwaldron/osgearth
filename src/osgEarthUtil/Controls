@@ -598,6 +598,9 @@ namespace osgEarth { namespace Util { namespace Controls
         // gets a vector of pointers to the container's immediate children
         virtual void getChildren(std::vector<Control*>& out);
 
+	// change the visibility of the grid and its controls
+	void setVisible( bool value );
+
     public:
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
         virtual void calcFill( const ControlContext& context );
@@ -703,6 +706,8 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public: // Container
         virtual void clearControls();
+
+	
 
         // adds the controls as a row at the bottom of the grid.
         virtual void addControls( const ControlVector& controls );

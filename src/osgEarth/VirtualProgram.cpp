@@ -1966,17 +1966,19 @@ static bool writeFunctions( osgDB::OutputStream& os, const osgEarth::VirtualProg
     return true;
 }
 
-REGISTER_OBJECT_WRAPPER(
-    VirtualProgram,
-    new osgEarth::VirtualProgram,
-    osgEarth::VirtualProgram,
-    "osg::Object osg::StateAttribute osgEarth::VirtualProgram")
+namespace
 {
-    ADD_BOOL_SERIALIZER( InheritShaders, true );
-    ADD_UINT_SERIALIZER( Mask, ~0 );
+    REGISTER_OBJECT_WRAPPER(
+        VirtualProgram,
+        new osgEarth::VirtualProgram,
+        osgEarth::VirtualProgram,
+        "osg::Object osg::StateAttribute osgEarth::VirtualProgram")
+    {
+        ADD_BOOL_SERIALIZER( InheritShaders, true );
+        ADD_UINT_SERIALIZER( Mask, ~0 );
 
-    ADD_USER_SERIALIZER( AttribBinding );
-    //ADD_USER_SERIALIZER( FragDataBinding );
-    ADD_USER_SERIALIZER( Functions );
+        ADD_USER_SERIALIZER( AttribBinding );
+        //ADD_USER_SERIALIZER( FragDataBinding );
+        ADD_USER_SERIALIZER( Functions );
+    }
 }
-

@@ -1,4 +1,4 @@
-#version 400 compatibility
+#version $GLSL_VERSION_STR
 #pragma vp_name       LandCover geometry shader
 #pragma vp_entryPoint oe_landcover_geom
 #pragma vp_location   geometry
@@ -148,8 +148,7 @@ oe_landcover_geom()
         tileUV.x += b[i] * oe_layer_tilec.x;
         tileUV.y += b[i] * oe_layer_tilec.y;
     }
-    
-#if 1
+   
     // Look up the biome at this point:
     int biomeIndex = oe_landcover_getBiomeIndex(vec4(tileUV,0,1));
     if ( biomeIndex < 0 )
@@ -157,9 +156,6 @@ oe_landcover_geom()
         // No biome defined; bail out without emitting any geometry.
         return;
     }
-#else
-    int biomeIndex = oe_landcover_biomeIndex;
-#endif
     
     // If we're using a mask texture, sample it now:
     if ( oe_landcover_useMask )
@@ -189,20 +185,24 @@ oe_landcover_geom()
     // look up biome:
     oe_landcover_Biome biome;
     oe_landcover_getBiome(biomeIndex, biome);
+
+    // sample the noise texture.
+    vec4 noise = texture(oe_splat_noiseTex, tileUV);
+
+    // a pseudo-random scale factor to the width and height of a billboard
+    float sizeScale = abs(1.0 + noise[NOISE_RANDOM_2]);
     
     // Viewpoint culling:
     // TODO: remove hard-coded max width/height and replace with a vp_define or a uniform.
     // Note: this value must account for the height variation introduced by the noise function
     // later in this shader!
     vec4 cullPoint = center_view;
-    cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight, abs(cullPoint.xy));
+    //vec2 maxWidthHeight = biome.maxWidthHeight * sizeScale;
+    cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight*sizeScale, abs(cullPoint.xy));
     cullPoint = gl_ProjectionMatrix * cullPoint;
     float absw = abs(cullPoint.w);
     if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw )// || abs(cullPoint.z) > absw )
         return;
-
-    // sample the noise texture.
-    vec4 noise = texture(oe_splat_noiseTex, tileUV);
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
@@ -226,16 +226,16 @@ oe_landcover_geom()
     float falloff = 1.0-(nRange*nRange*nRange);
 
     // billboard width, which shrinks into the distance
-    float width = billboard.width * falloff;
+    float width = billboard.width * falloff * sizeScale;
     
-    float height = billboard.height;
+    float height = billboard.height * falloff * sizeScale;
 
     // vary the height of each instance and shrink it as it disappears into the distance.
     // TODO: consider parameterizing this so we can toggle the feature
-    height *= abs(1.0 + noise[NOISE_RANDOM_2]);
+    //height *= sizeScale;
 
     // shrink land cover as it dissappears into the distance:
-    height *= falloff;
+    //height *= falloff;
 
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;

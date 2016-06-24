@@ -232,3 +232,101 @@ ObjectIndex::tagNode(osg::Node* node, ObjectID id) const
         stateSet->addUniform( new osg::Uniform(_oidUniformName.c_str(), id) );
     }
 }
+
+bool
+ObjectIndex::getObjectIDs(const osg::Drawable* drawable, std::set<ObjectID>& output) const
+{
+    if (!drawable) return false;
+    
+    const osg::Geometry* geometry = drawable->asGeometry();
+    if (!geometry) return false;
+
+    const ObjectIDArray* oids = dynamic_cast<const ObjectIDArray*>(geometry->getVertexAttribArray(_attribLocation));
+    if ( !oids ) return false;
+    if (oids->empty()) return false;
+
+    for (ObjectIDArray::const_iterator i = oids->begin(); i != oids->end(); ++i)
+        output.insert( *i );
+
+    return true;
+}
+
+bool
+ObjectIndex::getObjectID(osg::Node* node, ObjectID& output) const
+{
+    if (!node) return false;
+
+    osg::StateSet* stateSet = node->getStateSet();
+    if (!stateSet) return false;
+
+    osg::Uniform* uniform = stateSet->getUniform(_oidUniformName.c_str());
+    if ( !uniform ) return false;
+
+    uniform->get(output);
+    return true;
+}
+
+bool
+ObjectIndex::updateObjectIDs(osg::Drawable* drawable,
+                             std::map<ObjectID, ObjectID>& oldNewMap,
+                             osg::Referenced* object)
+{
+    // in a drawable, replaces each OIDs in map.first with the corresponding OID in map.second
+    if (!drawable) return false;
+
+    osg::Geometry* geometry = drawable->asGeometry();
+    if (!geometry) return false;
+
+    ObjectIDArray* oids = dynamic_cast<ObjectIDArray*>(geometry->getVertexAttribArray(_attribLocation));
+    if ( !oids ) return false;
+    if (oids->empty()) return false;
+    
+    for (ObjectIDArray::iterator i = oids->begin(); i != oids->end(); ++i)
+    {
+        ObjectID newoid;
+        std::map<ObjectID, ObjectID>::iterator k = oldNewMap.find(*i);
+        if (k != oldNewMap.end()) {
+            newoid = k->second;
+        }
+        else {
+            newoid = insert(object);
+            oldNewMap[*i] = newoid;
+        }
+        *i = newoid;
+    }
+
+    oids->dirty();
+
+    return true;
+}
+
+bool
+ObjectIndex::updateObjectID(osg::Node* node,
+                            std::map<ObjectID, ObjectID>& oldNewMap,
+                            osg::Referenced* object)
+{
+    if (!node) return false;
+
+    osg::StateSet* stateSet = node->getStateSet();
+    if (!stateSet) return false;
+
+    osg::Uniform* uniform = stateSet->getUniform(_oidUniformName.c_str());
+    if ( !uniform ) return false;
+
+    ObjectID oldoid;
+    uniform->get(oldoid);
+
+    ObjectID newoid;
+    std::map<ObjectID, ObjectID>::iterator k = oldNewMap.find(oldoid);
+    if (k != oldNewMap.end()) {
+        newoid = k->second;
+    }
+    else {
+        newoid = insert(object);
+        oldNewMap[oldoid] = newoid;
+    }
+
+    uniform->set(newoid);
+
+    return true;
+}

@@ -221,13 +221,23 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_ProjectionMatrix          = "gl_ProjectionMatrix",
         gl_ModelViewProjectionMatrix = "gl_ModelViewProjectionMatrix",
         gl_NormalMatrix              = "gl_NormalMatrix",
-        gl_FrontColor                = "gl_FrontColor",
-        gl_FragColor                 = "gl_FragColor";
+        gl_FrontColor                = "gl_FrontColor";
 
-    #define GLSL_330 "330 compatibility"
-    #define GLSL_400 "400 compatibility"
+    std::string glMatrixUniforms = "";
 
-    bool use400 = Registry::capabilities().getGLSLVersionInt() >= 400;
+    #define GLSL_330 GLSL_VERSION_STR // "330 compatibility"
+
+#if defined(OSG_GL3_AVAILABLE) || defined(OSG_GL4_AVAILABLE)
+#   define GLSL_400 "400"
+#else
+#   define GLSL_400 "400 compatibility"
+#endif
+
+    // use GLSL 400 if it's avaiable since that will give the developer
+    // access to double-precision types.
+    bool use400 = 
+        Registry::instance()->hasCapabilities() &&
+        Registry::capabilities().getGLSLVersionInt() >= 400;
 
     std::string tcs_glsl_version(GLSL_400);
     std::string tes_glsl_version(GLSL_400);
@@ -392,6 +402,26 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
 
     //.................................................................................
+    
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+    // for all stages EXCEPT vertex, we will switch over to the OSG aliased
+    // matrix uniforms. Why except vertex? OSG [3.4] does something internally to
+    // convert these for hte VERTEX shader stage only... and if you try to 
+    // use them anyway, they won't work :(
+
+    gl_ModelViewMatrix           = "osg_ModelViewMatrix",
+    gl_ProjectionMatrix          = "osg_ProjectionMatrix",
+    gl_ModelViewProjectionMatrix = "osg_ModelViewProjectionMatrix",
+    gl_NormalMatrix              = "osg_NormalMatrix",
+    gl_FrontColor                = "osg_FrontColor";
+    
+    glMatrixUniforms =
+        "uniform mat4 osg_ModelViewMatrix;\n"
+        "uniform mat4 osg_ModelViewProjectionMatrix;\n"
+        "uniform mat4 osg_ProjectionMatrix;\n"
+        "uniform mat3 osg_NormalMatrix;\n";
+#endif
 
 
     if ( hasTCS )
@@ -403,6 +433,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n"
             // For gl_MaxPatchVertices
             << "#extension GL_NV_gpu_shader5 : enable\n";
+
+        buf << glMatrixUniforms << "\n";
 
         if ( hasVS )
         {
@@ -478,6 +510,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         buf << "#version " << tes_glsl_version << "\n"
             << "#pragma vp_name VP Tessellation Evaluation (TES) Shader MAIN\n";
+
+        buf << glMatrixUniforms << "\n";
 
         buf << "\n// TES stage inputs (required):\n"
             << "in " << vertdata << " vp_in []; \n";
@@ -680,6 +714,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "#version " << gs_glsl_version << "\n"
             << "#pragma vp_name VP Geometry Shader Main\n";
 
+        buf << glMatrixUniforms << "\n";
+
         if ( hasVS || hasTCS || hasTES )
         {
             buf << "\n// Geometry stage inputs:\n"
@@ -869,9 +905,16 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "#pragma vp_name VP Fragment Shader Main\n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 
+        // no output stage? Use default output
+        if (!outputStage)
+        {
+            buf << "\n// Fragment output\n"
+                << "out vec4 oe_FragColor;\n";
+        }
+
         buf << "\n// Fragment stage inputs:\n";
         buf << "in " << fragdata << " vp_in; \n";
-        
+                
         buf <<
             "\n// Fragment stage globals:\n";
 
@@ -951,7 +994,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             // in the absense of any output functions, generate a default output statement
             // that simply writes to gl_FragColor.
-            buf << INDENT << gl_FragColor << " = vp_Color;\n";
+            buf << INDENT << "oe_FragColor = vp_Color;\n";
         }
         buf << "}\n";
 

@@ -95,7 +95,7 @@ namespace
     // Data structure stored one-per-View.
     struct PerCamInfo
     {
-        PerCamInfo() : _firstFrame(true) { }
+        PerCamInfo() : _lastTimeStamp(0), _firstFrame(true) { }
 
         // remembers the state of each drawable from the previous pass
         DrawableMemory _memory;
@@ -698,6 +698,8 @@ class osgEarthScreenSpaceLayoutRenderBin : public osgUtil::RenderBin
 public:
     osgEarthScreenSpaceLayoutRenderBin()
     {
+        _vpInstalled = false;
+
         this->setName( OSGEARTH_SCREEN_SPACE_LAYOUT_BIN );
         _context = new ScreenSpaceLayoutContext();
         clearSortingFunctor();
@@ -707,9 +709,33 @@ public:
         osg::StateSet* stateSet = new osg::StateSet();
         this->setStateSet( stateSet );
 
-        // set up a VP to do fading.
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-        vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+        //VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+        //vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+    }
+
+    osgEarthScreenSpaceLayoutRenderBin(const osgEarthScreenSpaceLayoutRenderBin& rhs, const osg::CopyOp& copy)
+        : osgUtil::RenderBin(rhs, copy),
+        _f(rhs._f.get()),
+        _context(rhs._context.get())
+    {        
+        // Set up a VP to do fading. Do it here so it doesn't happen until the first time 
+        // we clone the render bin. This play nicely with static initialization.
+        if (!_vpInstalled)
+        {
+            Threading::ScopedMutexLock lock(_vpMutex);
+            if (!_vpInstalled)
+            {
+                VirtualProgram* vp = VirtualProgram::getOrCreate(getStateSet());
+                vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+                _vpInstalled = true;
+                OE_INFO << LC << "Decluttering VP installed\n";
+            }
+        }
+    }
+    
+    virtual osg::Object* clone(const osg::CopyOp& copyop) const
+    {
+        return new osgEarthScreenSpaceLayoutRenderBin(*this, copyop);
     }
 
     void setSortingFunctor( DeclutterSortFunctor* f )
@@ -725,7 +751,12 @@ public:
 
     osg::ref_ptr<DeclutterSortFunctor> _f;
     osg::ref_ptr<ScreenSpaceLayoutContext> _context;
+    static Threading::Mutex _vpMutex;
+    static bool _vpInstalled;
 };
+
+Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex;
+bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 
 //----------------------------------------------------------------------------
 

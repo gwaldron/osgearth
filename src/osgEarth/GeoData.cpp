@@ -1909,7 +1909,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     }
     else
     {
-         destExtent = getExtent().transform(to_srs);    
+        destExtent = getExtent().transform(to_srs);    
     }
 
     osg::Image* resultImage = 0L;
@@ -1924,7 +1924,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.
-        resultImage = manualReproject(getImage(), getExtent(), *to_extent, useBilinearInterpolation && isNormalized, width, height);
+        resultImage = manualReproject(getImage(), getExtent(), destExtent, useBilinearInterpolation && isNormalized, width, height);
     }
     else
     {

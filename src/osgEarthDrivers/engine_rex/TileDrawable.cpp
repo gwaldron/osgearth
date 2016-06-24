@@ -53,7 +53,9 @@ _drawPatch   ( false ),
 _skirtSize   ( skirtSize )
 {
     this->setDataVariance( DYNAMIC );
-    _geom->setDataVariance( DYNAMIC );
+
+    if (_geom.valid())
+        _geom->setDataVariance( DYNAMIC );
 
     this->setName( key.str() );
 
@@ -108,7 +110,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 void
 TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
 {
-    if ( _geom->getNumPrimitiveSets() < 1 )
+    if  (!_geom.valid() || _geom->getNumPrimitiveSets() < 1 )
         return;
 
     osg::State& state = *renderInfo.getState(); 
@@ -152,7 +154,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
     }
 
     // safely latch
-    if ( _geom->getNumPrimitiveSets() < 1 )
+    if ( !_geom.valid() || _geom->getNumPrimitiveSets() < 1 )
         return;
 
     // cannot store these in the object since there could be multiple GCs (and multiple
@@ -256,7 +258,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
                 ext->glUniform1f( minRangeLocation, minRange );
                 ext->glUniform1f( maxRangeLocation, maxRange );
 
-                for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+                for (unsigned i=0; i < _geom->getNumPrimitiveSets(); i++)
                     _geom->getPrimitiveSet(i)->draw(state, true);
 
                 ++layersDrawn;
@@ -278,7 +280,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
 
         if ( renderColor )
         {
-            for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+            for (unsigned i=0; i < _geom->getNumPrimitiveSets(); i++)
             {
                 _geom->getPrimitiveSet(i)->draw(state, true);
             }
@@ -292,7 +294,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
             glDrawElements(GL_TRIANGLES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
         
             // draw the remaining primsets normally
-            for (int i=1; i < _geom->getNumPrimitiveSets(); i++)
+            for (unsigned i=1; i < _geom->getNumPrimitiveSets(); i++)
             {
                 _geom->getPrimitiveSet(i)->draw(state, true);
             }

@@ -177,6 +177,13 @@ namespace osgEarth { namespace Symbology
             osg::ref_ptr<Geometry>& output ) const;
 
         /**
+         * Whether this geometry intersects with another geometry
+         */
+        bool intersects(
+            const class Geometry* other
+            ) const;
+
+        /**
          * Localizes this geometry relative to its centroid, and returns the localization
          * offset.
          */

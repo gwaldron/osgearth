@@ -332,7 +332,7 @@ namespace osgEarth
         /**
          * Gets the database options associated with this map.
          */
-        const osgDB::Options* getDBOptions() const { return _dbOptions.get(); }
+        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
         const Profile* getProfileNoVDatum() const { return _profileNoVDatum.get(); }
 
@@ -352,12 +352,11 @@ namespace osgEarth
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::Options> _globalOptions;
-        Threading::ReadWriteMutex _mapDataMutex;
+        mutable Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
-        osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
-        osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::Options> _readOptions;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

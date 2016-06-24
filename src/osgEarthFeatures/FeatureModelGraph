@@ -34,7 +34,6 @@
 
 namespace osgEarth {
     class ClampableNode;
-    class DrapeableNode;
 }
 
 namespace osgEarth { namespace Features
@@ -85,7 +84,10 @@ namespace osgEarth { namespace Features
         /**
          * Loads and returns a subnode. Used internally for paging.
          */
-        osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
+        osg::Node* load(
+            unsigned lod, unsigned tileX, unsigned tileY,
+            const std::string& uri,
+            const osgDB::Options* readOptions);
 
         /**
          * Style sheet associated with this feature graph.
@@ -127,16 +129,18 @@ namespace osgEarth { namespace Features
 
         osg::Node* setupPaging();
 
-        osg::Group* buildLevel( 
-            const FeatureLevel& level, 
-            const GeoExtent&    extent, 
-            const TileKey*      key);
+        osg::Group* buildTile( 
+            const FeatureLevel&   level, 
+            const GeoExtent&      extent, 
+            const TileKey*        key,
+            const osgDB::Options* readOptions);
 
         osg::Group* build( 
-            const Style&         baseStyle, 
-            const Query&         baseQuery, 
-            const GeoExtent&     extent, 
-            FeatureIndexBuilder* index);
+            const Style&          baseStyle, 
+            const Query&          baseQuery, 
+            const GeoExtent&      extent, 
+            FeatureIndexBuilder*  index,
+            const osgDB::Options* readOptions);
 
 
     private:
@@ -144,26 +148,30 @@ namespace osgEarth { namespace Features
         void ctor();
         
         osg::Group* createStyleGroup(
-            const Style&         style, 
-            const Query&         query, 
-            FeatureIndexBuilder* index);
+            const Style&          style, 
+            const Query&          query, 
+            FeatureIndexBuilder*  index,
+            const osgDB::Options* readOptions);
 
         osg::Group* createStyleGroup(
-            const Style&         style, 
-            FeatureList&         workingSet, 
-            const FilterContext& contextPrototype);
+            const Style&          style, 
+            FeatureList&          workingSet, 
+            const FilterContext&  contextPrototype,
+            const osgDB::Options* readOptions);
 
         void buildStyleGroups(
-            const StyleSelector* selector,
-            const Query&         baseQuery,
-            FeatureIndexBuilder* index,
-            osg::Group*          parent);
+            const StyleSelector*  selector,
+            const Query&          baseQuery,
+            FeatureIndexBuilder*  index,
+            osg::Group*           parent,
+            const osgDB::Options* readOptions);
 
         void queryAndSortIntoStyleGroups(
             const Query&            query,
             const StringExpression& styleExpr,
             FeatureIndexBuilder*    index,
-            osg::Group*             parent);
+            osg::Group*             parent,
+            const osgDB::Options*   readOptions);
 
         osg::Group* getOrCreateStyleGroupFromFactory(
             const Style& style);
@@ -174,7 +182,18 @@ namespace osgEarth { namespace Features
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,
-            const MapFrame* mapFrame, osg::Group* parent);
+            const MapFrame* mapFrame, osg::Group* parent,
+            const osgDB::Options* readOptions);
+
+        
+        osg::Group* readTileFromCache(
+            const std::string&    cacheKey,
+            const osgDB::Options* readOptions);
+
+        bool writeTileToCache(
+            const std::string&    cacheKey,
+            osg::Group*           tile,
+            const osgDB::Options* readOptions);
 
         void redraw();
 
@@ -194,12 +213,15 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
+        OpenThreads::Mutex               _clampableMutex;
 
         osg::Group*                      _overlayInstalled;
         osg::ref_ptr<osg::Group>         _overlayPlaceholder;
         osg::ref_ptr<ClampableNode>      _clampable;
-        osg::ref_ptr<DrapeableNode>      _drapeable;
         DepthOffsetAdapter               _depthOffsetAdapter;
+
+        OpenThreads::Atomic _cacheReads;
+        OpenThreads::Atomic _cacheHits;
 
         enum OverlayChange {
             OVERLAY_NO_CHANGE,
@@ -220,8 +242,10 @@ namespace osgEarth { namespace Features
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
+        void applyRenderSymbology(const Style& style, osg::Node* node);
         void checkForGlobalStyles(const Style& style);
         void changeOverlay();
+        bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output);
     };
 
 } } // namespace osgEarth::Features

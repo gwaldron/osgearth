@@ -39,7 +39,6 @@ to a polygon mask.
                         <url>../data/france.shp</url>
                     </features>
                     <contains>true</contains>
-                    <exact>true</exact>                    
                     
                 </intersect>
             </filters>

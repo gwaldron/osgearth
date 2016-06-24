@@ -13,6 +13,7 @@ out vec3 vp_Normal;
 
 out vec2 oe_bumpmap_coords;
 out float oe_bumpmap_range;
+flat out mat3 oe_bumpmap_normalMatrix;
 
 
 vec2 oe_bumpmap_scaleCoords(in vec2 coords, in float targetLOD)
@@ -45,4 +46,7 @@ void oe_bumpmap_vertexView(inout vec4 vertexView)
 
     // scale sampling coordinates to a target LOD.
     oe_bumpmap_coords = oe_bumpmap_scaleCoords(oe_layer_tilec.st, floor(oe_bumpmap_baseLOD)) * iscale;
+
+    // propagate normal matrix to fragment stage
+    oe_bumpmap_normalMatrix = gl_NormalMatrix;
 }

@@ -67,7 +67,7 @@ namespace osgEarth
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
             is the preferred way to communicate the context information. */
-        void apply( osgDB::Options* options );
+        void store( osgDB::Options* options );
 
         /** Creates a context from the serialized version in an Options structure (see above) */
         URIContext( const osgDB::Options* options );
@@ -250,7 +250,7 @@ namespace osgEarth
 
     public:
         /** Copier */
-        URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }
+        URI( const URI& rhs );
 
 
     public: // config methods
@@ -275,6 +275,8 @@ namespace osgEarth
         std::string _cacheKey;
         URIContext  _context;
         optional<std::string> _optionString;
+
+        void ctorCacheKey();
     };
     
 

@@ -3,25 +3,15 @@
 |  Run with osgearth_server.
 -->
 
-
-<!-- The map needs to be projected instead of geocentric -->
-<map type="projected">
-
-    <!-- We need to use a platte-carre projection and PIXEL_SIZE_ON_SCREEN so that the orthographic camera in osgearth_server can line up directly with
-         the requested tile extents.
-     -->
-
+<map type="flat">
+        
     <options>
-        <terrain first_lod="0" tile_pixel_size="256" range_mode="PIXEL_SIZE_ON_SCREEN"/>
-        <profile>plate-carre</profile>
+        <profile>spherical-mercator</profile>
    </options>
-
-<!-- Culling doesn't work correctly yet with elevation yet
-
+   
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
--->
      
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
         <base_lod>12</base_lod>
@@ -35,13 +25,62 @@
         </images>
     </image>
 
-    <extensions>   
+    <model name="buildings" driver="feature_geom">
+             
+        <features name="buildings" driver="ogr">
+            <url>../data/boston_buildings_utm19.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <layout>
+            <tile_size_factor>45</tile_size_factor>
+            <level name="default" max_range="20000">
+                <selector class="buildings"/>
+            </level>
+        </layout>
+        
+        <styles>            
+            <library name="us_resources">
+                <url>../data/resources/textures_us/catalog.xml</url>
+            </library>
+            
+            <style type="text/css">
+                buildings {
+                    extrusion-height:      3.5 * max([story_ht_], 1);
+                    extrusion-flatten:     true;
+                    extrusion-wall-style:  building-wall;
+                    extrusion-roof-style:  building-rooftop;
+                    altitude-clamping:     none;
+                }            
+                building-wall {
+                    skin-library:     us_resources;
+                    skin-tags:        building;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
+                }
+                building-rooftop {
+                    skin-library:     us_resources;
+                    skin-tags:        rooftop;
+                    skin-tiled:       true;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
+                }
+            </style>
+            
+                        
+            <!--Exclude certain buildings from being rendered b/c they will be replaced with geospecific buildings -->
+            <selector class="buildings">
+                <query>
+                    <expr><![CDATA[ OBJECTID_1 <> 91506 and OBJECTID_1 <> 12921 and OBJECTID_1 <> 11460 and OBJECTID_1 <> 11474 and OBJECTID_1 <> 11471 and OBJECTID_1 <> 11439 and OBJECTID_1 <> 11432 and  OBJECTID_1 <> 91499 and OBJECTID_1 <> 10878 ]]> </expr>
+                </query>
+            </selector>         
+            
+        </styles>
 
-        <bumpmap>
-            <image>../data/rock_hard.jpg</image>
-            <octaves>8</octaves>
-            <intensity>2.2</intensity>
-        </bumpmap>
+        <lighting>true</lighting>        
+    </model>
+
+    <extensions>
    
         <splat>        
             <coverage>
@@ -54,32 +93,12 @@
                     <surface>
                         <catalog>../data/splat/splat_catalog.xml</catalog>
                     </surface>
-            
-                    <land_cover>
-                        <layers>
-                            <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5" cast_shadows="true">
-                                <biomes>
-                                    <biome classes="forest forest1 forest2 forest3 forest4">
-                                        <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
-                                        <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
-                                        <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
-                                    </biome>
-                                </biomes>
-                            </layer>
-                        
-                            <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
-                                <biomes>
-                                    <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
-                                        <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
-                                    </biome>
-                                </biomes>
-                            </layer>
-                        </layers>                    
-                    </land_cover>
                 </zone>                
             </zones>
             
-        </splat>        
+        </splat>
+            
+        <xi:include href="viewpoints.xml"/>
         
     </extensions>
 

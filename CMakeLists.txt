@@ -10,7 +10,12 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0005 OLD)
     
     
-    cmake_policy(SET CMP0043 NEW)
+    IF(COMMAND cmake_policy)
+            IF(${CMAKE_MAJOR_VERSION} GREATER 2)
+                # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
+                cmake_policy(SET CMP0043 NEW)
+            ENDIF()
+    ENDIF()
 
     # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
     if(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
@@ -124,6 +129,7 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
+FIND_PACKAGE(Poco)
 
 FIND_PACKAGE(LevelDB)
 FIND_PACKAGE(RocksDB)
@@ -320,6 +326,9 @@ ELSE (INSTALL_TO_OSG_DIR)
     SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
 ENDIF(INSTALL_TO_OSG_DIR)
 
+
+# osgEarth Examples
+OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
 INCLUDE(OsgEarthMacroUtils)
 

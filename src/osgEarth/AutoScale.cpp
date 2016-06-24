@@ -134,5 +134,5 @@ namespace
 }
 
 /** static registration of the bin */
-extern "C" void osgEarth_AutoScaleBin_registration(void) {}
-static osgEarthRegisterRenderBinProxy<AutoScaleRenderBin> s_regbin(AUTO_SCALE_BIN_NAME);
+//extern "C" void osgEarth_AutoScaleBin_registration(void) {}
+//static osgEarthRegisterRenderBinProxy<AutoScaleRenderBin> s_regbin(AUTO_SCALE_BIN_NAME);

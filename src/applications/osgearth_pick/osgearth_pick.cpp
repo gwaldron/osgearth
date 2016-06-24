@@ -129,8 +129,8 @@ struct MyPickCallback : public RTTPicker::Callback
             // None of the above.. clear.
             else
             {
-                s_fidLabel->setText( Stringify() << "oid = " << id );
-                s_nameLabel->setText( "Name = " );
+                s_fidLabel->setText( Stringify() << "unknown oid = " << id );
+                s_nameLabel->setText( " " );
             }
         }
 
@@ -140,7 +140,7 @@ struct MyPickCallback : public RTTPicker::Callback
     void onMiss()
     {
         s_fidLabel->setText( "No pick." );
-        s_nameLabel->setText( "Name = " );
+        s_nameLabel->setText( " " );
         s_highlightUniform->set( 0u );
     }
 
@@ -171,7 +171,7 @@ const char* highlightFrag =
     "void highlightFragment(inout vec4 color) \n"
     "{ \n"
     "    if ( selected == 1 ) \n"
-    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
+    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
     "} \n";
 
 void installHighlighter(osg::StateSet* stateSet, int attrLocation)

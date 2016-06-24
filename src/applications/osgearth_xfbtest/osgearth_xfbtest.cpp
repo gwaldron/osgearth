@@ -204,7 +204,7 @@ struct InstanceGroup : public osg::Group
 
 // Generator that just writes each incoming vertex to the XFB.
 const char* VS_XF =
-    "#version 330 compatibility\n"
+    "#version " GLSL_VERSION_STR "\n"
     "out vec4 position; \n"
     "void main(void) { \n"
     "    position = gl_Vertex; \n"
@@ -213,7 +213,7 @@ const char* VS_XF =
 // Geometry shader perform GPU culling on the control point set.
 // The "cullingRadius" bit isn't working quite right; not sure why atm.
 const char* GS_XF =
-    "#version 330 compatibility\n"
+    "#version " GLSL_VERSION_STR "\n"
     "layout(points) in; \n"
     "layout(points, max_vertices=1) out; \n"
     "uniform float cullingRadius; \n"

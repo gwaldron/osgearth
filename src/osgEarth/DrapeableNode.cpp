@@ -38,6 +38,12 @@ _drapingEnabled( true )
     setCullingActive( !_drapingEnabled );
 }
 
+DrapeableNode::DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy) :
+osg::Group(rhs, copy)
+{
+    _drapingEnabled = rhs._drapingEnabled;
+}
+
 void
 DrapeableNode::setDrapingEnabled(bool value)
 {
@@ -63,5 +69,26 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
     else
     {
         osg::Group::traverse( nv );
+    }
+}
+
+//...........................................................................
+
+#undef  LC
+#define LC "[DrapeableNode Serializer] "
+
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+namespace
+{
+    REGISTER_OBJECT_WRAPPER(
+        DrapeableNode,
+        new osgEarth::DrapeableNode,
+        osgEarth::DrapeableNode,
+        "osg::Object osg::Node osg::Group osgEarth::DrapeableNode")
+    {
+        ADD_BOOL_SERIALIZER(DrapingEnabled, true);
     }
 }

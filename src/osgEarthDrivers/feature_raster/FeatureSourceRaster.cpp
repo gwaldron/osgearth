@@ -54,7 +54,7 @@ public:
     {
         FeatureSource::initialize( dbOptions );
 
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
     }
 
 

@@ -137,6 +137,11 @@ namespace osgEarth { namespace Features
         OIDMap     _oids;
         FIDMap     _fids;
         FeatureMap _embeddedFeatures;
+
+        void update(osg::Drawable*, std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
+        void update(osg::Node*,     std::map<ObjectID,ObjectID>&, const FIDMap&, FIDMap&);
+
+        friend class FeatureSourceIndexNode;
     };
 
 
@@ -148,13 +153,27 @@ namespace osgEarth { namespace Features
                                                            public FeatureIndexBuilder
     {
     public:
+        META_Node(osgEarth::Features, FeatureSourceIndexNode);
+        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
+
+        /** default ctor */
+        FeatureSourceIndexNode();
+
+        /** Construct with an index */
         FeatureSourceIndexNode(FeatureSourceIndex* index);
 
+        /** Copy */
+        FeatureSourceIndexNode(const FeatureSourceIndexNode& rhs, const osg::CopyOp& copy);
+
         /** The index referenced by this node. */
+        void setIndex(FeatureSourceIndex* index) { _index = index; }
         FeatureSourceIndex* getIndex() { return _index.get(); }
 
         /** Fetches the entire set of FIDs registered with the index by this node. */
         bool getAllFIDs(std::vector<FeatureID>& output) const;
+
+        /** Finds a FeatureSourceIndexNode in a scene graph. */
+        static FeatureSourceIndexNode* get(osg::Node* graph);
 
     public: // FeatureIndexBuilder
 
@@ -162,19 +181,31 @@ namespace osgEarth { namespace Features
         ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
         ObjectID tagNode        (osg::Node*     node,     Feature* feature);
 
+    public: // To support serialization only - do not use directly
+
+        const FIDMap& getFIDMap() const { return _fids; }
+        void setFIDMap(const FIDMap& fids);
+
+        void reIndex(std::map<ObjectID,ObjectID>&);
+        void reIndexDrawable(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
+        void reIndexNode(osg::Node* node, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap);
+
+        /**
+         * Call this after deserializing a scene graph that may contain FeatureSourceIndexNodes.
+         * It will locate them, assign the index, and reconsistute the object IDs in the index.
+         */
+        static void reconstitute(osg::Node* graph, FeatureSourceIndex* index);
+
     protected:
         
         /** dtor - unregisters any FIDs added by this node. */
         virtual ~FeatureSourceIndexNode();
 
-    private:
-        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
-        osg::ref_ptr<FeatureSourceIndex> _index;
+    private: // serializable
         FIDMap _fids;
 
-    public:
-        virtual const char* className()   const { return "FeatureSourceIndexNode"; }
-        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+    private: // transient
+        osg::ref_ptr<FeatureSourceIndex> _index;
     };
 
 } } // namespace osgEarth::Features

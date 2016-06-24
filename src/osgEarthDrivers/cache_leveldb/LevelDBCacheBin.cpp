@@ -122,100 +122,106 @@ LevelDBCacheBin::binValidForWriting(bool silent)
     return ok;
 }
 
+std::string
+LevelDBCacheBin::getHashedKey(const std::string& key) const
+{
+    return dataKey(key);
+}
+
 #define SEP std::string("!")
 
 std::string
-LevelDBCacheBin::binPhrase()
+LevelDBCacheBin::binPhrase() const
 {
     return SEP + getID() + SEP;
 }
 
 std::string
-LevelDBCacheBin::binKey()
+LevelDBCacheBin::binKey() const
 {
     return "b" + SEP + getID();
 }
 
 std::string
-LevelDBCacheBin::dataKey(const std::string& key)
+LevelDBCacheBin::dataKey(const std::string& key) const
 {
     return "d" + SEP + binDataKeyTuple(key);
 }
 
 std::string
-LevelDBCacheBin::binDataKeyTuple(const std::string& key)
+LevelDBCacheBin::binDataKeyTuple(const std::string& key) const
 {
     return getID() + SEP + key;
 }
 
 std::string
-LevelDBCacheBin::dataKeyFromTuple(const std::string& tuple)
+LevelDBCacheBin::dataKeyFromTuple(const std::string& tuple) const
 {
     return "d" + SEP + tuple;
 }
 
 std::string
-LevelDBCacheBin::dataBegin()
+LevelDBCacheBin::dataBegin() const
 {
     return "d" + SEP + getID() + SEP;
 }
 
 std::string
-LevelDBCacheBin::dataEnd()
+LevelDBCacheBin::dataEnd() const
 {
     return "d" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-LevelDBCacheBin::metaKey(const std::string& key)
+LevelDBCacheBin::metaKey(const std::string& key) const
 {
     return "m" + SEP + binDataKeyTuple(key);
 }
 
 std::string
-LevelDBCacheBin::metaKeyFromTuple(const std::string& tuple)
+LevelDBCacheBin::metaKeyFromTuple(const std::string& tuple) const
 {
     return "m" + SEP + tuple;
 }
 
 std::string
-LevelDBCacheBin::metaBegin()
+LevelDBCacheBin::metaBegin() const
 {
     return "m" + SEP + getID() + SEP;
 }
 
 std::string
-LevelDBCacheBin::metaEnd()
+LevelDBCacheBin::metaEnd() const
 {
     return "m" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-LevelDBCacheBin::timeKey(const DateTime& t, const std::string& key)
+LevelDBCacheBin::timeKey(const DateTime& t, const std::string& key) const
 {
     return "t" + SEP + t.asCompactISO8601() + SEP + getID() + SEP + key;
 }
 
 std::string
-LevelDBCacheBin::timeBegin()
+LevelDBCacheBin::timeBegin() const
 {
     return "t" + SEP + getID() + SEP;
 }
 
 std::string
-LevelDBCacheBin::timeEnd()
+LevelDBCacheBin::timeEnd() const
 {
     return "t" + SEP + getID() + SEP + "\xff";
 }
 
 std::string
-LevelDBCacheBin::timeBeginGlobal()
+LevelDBCacheBin::timeBeginGlobal() const
 {
     return "t" + SEP;
 }
 
 std::string
-LevelDBCacheBin::timeEndGlobal()
+LevelDBCacheBin::timeEndGlobal() const
 {
     return "t" + SEP + "\xff";
 }

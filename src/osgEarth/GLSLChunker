@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_GLSL_CHUNKER_H
+#define OSGEARTH_GLSL_CHUNKER_H 1
+
+#include <osgEarth/Common>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Utility that reads GLSL source code and lexes it into chunks that
+     * you can then perform operations on.
+     */
+    class OSGEARTH_EXPORT GLSLChunker
+    {
+    public:
+        struct Chunk {
+            enum Type { TYPE_STATEMENT, TYPE_DIRECTIVE, TYPE_FUNCTION, TYPE_COMMENT };
+            Type type;
+            std::string text;
+            std::vector<std::string> tokens;
+        };
+
+        typedef std::vector<Chunk> Chunks;
+
+
+
+    public:
+        /** Read GLSL into chunks */
+        void read(const std::string& input, Chunks& output) const;
+
+        /** Write chunks (read using the read() method) back to GLSL */
+        void write(const Chunks& input, std::string& output) const;
+
+        /** Search and replace a string */
+        void replace(Chunks& input, const std::string& target, const std::string& replacement) const;
+
+        /** Dump chunks to notify (for debugging) */
+        void dump(const std::string&, const Chunks&) const;
+
+        /** Create a chunk from a line. */
+        Chunk chunkLine(const std::string& line) const;
+    };
+}
+
+#endif // OSGEARTH_GLSL_CHUNKER_H

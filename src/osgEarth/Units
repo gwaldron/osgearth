@@ -197,7 +197,7 @@ namespace osgEarth
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
         // parses the qualified number from a parseable string (e.g., "123km")
-        qualified_double<T>(const std::string& parseable, const Units& defaultUnits) {
+        qualified_double<T>(const std::string& parseable, const Units& defaultUnits) : _value(0.0), _units(defaultUnits) {
             Units::parse( parseable, _value, _units, defaultUnits );
         }
 

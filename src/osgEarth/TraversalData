@@ -99,54 +99,6 @@ namespace osgEarth
         static osg::Referenced* _fetch(osg::NodeVisitor& nv, const std::string& key);
     };
 
-#if 0
-    class TraversalData : public osg::Referenced
-    {
-    public:
-        typedef std::string KEY_TYPE;
-        typedef fast_map<KEY_TYPE, osg::ref_ptr<osg::Referenced> > UserDataMap;
-
-        template<typename T> T& getOrCreate(KEY_TYPE key)
-        {
-            UserDataMap::iterator i = _userData.find( key );
-            if ( i != _userData.end() )
-                return *static_cast<T*>( i->second.get() );
-            T* t = new T();
-            _userData[key] = t;
-            return *t;
-        }
-
-    public:
-        TraversalData() { }
-        static TraversalData* get(osg::NodeVisitor& nv)
-        {
-            return dynamic_cast<TraversalData*>( nv.getUserData() );
-        }
-
-    protected:
-        UserDataMap _userData;
-    };
-
-    /**
-     * Per-camera data for MapNode culling traversals.
-     */
-    class OSGEARTH_EXPORT MapNodeCullData : public osg::Referenced
-    {
-    public:
-        MapNodeCullData();
-
-    public:
-        osg::observer_ptr<class MapNode> _mapNode;
-        osg::ref_ptr<osg::StateSet>      _stateSet;
-        osg::ref_ptr<osg::Uniform>       _windowMatrixUniform;
-        double                           _cameraAltitude;
-        osg::ref_ptr<osg::Uniform>       _cameraAltitudeUniform;
-
-    protected:
-        virtual ~MapNodeCullData() { }
-    };
-#endif
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

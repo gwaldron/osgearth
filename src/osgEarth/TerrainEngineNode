@@ -181,6 +181,10 @@ namespace osgEarth
         /** Sets the ComputeRangeCallback for this TerrainEngineNode */
         void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback);
 
+        // Request that the terrain tiles be rebuilt.
+        virtual void dirtyTerrain();
+
+
 
     public: // TerrainEngine
 
@@ -261,9 +265,6 @@ namespace osgEarth
 
         // signals that a redraw is needed because something changed.
         virtual void requestRedraw();
-
-        // Request that the terrain tiles be rebuilt.
-        virtual void dirtyTerrain();
 
         // Request the state setup be refreshed because something has changed that requires new
         // shaders, state, etc.

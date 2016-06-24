@@ -48,6 +48,8 @@ namespace
 
 //------------------------------------------------------------------------
 
+namespace osgEarth
+{
 ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
 ConfigOptions( options )
 {
@@ -64,6 +66,41 @@ ConfigOptions()
     _driver = driverOptions;
 }
 
+ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
+ConfigOptions(rhs.getConfig())
+{
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+}
+
+ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
+{
+    ConfigOptions::operator =(rhs);
+
+    _name = optional<std::string>(rhs._name);
+    _driver = optional<ModelSourceOptions>(rhs._driver);
+    _enabled = optional<bool>(rhs._enabled);
+    _visible = optional<bool>(rhs._visible);
+    _opacity = optional<float>(rhs._opacity);
+    _lighting = optional<bool>(rhs._lighting);
+    _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
+    _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
+    _terrainPatch = optional<bool>(rhs._terrainPatch);
+    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
+    _cacheId = optional<std::string>(rhs._cacheId);
+
+    return *this;
+}
+
 void
 ModelLayerOptions::setDefaults()
 {
@@ -73,7 +110,9 @@ ModelLayerOptions::setDefaults()
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
-    _cachePolicy.init ( CachePolicy() );
+
+    // Expressly set it here since we want no caching by default on a model layer.
+    _cachePolicy = CachePolicy::NO_CACHE;
 }
 
 Config
@@ -90,6 +129,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "patch",          _terrainPatch );  
 
     conf.updateObjIfSet( "cache_policy", _cachePolicy );  
+    conf.updateIfSet("cacheid", _cacheId);
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -114,6 +154,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "patch",          _terrainPatch );
 
     conf.getObjIfSet( "cache_policy", _cachePolicy );  
+    conf.getIfSet("cacheid", _cacheId);
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -172,23 +213,18 @@ ModelLayer::copyOptions()
 }
 
 void
-ModelLayer::initialize(const osgDB::Options* dbOptions)
+ModelLayer::open()
 {
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
         OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << _initOptions.driver()->getDriver() << "\"" << std::endl;
         
-        // set up the db options and caching policy first
-        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        initializeCachePolicy( _dbOptions.get() );
-
         // the model source:
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
         if ( _modelSource.valid() )
         {
             _modelSource->setName( this->getName() );
-
-            _modelSource->initialize( _dbOptions.get() );
+            _modelSource->initialize( _readOptions.get() );
 
             // the mask, if there is one:
             if ( !_maskSource.valid() && _initOptions.maskOptions().isSet() )
@@ -198,7 +234,7 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
                 _maskSource = MaskSourceFactory::create( *_initOptions.maskOptions() );
                 if ( _maskSource.valid() )
                 {
-                    _maskSource->initialize( _dbOptions.get() );
+                    _maskSource->initialize( _readOptions.get() );
                 }
                 else
                 {
@@ -210,34 +246,48 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
 }
 
 void
-ModelLayer::initializeCachePolicy(const osgDB::Options* options)
+ModelLayer::setReadOptions(const osgDB::Options* readOptions)
 {
-    // Start with the cache policy passed in by the Map.
-    optional<CachePolicy> cp;
-    CachePolicy::fromOptions(options, cp);
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
 
-    // if this layer specifies cache policy info, that will override 
-    // whatever the map passed in:
-    if ( _initOptions.cachePolicy().isSet() )
-        cp->mergeAndOverride( _initOptions.cachePolicy() );
+    // Create some local cache settings for this layer:
+    CacheSettings* oldSettings = CacheSettings::get(readOptions);
+    _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
 
-    // finally resolve with global overrides:
-    Registry::instance()->resolveCachePolicy( cp );
+    // bring in the new policy for this layer if there is one:
+    _cacheSettings->integrateCachePolicy(_initOptions.cachePolicy());
 
-    setCachePolicy( cp.get() );
-}
+    // if caching is a go, install a bin.
+    if (_cacheSettings->isCacheEnabled())
+    {
+        std::string binID;
+        if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
+        {
+            binID = _initOptions.cacheId().get();
+        }
+        else
+        {
+            Config conf = _initOptions.driver()->getConfig();
+            binID = hashToString(conf.toJSON(false));
+        }
 
-void
-ModelLayer::setCachePolicy( const CachePolicy& cp )
-{
-    _runtimeOptions.cachePolicy() = cp;
-    _runtimeOptions.cachePolicy()->apply( _dbOptions.get() );
-}
+        // make our cacheing bin!
+        CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
+        if (bin)
+        {
+            OE_INFO << LC << "Layer " << getName() << " opened cache bin [" << binID << "]\n";
+            _cacheSettings->setCacheBin( bin );
+        }
+        else
+        {
+            // failed to create the bin, so fall back on no cache mode.
+            OE_WARN << LC << "Layer " << getName() << " failed to open a cache bin [" << binID << "], disabling caching\n";
+            _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
+        }
+    }
 
-const CachePolicy&
-ModelLayer::getCachePolicy() const
-{
-    return _runtimeOptions.cachePolicy().value();
+    // Store it for further propagation!
+    _cacheSettings->store(_readOptions.get());
 }
 
 osg::Node*
@@ -440,4 +490,5 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
     }
 
     return _maskBoundary.get();
+}
 }

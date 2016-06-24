@@ -199,7 +199,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;
-        float prev_alphaThreshold = -1.0f;
 
         // first bind any shared layers. We still have to do this even if we are
         // in !renderColor mode b/c these textures could be used by vertex shaders

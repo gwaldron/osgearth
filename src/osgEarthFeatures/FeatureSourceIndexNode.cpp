@@ -74,13 +74,22 @@ FeatureSourceIndexOptions::getConfig() const
 #undef  LC
 #define LC "[FeatureSourceIndexNode] "
 
+FeatureSourceIndexNode::FeatureSourceIndexNode()
+{
+    //nop
+}
+
+FeatureSourceIndexNode::FeatureSourceIndexNode(const FeatureSourceIndexNode& rhs, const osg::CopyOp& copy) :
+osg::Group(rhs, copy)
+{
+    _index = rhs._index.get();
+    _fids  = rhs._fids;
+}
+
 FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSourceIndex* index) :
 _index( index )
 {
-    if ( !index )
-    {
-        OE_WARN << LC << "INTERNAL ERROR: created a feature source index node with a NULL index.\n";
-    }
+    //nop
 }
 
 FeatureSourceIndexNode::~FeatureSourceIndexNode()
@@ -135,6 +144,200 @@ FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
     }
 
     return true;
+}
+
+void
+FeatureSourceIndexNode::setFIDMap(const FeatureSourceIndexNode::FIDMap& fids)
+{
+    _fids = fids;
+    //todo
+}
+
+namespace
+{
+    /** Visitor that finds FeatureSourceIndexNodes, assigns their index, and 
+     *  reconstitutes their object ID maps. */
+    struct Reconstitute : public osg::NodeVisitor
+    {
+        FeatureSourceIndex* _index;
+        std::map<ObjectID,ObjectID> _oldToNew;
+
+        Reconstitute(FeatureSourceIndex* index) :
+            _index(index)
+        {
+            setNodeMaskOverride(~0);
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        }
+
+        void apply(osg::Node& node)
+        {
+            FeatureSourceIndexNode* indexNode = dynamic_cast<FeatureSourceIndexNode*>(&node);
+            if (indexNode)
+            {
+                //OE_INFO << LC << "Reconstituting index...\n";
+                indexNode->setIndex(_index);
+                indexNode->reIndex(_oldToNew);
+            }
+            traverse(node);
+        }
+    };
+
+    /** Visitor that re-indexes objects after deserialization. */
+    struct ReIndex : public osg::NodeVisitor
+    {
+        FeatureSourceIndexNode*        _indexNode;
+        FeatureSourceIndexNode::FIDMap _newFIDMap;
+        std::map<ObjectID,ObjectID>&   _oldToNew;
+
+        ReIndex(FeatureSourceIndexNode* indexNode, std::map<ObjectID,ObjectID>& oldToNew) :
+            _indexNode(indexNode), _oldToNew(oldToNew)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Node& node)
+        {
+            _indexNode->reIndexNode(&node, _oldToNew, _newFIDMap);
+            traverse(node);
+        }
+
+        void apply(osg::Geode& geode)
+        {
+            _indexNode->reIndexNode(&geode, _oldToNew, _newFIDMap);
+            for (unsigned i = 0; i < geode.getNumDrawables(); ++i)
+            {
+                _indexNode->reIndexDrawable(geode.getDrawable(i), _oldToNew, _newFIDMap);
+            }
+            traverse(geode);
+        }
+    };
+}
+
+void
+FeatureSourceIndexNode::reconstitute(osg::Node* graph, FeatureSourceIndex* index)
+{
+    if ( !graph || !index )
+    {
+        OE_WARN << LC << "INTERNAL ERROR cannot call reconsitute with null graph or null index\n";
+        return;
+    }
+
+    Reconstitute visitor(index);
+    graph->accept(visitor);
+}
+
+void
+FeatureSourceIndexNode::reIndex(std::map<ObjectID,ObjectID>& oidmappings)
+{
+    ReIndex visitor(this, oidmappings);
+    this->accept(visitor);
+    _fids = visitor._newFIDMap;
+    //OE_INFO << LC << "Reindexed " << _fids.size() << " mappings\n";
+}
+
+void
+FeatureSourceIndexNode::reIndexDrawable(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap)
+{
+    if ( !drawable || !_index.valid() ) return;
+
+    _index->update(drawable, oldNew, _fids, newFIDMap);
+}
+
+void
+FeatureSourceIndexNode::reIndexNode(osg::Node* node, std::map<ObjectID,ObjectID>& oldNew, FIDMap& newFIDMap)
+{
+    if (!node || !_index.valid()) return;
+
+    _index->update(node, oldNew, _fids, newFIDMap);
+}
+
+FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
+{
+    return graph ? osgEarth::findTopMostNodeOfType<FeatureSourceIndexNode>(graph) : 0L;
+}
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[FeatureSourceIndex Serializer] "
+
+// OSG SERIALIZER for FeatureSourceIndexNode
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+namespace
+{
+    bool checkFIDMap(const FeatureSourceIndexNode& node)
+    {
+        return !node.getFIDMap().empty();
+    }
+
+    bool writeFIDMap(osgDB::OutputStream& os, const FeatureSourceIndexNode& node)
+    {
+        const FeatureSourceIndexNode::FIDMap& fids = node.getFIDMap();
+
+        os.writeSize(fids.size());
+        os << os.BEGIN_BRACKET << std::endl;
+        {
+            for (FeatureSourceIndexNode::FIDMap::const_iterator i = fids.begin(); i != fids.end(); ++i)
+            {
+                const RefIDPair* idPair = i->second.get();
+                os << idPair->_fid << idPair->_oid;
+            }
+        }
+        os << os.END_BRACKET << std::endl;
+
+        return true;
+    }
+
+    bool readFIDMap(osgDB::InputStream& is, FeatureSourceIndexNode& node)
+    {
+        FeatureSourceIndexNode::FIDMap fids;
+        FeatureID fid;
+        ObjectID oid;
+
+        unsigned size = is.readSize();
+        is >> is.BEGIN_BRACKET;
+        {
+            for (unsigned i=0; i<size; ++i)
+            {
+                is >> fid >> oid;
+                fids[fid] = new RefIDPair(fid, oid);
+            }
+        }
+        is >> is.END_BRACKET;
+        node.setFIDMap(fids);
+
+        return true;
+    }
+
+#if 0
+    bool checkEmbeddedFeatures(const FeatureSourceIndexNode& node)
+    {
+        return false; //todo
+    }
+
+    bool writeEmbeddedFeatures(osgDB::OutputStream& os, const FeatureSourceIndexNode& node)
+    {
+        return true;
+    }
+
+    bool readEmbeddedFeatures(osgDB::InputStream& is, FeatureSourceIndexNode& node)
+    {
+        return true;
+    }
+#endif
+
+    REGISTER_OBJECT_WRAPPER(
+        FeatureSourceIndexNode,
+        new osgEarth::Features::FeatureSourceIndexNode,
+        osgEarth::Features::FeatureSourceIndexNode,
+        "osg::Object osg::Node osg::Group osgEarth::Features::FeatureSourceIndexNode")
+    {
+        ADD_USER_SERIALIZER(FIDMap);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -302,4 +505,64 @@ FeatureSourceIndex::getObjectID(FeatureID fid) const
         return i->second->_oid;
     else
         return OSGEARTH_OBJECTID_EMPTY;
+}
+
+// When Feature index data is deserialized, the old serialized ObjectIDs are 
+// no longer valid. This method will re-install the mappings in the master index
+// and write new local mappings with new ObjectIDs.
+void
+FeatureSourceIndex::update(osg::Drawable* drawable, std::map<ObjectID,ObjectID>& oldToNew, const FIDMap& oldFIDMap, FIDMap& newFIDMap)
+{
+    unsigned count = 0;
+    if (_masterIndex->updateObjectIDs(drawable, oldToNew, this))
+    {
+        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldToNew.end(); ++i)
+        {
+            const ObjectID& oldoid = i->first;
+            const ObjectID& newoid = i->second;
+
+            for (FIDMap::const_iterator j = oldFIDMap.begin(); j != oldFIDMap.end(); ++j)
+            {
+                const RefIDPair* rip = j->second.get();
+                if (rip && rip->_oid == oldoid)
+                {
+                    RefIDPair* newrip = new RefIDPair(rip->_fid, newoid);
+                    _oids[newoid] = rip->_fid;
+                    _fids[rip->_fid] = newrip;
+                    newFIDMap[rip->_fid] = newrip;
+                    ++count;
+                }
+            }
+        }
+    }
+}
+
+// When Feature index data is deserialized, the old serialized ObjectIDs are 
+// no longer valid. This method will re-install the mappings in the master index
+// and write new local mappings with new ObjectIDs.
+void
+FeatureSourceIndex::update(osg::Node* node, std::map<ObjectID,ObjectID>& oldToNew, const FIDMap& oldFIDMap, FIDMap& newFIDMap)
+{
+    unsigned count = 0;
+    if (_masterIndex->updateObjectID(node, oldToNew, this))
+    {
+        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldToNew.end(); ++i)
+        {
+            const ObjectID& oldoid = i->first;
+            const ObjectID& newoid = i->second;
+
+            for (FIDMap::const_iterator j = oldFIDMap.begin(); j != oldFIDMap.end(); ++j)
+            {
+                const RefIDPair* rip = j->second.get();
+                if (rip && rip->_oid == oldoid)
+                {
+                    RefIDPair* newrip = new RefIDPair(rip->_fid, newoid);
+                    _oids[newoid] = rip->_fid;
+                    _fids[rip->_fid] = newrip;
+                    newFIDMap[rip->_fid] = newrip;
+                    ++count;
+                }
+            }
+        }
+    }
 }

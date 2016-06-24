@@ -1776,7 +1776,8 @@ Value::end()
 // //////////////////////////////////////////////////////////////////
 
 PathArgument::PathArgument()
-   : kind_( kindNone )
+   : index_(0)
+   , kind_( kindNone )
 {
 }
 
@@ -2497,7 +2498,7 @@ Reader::decodeDouble( Token &token )
    int length = int(token.end_ - token.start_);
    if ( length <= bufferSize )
    {
-      Char buffer[bufferSize];
+      Char buffer[bufferSize+1];
       memcpy( buffer, token.start_, length );
       buffer[length] = 0;
       count = sscanf( buffer, "%lf", &value );
@@ -3235,6 +3236,7 @@ StyledStreamWriter::StyledStreamWriter( std::string indentation )
    : document_(NULL)
    , rightMargin_( 74 )
    , indentation_( indentation )
+   , addChildValues_(false)
 {
 }
 

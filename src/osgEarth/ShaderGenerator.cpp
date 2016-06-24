@@ -571,6 +571,22 @@ ShaderGenerator::apply( osg::Geode& node )
     }
 }
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,3)
+void
+ShaderGenerator::apply( osg::Drawable& drawable )
+{
+    if ( !_active )
+        return;
+
+    if ( ignore(&drawable) )
+        return;
+
+    if ( _duplicateSharedSubgraphs )
+        duplicateSharedNode(drawable);
+
+    apply( &drawable );
+}
+#endif
 
 void 
 ShaderGenerator::apply( osg::Drawable* drawable )

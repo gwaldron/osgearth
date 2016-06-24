@@ -48,6 +48,7 @@ SET(LIB_PUBLIC_HEADERS
     ScatterFilter
     Script
     ScriptEngine
+    ScriptFilter
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
@@ -88,6 +89,7 @@ SET(TARGET_SRC
     Session.cpp
     ScatterFilter.cpp
     ScriptEngine.cpp
+    ScriptFilter.cpp
     SubstituteModelFilter.cpp
     TessellateOperator.cpp
     TextSymbolizer.cpp

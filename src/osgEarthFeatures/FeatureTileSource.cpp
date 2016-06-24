@@ -175,11 +175,15 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 
     preProcess( image.get(), buildData.get() );
 
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
     // figure out if and how to style the geometry.
     if ( _features->hasEmbeddedStyles() )
     {
+
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery);
         while( cursor.valid() && cursor->hasMore() )
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
@@ -205,19 +209,84 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                const Style* style = styles->getStyle( sel.getSelectedStyleName() );
-                queryAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get(), key.getExtent(), image.get() );
+
+                if ( sel.styleExpression().isSet() )
+                {
+                    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+
+                    // establish the working bounds and a context:
+                    FilterContext context( _session.get(), featureProfile);
+                    StringExpression styleExprCopy(  sel.styleExpression().get() );
+
+                    FeatureList features;
+                    getFeatures(defaultQuery, key.getExtent(), features);
+                    if (!features.empty())
+                    {
+                        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                        {
+                            Feature* feature = itr->get();
+
+                            const std::string& styleString = feature->eval( styleExprCopy, &context );
+                            if (!styleString.empty() && styleString != "null")
+                            {
+                                // resolve the style:
+                                Style combinedStyle;
+
+                                // if the style string begins with an open bracket, it's an inline style definition.
+                                if ( styleString.length() > 0 && styleString.at(0) == '{' )
+                                {
+                                    Config conf( "style", styleString );
+                                    conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );
+                                    conf.set( "type", "text/css" );
+                                    combinedStyle = Style(conf);
+                                }
+
+                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                                // style in this case: for style expressions, the user must be explicity about 
+                                // default styling; this is because there is no other way to exclude unwanted
+                                // features.
+                                else
+                                {
+                                    const Style* selectedStyle = _session->styles()->getStyle(styleString, false);
+                                    if ( selectedStyle )
+                                        combinedStyle = *selectedStyle;
+                                }
+
+                                if (!combinedStyle.empty())
+                                {
+                                    FeatureList list;
+                                    list.push_back( feature );
+
+                                    renderFeaturesForStyle(
+                                        _session.get(),
+                                        combinedStyle,
+                                        list,
+                                        buildData.get(),
+                                        key.getExtent(),
+                                        image.get() );
+                                }
+                            }
+                        }
+                    }                    
+                }
+                else
+                {
+                    const Style* style = styles->getStyle( sel.getSelectedStyleName() );
+                    Query query = sel.query().get();
+                    query.tileKey() = key;
+                    queryAndRenderFeaturesForStyle( *style, query, buildData.get(), key.getExtent(), image.get() );
+                }
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle( *style, Query(), buildData.get(), key.getExtent(), image.get() );
+            queryAndRenderFeaturesForStyle( *style, defaultQuery, buildData.get(), key.getExtent(), image.get() );
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key.getExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( Style(), defaultQuery, buildData.get(), key.getExtent(), image.get() );
     }
 
     // final tile processing after all styles are done
@@ -234,6 +303,20 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
                                                   const GeoExtent& imageExtent,
                                                   osg::Image*      out_image)
 {   
+    // Get the features
+    FeatureList features;
+    getFeatures(query, imageExtent, features );
+    if (!features.empty())
+    {
+        // Render them.
+        return renderFeaturesForStyle( _session.get(), style, features, data, imageExtent, out_image );
+    }
+    return false;
+}
+
+void
+FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features)
+{
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = getFeatureSource()->getFeatureProfile()->getExtent();
     
@@ -251,45 +334,50 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
             query.bounds().isSet() ? query.bounds()->unionWith( queryExtent.bounds() ) :
             queryExtent.bounds();
 
-        // query the feature source:
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( localQuery );
-
         // now copy the resulting feature set into a list, converting the data
         // types along the way if a geometry override is in place:
-        FeatureList cellFeatures;
-        while( cursor.valid() && cursor->hasMore() )
+        while (features.empty())
         {
-            Feature* feature = cursor->nextFeature();
-            Geometry* geom = feature->getGeometry();
-            if ( geom )
+            // query the feature source:
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( localQuery );
+
+            while( cursor.valid() && cursor->hasMore() )
             {
-                // apply a type override if requested:
-                if (_options.geometryTypeOverride().isSet() &&
-                    _options.geometryTypeOverride() != geom->getComponentType() )
+                Feature* feature = cursor->nextFeature();
+                Geometry* geom = feature->getGeometry();
+                if ( geom )
                 {
-                    geom = geom->cloneAs( _options.geometryTypeOverride().value() );
-                    if ( geom )
-                        feature->setGeometry( geom );
+                    // apply a type override if requested:
+                    if (_options.geometryTypeOverride().isSet() &&
+                        _options.geometryTypeOverride() != geom->getComponentType() )
+                    {
+                        geom = geom->cloneAs( _options.geometryTypeOverride().value() );
+                        if ( geom )
+                            feature->setGeometry( geom );
+                    }
+                }
+                if ( geom )
+                {
+                    features.push_back( feature );
                 }
             }
-            if ( geom )
+
+            // If we didn't get any features and we have a tilekey set, try falling back.
+            if (features.empty() && localQuery.tileKey().isSet())
             {
-                cellFeatures.push_back( feature );
+                localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
+                if (!localQuery.tileKey()->valid())
+                {
+                    // We fell back all the way to lod 0 and got nothing, so bail.
+                    break;
+                }
+            }
+            else
+            {
+                // Just bail, we didn't get any features and aren't using tilekeys
+                break;
             }
         }
-
-        //OE_NOTICE
-        //    << "Rendering "
-        //    << cellFeatures.size()
-        //    << " features in ("
-        //    << queryExtent.toString() << ")"
-        //    << std::endl;
-
-        return renderFeaturesForStyle( _session.get(), style, cellFeatures, data, imageExtent, out_image );
-    }
-    else
-    {
-        return false;
     }
 }
 

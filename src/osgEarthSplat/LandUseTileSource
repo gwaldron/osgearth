@@ -139,6 +139,8 @@ namespace osgEarth { namespace Splat
         // Create an image.
         osg::Image* createImage(const osgEarth::TileKey& key, osgEarth::ProgressCallback* progress);
 
+        CachePolicy getCachePolicyHint() const;
+
     protected:
         virtual ~LandUseTileSource() { }
 

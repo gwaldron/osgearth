@@ -131,7 +131,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( out.is_open() )
             {
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext( fileName ).apply( myOptions.get() );
+                URIContext( fileName ).store( myOptions.get() );
 
                 return writeNode( node, out, myOptions.get() );
             }
@@ -179,7 +179,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             return WriteResult::FILE_SAVED;
         }
 
-        virtual ReadResult readNode(const std::string& fileName, const osgDB::Options* options) const
+        virtual ReadResult readNode(const std::string& fileName, const osgDB::Options* readOptions) const
         {
             std::string ext = osgDB::getFileExtension( fileName );
             if ( !acceptsExtension( ext ) )
@@ -191,7 +191,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             // osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be
             // necessary for the first level as the other files will have a tilekey prepended to them.
             if ((fileName.length() > 7) && (fileName.substr(0, 7) == "server:"))
-                return readNode(fileName.substr(7), options);            
+                return readNode(fileName.substr(7), readOptions);            
 
             if ( fileName == "__globe.earth" )
             {
@@ -203,30 +203,30 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 std::string fullFileName = fileName;
                 if ( !osgDB::containsServerAddress( fileName ) )
                 {
-                    fullFileName = osgDB::findDataFile( fileName, options );
+                    fullFileName = osgDB::findDataFile( fileName, readOptions );
                     if (fullFileName.empty()) return ReadResult::FILE_NOT_FOUND;
                 }
 
-                osgEarth::ReadResult r = URI(fullFileName).readString( options );
+                osgEarth::ReadResult r = URI(fullFileName).readString( readOptions );
                 if ( r.failed() )
                     return ReadResult::ERROR_IN_READING_FILE;
 
                 // Since we're now passing off control to the stream, we have to pass along the
                 // reference URI as well..
-                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                osg::ref_ptr<osgDB::Options> myReadOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
 
-                URIContext( fullFileName ).apply( myOptions.get() );
+                URIContext( fullFileName ).store( myReadOptions.get() );
 
                 std::stringstream in( r.getString() );
-                return readNode( in, myOptions.get() );
+                return readNode( in, myReadOptions.get() );
             }
         }
 
-        virtual ReadResult readNode(std::istream& in, const osgDB::Options* options ) const
+        virtual ReadResult readNode(std::istream& in, const osgDB::Options* readOptions) const
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
-            URIContext uriContext( options ); 
+            URIContext uriContext( readOptions ); 
 
             osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
             if ( !doc.valid() )
@@ -262,9 +262,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     // attempt to parse a "default options" JSON string:
                     std::string defaultConfStr;
-                    if ( options )
+                    if ( readOptions )
                     {
-                        defaultConfStr = options->getPluginStringData("osgEarth.defaultOptions");
+                        defaultConfStr = readOptions->getPluginStringData("osgEarth.defaultOptions");
                         if ( !defaultConfStr.empty() )
                         {
                             Config optionsConf("options");
@@ -290,7 +290,18 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }
             }
 
-            return ReadResult(node.release());
+            if (mapNode)
+            {
+                // If the user passed in a cache object, apply it to the map now
+                CacheSettings* cacheSettings = CacheSettings::get(readOptions);
+                if (cacheSettings && cacheSettings->getCache())
+                {
+                    mapNode->getMap()->setCache( cacheSettings->getCache() );
+                    OE_INFO << LC << "Applied user-supplied cache to the Map\n";
+                }
+            }
+
+            return ReadResult(mapNode);
         }
 };
 

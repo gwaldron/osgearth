@@ -34,9 +34,8 @@
 #include <algorithm>
 #include <curl/curl.h>
 
-// Whether to use WinInet instead of cURL
-//#define USE_WININET
-#ifdef USE_WININET
+// Whether to use WinInet instead of cURL - CMAKE option
+#ifdef OSGEARTH_USE_WININET_FOR_HTTP
 #include <WinInet.h>
 #pragma comment(lib, "wininet.lib")
 #endif
@@ -425,6 +424,13 @@ HTTPClient::initializeImpl()
         OE_WARN << LC << "Simulating a network error with Response Code = " << _simResponseCode << std::endl;
     }
 
+    // Check to HTTP disabling (for testing)
+    const char* disable = getenv("OSGEARTH_HTTP_DISABLE");
+    if (disable)
+    {
+        _simResponseCode = 503L; // SERVICE UNAVAILABLE
+    }
+
     // Dumps out HTTP request/response info
     if ( ::getenv("OSGEARTH_HTTP_DEBUG") )
     {
@@ -707,7 +713,7 @@ HTTPClient::download(const std::string& uri,
 }
 
 
-#ifdef USE_WININET
+#ifdef OSGEARTH_USE_WININET_FOR_HTTP
 
 namespace
 {
@@ -944,7 +950,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     return response;
 }
 
-#else // USE_WININET
+#else // OSGEARTH_USE_WININET_FOR_HTTP
 
 HTTPResponse
 HTTPClient::doGet(const HTTPRequest&    request,

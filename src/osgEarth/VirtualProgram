@@ -34,10 +34,14 @@
 #include <string>
 #include <map>
 
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE)
 #    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
 #    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#elif defined(OSG_GL3_AVAILABLE)
+#    define GLSL_VERSION                 330
+#    define GLSL_VERSION_STR             "330"
+#    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #else
 #    define GLSL_VERSION                 330
 #    define GLSL_VERSION_STR             "330 compatibility" 

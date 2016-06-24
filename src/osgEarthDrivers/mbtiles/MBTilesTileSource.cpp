@@ -136,6 +136,23 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
             }
         }
+
+        // If we have some data extents at this point, write the bounds to the metadata.
+        if (getDataExtents().size() > 0)
+        {
+            // Get the union of all the extents
+            GeoExtent e(getDataExtents()[0]);
+            for (unsigned int i = 1; i < getDataExtents().size(); i++)
+            {
+                e.expandToInclude(getDataExtents()[i]);
+            }
+
+            // Convert the bounds to wgs84
+            GeoExtent bounds = e.transform(osgEarth::SpatialReference::get("wgs84"));
+            std::stringstream boundsStr;
+            boundsStr << bounds.xMin() << "," << bounds.yMin() << "," << bounds.xMax() << "," << bounds.yMax();
+            putMetaData("bounds", boundsStr.str());
+        }
     }
 
     // If the database pre-existed, read in the information from the metadata.
@@ -191,9 +208,9 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 GeoExtent extent(
                     osgEarth::SpatialReference::get("wgs84"),
                     osgEarth::as<double>(tokens[0], 0.0),
-                    osgEarth::as<double>(tokens[3], 0.0), // south
+                    osgEarth::as<double>(tokens[1], 0.0), // south
                     osgEarth::as<double>(tokens[2], 0.0), // east
-                    osgEarth::as<double>(tokens[1], 0.0)  // north
+                    osgEarth::as<double>(tokens[3], 0.0)  // north
                     );
 
                 this->getDataExtents().push_back(DataExtent(extent));

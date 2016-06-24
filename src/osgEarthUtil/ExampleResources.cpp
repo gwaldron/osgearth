@@ -178,16 +178,36 @@ MouseCoordsControlFactory::create(MapNode*         mapNode,
 
 namespace
 {
-    struct SkyTimeSliderHandler : public ControlEventHandler
+    struct SkyHoursSlider : public ControlEventHandler
     {
-        SkyTimeSliderHandler(SkyNode* sky) : _sky(sky)  { }
-
+        SkyHoursSlider(SkyNode* sky) : _sky(sky)  { }
         SkyNode* _sky;
-
         virtual void onValueChanged( class Control* control, float value )
         {
             DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
+        }
+    };
+
+    struct SkyMonthSlider : public ControlEventHandler
+    {
+        SkyMonthSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        virtual void onValueChanged( class Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();            
+            _sky->setDateTime(DateTime(d.year(), (int)value, d.day(), d.hours()));
+        }
+    };
+
+    struct SkyYearSlider : public ControlEventHandler
+    {
+        SkyYearSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        virtual void onValueChanged( class Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();            
+            _sky->setDateTime(DateTime((int)value, d.month(), d.day(), d.hours()));
         }
     };
 
@@ -261,22 +281,36 @@ SkyControlFactory::create(SkyNode*         sky,
     grid->setChildVertAlign( Control::ALIGN_CENTER );
     grid->setChildSpacing( 10 );
     grid->setHorizFill( true );
-
-    grid->setControl( 0, 0, new LabelControl("Time (Hours UTC): ", 16) );
-
+    
     DateTime dt = sky->getDateTime();
 
-    HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
-    skySlider->setHorizFill( true, 300 );
-    skySlider->addEventHandler( new SkyTimeSliderHandler(sky) );
-
-    grid->setControl(2, 0, new LabelControl(skySlider) );
+    int r=0;
+    grid->setControl( 0, r, new LabelControl("Time (Hours UTC): ", 16) );
+    HSliderControl* skyHoursSlider = grid->setControl(1, r, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
+    skyHoursSlider->setHorizFill( true, 250 );
+    skyHoursSlider->addEventHandler( new SkyHoursSlider(sky) );
+    grid->setControl(2, r, new LabelControl(skyHoursSlider) );
+    
+    ++r;
+    grid->setControl( 0, r, new LabelControl("Month: ", 16) );
+    HSliderControl* skyMonthSlider = grid->setControl(1, r, new HSliderControl( 0.0f, 11.0f, dt.month() ));
+    skyMonthSlider->setHorizFill( true, 250 );
+    skyMonthSlider->addEventHandler( new SkyMonthSlider(sky) );
+    grid->setControl(2, r, new LabelControl(skyMonthSlider) );
+    
+    ++r;
+    grid->setControl( 0, r, new LabelControl("Year: ", 16) );
+    HSliderControl* skyYearSlider = grid->setControl(1, r, new HSliderControl( 1970.0f, 2061.0f, dt.year() ));
+    skyYearSlider->setHorizFill( true, 250 );
+    skyYearSlider->addEventHandler( new SkyMonthSlider(sky) );
+    grid->setControl(2, r, new LabelControl(skyYearSlider) );
 
 #ifdef USE_AMBIENT_SLIDER
-    grid->setControl(0, 1, new LabelControl("Min.Ambient: ", 16) );
-    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
+    ++r;
+    grid->setControl(0, r, new LabelControl("Min.Ambient: ", 16) );
+    HSliderControl* ambient = grid->setControl(1, r, new HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
     ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
-    grid->setControl(2, 1, new LabelControl(ambient) );
+    grid->setControl(2, r, new LabelControl(ambient) );
 #endif
 
     return grid;
@@ -416,17 +450,17 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 #define LC "[MapNodeHelper] "
 
 osg::Group*
-MapNodeHelper::load(osg::ArgumentParser& args,
-                    osgViewer::View*     view,
-                    Container*           userContainer ) const
+MapNodeHelper::load(osg::ArgumentParser&  args,
+                    osgViewer::View*      view,
+                    Container*            userContainer,
+                    const osgDB::Options* readOptions) const
 {
     // do this first before scanning for an earth file
     std::string outEarth;
     args.read( "--out-earth", outEarth );
 
-    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
     
-#if 1
     Config c;
     c.add("elevation_smoothing", false);
     TerrainOptions to(c);
@@ -434,11 +468,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     MapNodeOptions defMNO;
     defMNO.setTerrainOptions( to );
 
-    options->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
-#endif
+    myReadOptions->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
 
     // read in the Earth file:
-    osg::Node* node = osgDB::readNodeFiles(args);
+    osg::Node* node = osgDB::readNodeFiles(args, myReadOptions.get());
 
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )
@@ -548,6 +581,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool kmlUI         = args.read("--kmlui");
     bool inspect       = args.read("--inspect");
     bool useContourMap = args.read("--contourmap");
+    bool useMonitor    = args.read("--monitor");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -880,6 +914,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
     }
+
+    if (useMonitor)
+    {
+        mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
+    }
     
 
     // Process extensions.
@@ -914,6 +953,7 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
     view->addEventHandler(new osgViewer::RecordCameraPathHandler());
+    view->addEventHandler(new osgViewer::ScreenCaptureHandler());
 }
 
 

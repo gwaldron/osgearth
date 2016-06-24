@@ -156,6 +156,11 @@ namespace osgEarth { namespace Features
         FeatureID getFID() const;
 
         /**
+         * Set the FID of this feature.
+         */
+        void setFID(FeatureID fid);
+
+        /**
          * The geometry in this feature.
          */
         void setGeometry( Symbology::Geometry* geom );
@@ -194,6 +199,7 @@ namespace osgEarth { namespace Features
         void set( const std::string& name, double value );
         void set( const std::string& name, int value );
         void set( const std::string& name, bool value );
+        void set( const std::string& name, const AttributeValue& value);
 
         /** Sets the attribute to NULL */         
         void setNull( const std::string& name );

@@ -85,7 +85,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         }
 
         osg::ref_ptr< osg::StateSet > ss = geode.getStateSet();
-        if (ss)
+        if (ss.valid())
         {
             pushStateSet(ss.get());
         }
@@ -96,7 +96,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             if (geometry)
             {
                 osg::ref_ptr< osg::StateSet > geomSS = geometry->getStateSet();
-                if (geomSS.get())
+                if (geomSS.valid())
                 {
                     pushStateSet( geomSS.get() );
                 }
@@ -104,7 +104,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
                 GeometryVector& geometries = _geometries[_ssStack];
                 geometries.push_back(geometry);
 
-                if (geomSS.get())
+                if (geomSS.valid())
                 {
                     popStateSet();
                 }
@@ -113,7 +113,7 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             }
         }
         
-        if (ss)
+        if (ss.valid())
         {
             popStateSet();
         }
@@ -166,10 +166,9 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         }
 
         // Run MERGE_GEOMETRY so that it will merge all the primitive sets
-        osgUtil::Optimizer opt;
-        opt.optimize( result, 
-            osgUtil::Optimizer::MERGE_GEOMETRY
-            );
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        result->accept( mg );
        
         //osgDB::writeNodeFile(*result, "clustered.osg");
 

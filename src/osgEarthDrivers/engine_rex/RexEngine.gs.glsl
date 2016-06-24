@@ -1,4 +1,4 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
 
 
 #if 0 // currently unused - triangle discard implemented on CPU instead

@@ -41,11 +41,11 @@ namespace
 }
 
 
-class BingTileSource : public TileSource
+class BingTileSource : public TileSource, public osgEarth::Drivers::BingOptions
 {
 private:
-    osgEarth::Drivers::BingOptions _options;
-    osg::ref_ptr<osgDB::Options>   _dbOptions;
+    //osgEarth::Drivers::BingOptions _options;
+    osg::ref_ptr<const osgDB::Options> _readOptions;
     Random                         _prng;
     bool                           _debugDirect;
     osg::ref_ptr<Geometry>         _geom;
@@ -59,7 +59,8 @@ public:
      */
     BingTileSource(const TileSourceOptions& options) : 
       TileSource   ( options ),
-      _options     ( options ),
+      BingOptions  ( options ),
+      //_options     ( options ),
       _debugDirect ( false ),
       _tileURICache( true, 1024u )
     {
@@ -82,20 +83,18 @@ public:
      */
     Status initialize(const osgDB::Options* dbOptions)
     {
-        // Always apply the NO CACHE policy.  Bing doesn't allow caching of their data.
-        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _readOptions = dbOptions;
 
         // If the user did not include an API key, fail.
-        if ( !_options.key().isSet() )
+        if ( !apiKey().isSet() )
         {
             return Status::Error("Bing API key is required");
         }
 
         // If the user did not specify an imagery set, default to aerial.
-        if ( !_options.imagerySet().isSet() )
+        if ( !imagerySet().isSet() )
         {
-            _options.imagerySet() = "Aerial";
+            imagerySet() = "Aerial";
         }
 
         // Bing maps profile is spherical mercator with 2x2 tiles are the root.
@@ -111,6 +110,7 @@ public:
     
     /**
      * Tell the terrain engine not to cache tiles form this source.
+     * Always apply the NO CACHE policy.  Bing doesn't allow caching of their data.
      */
     CachePolicy getCachePolicyHint(const Profile*) const
     {
@@ -127,7 +127,7 @@ public:
 
         if (_debugDirect)
         {
-            image = URI(getDirectURI(key)).getImage(_dbOptions.get(), progress);
+            image = URI(getDirectURI(key)).getImage(_readOptions.get(), progress);
         }
 
         else
@@ -149,12 +149,12 @@ public:
             // construct the request URI:
             std::string request = Stringify()
                 << std::setprecision(12)
-                << _options.imageryMetadataAPI().get()     // base REST API
-                << "/"    << _options.imagerySet().get()   // imagery set to use
+                << imageryMetadataAPI().get()     // base REST API
+                << "/"    << imagerySet().get()   // imagery set to use
                 << "/"    << geo.y() << "," << geo.x()     // center point in lat/long
                 << "?zl=" << key.getLOD() + 1              // zoom level
                 << "&o=json"                               // response format
-                << "&key=" << _options.key().get();        // API key
+                << "&key=" << apiKey().get();        // API key
 
             // check the URI cache.
             URI                  location;
@@ -170,10 +170,10 @@ public:
             {
                 unsigned c = ++_apiCount;
                 if ( c % 25 == 0 )
-                    OE_INFO << LC << "API calls = " << c << std::endl;
+                    OE_DEBUG << LC << "API calls = " << c << std::endl;
             
                 // fetch it:
-                ReadResult metadataResult = URI(request).readString(_dbOptions, progress);
+                ReadResult metadataResult = URI(request).readString(_readOptions, progress);
 
                 if ( metadataResult.failed() )
                 {

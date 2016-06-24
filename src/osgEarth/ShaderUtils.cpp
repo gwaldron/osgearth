@@ -23,6 +23,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/URI>
+#include <osgEarth/GLSLChunker>
 #include <osg/ComputeBoundsVisitor>
 #include <osgDB/FileUtils>
 #include <list>
@@ -41,6 +42,8 @@ namespace
 
 
     typedef std::list<const osg::StateSet*> StateSetStack;
+
+#if 0
 
     static osg::StateAttribute::GLModeValue 
     getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
@@ -65,7 +68,9 @@ namespace
         }
         return base_val;
     }
+#endif
     
+#if 0
     static const osg::Light*
     getLightByID(const StateSetStack& statesetStack, int id)
     {
@@ -98,6 +103,7 @@ namespace
         }
         return base_light;
     }
+#endif
     
     static const osg::Material*
     getFrontMaterial(const StateSetStack& statesetStack)
@@ -185,7 +191,7 @@ namespace
         return yes;
     }
 
-    int replaceVarying(GLSLChunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
+    int replaceVarying(GLSLChunker::Chunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
     {
         std::stringstream buf;
         buf << "#pragma vp_varying";
@@ -204,32 +210,36 @@ namespace
             }
         }
         
-        chunks[index].glsl_chunk_text = buf.str();
-        chunks[index].glsl_chunk_type = GLSLChunk::DIRECTIVE;
+        chunks[index].text = buf.str();
+        chunks[index].type = GLSLChunker::Chunk::TYPE_DIRECTIVE;
 
         std::stringstream buf2;
         for(int i=offset; i<tokens.size(); ++i)
             buf2 << (i==offset?"":" ") << tokens[i];
 
-        GLSLChunk newChunk;
-        newChunk.glsl_chunk_type = GLSLChunk::STATEMENT;
-        newChunk.glsl_chunk_text = buf2.str();
+        GLSLChunker::Chunk newChunk;
+        newChunk.type = GLSLChunker::Chunk::TYPE_STATEMENT;
+        newChunk.text = buf2.str();
         chunks.insert( chunks.begin()+index, newChunk );
 
         return index+1;
     }
 
-    bool replaceVaryings(osg::Shader::Type type, GLSLChunks& chunks)
+    bool replaceVaryings(osg::Shader::Type type, GLSLChunker::Chunks& chunks)
     {
         bool madeChanges = false;
 
         for(int i=0; i<chunks.size(); ++i)
         {
-            if ( chunks[i].glsl_chunk_type == GLSLChunk::STATEMENT )
+            if ( chunks[i].type == GLSLChunker::Chunk::TYPE_STATEMENT )
             {
                 std::string replacement;
+                /*
                 StringVector tokens;
-                StringTokenizer(chunks[i].glsl_chunk_text, tokens, " \t\n", "", false, true);
+                StringTokenizer(chunks[i].text, tokens, " \t\n", "", false, true);
+                */
+                const std::vector<std::string>& tokens = chunks[i].tokens;
+
                 if      ( tokens.size() > 1 && tokens[0] == "out" && type != osg::Shader::FRAGMENT )
                     i = replaceVarying(chunks, i, tokens, 1, ""), madeChanges = true;
                 else if ( tokens.size() > 1 && tokens[0] == "in" && type != osg::Shader::VERTEX )
@@ -247,6 +257,62 @@ namespace
 
         return madeChanges;
     }
+
+    void applySupportForNoFFPImpl(GLSLChunker::Chunks& chunks)
+    {
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+        // for geometry and tessellation shaders, replace the built-ins with 
+        // osg uniform aliases.
+        const char* lines[4] = {
+            "uniform mat4 osg_ModelViewMatrix;",
+            "uniform mat4 osg_ProjectionMatrix;",
+            "uniform mat4 osg_ModelViewProjectionMatrix;",
+            "uniform mat3 osg_NormalMatrix;"
+        };
+    
+        GLSLChunker chunker;
+
+        for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
+        {
+            if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE)
+            {
+                for (unsigned line = 0; line < 4; ++line) {
+                    chunk = chunks.insert(chunk, chunker.chunkLine(lines[line]));
+                    ++chunk;
+                }
+                break;
+            }
+        }
+
+        chunker.replace(chunks, "gl_ModelViewMatrix", "osg_ModelViewMatrix");
+        chunker.replace(chunks, "gl_ProjectionMatrix", "osg_ProjectionMatrix");
+        chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg_ModelViewProjectionMatrix");
+        chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
+    
+#endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    }
+}
+
+void
+ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
+{
+    if (!shader)
+        return;
+            
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+    GLSLChunker chunker;
+    GLSLChunker::Chunks chunks;
+    chunker.read(shader->getShaderSource(), chunks);
+
+    applySupportForNoFFPImpl(chunks);
+
+    std::string output;
+    chunker.write(chunks, output);
+    shader->setShaderSource(output);
+
+#endif // !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
 }
 
 void
@@ -280,71 +346,48 @@ ShaderPreProcessor::run(osg::Shader* shader)
             declPos = 0;
         }
 
-        // Perform the no-FFP replacements:
-        if ( s_NO_FFP )
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+        int maxLights = Registry::capabilities().getMaxLights();
+
+        for( int i=0; i<maxLights; ++i )
         {
-            int maxLights = Registry::capabilities().getMaxLights();
-
-            for( int i=0; i<maxLights; ++i )
-            {
-                if ( replaceAndInsertDeclaration(
-                    source, declPos,
-                    Stringify() << "gl_LightSource[" << i << "]",
-                    Stringify() << "osg_LightSource" << i,
-                    Stringify() 
-                        << osg_LightSourceParameters::glslDefinition() << "\n"
-                        << "uniform osg_LightSourceParameters " ) )
-                {
-                    dirty = true;
-                }
-
-                if ( replaceAndInsertDeclaration(
-                    source, declPos,
-                    Stringify() << "gl_FrontLightProduct[" << i << "]", 
-                    Stringify() << "osg_FrontLightProduct" << i,
-                    Stringify()
-                        << osg_LightProducts::glslDefinition() << "\n"
-                        << "uniform osg_LightProducts " ) )
-                {
-                    dirty = true;
-                }
-            }
-        }
-
-#if 1
-        // Chunk the shader.
-        GLSLChunker chunker;
-        GLSLChunks chunks;
-        chunker.read( source, chunks );
-        dirty = replaceVaryings( shader->getType(), chunks );
-        if ( dirty )
-            chunker.write( chunks, source );
-
-#else
-
-        // Perform shader composition adjustments on ins and outs.        
-        std::vector<Varying> v;
-        collectVaryings( shader->getType(), source, v );
-        for(std::vector<Varying>::iterator i = v.begin(); i != v.end(); ++i)
-        {
-            if (replaceAndInsertLiteral(
-                source,
-                declPos,
-                i->original,
-                i->definition,
-                Stringify() << "#pragma vp_varying " << i->qualifier << i->definition << "\n" ))
+            if ( replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_LightSource[" << i << "]",
+                Stringify() << "osg_LightSource" << i,
+                Stringify() 
+                    << osg_LightSourceParameters::glslDefinition() << "\n"
+                    << "uniform osg_LightSourceParameters " ) )
             {
                 dirty = true;
             }
 
-            OE_DEBUG << "Replaced \"" << i->original << "\" with \"" << i->definition << "\"\n";
+            if ( replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                Stringify() << "osg_FrontLightProduct" << i,
+                Stringify()
+                    << osg_LightProducts::glslDefinition() << "\n"
+                    << "uniform osg_LightProducts " ) )
+            {
+                dirty = true;
+            }
         }
 #endif
 
-        if ( dirty )
-        {
-            shader->setShaderSource( source );
-        }
+        // Chunk the shader.
+        GLSLChunker chunker;
+        GLSLChunker::Chunks chunks;
+        chunker.read( source, chunks );
+
+        applySupportForNoFFPImpl(chunks);
+
+        // Replace varyings with directives that the ShaderFactory can interpret
+        // when creating interface blocks.
+        replaceVaryings( shader->getType(), chunks );
+        chunker.write( chunks, source );
+        shader->setShaderSource( source );
     }
 }
 
@@ -942,206 +985,4 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
             vp->removeShader("oe_discardalpha_frag");
         }
     }
-}
-
-//.........................................................................
-
-void
-GLSLChunker::read(const std::string& input, GLSLChunks& output) const
-{
-    char break_char = ';';
-    char ch;
-    int line_number =1;
-    int chunck_number =1;
-
-    std::istringstream file_in(input);
-
-    //skips whitespace until the first line of the program
-    ch = file_in.peek(); 
-    if ((!isalpha(ch) || !ispunct(ch) )){
-        while (file_in >> std::noskipws >> ch) {
-            if (isalpha(ch) || ispunct(ch)){
-                break;
-            }
-
-        }
-    }
-
-    //glslChunk_type holds chuck text and chunk type
-    GLSLChunk *new_chunk = new GLSLChunk;
-    //set the initial type and save first character 
-    if (ch == '#'){
-        new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
-        new_chunk->glsl_chunk_text = ch;
-    } else {
-        if (ch == '/'){
-            new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-            new_chunk->glsl_chunk_text = ch;
-        } else {
-            new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
-            new_chunk->glsl_chunk_text = ch;
-        }
-    }
-
-
-    //loop over file
-    while (file_in >> std::noskipws >> ch)
-    {
-        int brace_count =0;
-        int comment_block =0;
-        if ((new_chunk->glsl_chunk_type==GLSLChunk::DIRECTIVE)||(new_chunk->glsl_chunk_type==GLSLChunk::COMMENT))
-        {
-            break_char='\n';
-        }else{
-            break_char = ';';
-        }
-        //for a directive, drop the last character, otherwise add it to the string
-        if (ch != '\n')
-            new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-
-        //if the first two chars are /* set block comment, otherwise block comment is caught later too
-        if ((ch == '/')&&(file_in.peek()=='*')){
-            comment_block =1;
-        }
-        //loop until it finds a break caracter
-        while (file_in >> std::noskipws >> ch) {
-            //check for directive or comment
-            if ((ch == '#') || ((ch == '/')&&(file_in.peek()=='/'))){
-                if (brace_count == 0)
-                    new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
-                break_char='\n';
-            }
-            //check for start of block comment outside of function
-            if ((ch == '/')&&(file_in.peek()=='*')&&(brace_count==0)){
-                new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
-                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-                //use * as break but still need to read / as same chunk
-                break_char='*';
-                file_in >> std::noskipws >> ch;
-                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-                file_in >> std::noskipws >> ch;
-                comment_block =1;
-            }
-
-            //now check for end of chunks
-
-            //End of chunk is at the break character, correct number of end braces, and not in comment block
-            if ((ch == break_char) && (brace_count == 0) && (comment_block==0)) {
-                line_number++;
-                //don't save the newline but do save semi colon and right brace end characters
-                if (ch != '\n')
-                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-
-                // try to find a / and then check if there is a following / to set type to comment
-                std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
-                if ((found != -1)&&(new_chunk->glsl_chunk_text.at(found+1)=='/')){
-                    new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                }
-
-
-                //push into vector and clear text for next chunk
-                output.push_back(*new_chunk);
-                new_chunk->glsl_chunk_text = "";
-                chunck_number++;
-
-                //peek ahead to the next line to set initial chunk type and break
-                char ch_next = file_in.peek();
-                if (ch_next == '#'){
-                    new_chunk->glsl_chunk_type=GLSLChunk::DIRECTIVE;
-
-                } else {
-                    if (ch_next == '/'){
-                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                    } else {
-                        new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
-                    }
-                }
-                break;
-
-                //Not at the end of a chunk so check for function
-            } else {
-                if (ch == '{'){
-                    //found a left brace but check if part of a comment
-                    std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
-                    if ((found != -1)&&((new_chunk->glsl_chunk_text.at(found+1)=='/')||(new_chunk->glsl_chunk_text.at(found+1)=='*'))){
-                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                    } else {
-                        //function found so change break character and chunk type
-                        break_char='}';
-                        brace_count++;
-                        new_chunk->glsl_chunk_type=GLSLChunk::FUNCTION;
-                    }
-                }
-                //keep track of right braces to make sure chunk has all nested statements
-                if (ch == '}'){
-                    //found a right brace but check if part of a comment
-                    std::size_t found = new_chunk->glsl_chunk_text.find_first_of("/");
-                    if ((found != -1)&&((new_chunk->glsl_chunk_text.at(found+1)=='/')||(new_chunk->glsl_chunk_text.at(found+1)=='*'))){
-                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                    } else {
-                        brace_count--;
-                        if (brace_count == 0){
-                            //Found end of function, save right brace and push entry
-                            new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-                            output.push_back(*new_chunk);
-                            new_chunk->glsl_chunk_text = "";
-                            new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
-                            chunck_number++;
-                            break;
-                        }
-                    }
-                }
-
-
-                //checking for * as break char isn't sufficient so peek ahead and see if it is an * or */ outside of func
-                char ch_next = file_in.peek();
-                if ((ch == '*') && (ch_next == '/') && (brace_count==0)){
-                    comment_block=0;
-                    //end of block comment found so save * and /
-                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-
-                    file_in >> std::noskipws >> ch;
-                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-                    new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                    output.push_back(*new_chunk);
-                    //init new chunk
-                    new_chunk->glsl_chunk_text = "";
-                    new_chunk->glsl_chunk_type=GLSLChunk::STATEMENT;
-                    chunck_number++;
-                    break;
-                }
-                //if the program does not end on a newline, comments or directives will not end on break character so 
-                //check if next char is EOF
-                if (ch_next == EOF){
-                    //next char is EOF before break character was found so end chunk
-                    //try to find comments by skipping whitespace at beginning of chunk
-                    std::size_t found = new_chunk->glsl_chunk_text.find_first_not_of(" ");
-                    if (found != std::string::npos && new_chunk->glsl_chunk_text.at(found) == '/') {
-                        new_chunk->glsl_chunk_type=GLSLChunk::COMMENT;
-                    }
-                    new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-                    output.push_back(*new_chunk);
-                    new_chunk->glsl_chunk_text = "";
-                    chunck_number++;
-                    break;
-                }
-
-                //character is not a break character so save it
-                new_chunk->glsl_chunk_text = new_chunk->glsl_chunk_text + ch;
-            }
-        }
-    }
-
-    delete new_chunk;
-}
-
-void
-GLSLChunker::write(const GLSLChunks& input, std::string& output) const
-{
-    std::stringstream buf;
-    for(int i=0; i<input.size(); ++i)
-    {
-        buf << input[i].glsl_chunk_text << "\n";
-    }
-    output = buf.str();
 }

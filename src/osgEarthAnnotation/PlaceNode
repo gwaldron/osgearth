@@ -111,7 +111,6 @@ namespace osgEarth { namespace Annotation
         void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
-
     public: // GeoPositionNode override
 
         virtual void setPriority( float value );
@@ -124,8 +123,7 @@ namespace osgEarth { namespace Annotation
     protected:
 
         virtual ~PlaceNode() { }
-        
-    private:
+
         osg::ref_ptr<osg::Image>           _image;
         std::string                        _text;
         Style                              _style;
@@ -139,12 +137,13 @@ namespace osgEarth { namespace Annotation
         GeoPoint                 _geoPointProj;
 
         void init();
+        void updateLayoutData();
 
+    public:
         // required by META_Node, but this object is not cloneable
         PlaceNode() { }
         PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
-
-        void updateLayoutData();
+        void setConfig(const Config& conf);
     };
 
 } } // namespace osgEarth::Annotation

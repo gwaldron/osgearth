@@ -107,14 +107,13 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
         ilo.cachePolicy() = CachePolicy::NO_CACHE;
         ImageLayer* layer = new ImageLayer( ilo );
         layer->setTargetProfileHint( profile );
+        layer->setReadOptions(_dbOptions.get());
+        layer->open();
         _imageLayers[i] = layer;
 
         Config conf = ilo.getConfig();
         _warps[i] = conf.value("warp", _options.warpFactor().get());
     }
-
-    // set up the IO options so that we do not cache input data.
-    CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
     // set up the noise generator.
     const float F[4] = { 4.0f, 16.0f, 4.0f, 8.0f };
@@ -130,6 +129,12 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
     _noiseGen.setOctaves    ( 8 );
 
     return STATUS_OK;
+}
+
+CachePolicy
+LandUseTileSource::getCachePolicyHint() const
+{
+    return CachePolicy::NO_CACHE;
 }
 
 namespace

@@ -374,8 +374,11 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             }
 
             // transform into target SRS.
-            transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
-            transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+            if (srs)
+            {
+                transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
+                transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+            }
 
             // cache the length for later use.
             corner->height = (corner->roof - corner->base).length();
@@ -1200,19 +1203,19 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
-        osgUtil::Optimizer o;
-
-        unsigned mask = osgUtil::Optimizer::MERGE_GEOMETRY;
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        group->accept(mg);
 
         // Because the mesh optimizers damaga line geometry.
         if ( !_outlineSymbol.valid() )
         {
-            mask |= osgUtil::Optimizer::INDEX_MESH;
-            mask |= osgUtil::Optimizer::VERTEX_PRETRANSFORM;
-            mask |= osgUtil::Optimizer::VERTEX_POSTTRANSFORM;
+            osgUtil::Optimizer o;
+            o.optimize(group,
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
         }
-
-        o.optimize( group, mask );
     }
 
     // Prepare buffer objects.

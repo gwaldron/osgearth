@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CachePolicy>
+#include <osgEarth/Cache>
 #include <limits.h>
 
 using namespace osgEarth;
@@ -62,33 +63,30 @@ _minTime( rhs._minTime )
     //nop
 }
 
-bool
-CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
-{
-    if ( dbOptions )
-    {
-        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::CachePolicy" );
-        if ( !jsonString.empty() )
-        {
-            Config conf;
-            conf.fromJSON( jsonString );
-            CachePolicy temp( conf );
-            out->mergeAndOverride( temp );
-            return true;
-        }
-    }
-    return false;
-}
+//optional<CachePolicy>
+//CachePolicy::get(const osgDB::Options* readOptions)
+//{
+//    optional<CachePolicy> policy;
+//    if (readOptions)
+//    {
+//        CacheSettings* settings = CacheSettings::get(readOptions);
+//        if (settings)
+//        {
+//            policy = settings->cachePolicy().get();
+//        }
+//    }
+//    return policy;
+//}
 
-void
-CachePolicy::apply(osgDB::Options* dbOptions) const
-{
-    if ( dbOptions )
-    {
-        Config conf = getConfig();
-        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
-    }
-}
+//void
+//CachePolicy::store(osgDB::Options* dbOptions) const
+//{
+//    if ( dbOptions )
+//    {
+//        Config conf = getConfig();
+//        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
+//    }
+//}
 
 void
 CachePolicy::mergeAndOverride(const CachePolicy& rhs)

@@ -43,7 +43,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
             _smoothing         ( false ),
-            _normalMaps        ( false )
+            _normalMaps        ( false ),
+            _adaptivePolarRangeFactor( false )
          {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -92,6 +93,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& normalMaps() { return _normalMaps; }
         const optional<bool>& normalMaps() const { return _normalMaps; }
 
+        /**
+         * Whether to automatically adjust(reduce) the minTileRangeFactor with increase in
+         * latitude. This prevents overtessellation in the polar regions. Only works with
+         * a geocentric map. Defaults to false.
+         */
+        optional<bool>& adaptivePolarRangeFactor() { return _adaptivePolarRangeFactor; }
+        const optional<bool>& adaptivePolarRangeFactor() const { return _adaptivePolarRangeFactor; }
+
     public:
 
         /** @deprecated */
@@ -111,6 +120,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.updateIfSet( "incremental_update", _incrementalUpdate );
             conf.updateIfSet( "elevation_smoothing", _smoothing );
             conf.updateIfSet( "normal_maps", _normalMaps );
+            conf.updateIfSet( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
 
             return conf;
         }
@@ -133,6 +143,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.getIfSet( "incremental_update", _incrementalUpdate );
             conf.getIfSet( "elevation_smoothing", _smoothing );
             conf.getIfSet( "normal_maps", _normalMaps );
+            conf.getIfSet( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
        }
 
         optional<float>               _skirtRatio;
@@ -145,6 +156,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>                _incrementalUpdate;
         optional<bool>                _smoothing;
         optional<bool>                _normalMaps;
+        optional<bool>                _adaptivePolarRangeFactor;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

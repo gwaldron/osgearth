@@ -380,12 +380,16 @@ const char * LoaderFile::load( const char *name ) {
     }
     fseek( f, 0, SEEK_END );
     long len = ftell( f );
-    fseek( f, 0, SEEK_SET );
-    char *buffer = (char*) malloc( len + 1 );
-    fread( (void*) buffer, len, 1, f );
-    fclose( f );
-    buffer[ len ] = 0;
-    return buffer;
+    if (len > 0)
+    {
+        fseek( f, 0, SEEK_SET );
+        char *buffer = (char*) malloc( len + 1 );
+        fread( (void*) buffer, (size_t)len, 1, f );
+        fclose( f );
+        buffer[ len ] = 0;
+        return buffer;
+    }
+    else return 0L;
 }
 
 

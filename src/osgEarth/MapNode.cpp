@@ -48,7 +48,7 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
-namespace 
+namespace
 {
     // adapter that lets MapNode listen to Map events
     struct MapNodeMapCallbackProxy : public MapCallback
@@ -101,13 +101,13 @@ public:
       }
 
       virtual void apply(osg::PagedLOD& node)
-      {        
-          //The PagedLOD node will contain two filenames, the first is empty and is the actual geometry of the          
+      {
+          //The PagedLOD node will contain two filenames, the first is empty and is the actual geometry of the
           //tile and the second is the filename of the next tile.
           if (node.getNumFileNames() > 1)
           {
               //Get the child filename
-              const std::string &filename = node.getFileName(1);              
+              const std::string &filename = node.getFileName(1);
               if (osgEarth::Registry::instance()->isBlacklisted(filename))
               {
                   //If the tile is blacklisted, we set the actual geometry, child 0, to always display
@@ -126,16 +126,16 @@ public:
                       if (node.getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
                       {
                           node.setRange( 0, ranges->_minRange, ranges->_maxRange );
-                          node.setRange( 1, ranges->_maxRange, FLT_MAX );                          
+                          node.setRange( 1, ranges->_maxRange, FLT_MAX );
                       }
                       else
-                      {                          
+                      {
                           node.setRange(0, ranges->_minRange, ranges->_maxRange);
                           node.setRange(1, 0, ranges->_minRange);
                       }
-                  }                  
+                  }
               }
-              
+
           }
           traverse(node);
       }
@@ -158,7 +158,7 @@ MapNode::load(osg::ArgumentParser& args)
                 return r.release<MapNode>();
             }
         }
-    }    
+    }
     return 0L;
 }
 
@@ -178,7 +178,7 @@ MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
                 return r.release<MapNode>();
             }
         }
-    }    
+    }
     return 0L;
 }
 
@@ -228,7 +228,7 @@ MapNode::init()
     // deleting during startup. It is possible that during startup, a driver
     // will load that will take a reference to the MapNode (like in a
     // ModelSource node operation) and we don't want that deleting the MapNode
-    // out from under us. 
+    // out from under us.
     // This is paired by an unref_nodelete() at the end of this method.
     this->ref();
 
@@ -259,14 +259,14 @@ MapNode::init()
     // will make their way to any read* calls down the pipe
     const osgDB::Options* global_options = _map->getGlobalOptions();
 
-    osg::ref_ptr<osgDB::Options> local_options = global_options ? 
+    osg::ref_ptr<osgDB::Options> local_options = global_options ?
         Registry::instance()->cloneOrCreateOptions( global_options ) :
         NULL;
 
     if ( local_options.valid() )
     {
         OE_INFO << LC
-            << "Options string = " 
+            << "Options string = "
             << (local_options.valid()? local_options->getOptionString() : "<empty>")
             << std::endl;
     }
@@ -293,8 +293,8 @@ MapNode::init()
         _terrainEngineContainer->getOrCreateStateSet()->addUniform(
             Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
 
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
-            GL_LIGHTING, 
+        _terrainEngineContainer->getOrCreateStateSet()->setMode(
+            GL_LIGHTING,
             terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
@@ -302,7 +302,7 @@ MapNode::init()
     {
         // inform the terrain engine of the map information now so that it can properly
         // initialize it's CoordinateSystemNode. This is necessary in order to support
-        // manipulators and to set up the texture compositor prior to frame-loop 
+        // manipulators and to set up the texture compositor prior to frame-loop
         // initialization.
         _terrainEngine->preInitialize( _map.get(), terrainOptions );
         _terrainEngineContainer->addChild( _terrainEngine );
@@ -373,11 +373,11 @@ MapNode::init()
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
         stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
-            GL_LIGHTING, 
+            GL_LIGHTING,
             _mapNodeOptions.enableLighting().value() ? 1 : 0));
 
-        stateset->setMode( 
-            GL_LIGHTING, 
+        stateset->setMode(
+            GL_LIGHTING,
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 
@@ -388,14 +388,22 @@ MapNode::init()
         OE_INFO << LC << "Adding ellipsoid uniforms.\n";
 
         // for a geocentric map, use an ellipsoid unit-frame transform and its inverse:
-        osg::Vec3d ellipFrameInverse(
-            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
-            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
-            _map->getSRS()->getEllipsoid()->getRadiusPolar());
-        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f(ellipFrameInverse)) );
+        if (_map->getSRS() != NULL && _map->getSRS()->getEllipsoid() != NULL)
+        {
+            osg::Vec3d ellipFrameInverse(
+                _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+                _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+                _map->getSRS()->getEllipsoid()->getRadiusPolar());
+            stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f(ellipFrameInverse)) );
 
-        osg::Vec3d ellipFrame = osg::componentDivide(osg::Vec3d(1.0,1.0,1.0), ellipFrameInverse);
-        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f(ellipFrame)) );
+            osg::Vec3d ellipFrame = osg::componentDivide(osg::Vec3d(1.0,1.0,1.0), ellipFrameInverse);
+            stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f(ellipFrame)) );
+        }
+        else
+        {
+            stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f()) );
+            stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f()) );
+        }
     }
 
     // install the default rendermode uniform:
@@ -417,7 +425,7 @@ MapNode::~MapNode()
 
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );
-    //Remove our model callback from any of the model layers in the map    
+    //Remove our model callback from any of the model layers in the map
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
         this->onModelLayerRemoved( itr->get() );
@@ -460,6 +468,8 @@ MapNode::getMapSRS() const
 Terrain*
 MapNode::getTerrain()
 {
+    if (getTerrainEngine() == NULL)
+          return NULL;
     return getTerrainEngine()->getTerrain();
 }
 
@@ -493,9 +503,9 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
         if ( options )
             extension->setDBOptions( options );
 
-        else if ( getMap()->getDBOptions() )
-            extension->setDBOptions( getMap()->getDBOptions() );
-        
+        else if ( getMap()->getReadOptions() )
+            extension->setDBOptions( getMap()->getReadOptions() );
+
         // start it.
         ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
         if ( extensionIF )
@@ -577,27 +587,27 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     if ( !layer->getEnabled() )
         return;
-    
+
     // install a noe operation that will associate this mapnode with
     // any MapNodeObservers loaded by the model layer:
     ModelSource* modelSource = layer->getModelSource();
     if ( modelSource )
     {
-        // install a post-processing callback on the ModelLayer's source 
+        // install a post-processing callback on the ModelLayer's source
         // so we can update the MapNode on new data that comes in:
         modelSource->addPostMergeOperation( new MapNodeObserverInstaller(this) );
     }
 
     // create the scene graph:
-    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getDBOptions(), 0L );
-    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
+    osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
+    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
 
     if ( node )
     {
         if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
         {
             OE_WARN
-                << "Illegal: tried to add the name model layer more than once: " 
+                << "Illegal: tried to add the name model layer more than once: "
                 << layer->getName()
                 << std::endl;
         }
@@ -660,10 +670,10 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
             {
                 _models->removeChild( node );
             }
-            
+
             _modelLayerNodes.erase( i );
         }
-        
+
         dirtyBound();
     }
 }
@@ -682,7 +692,7 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
             _models->removeChild( node.get() );
             _models->insertChild( newIndex, node.get() );
         }
-        
+
         dirtyBound();
     }
 }
@@ -703,7 +713,7 @@ namespace
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
-{    
+{
     if ( _terrainEngine )
     {
         decorator->addChild( _terrainEngine );
@@ -759,12 +769,13 @@ MapNode::traverse( osg::NodeVisitor& nv )
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
-    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR || nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
-        nv.setUserData( this );
+        VisitorData::store(nv, "osgEarth::MapNode", this);
+        //osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
+        //nv.setUserData( this );
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-        nv.setUserData( oldUserData.get() );
+        //nv.setUserData( oldUserData.get() );
     }
 
     else

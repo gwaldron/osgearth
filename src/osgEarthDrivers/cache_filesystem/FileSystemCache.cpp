@@ -107,14 +107,14 @@ namespace
 
         bool writeMetadata( const Config& meta );
 
+        std::string getHashedKey(const std::string&) const;
+
     protected:
         bool purgeDirectory( const std::string& dir );
 
         bool binValidForReading(bool silent =true);
 
         bool binValidForWriting(bool silent =false);
-
-        std::string getValidKey(const std::string&);
 
         const osgDB::Options* mergeOptions(const osgDB::Options* in);
 
@@ -211,12 +211,20 @@ namespace
     //------------------------------------------------------------------------
 
     std::string
-    FileSystemCacheBin::getValidKey(const std::string& key)
+    FileSystemCacheBin::getHashedKey(const std::string& key) const
     {
         if ( getHashKeys() )
-            return Stringify() << std::hex << osgEarth::hashString(key);
+        {
+            unsigned hash = osgEarth::hashString(key);
+            unsigned b1 = (hash & 0xfff00000) >> 20;
+            unsigned b2 = (hash & 0x000fff00) >> 8;
+            unsigned b3 = (hash & 0x000000ff);
+            return Stringify() << std::hex << std::setfill('0') << std::setw(3) << b1 << "/" << b2 << "/" << std::setw(2) << b3;
+        }
         else
+        {
             return osgEarth::toLegalFileName(key);
+        }
     }
 
     bool
@@ -282,7 +290,8 @@ namespace
     FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
                                            const std::string&   rootPath) :
     CacheBin            ( binID ),
-    _binPathExists      ( false )
+    _binPathExists      ( false ),
+    _ok( true )
     {
         _binPath = osgDB::concatPaths( rootPath, binID );
         _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );
@@ -310,7 +319,7 @@ namespace
         }
         else
         {
-            osgDB::Options* merged = osg::clone(dbo);
+            osgDB::Options* merged = Registry::cloneOrCreateOptions(dbo);
             merged->setPluginStringData("Compressor", "zlib");
             return merged;
         }
@@ -323,7 +332,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -359,7 +368,7 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         std::string path = fileURI.full() + OSG_EXT;
 
         if ( !osgDB::fileExists(path) )
@@ -388,42 +397,6 @@ namespace
         }
     }
 
-#if 0
-    ReadResult
-    FileSystemCacheBin::readNode(const std::string& key)
-    {
-        if ( !binValidForReading() ) 
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        // mangle "key" into a legal path name
-        URI fileURI( getValidKey(key), _metaPath );
-        std::string path = fileURI.full() + OSG_EXT;
-
-        if ( !osgDB::fileExists(path) )
-            return ReadResult( ReadResult::RESULT_NOT_FOUND );
-
-        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readNode( path, _rwOptions.get() );
-            if ( !r.success() )
-                return ReadResult();
-
-            // read metadata
-            Config meta;
-            std::string metafile = fileURI.full() + ".meta";
-            if ( osgDB::fileExists(metafile) )
-                readMeta( metafile, meta );
-
-            ReadResult rr( r.getNode(), meta );
-            rr.setLastModifiedTime(timeStamp);
-            return rr;            
-        }
-    }
-#endif
-
     ReadResult
     FileSystemCacheBin::readString(const std::string& key, const osgDB::Options* readOptions)
     {
@@ -448,7 +421,7 @@ namespace
             return false;
 
         // convert the key into a legal filename:
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         
         osgDB::ReaderWriter::WriteResult r;
 
@@ -492,7 +465,7 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
+            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
         }
         else
         {
@@ -509,7 +482,7 @@ namespace
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
 
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
@@ -521,7 +494,7 @@ namespace
     FileSystemCacheBin::remove(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
         return ::unlink( path.c_str() ) == 0;
     }
@@ -530,7 +503,7 @@ namespace
     FileSystemCacheBin::touch(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( getValidKey(key), _metaPath );
+        URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
         return osgEarth::touchFile( path );
     }

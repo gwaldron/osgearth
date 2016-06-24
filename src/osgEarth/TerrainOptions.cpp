@@ -61,7 +61,8 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "vertical_scale", _verticalScale );
     conf.updateIfSet( "vertical_offset", _verticalOffset );
-    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
+    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
+    conf.updateIfSet( "range_factor", _minTileRangeFactor );  
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "min_lod", _minLOD );
     conf.updateIfSet( "first_lod", _firstLOD );
@@ -102,7 +103,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "vertical_scale", _verticalScale );
     conf.getIfSet( "vertical_offset", _verticalOffset );
-    conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
+    conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );   
+    conf.getIfSet( "range_factor", _minTileRangeFactor );   
     conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
     conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );
     conf.getIfSet( "first_lod", _firstLOD ); conf.getIfSet( "first_level", _firstLOD );

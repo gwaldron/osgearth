@@ -30,6 +30,7 @@
 #include <osgEarth/TraversalData>
 #include <osgEarth/Shadowing>
 #include <osgEarth/Utils>
+#include <osgEarth/TraversalData>
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
@@ -81,6 +82,9 @@ _lastTraversalFrame(0.0)
 void
 TileNode::create(const TileKey& key, EngineContext* context)
 {
+    if (!context)
+        return;
+
     _key = key;
 
     // Create mask records
@@ -327,7 +331,7 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
 
-    EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
+    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG); //static_cast<EngineContext*>( cv->getUserData() );
 
     // Shows all culled tiles, good for testing culling
     unsigned frame = cv->getFrameStamp()->getFrameNumber();
@@ -351,7 +355,7 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 bool
 TileNode::cull(osgUtil::CullVisitor* cv)
 {
-    EngineContext* context = static_cast<EngineContext*>( cv->getUserData() );
+    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
     // Horizon check the surface first:
@@ -481,18 +485,20 @@ TileNode::accept_cull(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
     
-
-    // update the timestamp so this tile doesn't become dormant.
-    _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
-    _lastTraversalTime = cv->getFrameStamp()->getReferenceTime();
-
-    if ( !cv->isCulled(*this) )
+    if (cv)
     {
-        cv->pushStateSet( getStateSet() );
+        // update the timestamp so this tile doesn't become dormant.
+        _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
+        _lastTraversalTime = cv->getFrameStamp()->getReferenceTime();
 
-        visible = cull( cv );
+        if ( !cv->isCulled(*this) )
+        {
+            cv->pushStateSet( getStateSet() );
 
-        cv->popStateSet();
+            visible = cull( cv );
+
+            cv->popStateSet();
+        }
     }
 
     return visible;
@@ -503,7 +509,7 @@ TileNode::accept_cull_stealth(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
     
-    //if ( !cv->isCulled(*this) )
+    if (cv)
     {
         cv->pushStateSet( getStateSet() );
 
@@ -698,7 +704,7 @@ void
 TileNode::load(osg::NodeVisitor& nv)
 {
     // Access the context:
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+    EngineContext* context = VisitorData::fetch<EngineContext>(nv, ENGINE_CONTEXT_TAG);
 
     // Create a new load request on demand:
     if ( !_loadRequest.valid() )

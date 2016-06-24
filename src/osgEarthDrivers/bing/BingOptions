@@ -40,8 +40,8 @@ namespace osgEarth { namespace Drivers
         /**
          * API Key to use to access Bing REST services. Required!
          */
-        optional<std::string>& key() { return _apiKey; }
-        const optional<std::string>& key() const { return _apiKey; }
+        optional<std::string>& apiKey() { return _apiKey; }
+        const optional<std::string>& apiKey() const { return _apiKey; }
 
         /**
          * Imagery set to access. Default is "Aerial".

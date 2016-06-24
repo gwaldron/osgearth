@@ -35,8 +35,16 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
+LocalGeometryNode::LocalGeometryNode() :
+GeoPositionNode(),
+_clampRelative(false)
+{
+    //nop - unused
+}
+
 LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
-GeoPositionNode()
+GeoPositionNode(),
+_clampRelative(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -47,7 +55,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      const Style& style) :
 GeoPositionNode(),
 _geom    ( geom ),
-_style   ( style )
+_style   ( style ),
+_clampRelative(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -59,7 +68,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      const Style& style) :
 GeoPositionNode(),
 _node    ( node ),
-_style   ( style )
+_style   ( style ),
+_clampRelative(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -299,7 +309,8 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-GeoPositionNode( mapNode, conf )
+GeoPositionNode( mapNode, conf ),
+_clampRelative(false)
 {
     if ( conf.hasChild("geometry") )
     {

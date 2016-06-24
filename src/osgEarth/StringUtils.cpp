@@ -210,6 +210,12 @@ osgEarth::hashString( const std::string& input )
     return h;
 }
 
+std::string
+osgEarth::hashToString(const std::string& input)
+{
+    return Stringify() << std::hex << std::setw(8) << std::setfill('0') << hashString(input);
+}
+
 
 /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
 osg::Vec4f

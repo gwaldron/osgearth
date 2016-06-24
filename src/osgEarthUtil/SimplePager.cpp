@@ -39,6 +39,7 @@ namespace
         MyProgressCallback(ProgressMaster* master)
         {
             _master = master;
+            _lastFrame = 0u;
         }
 
         // override from ProgressCallback
@@ -234,6 +235,9 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         node = new osg::Group();
     }
 
+    // notify any callbacks.
+    fire_onCreateNode(key, node.get());
+
     tileRadius = std::max(tileBounds.radius(), tileRadius);
 
     osg::PagedLOD* plod = new osg::PagedLOD;
@@ -323,4 +327,36 @@ osg::Node* SimplePager::loadKey(const TileKey& key, ProgressTracker* tracker)
 const osgEarth::Profile* SimplePager::getProfile() const
 {
     return _profile.get();
+}
+
+void SimplePager::addCallback(Callback* callback)
+{
+    if (callback)
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        _callbacks.push_back(callback);
+    }
+}
+
+void SimplePager::removeCallback(Callback* callback)
+{
+    if (callback)
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+        {
+            if (i->get() == callback)
+            {
+                _callbacks.erase(i);
+                break;
+            }
+        }
+    }
+}
+
+void SimplePager::fire_onCreateNode(const TileKey& key, osg::Node* node)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+        i->get()->onCreateNode(key, node);
 }

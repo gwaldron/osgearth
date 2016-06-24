@@ -37,6 +37,8 @@
 
 using namespace osgEarth;
 
+#define ENGINE_CONTEXT_TAG "osgEarth::Rex::EngineContext"
+
 namespace osgEarth {
     class TerrainEngine;
 }

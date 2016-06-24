@@ -220,19 +220,28 @@ namespace
                         {
                             Config& c = i->second[0];
                             if ( c.isSimple() )
+                            {
                                 value[i->first] = c.value();
+                            }
                             else
-                                value[i->first] = conf2json(c, nicer, depth+1);
+                            {
+                                Json::Value child = conf2json(c, nicer, depth+1);
+                                if (child.isObject())
+                                {
+                                    value[i->first] = child;
+                                }   
+                            }
                         }
                         else
                         {
-                            std::string array_key = Stringify() << i->first << "_$set";
+                            std::string array_key = Stringify() << i->first << "__array__";
                             Json::Value array_value( Json::arrayValue );
                             for( std::vector<Config>::iterator j = i->second.begin(); j != i->second.end(); ++j )
                             {
                                 array_value.append( conf2json(*j, nicer, depth+1) );
                             }
-                            value = array_value;
+                            value[array_key] = array_value;
+                            //value = array_value;
                         }
                     }
                 }
@@ -294,14 +303,24 @@ namespace
                 }
                 else if ( value.isArray() )
                 {
-                    if ( endsWith(*i, "_$set") )
+                    if ( endsWith(*i, "__array__") )
+                    {
+                        std::string key = i->substr(0, i->length()-9);
+                        for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
+                        {
+                            Config child;
+                            json2conf( *j, child, depth+1 );
+                            conf.add( key, child );
+                        }
+                    }
+                    else if ( endsWith(*i, "_$set") ) // backwards compatibility
                     {
                         std::string key = i->substr(0, i->length()-5);
                         for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
                         {
-                            Config child( key );
+                            Config child;
                             json2conf( *j, child, depth+1 );
-                            conf.add( child );
+                            conf.add( key, child );
                         }
                     }
                     else

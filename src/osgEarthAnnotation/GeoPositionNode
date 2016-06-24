@@ -115,6 +115,8 @@ namespace osgEarth { namespace Annotation
         /** called when someone calls one of the set functions */
         virtual void dirty() { }
 
+        virtual void setConfig(const Config&);
+
     private:
         GeoTransform*                   _geoxform;
         osg::PositionAttitudeTransform* _paxform;
@@ -131,7 +133,7 @@ namespace osgEarth { namespace Annotation
         GeoPositionNode(MapNode* mapNode, const Config& conf);
 
         // required by META_Node, but this object is not cloneable
-        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : AnnotationNode(rhs, op) { }
+        GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL);
     };
 
 } } // namespace osgEarth::Annotation

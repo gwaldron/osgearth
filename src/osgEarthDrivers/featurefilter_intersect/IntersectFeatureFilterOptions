@@ -37,7 +37,6 @@ namespace osgEarth { namespace Drivers
         {
             _conf.set("driver", "intersect");
             _contains.init( true );
-            _exact.init( true );
             fromConfig( _conf );
         }
 
@@ -49,18 +48,12 @@ namespace osgEarth { namespace Drivers
         optional<bool>& contains() { return _contains; }
         const optional<bool>& contains() const { return _contains; }
 
-        /** Whether to exactly check the boundary geometry (default=true). Set to false to use
-            bounding boxes only -- coarser but potentially much faster. */
-        optional<bool>& exact() { return _exact; }
-        const optional<bool>& exact() const { return _exact; }
-
     public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "intersect";
             conf.addObjIfSet( "features", _features );
             conf.addIfSet   ( "contains", _contains );
-            conf.addIfSet   ( "exact",    _exact );
             return conf;
         }
 
@@ -74,12 +67,10 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getObjIfSet( "features", _features );
             conf.getIfSet   ( "contains", _contains );
-            conf.getIfSet   ( "exact",    _exact );
         }
 
         optional<FeatureSourceOptions> _features;
         optional<bool>                 _contains;
-        optional<bool>                 _exact;
     };
 
 } } // namespace osgEarth::Drivers

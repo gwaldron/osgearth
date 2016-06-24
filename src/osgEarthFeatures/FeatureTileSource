@@ -159,6 +159,12 @@ namespace osgEarth { namespace Features
             osg::Image* image,
             osg::Referenced* buildData ) { return true; }
 
+        /**
+         * Gets all of the features to be rendered for the given query.
+         * If a TileKey is specified on the query this will attempt to fallback on previous levels to get feature data.
+         */
+        void getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features);
+
     public:
 
         // META_Object specialization:

@@ -58,7 +58,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
             osg::ref_ptr<osg::Texture>     _texParent;
             osg::Matrixf                   _texMatParent; // yes, must be a float matrix
-            float                          _alphaThreshold;
             bool                           _opaque;
 
             // for shared layers only:

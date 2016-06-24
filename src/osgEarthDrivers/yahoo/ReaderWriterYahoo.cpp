@@ -43,11 +43,10 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    Status initialize(const osgDB::Options* dbOptions)
+    Status initialize(const osgDB::Options* readOptions)
     {
         // no caching of source tiles.  Yahoo TOS does not allow it.
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _readOptions = readOptions;
 
         // always a sperhical mercator profile
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
@@ -55,13 +54,8 @@ public:
         return STATUS_OK;
     }
 
-    osg::Image* createImage(const TileKey&        key,
-                            ProgressCallback*     progress )
+    osg::Image* createImage(const TileKey& key, ProgressCallback* progress)
     {
-        //Return NULL if we are given a non global-mercator key
-        //Not applicable
-        //if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
-
         std::stringstream buf;
 
         std::string dataset = 
@@ -102,7 +96,7 @@ public:
 
         OE_DEBUG << key.str() << "=" << base << std::endl;
 
-        return URI(base).readImage( _dbOptions.get() ).releaseImage();
+        return URI(base).readImage( _readOptions.get() ).releaseImage();
     }
 
     osg::HeightField* createHeightField(const TileKey&        key,
@@ -126,8 +120,8 @@ public:
     }
 
 private:
-    const YahooOptions           _options;
-    osg::ref_ptr<osgDB::Options> _dbOptions;
+    const YahooOptions                 _options;
+    osg::ref_ptr<const osgDB::Options> _readOptions;
 };
 
 

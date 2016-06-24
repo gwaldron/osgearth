@@ -42,7 +42,7 @@ quit(const std::string& msg)
 int
 main(int argc, char** argv)
 {
-    osg::ref_ptr<Cache> cache = Registry::instance()->getCache();
+    osg::ref_ptr<Cache> cache = Registry::instance()->getDefaultCache();
     if ( !cache.valid() )
     {
         return quit( "Please configure a cache path in your environment (OSGEARTH_CACHE_PATH)." );
@@ -89,7 +89,7 @@ main(int argc, char** argv)
     }
 
     // Need to properly shut down the cache here
-    Registry::instance()->setCache( 0L );
+    cache = 0L;
 
     OE_NOTICE << "All tests passed." << std::endl;
     return 0;

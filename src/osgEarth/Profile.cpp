@@ -531,14 +531,22 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
 {
     if ( _extent.contains( x, y ) )
     {
-        unsigned int tilesX = (unsigned int)_numTilesWideAtLod0 * (1 << (unsigned int)level);
-        unsigned int tilesY = (unsigned int)_numTilesHighAtLod0 * (1 << (unsigned int)level);
+        unsigned tilesX = _numTilesWideAtLod0 * (1 << (unsigned)level);
+        unsigned tilesY = _numTilesHighAtLod0 * (1 << (unsigned)level);
 
-        if (((_numTilesWideAtLod0 != 0) && ((tilesX / _numTilesWideAtLod0) != (1 << (unsigned int) level))) ||
-            ((_numTilesHighAtLod0 != 0) && ((tilesY / _numTilesHighAtLod0) != (1 << (unsigned int) level))))
-        {	// check for overflow condition
-            return (TileKey::INVALID);
-        }
+        // overflow checks:
+
+        if (_numTilesWideAtLod0 == 0u || ((tilesX / _numTilesWideAtLod0) != (1 << (unsigned)level)))
+            return TileKey::INVALID;
+
+        if (_numTilesHighAtLod0 == 0u || ((tilesY / _numTilesHighAtLod0) != (1 << (unsigned)level)))
+            return TileKey::INVALID;
+
+        //if (((_numTilesWideAtLod0 != 0) && ((tilesX / _numTilesWideAtLod0) != (1 << (unsigned int) level))) ||
+        //    ((_numTilesHighAtLod0 != 0) && ((tilesY / _numTilesHighAtLod0) != (1 << (unsigned int) level))))
+        //{	// check for overflow condition
+        //    return (TileKey::INVALID);
+        //}
 
         double rx = (x - _extent.xMin()) / _extent.width();
         int tileX = osg::clampBelow( (unsigned int)(rx * (double)tilesX), tilesX-1 );

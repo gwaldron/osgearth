@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
+#include <osg/UserDataContainer>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
@@ -31,8 +32,82 @@ using namespace osgEarth::Threading;
 
 #define LC "[Cache] "
 
+//------------------------------------------------------------------------
+
 CacheOptions::~CacheOptions()
 {
+}
+
+//------------------------------------------------------------------------
+
+#define CACHESETTINGS_UDC_NAME "osgEarth.CacheSettings"
+
+CacheSettings::CacheSettings()
+{
+    setName(CACHESETTINGS_UDC_NAME);
+}
+
+CacheSettings::CacheSettings(const CacheSettings& rhs, const osg::CopyOp& copy) :
+osg::Object(*this, copy),
+_cache(rhs._cache.get()),
+_policy(rhs._policy),
+_activeBin(rhs._activeBin.get())
+{
+    // for some unknown reason, the copy CTOR is not getting the name.
+    setName(CACHESETTINGS_UDC_NAME);
+}
+        
+bool
+CacheSettings::isCacheEnabled() const
+{
+    return _cache.valid() && _policy->isCacheEnabled();
+}
+
+void
+CacheSettings::integrateCachePolicy(const optional<CachePolicy>& policy)
+{
+    // integrate the fields that are passed in first:
+    if ( policy.isSet() )
+        cachePolicy()->mergeAndOverride( policy );
+
+    // then resolve with global overrides from the registry.
+    Registry::instance()->resolveCachePolicy( cachePolicy() );
+}
+
+void
+CacheSettings::store(osgDB::Options* readOptions)
+{
+    if (readOptions)
+    {
+        osg::UserDataContainer* udc = readOptions->getOrCreateUserDataContainer();
+        unsigned index = udc->getUserObjectIndex(CACHESETTINGS_UDC_NAME);
+        udc->removeUserObject(index);
+        udc->addUserObject(this);
+    }
+}
+ 
+CacheSettings*
+CacheSettings::get(const osgDB::Options* readOptions)
+{
+    CacheSettings* obj = 0L;
+    if (readOptions)
+    {
+        const osg::UserDataContainer* udc = readOptions->getUserDataContainer();
+        if (udc) {
+            osg::Object* temp = const_cast<osg::Object*>(udc->getUserObject(CACHESETTINGS_UDC_NAME));
+            obj = dynamic_cast<CacheSettings*>(temp);
+        }
+    }
+    return obj;
+}
+
+std::string
+CacheSettings::toString() const
+{
+    return Stringify()
+        << "cache=" << (_cache.valid() ? _cache->className() : "none")
+        << "; policy=" << _policy->usageString()
+        << "; bin=" << (_activeBin.get() ? "yes" : "no");
 }
 
 //------------------------------------------------------------------------

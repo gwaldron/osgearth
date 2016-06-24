@@ -67,11 +67,13 @@ vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD)
     float factor = exp2(dL);
     float invFactor = 1.0/factor;
     vec2 result = tc * vec2(invFactor);
-    if ( factor >= 1.0 ) {
-        vec2 a = floor(oe_tile_key.xy * invFactor);
-        vec2 b = a * factor;
-        vec2 c = b + factor;
-        result += (oe_tile_key.xy-b)/(c-b);
-    }
+
+    vec2 a = floor(oe_tile_key.xy * invFactor);
+    vec2 b = a * factor;
+    vec2 c = b + factor;
+
+    float m = floor(clamp(factor,0.0,1.0)); // if factor>=1.0
+    result += m*(oe_tile_key.xy-b)/(c-b);
+
     return result;
 }

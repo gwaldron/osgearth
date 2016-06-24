@@ -120,7 +120,7 @@ namespace osgEarth { namespace Annotation
         virtual void dirty();
 
     protected:
-        LocalGeometryNode() { }
+        LocalGeometryNode();
 
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;

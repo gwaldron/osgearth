@@ -43,18 +43,24 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 #define DEFAULT_OCCLUSION_CULLING false
-
+#define DEFAULT_HORIZON_CULLING true
 
 GeoPositionNode::GeoPositionNode() :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
+_geoxform(0L),
+_paxform(0L),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
 {
     init();
 }
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode) :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
+_geoxform(0L),
+_paxform(0L),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -62,11 +68,24 @@ _occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const GeoPoint& position ) :
 AnnotationNode(),
-_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING )
+_geoxform(0L),
+_paxform(0L),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
     _geoxform->setPosition( position );
+}
+
+GeoPositionNode::GeoPositionNode(const GeoPositionNode& rhs, const osg::CopyOp& copy) :
+AnnotationNode(rhs, copy),
+_geoxform(0L),
+_paxform(0L),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+{
+    //nop - UNUSED
 }
 
 void
@@ -197,13 +216,19 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
 }
 
 
-
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
 AnnotationNode          ( conf ),
 _horizonCullingRequested( true )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
+    setConfig(conf);
+}
+
+void
+GeoPositionNode::setConfig(const Config& conf)
+{
+    //AnnotationNode::setConfig(conf);
 
     if ( conf.hasChild( "position" ) )
     {

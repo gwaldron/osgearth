@@ -1,4 +1,4 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
 
 #pragma vp_name       REX Engine - Vertex/View
 #pragma vp_entryPoint oe_rex_elevateVertexAndSetTexCoords

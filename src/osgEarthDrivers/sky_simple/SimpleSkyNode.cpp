@@ -237,7 +237,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _cullContainer = new osg::Group();
     
     // set up the astronomical parameters:
-    _ellipsoidModel = srs->getEllipsoid();
+    _ellipsoidModel = srs ? srs->getEllipsoid() : new osg::EllipsoidModel();
     _innerRadius = osg::minimum(
         _ellipsoidModel->getRadiusPolar(),
         _ellipsoidModel->getRadiusEquator() );

@@ -69,12 +69,15 @@ URIReadCallback::~URIReadCallback()
  * that means that StringObject instances can be read/written to an .osgb
  * file. We use this for caching string data (XML, JSON files for example).
  */
-REGISTER_OBJECT_WRAPPER(StringObject,
-                        new osgEarth::StringObject,
-                        osgEarth::StringObject,
-                        "osgEarth::StringObject")
+namespace
 {
-    ADD_STRING_SERIALIZER( String, "" );  // _str
+    REGISTER_OBJECT_WRAPPER(StringObject,
+                            new osgEarth::StringObject,
+                            osgEarth::StringObject,
+                            "osgEarth::StringObject")
+    {
+        ADD_STRING_SERIALIZER( String, "" );  // _str
+    }
 }
 
 //------------------------------------------------------------------------

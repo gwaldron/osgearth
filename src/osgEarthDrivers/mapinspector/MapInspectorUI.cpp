@@ -91,9 +91,6 @@ void
 MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
                                 MapNode*      mapNode)
 {
-    if ( layer->getTileSource() == 0L )
-        return;
-
     const Color colors[6] = {
         Color::White,
         Color::Yellow,
@@ -106,53 +103,56 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
 
     osg::ref_ptr<MultiGeometry> collection = new MultiGeometry();
 
-    const DataExtentList& exlist = layer->getTileSource()->getDataExtents();
-    for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)
+    DataExtentList exlist;
+    if (layer->getDataExtents(exlist))
     {
-        const DataExtent& e = *i;
-        Polygon* p = new Polygon();
-        p->push_back( e.xMin(), e.yMin() );
-        p->push_back( e.xMax(), e.yMin() );
-        p->push_back( e.xMax(), e.yMax() );
-        p->push_back( e.xMin(), e.yMax() );
-        collection->add( p );
-    }
+        for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)
+        {
+            const DataExtent& e = *i;
+            Polygon* p = new Polygon();
+            p->push_back( e.xMin(), e.yMin() );
+            p->push_back( e.xMax(), e.yMin() );
+            p->push_back( e.xMax(), e.yMax() );
+            p->push_back( e.xMin(), e.yMax() );
+            collection->add( p );
+        }
 
-    // poly:
-    {
-        Style style;
-        style.getOrCreate<LineSymbol>()->stroke()->color() = color;
-        style.getOrCreate<LineSymbol>()->stroke()->width() = 2;
-        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-        style.getOrCreate<RenderSymbol>()->lighting() = false;
+        // poly:
+        {
+            Style style;
+            style.getOrCreate<LineSymbol>()->stroke()->color() = color;
+            style.getOrCreate<LineSymbol>()->stroke()->width() = 2;
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+            style.getOrCreate<RenderSymbol>()->lighting() = false;
 
-        Feature* feature = new Feature(collection.get(), layer->getProfile()->getSRS(), style);
-        FeatureNode* node = new FeatureNode( mapNode, feature );
-        _annos->addChild( node );
-    }
+            Feature* feature = new Feature(collection.get(), layer->getProfile()->getSRS(), style);
+            FeatureNode* node = new FeatureNode( mapNode, feature );
+            _annos->addChild( node );
+        }
 
-    // label:
-    std::string text = 
-        !layer->getName().empty()? layer->getName() :
-        Stringify() << "Layer " << layer->getUID();
+        // label:
+        std::string text = 
+            !layer->getName().empty()? layer->getName() :
+            Stringify() << "Layer " << layer->getUID();
 
-    {
-        Style style;
-        TextSymbol* ts = style.getOrCreate<TextSymbol>();
-        ts->halo()->color().set(0,0,0,1);
-        ts->declutter() = true;
-        ts->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+        {
+            Style style;
+            TextSymbol* ts = style.getOrCreate<TextSymbol>();
+            ts->halo()->color().set(0,0,0,1);
+            ts->declutter() = true;
+            ts->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         
-        osg::Vec2d center = collection->getBounds().center2d();
-        GeoPoint position(layer->getProfile()->getSRS(), center.x(), center.y(), 0.0, ALTMODE_ABSOLUTE);
+            osg::Vec2d center = collection->getBounds().center2d();
+            GeoPoint position(layer->getProfile()->getSRS(), center.x(), center.y(), 0.0, ALTMODE_ABSOLUTE);
 
-        LabelNode* label = new LabelNode(mapNode, position, text, style);
-        _annos->addChild( label );
+            LabelNode* label = new LabelNode(mapNode, position, text, style);
+            _annos->addChild( label );
+        }
+
+        unsigned r = this->getNumRows();
+        setControl(0, r, new ui::LabelControl(text, color));
     }
-
-    unsigned r = this->getNumRows();
-    setControl(0, r, new ui::LabelControl(text, color));
 }
 
 void

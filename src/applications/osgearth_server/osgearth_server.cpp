@@ -31,7 +31,43 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-#include "mongoose.h"
+#include <Poco/Net/HTTPServer.h>
+#include <Poco/Net/HTTPRequestHandler.h>
+#include <Poco/Net/HTTPRequestHandlerFactory.h>
+#include <Poco/Net/HTTPServerParams.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/Net/HTTPServerParams.h>
+#include <Poco/Net/ServerSocket.h>
+#include <Poco/Timestamp.h>
+#include <Poco/DateTimeFormatter.h>
+#include <Poco/DateTimeFormat.h>
+#include <Poco/Exception.h>
+#include <Poco/ThreadPool.h>
+#include <Poco/Util/ServerApplication.h>
+#include <Poco/Util/Option.h>
+#include <Poco/Util/OptionSet.h>
+#include <Poco/Util/HelpFormatter.h>
+#include <iostream>
+
+using Poco::Net::ServerSocket;
+using Poco::Net::HTTPRequestHandler;
+using Poco::Net::HTTPRequestHandlerFactory;
+using Poco::Net::HTTPServer;
+using Poco::Net::HTTPServerRequest;
+using Poco::Net::HTTPServerResponse;
+using Poco::Net::HTTPServerParams;
+using Poco::Timestamp;
+using Poco::DateTimeFormatter;
+using Poco::DateTimeFormat;
+using Poco::ThreadPool;
+using Poco::Util::ServerApplication;
+using Poco::Util::Application;
+using Poco::Util::Option;
+using Poco::Util::OptionSet;
+using Poco::Util::OptionCallback;
+using Poco::Util::HelpFormatter;
+
 
 #define LC "[viewer] "
 
@@ -265,24 +301,38 @@ usage(const char* name)
     return 0;
 }
 
-static std::string response(std::string const &content
-    , std::string const &content_type= "text/plain"
-    , std::string const &status= "200 OK"
-    , std::string const &cookie= "")
-  {
-    std::ostringstream out;
-    out<< "HTTP/1.1 "<< status<< "\r\n"
-      << "Content-Type: "<< content_type<< "; charset=utf-8\r\n"
-      << "Content-Length: "<< content.size()<< "\r\n"
-      << "Connection: keep-alive\r\n"
-      << "Cache-Control: no-cache\r\n"
-      << "Access-Control-Allow-Origin: *\r\n";
-    if(!cookie.empty())
-      out<< "Set-Cookie: "<< cookie<< ";max-age=315569260\r\n";
-    out<< "Server: osgearth_server\r\n\r\n"
-      << content;
-    return out.str();
-  }
+#define LOD_COUNT 26
+
+// Note:  These are taken from Splat.frag.glsl so they line up exactly.
+const float oe_LODRanges[LOD_COUNT] = {
+       100000000.0, // 0
+        75000000.0, // 1
+        50000000.0, // 2
+        10000000.0, // 3
+         7500000.0, // 4
+         5000000.0, // 5
+         2500000.0, // 6
+         1000000.0, // 7
+          500000.0, // 8
+          225000.0, // 9
+          150000.0, // 10
+           80000.0, // 11
+           30000.0, // 12
+           14000.0, // 13
+            4000.0, // 14
+            2500.0, // 15
+            1000.0, // 16
+             500.0, // 17
+             250.0, // 18
+             125.0, // 19
+              50.0, // 20
+              25.0, // 21
+              12.0, // 22
+               6.0, // 23
+               3.0, // 24
+               1.0  // 25
+};
+
 
 
 
@@ -296,6 +346,7 @@ public:
       {
           _viewer = new osgViewer::Viewer;
           _viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+          _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
           float half = 256.0/2.0;
           _viewer->getCamera()->setProjectionMatrixAsOrtho2D(-half, half, -half, half);
 
@@ -365,7 +416,16 @@ public:
 
           // Set the projection matrix to capture the tile.                    
           OE_DEBUG << "Key extent " << z << "(" << x << ", " << y << ") = " << key.getExtent().toString() << std::endl;
-          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
+          //_viewer->getCamera()->setProjectionMatrixAsOrtho2D(key.getExtent().xMin(), key.getExtent().xMax(), key.getExtent().yMin(), key.getExtent().yMax());
+          unsigned int heightIndex = osg::clampBetween(z, 0u, LOD_COUNT -1u);
+
+          // Multiply by the min_tile_range_factor to get close to what the correct distance would be for this tile.
+          double height = oe_LODRanges[heightIndex] * *_mapNode->getMapNodeOptions().getTerrainOptions().minTileRangeFactor();
+          osg::Vec3d center = key.getExtent().getCentroid();
+          osg::Vec3d eye = center + osg::Vec3d(0,0,height);
+          _viewer->getCamera()->setViewMatrixAsLookAt(eye, center, osg::Vec3d(0,1,0));
+          _viewer->getCamera()->setProjectionMatrixAsOrtho2D(-key.getExtent().width()/2.0,  key.getExtent().width()/2.0,
+                                                             -key.getExtent().height()/2.0, key.getExtent().height()/2.0);
           _viewer->frame();
           int numFrames = 0;
 
@@ -403,74 +463,129 @@ public:
 
 static TileImageServer* _server;
 
+class TileRequestHandler: public HTTPRequestHandler
+{
+public:
+    TileRequestHandler()
+    {
+    }
 
-static void ev_handler(struct mg_connection *nc, int ev, void *ev_data) {
-  struct http_message *hm = (struct http_message *) ev_data;
+    void handleRequest(HTTPServerRequest& request,
+                       HTTPServerResponse& response)
+    {
+        StringTokenizer tok("/");
+        StringVector tized;
+        tok.tokenize(request.getURI(), tized);            
+        if ( tized.size() == 4 )
+        {
+            int z = as<int>(tized[1], 0);
+            int x = as<int>(tized[2], 0);
+            unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
+            std::string ext = osgDB::getFileExtension(tized[3]);
 
-  static OpenThreads::Mutex requestMutex;
-  OpenThreads::ScopedLock< OpenThreads::Mutex > lk(requestMutex);
-  
-  switch (ev) {
-  case MG_EV_HTTP_REQUEST:
-      {
-          std::string url(hm->uri.p, hm->uri.len);
-          OE_DEBUG << "url=" << url << std::endl;
-          StringTokenizer tok("/");
-          StringVector tized;
-          tok.tokenize(url, tized);            
-          if ( tized.size() == 4 )
-          {
-              int z = as<int>(tized[1], 0);
-              int x = as<int>(tized[2], 0);
-              unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
-              std::string ext = osgDB::getFileExtension(tized[3]);
-              
-              OE_DEBUG << "z=" << z << std::endl;
-              OE_DEBUG << "x=" << x << std::endl;
-              OE_DEBUG << "y=" << y << std::endl;              
-              OE_DEBUG << "ext=" << ext << std::endl;
+            OE_DEBUG << "z=" << z << std::endl;
+            OE_DEBUG << "x=" << x << std::endl;
+            OE_DEBUG << "y=" << y << std::endl;              
+            OE_DEBUG << "ext=" << ext << std::endl;
 
-              osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y );
+            response.setChunkedTransferEncoding(true);
 
-              bool sent = false;
-              if (image.valid())
-              {              
+            osg::ref_ptr< osg::Image > image = _server->getTile(z, x, y);
+            
+            if (image)
+            {
+                osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+                if (rw)
+                {
+                    std::string mime = "image/png";
+                    if (ext == "jpeg" || ext == "jpg")
+                    {
+                        mime = "image/jpeg";
+                    }                    
+                    response.setContentType(mime);
+                    std::ostream& ostr = response.send();                 
+                    rw->writeImage(*image.get(), ostr);                    
+                }             
 
-                  osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
-                  if (rw)
-                  {
-                      std::stringstream buf;
-                      rw->writeImage(*image.get(), buf);
-                      std::string mime = "image/png";
-                      if (ext == "jpeg" || ext == "jpg")
-                      {
-                          mime = "image/jpeg";
-                      }
-                      std::string res = response(buf.str(), mime);
-                      mg_send(nc, res.c_str(), res.size());                             
-                      sent = true;
-                  }             
-              }
+            }
+        }
+ 
+        response.setStatus(Poco::Net::HTTPResponse::HTTP_NOT_FOUND);                
+    }
 
-              if (!sent)
-              {
-                  std::string res = response("", "", "404 Not Found");
-                  mg_send(nc, res.c_str(), res.size());
-              }
+private:
+    std::string _format;
+};
 
-              nc->flags |= MG_F_SEND_AND_CLOSE;
-          }
-          else
-          {
-              std::string res = response("", "", "404 Not Found");
-              mg_send(nc, res.c_str(), res.size());
-          }
-      }
-      break;
-    default:
-      break;
-  }
-}
+class TileRequestHandlerFactory : public HTTPRequestHandlerFactory
+{
+    public:
+    TileRequestHandlerFactory()
+    {
+    }
+
+    HTTPRequestHandler* createRequestHandler(
+        const HTTPServerRequest& request)
+    {        
+        StringTokenizer tok("/");
+        StringVector tized;
+        tok.tokenize(request.getURI(), tized);            
+        if ( tized.size() == 4 )
+        {
+            int z = as<int>(tized[1], 0);
+            int x = as<int>(tized[2], 0);
+            unsigned int y = as<int>(osgDB::getNameLessExtension(tized[3]),0);
+            std::string ext = osgDB::getFileExtension(tized[3]);
+
+            OE_DEBUG << "z=" << z << std::endl;
+            OE_DEBUG << "x=" << x << std::endl;
+            OE_DEBUG << "y=" << y << std::endl;              
+            OE_DEBUG << "ext=" << ext << std::endl;
+
+            return new TileRequestHandler();
+        }
+
+        return 0;
+    }
+};
+
+class TileHTTPServer: public Poco::Util::ServerApplication
+{
+public:
+    TileHTTPServer(int port):
+      _port(port)
+    {
+    }
+
+    ~TileHTTPServer()
+    {
+    }
+
+protected:
+    void initialize(Application& self)
+    {
+        loadConfiguration();
+        ServerApplication::initialize(self);
+    }
+
+    void uninitialize()
+    {
+        ServerApplication::uninitialize();
+    }
+
+    int main(const std::vector<std::string>& args)
+    {
+        ServerSocket svs(_port);
+        HTTPServer srv(new TileRequestHandlerFactory(), svs, new HTTPServerParams);
+        srv.start();
+        waitForTerminationRequest();
+        srv.stop();
+        return Application::EXIT_OK;
+    }
+
+private:
+    int _port;
+};
 
 
 
@@ -484,9 +599,8 @@ main(int argc, char** argv)
         return usage(argv[0]);
 
     int port = 8000;
-    if (arguments.read("--port", port));
+    arguments.read("--port", port);
     OE_NOTICE << "Listening on port " << port << std::endl;
-
 
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG
@@ -503,24 +617,7 @@ main(int argc, char** argv)
     }
 
     _server = new TileImageServer( mapNode.get() );
-   
-    struct mg_connection *nc;
-    struct mg_mgr mgr;
 
-    mg_mgr_init(&mgr, NULL);
-
-    // Note that many connections can be added to a single event manager
-    // Connections can be created at any point, e.g. in event handler function    
-    std::string portStr = toString<unsigned int>(port);
-
-    nc = mg_bind(&mgr, portStr.c_str(), ev_handler);
-    mg_set_protocol_http_websocket(nc);
-
-    for (;;) {
-        mg_mgr_poll(&mgr, 1000);
-    }
-
-    mg_mgr_free(&mgr);
-
-    return 0;
+    TileHTTPServer app(port);
+    return app.run(argc, argv);
 }

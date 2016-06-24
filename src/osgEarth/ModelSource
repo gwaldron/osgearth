@@ -145,7 +145,7 @@ namespace osgEarth
     public:
 
         /** Perform any one-time initialization */
-        virtual void initialize( const osgDB::Options* dbOptions ) { }
+        virtual void initialize(const osgDB::Options* readOptions) { }
 
         /** Get the options used to create this model source */
         const ModelSourceOptions& getOptions() const { return _options; }

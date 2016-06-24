@@ -217,14 +217,15 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                     // establish the working bounds and a context:
                     FilterContext context( _session.get(), featureProfile);
                     StringExpression styleExprCopy(  sel.styleExpression().get() );
-                    
-                    // Run the style expression on each feature
-                    osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(defaultQuery);
-                    while( cursor.valid() && cursor->hasMore() )
+
+                    FeatureList features;
+                    getFeatures(defaultQuery, key.getExtent(), features);
+                    if (!features.empty())
                     {
-                        osg::ref_ptr< Feature > feature = cursor->nextFeature();
-                        if ( feature )
+                        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                         {
+                            Feature* feature = itr->get();
+
                             const std::string& styleString = feature->eval( styleExprCopy, &context );
                             if (!styleString.empty() && styleString != "null")
                             {
@@ -266,8 +267,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                                 }
                             }
                         }
-                    }
-
+                    }                    
                 }
                 else
                 {
@@ -303,7 +303,20 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
                                                   const GeoExtent& imageExtent,
                                                   osg::Image*      out_image)
 {   
+    // Get the features
+    FeatureList features;
+    getFeatures(query, imageExtent, features );
+    if (!features.empty())
+    {
+        // Render them.
+        return renderFeaturesForStyle( _session.get(), style, features, data, imageExtent, out_image );
+    }
+    return false;
+}
 
+void
+FeatureTileSource::getFeatures(const Query& query, const GeoExtent& imageExtent, FeatureList& features)
+{
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = getFeatureSource()->getFeatureProfile()->getExtent();
     
@@ -323,9 +336,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
 
         // now copy the resulting feature set into a list, converting the data
         // types along the way if a geometry override is in place:
-        FeatureList cellFeatures;
-
-        while (cellFeatures.empty())
+        while (features.empty())
         {
             // query the feature source:
             osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( localQuery );
@@ -347,12 +358,12 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
                 }
                 if ( geom )
                 {
-                    cellFeatures.push_back( feature );
+                    features.push_back( feature );
                 }
             }
 
             // If we didn't get any features and we have a tilekey set, try falling back.
-            if (cellFeatures.empty() && localQuery.tileKey().isSet())
+            if (features.empty() && localQuery.tileKey().isSet())
             {
                 localQuery.tileKey() = localQuery.tileKey().get().createParentKey();
                 if (!localQuery.tileKey()->valid())
@@ -367,19 +378,6 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
                 break;
             }
         }
-
-        //OE_NOTICE
-        //    << "Rendering "
-        //    << cellFeatures.size()
-        //    << " features in ("
-        //    << queryExtent.toString() << ")"
-        //    << std::endl;
-
-        return renderFeaturesForStyle( _session.get(), style, cellFeatures, data, imageExtent, out_image );
-    }
-    else
-    {
-        return false;
     }
 }
 

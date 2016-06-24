@@ -239,7 +239,7 @@ _fallbackData( fallbackData )
         }    
     }
 
-    _hasAlpha = image && ImageUtils::hasTransparency(image);
+    _hasAlpha = ImageUtils::hasTransparency(image);
 
     layer->applyTextureCompressionMode( _texture.get() );    
 }

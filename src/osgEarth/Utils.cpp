@@ -454,20 +454,24 @@ GeometryValidator::apply(osg::Geometry& geom)
     for(unsigned i=0; i<arrays.size(); ++i)
     {
         osg::Array* a = arrays[i].get();
-        if ( a == NULL )
+        if ( a )
+        {
+            if ( a->getBinding() == a->BIND_OVERALL && a->getNumElements() != 1 )
+            {
+                OE_NOTICE << LC << "Found an array with BIND_OVERALL and size <> 1\n";
+            }
+            else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
+            {
+                OE_NOTICE << LC << "Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")\n";
+            }
+
+            _vbos.insert( a->getVertexBufferObject() );
+        }
+        else
         {
             OE_NOTICE << LC << "Found a NULL array\n";
         }
-        else if ( a->getBinding() == a->BIND_OVERALL && a->getNumElements() != 1 )
-        {
-            OE_NOTICE << LC << "Found an array with BIND_OVERALL and size <> 1\n";
-        }
-        else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
-        {
-            OE_NOTICE << LC << "Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")\n";
-        }
 
-        _vbos.insert( a->getVertexBufferObject() );
     }
 
     if ( _vbos.size() != 1 )

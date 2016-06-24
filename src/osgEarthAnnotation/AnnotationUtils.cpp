@@ -473,6 +473,7 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve( latSegments * lonSegments );
 
+#if 0
     bool genTexCoords = false; // TODO: optional
     osg::Vec2Array* texCoords = 0;
     if (genTexCoords)
@@ -481,6 +482,7 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
         texCoords->reserve( latSegments * lonSegments );
         geom->setTexCoordArray( 0, texCoords );
     }
+#endif
 
     osg::Vec3Array* normals = new osg::Vec3Array();
     normals->reserve( latSegments * lonSegments );
@@ -509,18 +511,17 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
                 yRadius * sin_u * cos_v,
                 zRadius * sin_v ));
 
+#if 0
             if (genTexCoords)
             {
                 double s = (lon + 180) / 360.0;
                 double t = (lat + 90.0) / 180.0;
                 texCoords->push_back( osg::Vec2(s, t ) );
             }
+#endif
 
-            if (normals)
-            {
-                normals->push_back( verts->back() );
-                normals->back().normalize();
-            }
+            normals->push_back( verts->back() );
+            normals->back().normalize();
 
             if ( y < latSegments )
             {

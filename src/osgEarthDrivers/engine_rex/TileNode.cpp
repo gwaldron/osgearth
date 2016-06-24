@@ -82,6 +82,9 @@ _lastTraversalFrame(0.0)
 void
 TileNode::create(const TileKey& key, EngineContext* context)
 {
+    if (!context)
+        return;
+
     _key = key;
 
     // Create mask records

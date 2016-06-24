@@ -108,12 +108,15 @@ namespace osgEarth_kml
 				else
 				{
 					link = node->first_node("url", 0, false);
-					std::string url = getValue(link, "href");
-					if (url.empty())
-					{
-						url = link->value();
-					}
-					return url;
+                    if (link)
+                    {
+					    std::string url = getValue(link, "href");
+					    if (url.empty())
+					    {
+    						url = link->value();
+					    }
+					    return url;
+                    }
 				}
 			}
 			return "";

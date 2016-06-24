@@ -750,15 +750,18 @@ TileSourceFactory::create(const TileSourceOptions& options)
         OE_WARN << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
     }
 
-    OE_DEBUG << LC << "Tile source Profile = " << (result->getProfile() ? result->getProfile()->toString() : "NULL") << std::endl;
-
-    // apply an Override Profile if provided.
-    if ( result && options.profile().isSet() )
+    else
     {
-        const Profile* profile = Profile::create(*options.profile());
-        if ( profile )
+        OE_DEBUG << LC << "Tile source Profile = " << (result->getProfile() ? result->getProfile()->toString() : "NULL") << std::endl;
+
+        // apply an Override Profile if provided.
+        if ( options.profile().isSet() )
         {
-            result->setProfile( profile );
+            const Profile* profile = Profile::create(*options.profile());
+            if ( profile )
+            {
+                result->setProfile( profile );
+            }
         }
     }
 

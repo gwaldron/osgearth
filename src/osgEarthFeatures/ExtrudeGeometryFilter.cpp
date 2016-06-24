@@ -374,8 +374,11 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             }
 
             // transform into target SRS.
-            transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
-            transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+            if (srs)
+            {
+                transformAndLocalize( corner->base, srs, corner->base, mapSRS, _world2local, makeECEF );
+                transformAndLocalize( corner->roof, srs, corner->roof, mapSRS, _world2local, makeECEF );
+            }
 
             // cache the length for later use.
             corner->height = (corner->roof - corner->base).length();

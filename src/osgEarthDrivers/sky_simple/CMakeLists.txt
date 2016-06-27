@@ -27,7 +27,7 @@ configure_shaders(
     ${TARGET_GLSL} )
     
 set(TARGET_SRC 
-    SimpleSkyDriver.cpp
+    SimpleSkyExtension.cpp
     SimpleSkyNode.cpp
     ${SHADERS_CPP} )
 

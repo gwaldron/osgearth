@@ -7,7 +7,6 @@ SET(TARGET_H
     GLSkyOptions
 	GLSkyNode
     GLSkyShaders
-    GLSkyExtension
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}

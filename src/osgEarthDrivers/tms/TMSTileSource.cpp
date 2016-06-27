@@ -87,9 +87,12 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
             << "\" for URI \"" << tmsURI.base() << "\"" 
             << std::endl;
 
+        DataExtentList extents;
+
         _tileMap = TMS::TileMap::create( 
             _options.url()->full(),
             profile,
+            extents,
             _options.format().value(),
             _options.tileSize().value(), 
             _options.tileSize().value() );
@@ -157,6 +160,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
             this->getDataExtents().push_back(DataExtent(profile->getExtent(), 0, _tileMap->getMaxLevel()));
         }
     }
+ 
     return STATUS_OK;
 }
 

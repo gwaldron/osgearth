@@ -419,10 +419,13 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 
 void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
 {
+    DataExtentList dataExtents;
+    layer->getDataExtents(dataExtents);
      // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
         map->getProfile(),        
+        dataExtents,
         _extension,
         _width,
         _height

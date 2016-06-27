@@ -20,8 +20,6 @@ Demonstrates the use of the night color filter, which only shows a layer in nigh
         </color_filters>
     </image>      
 
-    <external>
-        <sky driver="simple" hours="14.0" ambient="1.0"/>
-    </external>
+    <sky driver="simple" hours="14.0" ambient="1.0"/>
     
 </map>

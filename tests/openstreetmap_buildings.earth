@@ -65,11 +65,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
+        
+    <sky driver="simple" hours="20.0"/>
     
-    
-    <external>
-        <sky hours="20.0"/>
-        <xi:include href="viewpoints.xml"/>
-    </external>
+    <xi:include href="viewpoints.xml"/>
   
 </map>

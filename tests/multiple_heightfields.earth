@@ -31,8 +31,5 @@ lo-res heightfield underlay.
         <cache_policy usage="no_cache"/>
     </options>
     
-    <external>
-        <contour_map opacity="0.35"/>
-        <vertical_scale scale="2.0"/>
-    </external>
+    <contour_map opacity="0.35"/>
 </map>

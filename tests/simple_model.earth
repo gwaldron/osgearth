@@ -21,9 +21,7 @@ needs to be absolutely positioned.
         <terrain min_lod="12"/>
     </options>
     
-    <external>
-        <viewpoints>
-            <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
-        </viewpoints>
-    </external>	
+    <viewpoints>
+        <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
+    </viewpoints>
 </map>

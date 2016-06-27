@@ -22,8 +22,6 @@ Try running it with a controller uniform:
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
 	
-	<external>
-	    <vertical_scale scale="2.0"/>
-	</external>
+    <vertical_scale scale="2.0"/>
     
 </map>

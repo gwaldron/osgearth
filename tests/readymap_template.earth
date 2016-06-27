@@ -14,13 +14,10 @@ Run with osgearth_viewer readymap_template.earth.template to invoke the psuedolo
     <!-- Include elevation -->
     {% include readymap_elevation.xml %}
 
-    <external>
-        <viewpoints>
-        	<!-- Include multiple flat lists of viewpoints -->
-        	{% include boston_viewpoints.xml %}
-        	{% include dc_viewpoints.xml %}
-        </viewpoints>
-    </external>
-  
+    <viewpoints>
+        <!-- Include multiple flat lists of viewpoints -->
+        {% include boston_viewpoints.xml %}
+        {% include dc_viewpoints.xml %}
+    </viewpoints>
 
 </map>

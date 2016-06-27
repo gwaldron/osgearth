@@ -51,7 +51,7 @@ namespace osgEarth { namespace SimpleSky
 
         bool connect(MapNode* mapNode)
         {
-            _skynode = new SimpleSkyNode(mapNode->getMapSRS(), *this);
+            _skynode = createSkyNode(mapNode->getMap()->getProfile());
             osgEarth::insertParent(_skynode.get(), mapNode);
             return true;
         }
@@ -91,7 +91,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // SkyNodeFactory
 
-        SkyNode* getOrCreateSkyNode(const Profile* profile) {
+        SkyNode* createSkyNode(const Profile* profile) {
             return new SimpleSkyNode(profile->getSRS());
         }
 

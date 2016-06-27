@@ -240,7 +240,7 @@ namespace osgEarth { namespace Util
     class /*header-only*/ SkyNodeFactory
     {
     public:
-        virtual SkyNode* getOrCreateSkyNode(const Profile* profile) =0;
+        virtual SkyNode* createSkyNode(const Profile* profile) =0;
     };
 
 } } // namespace osgEarth::Util

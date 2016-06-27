@@ -177,7 +177,7 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
     if ( driverName.empty() )
         driverName = "simple";
 
-    std::string extensionName = std::string("osgearth_sky_") + driverName;
+    std::string extensionName = std::string("sky_") + driverName;
 
     osg::ref_ptr<Extension> extension = Extension::create( extensionName, options );
     if ( !extension.valid() ) {
@@ -191,7 +191,7 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
         return 0L;
     }
 
-    osg::ref_ptr<SkyNode> result = factory->getOrCreateSkyNode( mapNode->getMap()->getProfile() );
+    osg::ref_ptr<SkyNode> result = factory->createSkyNode( mapNode->getMap()->getProfile() );
 
     return result.release();
 }

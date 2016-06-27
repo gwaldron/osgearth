@@ -635,8 +635,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
 
-    const Config& skyConf         = externals.child("sky");
-    const Config& oceanConf       = externals.child("ocean");
+    const Config& oceanConf = externals.child("ocean");
 
     const Config& screenSpaceLayoutConf = 
         externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
@@ -647,48 +646,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // TODO: Most of these are likely to move into extensions.
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
-
-    const Config& contourMapConf = externals.child("contourmap");
-    
-#if 0
-    // Adding a sky model:
-    if ( useSky || !skyConf.empty() )
-    {
-        SkyOptions options(skyConf);
-        if ( options.getDriver().empty() )
-        {
-            if ( mapNode->getMapSRS()->isGeographic() )
-                options.setDriver("simple");
-            else
-                options.setDriver("gl");
-        }
-
-        SkyNode* sky = SkyNode::create(options, mapNode);
-        if ( sky )
-        {
-            sky->attach( view, 0 );
-            if ( mapNode->getNumParents() > 0 )
-            {
-                osgEarth::insertGroup(sky, mapNode->getParent(0));
-            }
-            else
-            {
-                sky->addChild( mapNode );
-                root = sky;
-            }
-                
-            Control* c = SkyControlFactory().create(sky, view);
-            if ( c )
-                mainContainer->addControl( c );
-
-            if (animateSky)
-            {
-                sky->setUpdateCallback( new AnimateSkyUpdateCallback() );
-            }
-
-        }
-    }
-#endif
+    //const Config& contourMapConf  = externals.child("contourmap");
 
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
@@ -870,15 +828,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Install a contour map effect.
-    if ( !contourMapConf.empty() || useContourMap )
+    if ( useContourMap )
     {
-        mapNode->getTerrainEngine()->addEffect( new ContourMap(contourMapConf) );
+        mapNode->addExtension(Extension::create("contourmap", ConfigOptions()));
 
         // with the cmdline switch, hids all the image layer so we can see the contour map.
-        if (useContourMap) {
-            for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
-                mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
-            }
+        for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
+            mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
         }
     }
 
@@ -918,6 +874,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if (useMonitor)
     {
         mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
+    }
+
+    if (useSky)
+    {
+        mapNode->addExtension(Extension::create("sky_simple", ConfigOptions()) );
     }
     
 

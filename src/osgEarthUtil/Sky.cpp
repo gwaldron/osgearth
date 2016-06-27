@@ -194,24 +194,6 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
     osg::ref_ptr<SkyNode> result = factory->getOrCreateSkyNode( mapNode->getMap()->getProfile() );
 
     return result.release();
-
-#if 0
-    osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-    rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
-    rwopts->setPluginData( SKY_OPTIONS_TAG, (void*)&options );
-
-    result = dynamic_cast<SkyNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
-    if ( result )
-    {
-        OE_INFO << LC << "Loaded sky driver \"" << driverName << "\" OK." << std::endl;
-    }
-    else
-    {
-        OE_WARN << LC << "FAIL, unable to load sky driver for \"" << driverName << "\"" << std::endl;
-    }
-#endif
-
-    return result;
 }
 
 SkyNode*

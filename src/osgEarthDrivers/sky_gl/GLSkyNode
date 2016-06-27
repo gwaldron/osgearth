@@ -29,7 +29,7 @@ namespace osg {
     class LightSource;
 }
 
-namespace osgEarth { namespace Drivers { namespace GLSky
+namespace osgEarth { namespace GLSky
 {
     using namespace osgEarth;
     using namespace osgEarth::Util;
@@ -70,4 +70,4 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         GLSkyOptions                      _options;
     };
 
-} } } // namespace osgEarth::Drivers::GLSky
+} } // namespace osgEarth::Drivers::GLSky

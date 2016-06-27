@@ -21,7 +21,7 @@
 
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth { namespace Drivers { namespace SimpleSky
+namespace osgEarth { namespace SimpleSky
 {
     struct Shaders : public osgEarth::ShaderPackage
 	{
@@ -40,6 +40,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         std::string Sun_Frag;
 	};
 
-} } } // namespace osgEarth::Drivers::SimpleSky
+} } // namespace osgEarth::SimpleSky
 
 #endif //OSGEARTH_DRIVER_SIMPLE_SKY_SHADERS

@@ -59,6 +59,7 @@ void SelectionInfo::initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned 
         OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
         return;
     }
+
     if (fLodFar<0)
     {
         OE_INFO << LC <<"Error: Invalid fLodFar hint"<<std::endl;

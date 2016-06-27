@@ -21,7 +21,7 @@
 
 #include <osgEarth/VirtualProgram>
 
-namespace osgEarth { namespace Drivers { namespace GLSky
+namespace osgEarth { namespace GLSky
 {
 #ifdef OSG_GLES2_AVAILABLE
     static const char* Phong_Vertex =
@@ -125,6 +125,6 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         "} \n";
 #endif
 
-} } } // namespace osgEarth::Drivers::GLSky
+} } // namespace osgEarth::Drivers::GLSky
 
 #endif //OSGEARTH_DRIVER_GL_SKY_SHADERS

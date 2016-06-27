@@ -33,7 +33,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::GLSky;
+using namespace osgEarth::GLSky;
 
 //---------------------------------------------------------------------------
 

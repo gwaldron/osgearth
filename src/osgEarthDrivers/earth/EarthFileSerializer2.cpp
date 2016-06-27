@@ -403,7 +403,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if ( i->key() == "options" )
+        if ( i->key() == "options" || i->key() == "name" || i->key() == "type" )
         {
             // nop - handled earlier
         }

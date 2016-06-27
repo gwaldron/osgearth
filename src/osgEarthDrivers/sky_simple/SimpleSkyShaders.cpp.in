@@ -3,7 +3,7 @@
 #include <osgEarthDrivers/sky_simple/SimpleSkyShaders>
 
 
-using namespace osgEarth::Drivers::SimpleSky;
+using namespace osgEarth::SimpleSky;
 
 Shaders::Shaders()
 {

@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Sky>
 
-namespace osgEarth { namespace Drivers { namespace SimpleSky
+namespace osgEarth { namespace SimpleSky
 {
     using namespace osgEarth;
     using namespace osgEarth::Util;
@@ -92,7 +92,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         optional<bool>        _allowWireframe;
     };
 
-} } } // namespace osgEarth::Drivers::SimpleSky
+} } // namespace osgEarth::SimpleSky
 
 #endif // OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
 

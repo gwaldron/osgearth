@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Sky>
 
-namespace osgEarth { namespace Drivers { namespace GLSky
+namespace osgEarth { namespace GLSky
 {
     using namespace osgEarth;
     using namespace osgEarth::Util;
@@ -61,6 +61,6 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         }
     };
 
-} } } // namespace osgEarth::Drivers::GLSky
+} } // namespace osgEarth::Drivers::GLSky
 
 #endif // OSGEARTH_DRIVER_GL_SKY_OPTIONS

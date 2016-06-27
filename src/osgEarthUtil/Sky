@@ -232,7 +232,10 @@ namespace osgEarth { namespace Util
     };
 
     /**
-     * Factory interface that sky extensions need to implement.
+     * Factory interface that sky extensions need to implement. Someday we will
+     * convert the sky extensions into proper NodeKits, at which point this method
+     * will probably be no longer necessary since you can just link with the library
+     * and create the SkyNode normally.
      */
     class /*header-only*/ SkyNodeFactory
     {

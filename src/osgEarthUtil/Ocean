@@ -26,6 +26,7 @@
 #include <osgEarth/DateTime>
 #include <osgEarth/Config>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Profile>
 #include <osg/Group>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
@@ -129,6 +130,18 @@ namespace osgEarth { namespace Util
     protected:
         MapNode* getMapNode(const osgDB::Options* opt) const;
         const OceanOptions& getOceanOptions(const osgDB::Options* opt) const;
+    };
+
+    /**
+     * Factory interface that ocean extensions need to implement. Someday we will
+     * convert the ocean extensions into proper NodeKits, at which point this method
+     * will probably be no longer necessary since you can just link with the library
+     * and create the OceanNode normally.
+     */
+    class /*header-only*/ OceanNodeFactory
+    {
+    public:
+        virtual OceanNode* createOceanNode(MapNode* mapNode) =0;
     };
 
 } } // namespace osgEarth::Util

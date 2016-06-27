@@ -20,7 +20,9 @@
 #include "TritonContext"
 #include <osg/GLExtensions>
 #include <osg/Math>
+#include <osgDB/FileNameUtils>
 #include <osgEarth/SpatialReference>
+#include <cstdlib>
 
 #define LC "[TritonContext] "
 
@@ -93,8 +95,13 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
         {
             _initAttempted = true;
 
-            _resourceLoader = new ::Triton::ResourceLoader(
-                _options.resourcePath()->c_str() );
+            std::string resourcePath = _options.resourcePath().get();
+            if (resourcePath.empty() && ::getenv("TRITON_PATH"))
+            {
+                resourcePath = osgDB::concatPaths(::getenv("TRITON_PATH"), "Resources");
+            }
+
+            _resourceLoader = new ::Triton::ResourceLoader(resourcePath.c_str());
 
             _environment = new ::Triton::Environment();
 
@@ -161,7 +168,7 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
             else
             {
                 _initFailed = true;
-                OE_WARN << LC << "Triton initialization failed" << std::endl;
+                OE_WARN << LC << "Triton initialization failed- err=" << err << std::endl;
             }
         }
     }

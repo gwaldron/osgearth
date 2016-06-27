@@ -21,7 +21,7 @@
 #include <osgEarth/HeightFieldUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers::SimpleOcean;
+using namespace osgEarth::SimpleOcean;
 
 #define LC "[ElevationProxyImageLayer] "
 

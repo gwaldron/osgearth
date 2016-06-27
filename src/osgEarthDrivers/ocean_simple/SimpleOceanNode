@@ -29,7 +29,7 @@ namespace osg {
     class Uniform;
 }
 
-namespace osgEarth { namespace Drivers { namespace SimpleOcean
+namespace osgEarth { namespace SimpleOcean
 {
     using namespace osgEarth;
     using namespace osgEarth::Util;
@@ -70,6 +70,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
         void applyOptions();
     };
 
-} } } // namespace osgEarth::Drivers::SimpleOcean
+} } // namespace osgEarth::Drivers::SimpleOcean
 
 #endif // OSGEARTH_DRIVER_SIMPLE_OCEAN_NODE

@@ -23,7 +23,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ThreadingUtils>
 
-namespace osgEarth { namespace Drivers { namespace SimpleOcean
+namespace osgEarth { namespace SimpleOcean
 {
     using namespace osgEarth;
 
@@ -60,6 +60,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
         Threading::Mutex _mapfMutex;
     };
 
-} } } // namespace osgEarth::Drivers::SimpleOcean
+} } // namespace osgEarth::SimpleOcean
 
 #endif // OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER

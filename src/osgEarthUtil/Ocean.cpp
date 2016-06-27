@@ -150,6 +150,38 @@ OceanNode::traverse(osg::NodeVisitor& nv)
 #define OPTIONS_TAG "__osgEarth::Util::OceanOptions"
 
 OceanNode*
+OceanNode::create(const OceanOptions& options, MapNode* mapNode)
+{
+    if ( !mapNode ) {
+        OE_WARN << LC << "Internal error; null map node passed to OceanNode::Create\n";
+        return 0L;
+    }
+
+    std::string driverName = options.getDriver();
+    if ( driverName.empty() )
+        driverName = "simple";
+
+    std::string extensionName = std::string("ocean_") + driverName;
+
+    osg::ref_ptr<Extension> extension = Extension::create( extensionName, options );
+    if ( !extension.valid() ) {
+        OE_WARN << LC << "Failed to load extension for sky driver \"" << driverName << "\"\n";
+        return 0L;
+    }
+
+    OceanNodeFactory* factory = extension->as<OceanNodeFactory>();
+    if ( !factory ) {
+        OE_WARN << LC << "Internal error; extension \"" << extensionName << "\" does not implement OceanNodeFactory\n";
+        return 0L;
+    }
+
+    osg::ref_ptr<OceanNode> result = factory->createOceanNode(mapNode);
+
+    return result.release();
+}
+
+#if 0
+OceanNode*
 OceanNode::create(const OceanOptions& options,
                   MapNode*            mapNode)
 {
@@ -163,12 +195,13 @@ OceanNode::create(const OceanOptions& options,
         driver = "simple";
     }
 
-    std::string driverExt = std::string(".osgearth_ocean_") + driver;
+    std::string driverExt = std::string("ocean_") + driver;
 
     osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
     rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
     rwopts->setPluginData( OPTIONS_TAG, (void*)&options );
 
+    result = Extension::create(driver)
     result = dynamic_cast<OceanNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
     if ( result )
     {
@@ -181,6 +214,7 @@ OceanNode::create(const OceanOptions& options,
 
     return result;
 }
+#endif
 
 OceanNode*
 OceanNode::create(MapNode* mapNode)

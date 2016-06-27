@@ -22,46 +22,142 @@
 #include <osgDB/FileUtils>
 
 #include "SimpleOceanNode"
+#include "SimpleOceanOptions"
+#include <osgEarthUtil/Controls>
 
 #undef  LC
-#define LC "[SimpleOceanDriver] "
+#define LC "[SimpleOceanExtension] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+namespace ui = osgEarth::Util::Controls;
 
-namespace osgEarth { namespace Drivers { namespace SimpleOcean
+namespace osgEarth { namespace SimpleOcean
 {
-    struct SimpleOceanDriver : public OceanDriver
+    /**
+     * Extension that lets you load a SimpleOcean from an earth file.
+     */
+    class SimpleOceanExtension : public Extension,
+                                 public ExtensionInterface<MapNode>,
+                                 public ExtensionInterface<ui::Control>,
+                                 public SimpleOceanOptions,
+                                 public OceanNodeFactory
     {
-        SimpleOceanDriver()
+    public:
+        META_Object(osgearth_ocean_simple, SimpleOceanExtension);
+
+        SimpleOceanExtension() { }
+
+        SimpleOceanExtension(const ConfigOptions& options) :
+            SimpleOceanOptions(options) { }
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode* mapNode)
         {
-            supportsExtension( "osgearth_ocean_simple", "Simple Ocean" );
+            _oceanNode = createOceanNode(mapNode);
+            mapNode->addChild(_oceanNode.get());
+            return true;
         }
 
-        ReadResult readObject(const std::string& url, const Options* options) const
+        bool disconnect(MapNode* mapNode)
         {
-            return readNode( url, options );
+            if (mapNode && _oceanNode.valid())
+                mapNode->removeChild(_oceanNode.get());
+            return true;
         }
 
-        ReadResult readNode(const std::string& url, const Options* options) const
+    public: // ExtensionInterface<Control>
+
+        bool connect(ui::Control* control);
+
+        bool disconnect(ui::Control* control) {
+            return true;
+        }
+
+    public: // OCeanNodeFactory
+
+        OceanNode* createOceanNode(MapNode* mapNode) {
+            return new SimpleOceanNode(*this, mapNode);
+        }
+
+    protected:
+        SimpleOceanExtension(const SimpleOceanExtension& rhs, const osg::CopyOp& op) { }
+
+        virtual ~SimpleOceanExtension() { }
+
+        osg::ref_ptr<OceanNode> _oceanNode;
+    };
+
+    REGISTER_OSGEARTH_EXTENSION(osgearth_ocean_simple, SimpleOceanExtension);
+
+} } // namespace osgEarth::Drivers::SimpleOcean
+
+
+
+
+
+using namespace osgEarth::SimpleOcean;
+
+namespace
+{
+    struct ChangeSeaLevel : public ui::ControlEventHandler
+    {
+        ChangeSeaLevel( OceanNode* ocean ) : _ocean(ocean) { }
+        OceanNode* _ocean;
+        virtual void onValueChanged( ui::Control* control, float value )
         {
-            std::string ext = osgDB::getLowerCaseFileExtension(url);
-            if ( !acceptsExtension(ext) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-            MapNode*           mapNode( getMapNode(options) );
-            SimpleOceanOptions oceanOptions( getOceanOptions(options) );
-
-            if ( !mapNode )
-            {
-                OE_WARN << LC << "Internal error - no MapNode marshalled" << std::endl;
-                return ReadResult::ERROR_IN_READING_FILE;
-            }
-
-            return new SimpleOceanNode( oceanOptions, mapNode );
+            _ocean->setSeaLevel( value );
         }
     };
 
-    REGISTER_OSGPLUGIN( osgearth_ocean_simple, SimpleOceanDriver )
+    struct ChangeSeaAlpha : public ui::ControlEventHandler
+    {
+        ChangeSeaAlpha( OceanNode* ocean ) : _ocean(ocean) { }
+        OceanNode* _ocean;
+        virtual void onValueChanged( ui::Control* control, float value )
+        {
+            _ocean->setAlpha( value );
+        }
+    };
+}
 
-} } } // namespace osgEarth::Drivers::SimpleOcean
+bool
+SimpleOceanExtension::connect(ui::Control* control)
+{
+    ui::Container* container = dynamic_cast<ui::Container*>(control);
+    if (container)
+    {
+        ui::VBox* main = new ui::VBox();
+
+        ui::HBox* sealLevelBox = main->addControl(new ui::HBox());
+        sealLevelBox->setChildVertAlign( ui::Control::ALIGN_CENTER );
+        sealLevelBox->setChildSpacing( 10 );
+        sealLevelBox->setHorizFill( true );
+
+        sealLevelBox->addControl( new ui::LabelControl("Sea Level: ", 16) );
+
+        ui::HSliderControl* mslSlider = sealLevelBox->addControl(new ui::HSliderControl( -250.0f, 250.0f, 0.0f ));
+        mslSlider->setBackColor( Color::Gray );
+        mslSlider->setHeight( 12 );
+        mslSlider->setHorizFill( true, 200 );
+        mslSlider->addEventHandler( new ChangeSeaLevel(_oceanNode.get()) );
+
+        ui::HBox* alphaBox = main->addControl(new ui::HBox());
+        alphaBox->setChildVertAlign( ui::Control::ALIGN_CENTER );
+        alphaBox->setChildSpacing( 10 );
+        alphaBox->setHorizFill( true );
+    
+        alphaBox->addControl( new ui::LabelControl("Sea Alpha: ", 16) );
+
+        ui::HSliderControl* alphaSlider = alphaBox->addControl(new ui::HSliderControl( 0.0, 1.0, 1.0));
+        alphaSlider->setBackColor( Color::Gray );
+        alphaSlider->setHeight( 12 );
+        alphaSlider->setHorizFill( true, 200 );
+        alphaSlider->addEventHandler( new ChangeSeaAlpha(_oceanNode.get()) );
+
+        container->addControl(main);
+    }
+
+    return true;
+}

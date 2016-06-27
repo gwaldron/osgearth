@@ -49,7 +49,7 @@ namespace osgEarth { namespace Triton
         osgEarth::optional<std::string>& licenseCode() { return _licenseCode; }
         const osgEarth::optional<std::string>& licenseCode() const { return _licenseCode; }
 
-        /* SilverLining resource path */
+        /* Triton resource path */
         osgEarth::optional<std::string>& resourcePath() { return _resourcePath; }
         const osgEarth::optional<std::string>& resourcePath() const { return _resourcePath; }
 

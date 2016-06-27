@@ -33,6 +33,7 @@
 #include "GeometryPool"
 #include "Loader"
 #include "Unloader"
+#include "SelectionInfo"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -181,7 +182,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         RexTerrainEngineNode( const RexTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 
-        SelectionInfo* _selectionInfo;
+        SelectionInfo _selectionInfo;
         void buildSelectionInfo(void);
         void destroySelectionInfo(void);
 

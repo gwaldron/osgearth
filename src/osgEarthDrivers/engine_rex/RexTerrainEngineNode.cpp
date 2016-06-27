@@ -154,8 +154,7 @@ _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
-_stateUpdateRequired  ( false ),
-_selectionInfo        ( 0L )
+_stateUpdateRequired  ( false )
 {
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
@@ -398,15 +397,15 @@ RexTerrainEngineNode::setupRenderBindings()
 
 void RexTerrainEngineNode::destroySelectionInfo()
 {
-    if (_selectionInfo)
-    {
-        delete _selectionInfo; _selectionInfo = 0;
-    }
+    //if (_selectionInfo)
+    //{
+    //    delete _selectionInfo; _selectionInfo = 0;
+    //}
 }
 
 void RexTerrainEngineNode::buildSelectionInfo()
 {
-    _selectionInfo = new SelectionInfo;
+//    _selectionInfo = new SelectionInfo;
 }
 
 void
@@ -438,8 +437,8 @@ RexTerrainEngineNode::dirtyTerrain()
     }
 
     // recalculate the LOD morphing parameters:
-    destroySelectionInfo();
-    buildSelectionInfo();
+    //destroySelectionInfo();
+    //buildSelectionInfo();
 
     // clear out the tile registry:
     if ( _liveTiles.valid() )
@@ -575,7 +574,7 @@ RexTerrainEngineNode::getEngineContext()
             _deadTiles.get(),
             _renderBindings,
             _terrainOptions,
-            *_selectionInfo,
+            _selectionInfo,
             _tilePatchCallbacks);
     }
 

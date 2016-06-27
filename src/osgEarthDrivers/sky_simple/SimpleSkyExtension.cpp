@@ -46,6 +46,10 @@ namespace osgEarth { namespace SimpleSky
         SimpleSkyExtension(const ConfigOptions& options) :
             SimpleSkyOptions(options) { }
 
+    public: // Extension
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
+
 
     public: // ExtensionInterface<MapNode>
 

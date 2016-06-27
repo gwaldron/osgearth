@@ -73,6 +73,9 @@ Extension::create(const std::string& name, const ConfigOptions& options)
     // implement getConfigOptions.
     extension->_defaultOptions = options;
 
+    if (extension->getName().empty())
+        extension->setName(name);
+
     rr.takeObject();
     return extension;
 }

@@ -97,4 +97,4 @@ AnnotationExtension::disconnect(MapNode* mapNode)
 }
 
 REGISTER_OSGEARTH_EXTENSION(osgearth_annotations, AnnotationExtension);
-REGISTER_OSGEARTH_EXTENSION(osgearth_annotation,  AnnotationExtension);
+//REGISTER_OSGEARTH_EXTENSION(osgearth_annotation,  AnnotationExtension);

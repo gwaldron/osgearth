@@ -54,6 +54,10 @@ namespace osgEarth { namespace Triton
         TritonExtension(const ConfigOptions& options) :
             TritonOptions(options) { }
 
+    public: // Extension
+
+        const ConfigOptions& getConfigOptions() const { return *this; }
+
     public: // ExtensionInterface<MapNode>
 
         bool connect(MapNode* mapNode)

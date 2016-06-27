@@ -16,7 +16,9 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
                
-    <sky driver="gl" hours="18" />
+    <sky driver="gl">
+        <hours>18</hours>
+    </sky>
     
     <ocean driver="triton">
         <user> my_user_name </user>

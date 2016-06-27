@@ -39,6 +39,7 @@ namespace osgEarth { namespace Annotation
 
         // CTORs
         AnnotationExtension();
+
         AnnotationExtension(const ConfigOptions& options);
 
         // DTOR
@@ -47,7 +48,7 @@ namespace osgEarth { namespace Annotation
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        void setDBOptions(const osgDB::Options* readOptions);
 
         const ConfigOptions& getConfigOptions() const { return *this; }
 

@@ -29,6 +29,7 @@ using namespace osgEarth::BumpMap;
 
 
 REGISTER_OSGEARTH_EXTENSION(osgearth_bumpmap, BumpMapExtension);
+REGISTER_OSGEARTH_EXTENSION(osgearth_bump_map, BumpMapExtension);
 
 
 BumpMapExtension::BumpMapExtension()

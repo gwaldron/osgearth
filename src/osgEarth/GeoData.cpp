@@ -509,7 +509,7 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
         }
         else
         {
-            GeoPoint rhsT = transform(rhs.getSRS());
+            GeoPoint rhsT = rhs.transform(getSRS());
             return (vec3d() - rhsT.vec3d()).length();
         }
     }

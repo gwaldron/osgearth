@@ -158,6 +158,11 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     // If the database pre-existed, read in the information from the metadata.
     else // !isNewDatabase
     {
+        if ( _options.computeLevels() == true )
+        {
+            computeLevels();
+        }
+
         std::string profileStr;
         getMetaData( "profile", profileStr );
 
@@ -195,29 +200,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 return Status::Error("Cannot find compressor \"" + compression + "\"");
             else
                 OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
-        }
-
-        // Check for bounds and populate DataExtents.
-        std::string boundsStr;
-        if ( getMetaData("bounds", boundsStr) )
-        {
-            std::vector<std::string> tokens;
-            StringTokenizer(",").tokenize(boundsStr, tokens);
-            if (tokens.size() == 4)
-            {
-                GeoExtent extent(
-                    osgEarth::SpatialReference::get("wgs84"),
-                    osgEarth::as<double>(tokens[0], 0.0),
-                    osgEarth::as<double>(tokens[1], 0.0), // south
-                    osgEarth::as<double>(tokens[2], 0.0), // east
-                    osgEarth::as<double>(tokens[3], 0.0)  // north
-                    );
-
-                this->getDataExtents().push_back(DataExtent(extent));
-
-                OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
-            }
-        }
+        }        
 
         // Set the profile
         const Profile* profile = getProfile();
@@ -252,10 +235,32 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             OE_INFO << LC << "Profile = " << profileStr << std::endl;
         }
 
-        if ( _options.computeLevels() == true )
+        // Check for bounds and populate DataExtents.
+        std::string boundsStr;
+        if ( getMetaData("bounds", boundsStr) )
         {
-            computeLevels();
+            std::vector<std::string> tokens;
+            StringTokenizer(",").tokenize(boundsStr, tokens);
+            if (tokens.size() == 4)
+            {
+                GeoExtent extent(
+                    osgEarth::SpatialReference::get("wgs84"),
+                    osgEarth::as<double>(tokens[0], 0.0),
+                    osgEarth::as<double>(tokens[1], 0.0), // south
+                    osgEarth::as<double>(tokens[2], 0.0), // east
+                    osgEarth::as<double>(tokens[3], 0.0)  // north
+                    );
+
+                this->getDataExtents().push_back(DataExtent(extent, _minLevel, _maxLevel));
+
+                OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
+            }
         }
+        else
+        {
+            this->getDataExtents().push_back(DataExtent(getProfile()->getExtent(), _minLevel, _maxLevel));
+        }
+
     }
 
     // do we require RGB? for jpeg?

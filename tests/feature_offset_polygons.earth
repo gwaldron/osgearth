@@ -12,38 +12,32 @@ GLSL to affect a polygon offset effect.
         <terrain min_lod="8"/>
     </options>
     
-    <extensions>
-        <terrainshader>
-            <description>
-                A GLSL snippet that pushes the terrain back to prevent high-altitude z fighting.
-            </description>          
-            <code>
-                <![CDATA[
-                    #version 110
-                    #pragma vp_entryPoint "dp_vert"        // name of entry point function
-                    #pragma vp_location   "vertex_view"    // where to insert this shader in the pipeline
+    <terrainshader>
+        <description>
+            A GLSL snippet that pushes the terrain back to prevent high-altitude z fighting.
+        </description>          
+        <code>
+            <![CDATA[
+                #version 110
+                #pragma vp_entryPoint dp_vert
+                #pragma vp_location   vertex_view
+                
+                void dp_vert(inout vec4 v)
+                {
+                    const float R    = 6371000.0;      // Approximate radius of the earth
+                    const float dmin = 100000.0;       // Minimum vertex distance at which to apply effect
+                    const float dmax = R;              // Vertex distance at which to apply maximum effect
+                    const float maxOffset = 250000.0;  // Maximum offset (applied at dmax)
                     
-                    varying out float tt;
-                    
-                    void dp_vert(inout vec4 v)
-                    {
-                        const float R    = 6371000.0;      // Approximate radius of the earth
-                        const float dmin = 100000.0;       // Minimum vertex distance at which to apply effect
-                        const float dmax = R;              // Vertex distance at which to apply maximum effect
-                        const float maxOffset = 250000.0;  // Maximum offset (applied at dmax)
-                        
-                        float d = length(v.xyz);
-                        float t = clamp( (d-dmin)/(dmax-dmin), 0.0, 1.0 );
-                        float offset = t*maxOffset;
-                        vec3 n = normalize(v.xyz);
-                        v.xyz = v.xyz + n*offset;
-                        
-                        tt = t;
-                    }
-                ]]>
-            </code>         
-        </terrainshader>
-    </extensions>
+                    float d = length(v.xyz);
+                    float t = clamp( (d-dmin)/(dmax-dmin), 0.0, 1.0 );
+                    float offset = t*maxOffset;
+                    vec3 n = normalize(v.xyz);
+                    v.xyz = v.xyz + n*offset;
+                }
+            ]]>
+        </code>         
+    </terrainshader>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>

@@ -15,10 +15,11 @@ osgEarth Sample - Shows an elevation-derived normal map.
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <extensions>
-        <sky driver="gl"/>
-        <bumpmap>
-            <image>../data/rock_hard.jpg</image>
-        </bumpmap>
-    </extensions>
+    <sky driver="gl"/>
+    
+    <bumpmap>
+        <image>../data/rock_hard.jpg</image>
+        <octaves>8</octaves>
+        <intensity>2.5</intensity>
+    </bumpmap>
 </map>

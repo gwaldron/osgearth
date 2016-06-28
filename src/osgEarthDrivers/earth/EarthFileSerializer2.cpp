@@ -344,6 +344,19 @@ namespace
         map->addTerrainMaskLayer( new MaskLayer(options) );
     }
 
+    // support for "special" extension names (convenience and backwards compat)
+    Extension* createSpecialExtension(const Config& conf, MapNode* mapNode)
+    {
+        // special support for the default sky extension:
+        if (conf.key() == "sky" && !conf.hasValue("driver"))
+            return Extension::create("sky_simple", conf);
+
+        if (conf.key() == "ocean" && !conf.hasValue("driver"))
+            return Extension::create("ocean_simple", conf);
+
+        return 0L;
+    }
+
     void addExtension(const Config& conf, MapNode* mapNode)
     {
         std::string name = conf.key();
@@ -352,6 +365,9 @@ namespace
         {
             name = conf.key() + "_" + conf.value("driver");
             extension = Extension::create(name, conf);
+
+            if (!extension)
+                extension = createSpecialExtension(conf, mapNode);
         }
 
         if (extension)
@@ -403,7 +419,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if ( i->key() == "options" || i->key() == "name" || i->key() == "type" )
+        if (i->key() == "options" || i->key() == "name" || i->key() == "type" || i->key() == "version")
         {
             // nop - handled earlier
         }

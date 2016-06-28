@@ -39,7 +39,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         SilverLiningNode(
-            const osgEarth::Map*       map,
+            const osgEarth::SpatialReference* mapSRS,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
@@ -64,7 +64,7 @@ namespace osgEarth { namespace SilverLining
         osg::ref_ptr<osg::Light> _light;
 		const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
-		const osgEarth::Map* _map;
+		const osgEarth::SpatialReference* _mapSRS;
 		//used for camera-context bookkeeping
 		std::map<osg::Camera*,SilverLiningContextNode*> _cameraNodeMap; 
     };

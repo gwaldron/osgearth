@@ -36,7 +36,7 @@ using namespace osgEarth::SilverLining;
 SilverLiningContextNode::SilverLiningContextNode(SilverLiningNode* node,
 								   osg::Camera*               camera,
                                    osg::Light*                light,
-	                               const osgEarth::Map*       map,
+	                               const osgEarth::SpatialReference*    mapSRS,
                                    const SilverLiningOptions& options,
                                    Callback*                  callback) :
 _silverLiningNode (node),
@@ -47,7 +47,7 @@ _lastAltitude(DBL_MAX)
     // The main silver lining data:
     _SL = new SilverLiningContext( options );
     _SL->setLight( light);
-    _SL->setSRS  ( map->getSRS() );
+    _SL->setSRS  ( mapSRS );
     _SL->setCallback( callback );
 
     // Geode to hold each of the SL drawables:

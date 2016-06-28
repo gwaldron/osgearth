@@ -22,6 +22,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
 
 #define LC "[SimpleSkyDriver] "
 
@@ -86,7 +87,13 @@ namespace osgEarth { namespace SimpleSky
 
     public: // ExtensionInterface<Control>
 
-        bool connect(ui::Control* control);
+        bool connect(ui::Control* control)
+        {
+            ui::Container* container = dynamic_cast<ui::Container*>(control);
+            if (container)
+                container->addControl(SkyControlFactory::create(_skynode.get()));
+            return true;
+        }
 
         bool disconnect(ui::Control* control)
         {
@@ -118,7 +125,7 @@ namespace osgEarth { namespace SimpleSky
 
 
 
-
+#if 0
 using namespace osgEarth::SimpleSky;
 
 namespace
@@ -213,3 +220,4 @@ SimpleSkyExtension::connect(ui::Control* control)
     }
     return true;
 }
+#endif

@@ -64,8 +64,6 @@ NoiseExtension::connect(MapNode* mapNode)
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
-    OE_INFO << LC << "Installed!\n";
-
     return true;
 }
 

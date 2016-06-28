@@ -20,7 +20,9 @@
 #include "SilverLiningContext"
 #include "SilverLiningNode"
 #include <osg/Light>
+#include <osgDB/FileNameUtils>
 #include <osgEarth/SpatialReference>
+#include <cstdlib>
 
 #define LC "[SilverLiningContext] "
 
@@ -92,10 +94,16 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
             // constant random seed ensures consistent clouds across windows
             // TODO: replace this with something else since this is global! -gw
             ::srand(1234);
+            
+            std::string resourcePath = _options.resourcePath().get();
+            if (resourcePath.empty() && ::getenv("SILVERLINING_PATH"))
+            {
+                resourcePath = osgDB::concatPaths(::getenv("SILVERLINING_PATH"), "Resources");
+            }
 
             int result = _atmosphere->Initialize(
                 ::SilverLining::Atmosphere::OPENGL,
-                _options.resourcePath()->c_str(),
+                resourcePath.c_str(),
                 true,
                 0 );
 

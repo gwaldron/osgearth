@@ -15,7 +15,6 @@ osgEarth Sample - Shows an elevation-derived normal map.
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <extensions>
-        <sky driver="gl"/>
-    </extensions>
+    <sky_simple/>
+
 </map>

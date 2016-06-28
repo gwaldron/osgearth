@@ -67,6 +67,8 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Drivers;
 
+namespace ui = osgEarth::Util::Controls;
+
 //------------------------------------------------------------------------
 
 /** Shared event handlers. */
@@ -714,4 +716,98 @@ MapNodeHelper::usage() const
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
         << "  --path [file]                 : load and playback an animation path\n";
+}
+
+
+//........................................................................
+
+
+namespace
+{
+    struct SkyHoursSlider : public ui::ControlEventHandler
+    {
+        SkyHoursSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        void onValueChanged(ui::Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();
+            _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
+        }
+    };
+
+    struct SkyMonthSlider : public ui::ControlEventHandler
+    {
+        SkyMonthSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        void onValueChanged(ui::Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();            
+            _sky->setDateTime(DateTime(d.year(), (int)value, d.day(), d.hours()));
+        }
+    };
+
+    struct SkyYearSlider : public ui::ControlEventHandler
+    {
+        SkyYearSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyNode* _sky;
+        void onValueChanged(ui::Control* control, float value )
+        {
+            DateTime d = _sky->getDateTime();            
+            _sky->setDateTime(DateTime((int)value, d.month(), d.day(), d.hours()));
+        }
+    };
+
+    struct AmbientBrightnessHandler : public ui::ControlEventHandler
+    {
+        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
+
+        SkyNode* _sky;
+
+        void onValueChanged(ui::Control* control, float value )
+        {
+            _sky->setMinimumAmbient(osg::Vec4(value,value,value,1));
+        }
+    };
+}
+
+ui::Control* SkyControlFactory::create(SkyNode* sky)
+{
+    ui::Grid* grid = new ui::Grid();
+    grid->setChildVertAlign( ui::Control::ALIGN_CENTER );
+    grid->setChildSpacing( 10 );
+    grid->setHorizFill( true );
+
+    if (sky)
+    {
+        DateTime dt = sky->getDateTime();
+
+        int r=0;
+        grid->setControl( 0, r, new ui::LabelControl("Hours UTC: ", 16) );
+        ui::HSliderControl* skyHoursSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 24.0f, dt.hours() ));
+        skyHoursSlider->setHorizFill( true, 250 );
+        skyHoursSlider->addEventHandler( new SkyHoursSlider(sky) );
+        grid->setControl(2, r, new ui::LabelControl(skyHoursSlider) );
+    
+        ++r;
+        grid->setControl( 0, r, new ui::LabelControl("Month: ", 16) );
+        ui::HSliderControl* skyMonthSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 11.0f, dt.month() ));
+        skyMonthSlider->setHorizFill( true, 250 );
+        skyMonthSlider->addEventHandler( new SkyMonthSlider(sky) );
+        grid->setControl(2, r, new ui::LabelControl(skyMonthSlider) );
+    
+        ++r;
+        grid->setControl( 0, r, new ui::LabelControl("Year: ", 16) );
+        ui::HSliderControl* skyYearSlider = grid->setControl(1, r, new ui::HSliderControl( 1970.0f, 2061.0f, dt.year() ));
+        skyYearSlider->setHorizFill( true, 250 );
+        skyYearSlider->addEventHandler( new SkyYearSlider(sky) );
+        grid->setControl(2, r, new ui::LabelControl(skyYearSlider) );
+
+        ++r;
+        grid->setControl(0, r, new ui::LabelControl("Min.Ambient: ", 16) );
+        ui::HSliderControl* ambient = grid->setControl(1, r, new ui::HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
+        ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
+        grid->setControl(2, r, new ui::LabelControl(ambient) );
+    }
+
+    return grid;
 }

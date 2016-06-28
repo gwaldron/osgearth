@@ -173,7 +173,7 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
         return 0L;
     }
 
-    std::string driverName = options.getDriver();
+    std::string driverName = osgEarth::trim(options.getDriver());
     if ( driverName.empty() )
         driverName = "simple";
 

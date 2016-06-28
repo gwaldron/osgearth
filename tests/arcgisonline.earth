@@ -29,7 +29,4 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
         <lighting>false</lighting>
     </options>
 	
-	<extensions>
-		<lod_blending/>
-	</extensions>
 </map>

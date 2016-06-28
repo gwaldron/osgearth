@@ -33,11 +33,11 @@
 
 using namespace osgEarth::SilverLining;
 
-SilverLiningNode::SilverLiningNode(const osgEarth::Map*       map,
+SilverLiningNode::SilverLiningNode(const osgEarth::SpatialReference*    mapSRS,
                                    const SilverLiningOptions& options,
                                    Callback*                  callback) :
-_options     (options),
-_map(map)
+_options(options),
+_mapSRS(mapSRS)
 {
     // Create a new Light for the Sun.
     _light = new osg::Light();
@@ -110,8 +110,9 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 		{
 			if(_cameraNodeMap.find(camera) == _cameraNodeMap.end())
 			{ 
-				SilverLiningContextNode *slContextNode = new SilverLiningContextNode(this, camera, _light, _map, _options);
+				SilverLiningContextNode *slContextNode = new SilverLiningContextNode(this, camera, _light, _mapSRS, _options);
 				_cameraNodeMap[camera] = slContextNode;
+
 //Use camera cull mask that will remove the need for context check 
 //in SilverLiningContextNode, SilverLiningSkyDrawable and SilverLiningCloudsDrawable
 #ifdef SL_USE_CULL_MASK 

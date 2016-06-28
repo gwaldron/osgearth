@@ -32,23 +32,18 @@ osgEarth Sample - Feature to elevation driver.
              <build_spatial_index>true</build_spatial_index>
         </features>
     </elevation>
-  
-    <extensions>
     
-     
-        <viewpoints>
-            <viewpoint>
-                <name>Mt Rainier</name>
-                <heading>-21.7843</heading>
-                <pitch>-27.566</pitch>
-                <range>38701.6m</range>
-                <long>-121.7706234748925</long>
-                <lat>46.84187674081022</lat>
-                <height>-0.002506599761545658</height>
-                
-            </viewpoint>
-        </viewpoints>
-        
-    </extensions>
+    <viewpoints>
+        <viewpoint>
+            <name>Mt Rainier</name>
+            <heading>-21.7843</heading>
+            <pitch>-27.566</pitch>
+            <range>38701.6m</range>
+            <long>-121.7706234748925</long>
+            <lat>46.84187674081022</lat>
+            <height>-0.002506599761545658</height>
+            
+        </viewpoint>
+    </viewpoints>
 
 </map>

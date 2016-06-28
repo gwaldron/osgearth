@@ -3,171 +3,201 @@ osgEarth Sample - Annotations
 -->
 <map name="readymap.org" type="projected" version="2">
 
+    <options>
+        <profile>plate-carre</profile>
+    </options>
+
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <options>
-        <terrain>
-            <lighting>false</lighting>
-        </terrain>
-		<profile>spherical-mercator</profile>
-    </options>
+    <viewpoints>
+        <viewpoint name="Annotation Samples" 
+                   lat="33" long="-118" range="500000"
+                   heading="35.27" pitch="-35" />
+    </viewpoints>
     
-    <extensions>
-        <viewpoints>
-            <viewpoint name="Annotation Samples" 
-                       lat="33" long="-118" range="500000"
-                       heading="35.27" pitch="-35" />
-        </viewpoints>
+    <annotations>
+    
+        <label text="Label">
+            <position lat="34" long="-120" />
+            <style type="text/css">
+                text-align:     center_center;
+                text-size:      20;
+                text-declutter: true;
+                text-halo:      #777;
+                text-bbox-fill: #00FF0033;
+                text-bbox-margin: 3;
+                text-bbox-border: #FFFFFFFF;
+                text-bbox-border-width: 1;
+            </style>
+        </label>
         
-        <annotations>
+        <place text="Place">
+            <position lat="35" long="-110"/>
+            <icon>../data/placemark32.png</icon>
+            <style type="text/css">
+                text-declutter: true;
+                text-halo:      #777;
+            </style>
+        </place>
         
-            <label text="Los Angeles">
-                <position lat="34.052235" long="-118.243683" alt="100" mode="relative"/>
-                <style type="text/css">
-                    text-align:     center_center;
-                    text-size:      20;
-                    text-declutter: true;
-                    text-halo:      #777;
-                </style>
-            </label>
-            
-            <place text="San Diego">
-                <position lat="32.73" long="-117.17"/>
-                <icon>../data/placemark32.png</icon>
-                <style type="text/css">
-                    text-declutter: true;
-                    text-halo:      #777;
-                </style>
-            </place>
-            
-            <circle name="draped circle">
-                <position lat="34.051" long="-117.974"/>
-                <radius value="50" units="km"/>
-                <style type="text/css">
-                    fill:               #ffff0080;
-                    altitude-clamping:  terrain;
-                    altitude-technique: drape;
-                </style>
-            </circle>
-            
-            <ellipse name="ellipse relative">
-                <position lat="34.051" long="-116" hat="5000"/>
-                <radius_major value="50" units="km"/>
-                <radius_minor value="40" units="km"/>
-                <style type="text/css">
-                    fill: #ffff0080;
-                </style>
-            </ellipse>
-            
-            <ellipse name="ellipse extruded">
-                <position lat="32.73" long="-119.0"/>
-                <radius_major value="50" units="km"/>
-                <radius_minor value="20" units="km"/>
-                <style type="text/css">
-                    fill:             #ff7f007f;
-                    stroke:           #ff0000ff;
-                    extrusion-height: 5000;
-                </style>
-            </ellipse>
-            
-            <rectangle name="absolute rectangle">
-                <position lat="32.2" long="-118" alt="1000"/>
-                <width value="50" units="nm"/>
-                <height value="25" units="nm"/>
-                <style type="text/css">
-                    stroke:       #00ffff; 
-                    stroke-width: 2; 
-                </style>
-            </rectangle>
-
-            <feature name="extruded line">
-                <srs>wgs84</srs>
-                <geometry>
-                    LINESTRING(-120.37 34.039, -120.09 33.96, -119.75 34, -118.43 33.37, -118.48 32.88)
-                </geometry>
-                <style type="text/css">
-                    fill:                #ff00ff7f;
-                    stroke:              #ffff00;
-                    stroke-width:        3;
-					stroke-crease-angle: 45.0;
-                    extrusion-height:    30000;
-                    render-lighting:     false;
-                </style>
-            </feature>
-
-            <feature name="gpu clamped line">
-                <srs>wgs84</srs>
-                <geometry>
-                    LINESTRING(-120 37, -120 33, -118 33, -118 32)
-                </geometry>
-                <style type="text/css">
-                    stroke:              #ff3000;
-                    stroke-width:        3;
-                    stroke-tessellation: 100;
-                    altitude-clamping:   terrain;
-                    altitude-technique:  gpu;
-                    render-lighting:     false;
-                </style>
-            </feature>
-            
-            <model name="flag model">
-                <url>../data/red_flag.osg.18000.scale</url>
-                <position lat="33" long="-117.75" hat="0"/>
-            </model>
-            
-            <imageoverlay>
-                <url>../data/fractal.png</url>
-                <alpha>1.0</alpha>
-                <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
-            </imageoverlay>
-            
-            <label text="image overlay">
-                <position lat="26" long="-81" />
-            </label>
-            
-            <local_geometry name="3D geometry">
-                <geometry>
-                    POLYGON((0 0 0, -1000 0 25000, -5000 0 25000, 0 0 30000, 5000 0 25000, 1000 0 25000))
-                </geometry>
-                <position lat="33.4" long="-116.6" hat="0"/>
-                <style type="text/css">
-                    fill:            #00ff00;
-                    stroke:          #ffff00;
-                    render-lighting: false;
-                </style>
-            </local_geometry>
-            
-            <circle name="scene-clamped circle">
-                <position lat="33.4" long="-116.6"/>
-                <radius value="5" units="km"/>
-                <style type="text/css">
-                    fill: #afafff9f;
-                    render-lighting: false;
-                </style>
-            </circle>
-
-            <feature name="Long Line">
-                <srs>wgs84</srs>
-                <geometry>
-                    LINESTRING(0 0, 0 65)
-                </geometry>
-                <style type="text/css">
-                    stroke:              #ffff00;
-                    stroke-width:        3;
-                    stroke-tessellation: 90;
-                    altitude-clamping:   relative;
-					altitude-technique:  scene;
-                    render-lighting:     false;
-                </style>
-            </feature>
-            
-        </annotations>
+        <circle name="draped circle">
+            <position lat="34.051" long="-117.974"/>
+            <radius value="50" units="km"/>
+            <style type="text/css">
+                fill:               #ffff0080;
+                stroke:             #ffffff;
+                stroke-width:       2px;
+                altitude-clamping:  terrain-drape;
+            </style>
+        </circle>
+        <label text="Draped circle" lat="34.051" long="-117.974"/>
         
-    </extensions>
+        <circle name="scene-clamped circle">
+            <position lat="22.074" long="-159.606"/>
+            <radius value="1.2" units="km"/>
+            <style type="text/css">
+                stroke:             #ffffff;
+                stroke-width:       2px;
+                altitude-clamping:  terrain-scene;
+                altitude-binding:   vertex;
+            </style>
+        </circle>
+        <label text="scene-clamped circle" lat="22.074" long="-159.606"/>
+        
+        <ellipse name="ellipse relative">
+            <position lat="40" long="-100" hat="5000"/>
+            <radius_major value="50" units="km"/>
+            <radius_minor value="40" units="km"/>
+            <style type="text/css">
+                fill: #ff00ff7f;
+                stroke: #ffffff;
+            </style>
+        </ellipse>
+        <label text="HAT Ellipse" lat="40" long="-100.0"/>
+        
+        <ellipse name="ellipse extruded">
+            <position lat="32" long="-100.0"/>
+            <radius_major value="50" units="km"/>
+            <radius_minor value="20" units="km"/>
+            <style type="text/css">
+                fill:             #ff7f007f;
+                stroke:           #ff0000ff;
+                extrusion-height: 5000;
+            </style>
+        </ellipse>
+        <label text="Extruded Ellipse" lat="32" long="-100.0"/>
+
+        <feature name="Extruded Line">
+            <srs>wgs84</srs>
+            <geometry>
+                LINESTRING(-80.37 34.039, -80.09 33.96, -79.75 34, -79.43 33.37, -79.48 32.88)
+            </geometry>
+            <style type="text/css">
+                fill:                #ff00ff7f;
+                stroke:              #ffff00;
+                stroke-width:        3;
+                stroke-crease-angle: 45.0;
+                extrusion-height:    30000;
+                render-lighting:     true;
+            </style>
+        </feature>
+        <label text="Extruded Line" lat="32" long="-80"/>
+
+        <feature name="GPU-Clamped Line">
+            <srs>wgs84</srs>
+            <geometry>
+                LINESTRING(-110 47, -110 43, -120 43, -120 42)
+            </geometry>
+            <style type="text/css">
+                stroke:              #ff3000;
+                stroke-width:        3;
+                stroke-tessellation-size: 1km;
+                altitude-clamping:   terrain-gpu;
+            </style>
+        </feature>
+        <label text="GPU-Clamped Line" lat="44" long="-115">
+            <style type="text/css">
+                text-align:             center_center;
+                text-geographic-course: 45.0;
+                text-bbox-fill: #FFFF0033;
+                text-bbox-margin: 8;
+                text-bbox-border: #FFFF00;
+                text-bbox-border-width: 0.5;
+            </style>
+        </label>
+        
+        <feature name="Draped Polygon">
+            <srs>wgs84</srs>
+            <geometry>
+                POLYGON((-100 47, -100 49, -95 48, -96 45 -98 42))
+            </geometry>
+            <style type="text/css">
+                fill:     #ffff007f;
+                stroke:   #ffffff;
+                stroke-width: 2px;
+                altitude-clamping: terrain-drape;
+            </style>
+        </feature>
+        <label text="Draped Polygon" lat="45" long="-98"/>
+        
+        <model name="Auto-Scaled Model">
+            <position lat="43" long="-100"/>
+            <style>
+                model:       "../data/red_flag.osg.45.scale";
+                model-scale: auto;
+            </style>
+        </model>
+        <label text="Auto-Scaled Model" lat="42.5" long="-100"/>
+        
+        <imageoverlay>
+            <url>../data/fractal.png</url>
+            <alpha>1.0</alpha>
+            <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
+        </imageoverlay>            
+        <label text="ImageOverlay" lat="26" long="-81"/>
+        
+        <local_geometry name="3D geometry">
+            <geometry>
+                POLYGON((0 0 0, -25000 0 45000, 0 0 75000, 25000 0 45000))
+            </geometry>
+            <position lat="33.4" long="-116.6"/>
+            <style type="text/css">
+                fill:            #00ff00;
+                stroke:          #ffff00;
+                stroke-width:    2px;
+                render-lighting: false;
+            </style>
+            <horizon_culling>true</horizon_culling>
+        </local_geometry>
+        <label text="3D Geometry" lat="33.4" long="-116.6"/>
+
+        <feature name="Long Line">
+            <srs>wgs84</srs>
+            <geometry>
+                LINESTRING(10 0, 10 65)
+            </geometry>
+            <style type="text/css">
+                stroke:              #ffff00;
+                stroke-width:        3;
+                stroke-tessellation-size: 10km;
+                altitude-clamping:   terrain;
+                altitude-technique:  scene;
+                render-lighting:     false;
+            </style>
+        </feature>
+        
+        <label text="Tessellated line" lat="35" long="10">
+            <style type="text/css">
+                text-align:              center_bottom;
+                text-geographic-course:  0;
+            </style>
+        </label>
+        
+    </annotations>
 </map>

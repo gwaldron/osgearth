@@ -148,9 +148,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SkyControlFactory
     {
     public:
-        Control* create( 
-            SkyNode*         sky,
-            osgViewer::View* view ) const;
+        static Control* create(SkyNode* sky);
     };
 
 

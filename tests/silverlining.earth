@@ -12,16 +12,14 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
-    <extensions>
-        <sky driver="silverlining">
-			<user>user</user>
-			<license_code>code</license_code>
-			<clouds>true</clouds>
-			<clouds_max_altitude>100000</clouds_max_altitude>
-		</sky>
-        
-        <viewpoints>
-            <viewpoint name="Clouds" heading="37.95748484316797" height="251.618257785216" lat="46.5107100574977" long="-122.1696677949447" pitch="-8.543275459971998" range="6807.567220645097"/>
-        </viewpoints>
-    </extensions>
+    <sky driver="silverlining">
+        <user>user</user>
+        <license_code>code</license_code>
+        <clouds>true</clouds>
+        <clouds_max_altitude>100000</clouds_max_altitude>
+    </sky>
+    
+    <viewpoints>
+        <viewpoint name="Clouds" heading="37.95748484316797" height="251.618257785216" lat="46.5107100574977" long="-122.1696677949447" pitch="-8.543275459971998" range="6807.567220645097"/>
+    </viewpoints>
 </map>

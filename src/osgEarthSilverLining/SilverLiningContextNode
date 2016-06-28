@@ -38,10 +38,11 @@ namespace osgEarth { namespace SilverLining
     class SilverLiningContextNode : public osg::Group
     {
     public:
-        SilverLiningContextNode(SilverLiningNode* node,
+        SilverLiningContextNode(
+            SilverLiningNode*          node,
 		    osg::Camera*               camera,
 			osg::Light*                light,
-            const osgEarth::Map*       map,
+            const osgEarth::SpatialReference*    mapSRS,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 

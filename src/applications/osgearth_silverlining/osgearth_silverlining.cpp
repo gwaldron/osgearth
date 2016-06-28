@@ -220,7 +220,7 @@ main(int argc, char** argv)
 
         // TODO: uncommenting the callback on the following line results in a crash when SeedClouds is called.
         s_settings.sky = new SilverLiningNode(
-            mapNode->getMap(),
+            mapNode->getMapSRS(),
             slOptions,
             new SLCallback() );
 

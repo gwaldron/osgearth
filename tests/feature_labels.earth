@@ -41,14 +41,14 @@ This shows how to label point features with an attribute.
     <options lighting="false"/>
     
     <external>
-        <decluttering>
+        <screen_space_layout>
             <out_animation_time>  0.0  </out_animation_time>
             <in_animation_time>   0.25 </in_animation_time>
             <min_animation_scale> 0.45 </min_animation_scale>
             <min_animation_alpha> 0.0  </min_animation_alpha>
             <sort_by_priority>    true </sort_by_priority>
             <snap_to_pixel>       true </snap_to_pixel>
-        </decluttering>
+        </screen_space_layout>
     </external>
   
 </map>

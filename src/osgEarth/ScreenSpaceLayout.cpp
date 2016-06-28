@@ -355,7 +355,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 
                 if ( info._lastXY.x() == winPos.x() && info._lastXY.y() == winPos.y() )
                 {
-                    // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
+                    // Quanitize the window draw coordinates to mitigate text rendering filtering anomalies.
                     // Drawing text glyphs on pixel boundaries mitigates aliasing.
                     // Adding 0.5 will cause the GPU to sample the glyph texels exactly on center.
                     winPos.x() = floor(winPos.x()) + 0.5;

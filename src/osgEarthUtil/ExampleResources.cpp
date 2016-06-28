@@ -734,26 +734,33 @@ namespace
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
         }
     };
+    
+    static std::string s_month[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
     struct SkyMonthSlider : public ui::ControlEventHandler
     {
-        SkyMonthSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyMonthSlider(SkyNode* sky, ui::LabelControl* label) : _sky(sky), _label(label) { }
         SkyNode* _sky;
+        ui::LabelControl* _label;
         void onValueChanged(ui::Control* control, float value )
         {
+            int m = std::max((int)value, 11);
             DateTime d = _sky->getDateTime();            
-            _sky->setDateTime(DateTime(d.year(), (int)value, d.day(), d.hours()));
+            _sky->setDateTime(DateTime(d.year(), m, d.day(), d.hours()));
+            _label->setText(s_month[m]);
         }
     };
 
     struct SkyYearSlider : public ui::ControlEventHandler
     {
-        SkyYearSlider(SkyNode* sky) : _sky(sky)  { }
+        SkyYearSlider(SkyNode* sky, ui::LabelControl* label) : _sky(sky), _label(label) { }
         SkyNode* _sky;
+        ui::LabelControl* _label;
         void onValueChanged(ui::Control* control, float value )
         {
             DateTime d = _sky->getDateTime();            
             _sky->setDateTime(DateTime((int)value, d.month(), d.day(), d.hours()));
+            _label->setText(Stringify() << (int)value);
         }
     };
 
@@ -790,17 +797,17 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
     
         ++r;
         grid->setControl( 0, r, new ui::LabelControl("Month: ", 16) );
-        ui::HSliderControl* skyMonthSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 11.0f, dt.month() ));
+        ui::HSliderControl* skyMonthSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 12.0f, dt.month() ));
         skyMonthSlider->setHorizFill( true, 250 );
-        skyMonthSlider->addEventHandler( new SkyMonthSlider(sky) );
-        grid->setControl(2, r, new ui::LabelControl(skyMonthSlider) );
+        ui::LabelControl* monthLabel = grid->setControl(2, r, new ui::LabelControl(s_month[dt.month()]));
+        skyMonthSlider->addEventHandler( new SkyMonthSlider(sky, monthLabel) );
     
         ++r;
         grid->setControl( 0, r, new ui::LabelControl("Year: ", 16) );
         ui::HSliderControl* skyYearSlider = grid->setControl(1, r, new ui::HSliderControl( 1970.0f, 2061.0f, dt.year() ));
         skyYearSlider->setHorizFill( true, 250 );
-        skyYearSlider->addEventHandler( new SkyYearSlider(sky) );
-        grid->setControl(2, r, new ui::LabelControl(skyYearSlider) );
+        ui::LabelControl* yearLabel = grid->setControl(2, r, new ui::LabelControl(Stringify()<<dt.year()));
+        skyYearSlider->addEventHandler( new SkyYearSlider(sky, yearLabel) );
 
         ++r;
         grid->setControl(0, r, new ui::LabelControl("Min.Ambient: ", 16) );

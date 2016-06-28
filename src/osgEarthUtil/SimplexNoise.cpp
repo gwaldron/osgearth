@@ -149,6 +149,9 @@ double SimplexNoise::getTiledValue(double x, double y) const
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
+
+    // trick to create tiled noise (2 ortho circles)
+    // http://www.gamedev.net/blog/33/entry-2138456-seamless-noise/
     
     double nx = cos(x*TwoPI)/TwoPI;
     double ny = cos(y*TwoPI)/TwoPI;
@@ -179,7 +182,10 @@ double SimplexNoise::getTiledValueWithTurbulence(double x, double y, double F) c
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
-    
+
+    // trick to create tiled noise (2 ortho circles)
+    // http://www.gamedev.net/blog/33/entry-2138456-seamless-noise/
+
     double nx = cos(x*TwoPI)/TwoPI;
     double ny = cos(y*TwoPI)/TwoPI;
     double nz = sin(x*TwoPI)/TwoPI;

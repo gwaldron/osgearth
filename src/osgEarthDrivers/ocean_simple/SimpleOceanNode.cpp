@@ -47,14 +47,18 @@ namespace
         static const double twoPI = 2.0*osg::PI;
 
         osg::Image* image = new osg::Image();
-        image->allocateImage(SIR, SIR, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        image->allocateImage(SIR, SIR, 1, GL_LUMINANCE, GL_UNSIGNED_BYTE);
 
         SimplexNoise noise;
         noise.setFrequency(SIR*512.0);
         noise.setOctaves(16);
-        noise.setRange(1.0, 2.6);
+        noise.setRange(0.0, 1.0);
+
+        double n0=DBL_MAX, n1=-DBL_MAX;
 
         ImageUtils::PixelWriter write(image);
+        ImageUtils::PixelReader read(image);
+
         for(int s=0; s<image->s(); ++s)
         {
             for(int t=0; t<image->t(); ++t)
@@ -64,17 +68,38 @@ namespace
 
                 // trick to create tiled noise (2 ortho circles)
                 // http://www.gamedev.net/blog/33/entry-2138456-seamless-noise/
-
+/*
                 double x = cos(a*twoPI)/twoPI;
                 double y = cos(b*twoPI)/twoPI;
                 double z = sin(a*twoPI)/twoPI;
-                double w = sin(b*twoPI)/twoPI;
+                double w = sin(b*twoPI)/twoPI;*/
 
-                double n = noise.getValue(x, y, z, w);
+                //double n = noise.getValue(x, y, z, w);
+                double n = noise.getTiledValue(a, b);
 
-                write( osg::Vec4(0.25*n, 0.3*n, 0.35*n, 1.0), s, t );
+                //write( osg::Vec4(0.25*n, 0.3*n, 0.35*n, 0.5), s, t );
+
+                write( osg::Vec4(n,n,n,n), s, t );
+
+                if (n<n0) n0=n;
+                if (n>n1) n1=n;
             }
         }
+
+#if 0
+        for(int s=0; s<image->s(); ++s)
+        {
+            for(int t=0; t<image->t(); ++t)
+            {
+                osg::Vec4 p = read(s, t);
+                float v = (p.r() - n0) / (n1-n0);
+                p.set(v,v,v,v);
+                write(p, s, t);
+            }
+        }
+#endif
+
+        OE_INFO << "Min = " << n0 << ", Max = " << n1 << "\n";
 
         return image;
     }

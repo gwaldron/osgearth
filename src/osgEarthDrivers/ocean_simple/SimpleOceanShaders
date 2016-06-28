@@ -132,11 +132,10 @@ namespace
         // start with the surface texture.
         "    if (ocean_has_surface_tex) \n"
         "    { \n"
-        "        vec4 texel1 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.xy); \n"
-        "        vec4 texel2 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.zw); \n"
-        "        vec4 texel  = vec4(texel1.rgb*texel2.rgb, texel2.a); \n"
-        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, texel.a), color.a); \n"
-        "        color = mix(color, nearColor, rangeEffect); \n"
+        "        float a1 = texture(ocean_surface_tex, ocean_surface_tex_coord.xy).r; \n"
+        "        float a2 = texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r; \n"
+        "        color = clamp(color+(a1*a2), 0.0, 1.0); \n"
+        "        color.a = max(color.a, ocean_baseColor.a); \n"
         "    } \n"
 
         // un-normalize the heightfield data
@@ -146,7 +145,7 @@ namespace
         "    float terrainEffect = ocean_remap( terrainHeight, ocean_seaLevel+ocean_lowFeather, ocean_seaLevel+ocean_highFeather, 1.0, 0.0 ); \n" 
 
         // color it
-        "    color = vec4( color.rgb, terrainEffect * rangeEffect * oe_ocean_alpha ); \n" //* color.a ); \n"
+        "    color = vec4( color.rgb, terrainEffect * rangeEffect * oe_ocean_alpha * color.a ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging
         "} \n";
@@ -202,7 +201,6 @@ namespace
         "   ocean_surface_tex_coord.xy = lonlat / 0.0005; \n"
         "   ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy; \n"
         "   ocean_surface_tex_coord.x += mod(osg_FrameTime,100.0)/100.0;\n"
-        //"   ocean_surface_tex_coord.w -= mod(osg_FrameTime,50.0)/50.0;\n"
         "} \n";
 
 
@@ -251,11 +249,10 @@ namespace
         // start with the surface texture.
         "    if (ocean_has_surface_tex) \n"
         "    { \n"
-        "        vec4 texel1 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.xy); \n"
-        "        vec4 texel2 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.zw); \n"
-        "        vec4 texel  = vec4(texel1.rgb*texel2.rgb, texel2.a); \n"
-        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, 0.5), color.a); \n"
-        "        color = mix(color, nearColor, rangeEffect); \n"
+        "        float a1 = texture(ocean_surface_tex, ocean_surface_tex_coord.xy).r; \n"
+        "        float a2 = texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r; \n"
+        "        color = clamp(color+(a1*a2), 0.0, 1.0); \n"
+        "        color.a = max(color.a, ocean_baseColor.a); \n"
         "    } \n"
 
         // effect of the terrain mask [0..1] in the alpha component.

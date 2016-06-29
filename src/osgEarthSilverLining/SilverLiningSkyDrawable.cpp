@@ -37,6 +37,8 @@ _contextNode(contexNode)
 
     // not MT-safe (camera updates, etc)
     this->setDataVariance( osg::Object::DYNAMIC );
+
+    setName("SilverLining::SkyDrawable");;
 }
 
 void

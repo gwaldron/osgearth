@@ -37,6 +37,8 @@ _contextNode(contexNode)
     
     // not MT-safe (camera updates, etc)
     this->setDataVariance(osg::Object::DYNAMIC);
+    
+    setName("SilverLining::CloudsDrawable");
 }
 
 void
@@ -59,6 +61,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader()) );
             adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader()) );
             adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader()) );
+            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader()) );
 
             SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
             for(int i=0; i<handles.size(); ++i)          

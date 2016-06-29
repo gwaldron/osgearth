@@ -100,11 +100,12 @@ namespace osgEarth
     /**
      * Options to control the annotation decluttering engine.
      */
-    class OSGEARTH_EXPORT ScreenSpaceLayoutOptions
+    class OSGEARTH_EXPORT ScreenSpaceLayoutOptions : public ConfigOptions
     {
     public:
-        ScreenSpaceLayoutOptions( const Config& conf =Config() )
-            : _minAnimAlpha         ( 0.35f ),
+        ScreenSpaceLayoutOptions( const ConfigOptions& co =ConfigOptions() )
+            : ConfigOptions         ( co ),
+              _minAnimAlpha         ( 0.35f ),
               _minAnimScale         ( 0.45f ),
               _inAnimTime           ( 0.40f ),
               _outAnimTime          ( 0.00f ),
@@ -112,7 +113,7 @@ namespace osgEarth
               _snapToPixel          ( true ),
               _maxObjects           ( INT_MAX )
         {
-            fromConfig(conf);
+            fromConfig(_conf);
         }
 
         virtual ~ScreenSpaceLayoutOptions() { }

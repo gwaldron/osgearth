@@ -66,15 +66,6 @@ namespace
                 double a = (double)s / (double)image->s();
                 double b = (double)t / (double)image->t();
 
-                // trick to create tiled noise (2 ortho circles)
-                // http://www.gamedev.net/blog/33/entry-2138456-seamless-noise/
-/*
-                double x = cos(a*twoPI)/twoPI;
-                double y = cos(b*twoPI)/twoPI;
-                double z = sin(a*twoPI)/twoPI;
-                double w = sin(b*twoPI)/twoPI;*/
-
-                //double n = noise.getValue(x, y, z, w);
                 double n = noise.getTiledValue(a, b);
 
                 //write( osg::Vec4(0.25*n, 0.3*n, 0.35*n, 0.5), s, t );
@@ -85,19 +76,6 @@ namespace
                 if (n>n1) n1=n;
             }
         }
-
-#if 0
-        for(int s=0; s<image->s(); ++s)
-        {
-            for(int t=0; t<image->t(); ++t)
-            {
-                osg::Vec4 p = read(s, t);
-                float v = (p.r() - n0) / (n1-n0);
-                p.set(v,v,v,v);
-                write(p, s, t);
-            }
-        }
-#endif
 
         OE_INFO << "Min = " << n0 << ", Max = " << n1 << "\n";
 

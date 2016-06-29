@@ -126,6 +126,14 @@ namespace osgEarth
             return dynamic_cast< ExtensionInterface<T>* >(e);
         }
     };
+
+    // convenience define for extensions
+#define META_osgEarth_Extension(CLASS) \
+    META_Object(osgEarth,CLASS); \
+    CLASS () { } \
+    CLASS (const CLASS & rhs, const osg::CopyOp& op) { } \
+    virtual ~ CLASS() { }
+
     
     template<class T>
     class RegisterExtensionLoader

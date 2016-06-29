@@ -24,6 +24,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Extension>
 #include <osgEarthAnnotation/BboxDrawable>
 #include <osgUtil/RenderBin>
 #include <osgUtil/StateGraph>
@@ -889,3 +890,27 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
 static osgEarthRegisterRenderBinProxy<osgEarthScreenSpaceLayoutRenderBin> s_regbin(OSGEARTH_SCREEN_SPACE_LAYOUT_BIN);
+
+
+//----------------------------------------------------------------------------
+
+// Extension for configuring the decluterring/SSL options from an Earth file.
+namespace osgEarth
+{
+    class ScreenSpaceLayoutExtension : public Extension,
+                                       public ScreenSpaceLayoutOptions
+    {
+    public:
+        META_osgEarth_Extension(ScreenSpaceLayoutExtension);
+
+        ScreenSpaceLayoutExtension(const ConfigOptions& co) : ScreenSpaceLayoutOptions(co)
+        {
+            // sets the global default options.
+            ScreenSpaceLayout::setOptions(*this);
+        }
+    };
+
+    REGISTER_OSGEARTH_EXTENSION(osgearth_screen_space_layout, ScreenSpaceLayoutExtension);
+    REGISTER_OSGEARTH_EXTENSION(osgearth_decluttering,        ScreenSpaceLayoutExtension);
+}
+                                       

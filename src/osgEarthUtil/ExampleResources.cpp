@@ -365,7 +365,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useDMS        = args.read("--dms");
     bool useDD         = args.read("--dd");
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
-    bool useOrtho      = args.read("--ortho");
+
     bool useAutoClip   = args.read("--autoclip");
     bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
@@ -425,9 +425,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
 
-    const Config& screenSpaceLayoutConf = 
-        externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
-        externals.child("decluttering"); // backwards-compatibility
+    //const Config& screenSpaceLayoutConf = 
+    //    externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
+    //    externals.child("decluttering"); // backwards-compatibility
 
 
     // some terrain effects.
@@ -492,11 +492,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
         }
     }
 
-    // Configure the de-cluttering engine for labels and annotations:
-    if ( !screenSpaceLayoutConf.empty() )
-    {
-        ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(screenSpaceLayoutConf) );
-    }
+    //// Configure the de-cluttering engine for labels and annotations:
+    //if ( !screenSpaceLayoutConf.empty() )
+    //{
+    //    ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(screenSpaceLayoutConf) );
+    //}
 
     // Configure the mouse coordinate readout:
     if ( useCoords )
@@ -520,7 +520,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Configure for an ortho camera:
-    if ( useOrtho )
+    if ( args.read("--ortho") )
     {
         view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
     }

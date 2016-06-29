@@ -56,6 +56,9 @@ _mapSRS(mapSRS)
     _lighting = new PhongLightingEffect();
     _lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
+
+    // need update traversal.
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 
@@ -71,6 +74,36 @@ SilverLiningNode::attach(osg::View* view, int lightNum)
     _light->setLightNum( lightNum );
     view->setLight( _light.get() );
     view->setLightingMode( osg::View::SKY_LIGHT );
+}
+
+unsigned
+SilverLiningNode::getNumContexts() const
+{
+    return getNumChildren();
+}
+
+osg::StateSet*
+SilverLiningNode::getCloudsStateSet(unsigned index) const
+{
+    if (index < getNumContexts())
+    {
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        if ( node )
+            return node->getCloudsStateSet();
+    }
+    return 0L;
+}
+
+osg::StateSet*
+SilverLiningNode::getSkyStateSet(unsigned index) const
+{
+    if (index < getNumContexts())
+    {
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        if ( node )
+            return node->getSkyStateSet();
+    }
+    return 0L;
 }
 
 void
@@ -102,41 +135,62 @@ SilverLiningNode::onSetMinimumAmbient()
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
+    static Threading::Mutex s_mutex;
+
 	if ( nv.getVisitorType() == nv.CULL_VISITOR )
 	{
 		osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-		osg::Camera* camera  = cv->getCurrentCamera();
+		osg::Camera* camera = cv->getCurrentCamera();
 		if ( camera )
 		{
-			if(_cameraNodeMap.find(camera) == _cameraNodeMap.end())
-			{ 
-				SilverLiningContextNode *slContextNode = new SilverLiningContextNode(this, camera, _light, _mapSRS, _options);
-				_cameraNodeMap[camera] = slContextNode;
+            Threading::ScopedMutexLock lock(s_mutex);
 
-//Use camera cull mask that will remove the need for context check 
-//in SilverLiningContextNode, SilverLiningSkyDrawable and SilverLiningCloudsDrawable
-#ifdef SL_USE_CULL_MASK 
-				static int nodeMask = 0x1;
-				slContextNode->getSLGeode()->setNodeMask(nodeMask);
-				slContextNode->setNodeMask(nodeMask);
+            CameraContextMap::iterator i = _contexts.find(camera);
+            if (i == _contexts.end())
+            {
+                _camerasToAdd.insert(camera);
+            }
 
-				int inheritanceMask = 
-					(osg::CullSettings::VariablesMask::ALL_VARIABLES &
-					~osg::CullSettings::VariablesMask::CULL_MASK);
+            else
+            {
+                i->second->accept(nv);
+            }
+        }
+    }
 
-				camera->setInheritanceMask(inheritanceMask);
-				camera->setCullMask(nodeMask);
-				nodeMask = nodeMask << 1;
-#endif
-				addChild(slContextNode);
-			}
-		}
-	}
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        {
+            Threading::ScopedMutexLock lock(s_mutex);
+            if (!_camerasToAdd.empty())
+            {
+                for (CameraSet::iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
+                {
+                    _contexts[i->get()] = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options);
+                }
+                _camerasToAdd.clear();
+            }
+        }
 
-    osgEarth::Util::SkyNode::traverse( nv );
+        for (CameraContextMap::iterator i = _contexts.begin(); i != _contexts.end(); ++i)
+        {
+            i->second->accept(nv);
+        }
+    }
+
+    else
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        for (CameraContextMap::iterator i = _contexts.begin(); i != _contexts.end(); ++i)
+        {
+            i->second->accept(nv);
+        }
+    }
 
     if ( _lightSource.valid() )
     {
         _lightSource->accept(nv);
     }
+
+    osgEarth::Util::SkyNode::traverse(nv);
 }

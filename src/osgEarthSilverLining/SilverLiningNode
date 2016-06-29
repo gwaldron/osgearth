@@ -23,6 +23,7 @@
 #include "SilverLiningAPIWrapper"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
+#include <osgEarth/Containers>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 #include <osg/LightSource>
@@ -45,10 +46,22 @@ namespace osgEarth { namespace SilverLining
 
     public: // SkyNode
 
+        /** The (sun) light that this node controls */
         osg::Light* getSunLight() { return _light.get(); }
 
+        /** Attach to a view so that this node controls its light. */
         void attach(osg::View* view, int lightNum);
 
+        /** Number of contexts (each context is tied to a camera/viewport) */
+        unsigned getNumContexts() const;
+
+        /** Access the clouds stateset for context "index" so you can modify its render bin details, etc. */
+        osg::StateSet* getCloudsStateSet(unsigned contextIndex) const;
+
+        /** Access the sky stateset for context "index" */
+        osg::StateSet* getSkyStateSet(unsigned contextIndex) const;
+
+    public:
         // callbacks from base class.
         void onSetDateTime();
         void onSetMinimumAmbient();
@@ -65,8 +78,12 @@ namespace osgEarth { namespace SilverLining
 		const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
 		const osgEarth::SpatialReference* _mapSRS;
-		//used for camera-context bookkeeping
-		std::map<osg::Camera*,SilverLiningContextNode*> _cameraNodeMap; 
+		
+        typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;
+        CameraContextMap _contexts;
+
+        typedef std::set<osg::ref_ptr<osg::Camera> > CameraSet;
+        CameraSet _camerasToAdd;
     };
 
 } } // namespace osgEarth::SilverLining

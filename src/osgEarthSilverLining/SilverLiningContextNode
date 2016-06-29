@@ -56,6 +56,10 @@ namespace osgEarth { namespace SilverLining
 		osg::Camera* getTargetCamera() const {return _camera;}
 		osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}
 		SilverLiningContext* getSLContext() {return _SL.get();}
+
+        osg::StateSet* getCloudsStateSet() const { return _cloudsDrawable.valid() ? _cloudsDrawable->getStateSet() : 0L; }
+        osg::StateSet* getSkyStateSet() const { return _skyDrawable.valid() ? _skyDrawable->getStateSet() : 0L; }
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);

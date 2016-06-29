@@ -31,18 +31,9 @@ using namespace osgEarth::Annotation;
 
 //.........................................................................
 
-AnnotationExtension::AnnotationExtension()
-{
-    //nop
-}
 
 AnnotationExtension::AnnotationExtension(const ConfigOptions& co) :
 ConfigOptions( co )
-{
-    //nop
-}
-
-AnnotationExtension::~AnnotationExtension()
 {
     //nop
 }

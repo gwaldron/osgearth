@@ -57,7 +57,6 @@ namespace
         double n0=DBL_MAX, n1=-DBL_MAX;
 
         ImageUtils::PixelWriter write(image);
-        ImageUtils::PixelReader read(image);
 
         for(int s=0; s<image->s(); ++s)
         {
@@ -77,7 +76,7 @@ namespace
             }
         }
 
-        OE_INFO << "Min = " << n0 << ", Max = " << n1 << "\n";
+        OE_DEBUG << "Min = " << n0 << ", Max = " << n1 << "\n";
 
         return image;
     }
@@ -88,9 +87,8 @@ namespace
 
 SimpleOceanNode::SimpleOceanNode(const SimpleOceanOptions& options,
                                  MapNode*                  mapNode) :
-OceanNode     ( options ),
-_parentMapNode( mapNode ),
-_options      ( options )
+OceanNode(options),
+SimpleOceanOptions(options)
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
@@ -124,14 +122,14 @@ SimpleOceanNode::rebuild()
 
         MPTerrainEngineOptions mpoptions;
         mpoptions.heightFieldSkirtRatio() = 0.0;      // don't want to see skirts
-        mpoptions.minLOD() = _options.maxLOD().get(); // weird, I know
+        mpoptions.minLOD() = maxLOD().get(); // weird, I know
 
         // so we can the surface from underwater:
         mpoptions.clusterCulling() = false;       // want to see underwater
 
         mpoptions.enableBlending() = true;        // gotsta blend with the main node
 
-        mpoptions.color() = _options.baseColor().get();
+        mpoptions.color() = baseColor().get();
 
         mno.setTerrainOptions( mpoptions );
 
@@ -139,22 +137,22 @@ SimpleOceanNode::rebuild()
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );
 
         // if the caller requested a mask layer, install that now.
-        if ( _options.maskLayer().isSet() )
+        if ( maskLayer().isSet() )
         {
-            if ( !_options.maskLayer()->maxLevel().isSet() )
+            if ( !maskLayer()->maxLevel().isSet() )
             {
                 // set the max subdivision level if it's not already specified in the 
                 // mask layer options:
-                _options.maskLayer()->maxLevel() = *_options.maxLOD();
+                maskLayer()->maxLevel() = maxLOD().get();
             }
 
             // make sure the mask is shared (so we can access it from our shader)
             // and invisible (so we can't see it)
-            _options.maskLayer()->shared() = true;
-            _options.maskLayer()->visible() = false;
+            maskLayer()->shared() = true;
+            maskLayer()->visible() = false;
 
-            ImageLayer* maskLayer = new ImageLayer( "ocean-mask", *_options.maskLayer() );
-            oceanMap->addImageLayer( maskLayer );
+            ImageLayer* layer = new ImageLayer("ocean-mask", maskLayer().get());
+            oceanMap->addImageLayer( layer );
         }
 
         // otherwise, install a "proxy layer" that will use the elevation data in the map
@@ -180,8 +178,8 @@ SimpleOceanNode::rebuild()
         vp->setName( "osgEarth SimpleOcean" );
 
         // use the appropriate shader for the active technique:
-        std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
-        std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
+        std::string vertSource = maskLayer().isSet() ? source_vertMask : source_vertProxy;
+        std::string fragSource = maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
         vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
         vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
@@ -215,15 +213,16 @@ SimpleOceanNode::rebuild()
 
         // trick to mitigate z-fighting..
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
-        ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+        //ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+        ss->setRenderBinDetails(renderBinNumber().get(), "DepthSortedBin");
 
         // load up a surface texture
         osg::ref_ptr<osg::Image> surfaceImage;
         ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( false );
-        if ( _options.textureURI().isSet() )
+        if ( textureURI().isSet() )
         {
             //TODO: enable cache support here?
-            surfaceImage = _options.textureURI()->getImage();
+            surfaceImage = textureURI()->getImage();
         }
 
         if ( !surfaceImage.valid() )
@@ -267,14 +266,14 @@ SimpleOceanNode::rebuild()
 void
 SimpleOceanNode::applyOptions()
 {
-    setSeaLevel( *_options.seaLevel() );
-
-    _lowFeather->set( *_options.lowFeatherOffset() );
-    _highFeather->set( *_options.highFeatherOffset() );
-    _baseColor->set( *_options.baseColor() );
-    _maxRange->set( *_options.maxRange() );
-    _fadeRange->set( *_options.fadeRange() );
+    setSeaLevel( seaLevel().get());
+    _lowFeather->set(lowFeatherOffset().get());
+    _highFeather->set(highFeatherOffset().get());
+    _baseColor->set(baseColor().get());
+    _maxRange->set(maxRange().get());
+    _fadeRange->set(fadeRange().get());
     _alphaUniform->set(getAlpha());
+    this->getOrCreateStateSet()->setRenderBinDetails(renderBinNumber().get(), "DepthSortedBin");
 }
 
 void

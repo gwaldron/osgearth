@@ -72,6 +72,11 @@ namespace osgEarth { namespace SimpleOcean
         optional<URI>& textureURI() { return _textureURI; }
         const optional<URI>& textureURI() const { return _textureURI; }
 
+        /** Render bin number to assign to the ocean (in DepthSortedBin) */
+        optional<int>& renderBinNumber() { return _renderBinNumber; }
+        const optional<int>& renderBinNumber() const { return _renderBinNumber; }
+
+
         /** Image layer configuration for an optional "ocean mask" layer.
          *  This is an image layer that encodes areas of land versus ocean in the
          *  alpha channel of the image. The mapping is: [0...1] => [land...ocean] */
@@ -87,7 +92,8 @@ namespace osgEarth { namespace SimpleOcean
               _maxRange         ( 1000000.0f ),
               _fadeRange        ( 125000.0f ),
               _maxLOD           ( 20 ),
-              _baseColor        ( osg::Vec4(0.2, 0.3, 0.5, 0.8) )
+              _baseColor        ( osg::Vec4(0.2, 0.3, 0.5, 0.8) ),
+              _renderBinNumber  ( 12 )
         {
             mergeConfig( _conf );
         }
@@ -107,6 +113,7 @@ namespace osgEarth { namespace SimpleOcean
             conf.updateIfSet("base_color",          _baseColor );
             conf.updateIfSet("texture_url",         _textureURI );
             conf.updateObjIfSet("mask_layer",       _maskLayerOptions );
+            conf.updateIfSet("render_bin_number",   _renderBinNumber);
             return conf;
         }
 
@@ -127,6 +134,7 @@ namespace osgEarth { namespace SimpleOcean
             conf.getIfSet("base_color",          _baseColor );
             conf.getIfSet("texture_url",         _textureURI );
             conf.getObjIfSet("mask_layer",       _maskLayerOptions );
+            conf.getIfSet("render_bin_number",   _renderBinNumber);
         }
 
     private:
@@ -139,6 +147,7 @@ namespace osgEarth { namespace SimpleOcean
         optional<Color>             _baseColor;
         optional<URI>               _textureURI;
         optional<ImageLayerOptions> _maskLayerOptions;
+        optional<int>               _renderBinNumber;
     };
 
 } } // namespace osgEarth::SimpleOcean

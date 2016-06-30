@@ -92,16 +92,6 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>& scaleZ() { return _scaleZ; }
         const optional<NumericExpression>& scaleZ() const { return _scaleZ; }
 
-        /** Whether this model instance honors "scale-to-fit" in the X and Y dimensions,
-         * if applicable. Scale-to-fit is a hint to an implementation that may want to
-         * automatically scale a model to fit a region, as to whether that should be allowed
-         * (for example when the artist has designed the model for specific dimensions.) */
-        optional<bool>& canScaleToFitXY() { return _canScaleToFitXY; }
-        const optional<bool>& canScaleToFitXY() const { return _canScaleToFitXY; }
-
-        optional<bool>& canScaleToFitZ() { return _canScaleToFitZ; }
-        const optional<bool>& canScaleToFitZ() const { return _canScaleToFitZ; }
-
         
         
     public: // non-serialized properties (for programmatic use only)
@@ -133,8 +123,6 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _scaleX;
         optional<NumericExpression>  _scaleY;
         optional<NumericExpression>  _scaleZ;
-        optional<bool>               _canScaleToFitXY;
-        optional<bool>               _canScaleToFitZ;
     };
 
 } } // namespace osgEarth::Symbology

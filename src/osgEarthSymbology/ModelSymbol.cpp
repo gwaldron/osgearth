@@ -39,9 +39,7 @@ _maxSizeX(rhs._maxSizeX),
 _maxSizeY(rhs._maxSizeY),
 _scaleX( rhs._scaleX ),
 _scaleY( rhs._scaleY ),
-_scaleZ( rhs._scaleZ ),
-_canScaleToFitXY( rhs._canScaleToFitXY ),
-_canScaleToFitZ( rhs._canScaleToFitZ )
+_scaleZ( rhs._scaleZ )
 {
     // nop
 }
@@ -58,9 +56,7 @@ _maxSizeX ( FLT_MAX ),
 _maxSizeY ( FLT_MAX ),
 _scaleX    ( NumericExpression(1.0) ),
 _scaleY    ( NumericExpression(1.0) ),
-_scaleZ    ( NumericExpression(1.0) ),
-_canScaleToFitXY( true ),
-_canScaleToFitZ( true )
+_scaleZ    ( NumericExpression(1.0) )
 {
     mergeConfig( conf );
 }
@@ -87,9 +83,6 @@ ModelSymbol::getConfig() const
     conf.addObjIfSet( "scale_y", _scaleY );
     conf.addObjIfSet( "scale_z", _scaleZ );
 
-    conf.addIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
-    conf.addIfSet("can_scale_to_fit_z", _canScaleToFitZ);
-
     conf.addNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
 }
@@ -113,9 +106,6 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "scale_x", _scaleX );
     conf.getObjIfSet( "scale_y", _scaleY );
     conf.getObjIfSet( "scale_z", _scaleZ );
-
-    conf.getIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
-    conf.getIfSet("can_scale_to_fit_z", _canScaleToFitZ);
 
     _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
@@ -187,12 +177,6 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "model-max-size-y") ) {
         style.getOrCreate<ModelSymbol>()->maxSizeY() = as<float>(c.value(), FLT_MAX);
-    }
-    else if (match(c.key(), "model-can-scale-to-fit-xy")) {
-        style.getOrCreate<ModelSymbol>()->canScaleToFitXY() = as<bool>(c.value(), true);
-    }
-    else if (match(c.key(), "model-can-scale-to-fit-z")) {
-        style.getOrCreate<ModelSymbol>()->canScaleToFitZ() = as<bool>(c.value(), true);
     }
 }
 

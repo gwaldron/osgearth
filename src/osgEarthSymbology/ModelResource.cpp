@@ -33,7 +33,9 @@ using namespace osgEarth::Symbology;
 //---------------------------------------------------------------------------
 
 ModelResource::ModelResource( const Config& conf ) :
-InstanceResource( conf )
+InstanceResource( conf ),
+_canScaleToFitXY(true),
+_canScaleToFitZ(true)
 {
     mergeConfig( conf );
 }
@@ -41,7 +43,8 @@ InstanceResource( conf )
 void
 ModelResource::mergeConfig( const Config& conf )
 {
-    //nop
+    conf.getIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
+    conf.getIfSet("can_scale_to_fit_z",  _canScaleToFitZ);
 }
 
 Config
@@ -49,7 +52,8 @@ ModelResource::getConfig() const
 {
     Config conf = InstanceResource::getConfig();
     conf.key() = "model";
-    //nop
+    conf.addIfSet("can_scale_to_fit_xy", _canScaleToFitXY);
+    conf.addIfSet("can_scale_to_fit_z",  _canScaleToFitZ);
     return conf;
 }
 

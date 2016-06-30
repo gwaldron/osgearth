@@ -696,12 +696,15 @@ RexTerrainEngineNode::createTile( const TileKey& key )
         }
     }
 
+    // cannot happen (says coverity; see loop above), so commenting this out -gw
+#if 0
     if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
         out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257);
         sampleKey = key;
     }
+#endif
 
     GeoHeightField geoHF( out_hf.get(), sampleKey.getExtent() );    
     if (sampleKey != key)

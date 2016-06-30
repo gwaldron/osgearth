@@ -202,7 +202,7 @@ SpatialReference::createFromUserInput( const std::string& input, const std::stri
     void* handle = OSRNewSpatialReference( NULL );
     if ( OSRSetFromUserInput( handle, input.c_str() ) == OGRERR_NONE )
     {
-        result = new SpatialReference( handle, "UserInput" );
+        result = new SpatialReference( handle, std::string("UserInput") );
     }
     else 
     {
@@ -414,7 +414,7 @@ SpatialReference::fixWKT()
 /****************************************************************************/
 
 
-SpatialReference::SpatialReference(void*              handle, 
+SpatialReference::SpatialReference(void* handle,
                                    const std::string& init_type) :
 osg::Referenced ( true ),
 _initialized    ( false ),

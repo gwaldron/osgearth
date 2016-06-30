@@ -502,7 +502,8 @@ _findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
     configureDefaultSettings();
-    _lastTetherMode = _settings->getTetherMode();
+    if (_settings.valid())
+        _lastTetherMode = _settings->getTetherMode();
 }
 
 EarthManipulator::EarthManipulator(osg::ArgumentParser& args) :
@@ -515,7 +516,8 @@ _findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
     configureDefaultSettings();
-    _lastTetherMode = _settings->getTetherMode();
+    if (_settings.valid())
+        _lastTetherMode = _settings->getTetherMode();
 
     getSettings()->apply( args );
 }

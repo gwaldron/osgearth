@@ -291,12 +291,14 @@ bool TaskList::load( const std::string &filename)
         std::vector< std::string > parts;
         StringTokenizer(line, parts, "," );
 
-
-        _keys.push_back( TileKey(
-            as<unsigned int>(parts[0], 0u), 
-            as<unsigned int>(parts[1], 0u), 
-            as<unsigned int>(parts[2], 0u),
-            _profile ) );
+        if (parts.size() >= 3)
+        {
+            _keys.push_back( TileKey(
+                as<unsigned int>(parts[0], 0u), 
+                as<unsigned int>(parts[1], 0u), 
+                as<unsigned int>(parts[2], 0u),
+                _profile ) );
+        }
     }
 
 

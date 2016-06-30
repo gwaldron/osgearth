@@ -88,7 +88,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     _key = key;
 
     // Create mask records
-    osg::ref_ptr<MaskGenerator> masks = context ? new MaskGenerator(key, context->getOptions().tileSize().get(), context->getMapFrame()) : 0L;
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, context->getOptions().tileSize().get(), context->getMapFrame());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;

@@ -32,10 +32,10 @@ namespace osgEarth { namespace Monitor
     public: // Plugin stuff
 
         MonitorPlugin() {
-            supportsExtension( "osgearth_Monitor", "osgEarth Monitor Extension" );
+            supportsExtension( "osgearth_monitor", "osgEarth Monitor Extension" );
         }
         
-        const char* className() {
+        const char* className() const {
             return "osgEarth Monitor Extension";
         }
 
@@ -50,6 +50,6 @@ namespace osgEarth { namespace Monitor
         }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_Monitor, MonitorPlugin)
+    REGISTER_OSGPLUGIN(osgearth_monitor, MonitorPlugin)
 
 } } // namespace osgEarth::Monitor

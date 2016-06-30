@@ -88,27 +88,27 @@ namespace osgEarth
 
         /** Construct a result with no object */
         ReadResult( Code code =RESULT_NOT_FOUND )
-            : _code(code), _fromCache(false), _lmt(0) { }
+            : _code(code), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Construct a result with code and data */
         ReadResult( Code code, osg::Object* result )
-            : _code(code), _result(result), _fromCache(false), _lmt(0) { }
+            : _code(code), _result(result), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Construct a result with data, possible with an error code */
         ReadResult( Code code, osg::Object* result, const Config& meta )
-            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
+            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Construct a successful result (implicit OK code) */
         ReadResult( osg::Object* result )
-            : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0) { }
+            : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
-            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
+            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache), _lmt(rhs._lmt) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache), _lmt(rhs._lmt), _duration_s(rhs._duration_s) { }
 
         /** dtor */
         virtual ~ReadResult() { }

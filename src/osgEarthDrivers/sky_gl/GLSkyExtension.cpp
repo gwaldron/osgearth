@@ -98,7 +98,7 @@ GLSkyExtension::connect(MapNode* mapNode)
     
     // find the tip top of the tree that MapNode is in:
     osg::Node* top = mapNode;
-    while( top->getNumParents() > 0 && top->getParent(0)->className() != "Camera")
+    while (top->getNumParents() > 0 && std::string(top->getParent(0)->className()) != "Camera")
         top = top->getParent(0);
 
     osg::Group* topParent = top->getNumParents() > 0 ? top->getParent(0) : 0L;

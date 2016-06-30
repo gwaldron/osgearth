@@ -54,7 +54,7 @@ namespace
     class DrapingCamera : public osg::Camera
     {
     public:
-        DrapingCamera() : osg::Camera()
+        DrapingCamera() : osg::Camera(), _camera(0L)
         {
             setCullingActive( false );
         }

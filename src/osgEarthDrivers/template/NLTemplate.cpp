@@ -389,7 +389,11 @@ const char * LoaderFile::load( const char *name ) {
         buffer[ len ] = 0;
         return buffer;
     }
-    else return 0L;
+    else
+    {
+        fclose(f);
+        return 0L;
+    }
 }
 
 

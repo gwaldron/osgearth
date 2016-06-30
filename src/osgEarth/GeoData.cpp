@@ -2006,14 +2006,16 @@ _maxHeight  ( 0.0f )
 GeoHeightField::GeoHeightField(osg::HeightField* heightField,
                                const GeoExtent&  extent) :
 _heightField( heightField ),
-_extent     ( extent )
+_extent     ( extent ),
+_minHeight( FLT_MAX ),
+_maxHeight( -FLT_MAX )
 {
     if ( _heightField.valid() && extent.isInvalid() )
     {
         OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
     }
 
-    else if ( _heightField )
+    else if ( _heightField.valid() )
     {
         double minx, miny, maxx, maxy;
         _extent.getBounds(minx, miny, maxx, maxy);
@@ -2023,7 +2025,6 @@ _extent     ( extent )
         _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
         _heightField->setBorderWidth( 0 );
 
-        _minHeight = FLT_MAX, _maxHeight = -FLT_MAX;
         const osg::HeightField::HeightList& heights = _heightField->getHeightList();
         for( unsigned i=0; i<heights.size(); ++i )
         {
@@ -2073,7 +2074,9 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
             interp);
 
         // if the vertical datums don't match, do a conversion:
-        if ( out_elevation != NO_DATA_VALUE && outputSRS && !extentSRS->isVertEquivalentTo(outputSRS) )
+        if (out_elevation != NO_DATA_VALUE && 
+            outputSRS && 
+            !extentSRS->isVertEquivalentTo(outputSRS) )
         {
             // if the caller provided a custom output SRS, perform the appropriate
             // Z transformation. This requires a lat/long point:
@@ -2086,7 +2089,7 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
 
             VerticalDatum::transform(
                 extentSRS->getVerticalDatum(),
-                outputSRS ? outputSRS->getVerticalDatum() : 0L,
+                outputSRS->getVerticalDatum(),
                 geolocal.y(), geolocal.x(), out_elevation);
         }
 

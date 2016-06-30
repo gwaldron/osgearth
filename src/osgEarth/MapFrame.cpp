@@ -26,7 +26,8 @@ using namespace osgEarth;
 MapFrame::MapFrame() :
 _initialized    ( false ),
 _highestMinLevel( 0 ),
-_mapInfo       ( 0L )
+_mapInfo       ( 0L ),
+_parts(Map::ENTIRE_MODEL)
 {
     //nop
 }

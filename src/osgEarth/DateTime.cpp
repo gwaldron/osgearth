@@ -94,7 +94,8 @@ DateTime::DateTime(int year, int month, int day, double hour)
     else memset( &_tm, 0, sizeof(tm) );
 }
 
-DateTime::DateTime(const std::string& input)
+DateTime::DateTime(const std::string& input) :
+_time_t(0)
 {
     bool ok = false;
     int year, month, day, hour, min, sec;

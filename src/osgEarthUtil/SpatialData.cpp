@@ -319,13 +319,16 @@ GeoCell::traverse( osg::NodeVisitor& nv )
             // custom BSP culling function. this checks that the set of boundary points
             // for this cell intersects the viewing frustum.
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            if ( cv && !intersects( cv->getCurrentCullingSet().getFrustum() ) )
+            if ( cv )
             {
-                return;
-            }
+                if (!intersects( cv->getCurrentCullingSet().getFrustum() ) )
+                {
+                    return;
+                }
 
-            // passed cull, so record the framestamp.
-            _frameStamp = cv->getFrameStamp()->getFrameNumber();
+                // passed cull, so record the framestamp.
+                _frameStamp = cv->getFrameStamp()->getFrameNumber();
+            }
         }
 
         if ( _objects.size() > 0 )

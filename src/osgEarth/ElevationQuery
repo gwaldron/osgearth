@@ -191,8 +191,6 @@ namespace osgEarth
 
     private:
         MapFrame     _mapf;
-        unsigned     _maxCacheSize;
-        int          _tileSize;
         int          _maxLevelOverride;
         bool         _fallBackOnNoData;
 

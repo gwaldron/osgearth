@@ -140,7 +140,9 @@ namespace
     {
         ComputeVisitor()
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), 
-              _maxRadius2(0.0f) { }
+              _maxRadius2(0.0f),
+              _maxNormalLen(0.0f),
+              _pass(0u) { }
 
         void run( osg::Node* node, const osg::Vec3d& centerECEF )
         {
@@ -284,7 +286,7 @@ namespace
         }
         
         std::vector<osg::Matrixd> _matrixStack;
-        double _maxOffset, _maxRadius, _minDeviation;
+        double _maxOffset, _minDeviation;
         osg::Vec3d _ecefControl, _ecefNormal;
     };
 }

@@ -448,7 +448,7 @@ namespace
             supportsExtension( "osgearth_composite", "Composite tile source driver" );
         }
 
-        virtual const char* className()
+        const char* className() const //override
         {
             return "CompositeTileSourceDriver";
         }

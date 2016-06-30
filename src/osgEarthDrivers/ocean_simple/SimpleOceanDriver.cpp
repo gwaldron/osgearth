@@ -126,7 +126,7 @@ bool
 SimpleOceanExtension::connect(ui::Control* control)
 {
     ui::Container* container = dynamic_cast<ui::Container*>(control);
-    if (container)
+    if (container && _oceanNode.valid())
     {
         ui::VBox* main = new ui::VBox();
 
@@ -157,6 +157,10 @@ SimpleOceanExtension::connect(ui::Control* control)
         alphaSlider->addEventHandler( new ChangeSeaAlpha(_oceanNode.get()) );
 
         container->addControl(main);
+    }
+    else
+    {
+        OE_WARN << LC << "Ocean node is unavailable; cannot create the UI.\n";
     }
 
     return true;

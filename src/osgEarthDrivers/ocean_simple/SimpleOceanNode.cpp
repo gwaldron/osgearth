@@ -88,7 +88,8 @@ namespace
 SimpleOceanNode::SimpleOceanNode(const SimpleOceanOptions& options,
                                  MapNode*                  mapNode) :
 OceanNode(options),
-SimpleOceanOptions(options)
+SimpleOceanOptions(options),
+_parentMapNode(mapNode)
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
@@ -102,15 +103,16 @@ SimpleOceanNode::rebuild()
 {
     this->removeChildren( 0, this->getNumChildren() );
 
-    if ( _parentMapNode.valid() )
+    osg::ref_ptr<MapNode> mapNode;
+    if (_parentMapNode.lock(mapNode))
     {
-        const MapOptions&     parentMapOptions     = _parentMapNode->getMap()->getMapOptions();
-        const MapNodeOptions& parentMapNodeOptions = _parentMapNode->getMapNodeOptions();
+        const MapOptions&     parentMapOptions     = mapNode->getMap()->getMapOptions();
+        const MapNodeOptions& parentMapNodeOptions = mapNode->getMapNodeOptions();
 
         // set up the map to "match" the parent map:
         MapOptions mo;
         mo.coordSysType() = parentMapOptions.coordSysType();
-        mo.profile()      = _parentMapNode->getMap()->getProfile()->toProfileOptions();
+        mo.profile()      = mapNode->getMap()->getProfile()->toProfileOptions();
 
         // new data model for the ocean:
         Map* oceanMap = new Map( mo );
@@ -164,8 +166,7 @@ SimpleOceanNode::rebuild()
             // parent map and turns them into encoded images for our shader to use.
             ImageLayerOptions epo( "ocean-proxy" );
             epo.cachePolicy() = CachePolicy::NO_CACHE;
-            //epo.maxLevel() = *_options.maxLOD();
-            oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
+            oceanMap->addImageLayer( new ElevationProxyImageLayer(mapNode->getMap(), epo) );
         }
 
         this->addChild( oceanMapNode );
@@ -210,11 +211,8 @@ SimpleOceanNode::rebuild()
         _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_ocean_alpha");
         ss->addUniform( _alphaUniform.get() );
 
-
-        // trick to mitigate z-fighting..
+        // disable depth writes.
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
-        //ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-        ss->setRenderBinDetails(renderBinNumber().get(), "DepthSortedBin");
 
         // load up a surface texture
         osg::ref_ptr<osg::Image> surfaceImage;
@@ -266,14 +264,17 @@ SimpleOceanNode::rebuild()
 void
 SimpleOceanNode::applyOptions()
 {
-    setSeaLevel( seaLevel().get());
-    _lowFeather->set(lowFeatherOffset().get());
-    _highFeather->set(highFeatherOffset().get());
-    _baseColor->set(baseColor().get());
-    _maxRange->set(maxRange().get());
-    _fadeRange->set(fadeRange().get());
-    _alphaUniform->set(getAlpha());
-    this->getOrCreateStateSet()->setRenderBinDetails(renderBinNumber().get(), "DepthSortedBin");
+    if (_seaLevel.valid())
+    {
+        setSeaLevel(seaLevel().get());
+        _lowFeather->set(lowFeatherOffset().get());
+        _highFeather->set(highFeatherOffset().get());
+        _baseColor->set(baseColor().get());
+        _maxRange->set(maxRange().get());
+        _fadeRange->set(fadeRange().get());
+        _alphaUniform->set(getAlpha());
+        this->getOrCreateStateSet()->setRenderBinDetails(renderBinNumber().get(), "DepthSortedBin");
+    }
 }
 
 void

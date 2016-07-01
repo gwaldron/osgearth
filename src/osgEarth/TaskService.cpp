@@ -68,8 +68,10 @@ TaskRequest::wasCanceled() const
 TaskRequestQueue::TaskRequestQueue(unsigned int maxSize) :
 osg::Referenced( true ),
 _done( false ),
-_maxSize( maxSize )
+_maxSize( maxSize ),
+_stamp(0)
 {
+    //nop
 }
 
 void

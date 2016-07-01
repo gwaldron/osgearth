@@ -138,15 +138,9 @@ namespace osgEarth
         optional<int>                 _textureSize;
         bool                          _useShaders;
         bool                          _isGeocentric;
-        bool                          _mipmapping;
-        bool                          _rttBlending;
-        bool                          _updatePending;
         unsigned                      _rttTraversalMask;
         double                        _maxHeight;
-        
         double                        _maxHorizonDistance;
-        bool                          _attachStencil;
-        
         unsigned                      _totalOverlayChildren;
 
         osg::ref_ptr<const SpatialReference>    _srs;

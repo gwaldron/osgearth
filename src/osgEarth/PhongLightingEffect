@@ -65,7 +65,6 @@ namespace osgEarth
 
         bool _supported;
         StateSetList _statesets;
-        bool _createLightingUniform;
         osg::ref_ptr<osg::Uniform> _lightingUniform;
 
         void init();

@@ -324,7 +324,7 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
                Currently this is only imlpemented for our custom PrimitiveIntersector.
             */
             osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>(&nv);
-            osgEarth::PrimitiveIntersector* pi = dynamic_cast<osgEarth::PrimitiveIntersector *>(iv->getIntersector());
+            osgEarth::PrimitiveIntersector* pi = iv ? dynamic_cast<osgEarth::PrimitiveIntersector *>(iv->getIntersector()) : 0L;
 
             osg::ref_ptr<MapNode> mapNode;
             if (pi && !pi->getOverlayIgnore() && _mapNode.lock(mapNode))

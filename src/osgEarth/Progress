@@ -130,7 +130,6 @@ namespace osgEarth
         const bool& collectStats() const { return _collectStats; }        
 
     protected:
-        volatile unsigned _numStages;
         std::string       _message;
         mutable  bool     _needsRetry;
         mutable  bool     _canceled;

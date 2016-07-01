@@ -808,13 +808,15 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     }
 
     // Tile the incoming polygon if necessary
+    // NB: this breaks down at higher latitudes; see https://github.com/gwaldron/osgearth/issues/746
+
     GeometryCollection tiles;
     prepareForTesselation( ring, featureSRS, _maxPolyTilingAngle_deg.get(), MAX_POINTS_PER_CROP_TILE, tiles);    
     //tiles.push_back( ring );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 
-    OE_TEST << LC << "TABP: tiles = " << tiles.size() << "\n";
+    OE_NOTICE << LC << "TABP: tiles = " << tiles.size() << "\n";
 
     // Process each ring independently
     for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)

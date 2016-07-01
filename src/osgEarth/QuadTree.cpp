@@ -732,10 +732,12 @@ bool IntersectQuadTree::intersectAndClip(osg::Vec3& s, osg::Vec3& e, const osg::
 // QuadTree::BuildOptions
 
 QuadTree::BuildOptions::BuildOptions():
-        _numVerticesProcessed(0),
-        _targetNumTrianglesPerLeaf(4),
-        _maxNumLevels(32)
+_numVerticesProcessed(0),
+_targetNumTrianglesPerLeaf(4),
+_maxNumLevels(32),
+_numTriangles(0)
 {
+    //nop
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -814,7 +816,7 @@ void QuadTreeBuilder::apply(osg::Geode& geode)
             osg::ref_ptr<osg::Object> obj = _quadTreePrototype->cloneType();
             osg::ref_ptr<QuadTree> quadTree = dynamic_cast<QuadTree*>(obj.get());
 
-            if (quadTree->build(_buildOptions, geom))
+            if (quadTree.valid() && quadTree->build(_buildOptions, geom))
             {
                 geom->setShape(quadTree.get());
             }

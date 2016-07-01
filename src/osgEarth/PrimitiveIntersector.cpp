@@ -314,8 +314,12 @@ struct PrimitiveIntersectorFunctor
 //
 //  PrimitiveIntersector
 //
-PrimitiveIntersector::PrimitiveIntersector()
+PrimitiveIntersector::PrimitiveIntersector() :
+_parent(0),
+_thicknessVal(0),
+_overlayIgnore(false)
 {
+    //nop
 }
 
 PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, double x, double y, double thickness):

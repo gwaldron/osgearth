@@ -117,8 +117,8 @@ namespace osgEarth
 
     protected:
         int   _maxLights;
-        bool* _lightEnabled;
-        bool  _lightingEnabled;
+        //bool* _lightEnabled;
+        //bool  _lightingEnabled;
         bool  _dirty;
         bool  _applied;
         bool  _useUpdateTrav;

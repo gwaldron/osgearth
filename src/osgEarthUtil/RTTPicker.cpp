@@ -55,7 +55,7 @@ namespace
         "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
         "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
         "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/255
+        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) / 255.0; \n"
         "    } \n"
         "} \n";
 
@@ -132,8 +132,9 @@ RTTPicker::getOrCreateTexture(osg::View* view)
         pc._tex = new osg::Texture2D( pc._image.get() );
         pc._tex->setTextureSize(pc._image->s(), pc._image->t());
         pc._tex->setUnRefImageDataAfterApply(false);
-        pc._tex->setFilter(pc._tex->MIN_FILTER, pc._tex->NEAREST);
-        pc._tex->setFilter(pc._tex->MAG_FILTER, pc._tex->NEAREST);
+        pc._tex->setFilter(pc._tex->MIN_FILTER, pc._tex->NEAREST); // no filtering
+        pc._tex->setFilter(pc._tex->MAG_FILTER, pc._tex->NEAREST); // no filtering
+        pc._tex->setMaxAnisotropy(1.0f); // no filtering
     }
     return pc._tex.get();
 }
@@ -176,13 +177,14 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // disable all the things that break ObjectID picking:
     osg::StateAttribute::GLModeValue disable = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
-    rttSS->setMode(GL_BLEND,     disable );    
+    //rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
     rttSS->setMode(GL_CULL_FACE, disable );
+    rttSS->setMode(GL_ALPHA_TEST, disable );
     
     // Disabling GL_BLEND is not enough, because osg::Text re-enables it
     // without regard for the OVERRIDE.
-    rttSS->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), osg::StateAttribute::OVERRIDE);
+    rttSS->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO), osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 
     // install the picking shaders:
     VirtualProgram* vp = createRTTProgram();
@@ -364,7 +366,8 @@ RTTPicker::checkForPickResult(Pick& pick)
     ImageUtils::PixelReader read( image );
 
     // uncomment to see the RTT image.
-    //osgDB::writeImageFile(*image, "out.png");
+    //osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
+    //osgDB::writeImageFile(*image, "out.tif", o.get());
 
     osg::Vec4f value;
     SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);

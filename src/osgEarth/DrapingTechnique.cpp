@@ -346,12 +346,46 @@ DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
     return getBound(params).valid();
 }
 
+// Customized texture class will disable texture filtering when rendering under a pick camera.
+class DrapingTexture : public osg::Texture2D
+{
+public:
+    virtual void apply(osg::State& state) const {
+        osg::State::UniformMap::const_iterator i = state.getUniformMap().find("oe_isPickCamera");
+        bool isPickCamera = false;
+        if (i != state.getUniformMap().end())
+        {
+            if (!i->second.uniformVec.empty())
+            {
+                i->second.uniformVec.back().first->get(isPickCamera);
+            }
+        }
+
+        if (isPickCamera)
+        {
+            FilterMode minFilter = _min_filter;
+            FilterMode magFilter = _mag_filter;
+            DrapingTexture* ncThis = const_cast<DrapingTexture*>(this);
+            ncThis->_min_filter = NEAREST;
+            ncThis->_mag_filter = NEAREST;
+            ncThis->dirtyTextureParameters();
+            osg::Texture2D::apply(state);
+            ncThis->_min_filter = minFilter;
+            ncThis->_mag_filter = magFilter;
+            ncThis->dirtyTextureParameters();
+        }
+        else
+        {
+            osg::Texture2D::apply(state);
+        }
+    }
+};
 
 void
 DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
     // create the projected texture:
-    osg::Texture2D* projTexture = new osg::Texture2D();
+    osg::Texture2D* projTexture = new DrapingTexture(); // new osg::Texture2D();
     projTexture->setTextureSize( *_textureSize, *_textureSize );
     projTexture->setInternalFormat( GL_RGBA );
     projTexture->setSourceFormat( GL_RGBA );

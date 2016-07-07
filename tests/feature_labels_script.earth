@@ -16,7 +16,7 @@ This shows how to label point features with an attribute (with some extra zing).
         </features>
 
         <styles>
-		    <script>
+		    <script profile="full">
 			    function addSomeExcitement() {
 				    feature.properties.name = '***' + feature.properties.cntry_name + '!!!';
 					feature.save();

@@ -498,6 +498,8 @@ namespace
         if ( !binValidForReading() ) return false;
         URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
+
+        ScopedMutexLock lock(_mutex);
         return ::unlink( path.c_str() ) == 0;
     }
 
@@ -507,6 +509,8 @@ namespace
         if ( !binValidForReading() ) return false;
         URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
+
+        ScopedMutexLock lock(_mutex);
         return osgEarth::touchFile( path );
     }
 
@@ -514,6 +518,8 @@ namespace
     FileSystemCacheBin::purgeDirectory( const std::string& dir )
     {
         if ( !binValidForReading() ) return false;
+
+        ScopedMutexLock lock(_mutex);
 
         bool allOK = true;
         osgDB::DirectoryContents dc = osgDB::getDirectoryContents( dir );

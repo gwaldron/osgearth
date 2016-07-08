@@ -66,7 +66,7 @@ namespace osgEarth { namespace Util
         GraticuleOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "graticule" );
-            _lineWidth.init ( 1.0f );
+            _lineWidth.init ( 2.0f );
             _color.init     ( Color(Color::Yellow, 0.5f) );
             _labelColor.init ( Color::White );
             _gridLines.init(10);

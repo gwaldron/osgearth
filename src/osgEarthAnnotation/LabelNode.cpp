@@ -30,6 +30,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Utils>
+#include <osgEarth/ScreenSpaceLayout>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -202,16 +203,21 @@ LabelNode::setStyle( const Style& style )
                                        osgEarth::ALTMODE_ABSOLUTE );
     }
 
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+    osg::Drawable* text = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
 
     const BBoxSymbol* bboxsymbol = _style.get<BBoxSymbol>();
-    if ( bboxsymbol && t )
+    if ( bboxsymbol && text )
     {
-        osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(t), *bboxsymbol );
+        osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(text), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
+
+        // Force the draw order. These won't matter (since we'll be using the screen space layout anyway)
+        // as long as the bbox order is higher than the text order, which will force the text to draw second.
+        text->addCullCallback(new DrawInOrder(0.0f));
+        bboxGeom->addCullCallback(new DrawInOrder(1.0f));
     }
 
-    _geode->addDrawable(t);
+    _geode->addDrawable(text);
     _geode->setCullingActive(false);
 
     applyStyle( _style );

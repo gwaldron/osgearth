@@ -30,6 +30,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
+#include <osgEarth/ScreenSpaceLayout>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -263,10 +264,17 @@ PlaceNode::init()
     {
         osg::Drawable* bboxGeom = new BboxDrawable( osgEarth::Utils::getBoundingBox(text), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
+
+        // Force the draw order. These won't matter (since we'll be using the screen space layout anyway)
+        // as long as the bbox order is higher than the text order, which will force the text to draw second.
+        text->addCullCallback(new DrawInOrder(0.0f));
+        bboxGeom->addCullCallback(new DrawInOrder(1.0f));
     }
 
     if ( text )
+    {
         _geode->addDrawable( text );
+    }
     
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );

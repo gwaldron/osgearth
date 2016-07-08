@@ -887,6 +887,55 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 
 //----------------------------------------------------------------------------
 
+bool
+DrawInOrder::cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const
+{
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+
+    const osg::BoundingBox& bb = drawable->getBoundingBox();
+
+    if (!cv->getNodePath().empty() && cv->getNodePath().back()->isCullingActive() && cv->isCulled(bb))
+        return true;
+
+    // need to track how push/pops there are, so we can unravel the stack correctly.
+    unsigned int numPopStateSetRequired = 0;
+
+    // push the geoset's state on the geostate stack.
+    osg::StateSet* stateset = drawable->getStateSet();
+    if (stateset)
+    {
+        ++numPopStateSetRequired;
+        cv->pushStateSet(stateset);
+    }
+
+    osg::CullingSet& cs = cv->getCurrentCullingSet();
+    if (!cs.getStateFrustumList().empty())
+    {
+        osg::CullingSet::StateFrustumList& sfl = cs.getStateFrustumList();
+        for (osg::CullingSet::StateFrustumList::iterator itr = sfl.begin();
+            itr != sfl.end();
+            ++itr)
+        {
+            if (itr->second.contains(bb))
+            {
+                ++numPopStateSetRequired;
+                cv->pushStateSet(itr->first.get());
+            }
+        }
+    }
+
+    cv->addDrawableAndDepth(drawable, cv->getModelViewMatrix(), _order);
+
+    for (unsigned int i = 0; i < numPopStateSetRequired; ++i)
+    {
+        cv->popStateSet();
+    }
+
+    return true;
+}
+
+//----------------------------------------------------------------------------
+
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
 static osgEarthRegisterRenderBinProxy<osgEarthScreenSpaceLayoutRenderBin> s_regbin(OSGEARTH_SCREEN_SPACE_LAYOUT_BIN);

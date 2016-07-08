@@ -72,7 +72,8 @@ _minRange      ( 0.0f ),
 _maxRange      ( 0.0f ),
 _cropFeatures  ( false ),
 _priorityOffset( 0.0f ),
-_priorityScale ( 1.0f )
+_priorityScale ( 1.0f ),
+_minExpiryTime ( 0.0f )
 {
     fromConfig( conf );
 }
@@ -85,6 +86,7 @@ FeatureDisplayLayout::fromConfig( const Config& conf )
     conf.getIfSet( "crop_features",    _cropFeatures );
     conf.getIfSet( "priority_offset",  _priorityOffset );
     conf.getIfSet( "priority_scale",   _priorityScale );
+    conf.getIfSet( "min_expiry_time",  _minExpiryTime );
     conf.getIfSet( "min_range",        _minRange );
     conf.getIfSet( "max_range",        _maxRange );
     ConfigSet children = conf.children( "level" );
@@ -101,6 +103,7 @@ FeatureDisplayLayout::getConfig() const
     conf.addIfSet( "crop_features",    _cropFeatures );
     conf.addIfSet( "priority_offset",  _priorityOffset );
     conf.addIfSet( "priority_scale",   _priorityScale );
+    conf.addIfSet( "min_expiry_time",  _minExpiryTime );
     conf.addIfSet( "min_range",        _minRange );
     conf.addIfSet( "max_range",        _maxRange );
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )

@@ -143,6 +143,14 @@ namespace osgEarth { namespace Features
         optional<float>& priorityScale() { return _priorityScale; }
         const optional<float>& priorityScale() const { return _priorityScale; }
 
+        /**
+         * Minimum time, in second, before a feature tile is eligible for pageout.
+         * Set this to a negative number to disable expiration altogether (i.e., tiles
+         * will never page out).
+         */
+        optional<float>& minExpiryTime() { return _minExpiryTime; }
+        const optional<float>& minExpiryTime() const { return _minExpiryTime; }
+
 
         /** Adds a new feature level */
         void addLevel( const FeatureLevel& level );
@@ -152,9 +160,6 @@ namespace osgEarth { namespace Features
 
         /** Gets the nth level */
         const FeatureLevel* getLevel( unsigned i ) const;
-
-        /** Gets the maximum range of the schema */
-        //float getMaxRange() const;
 
         /**
          * Calculates the "best" quadtree LOD for the specified level, given the radius 
@@ -173,6 +178,7 @@ namespace osgEarth { namespace Features
         optional<bool>  _cropFeatures;
         optional<float> _priorityOffset;
         optional<float> _priorityScale;
+        optional<float> _minExpiryTime;
         typedef std::multimap<float,FeatureLevel> Levels;
         Levels _levels;
 

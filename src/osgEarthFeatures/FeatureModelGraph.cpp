@@ -93,26 +93,33 @@ namespace
                                 const std::string& uri, 
                                 float minRange, 
                                 float maxRange, 
-                                float priOffset, 
-                                float priScale,
+                                const FeatureDisplayLayout& layout,
                                 RefNodeOperationVector* postMergeOps,
                                 osgDB::FileLocationCallback* flc,
                                 const osgDB::Options* readOptions)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
-        osg::ProxyNode* p = new osg::ProxyNode();
+        ProxyNode* p = new ProxyNode();
         p->setCenter( bs.center() );
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
+        p->setRange( 0, minRange, maxRange );
+        p->setPriorityOffset( 0, layout.priorityOffset().get() );
+        p->setPriorityScale(0, layout.priorityScale().get() );
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( bs.radius() ); //maxRange + bs.radius() );
-        //p->setRadius(-1);
+        p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
-        p->setPriorityOffset( 0, priOffset );
-        p->setPriorityScale( 0, priScale );
+        p->setPriorityOffset( 0, layout.priorityOffset().get() );
+        p->setPriorityScale(0, layout.priorityScale().get() );
+        if (layout.minExpiryTime().isSet())
+        {
+            float value = layout.minExpiryTime() >= 0.0f ? layout.minExpiryTime().get() : FLT_MAX;
+            p->setMinimumExpiryTime(0, value);
+        }
+            
 #endif
 
         // force onto the high-latency thread pool.
@@ -601,8 +608,9 @@ FeatureModelGraph::setupPaging()
         uri, 
         0.0f, 
         maxRange, 
-        *_options.layout()->priorityOffset(), 
-        *_options.layout()->priorityScale(),
+        _options.layout().get(),
+        //*_options.layout()->priorityOffset(), 
+        //*_options.layout()->priorityScale(),
         _postMergeOperations.get(),
         _defaultFileLocationCallback.get(),
         getSession()->getDBOptions() );
@@ -843,8 +851,9 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     subtile_bs, 
                     uri, 
                     0.0f, maxRange, 
-                    *_options.layout()->priorityOffset(), 
-                    *_options.layout()->priorityScale(),
+                    _options.layout().get(),
+                    //*_options.layout()->priorityOffset(), 
+                    //*_options.layout()->priorityScale(),
                     _postMergeOperations.get(),
                     _defaultFileLocationCallback.get(),
                     readOptions);

@@ -266,7 +266,6 @@ DrawInstanced::remove(osg::StateSet* stateset)
     pkg.unload( vp, pkg.InstancingVertex );
 
     stateset->removeUniform("oe_di_postex_TBO");
-    stateset->removeUniform("oe_di_postex_TBO_size");
 }
 
 
@@ -426,7 +425,6 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
         osg::StateSet* stateset = instanceGroup->getOrCreateStateSet();
         stateset->setTextureAttribute(POSTEX_TBO_UNIT, posTBO);
-        stateset->getOrCreateUniform("oe_di_postex_TBO_size", osg::Uniform::INT)->set((int)tboSize);
 
 		// add the node as a child:
         instanceGroup->addChild( node );

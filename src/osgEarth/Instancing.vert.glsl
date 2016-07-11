@@ -7,7 +7,6 @@
 #pragma vp_order      0.0
 
 uniform samplerBuffer oe_di_postex_TBO;
-uniform int			  oe_di_postex_TBO_size;
 
 // Stage-global containing object ID
 uint oe_index_objectid;

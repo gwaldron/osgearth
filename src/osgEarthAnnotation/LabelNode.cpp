@@ -210,11 +210,6 @@ LabelNode::setStyle( const Style& style )
     {
         osg::Drawable* bboxGeom = new BboxDrawable( Utils::getBoundingBox(text), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
-
-        // Force the draw order. These won't matter (since we'll be using the screen space layout anyway)
-        // as long as the bbox order is higher than the text order, which will force the text to draw second.
-        text->addCullCallback(new DrawInOrder(0.0f));
-        bboxGeom->addCullCallback(new DrawInOrder(1.0f));
     }
 
     _geode->addDrawable(text);

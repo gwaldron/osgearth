@@ -88,16 +88,6 @@ namespace osgEarth
     };
 
     /**
-     * A decluttering functor that sorts by the priority field in AnnotationNode.
-     * AnnotationNode should be attached to each Drawable's user data.
-     */
-    struct OSGEARTH_EXPORT DeclutterByPriority : public DeclutterSortFunctor
-    {
-        virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
-        virtual ~DeclutterByPriority() { }
-    };
-
-    /**
      * Options to control the annotation decluttering engine.
      */
     class OSGEARTH_EXPORT ScreenSpaceLayoutOptions : public ConfigOptions
@@ -205,27 +195,6 @@ namespace osgEarth
          */
         static void clearSortFunctor();
     };
-
-    /**
-     * A Cull callback that will force depth sorting to an order that you specify. 
-     * This is not general puspose; it will only work in the context of the ScreenSpaceLayout.
-     * The purpose is to force a pair (or more) or Drawables to render in a specific order,
-     * like when drawing a bbox behind a text label.
-     *
-     * Most of this code is copied from osgUtil::CullVisitor::apply(osg::Drawable&),
-     * except that we force a "depth" for the drawable based on the constructor argument.
-     */
-    class OSGEARTH_EXPORT DrawInOrder : public osg::Drawable::CullCallback
-    {
-    public:
-        float _order;
-
-        /** Order of drawing - higher draws earlier. */
-        DrawInOrder(float order) : _order(order) { }
-
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
-    };
-
 
 } // namespace osgEarth
 

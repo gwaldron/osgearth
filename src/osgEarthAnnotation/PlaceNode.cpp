@@ -264,11 +264,6 @@ PlaceNode::init()
     {
         osg::Drawable* bboxGeom = new BboxDrawable( osgEarth::Utils::getBoundingBox(text), *bboxsymbol );
         _geode->addDrawable(bboxGeom);
-
-        // Force the draw order. These won't matter (since we'll be using the screen space layout anyway)
-        // as long as the bbox order is higher than the text order, which will force the text to draw second.
-        text->addCullCallback(new DrawInOrder(0.0f));
-        bboxGeom->addCullCallback(new DrawInOrder(1.0f));
     }
 
     if ( text )

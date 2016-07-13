@@ -55,6 +55,8 @@ namespace
     {
         l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
     }
+
+    static Distance default_geometryResolution(5.0, Units::DEGREES);
 }
 
 //---------------------------------------------------------------------------
@@ -71,7 +73,8 @@ _dirty        (false),
 _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter    (osg::Texture::LINEAR),
-_texture      (0)
+_texture      (0),
+_geometryResolution(default_geometryResolution)
 {
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
@@ -114,6 +117,13 @@ _texture      (0)
     conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+
+    if (conf.hasValue("geometry_resolution"))
+    {
+        float value; Units units;
+        if (Units::parse(conf.value("geometry_resolution"), value, units, Units::DEGREES))
+            _geometryResolution.set(value, units);
+    }
 
     postCTOR();
     ImageOverlay::setMapNode( mapNode );
@@ -162,6 +172,11 @@ ImageOverlay::getConfig() const
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
+    if (_geometryResolution != default_geometryResolution)
+    {
+        conf.update("geometry_resolution", _geometryResolution.asParseableString());
+    }
+
     return conf;
 }
 
@@ -179,7 +194,8 @@ _dirty        (false),
 _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter    (osg::Texture::LINEAR),
-_texture      (0)
+_texture      (0),
+_geometryResolution(default_geometryResolution)
 {        
     postCTOR();
     ImageOverlay::setMapNode(mapNode);
@@ -293,7 +309,7 @@ ImageOverlay::init()
         if (getMapNode()->getMap()->isGeocentric())
         {
             MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
-            ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
+            ms.run(*geometry, _geometryResolution.as(Units::RADIANS), GEOINTERP_RHUMB_LINE);
         }
 
         _geode->addDrawable( geometry );

@@ -81,6 +81,11 @@ namespace osgEarth { namespace Annotation
         osg::Vec2d getControlPoint(ControlPoint controlPoint);
         void setControlPoint(ControlPoint controlPoint, double lon_deg, double lat_deg, bool singleVert=false);
 
+        /** When refining the mesh to fit the curtavure of the earth, this is the target resolution of the triangle mesh.
+            Default is 5 degrees */
+        void setGeometryResolution(const Distance& d) { _geometryResolution = d; }
+        const Distance& getGeometryResolution() const { return _geometryResolution; }
+
         struct ImageOverlayCallback : public osg::Referenced
         {
             virtual void onOverlayChanged() {};
@@ -165,6 +170,7 @@ namespace osgEarth { namespace Annotation
         osg::MatrixTransform* _transform;
         osg::Geometry* _geometry;
         osg::Texture* _texture;
+        Distance _geometryResolution;
 
         //float _alpha;
         CallbackList _callbacks;

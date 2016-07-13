@@ -346,6 +346,8 @@ DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
     return getBound(params).valid();
 }
 
+#if OSG_MIN_VERSION_REQUIRED(3,4,0)
+
 // Customized texture class will disable texture filtering when rendering under a pick camera.
 class DrapingTexture : public osg::Texture2D
 {
@@ -381,11 +383,20 @@ public:
     }
 };
 
+#endif
+
 void
 DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
     // create the projected texture:
-    osg::Texture2D* projTexture = new DrapingTexture(); // new osg::Texture2D();
+
+#if OSG_MIN_VERSION_REQUIRED(3,4,0)
+    osg::Texture2D* projTexture = new DrapingTexture(); 
+#else 
+    osg::Texture2D* projTexture = new osg::Texture2D();
+    OE_WARN << LC << "RTT Picking of draped geometry may not work propertly under OSG < 3.4" << std::endl;
+#endif
+
     projTexture->setTextureSize( *_textureSize, *_textureSize );
     projTexture->setInternalFormat( GL_RGBA );
     projTexture->setSourceFormat( GL_RGBA );

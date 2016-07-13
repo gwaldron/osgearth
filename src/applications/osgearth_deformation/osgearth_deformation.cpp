@@ -567,6 +567,7 @@ int main(int argc, char** argv)
     TileSourceOptions tileSourceOptions;
     tileSourceOptions.L2CacheSize() = 0;
     s_deformations = new DeformationTileSource(tileSourceOptions);
+    s_deformations->open();
 
     ElevationLayerOptions elevationOpt;
     //elevationOpt.offset() = true;
@@ -575,6 +576,7 @@ int main(int argc, char** argv)
     elevationOpt.driver() = tileSourceOptions;
 
     ElevationLayer* layer = new ElevationLayer(elevationOpt, s_deformations);
+    layer->open();
     s_mapNode->getMap()->addElevationLayer(layer);
 
     osg::Group* root = new osg::Group();

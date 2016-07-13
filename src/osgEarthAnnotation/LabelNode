@@ -125,6 +125,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse(osg::NodeVisitor &nv);
 
+        virtual void dirty();
+
     protected:
         void init(const Style& style);
 

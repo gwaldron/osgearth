@@ -187,31 +187,6 @@ LabelNode::setStyle( const Style& style )
     {
         _followFixedCourse = true;
         _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
-
-        GeoPoint location = getPosition();
-        location.makeGeographic();
-        double latRad;
-        double longRad;
-        GeoMath::destination( osg::DegreesToRadians( location.y() ),
-                              osg::DegreesToRadians( location.x() ),
-                              _labelRotationRad,
-                              2500.,
-                              latRad,
-                              longRad );
-
-        _geoPointProj.set ( osgEarth::SpatialReference::get("wgs84"),
-                            /*location.getSRS(),*/
-                           osg::RadiansToDegrees(longRad),
-                           osg::RadiansToDegrees(latRad),
-                           0,
-                           osgEarth::ALTMODE_ABSOLUTE );
-
-        _geoPointLoc.set ( osgEarth::SpatialReference::get("wgs84"),
-                           //location.getSRS(),
-                           location.x(),
-                           location.y(),
-                           0,
-                           osgEarth::ALTMODE_ABSOLUTE );
     }
 
     osg::Drawable* text = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
@@ -235,6 +210,14 @@ LabelNode::setStyle( const Style& style )
         "osgEarth.LabelNode",
         Registry::stateSetCache() );
 
+    updateLayoutData();
+    dirty();
+}
+
+void
+LabelNode::dirty()
+{
+    GeoPositionNode::dirty();
     updateLayoutData();
 }
 
@@ -260,6 +243,31 @@ LabelNode::updateLayoutData()
     }
     
     _dataLayout->setPriority(getPriority());
+    
+    GeoPoint location = getPosition();
+    location.makeGeographic();
+    double latRad;
+    double longRad;
+    GeoMath::destination(osg::DegreesToRadians(location.y()),
+        osg::DegreesToRadians(location.x()),
+        _labelRotationRad,
+        2500.,
+        latRad,
+        longRad);
+
+    _geoPointProj.set(osgEarth::SpatialReference::get("wgs84"),
+        osg::RadiansToDegrees(longRad),
+        osg::RadiansToDegrees(latRad),
+        0,
+        osgEarth::ALTMODE_ABSOLUTE);
+
+    _geoPointLoc.set(osgEarth::SpatialReference::get("wgs84"),
+        //location.getSRS(),
+        location.x(),
+        location.y(),
+        0,
+        osgEarth::ALTMODE_ABSOLUTE);
+
     const TextSymbol* ts = getStyle().get<TextSymbol>();
     if (ts)
     {

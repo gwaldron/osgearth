@@ -222,6 +222,15 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         {
             aa.requestRedraw();
         }
+
+        // synchronize the pick camera associated with this view
+        osg::Camera* cam = aa.asView()->getCamera();
+        if (cam)
+        {
+            PickContext& context = getOrCreatePickContext( aa.asView() );
+            context._pickCamera->setViewMatrix( cam->getViewMatrix() );
+            context._pickCamera->setProjectionMatrix( cam->getProjectionMatrix() );
+        }
     }
 
     else if ( _defaultCallback.valid() && _defaultCallback->accept(ea, aa) )
@@ -276,11 +285,6 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._callback = callbackToUse;
     pick._frame    = view->getFrameStamp() ? view->getFrameStamp()->getFrameNumber() : 0u;
     
-    // Synchronize the matrices
-    pick._context->_pickCamera->setNodeMask( ~0 );
-    pick._context->_pickCamera->setViewMatrix( cam->getViewMatrix() );
-    pick._context->_pickCamera->setProjectionMatrix( cam->getProjectionMatrix() );
-
     // Queue it up.
     _picks.push( pick );
     
@@ -357,10 +361,6 @@ namespace
 void
 RTTPicker::checkForPickResult(Pick& pick)
 {
-    // turn the camera off:
-    // gw: suddenly this no longer works.. disabling for now.
-    //pick._context->_pickCamera->setNodeMask( 0 );
-
     // decode the results
     osg::Image* image = pick._context->_image.get();
     ImageUtils::PixelReader read( image );

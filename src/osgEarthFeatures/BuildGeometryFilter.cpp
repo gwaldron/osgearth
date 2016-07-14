@@ -816,7 +816,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 
-    OE_NOTICE << LC << "TABP: tiles = " << tiles.size() << "\n";
+    //OE_NOTICE << LC << "TABP: tiles = " << tiles.size() << "\n";
 
     // Process each ring independently
     for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)

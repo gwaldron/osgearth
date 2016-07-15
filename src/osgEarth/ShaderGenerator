@@ -26,6 +26,7 @@
 #include <osg/NodeVisitor>
 #include <osg/State>
 #include <osg/Version>
+#include <osg/Drawable>
 #include <sstream>
 #include <set>
 
@@ -243,6 +244,8 @@ namespace osgEarth
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;
+
+        std::set<osg::Drawable*> _drawablesVisited;
 
         bool accept(const osg::StateAttribute* sa) const;
     };

@@ -594,6 +594,11 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 {
     if ( drawable )
     {
+        if (_drawablesVisited.find(drawable) != _drawablesVisited.end())
+            return;
+        else
+            _drawablesVisited.insert(drawable);
+
         osg::ref_ptr<osg::StateSet> ss = drawable->getStateSet();
         if ( ss.valid() )
         {

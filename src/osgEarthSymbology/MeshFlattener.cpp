@@ -55,10 +55,12 @@ void PrepareForOptimizationVisitor::apply(osg::Node& node)
 }
 
 /********************************/
-    FlattenSceneGraphVisitor::FlattenSceneGraphVisitor():
+FlattenSceneGraphVisitor::FlattenSceneGraphVisitor():
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
     setNodeMaskOverride(~0);
+    _mergeGeometry = true;
+    _maxVertsPerCluster = 250000u;
 }
 
     void FlattenSceneGraphVisitor::apply(osg::Node& node)
@@ -165,19 +167,22 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             MeshConsolidator::run(*geode);
         }
 
-        // Run MERGE_GEOMETRY so that it will merge all the primitive sets
-        osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(65536);
-        result->accept( mg );
+        if (_mergeGeometry)
+        {
+            // Run MERGE_GEOMETRY so that it will merge all the primitive sets
+            osgUtil::Optimizer::MergeGeometryVisitor mg;
+            mg.setTargetMaximumNumberOfVertices(std::max(_maxVertsPerCluster, 1000u));
+            result->accept( mg );
+        }
        
-        //osgDB::writeNodeFile(*result, "clustered.osg");
+        //osgDB::writeNodeFile(*result, "clustered.osgt");
 
         return result;
     }
 
 
 /********************************/
-void MeshFlattener::run( osg::Group* group )
+void MeshFlattener::run(osg::Group* group, unsigned maxVertsPerCluster)
 {
     // Do all that we can so the optimizer will actually do it's job.
     PrepareForOptimizationVisitor v;
@@ -193,6 +198,7 @@ void MeshFlattener::run( osg::Group* group )
 
     // Now, collect all the geodes and merge them
     FlattenSceneGraphVisitor flatten;
+    flatten._maxVertsPerCluster = maxVertsPerCluster;
     group->accept(flatten);
 
     // Remove all the old children.
@@ -200,4 +206,9 @@ void MeshFlattener::run( osg::Group* group )
 
     // Add the new flat graph.
     group->addChild(flatten.build());
+}
+
+void MeshFlattener::run(osg::Group* group)
+{
+    run(group, 250000u);
 }

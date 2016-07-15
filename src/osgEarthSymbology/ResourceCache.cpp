@@ -116,7 +116,7 @@ ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
         Threading::ScopedMutexLock exclusive( _instanceMutex );
 
         // Deep copy everything except for images.  Some models may share imagery so we only want one copy of it at a time.
-        osg::CopyOp copyOp = osg::CopyOp::DEEP_COPY_ALL & ~osg::CopyOp::DEEP_COPY_IMAGES;
+        osg::CopyOp copyOp = osg::CopyOp::DEEP_COPY_ALL & ~osg::CopyOp::DEEP_COPY_IMAGES & ~osg::CopyOp::DEEP_COPY_TEXTURES;
 
         // double check to avoid race condition
         InstanceCache::Record rec;

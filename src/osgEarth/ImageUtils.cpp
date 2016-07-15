@@ -1885,11 +1885,21 @@ TextureAndImageVisitor::apply(osg::Geode& geode)
         apply(*geode.getStateSet());
 
     for (unsigned i = 0; i < geode.getNumDrawables(); ++i) {
-        if (geode.getDrawable(i) && geode.getDrawable(i)->getStateSet())
-            apply(*geode.getDrawable(i)->getStateSet());
+        apply(*geode.getDrawable(i));
+        //if (geode.getDrawable(i) && geode.getDrawable(i)->getStateSet())
+        //    apply(*geode.getDrawable(i)->getStateSet());
     }
 
-    traverse(geode);
+    //traverse(geode);
+}
+
+void
+TextureAndImageVisitor::apply(osg::Drawable& drawable)
+{
+    if (drawable.getStateSet())
+        apply(*drawable.getStateSet());
+
+    //traverse(drawable);
 }
 
 void

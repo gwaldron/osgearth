@@ -74,12 +74,8 @@ is randomized, but it is randomized exactly the same way each time.
         </styles>        
     </model>
     
-    
-    <image name="mapquest_open_aerial" driver="xyz">
-        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-        <profile>spherical-mercator</profile>
-        <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
     <elevation name="ReadyMap.org - Elevation" driver="tms">

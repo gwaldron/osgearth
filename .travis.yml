@@ -12,7 +12,7 @@ compiler:
 before_install:
 # Try coverity workaround here:  https://github.com/travis-ci/travis-ci/issues/6142
 - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
-- sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
+#- sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
 - sudo apt-get update -qq
 - sudo apt-get install -y cmake
 - sudo apt-get install -y libopenscenegraph-dev

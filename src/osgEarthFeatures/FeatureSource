@@ -54,10 +54,6 @@ namespace osgEarth { namespace Features
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
-        /** List of filteres to apply to features read from this source */
-        //FeatureFilterList& filters() { return _filters; }
-        //const FeatureFilterList& filters() const { return _filters; }
-
         /** Set of FeatureFilter options. */
         std::vector<ConfigOptions>& filters() { return _filterOptions; }
         const std::vector<ConfigOptions>& filters() const { return _filterOptions; }
@@ -116,11 +112,22 @@ namespace osgEarth { namespace Features
             const osgDB::Options* readOptions =0L );
 
         /**
+         * Opens the feature source and returns an initial status.
+         */
+        const Status& open(const osgDB::Options* readOptions);
+        const Status& open() { return open(0L); }
+
+        /**
+         * Status of the feature source
+         */
+        const Status& getStatus() const { return _status; }
+
+        /**
          * Gets a reference to the metadata that describes features that you can
          * get from this FeatureSource. A valid feature profile indiciates that the
          * feature source successfully initialized.
          */
-        const FeatureProfile* getFeatureProfile() const;
+        const FeatureProfile* getFeatureProfile() const { return _featureProfile.get(); }
 
         /**
          * Gets the options that were passed into this object's CTOR.
@@ -238,34 +245,34 @@ namespace osgEarth { namespace Features
         virtual const char* className() const { return "FeatureSource"; }
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 
-
-        /**
-         * Initialize the FeatureSource.
-         * If you override this function, please call this base implementation from within.
-         */
-        virtual void initialize(const osgDB::Options* readOptions);
-
         /**
          * Dirties the feature profile
          */
         void dirtyFeatureProfile() { _featureProfile = 0;}
 
-
-        /**
-         * Convenience
-         */
-        void initialize() { initialize(0L); }
         
         void setReadOptions(const osgDB::Options* readOptions) { _readOptions = readOptions; }
-
+        
     protected:
+        
+        /**
+         * Initialize the FeatureSource.
+         * If you override this function, please call this base implementation from within.
+         */
+        virtual Status initialize(const osgDB::Options* readOptions) =0;
+
+        /**
+         * Subclass sets the feature profile for this source.
+         * This is required, and the subclass should call this from initialize().
+         */
+        void setFeatureProfile(const FeatureProfile* profile);
 
         /**
          * Creates and returns a metadata structure describing the features in a named
          * feature class. This method is called by the public function getFeatureProfile()
          * in this same object to create the metadata structure.
          */
-        virtual const FeatureProfile* createFeatureProfile() =0;
+        //virtual const FeatureProfile* createFeatureProfile(int dummy) =0;
 
         /**
          * DTOR is protected to prevent this object from being allocated on the stack.
@@ -278,11 +285,11 @@ namespace osgEarth { namespace Features
         /** The URI context (for resolving relative paths) */
         const URIContext& uriContext() const { return _uriContext; }
 
-        /** The Cache passed in via the dbOptions */
-        //Cache* getCache() const { return _cache.get(); }   
-
         /** Convenience function to apply the filters to a FeatureList */
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
+
+        /** Subclass can call this if the status changes */
+        void setStatus(const Status& value) { _status = value; }
 
     private:
         const FeatureSourceOptions         _options;
@@ -291,12 +298,13 @@ namespace osgEarth { namespace Features
 
         osg::ref_ptr<const osgDB::Options> _readOptions;
         URIContext                         _uriContext;
-        //osg::observer_ptr<Cache>           _cache;
 
         Threading::ReadWriteMutex          _blacklistMutex;
         std::set<FeatureID>                _blacklist;
         
         FeatureFilterList                  _filters;
+
+        Status                             _status;
 
         friend class Map;
         friend class FeatureSourceFactory;

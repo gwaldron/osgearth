@@ -245,7 +245,12 @@ namespace osgEarth
         /**
          * Perform one-time initialization of the model layer.
          */
-        void open();
+        const Status& open();
+
+        /**
+         * Status of this layer.
+         */
+        const Status& getStatus() const { return _status; }
 
         /**
          * Creates the scene graph representing this model layer for the given Map,
@@ -257,12 +262,6 @@ namespace osgEarth
          * Gets a scene graph what was previously created with getOrCreateSceneGraph.
          */
         osg::Node* getSceneGraph(const UID& mapUID) const;
-        
-        /**
-         * This layer's caching policy
-         */
-        //void setCachePolicy(const CachePolicy& cachePolicy);
-        //const CachePolicy& getCachePolicy() const;
 
     public: // deprecated
         
@@ -300,6 +299,13 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ModelLayerCallback* cb );
 
+    protected:
+
+        /**
+         * Set the status in case something fails
+         */
+        void setStatus(const Status& value) { _status = value; }
+
     private:
         osg::ref_ptr<ModelSource>     _modelSource;
         osg::ref_ptr<MaskSource>      _maskSource;
@@ -311,6 +317,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
         osg::ref_ptr<osgDB::Options>  _readOptions;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
+        Status                        _status;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
         Graphs _graphs;

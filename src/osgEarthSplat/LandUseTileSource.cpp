@@ -85,7 +85,7 @@ _options  ( options )
     //nop
 }
 
-TileSource::Status
+Status
 LandUseTileSource::initialize(const osgDB::Options* dbOptions)
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);

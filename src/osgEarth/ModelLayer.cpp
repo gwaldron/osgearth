@@ -38,6 +38,10 @@ namespace
     {
         NodeModelSource( osg::Node* node ) : _node(node) { }
 
+        Status initialize(const osgDB::Options* readOptions) {
+            return Status::OK();
+        }
+
         osg::Node* createNodeImplementation(const Map* map, ProgressCallback* progress) {
             return _node.get();
         }
@@ -48,8 +52,6 @@ namespace
 
 //------------------------------------------------------------------------
 
-namespace osgEarth
-{
 ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
 ConfigOptions( options )
 {
@@ -212,37 +214,58 @@ ModelLayer::copyOptions()
     _alphaEffect->setAlpha( *_initOptions.opacity() );
 }
 
-void
+const Status&
 ModelLayer::open()
 {
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
-        OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << _initOptions.driver()->getDriver() << "\"" << std::endl;
+        std::string driverName = _initOptions.driver()->getDriver();
+
+        OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << driverName << "\"" << std::endl;
         
-        // the model source:
+        // Try to create the model source:
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
         if ( _modelSource.valid() )
         {
             _modelSource->setName( this->getName() );
-            _modelSource->initialize( _readOptions.get() );
 
-            // the mask, if there is one:
-            if ( !_maskSource.valid() && _initOptions.maskOptions().isSet() )
+            const Status& modelStatus = _modelSource->open( _readOptions.get() );
+            if (modelStatus.isOK())
             {
-                OE_INFO << LC << "...initializing mask, driver=\"" << _initOptions.maskOptions()->getDriver() << std::endl;
+                // the mask, if there is one:
+                if ( !_maskSource.valid() && _initOptions.maskOptions().isSet() )
+                {
+                    OE_INFO << LC << "...initializing mask, driver=" << driverName << std::endl;
 
-                _maskSource = MaskSourceFactory::create( *_initOptions.maskOptions() );
-                if ( _maskSource.valid() )
-                {
-                    _maskSource->initialize( _readOptions.get() );
-                }
-                else
-                {
-                    OE_INFO << LC << "...mask init failed!" << std::endl;
+                    _maskSource = MaskSourceFactory::create( *_initOptions.maskOptions() );
+                    if ( _maskSource.valid() )
+                    {
+                        const Status& maskStatus = _maskSource->open(_readOptions.get());
+                        if (maskStatus.isError())
+                        {
+                            _status = maskStatus;
+                        }
+                    }
+                    else
+                    {
+                        OE_INFO << LC << "...mask init failed!" << std::endl;
+                        _status = Status::Error(getName(), Stringify() << "Mask source initialization failed, driver=" << driverName);
+                    }
                 }
             }
+            else
+            {
+                // propagate the model source's error status
+                _status = modelStatus;
+            }
+        }
+        else
+        {
+            _status = Status::Error(getName(), Stringify() << "Failed to create driver " << driverName);
         }
     }
+
+    return _status;
 }
 
 void
@@ -474,7 +497,7 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
                                     const SpatialReference* srs, 
                                     ProgressCallback*       progress )
 {
-    if ( _maskSource.valid() && !_maskBoundary.valid() )
+    if (_maskSource.valid() && !_maskBoundary.valid() && getStatus().isOK())
     {
         Threading::ScopedMutexLock excl(_mutex);
 
@@ -482,13 +505,18 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
         {
             // make the geometry:
             _maskBoundary = _maskSource->createBoundary( srs, progress );
-
-            // scale to the height scale factor:
-            for (osg::Vec3dArray::iterator vIt = _maskBoundary->begin(); vIt != _maskBoundary->end(); ++vIt)
-                vIt->z() = vIt->z() * heightScale;
+            if (_maskBoundary.valid())
+            {
+                // scale to the height scale factor:
+                for (osg::Vec3dArray::iterator vIt = _maskBoundary->begin(); vIt != _maskBoundary->end(); ++vIt)
+                    vIt->z() = vIt->z() * heightScale;
+            }
+            else
+            {
+                setStatus(Status::Error("Failed to create masking boundary"));
+            }
         }
     }
 
     return _maskBoundary.get();
-}
 }

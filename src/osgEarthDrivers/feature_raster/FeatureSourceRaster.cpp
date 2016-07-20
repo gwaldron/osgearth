@@ -50,14 +50,27 @@ public:
     }
 
     //override
-    void initialize( const osgDB::Options* dbOptions )
+    Status initialize(const osgDB::Options* readOptions)
     {
-        FeatureSource::initialize( dbOptions );
+        _dbOptions = Registry::cloneOrCreateOptions(readOptions);
+        
+        // Establish the feature profile.
+        const Profile* wgs84 = Registry::instance()->getGlobalGeodeticProfile();
+        GeoExtent extent(wgs84->getSRS(), -180, -90, 180, 90);
 
-        _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
+        FeatureProfile* profile = new FeatureProfile( extent );
+        profile->setProfile( Profile::create("wgs84", extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), "", 1, 1) );
+        unsigned int level = _options.level().get();
+        profile->setFirstLevel(level);
+        profile->setMaxLevel(level);
+        profile->setTiled(true);
+
+        setFeatureProfile(profile);
+        return Status::OK();
     }
 
 
+#if 0
     /** Called once at startup to create the profile for this feature set. Successful profile
         creation implies that the datasource opened succesfully. */
     const FeatureProfile* createFeatureProfile()
@@ -73,6 +86,7 @@ public:
         profile->setTiled(true);
         return profile;
     }
+#endif
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {

@@ -350,7 +350,7 @@ CompositeTileSource::add( ElevationLayer* layer )
 }
 
 
-TileSource::Status
+Status
 CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
@@ -367,15 +367,16 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 
             osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_imageLayerOptions);
             layer->setReadOptions(_dbOptions.get());
-            if (!layer->open())
-            {
-                OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
-            }
-            else
+            Status status = layer->open();
+            if (status.isOK())
             {
                 i->_layer = layer;
                 _imageLayers.push_back( layer );
                 OE_INFO << LC << " .. added image layer " << layer->getName() << " (" << i->_imageLayerOptions->driver()->getDriver() << ")\n";
+            }
+            else
+            {
+                OE_WARN << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
             }            
         }
         else if (i->_elevationLayerOptions.isSet())
@@ -385,14 +386,15 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 
             osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);   
             layer->setReadOptions(_dbOptions.get());
-            if (!layer->open())
-            {
-                   OE_WARN << LC << "Could not find a TileSource for driver [" << i->_elevationLayerOptions->driver()->getDriver() << "]" << std::endl;
-            }
-            else
+            Status status = layer->open();
+            if (status.isOK())
             {
                 i->_layer = layer;
                 _elevationLayers.push_back( layer.get() );                
+            }
+            else
+            {
+                OE_WARN << LC << "Could not open elevation layer (" << layer->getName() << ") ... " << status.message() << std::endl;
             }
         }
 

@@ -58,7 +58,7 @@ namespace osgEarth { namespace Features
         /**
          * Optionally initialize the filter.
          */
-        virtual void initialize(const osgDB::Options* dbo) { }
+        virtual Status initialize(const osgDB::Options* readOptions) { return Status::OK(); }
 
         /**
          * Serialize this FeatureFilter

@@ -49,23 +49,18 @@ public:
 
 public: // FeatureFilter
 
-    void initialize(const osgDB::Options* dbo)
+    Status initialize(const osgDB::Options* readOptions)
     {
         // Load the feature source containing the intersection geometry.
         _featureSource = FeatureSourceFactory::create( features().get() );
         if ( !_featureSource.valid() )
-        {
-            OE_WARN << LC << "Failed to load the intersect feature source.\n";
-            return;
-        }
+            return Status::Error(LC, Stringify()<< "Failed to create feature driver \"" << features()->getDriver() << "\"");
 
-        _featureSource->initialize( dbo );
+        const Status& s = _featureSource->open(readOptions);
+        if (s.isError())
+            return s;
 
-        if ( !_featureSource->getFeatureProfile() )
-        {
-            OE_WARN << LC << "Failed to establish the feature profile.\n";
-            return;
-        }
+        return Status::OK();
     }
 
     /**

@@ -173,17 +173,23 @@ int
         featureOpt.url() = index;        
 
         osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        features->initialize();
-        features->getFeatureProfile();
+        Status status = features->open();
 
-        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
-        while (cursor.valid() && cursor->hasMore())
+        if (status.isOK())
         {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
-            GeoExtent ext( feature->getSRS(), featureBounds );
-            ext = ext.transform( mapNode->getMapSRS() );
-            bounds.push_back( ext.bounds() );            
+            osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+            while (cursor.valid() && cursor->hasMore())
+            {
+                osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+                GeoExtent ext( feature->getSRS(), featureBounds );
+                ext = ext.transform( mapNode->getMapSRS() );
+                bounds.push_back( ext.bounds() );            
+            }
+        }
+        else
+        {
+            OE_WARN << status.message() << "\n";
         }
     }
 

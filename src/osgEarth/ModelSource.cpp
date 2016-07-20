@@ -41,6 +41,7 @@ _depthTestEnabled  ( true )
 
 ModelSourceOptions::~ModelSourceOptions()
 {
+    //nop
 }
 
 void
@@ -86,6 +87,12 @@ ModelSource::~ModelSource()
    //nop
 }
 
+const Status&
+ModelSource::open(const osgDB::Options* readOptions)
+{
+    _status = initialize(readOptions);
+    return _status;
+}
 
 osg::Node* 
 ModelSource::createNode(const Map*        map,

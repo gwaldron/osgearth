@@ -71,7 +71,7 @@ SET(LIB_PUBLIC_HEADERS
     Cube
     CullingUtils
     DateTime
-	DateTimeRange
+    DateTimeRange
     DepthOffset
     DPLineSegmentIntersector
     DrapeableNode
@@ -84,14 +84,14 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLOD
     ElevationQuery
     Export
-	Extension
+    Extension
     FadeEffect
     FileUtils
     GeoCommon
     GeoData
     Geoid
     GeoMath
-	GeoTransform
+    GeoTransform
     GeometryClamper
     GLSLChunker
     HeightFieldUtils
@@ -130,14 +130,14 @@ SET(LIB_PUBLIC_HEADERS
     ObjectIndex
     OverlayDecorator
     OverlayNode
-	PhongLightingEffect
+    PhongLightingEffect
     Picker
     IntersectionPicker
     PrimitiveIntersector
     Profile
     Profiler
     Progress
-	QuadTree
+    QuadTree
     Random
     Registry
     Revisioning
@@ -148,10 +148,11 @@ SET(LIB_PUBLIC_HEADERS
     ShaderLoader
     ShaderUtils
     Shadowing
-	SharedSARepo
+    SharedSARepo
     SpatialReference
     StateSetCache
-	StateSetLOD
+    StateSetLOD
+    Status
     StringUtils
     TaskService
     Terrain
@@ -169,7 +170,7 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TileKey
     TileHandler
-	TileSource
+    TileSource
     TileVisitor
     TimeControl
     TraversalData
@@ -235,7 +236,7 @@ set(TARGET_SRC
     Cube.cpp
     CullingUtils.cpp
     DateTime.cpp
-	DateTimeRange.cpp
+    DateTimeRange.cpp
     DepthOffset.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
@@ -247,13 +248,13 @@ set(TARGET_SRC
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationQuery.cpp
-	Extension.cpp
+    Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
-	GeoTransform.cpp
+    GeoTransform.cpp
     GeometryClamper.cpp
     GLSLChunker.cpp
     HeightFieldUtils.cpp
@@ -288,13 +289,13 @@ set(TARGET_SRC
     ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
-	PhongLightingEffect.cpp
+    PhongLightingEffect.cpp
     IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp
     Progress.cpp
-	QuadTree.cpp
+    QuadTree.cpp
     Random.cpp
     Registry.cpp
     Revisioning.cpp
@@ -306,7 +307,8 @@ set(TARGET_SRC
     Shadowing.cpp
     SpatialReference.cpp
     StateSetCache.cpp
-	StateSetLOD.cpp
+    StateSetLOD.cpp
+    Status.cpp
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp
@@ -338,11 +340,11 @@ set(TARGET_SRC
 
 
 ADD_LIBRARY(
-	${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+    ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
     ${VERSION_GIT_SOURCE}
-	${TARGET_SRC}
+    ${TARGET_SRC}
     ${TARGET_GLSL}
     ${TARGET_IN} )
 

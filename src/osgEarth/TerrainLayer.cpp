@@ -351,7 +351,7 @@ TerrainLayer::init()
     }
 }
 
-bool
+const Status&
 TerrainLayer::open()
 {
     if ( !_openCalled )
@@ -408,7 +408,12 @@ TerrainLayer::open()
             }
             else
             {
+                // User supplied the tile source, so attempt to get its profile:
                 _profile = _tileSource->getProfile();
+                if (_profile.valid())
+                {
+                    _status = Status::Error(getName(), "Cannot establish profile");
+                }
             }
 
             _openCalled = true;
@@ -418,7 +423,8 @@ TerrainLayer::open()
 
     }
 
-    return _runtimeOptions->enabled() == true;
+    return _status;
+    //return _runtimeOptions->enabled() == true;
 }
 
 CacheSettings*
@@ -625,13 +631,11 @@ TerrainLayer::getCacheBin(const Profile* profile)
 
             else if ( cacheSettings->cachePolicy()->isCacheOnly() )
             {
-                OE_WARN << LC <<
+                disable(Stringify() <<
                     "Failed to open a cache for layer "
                     "because cache_only policy is in effect and bin [" << cacheId << "] "
-                    "could not be located."
-                    << std::endl;
+                    "could not be located.");
 
-                disable();
                 return 0L;
             }
 
@@ -661,12 +665,13 @@ TerrainLayer::getCacheBin(const Profile* profile)
 }
 
 void
-TerrainLayer::disable()
+TerrainLayer::disable(const std::string& msg)
 {
     if (!_runtimeOptions->enabled().isSetTo(false))
     {
         _runtimeOptions->enabled() = false;
-        OE_INFO << LC << "Layer disabled.\n";
+        _status = Status::Error(msg);
+        //OE_WARN << LC << "Layer disabled: " << msg << std::endl;
     }
 }
 
@@ -703,27 +708,16 @@ TerrainLayer::createTileSource()
             ts = TileSourceFactory::create( *_runtimeOptions->driver() );
             if ( !ts.valid() )
             {
-                OE_WARN << LC << "Failed to create TileSource for driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+                OE_WARN << LC << "Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
             }
         }
     }
 
+    Status tileSourceStatus;
+
     // Initialize the profile with the context information:
     if ( ts.valid() )
     {
-        //// set up the URI options.
-        //if ( !_readOptions.valid() )
-        //{
-        //    _readOptions = Registry::instance()->cloneOrCreateOptions();
-
-        //    if ( _cache.valid() )
-        //        _cache->store( _readOptions.get() );
-
-        //    _initOptions.cachePolicy()->store( _readOptions.get() );
-
-        //    URIContext( _runtimeOptions->referrer() ).store( _readOptions.get() );
-        //}
-
         // add the osgDB options string if it's set.
         const optional<std::string>& osgOptions = ts->getOptions().osgOptionString();
         if ( osgOptions.isSet() && !osgOptions->empty() )
@@ -743,37 +737,19 @@ TerrainLayer::createTileSource()
         }
 
         // Open the tile source (if it hasn't already been started)
-        TileSource::Status status = ts->getStatus();
-        if ( status != TileSource::STATUS_OK )
+        tileSourceStatus = ts->getStatus();
+        if (!tileSourceStatus.isOK())
         {
-            status = ts->open(TileSource::MODE_READ, _readOptions.get());
+            tileSourceStatus = ts->open(TileSource::MODE_READ, _readOptions.get());
         }
 
-        if ( status == TileSource::STATUS_OK )
+        if ( tileSourceStatus.isOK() )
         {
             _tileSize = ts->getPixelsPerTile();
-
-#if 0 //debugging 
-            // dump out data extents:
-            if ( ts->getDataExtents().size() > 0 )
-            {
-                OE_INFO << LC << "Data extents reported:" << std::endl;
-                for(DataExtentList::const_iterator i = ts->getDataExtents().begin();
-                    i != ts->getDataExtents().end(); ++i)
-                {
-                    const DataExtent& de = *i;
-                    OE_INFO << "    "
-                        << "X(" << i->xMin() << ", " << i->xMax() << ") "
-                        << "Y(" << i->yMin() << ", " << i->yMax() << ") "
-                        << "Z(" << i->minLevel().get() << ", " << i->maxLevel().get() << ")"
-                        << std::endl;
-                }                
-            }
-#endif
         }
         else
         {
-            OE_WARN << LC << "Could not initialize driver." << std::endl;
+            //OE_WARN << LC << "Driver initialization failed: " << tileSourceStatus.message() << std::endl;
             ts = NULL;
         }
     }
@@ -801,16 +777,20 @@ TerrainLayer::createTileSource()
     // establish a profile from the metadata in the cache instead.
     else if (getCacheSettings()->isCacheEnabled())
     {
-        OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists, so we will use it in cache-only mode." << std::endl;
+        OE_NOTICE << LC << "Faile to open TileSource " << _name << ", but a cache exists, so we will use it in cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
     }
 
     // Finally: if we could not open a TileSource, and there's no cache available, 
     // just disable the layer.
-    if (!ts.valid() && getCacheSettings()->isCacheDisabled())
+    else
     {
-        disable();
+        disable(tileSourceStatus.message());
     }
+    //if (!ts.valid() && getCacheSettings()->isCacheDisabled())
+    //{
+    //    disable("Could not initialize TileSource and no cache is available");
+    //}
 
     return ts.release();
 }

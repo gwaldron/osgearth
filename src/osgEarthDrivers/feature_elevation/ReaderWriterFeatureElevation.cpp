@@ -75,13 +75,19 @@ public:
             return Status::Error( Stringify() << LC << "Illegal: feature source is required" );
         }
     
+        // create the driver:
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
             return Status::Error( Stringify() << "Illegal: no valid feature source provided");
         }
 
-        _features->initialize(readOptions);
+        // open the feature source:
+        const Status& fstatus = _features->open(readOptions);
+        if (fstatus.isError())
+        {
+            return fstatus;
+        }
 
         if (_features->getFeatureProfile())
         {
@@ -106,10 +112,6 @@ public:
 
 				setProfile( profile );
 			}
-        }
-        else
-        {
-            return Status::Error( Stringify() << "Failed to establish a profile for " <<  this->getName() );
         }
 
         return STATUS_OK;

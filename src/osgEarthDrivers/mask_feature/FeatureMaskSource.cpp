@@ -58,28 +58,28 @@ public:
         }
     }
 
-    const MaskSourceOptions& getOptions() const { return _options; }
+    const MaskSourceOptions& getOptions() const { 
+        return _options; 
+    }
 
     //override
-    void initialize(const osgDB::Options* dbOptions)
+    Status initialize(const osgDB::Options* readOptions)
     {
-        MaskSource::initialize( dbOptions );
+        if (!_features.valid())
+            return Status::Error(LC, "No feature source available");
 
-        if ( _features.valid() )
-        {
-            _features->initialize( dbOptions );
-        } 
-        else
-        {
-            OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
-        }
+        const Status& fstatus = _features->open(readOptions);
+        if (fstatus.isError())
+            return fstatus;
+
+        return Status::OK();
     }
 
     osg::Vec3dArray* createBoundary(const SpatialReference* srs, ProgressCallback* progress)
     {
-        if ( _failed )
+        if (getStatus().isError())
             return 0L;
-
+        
         if ( _features.valid() )
         {
             if ( _features->getFeatureProfile() )
@@ -108,14 +108,14 @@ public:
             }
             else
             {
-                OE_WARN << LC << "Failed to create boundary; feature source has no SRS" << std::endl;
-                _failed = true;
+                setStatus(Status::Error("Failed to create boundary"));
+                OE_WARN << LC << getStatus().message() << std::endl;
             }
         }
         else
         {
-            OE_WARN << LC << "Unable to create boundary; invalid feature source" << std::endl;
-            _failed = true;
+            setStatus(Status::Error("Failed to create boundary"));
+            OE_WARN << LC << getStatus().message() << std::endl;
         }
         return 0L;
     }

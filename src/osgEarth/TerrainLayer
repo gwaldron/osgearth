@@ -28,6 +28,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Status>
 
 namespace osgEarth
 {
@@ -216,7 +217,10 @@ namespace osgEarth
     public:
 
         /** Opens the layer and initializes the data source. */
-        bool open();
+        const Status& open();
+
+        /** Gets the status of this layer, which will be unset if open() has not been called. */
+        const Status& getStatus() const { return _status; }
 
         /**
          * The options data connected to this layer.
@@ -288,9 +292,9 @@ namespace osgEarth
         virtual void setTargetProfileHint( const Profile* profile );
 
         /**
-         * Disable this layer.
+         * Disable this layer, setting an error status.
          */
-        void disable();
+        void disable(const std::string& msg);
 
         /**
          * Sets the I/O options to use. This data may include cache information.
@@ -409,6 +413,8 @@ namespace osgEarth
 
         // read the tile source's cache policy hint and apply as necessary
         void refreshTileSourceCachePolicyHint(TileSource*);
+
+        Status _status;
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

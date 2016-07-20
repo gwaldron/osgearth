@@ -70,10 +70,10 @@ public:
     }
 
     //override
-    void initialize(const osgDB::Options* readOptions)
+    Status initialize(const osgDB::Options* readOptions)
     {
         // initialize the base class
-        FeatureSource::initialize(readOptions);
+        //FeatureSource::initialize(readOptions);
 
         // store a reference to the read options so we can pass them along to
         // later requests.
@@ -95,13 +95,54 @@ public:
         _capabilities = WFSCapabilitiesReader::read( capUrl, _readOptions.get() );
         if ( !_capabilities.valid() )
         {
-            OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
-            //return;
+            return Status::Error(LC, Stringify()<<"Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
         }
         else
         {
             OE_INFO << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
         }
+
+        // establish a feature profile
+        FeatureProfile* fp = 0L;
+
+        //Find the feature type by name
+        osg::ref_ptr< WFSFeatureType > featureType = _capabilities->getFeatureTypeByName( _options.typeName().get() );
+        if (featureType.valid())
+        {
+            if (featureType->getExtent().isValid())
+            {
+                fp = new FeatureProfile(featureType->getExtent());
+
+                bool disableTiling = _options.disableTiling().isSetTo(true);
+
+                if (featureType->getTiled() && !disableTiling)
+                {                        
+                    fp->setTiled( true );
+                    fp->setFirstLevel( featureType->getFirstLevel() );
+                    fp->setMaxLevel( featureType->getMaxLevel() );
+                    fp->setProfile(osgEarth::Profile::create(
+                        osgEarth::SpatialReference::create("epsg:4326"), 
+                        featureType->getExtent().xMin(), featureType->getExtent().yMin(), 
+                        featureType->getExtent().xMax(), featureType->getExtent().yMax(), 
+                        1, 1) );
+                }
+            }
+        }
+
+        // if nothing else, fall back on a global geodetic feature profile.
+        if ( !fp )
+        {
+            fp = new FeatureProfile(GeoExtent(SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90));
+        }
+             
+        if (_options.geoInterp().isSet())
+        {
+            fp->geoInterp() = _options.geoInterp().get();
+        }
+
+        setFeatureProfile( fp );
+
+        return Status::OK();
     }
 
     void saveResponse(const std::string buffer, const std::string& filename)
@@ -113,6 +154,7 @@ public:
     }
 
 
+#if 0
     /** Called once at startup to create the profile for this feature set. Successful profile
         creation implies that the datasource opened succesfully. */
     const FeatureProfile* createFeatureProfile()
@@ -165,7 +207,9 @@ public:
 
         return _featureProfile.get();
     }
+#endif
 
+#if 0
     FeatureProfile* getFeatureProfile()
     {
         if ( !_featureProfile.valid() )
@@ -174,6 +218,7 @@ public:
         }
         return _featureProfile.get();
     }
+#endif
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {

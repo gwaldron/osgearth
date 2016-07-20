@@ -162,11 +162,10 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    features->initialize();
-    const FeatureProfile* profile = features->getFeatureProfile();
-    if (!profile)
+    Status s = features->open();
+    if (s.isError())
     {
-        OE_NOTICE << "Failed to create a valid profile for " << filename << std::endl;
+        OE_NOTICE << s.message() << ": " << filename << std::endl;
         return 1;
     }
 

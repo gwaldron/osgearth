@@ -46,7 +46,7 @@ TileIndex::~TileIndex()
 }
 
 TileIndex*
-    TileIndex::load(const std::string& filename)
+TileIndex::load(const std::string& filename)
 {        
     if (!osgDB::fileExists( filename ) )
     {
@@ -65,8 +65,12 @@ TileIndex*
         OE_NOTICE << "Can't load " << filename << std::endl;
         return 0;
     }
-    features->initialize();
-    features->getFeatureProfile();    
+    Status s = features->open();
+    if (s.isError())
+    {
+        OE_WARN << s.message();
+        return 0L;
+    }
 
     TileIndex* index = new TileIndex();
     index->_features = features.get();
@@ -75,7 +79,7 @@ TileIndex*
 }
 
 TileIndex*
-    TileIndex::create( const std::string& filename, const osgEarth::SpatialReference* srs )
+TileIndex::create( const std::string& filename, const osgEarth::SpatialReference* srs )
 {
     // Make sure the registry is loaded since that is where the OGR/GDAL registration happens
     osgEarth::Registry::instance();
@@ -106,7 +110,7 @@ TileIndex*
 
 
 void
-    TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string >& files)
+TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string >& files)
 {            
     files.clear();
     osgEarth::Symbology::Query query;    

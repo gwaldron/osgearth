@@ -68,7 +68,7 @@ _forceRGB ( false )
     //nop
 }
 
-TileSource::Status
+Status
 MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 {    
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );    

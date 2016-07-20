@@ -318,14 +318,18 @@ namespace
     {
         ImageLayerOptions options( conf );
         options.name() = conf.value("name");
-        map->addImageLayer( new ImageLayer(options) );
+        Status s = map->addImageLayer( new ImageLayer(options) );
+        if (s.isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << s.message() << std::endl;
     }
 
     void addElevationLayer(const Config& conf, Map* map)
     {
         ElevationLayerOptions options( conf );
         options.name() = conf.value( "name" );
-        map->addElevationLayer( new ElevationLayer(options) );
+        Status s = map->addElevationLayer( new ElevationLayer(options) );
+        if (s.isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << s.message() << std::endl;
     }
 
     void addModelLayer(const Config& conf, Map* map)
@@ -333,7 +337,9 @@ namespace
         ModelLayerOptions options( conf );
         options.name() = conf.value( "name" );
         options.driver() = ModelSourceOptions( conf );
-        map->addModelLayer( new ModelLayer(options) );
+        Status s = map->addModelLayer( new ModelLayer(options) );
+        if (s.isError())
+            OE_WARN << LC << "Layer \"" << options.name().get() << "\" " << s.message() << std::endl;
     }
 
     void addMaskLayer(const Config& conf, Map* map)
@@ -341,7 +347,9 @@ namespace
         MaskLayerOptions options(conf);
         options.name() = conf.value( "name" );
         options.driver() = MaskSourceOptions(options);
-        map->addTerrainMaskLayer( new MaskLayer(options) );
+        Status s = map->addTerrainMaskLayer( new MaskLayer(options) );
+        if (s.isError())
+            OE_WARN << LC << "Layer \"" << options.name().get() << "\" " << s.message() << std::endl;
     }
 
     // support for "special" extension names (convenience and backwards compat)

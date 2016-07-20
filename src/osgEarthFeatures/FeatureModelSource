@@ -194,17 +194,19 @@ namespace osgEarth { namespace Features
          */
         FeatureModelSource( const FeatureModelSourceOptions& options =FeatureModelSourceOptions() );
 
+        /**
+         * Sets a new read options.
+         */
+        void setReadOptions(const osgDB::Options* readOptions);
 
-    public: // ModelSource
 
-        virtual void initialize(const osgDB::Options* readOptions);
+    protected: // ModelSource
 
-        virtual void setReadOptions(const osgDB::Options* readOptions);
+        virtual Status initialize(const osgDB::Options* readOptions);
 
         virtual osg::Node* createNodeImplementation(
             const Map*        map,
             ProgressCallback* progress );
-    
 
     public:
 

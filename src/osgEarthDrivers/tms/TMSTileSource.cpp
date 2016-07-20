@@ -41,7 +41,7 @@ _forceRGB (false)
 }
 
 
-TileSource::Status
+Status
 TMSTileSource::initialize(const osgDB::Options* dbOptions)
 {
     // local copy of options we can modify if necessary.

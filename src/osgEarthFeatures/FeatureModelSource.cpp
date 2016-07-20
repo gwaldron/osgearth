@@ -119,13 +119,11 @@ FeatureModelSource::setFeatureSource( FeatureSource* source )
     }
 }
 
-void
+Status
 FeatureModelSource::initialize(const osgDB::Options* readOptions)
 {
     if (readOptions)
         setReadOptions(readOptions);
-
-    ModelSource::initialize( readOptions );
     
     // the data source from which to pull features:
     if ( _options.featureSource().valid() )
@@ -135,37 +133,33 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     else if ( _options.featureOptions().isSet() )
     {
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
-        if ( !_features.valid() )
-        {
-            OE_WARN << LC << "No valid feature source provided!" << std::endl;
-        }
     }
 
-    // initialize the feature source if it exists:
-    if ( _features.valid() )
-    {
-        _features->initialize( _readOptions.get() );
+    if (!_features.valid())
+        return Status::Error(LC, "Failed to create a feature driver");
 
-        // Try to fill the DataExtent list using the FeatureProfile
-        const FeatureProfile* featureProfile = _features->getFeatureProfile();
-        if (featureProfile != NULL)
-        {
-            if (featureProfile->getProfile() != NULL)
-            {
-                // Use specified profile's GeoExtent
-                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
-            }
-            else if (featureProfile->getExtent().isValid() == true)
-            {
-                // Use FeatureProfile's GeoExtent
-                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
-            }
-        }
-    }
-    else
+    // open the feature source if it exists:
+    const Status& featuresStatus = _features->open(_readOptions.get());
+    if (featuresStatus.isError())
+        return featuresStatus;
+
+    // Try to fill the DataExtent list using the FeatureProfile
+    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    if (featureProfile == NULL)
+        return Status::Error(LC, "Failed to establish a feature profile");
+
+    if (featureProfile->getProfile() != NULL)
     {
-        OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
+        // Use specified profile's GeoExtent
+        getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
     }
+    else if (featureProfile->getExtent().isValid() == true)
+    {
+        // Use FeatureProfile's GeoExtent
+        getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
+    }
+
+    return Status::OK();
 }
 
 void
@@ -186,6 +180,10 @@ osg::Node*
 FeatureModelSource::createNodeImplementation(const Map*        map,
                                              ProgressCallback* progress )
 {
+    // trivial bailout.
+    if (!getStatus().isOK())
+        return 0L;
+
     // user must provide a valid map.
     if ( !map )
     {
@@ -196,7 +194,6 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     // make sure the feature source initialized properly:
     if ( !_features.valid() || !_features->getFeatureProfile() )
     {
-        OE_WARN << LC << "Invalid feature source" << std::endl;
         return 0L;
     }
 
@@ -205,6 +202,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     if ( !factory )
     {
         OE_WARN << LC << "Unable to create a feature node factory!" << std::endl;
+        setStatus(Status::Error("Failed to create a feature node factory"));
         return 0L;
     }
 

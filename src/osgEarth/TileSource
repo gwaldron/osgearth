@@ -33,6 +33,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
+#include <osgEarth/Status>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -224,28 +225,11 @@ namespace osgEarth
         /** When using MODE_WRITE, create the data store if necessary */
         static const Mode MODE_CREATE;
 
-
-        /** Initialization status */
-        struct Status
-        {
-        public:
-            Status() { }
-            Status(const Status& rhs) : _msg(rhs._msg) { }
-            Status(const std::string& msg) : _msg(msg) { }
-            bool isOK() const { return _msg.empty(); }
-            bool isError() const { return !_msg.empty(); }
-            const std::string& message() const { return _msg; }
-            bool operator == (const Status& rhs) const { return _msg.compare(rhs._msg)==0; }
-            bool operator != (const Status& rhs) const { return _msg.compare(rhs._msg)!=0; }
-            static Status Error(const std::string& msg) { return Status(msg); }
-        private:
-            std::string _msg;
-        };
-
-        static Status STATUS_OK;
-
         /** interface name, used by the plugin system. */
         static const char* INTERFACE_NAME;
+
+        //typedef osgEarth::Status Status;
+        //static Status STATUS_OK;
 
     public:
         struct ImageOperation : public osg::Referenced {
@@ -259,6 +243,13 @@ namespace osgEarth
     public:
         /** Constructor */
         TileSource(const TileSourceOptions& options);
+
+        /**
+         * Opens the tile source and returns the initial status.
+         */
+        const Status& open(
+            const Mode&           openMode  =MODE_READ,
+            const osgDB::Options* dbOptions =0L);
 
         /**
          * Gets the status of this tile source.
@@ -438,13 +429,6 @@ namespace osgEarth
             { return CachePolicy::DEFAULT; }
 
         /**
-         * Starts up the tile source.
-         */
-        const Status& open(
-            const Mode&           openMode  =MODE_READ,
-            const osgDB::Options* dbOptions =0L);
-
-        /**
          * The open mode (passed to startup).
          */
         const Mode& getMode() const { return _mode; }
@@ -465,9 +449,8 @@ namespace osgEarth
 
     protected:
 
-
         /**
-         * Initializes the tile source (called by startup)
+         * Initializes the tile source (called by open)
          *
          * The osgEarth engine calls this function to initialize a TileSource using an
          * active osgDB::Options. The method returns a status code indicating whether
@@ -479,7 +462,7 @@ namespace osgEarth
          * The Subclass should override this to report a correct initialization status.
          * The default implementation reports STATUS_OK (for compatibility).
          */
-        virtual Status initialize(const osgDB::Options* dbOptions);
+        virtual Status initialize(const osgDB::Options* readOptions) =0;
 
         /**
          * Creates an image for the given TileKey.
@@ -512,7 +495,7 @@ namespace osgEarth
          * status by returning it from initialize(), but you can call this
          * later, e.g. in the event of an unrecoverable error.
          */
-        void setStatus( Status status );
+        void setStatus(const Status& value) { _status = value; }
 
         /**
          * Accesses the map frame that synchronizes with a map if one is set.

@@ -58,20 +58,20 @@ public:
         }
 
          // Open the tile source (if it hasn't already been started)
-        TileSource::Status status = _source->getStatus();
-        if ( status != TileSource::STATUS_OK )
+        Status status = _source->getStatus();
+        if ( status != osgEarth::STATUS_OK )
         {
             status = _source->open(TileSource::MODE_READ, _dbOptions.get());
         }
 
-         if ( status != TileSource::STATUS_OK )
+         if ( status != osgEarth::STATUS_OK )
          {
             return Status::Error("Failed to open image layer for skyview driver");
          }
         
         setProfile(_source->getProfile());           
 
-        return STATUS_OK;
+        return osgEarth::STATUS_OK;
     }
 
     osg::Image*

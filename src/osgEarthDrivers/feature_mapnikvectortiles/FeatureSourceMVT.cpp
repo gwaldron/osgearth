@@ -63,18 +63,18 @@ public:
     }
 
     //override
-    void initialize( const osgDB::Options* dbOptions )
-    {        
-        FeatureSource::initialize( dbOptions );
-
-        _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
+    Status initialize(const osgDB::Options* readOptions)
+    {
+        _dbOptions = Registry::cloneOrCreateOptions(readOptions);
         std::string fullFilename = _options.url()->full();
 
         int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, SQLITE_OPEN_READONLY, 0L );
         if ( rc != 0 )
         {          
-            OE_WARN << LC << "Failed to open database " << sqlite3_errmsg(_database);
+            return Status::Error(LC, Stringify() << "Failed to open database, " << sqlite3_errmsg(_database));
         }
+
+        return Status::OK();
     }
 
 

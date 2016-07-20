@@ -86,10 +86,10 @@ public: // TileSource interface
         if ( _options.featureSourceOptions().isSet() )
         {
             _featureSource = FeatureSourceFactory::create( _options.featureSourceOptions().get() );
-            _featureSource->initialize( _dbOptions.get() );
+            _featureSource->open( _dbOptions.get() );
         }
 
-        return STATUS_OK;
+        return Status::OK();
     }
 
     // Tells the layer not to cache data from this tile source.

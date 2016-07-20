@@ -207,7 +207,6 @@ TileSourceOptions::fromConfig( const Config& conf )
 //------------------------------------------------------------------------
 
 // statics
-TileSource::Status TileSource::STATUS_OK = TileSource::Status();
 
 const char* TileSource::INTERFACE_NAME = "osgEarth::TileSource";
 
@@ -276,20 +275,7 @@ TileSource::~TileSource()
     }
 }
 
-void
-TileSource::setStatus( TileSource::Status status )
-{
-    _status = status;
-}
-
-TileSource::Status
-TileSource::initialize(const osgDB::Options* options)
-{
-    // default implementation. Subclasses should override this.
-    return STATUS_OK;
-}
-
-const TileSource::Status&
+const Status&
 TileSource::open(const Mode&           openMode,
                  const osgDB::Options* options)
 {
@@ -314,11 +300,6 @@ TileSource::open(const Mode&           openMode,
     else
     {
         _status = status;
-    }
-
-    if ( _status.isError() )
-    {
-        OE_WARN << LC << "Open failed: " << _status.message() << std::endl;
     }
 
     return _status;

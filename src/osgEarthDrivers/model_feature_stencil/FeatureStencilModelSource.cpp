@@ -319,9 +319,9 @@ namespace
             return _options;
         }
 
-        void initialize( const osgDB::Options* dbOptions )
+        Status initialize( const osgDB::Options* dbOptions )
         {
-            FeatureModelSource::initialize( dbOptions );
+            return FeatureModelSource::initialize( dbOptions );
         }
 
         FeatureNodeFactory* createFeatureNodeFactory()

@@ -28,6 +28,7 @@ using namespace OpenThreads;
 
 MaskSourceOptions::~MaskSourceOptions()
 {
+    //nop
 }
 
 void
@@ -55,16 +56,26 @@ MaskSourceOptions::getConfig() const
 MaskSource::MaskSource( const MaskSourceOptions& options ) :
 _options( options )
 {
+    //nop
 }
 
 MaskSource::~MaskSource()
 {
+    //nop
+}
+
+const Status&
+MaskSource::open(const osgDB::Options* readOptions)
+{
+    _status = initialize(readOptions);
+    return _status;
 }
 
 //------------------------------------------------------------------------
 
 MaskSourceDriver::~MaskSourceDriver()
 {
+    //nop
 }
 
 //------------------------------------------------------------------------
@@ -75,6 +86,7 @@ MaskSourceDriver::~MaskSourceDriver()
 
 MaskSourceFactory::~MaskSourceFactory()
 {
+    //nop
 }
 
 MaskSource*

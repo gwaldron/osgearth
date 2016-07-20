@@ -90,6 +90,7 @@ _initialized( false )
     {
         _features = _options.featureSource().get();
     }
+
     else if ( _options.featureOptions().isSet() )
     {
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
@@ -100,44 +101,44 @@ _initialized( false )
     }
 }
 
-TileSource::Status 
-FeatureTileSource::initialize(const osgDB::Options* dbOptions)
+Status 
+FeatureTileSource::initialize(const osgDB::Options* readOptions)
 {
     if ( !getProfile() )
     {
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
     }            
 
-    if ( _features.valid() )
-    {
-        _features->initialize( dbOptions );
+    if ( !_features.valid() )
+        return Status::Error(LC, "No feature source");
 
-        // Try to fill the DataExtent list using the FeatureProfile
-        const FeatureProfile* featureProfile = _features->getFeatureProfile();
-        if (featureProfile != NULL)
-        {
-            if (featureProfile->getProfile() != NULL)
-            {
-                // Use specified profile's GeoExtent
-                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
-            }
-            else if (featureProfile->getExtent().isValid() == true)
-            {
-                // Use FeatureProfile's GeoExtent
-                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
-            }
-        }
-    }
-    else
+    // attempt to open the feature source:
+    const Status& sourceStatus = _features->open(readOptions);
+    if (sourceStatus.isError())
+        return sourceStatus;
+
+    // Try to fill the DataExtent list using the FeatureProfile
+    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    if (featureProfile != NULL)
     {
-        return Status::Error("No FeatureSource provided; nothing will be rendered");
+        if (featureProfile->getProfile() != NULL)
+        {
+            // Use specified profile's GeoExtent
+            getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
+        }
+        else if (featureProfile->getExtent().isValid() == true)
+        {
+            // Use FeatureProfile's GeoExtent
+            getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
+        }
     }
 
     // Create a session for feature processing. No map.
-    _session = new Session( 0L, _options.styles().get(), _features.get(), dbOptions );
+    _session = new Session( 0L, _options.styles().get(), _features.get(), readOptions );
 
     _initialized = true;
-    return STATUS_OK;
+
+    return Status::OK();
 }
 
 void

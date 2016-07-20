@@ -408,16 +408,14 @@ ElevationLayer::createHeightField(const TileKey&    key,
         // validate that we have either a valid tile source, or we're cache-only.
         if ( ! (getTileSource() || (policy.isCacheOnly() && cacheBin) ) )
         {
-            OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
-            disable();
+            disable("Error: layer does not have a valid TileSource, cannot create heightfield");
             return GeoHeightField::INVALID;
         }
 
         // validate the existance of a valid layer profile.
         if ( !policy.isCacheOnly() && !getProfile() )
         {
-            OE_WARN << LC << "Could not establish a valid profile" << std::endl;
-            disable();
+            disable("Could not establish a valid profile");
             return GeoHeightField::INVALID;
         }
 

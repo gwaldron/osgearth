@@ -110,8 +110,8 @@ FeatureSource::~FeatureSource()
     //nop
 }
 
-void
-FeatureSource::initialize(const osgDB::Options* readOptions)
+const Status&
+FeatureSource::open(const osgDB::Options* readOptions)
 {
     if ( readOptions )
         _readOptions = readOptions;
@@ -127,8 +127,43 @@ FeatureSource::initialize(const osgDB::Options* readOptions)
             filter->initialize( readOptions );
         }
     }
+
+    _status = initialize(readOptions);
+    return _status;
 }
 
+#if 0
+Status
+FeatureSource::initialize(const osgDB::Options* readOptions)
+{
+    Status status;
+
+    if ( readOptions )
+        _readOptions = readOptions;
+    
+    // Create and initialize the filters.
+    for(unsigned i=0; i<_options.filters().size(); ++i)
+    {
+        const ConfigOptions& conf = _options.filters().at(i);
+        FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
+        if ( filter )
+        {
+            _filters.push_back( filter );
+            filter->initialize( readOptions );
+        }
+    }
+
+    return status;
+}
+#endif
+
+void
+FeatureSource::setFeatureProfile(const FeatureProfile* fp)
+{
+    _featureProfile = fp;
+}
+
+#if 0
 const FeatureProfile*
 FeatureSource::getFeatureProfile() const
 {
@@ -147,6 +182,7 @@ FeatureSource::getFeatureProfile() const
     }
     return _featureProfile.get();
 }
+#endif
 
 const FeatureFilterList&
 FeatureSource::getFilters() const

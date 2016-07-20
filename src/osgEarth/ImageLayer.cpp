@@ -558,8 +558,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     }
     else
     {
-        OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create image " << std::endl;
-        disable();
+        disable("Error: layer does not have a valid TileSource, cannot create image");
         return GeoImage::INVALID;
     }
 
@@ -567,8 +566,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // case there is no layer profile)
     if ( !policy.isCacheOnly() && !getProfile() )
     {
-        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
-        disable();
+        disable("Could not establish a valid profile");
         return GeoImage::INVALID;
     }
 

@@ -43,7 +43,7 @@ _options  ( options )
 
 
 
-osgEarth::TileSource::Status WCS11Source::initialize(const osgDB::Options* dbOptions)
+osgEarth::Status WCS11Source::initialize(const osgDB::Options* dbOptions)
 {        
     //TODO: fetch GetCapabilities and set profile from there.
     setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );

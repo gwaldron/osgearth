@@ -118,15 +118,20 @@ VirtualFeatureSource::createFeatureCursor( const Query& query )
     return new VirtualFeatureCursor( _sources, query );
 }
 
-void 
-VirtualFeatureSource::initialize( const osgDB::Options* dbOptions )
+Status 
+VirtualFeatureSource::initialize( const osgDB::Options* readOptions )
 {
-    FeatureSource::initialize( dbOptions );
+    //FeatureSource::initialize( dbOptions );
 
     for( FeatureSourceMappingVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
     {
-        i->_source->initialize( dbOptions );
+        const Status& sourceStatus = i->_source->open(readOptions);
+        if (sourceStatus.isError())
+            return sourceStatus;
+        //i->_source->initialize( dbOptions );
     }
+
+    return Status::OK();
 }
 
 const FeatureProfile* 

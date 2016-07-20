@@ -412,6 +412,9 @@ MapNode::init()
 
     dirtyBound();
 
+    // register an update traversal so we can open all the layers
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 

@@ -165,8 +165,9 @@ int main(int argc, char** argv)
     featureOpt.openWrite() = write;
 
     osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-    features->initialize();
-    features->getFeatureProfile();
+    Status s = features->open();
+    if (s.isError())
+        return usage(s.message());
 
     //Delete any features if requested
     if (toDelete.size() > 0)

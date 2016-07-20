@@ -26,6 +26,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Status>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -93,17 +94,22 @@ namespace osgEarth
         /** dtor */
         virtual ~ModelSource();
 
+        /**
+         * Opens the model source and returns a status. 
+         */
+        const Status& open(const osgDB::Options* readOptions);
+
+        /**
+         * Status after calling open.
+         */
+        const Status& getStatus() const { return _status; }
+
+        /**
+         * Creates the top level node for this model source.
+         */
         osg::Node* createNode(
             const Map*        map,
             ProgressCallback* progress );
-
-        /**
-         * Subclass implements this method to create a scene graph within the
-         * context of the provided Map.
-         */
-        virtual osg::Node* createNodeImplementation(
-            const Map*        map,
-            ProgressCallback* progress ) =0;
 
         /**
          * Add a post processing operation that will run (possibly in a pager
@@ -144,9 +150,6 @@ namespace osgEarth
 
     public:
 
-        /** Perform any one-time initialization */
-        virtual void initialize(const osgDB::Options* readOptions) { }
-
         /** Get the options used to create this model source */
         const ModelSourceOptions& getOptions() const { return _options; }
 
@@ -157,6 +160,21 @@ namespace osgEarth
         DataExtentList& getDataExtents() { return _dataExtents; }
 
     protected:
+
+        /**
+         * Perform one-time initialization and return the initial status.
+         * This is called internally by open().
+         */
+        virtual Status initialize(const osgDB::Options* readOptions) =0;
+
+        /**
+         * Subclass implements this method to create a scene graph within the
+         * context of the provided Map.
+         */
+        virtual osg::Node* createNodeImplementation(
+            const Map*        map,
+            ProgressCallback* progress ) =0;
+
         /**
          * Fire the callbacks. The implementation class should call this whenever it adds
          * a new node.
@@ -167,6 +185,9 @@ namespace osgEarth
 
         osg::ref_ptr<RefNodeOperationVector> _postMergeOps;
         osg::ref_ptr<RefNodeOperationVector> _preMergeOps;
+        
+        /** Subclass can set the status with this */
+        void setStatus(const Status& value) { _status = value; }
 
     private:
         const ModelSourceOptions _options;
@@ -174,6 +195,7 @@ namespace osgEarth
         optional<double> _maxRange;
         optional<int>    _renderOrder;
         DataExtentList   _dataExtents;
+        Status _status;
 
         friend class Map;
         friend class MapEngine;

@@ -250,7 +250,7 @@ main(int argc, char** argv)
         return -1;
     }
 
-    TileSource::Status inputStatus = input->open( input->MODE_READ, dbo.get() );
+    Status inputStatus = input->open( input->MODE_READ, dbo.get() );
     if ( inputStatus.isError() )
     {
         OE_WARN << LC << "Error initializing input" << std::endl;
@@ -298,7 +298,7 @@ main(int argc, char** argv)
         return -1;
     }
 
-    TileSource::Status outputStatus = output->open(
+    Status outputStatus = output->open(
         TileSource::MODE_WRITE | TileSource::MODE_CREATE,
         dbo.get() );
 

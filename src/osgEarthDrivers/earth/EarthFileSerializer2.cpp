@@ -318,18 +318,20 @@ namespace
     {
         ImageLayerOptions options( conf );
         options.name() = conf.value("name");
-        Status s = map->addImageLayer( new ImageLayer(options) );
-        if (s.isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << s.message() << std::endl;
+        ImageLayer* layer = new ImageLayer(options);
+        map->addImageLayer(layer);
+        if (layer->getStatus().isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
     }
 
     void addElevationLayer(const Config& conf, Map* map)
     {
         ElevationLayerOptions options( conf );
         options.name() = conf.value( "name" );
-        Status s = map->addElevationLayer( new ElevationLayer(options) );
-        if (s.isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << s.message() << std::endl;
+        ElevationLayer* layer = new ElevationLayer(options);
+        map->addElevationLayer(layer);
+        if (layer->getStatus().isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
     }
 
     void addModelLayer(const Config& conf, Map* map)
@@ -337,9 +339,10 @@ namespace
         ModelLayerOptions options( conf );
         options.name() = conf.value( "name" );
         options.driver() = ModelSourceOptions( conf );
-        Status s = map->addModelLayer( new ModelLayer(options) );
-        if (s.isError())
-            OE_WARN << LC << "Layer \"" << options.name().get() << "\" " << s.message() << std::endl;
+        ModelLayer* layer = new ModelLayer(options);
+        map->addModelLayer(layer);
+        if (layer->getStatus().isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
     }
 
     void addMaskLayer(const Config& conf, Map* map)
@@ -347,9 +350,10 @@ namespace
         MaskLayerOptions options(conf);
         options.name() = conf.value( "name" );
         options.driver() = MaskSourceOptions(options);
-        Status s = map->addTerrainMaskLayer( new MaskLayer(options) );
-        if (s.isError())
-            OE_WARN << LC << "Layer \"" << options.name().get() << "\" " << s.message() << std::endl;
+        MaskLayer* layer = new MaskLayer(options);
+        map->addTerrainMaskLayer(layer);
+        if (layer->getStatus().isError())
+            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
     }
 
     // support for "special" extension names (convenience and backwards compat)

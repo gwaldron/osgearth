@@ -381,11 +381,9 @@ Map::endUpdate()
     }
 }
 
-Status
+void
 Map::addImageLayer( ImageLayer* layer )
 {
-    Status status;
-
     osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
     if ( layer )
@@ -400,7 +398,7 @@ Map::addImageLayer( ImageLayer* layer )
         }
 
         // open the layer:
-        status = layer->open();
+        layer->open();
 
         int newRevision;
 
@@ -419,21 +417,13 @@ Map::addImageLayer( ImageLayer* layer )
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
         }
-    }   
-    else
-    {
-        status = Status::Error("Null layer");
     }
-
-    return status;
 }
 
 
-Status
+void
 Map::insertImageLayer( ImageLayer* layer, unsigned int index )
 {
-    Status status;
-
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
@@ -447,7 +437,7 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         }
 
         // open the layer:
-        status = layer->open();
+        layer->open();
 
         int newRevision;
 
@@ -469,20 +459,12 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
         }   
-    }   
-    else
-    {
-        status = Status::Error("Null layer");
-    }
-
-    return status;
+    } 
 }
 
-Status
+void
 Map::addElevationLayer( ElevationLayer* layer )
 {
-    Status status;
-
     osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
     if ( layer )
@@ -494,7 +476,7 @@ Map::addElevationLayer( ElevationLayer* layer )
         if ( _profile.valid() )
             layer->setTargetProfileHint( _profile.get() );
 
-        status = layer->open();
+        layer->open();
 
         int newRevision;
 
@@ -517,12 +499,6 @@ Map::addElevationLayer( ElevationLayer* layer )
                 MapModelChange::ADD_ELEVATION_LAYER, newRevision, layer, index) );
         }
     }
-    else
-    {
-        status = Status::Error("Null layer");
-    }
-
-    return status;
 }
 
 void 
@@ -692,11 +668,9 @@ Map::moveElevationLayer( ElevationLayer* layer, unsigned int newIndex )
     }
 }
 
-Status
+void
 Map::addModelLayer( ModelLayer* layer )
 {
-    Status status;
-
     if ( layer )
     {
         unsigned int index = -1;
@@ -713,7 +687,7 @@ Map::addModelLayer( ModelLayer* layer )
         layer->setReadOptions(_readOptions.get());
 
         // open it and check the status
-        status = layer->open();
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -722,19 +696,11 @@ Map::addModelLayer( ModelLayer* layer )
                 MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index ) );
         }
     }
-    else
-    {
-        status = Status::Error("Null layer");
-    }
-
-    return status;
 }
 
-Status
+void
 Map::insertModelLayer( ModelLayer* layer, unsigned int index )
 {
-    Status status;
-
     if ( layer )
     {
         Revision newRevision;
@@ -748,7 +714,7 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
         layer->setReadOptions(_readOptions.get());
 
         // open and get the status
-        status = layer->open();
+        layer->open();
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -757,12 +723,6 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
                 MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index) );
         }
     }
-    else
-    {
-        status = Status::Error("Null layer");
-    }
-
-    return status;
 }
 
 void
@@ -842,11 +802,9 @@ Map::moveModelLayer( ModelLayer* layer, unsigned int newIndex )
     }
 }
 
-Status
+void
 Map::addTerrainMaskLayer( MaskLayer* layer )
 {
-    Status status;
-
     if ( layer )
     {
         Revision newRevision;
@@ -858,7 +816,7 @@ Map::addTerrainMaskLayer( MaskLayer* layer )
 
         layer->setReadOptions(_readOptions.get());
 
-        status = layer->open();
+        layer->open();
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -867,12 +825,6 @@ Map::addTerrainMaskLayer( MaskLayer* layer )
                 MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
         }
     }
-    else
-    {
-        status = Status::Error("Null layer");
-    }
-
-    return status;
 }
 
 void

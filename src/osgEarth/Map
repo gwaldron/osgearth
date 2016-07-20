@@ -31,7 +31,6 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Status>
 #include <osgDB/Options>
 
 namespace osgEarth
@@ -200,12 +199,12 @@ namespace osgEarth
         /**
          * Adds an image layer to the map.
          */
-        Status addImageLayer( ImageLayer* layer );
+        void addImageLayer( ImageLayer* layer );
 
         /**
         * Adds an image layer to the map at the specified index.
         */
-        Status insertImageLayer( ImageLayer* layer, unsigned int index );
+        void insertImageLayer( ImageLayer* layer, unsigned int index );
 
         /**
          * Removes an image layer from the map.
@@ -220,7 +219,7 @@ namespace osgEarth
         /**
          * Adds an elevation layer to the map.
          */
-        Status addElevationLayer( ElevationLayer* layer );
+        void addElevationLayer( ElevationLayer* layer );
 
         /**
          * Removes an elevation layer from the map.
@@ -235,12 +234,12 @@ namespace osgEarth
         /**
          * Adds a new model layer to the map.
          */
-        Status addModelLayer( ModelLayer* layer );
+        void addModelLayer( ModelLayer* layer );
 
         /**
          * Adds a new model layer to the map at the specified index.
          */
-        Status insertModelLayer( ModelLayer* layer, unsigned int index );
+        void insertModelLayer( ModelLayer* layer, unsigned int index );
 
         /**
          * Removes a model layer from the map.
@@ -255,7 +254,7 @@ namespace osgEarth
         /**
          * Adds a new layer to use as a terrain mask.
          */
-        Status addTerrainMaskLayer( MaskLayer* layer );
+        void addTerrainMaskLayer( MaskLayer* layer );
 
         /**
          * Removed a terrain mask layer that was set with setTerrainMaskLayer().

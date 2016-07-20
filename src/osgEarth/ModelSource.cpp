@@ -98,6 +98,11 @@ osg::Node*
 ModelSource::createNode(const Map*        map,
                         ProgressCallback* progress )
 {
+    if (getStatus().isError())
+    {
+        return 0L;
+    }
+
     osg::Node* node = createNodeImplementation(map, progress);
     if ( node )
     {
@@ -190,6 +195,7 @@ ModelSource::firePostProcessors( osg::Node* node )
 
 ModelSourceFactory::~ModelSourceFactory()
 {
+    //nop
 }
 
 ModelSource*

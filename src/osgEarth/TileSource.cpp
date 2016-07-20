@@ -342,7 +342,7 @@ TileSource::createImage(const TileKey&        key,
                         ImageOperation*       prepOp, 
                         ProgressCallback*     progress )
 {
-    if ( _status != STATUS_OK )
+    if (getStatus().isError())
         return 0L;
 
     // Try to get it from the memcache fist
@@ -372,7 +372,7 @@ TileSource::createHeightField(const TileKey&        key,
                               HeightFieldOperation* prepOp, 
                               ProgressCallback*     progress )
 {
-    if ( _status != STATUS_OK )
+    if (getStatus().isError())
         return 0L;
 
     // Try to get it from the memcache first:
@@ -408,7 +408,7 @@ osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
                               ProgressCallback*     progress)
 {
-    if ( _status != STATUS_OK )
+    if (getStatus().isError())
         return 0L;
 
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
@@ -426,7 +426,7 @@ TileSource::storeHeightField(const TileKey&     key,
                              osg::HeightField*  hf,
                               ProgressCallback* progress)
 {
-    if ( _status != STATUS_OK || hf == 0L )
+    if (getStatus().isError() || hf == 0L )
         return 0L;
 
     ImageToHeightFieldConverter conv;
@@ -441,7 +441,7 @@ TileSource::storeHeightField(const TileKey&     key,
 bool
 TileSource::isOK() const 
 {
-    return _status == STATUS_OK;
+    return _status.isOK();
 }
 
 void
@@ -749,43 +749,6 @@ TileSourceFactory::create(const TileSourceOptions& options)
     return result;
 }
 
-#if 0
-ReadWriteTileSource*
-TileSourceFactory::openReadWrite(const TileSourceOptions& options)
-{
-    ReadWriteTileSource* result = 0L;
-
-    std::string driver = options.getDriver();
-    if ( driver.empty() )
-    {
-        OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
-        return 0L;
-    }
-
-    osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
-    dbopt->setPluginData      ( TILESOURCEOPTIONS_TAG,   (void*)&options );
-    dbopt->setPluginStringData( TILESOURCEINTERFACE_TAG, ReadWriteTileSource::INTERFACE_NAME );
-
-    std::string driverExt = std::string( ".osgearth_" ) + driver;
-    result = dynamic_cast<ReadWriteTileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
-    if ( !result )
-    {
-        OE_WARN << LC << "Failed to load ReadWriteTileSource driver \"" << driver << "\"" << std::endl;
-    }
-
-    // apply an Override Profile if provided.
-    if ( result && options.profile().isSet() )
-    {
-        const Profile* profile = Profile::create(*options.profile());
-        if ( profile )
-        {
-            result->setProfile( profile );
-        }
-    }
-
-    return result;
-}
-#endif
 
 //------------------------------------------------------------------------
 

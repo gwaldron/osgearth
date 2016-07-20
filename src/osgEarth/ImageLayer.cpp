@@ -447,6 +447,11 @@ GeoImage
 ImageLayer::createImage(const TileKey&    key,
                         ProgressCallback* progress)
 {
+    if (getStatus().isError())
+    {
+        return GeoImage::INVALID;
+    }
+
     return createImageInKeyProfile( key, progress );
 }
 
@@ -455,7 +460,10 @@ GeoImage
 ImageLayer::createImageInNativeProfile(const TileKey&    key,
                                        ProgressCallback* progress)
 {
-    GeoImage result;
+    if (getStatus().isError())
+    {
+        return GeoImage::INVALID;
+    }
 
     const Profile* nativeProfile = getProfile();
     if ( !nativeProfile )
@@ -463,6 +471,9 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
         OE_WARN << LC << "Could not establish the profile" << std::endl;
         return GeoImage::INVALID;
     }
+    
+
+    GeoImage result;
 
     if ( key.getProfile()->isHorizEquivalentTo(nativeProfile) )
     {
@@ -518,7 +529,10 @@ GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey&    key, 
                                     ProgressCallback* progress)
 {
-    GeoImage result;
+    if (getStatus().isError())
+    {
+        return GeoImage::INVALID;
+    }
 
     // If the layer is disabled, bail out.
     if ( !getEnabled() )
@@ -531,6 +545,9 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     {
         return GeoImage::INVALID;
     }
+
+
+    GeoImage result;
 
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;

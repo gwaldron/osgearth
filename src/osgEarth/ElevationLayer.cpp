@@ -370,14 +370,19 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
-    GeoHeightField result;
-    osg::ref_ptr<osg::HeightField> hf;
+    if (getStatus().isError())
+    {
+        return GeoHeightField::INVALID;
+    }
 
     // If the layer is disabled, bail out.
     if ( getEnabled() == false )
     {
         return GeoHeightField::INVALID;
     }
+
+    GeoHeightField result;
+    osg::ref_ptr<osg::HeightField> hf;
 
     // Check the memory cache first
     bool fromMemCache = false;

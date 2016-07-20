@@ -141,7 +141,9 @@ osg::Vec3dArray*
 MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
     if (getStatus().isError())
+    {
         return 0L;
+    }
 
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
     if ( _maskSource.valid() )

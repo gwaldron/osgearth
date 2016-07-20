@@ -325,6 +325,9 @@ osg::Node*
 ModelLayer::getOrCreateSceneGraph(const Map*        map,
                                   ProgressCallback* progress )
 {
+    if (getStatus().isError())
+        return 0L;
+
     // exclusive lock for cache lookup/update.
     Threading::ScopedMutexLock lock( _mutex );
 

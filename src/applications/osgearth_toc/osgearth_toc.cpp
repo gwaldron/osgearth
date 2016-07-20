@@ -260,7 +260,7 @@ createControlPanel( osgViewer::View* view )
     s_masterGrid->setChildSpacing( 10 );
     s_masterGrid->setChildVertAlign( Control::ALIGN_CENTER );
     s_masterGrid->setAbsorbEvents( true );
-    s_masterGrid->setVertAlign( Control::ALIGN_BOTTOM );
+    s_masterGrid->setVertAlign( Control::ALIGN_TOP );
 
     //The image layers
     s_imageBox = new Grid();
@@ -270,7 +270,7 @@ createControlPanel( osgViewer::View* view )
     s_imageBox->setChildSpacing( 10 );
     s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_imageBox->setAbsorbEvents( true );
-    s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_imageBox->setVertAlign( Control::ALIGN_TOP );
     s_masterGrid->setControl( 0, 0, s_imageBox );
 
     //the elevation layers
@@ -281,7 +281,7 @@ createControlPanel( osgViewer::View* view )
     s_elevationBox->setChildSpacing( 10 );
     s_elevationBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_elevationBox->setAbsorbEvents( true );
-    s_elevationBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_elevationBox->setVertAlign( Control::ALIGN_TOP );
     s_masterGrid->setControl( 1, 0, s_elevationBox );
 
     //The image layers
@@ -292,7 +292,7 @@ createControlPanel( osgViewer::View* view )
     s_modelBox->setChildSpacing( 10 );
     s_modelBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_modelBox->setAbsorbEvents( true );
-    s_modelBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_modelBox->setVertAlign( Control::ALIGN_TOP );
     s_masterGrid->setControl( 2, 0, s_modelBox );
 
     canvas->addControl( s_masterGrid );
@@ -301,14 +301,17 @@ createControlPanel( osgViewer::View* view )
 void
 createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, TerrainLayer* layer, bool isActive )
 {
+    int gridCol = 0;
+
     // a checkbox to enable/disable the layer:
     CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
     enabled->addEventHandler( new LayerVisibleHandler(layer) );
-    grid->setControl( 0, gridRow, enabled );
+    grid->setControl( gridCol++, gridRow, enabled );
 
     // the layer name
     LabelControl* name = new LabelControl( layer->getName() );
-    grid->setControl( 1, gridRow, name );
+    grid->setControl( gridCol, gridRow, name );
+    gridCol++;
 
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* > (layer );
     if (imageLayer)
@@ -318,8 +321,16 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
         opacity->setWidth( 125 );
         opacity->setHeight( 12 );
         opacity->addEventHandler( new LayerOpacityHandler(imageLayer) );
-        grid->setControl( 2, gridRow, opacity );
+        grid->setControl( gridCol, gridRow, opacity );
     }
+    gridCol++;
+
+    // status indicator
+    LabelControl* statusLabel = layer->getStatus().isOK()
+        ? new LabelControl("[ok]", osg::Vec4(0,1,0,1))
+        : new LabelControl("[error]", osg::Vec4(1,0,0,1));
+    grid->setControl( gridCol, gridRow, statusLabel );
+    gridCol++;
 
     // move buttons
     if ( layerIndex < numLayers-1 && isActive )
@@ -328,16 +339,19 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
         upButton->setBackColor( .4,.4,.4,1 );
         upButton->setActiveColor( .8,0,0,1 );
         upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex+1 ) );
-        grid->setControl( 3, gridRow, upButton );
+        grid->setControl( gridCol, gridRow, upButton );
     }
+    gridCol++;
+
     if ( layerIndex > 0 && isActive)
     {
         LabelControl* upButton = new LabelControl( "DOWN", 14 );
         upButton->setBackColor( .4,.4,.4,1 );
         upButton->setActiveColor( .8,0,0,1 );
         upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex-1 ) );
-        grid->setControl( 4, gridRow, upButton );
+        grid->setControl( gridCol, gridRow, upButton );
     }
+    gridCol++;
 
     // add/remove button:
     LabelControl* addRemove = new LabelControl( isActive? "REMOVE" : "ADD", 14 );
@@ -348,7 +362,8 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
         addRemove->addEventHandler( new RemoveLayerHandler(layer) );
     else
         addRemove->addEventHandler( new AddLayerHandler(layer) );
-    grid->setControl( 5, gridRow, addRemove );
+    grid->setControl( gridCol, gridRow, addRemove );
+    gridCol++;
 }
 
 void
@@ -363,12 +378,17 @@ createModelLayerItem( Grid* grid, int gridRow, ModelLayer* layer, bool isActive 
     LabelControl* name = new LabelControl( layer->getName() );
     grid->setControl( 1, gridRow, name );
 
+    LabelControl* statusLabel = layer->getStatus().isOK()
+        ? new LabelControl("[ok]", osg::Vec4(0, 1, 0, 1))
+        : new LabelControl("[error]", osg::Vec4(1, 0, 0, 1));
+    grid->setControl(2, gridRow, statusLabel);
+
     // an opacity slider
     HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, layer->getOpacity() );
     opacity->setWidth( 125 );
     opacity->setHeight( 12 );
     opacity->addEventHandler( new ModelLayerOpacityHandler(layer) );
-    grid->setControl( 2, gridRow, opacity );
+    grid->setControl( 3, gridRow, opacity );
 }
 
 void

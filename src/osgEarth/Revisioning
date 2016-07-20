@@ -91,7 +91,6 @@ namespace osgEarth
             return _alwaysDirty ? false : _revision == externalRevision;
         }
 
-    protected:
         Revisioned() : _alwaysDirty(false) { }
 
         /** dtor */
@@ -110,7 +109,7 @@ namespace osgEarth
 
 
     /**
-     * A TrackedMutable object is an object that can mark itself, and optionally
+     * A DirtyNotifier object is an object that can mark itself, and optionally
      * its dependent parents, dirty. This is analagous to OSG's "dirtyBound"
      * concept that can propagate up through a scene graph.
      *

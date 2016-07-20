@@ -1,0 +1,32 @@
+<!-- 
+osgEarth Test - Earth File Error Reporting
+-->
+
+<map>
+
+    <image name="Bad image driver" driver="none" >
+        <url>missing_file.tif</url>
+    </image>
+    
+    <image name="Missing URL" driver="gdal" >
+        <url>missing_file.tif</url>
+    </image>
+    
+    <model name="Bad Model Driver" driver="none" >
+        <features name="world" driver="ogr">
+            <url>../data/usa.shp</url>
+        </features>
+    </model>
+    
+    <model name="Bad Model Driver" driver="feature_geom" >
+        <features name="world" driver="ogr">
+            <url>missing.shp</url>
+        </features>
+    </model>
+
+    <mask name="Bad feature definition" driver="feature">   
+        <features driver="ogr">
+        </features>
+    </mask>
+    
+</map>

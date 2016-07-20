@@ -38,6 +38,7 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/MapModelChange>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -352,7 +353,6 @@ MapNode::init()
         _overlayDecorator->addTechnique( new ClampingTechnique() );
     }
 
-
     addTerrainDecorator( _overlayDecorator );
 
     // install any pre-existing model layers:
@@ -411,9 +411,6 @@ MapNode::init()
     stateset->addUniform( new osg::Uniform("oe_isShadowCamera", false) );
 
     dirtyBound();
-
-    // register an update traversal so we can open all the layers
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
@@ -575,12 +572,6 @@ MapNode::findMapNode( osg::Node* graph, unsigned travmask )
     return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
-//MapNode*
-//MapNode::get(osg::NodeVisitor& nv)
-//{
-//    return VisitorData::fetch<MapNode>(nv, "osgEarth.MapNode");
-//}
-
 bool
 MapNode::isGeocentric() const
 {
@@ -605,7 +596,6 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 
     // create the scene graph:
     osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );
-    //osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), 0L );
 
     if ( node )
     {
@@ -756,6 +746,47 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
     }
 }
 
+namespace
+{
+    template<typename T> void tryOpenLayer(T* layer)
+    {
+        if (!layer->getStatus().isError())
+        {
+            const Status& status = layer->open();
+            if (status.isError())
+            {
+                OE_WARN << LC << "Failed to open layer \"" << layer->getName() << "\" ... " << status.message() << std::endl;
+            }
+        }
+    }
+}
+
+void
+MapNode::openMapLayers()
+{
+    MapFrame frame(_map.get());
+
+    for (unsigned i = 0; i < frame.imageLayers().size(); ++i)
+    {
+        tryOpenLayer(frame.getImageLayerAt(i));
+    }
+
+    for (unsigned i = 0; i < frame.elevationLayers().size(); ++i)
+    {
+        tryOpenLayer(frame.getElevationLayerAt(i));
+    }
+
+    for (unsigned i = 0; i < frame.modelLayers().size(); ++i)
+    {
+        tryOpenLayer(frame.getModelLayerAt(i));
+    }
+
+    for (unsigned i = 0; i < frame.terrainMaskLayers().size(); ++i)
+    {
+        tryOpenLayer(frame.terrainMaskLayers().at(i).get());
+    }
+}
+
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
@@ -770,17 +801,26 @@ MapNode::traverse( osg::NodeVisitor& nv )
             _terrainEngine->accept( v );
         }
 
+        // This is a placeholder for later, if we decide to delay the automatic opening of
+        // layers until the first traversal.
+#if 0
+        // if the model has changed, we need to queue up an update so we can open new layers.
+        if (_mapRevisionMonitor.outOfSyncWith(_map->getDataModelRevision()))
+        {
+            openMapLayers();
+            _mapRevisionMonitor.sync(_map->getDataModelRevision());
+        }
+#endif
+
         // traverse:
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR || nv.getVisitorType() == nv.CULL_VISITOR)
     {
+        // put the MapNode in the visitor data and traverse.
         VisitorData::store(nv, "osgEarth::MapNode", this);
-        //osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
-        //nv.setUserData( this );
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-        //nv.setUserData( oldUserData.get() );
     }
 
     else

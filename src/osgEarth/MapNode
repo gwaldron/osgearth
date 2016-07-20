@@ -207,6 +207,12 @@ namespace osgEarth
             return 0L;
         }
 
+        /**
+         * Opens all layers that are not already open.
+         */
+        void openMapLayers();
+
+
     public: // special purpose
 
         /**
@@ -247,6 +253,8 @@ namespace osgEarth
         osg::Group*              _terrainEngineContainer;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
+
+        Revisioned _mapRevisionMonitor;
 
     public: // MapCallback proxy
 

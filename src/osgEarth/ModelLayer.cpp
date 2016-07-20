@@ -261,7 +261,7 @@ ModelLayer::open()
         }
         else
         {
-            _status = Status::Error(getName(), Stringify() << "Failed to create driver " << driverName);
+            _status = Status::Error(getName(), Stringify() << "Failed to create driver \"" << driverName << "\"");
         }
     }
 
@@ -298,7 +298,7 @@ ModelLayer::setReadOptions(const osgDB::Options* readOptions)
         CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
         if (bin)
         {
-            OE_INFO << LC << "Layer " << getName() << " opened cache bin [" << binID << "]\n";
+            OE_INFO << LC << "Layer \"" << getName() << "\" cache bin is [" << binID << "]\n";
             _cacheSettings->setCacheBin( bin );
         }
         else

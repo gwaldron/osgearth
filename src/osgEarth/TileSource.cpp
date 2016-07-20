@@ -728,7 +728,7 @@ TileSourceFactory::create(const TileSourceOptions& options)
     result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
     if ( !result )
     {
-        OE_WARN << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
+        OE_INFO << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
     }
 
     else

@@ -361,6 +361,9 @@ namespace osgEarth
 
         CacheBin* getCacheBin(const Profile* profile);
 
+        /** Subclass can call this to indicate an error. */
+        void setStatus(const Status& value) { _status = value; }
+
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;

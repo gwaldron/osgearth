@@ -742,7 +742,7 @@ public:
 
                 getFiles(source, exts, blackExts, files);
 
-                OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
+                OE_INFO << LC << "Identified " << files.size() << " files:" << std::endl;
                 for (unsigned int i = 0; i < files.size(); ++i)
                 {
                     OE_INFO << LC << INDENT << files[i] << std::endl;

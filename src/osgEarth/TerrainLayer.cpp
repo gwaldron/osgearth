@@ -32,7 +32,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[TerrainLayer] Layer (" << getName() << ") "
+#define LC "[TerrainLayer] Layer \"" << getName() << "\" "
 
 //------------------------------------------------------------------------
 
@@ -412,7 +412,7 @@ TerrainLayer::open()
                 _profile = _tileSource->getProfile();
                 if (_profile.valid())
                 {
-                    _status = Status::Error(getName(), "Cannot establish profile");
+                    setStatus( Status::Error(getName(), "Cannot establish profile") );
                 }
             }
 
@@ -454,7 +454,7 @@ TerrainLayer::getCacheSettings() const
                 if (bin)
                 {
                     _cacheSettings->setCacheBin(bin);
-                    OE_INFO << LC << "Opened cache bin [" << bin->getID() << "]\n";
+                    OE_INFO << LC << "Cache bin is [" << bin->getID() << "]\n";
                 }
             }
 
@@ -579,7 +579,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
                     {                     
                         OE_WARN << LC 
                             << "Layer \"" << getName() << "\" is requesting a \""
-                            << getTileSource()->getOptions().getDriver() << " cache, but a \""
+                            << getTileSource()->getOptions().getDriver() << "\" cache, but a \""
                             << meta->_sourceDriver.get() << "\" cache exists at the specified location. "
                             << "The cache will ignored for this layer.\n";
 
@@ -704,7 +704,7 @@ TerrainLayer::createTileSource()
         // This will also set a manual "override" profile if the user provided one.
         if ( _runtimeOptions->driver().isSet() )
         {
-            OE_INFO << LC << "Creating TileSource, driver = \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+            OE_INFO << LC << "Creating \"" << _runtimeOptions->driver()->getDriver() << "\" driver\n";
             ts = TileSourceFactory::create( *_runtimeOptions->driver() );
             if ( !ts.valid() )
             {
@@ -777,7 +777,7 @@ TerrainLayer::createTileSource()
     // establish a profile from the metadata in the cache instead.
     else if (getCacheSettings()->isCacheEnabled())
     {
-        OE_NOTICE << LC << "Faile to open TileSource " << _name << ", but a cache exists, so we will use it in cache-only mode." << std::endl;
+        OE_NOTICE << LC << "Failed to create \"" << _runtimeOptions->driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
     }
 

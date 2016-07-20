@@ -205,10 +205,10 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( !modelSource )
-        {
-            OE_WARN << "FAILED to load model source driver \"" << options.getDriver() << "\"" << std::endl;
-        }
+        //if ( !modelSource )
+        //{
+        //    OE_WARN << "FAILED to load model source driver \"" << options.getDriver() << "\"" << std::endl;
+        //}
     }
     else
     {

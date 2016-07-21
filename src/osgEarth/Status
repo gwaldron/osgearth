@@ -41,6 +41,7 @@ namespace osgEarth
         const std::string& message() const { return _msg; }
         bool operator == (const Status& rhs) const { return _owner.compare(rhs._owner) == 0 && _msg.compare(rhs._msg) == 0; }
         bool operator != (const Status& rhs) const { return !(*this==rhs); }
+        bool const operator ! () const { return isError(); }
         static Status OK() { return Status(); }
         static Status Error(const std::string& msg) { return Status(msg); }
         static Status Error(const std::string& owner, const std::string& msg) { return Status(owner, msg); }

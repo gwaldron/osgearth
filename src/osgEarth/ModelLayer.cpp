@@ -221,7 +221,7 @@ ModelLayer::open()
     {
         std::string driverName = _initOptions.driver()->getDriver();
 
-        OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << driverName << "\"" << std::endl;
+        OE_INFO << LC << "Opening model layer \"" << getName() << "\", driver=\"" << driverName << "\"" << std::endl;
         
         // Try to create the model source:
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );

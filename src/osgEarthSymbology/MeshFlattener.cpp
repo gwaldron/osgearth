@@ -34,6 +34,29 @@ using namespace osgEarth::Symbology;
 
 using namespace osgEarth;
 
+namespace
+{
+    struct RemoveEmptyGeometries : public osg::NodeVisitor
+    {
+        RemoveEmptyGeometries() {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+        void apply(osg::Geode& geode) {
+            std::vector<osg::Drawable*> empties;
+            for (unsigned i = 0; i < geode.getNumDrawables(); ++i) {
+                osg::Geometry* g = geode.getDrawable(i)->asGeometry();
+                if (g) {
+                    if (g->getVertexArray() == 0L || g->getNumPrimitiveSets() == 0)
+                        empties.push_back(g);
+                }
+            }
+            for (unsigned i = 0; i < empties.size(); ++i) {
+                geode.removeDrawable(empties[i]);
+            }
+        }
+    };
+}
 
 /********************************/
 PrepareForOptimizationVisitor::PrepareForOptimizationVisitor():
@@ -173,6 +196,11 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             osgUtil::Optimizer::MergeGeometryVisitor mg;
             mg.setTargetMaximumNumberOfVertices(std::max(_maxVertsPerCluster, 1000u));
             result->accept( mg );
+
+            // Remove any empty geoetries. For some reason the MergeGeometryVisitor sometimes 
+            // leaves them around.
+            RemoveEmptyGeometries reg;
+            result->accept( reg );
         }
        
         //osgDB::writeNodeFile(*result, "clustered.osgt");

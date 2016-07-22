@@ -32,6 +32,22 @@ osgEarth Sample - Annotations
                 text-bbox-border-width: 1;
             </style>
         </label>
+    
+        <label text="Label with offsets">
+            <position lat="16" long="-120" />
+            <style type="text/css">
+                text-align:     center_center;
+                text-size:      20;
+                text-declutter: true;
+                text-halo:      #777;
+                text-offset-x:  28;
+                text-offset-y:  -100;
+                text-bbox-fill: #00FF0033;
+                text-bbox-margin: 3;
+                text-bbox-border: #FFFFFFFF;
+                text-bbox-border-width: 1;
+            </style>
+        </label>
         
         <place text="Place">
             <position lat="35" long="-110"/>

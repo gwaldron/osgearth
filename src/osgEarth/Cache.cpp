@@ -48,13 +48,12 @@ CacheSettings::CacheSettings()
 }
 
 CacheSettings::CacheSettings(const CacheSettings& rhs, const osg::CopyOp& copy) :
-osg::Object(*this, copy),
+osg::Object(rhs, copy),
 _cache(rhs._cache.get()),
 _policy(rhs._policy),
 _activeBin(rhs._activeBin.get())
 {
-    // for some unknown reason, the copy CTOR is not getting the name.
-    setName(CACHESETTINGS_UDC_NAME);
+    //nop
 }
         
 bool

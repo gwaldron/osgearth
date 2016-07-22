@@ -343,6 +343,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     offset.set( layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y(), 0.f );
                 }
 
+                offset = refCamScaleMat * offset;
+
                 // handle the local translation
                 box.xMin() += offset.x();
                 box.xMax() += offset.x();

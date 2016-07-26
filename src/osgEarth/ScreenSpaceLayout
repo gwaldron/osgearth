@@ -52,8 +52,7 @@ namespace osgEarth
         /** Constructor */
         ScreenSpaceLayoutData() :
             _priority(0.0f),
-            _pixelOffset(0, 0),
-            _localRotationRad(0.0f) { }
+            _pixelOffset(0, 0) { }
 
         /** Decluttering priority - FLT_MAX means don't declutter */
         void setPriority(float value) { _priority = value; }
@@ -63,14 +62,18 @@ namespace osgEarth
         void setPixelOffset(const osg::Vec2s& value) { _pixelOffset = value; }
         const osg::Vec2s& getPixelOffset() const     { return _pixelOffset; }
 
-        /** Rotation from geoposition in radians */
-        void setRotationRad(float value) { _localRotationRad = value; }
-        float getRotationRad() const     { return _localRotationRad; }
+        /** World point for label rotation reference */
+        void setAnchorPoint(const osg::Vec3d& value) { _anchorPoint = value; }
+        const osg::Vec3d& getAnchorPoint() const { return _anchorPoint; }
+
+        /** Reference point for label rotation reference */
+        void setProjPoint(const osg::Vec3d& value) { _refPoint = value; }
+        const osg::Vec3d& getProjPoint() const { return _refPoint; }
 
     public:
         float      _priority;
         osg::Vec2s _pixelOffset;
-        float      _localRotationRad;
+        osg::Vec3d _anchorPoint, _refPoint;
 
     public:
         virtual ~ScreenSpaceLayoutData() { }

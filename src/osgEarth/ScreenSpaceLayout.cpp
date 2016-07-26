@@ -303,6 +303,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
         bool snapToPixel = options.snapToPixel() == true;
 
+        osg::Matrix camVPW;
+        camVPW.postMult(cam->getViewMatrix());
+        camVPW.postMult(cam->getProjectionMatrix());
+        camVPW.postMult(refWindowMatrix);
+        //if (cam->getViewport())
+        //    camVPW.postMult(cam->getViewport()->computeWindowMatrix());
+
         // Go through each leaf and test for visibility.
         // Enforce the "max objects" limit along the way.
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); 
@@ -322,13 +329,20 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             osg::Vec3f offset;
             osg::Quat rot;
+
             if (layoutData)
             {
-
                 // local transformation data
                 // and management of the label orientation (must be always readable)
+
                 bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
-                float angle = layoutData->_localRotationRad;
+
+                osg::Vec3d loc = layoutData->getAnchorPoint() * camVPW;
+                osg::Vec3d proj = layoutData->getProjPoint() * camVPW;
+                proj -= loc;
+                
+                float angle = atan2(proj.y(), proj.x());
+
                 if ( isText && (angle < - osg::PI / 2. || angle > osg::PI / 2.) )
                 {
                     // avoid the label characters to be inverted:
@@ -342,14 +356,6 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 {
                     offset.set( layoutData->_pixelOffset.x(), layoutData->_pixelOffset.y(), 0.f );
                 }
-
-                offset = refCamScaleMat * offset;
-
-                // handle the local translation
-                box.xMin() += offset.x();
-                box.xMax() += offset.x();
-                box.yMin() += offset.y();
-                box.yMax() += offset.y();
 
                 // handle the local rotation
                 if ( angle != 0.f )
@@ -366,6 +372,14 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                         box.set( std::min(ld.x(), lu.x()), std::min(lu.y(), ru.y()), 0,
                             std::max(ld.x(), lu.x()), std::max(ld.y(), rd.y()), 0 );
                 }
+
+                offset = refCamScaleMat * offset;
+
+                // handle the local translation
+                box.xMin() += offset.x();
+                box.xMax() += offset.x();
+                box.yMin() += offset.y();
+                box.yMax() += offset.y();
             }
 
             static osg::Vec4d s_zero_w(0,0,0,1);
@@ -471,14 +485,15 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             if ( rot.zeroRotation() )
             {
                 newModelView.makeTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
+                newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             }
             else
             {
                 offset = rot * offset;
                 newModelView.makeTranslate( osg::Vec3f(winPos.x() + offset.x(), winPos.y() + offset.y(), 0) );
+                newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
                 newModelView.preMultRotate( rot );
             }
-            newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
             // cannot just replace it unfortunately. Have to make a new one. Perhaps a nice

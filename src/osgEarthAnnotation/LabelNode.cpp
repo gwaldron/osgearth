@@ -272,7 +272,15 @@ LabelNode::updateLayoutData()
     if (ts)
     {
         _dataLayout->setPixelOffset(ts->pixelOffset().get());
-        _dataLayout->setRotationRad(_labelRotationRad);
+        
+        if (_followFixedCourse)
+        {
+            osg::Vec3d p0, p1;
+            _geoPointLoc.toWorld(p0);
+            _geoPointProj.toWorld(p1);
+            _dataLayout->setAnchorPoint(p0);
+            _dataLayout->setProjPoint(p1);
+        }
     }
 }
 
@@ -287,37 +295,6 @@ LabelNode::setDynamic( bool dynamic )
         d->setDataVariance( dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }    
 }
-
-void
-LabelNode::traverse(osg::NodeVisitor &nv)
-{
-    if(_followFixedCourse)
-    {
-        osgUtil::CullVisitor* cv = NULL;
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            cv = Culling::asCullVisitor(nv);
-            osg::Camera* camera = cv->getCurrentCamera();
-
-            osg::Matrix matrix;
-            matrix.postMult(camera->getViewMatrix());
-            matrix.postMult(camera->getProjectionMatrix());
-            if (camera->getViewport())
-                matrix.postMult(camera->getViewport()->computeWindowMatrix());
-
-            osg::Vec3d refOnWorld; _geoPointLoc.toWorld(refOnWorld);
-            osg::Vec3d projOnWorld; _geoPointProj.toWorld(projOnWorld);
-            osg::Vec3d refOnScreen = refOnWorld * matrix;
-            osg::Vec3d projOnScreen = projOnWorld * matrix;
-            projOnScreen -= refOnScreen;
-            _labelRotationRad = atan2 (projOnScreen.y(), projOnScreen.x());
-            if (_dataLayout.valid())
-                _dataLayout->setRotationRad(_labelRotationRad);
-        }
-    }
-    GeoPositionNode::traverse(nv);
-}
-
 
 //-------------------------------------------------------------------
 

@@ -123,8 +123,6 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
-        virtual void traverse(osg::NodeVisitor &nv);
-
         virtual void dirty();
 
     protected:

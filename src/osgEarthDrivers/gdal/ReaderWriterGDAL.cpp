@@ -703,7 +703,7 @@ public:
             (!_options.url().isSet() || _options.url()->empty()) &&
             (!_options.connection().isSet() || _options.connection()->empty()) )
         {
-            return Status::Error( "No URL, directory, or connection string specified" );
+            return Status::Error(Status::CONFIGURATION_ERROR, "No URL, directory, or connection string specified" );
         }
 
         // source connection:
@@ -756,7 +756,7 @@ public:
 
             if (files.empty())
             {
-                return Status::Error( "Could not find any valid input." );
+                return Status::Error( Status::RESOURCE_UNAVAILABLE, "Could not find any valid input." );
             }
 
             //If we found more than one file, try to combine them into a single logical dataset
@@ -857,7 +857,7 @@ public:
 
                 if (!_srcDS)
                 {
-                    return Status::Error( Stringify() << "Failed to open dataset " << files[0] );
+                    return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify() << "Failed to open " << files[0] );
                 }
             }
         }
@@ -927,7 +927,7 @@ public:
 
             if ( !src_srs.valid() )
             {
-                return Status::Error( Stringify()
+                return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify()
                     << "Dataset has no spatial reference information (" << source << ")" );
             }
         }
@@ -971,7 +971,7 @@ public:
             profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
             if ( !profile )
             {
-                return Status::Error( Stringify()
+                return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify()
                     << "Cannot create geographic Profile from dataset's spatial reference information: " << src_srs->getName() );
             }
         }

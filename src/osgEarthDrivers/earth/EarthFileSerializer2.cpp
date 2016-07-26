@@ -321,7 +321,7 @@ namespace
         ImageLayer* layer = new ImageLayer(options);
         map->addImageLayer(layer);
         if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
+            OE_WARN << LC << "Layer \"" << layer->getName() << "\" " << layer->getStatus().toString() << std::endl;
     }
 
     void addElevationLayer(const Config& conf, Map* map)
@@ -331,7 +331,7 @@ namespace
         ElevationLayer* layer = new ElevationLayer(options);
         map->addElevationLayer(layer);
         if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
+            OE_WARN << LC << "Layer \"" << layer->getName() << "\" " << layer->getStatus().toString() << std::endl;
     }
 
     void addModelLayer(const Config& conf, Map* map)
@@ -342,7 +342,7 @@ namespace
         ModelLayer* layer = new ModelLayer(options);
         map->addModelLayer(layer);
         if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
+            OE_WARN << LC << "Layer \"" << layer->getName() << "\" " << layer->getStatus().toString() << std::endl;
     }
 
     void addMaskLayer(const Config& conf, Map* map)
@@ -353,7 +353,7 @@ namespace
         MaskLayer* layer = new MaskLayer(options);
         map->addTerrainMaskLayer(layer);
         if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << options.name() << "\" " << layer->getStatus().message() << std::endl;
+            OE_WARN << LC << "Layer \"" << layer->getName() << "\" " << layer->getStatus().toString() << std::endl;
     }
 
     // support for "special" extension names (convenience and backwards compat)

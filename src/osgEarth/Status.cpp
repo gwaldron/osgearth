@@ -17,9 +17,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Status>
+#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
 
 #define LC "[Status] "
 
 const osgEarth::Status osgEarth::STATUS_OK;
+
+namespace
+{
+    const std::string m[] = {
+        "No error",
+        "Resource unavailable",
+        "Service unavailable",
+        "Configuration error",
+        "Assertion failure",
+        "Error"
+    };
+}
+
+std::string
+Status::toString() const
+{
+    return Stringify()
+        << ((int)_code < 6 ? m[(int)_code] : "Bad error code")
+        << " : "
+        << message();
+}

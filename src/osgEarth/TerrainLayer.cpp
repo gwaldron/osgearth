@@ -671,7 +671,6 @@ TerrainLayer::disable(const std::string& msg)
     {
         _runtimeOptions->enabled() = false;
         _status = Status::Error(msg);
-        //OE_WARN << LC << "Layer disabled: " << msg << std::endl;
     }
 }
 

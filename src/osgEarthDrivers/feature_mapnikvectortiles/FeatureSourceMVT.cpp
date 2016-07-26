@@ -71,7 +71,7 @@ public:
         int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, SQLITE_OPEN_READONLY, 0L );
         if ( rc != 0 )
         {          
-            return Status::Error(LC, Stringify() << "Failed to open database, " << sqlite3_errmsg(_database));
+            return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Failed to open database, " << sqlite3_errmsg(_database));
         }
 
         return Status::OK();

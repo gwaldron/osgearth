@@ -54,7 +54,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
     URI tmsURI = _options.url().value();
     if ( tmsURI.empty() )
     {
-        return Status::Error( "Fail: TMS driver requires a valid \"url\" property" );
+        return Status::Error( Status::CONFIGURATION_ERROR, "Fail: TMS driver requires a valid \"url\" property" );
     }
 
     // A repo is writable only if it's local.
@@ -75,7 +75,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         // new repo REQUIRES a profile:
         if ( !profile )
         {
-            return Status::Error("Fail: profile required to create new TMS repo");
+            return Status::Error(Status::CONFIGURATION_ERROR, "Fail: profile required to create new TMS repo");
         }
     }
 
@@ -102,7 +102,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         {
             if ( !_options.format().isSet() )
             {
-                return Status::Error("Cannot create new repo with required [format] property");
+                return Status::Error(Status::CONFIGURATION_ERROR, "Cannot create new repo with required [format] property");
             }
 
             TMS::TileMapReaderWriter::write( _tileMap.get(), tmsURI.full() );
@@ -117,7 +117,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
 
         if (!_tileMap.valid())
         {
-            return Status::Error( Stringify() << "Failed to read tilemap from " << tmsURI.full() );
+            return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify() << "Failed to read tilemap from " << tmsURI.full() );
         }
 
         OE_INFO << LC

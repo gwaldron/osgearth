@@ -98,12 +98,12 @@ public:
             // Try to get the results from the settings instead
             if ( !_options.profile().isSet())
             {
-                return Status::Error(LC, "TFS driver needs an explicit profile set");
+                return Status::Error(Status::CONFIGURATION_ERROR, "TFS driver requires an explicit profile");
             }
 
             if (!_options.minLevel().isSet() || !_options.maxLevel().isSet())
             {
-                return Status::Error(LC, "TFS driver needs a min and max level set");
+                return Status::Error(Status::CONFIGURATION_ERROR, "TFS driver requires a min and max level");
             }
            
             osg::ref_ptr<const Profile> profile = Profile::create( *_options.profile() );    
@@ -120,7 +120,7 @@ public:
         if (fp)
             setFeatureProfile(fp);
         else
-            return Status::Error(LC, "Failed to establish a feature profile");
+            return Status::Error(Status::RESOURCE_UNAVAILABLE, "Failed to establish a feature profile");
 
         return Status::OK();
     }

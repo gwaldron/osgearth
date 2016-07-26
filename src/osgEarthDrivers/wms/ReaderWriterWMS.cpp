@@ -117,7 +117,7 @@ public:
         osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
         if ( !capabilities.valid() )
         {
-            return Status::Error( "Unable to read WMS GetCapabilities." );
+            return Status::Error( Status::RESOURCE_UNAVAILABLE, "Unable to read WMS GetCapabilities." );
         }
         else
         {
@@ -274,7 +274,7 @@ public:
             // set up the cache options properly for a TileSource.
             _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );            
 
-            return STATUS_OK;
+            return Status::OK();
         }
         else
         {

@@ -110,7 +110,7 @@ FeatureTileSource::initialize(const osgDB::Options* readOptions)
     }            
 
     if ( !_features.valid() )
-        return Status::Error(LC, "No feature source");
+        return Status::Error(Status::SERVICE_UNAVAILABLE, "No feature source");
 
     // attempt to open the feature source:
     const Status& sourceStatus = _features->open(readOptions);

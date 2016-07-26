@@ -82,7 +82,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     {
         // For a NEW database, the profile MUST be set prior to initialization.
         if ( getProfile() == 0L )
-            return Status::Error("Cannot create database; required Profile is missing");
+            return Status::Error(Status::CONFIGURATION_ERROR, "Cannot create database; required Profile is missing");
 
         // For a NEW database the format is required.
         if ( _options.format().isSet() )
@@ -90,11 +90,11 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             _tileFormat = _options.format().value();
             _rw = getReaderWriter( _tileFormat );
             if ( !_rw.valid() )
-                return Status::Error("No plugin to load format \"" + _tileFormat + "\"");
+                return Status::Error(Status::SERVICE_UNAVAILABLE, "No plugin to load format \"" + _tileFormat + "\"");
         }
         else
         {
-            return Status::Error("Cannot create database; required format is missing");
+            return Status::Error(Status::CONFIGURATION_ERROR, "Cannot create database; required format is missing");
         }
 
         OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
@@ -109,7 +109,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, flags, 0L );
     if ( rc != 0 )
     {                        
-        return Status::Error( Stringify()
+        return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(_database) );
     }
     
@@ -184,11 +184,11 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
         // By this point, we require a valid tile format.
         if ( _tileFormat.empty() )
-            return Status::Error("Required format not in metadata, nor specified in the options.");
+            return Status::Error(Status::CONFIGURATION_ERROR, "Required format not in metadata, nor specified in the options.");
 
         _rw = getReaderWriter( _tileFormat );
         if ( !_rw.valid() )
-            return Status::Error("No plugin to load format \"" + _tileFormat + "\"");
+            return Status::Error(Status::SERVICE_UNAVAILABLE, "No plugin to load format \"" + _tileFormat + "\"");
 
         // check for compression.
         std::string compression;
@@ -197,7 +197,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         {
             _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor(compression);
             if ( !_compressor.valid() )
-                return Status::Error("Cannot find compressor \"" + compression + "\"");
+                return Status::Error(Status::SERVICE_UNAVAILABLE, "Cannot find compressor \"" + compression + "\"");
             else
                 OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
         }        

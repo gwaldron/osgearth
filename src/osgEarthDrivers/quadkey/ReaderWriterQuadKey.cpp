@@ -63,7 +63,7 @@ public:
         URI uri = _options.url().value();
         if ( uri.empty() )
         {
-            return Status::Error( "Fail: driver requires a valid \"url\" property" );
+            return Status::Error( Status::CONFIGURATION_ERROR, "Fail: driver requires a valid \"url\" property" );
         }
 
         // The quadkey driver always uses spherical mercator.

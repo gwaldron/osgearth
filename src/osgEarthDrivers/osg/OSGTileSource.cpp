@@ -72,7 +72,7 @@ public:
 
         if ( !getProfile() )
         {
-            return Status::Error( "An explicit profile definition is required by the OSG driver." );
+            return Status::Error( Status::CONFIGURATION_ERROR, "An explicit profile definition is required by the OSG driver." );
         }
 
         osg::ref_ptr<osg::Image> image;
@@ -88,7 +88,7 @@ public:
 
         if ( !image.valid() )
         {
-            return Status::Error( Stringify() <<  "Faild to load data from \"" << _options.url()->full() << "\"" );
+            return Status::Error( Status::RESOURCE_UNAVAILABLE, Stringify() <<  "Faild to load data from \"" << _options.url()->full() << "\"" );
         }
 
         // calculate and store the maximum LOD for which to return data

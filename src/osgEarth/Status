@@ -31,22 +31,41 @@ namespace osgEarth
     class OSGEARTH_EXPORT Status
     {
     public:
-        Status() { }
-        Status(const Status& rhs) : _owner(rhs._owner), _msg(rhs._msg) { }
-        Status(const std::string& msg) : _msg(msg) { }
-        Status(const std::string& owner, const std::string& msg) : _owner(owner), _msg(msg) { }
-        bool isOK() const { return _msg.empty(); }
+        enum Code {
+            NO_ERROR,
+            RESOURCE_UNAVAILABLE,  // e.g. failure to access a file, URL, database, or other resource
+            SERVICE_UNAVAILABLE,   // e.g. failure to load a plugin, extension, or other module
+            CONFIGURATION_ERROR,   // required data or properties missing
+            ASSERTION_FAILURE,     // an illegal software state was detected
+            GENERAL_ERROR          // something else went wrong
+        };
+
+    public:
+        Status() : _code(NO_ERROR) { }
+        Status(const Status& rhs) : _code(rhs._code), _source(rhs._source), _msg(rhs._msg) { }
+        Status(const Code& code) : _code(code) { }
+        Status(const std::string& msg) : _code(GENERAL_ERROR), _msg(msg) { }
+        Status(const Code& code, const std::string& msg) : _code(code), _msg(msg) { }
+        Status(const std::string& source, const std::string& msg) : _code(GENERAL_ERROR), _source(source), _msg(msg) { }
+        Status(const Code& code, const std::string& source, const std::string& msg) : _code(code), _source(source), _msg(msg) { }
+        bool isOK() const { return _code == NO_ERROR; }
         bool isError() const { return !isOK(); }
-        const std::string& owner() const { return _owner; }
+        const Code& code() const { return _code; }
+        const std::string& source() const { return _source; }
         const std::string& message() const { return _msg; }
-        bool operator == (const Status& rhs) const { return _owner.compare(rhs._owner) == 0 && _msg.compare(rhs._msg) == 0; }
+        bool operator == (const Status& rhs) const { return _code == rhs._code && _source.compare(rhs._source) == 0 && _msg.compare(rhs._msg) == 0; }
         bool operator != (const Status& rhs) const { return !(*this==rhs); }
         bool const operator ! () const { return isError(); }
         static Status OK() { return Status(); }
+        static Status Error(const Code& code) { return Status(code); }
         static Status Error(const std::string& msg) { return Status(msg); }
+        static Status Error(const Code& code, const std::string& msg) { return Status(code, msg); }
         static Status Error(const std::string& owner, const std::string& msg) { return Status(owner, msg); }
+        static Status Error(const Code& code, const std::string& owner, const std::string& msg) { return Status(code, owner, msg); }
+        std::string toString() const;
     private:
-        std::string _owner;
+        Code _code;
+        std::string _source;
         std::string _msg;
     };
 

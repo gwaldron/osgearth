@@ -248,8 +248,7 @@ ModelLayer::open()
                     }
                     else
                     {
-                        OE_INFO << LC << "...mask init failed!" << std::endl;
-                        _status = Status::Error(getName(), Stringify() << "Mask source initialization failed, driver=" << driverName);
+                        _status = Status::Error(Status::SERVICE_UNAVAILABLE, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\"");
                     }
                 }
             }
@@ -261,7 +260,7 @@ ModelLayer::open()
         }
         else
         {
-            _status = Status::Error(getName(), Stringify() << "Failed to create driver \"" << driverName << "\"");
+            _status = Status::Error(Status::SERVICE_UNAVAILABLE, Stringify() << "Failed to create driver \"" << driverName << "\"");
         }
     }
 

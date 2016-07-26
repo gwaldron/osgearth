@@ -63,13 +63,13 @@ public:
         URI xyzURI = _options.url().value();
         if ( xyzURI.empty() )
         {
-            return Status::Error( "Fail: driver requires a valid \"url\" property" );
+            return Status::Error( Status::CONFIGURATION_ERROR, "Fail: driver requires a valid \"url\" property" );
         }
 
         // driver requires a profile.
         if ( !getProfile() )
         {
-            return Status::Error( "An explicit profile definition is required by the XYZ driver." );
+            return Status::Error( Status::CONFIGURATION_ERROR, "An explicit profile definition is required by the XYZ driver." );
         }
 
         _template = xyzURI.full();

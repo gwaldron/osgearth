@@ -197,7 +197,7 @@ namespace osgEarth
         /** 
          * Gets the name of this model layer
          */
-        const std::string& getName() const { return *_runtimeOptions.name(); }
+        const std::string& getName() const { return _runtimeOptions.name().get(); }
 
         /**
          * Gets the initialization options for this layer.

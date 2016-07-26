@@ -47,27 +47,27 @@ public:
 
         if (!_options.options().isSet())
         {
-            return Status::Error("Please specify a image layer for the skyview driver.");
+            return Status::Error(Status::CONFIGURATION_ERROR, "Please specify a image layer for the skyview driver.");
         }
 
         _source = TileSourceFactory::create( *_options.options());
 
         if (!_source.valid())
         {
-            return Status::Error("Failed to load image layer for skyview driver");
+            return Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to load image layer for skyview driver");
         }
 
          // Open the tile source (if it hasn't already been started)
         Status status = _source->getStatus();
-        if ( status != osgEarth::STATUS_OK )
+        if (status.isError())
         {
             status = _source->open(TileSource::MODE_READ, _dbOptions.get());
         }
 
-         if ( status != osgEarth::STATUS_OK )
-         {
-            return Status::Error("Failed to open image layer for skyview driver");
-         }
+        if (status.isError())
+        {
+            return status;
+        }
         
         setProfile(_source->getProfile());           
 

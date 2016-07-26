@@ -54,7 +54,7 @@ public: // FeatureFilter
         // Load the feature source containing the intersection geometry.
         _featureSource = FeatureSourceFactory::create( features().get() );
         if ( !_featureSource.valid() )
-            return Status::Error(LC, Stringify()<< "Failed to create feature driver \"" << features()->getDriver() << "\"");
+            return Status::Error(Status::SERVICE_UNAVAILABLE, Stringify()<< "Failed to create feature driver \"" << features()->getDriver() << "\"");
 
         const Status& s = _featureSource->open(readOptions);
         if (s.isError())

@@ -136,7 +136,7 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     }
 
     if (!_features.valid())
-        return Status::Error(LC, "Failed to create a feature driver");
+        return Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to create a feature driver");
 
     // open the feature source if it exists:
     const Status& featuresStatus = _features->open(_readOptions.get());
@@ -146,7 +146,7 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     // Try to fill the DataExtent list using the FeatureProfile
     const FeatureProfile* featureProfile = _features->getFeatureProfile();
     if (featureProfile == NULL)
-        return Status::Error(LC, "Failed to establish a feature profile");
+        return Status::Error("Failed to establish a feature profile");
 
     if (featureProfile->getProfile() != NULL)
     {
@@ -202,7 +202,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     if ( !factory )
     {
         OE_WARN << LC << "Unable to create a feature node factory!" << std::endl;
-        setStatus(Status::Error("Failed to create a feature node factory"));
+        setStatus(Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to create a feature node factory"));
         return 0L;
     }
 

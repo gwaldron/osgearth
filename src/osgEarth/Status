@@ -32,23 +32,23 @@ namespace osgEarth
     {
     public:
         enum Code {
-            NO_ERROR,
-            RESOURCE_UNAVAILABLE,  // e.g. failure to access a file, URL, database, or other resource
-            SERVICE_UNAVAILABLE,   // e.g. failure to load a plugin, extension, or other module
-            CONFIGURATION_ERROR,   // required data or properties missing
-            ASSERTION_FAILURE,     // an illegal software state was detected
-            GENERAL_ERROR          // something else went wrong
+            NoError,
+            ResourceUnavailable,  // e.g. failure to access a file, URL, database, or other resource
+            ServiceUnavailable,   // e.g. failure to load a plugin, extension, or other module
+            ConfigurationError,   // required data or properties missing
+            AssertionFailure,     // an illegal software state was detected
+            GeneralError          // something else went wrong
         };
 
     public:
-        Status() : _code(NO_ERROR) { }
+        Status() : _code(NoError) { }
         Status(const Status& rhs) : _code(rhs._code), _source(rhs._source), _msg(rhs._msg) { }
         Status(const Code& code) : _code(code) { }
-        Status(const std::string& msg) : _code(GENERAL_ERROR), _msg(msg) { }
+        Status(const std::string& msg) : _code(GeneralError), _msg(msg) { }
         Status(const Code& code, const std::string& msg) : _code(code), _msg(msg) { }
-        Status(const std::string& source, const std::string& msg) : _code(GENERAL_ERROR), _source(source), _msg(msg) { }
+        Status(const std::string& source, const std::string& msg) : _code(GeneralError), _source(source), _msg(msg) { }
         Status(const Code& code, const std::string& source, const std::string& msg) : _code(code), _source(source), _msg(msg) { }
-        bool isOK() const { return _code == NO_ERROR; }
+        bool isOK() const { return _code == NoError; }
         bool isError() const { return !isOK(); }
         const Code& code() const { return _code; }
         const std::string& source() const { return _source; }

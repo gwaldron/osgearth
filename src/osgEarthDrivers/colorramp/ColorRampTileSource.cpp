@@ -52,7 +52,7 @@ public:
 
         if (!_options.elevationLayer().isSet())
         {
-            return Status::Error(Status::CONFIGURATION_ERROR, "Please specify a heightfield layer for the color ramp");
+            return Status::Error(Status::ConfigurationError, "Please specify a heightfield layer for the color ramp");
         }
         
         _layer = new ElevationLayer(*_options.elevationLayer() );

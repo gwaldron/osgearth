@@ -117,7 +117,7 @@ public:
         osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
         if ( !capabilities.valid() )
         {
-            return Status::Error( Status::RESOURCE_UNAVAILABLE, "Unable to read WMS GetCapabilities." );
+            return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
         }
         else
         {

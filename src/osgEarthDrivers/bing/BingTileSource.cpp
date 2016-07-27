@@ -88,7 +88,7 @@ public:
         // If the user did not include an API key, fail.
         if ( !apiKey().isSet() )
         {
-            return Status::Error(Status::CONFIGURATION_ERROR, "Bing API key is required");
+            return Status::Error(Status::ConfigurationError, "Bing API key is required");
         }
 
         // If the user did not specify an imagery set, default to aerial.

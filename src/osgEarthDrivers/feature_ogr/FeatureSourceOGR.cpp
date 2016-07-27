@@ -138,7 +138,7 @@ public:
         // If nothing was set, we're done
         if (_source.empty() && !_geometry.valid())
         {
-            return Status::Error(Status::CONFIGURATION_ERROR, "No URL, connection, or inline geometry provided");
+            return Status::Error(Status::ConfigurationError, "No URL, connection, or inline geometry provided");
         }
 
         // Try to open the datasource and establish a feature profile.        
@@ -187,7 +187,7 @@ public:
 
             _dsHandle = OGROpenShared( _source.c_str(), openMode, &_ogrDriverHandle );
             if ( !_dsHandle )
-                return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Failed to open \"" << _source << "\"");
+                return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\"");
 
             if (openMode == 1)
                 _writable = true;
@@ -195,7 +195,7 @@ public:
             // Open a specific layer within the data source, if applicable:
             _layerHandle = openLayer(_dsHandle, _options.layer().value());
             if ( !_layerHandle )
-                return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Failed to open layer \"" << _options.layer().get() << "\" from \"" << _source << "\"");
+                return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open layer \"" << _options.layer().get() << "\" from \"" << _source << "\"");
 
 
             // if the user provided a profile, use that:
@@ -210,20 +210,20 @@ public:
                 // extract the SRS and Extent:                
                 OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
                 if (!srHandle)
-                    return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "No spatial reference found in \"" << _source << "\"");
+                    return Status::Error(Status::ResourceUnavailable, Stringify() << "No spatial reference found in \"" << _source << "\"");
 
                 osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
                 if (!srs.valid())
-                    return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Unrecognized SRS found in \"" << _source << "\"");
+                    return Status::Error(Status::ResourceUnavailable, Stringify() << "Unrecognized SRS found in \"" << _source << "\"");
 
                 // extract the full extent of the layer:
                 OGREnvelope env;
                 if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) != OGRERR_NONE )
-                    return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Invalid extent returned from \"" << _source << "\"");
+                    return Status::Error(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
 
                 GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
                 if ( !extent.isValid() )
-                    return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify() << "Invalid extent returned from \"" << _source << "\"");
+                    return Status::Error(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
 
                 // Made it!
                 featureProfile = new FeatureProfile(extent);
@@ -308,7 +308,7 @@ public:
 
         else
         {
-            return Status::Error(Status::RESOURCE_UNAVAILABLE, "Failed to establish a valid feature profile");
+            return Status::Error(Status::ResourceUnavailable, "Failed to establish a valid feature profile");
         }
 
         return Status::OK();

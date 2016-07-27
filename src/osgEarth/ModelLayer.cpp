@@ -248,7 +248,7 @@ ModelLayer::open()
                     }
                     else
                     {
-                        _status = Status::Error(Status::SERVICE_UNAVAILABLE, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\"");
+                        _status = Status::Error(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\"");
                     }
                 }
             }
@@ -260,7 +260,7 @@ ModelLayer::open()
         }
         else
         {
-            _status = Status::Error(Status::SERVICE_UNAVAILABLE, Stringify() << "Failed to create driver \"" << driverName << "\"");
+            _status = Status::Error(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
         }
     }
 

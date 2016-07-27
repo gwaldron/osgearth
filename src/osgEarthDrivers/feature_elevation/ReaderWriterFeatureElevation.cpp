@@ -72,14 +72,14 @@ public:
 
         if ( !_options.featureOptions().isSet() )
         {
-            return Status::Error(Status::CONFIGURATION_ERROR, "Feature source is required" );
+            return Status::Error(Status::ConfigurationError, "Feature source is required" );
         }
     
         // create the driver:
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
-            return Status::Error(Status::SERVICE_UNAVAILABLE, "Cannot find feature driver \"" + _options.featureOptions()->getDriver() + "\"");
+            return Status::Error(Status::ServiceUnavailable, "Cannot find feature driver \"" + _options.featureOptions()->getDriver() + "\"");
         }
 
         // open the feature source:

@@ -95,7 +95,7 @@ public:
         _capabilities = WFSCapabilitiesReader::read( capUrl, _readOptions.get() );
         if ( !_capabilities.valid() )
         {
-            return Status::Error(Status::RESOURCE_UNAVAILABLE, Stringify()<<"Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
+            return Status::Error(Status::ResourceUnavailable, Stringify()<<"Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
         }
         else
         {

@@ -47,14 +47,14 @@ public:
 
         if (!_options.options().isSet())
         {
-            return Status::Error(Status::CONFIGURATION_ERROR, "Please specify a image layer for the skyview driver.");
+            return Status::Error(Status::ConfigurationError, "Please specify a image layer for the skyview driver.");
         }
 
         _source = TileSourceFactory::create( *_options.options());
 
         if (!_source.valid())
         {
-            return Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to load image layer for skyview driver");
+            return Status::Error(Status::ServiceUnavailable, "Failed to load image layer for skyview driver");
         }
 
          // Open the tile source (if it hasn't already been started)

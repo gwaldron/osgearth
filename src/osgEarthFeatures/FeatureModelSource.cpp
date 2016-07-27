@@ -136,7 +136,7 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     }
 
     if (!_features.valid())
-        return Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to create a feature driver");
+        return Status::Error(Status::ServiceUnavailable, "Failed to create a feature driver");
 
     // open the feature source if it exists:
     const Status& featuresStatus = _features->open(_readOptions.get());
@@ -202,7 +202,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     if ( !factory )
     {
         OE_WARN << LC << "Unable to create a feature node factory!" << std::endl;
-        setStatus(Status::Error(Status::SERVICE_UNAVAILABLE, "Failed to create a feature node factory"));
+        setStatus(Status::Error(Status::ServiceUnavailable, "Failed to create a feature node factory"));
         return 0L;
     }
 

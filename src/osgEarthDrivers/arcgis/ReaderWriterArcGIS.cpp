@@ -137,7 +137,7 @@ public:
 			OE_INFO << LC << "_map_service.init failed: " << _map_service.getError() << std::endl;
 
             return Status::Error(
-                Status::RESOURCE_UNAVAILABLE, Stringify()
+                Status::ResourceUnavailable, Stringify()
                     << "[osgearth] [ArcGIS] map service initialization failed: "
                     << _map_service.getError() );
         }

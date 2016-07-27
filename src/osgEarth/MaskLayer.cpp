@@ -121,7 +121,7 @@ MaskLayer::initialize()
         _maskSource = MaskSourceFactory::create( *_initOptions.driver() );
         if (!_maskSource.valid())
         {
-            return Status::Error(Status::SERVICE_UNAVAILABLE, Stringify()<<"Failed to create mask driver (" << _initOptions.driver()->getDriver() << ")");
+            return Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to create mask driver (" << _initOptions.driver()->getDriver() << ")");
         }
     }
 

@@ -24,6 +24,7 @@
 #define OSGEARTH_ANNOTATION_BBOXDRAWABLE_H 1
 
 #include <osgEarthSymbology/BBoxSymbol>
+#include <osgEarthAnnotation/Common>
 
 #include <osg/Geometry>
 
@@ -32,7 +33,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Drawable for rendering bounding box around label
      */
-    class BboxDrawable : public osg::Geometry
+    class OSGEARTHANNO_EXPORT BboxDrawable : public osg::Geometry
     {
 
     public:

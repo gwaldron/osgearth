@@ -707,7 +707,8 @@ TerrainLayer::createTileSource()
             ts = TileSourceFactory::create( *_runtimeOptions->driver() );
             if ( !ts.valid() )
             {
-                OE_WARN << LC << "Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+                setStatus(Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n"));
+                return 0L;
             }
         }
     }
@@ -785,6 +786,7 @@ TerrainLayer::createTileSource()
     else
     {
         disable(tileSourceStatus.message());
+        setStatus(tileSourceStatus);
     }
     //if (!ts.valid() && getCacheSettings()->isCacheDisabled())
     //{

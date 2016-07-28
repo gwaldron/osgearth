@@ -45,7 +45,6 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-#include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 #include <osgEarthDrivers/feature_mapnikvectortiles/MVTFeatureOptions>
 

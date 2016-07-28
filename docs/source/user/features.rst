@@ -359,6 +359,40 @@ More below.
 Paging breaks the data up into tiles. The ``tile_size`` is the width (in meters)
 of each paged tile.
 
+Cropping features
+~~~~~~~~~~~~~~~~~
+
+By default, if a feature intersects the tile, it will be included even if it extends outside 
+extents of the tile.  This is useful for things like extruded buildings where it doesn't make sense
+to try to chop them to fit exactly in the tiles because you don't want to see half a building page in.
+Buildings are also generally small, so the distance that they will extend outside the tile is relatively small.
+
+For things like roads or country borders that are linear features, it might make more sense to crop
+them to fit the tile exactly.  Visually a line won't look that bad if you see part if it page in.
+You can enable feature cropping on a layout by setting the ``crop_features`` attribute to true on the layout.
+
+For example::
+
+  <model name="roads" driver="feature_geom">
+        <features name="roads" driver="ogr" build_spatial_index="true">
+              <url>roads.shp</url>
+        </features>
+          
+        <layout crop_features="true" tile_size="1000">
+            <level max_range="5000"/>
+        </layout>
+          
+        <styles>
+            <style type="text/css">
+                roads {
+                    stroke:  #ffff7f7f;
+                  }
+            </style>
+        </styles>        
+  </model>
+
+
+
 Levels
 ~~~~~~
 

@@ -191,7 +191,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
             // build the geometry:
             tileAndBuildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
-            //buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             if (allPoints && allPoints->size() > 0)
@@ -642,9 +641,6 @@ bool tesselateGeometry(osg::Geometry* geometry)
  */
 void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsigned int numCols, unsigned int numRows, GeometryCollection& out)
 {
-    // Clear the output list.
-    out.clear();
-
     Bounds b = geometry->getBounds();
     double tw = b.width() / (double)numCols;
     double th = b.height() / (double)numRows;
@@ -691,9 +687,8 @@ void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsign
  */
 void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSRS, double targetTileSizeDeg, unsigned int maxPointsPerTile, GeometryCollection& out)
 {
-    // Clear the output list.
     GeometryCollection tiles;
-    
+ 
     unsigned int count = geometry->size();
 
     unsigned int tx = 1;
@@ -701,33 +696,55 @@ void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSR
 
     // Tile the geometry if it's geospatial size is too large to have a sensible local tangent plane.
     GeoExtent featureExtentDeg = GeoExtent(featureSRS, geometry->getBounds()).transform(SpatialReference::create("wgs84"));
+    double maxLatitude= 70;
+    if (featureExtentDeg.yMax() > maxLatitude)
+    {
+        // If the feature extent is above 80 degrees latitude, then we split the feature into two since the tiling and tesselation doesn't work well
+        // at high levels of latitude
+        osg::ref_ptr< Feature > feature = new Feature(geometry, featureSRS);
+        feature->transform(SpatialReference::create("wgs84"));
 
-    // Tile based on the extent
-    if ( featureExtentDeg.width() > targetTileSizeDeg  || featureExtentDeg.height() > targetTileSizeDeg)
-    {
-        // Determine the tile size based on the extent.
-        tx = ceil( featureExtentDeg.width() / targetTileSizeDeg );
-        ty = ceil (featureExtentDeg.height() / targetTileSizeDeg );        
-    }
-    else if (count > maxPointsPerTile)
-    {
-        // Determine the size based on the number of points.
-        unsigned numTiles = ((double)count / (double)maxPointsPerTile) + 1u;
-        tx = ceil(sqrt((double)numTiles));
-        ty = tx;        
-    }
+        // Do the top of the extents.  We don't tile this b/c geos isn't happy with it.
+        osg::ref_ptr< Geometry > top;
+        if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), maxLatitude, featureExtentDeg.xMax(), featureExtentDeg.yMax()), top))
+        {
+            tiles.push_back( top.get() );
+        }
 
-    if (tx == 1 && ty == 1)
-    {
-        // The geometry doesn't need modified so just add it to the list.
-        tiles.push_back( geometry );
+        // Do the bottom of the extents.  We tile this b/c it's at a lower latitiude.
+        osg::ref_ptr< Geometry > bottom;
+        if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), featureExtentDeg.yMin(), featureExtentDeg.xMax(), maxLatitude), bottom))
+        {
+            prepareForTesselation( bottom.get(), feature->getSRS(), targetTileSizeDeg, maxPointsPerTile, tiles);
+        }
     }
     else
     {
-        tileGeometry( geometry, featureSRS, tx, ty, tiles );
-    }
+        // Tile based on the extent
+        if ( featureExtentDeg.width() > targetTileSizeDeg  || featureExtentDeg.height() > targetTileSizeDeg)
+        {
+            // Determine the tile size based on the extent.
+            tx = ceil( featureExtentDeg.width() / targetTileSizeDeg );
+            ty = ceil (featureExtentDeg.height() / targetTileSizeDeg );        
+        }
+        else if (count > maxPointsPerTile)
+        {
+            // Determine the size based on the number of points.
+            unsigned numTiles = ((double)count / (double)maxPointsPerTile) + 1u;
+            tx = ceil(sqrt((double)numTiles));
+            ty = tx;        
+        }
 
-    out.clear();
+        if (tx == 1 && ty == 1)
+        {
+            // The geometry doesn't need modified so just add it to the list.
+            tiles.push_back( geometry );
+        }
+        else
+        {
+            tileGeometry( geometry, featureSRS, tx, ty, tiles );
+        }        
+    }
 
     // Copy the output tiles to the output.
     std::copy(tiles.begin(), tiles.end(), std::back_inserter(out));

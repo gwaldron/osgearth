@@ -8,6 +8,5 @@ load and display external 3D models.
    :maxdepth: 1
 
    feature_geom
-   feature_stencil
    simple
    

@@ -37,7 +37,6 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
-#include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 #include <osgDB/WriteFile>
 
@@ -52,7 +51,6 @@ int usage( const std::string& app )
     OE_NOTICE "\n" << app << "\n"
         << "    --rasterize           : draw features as rasterized image tiles \n"
         << "    --overlay             : draw features as projection texture \n"
-        << "    --stencil             : draw features using the stencil buffer \n"
         << "    --mem                 : load features from memory \n"
         << "    --labels              : add feature labels \n"
         << "\n"
@@ -73,12 +71,9 @@ int main(int argc, char** argv)
 
     bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
-    bool useStencil = arguments.read("--stencil");
     bool useMem     = arguments.read("--mem");
     bool useLabels  = arguments.read("--labels");
 
-    if ( useStencil )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     osgViewer::Viewer viewer(arguments);
 
@@ -130,18 +125,7 @@ int main(int argc, char** argv)
     // Process cmdline args
     MapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
    
-    if (useStencil)
-    {
-        FeatureStencilModelOptions stencilOptions;
-        stencilOptions.featureOptions() = featureOptions;
-        stencilOptions.styles() = new StyleSheet();
-        stencilOptions.styles()->addStyle( style );
-        stencilOptions.enableLighting() = false;
-        stencilOptions.depthTestEnabled() = false;
-        ls->stroke()->width() = 0.1f;
-        map->addModelLayer( new ModelLayer("my features", stencilOptions) );
-    }
-    else if (useRaster)
+    if (useRaster)
     {
         AGGLiteOptions rasterOptions;
         rasterOptions.featureOptions() = featureOptions;
@@ -186,9 +170,7 @@ int main(int argc, char** argv)
         map->addModelLayer( new ModelLayer("labels", geomOptions) );
     }
 
-    if ( !useStencil )
-        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(mapNode) );
-
+    
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());

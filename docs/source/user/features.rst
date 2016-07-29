@@ -359,6 +359,40 @@ More below.
 Paging breaks the data up into tiles. The ``tile_size`` is the width (in meters)
 of each paged tile.
 
+Cropping features
+~~~~~~~~~~~~~~~~~
+
+By default, if a feature intersects the tile, it will be included even if it extends outside 
+extents of the tile.  This is useful for things like extruded buildings where it doesn't make sense
+to try to chop them to fit exactly in the tiles because you don't want to see half a building page in.
+Buildings are also generally small, so the distance that they will extend outside the tile is relatively small.
+
+For things like roads or country borders that are linear features, it might make more sense to crop
+them to fit the tile exactly.  Visually a line won't look that bad if you see part if it page in.
+You can enable feature cropping on a layout by setting the ``crop_features`` attribute to true on the layout.
+
+For example::
+
+  <model name="roads" driver="feature_geom">
+        <features name="roads" driver="ogr" build_spatial_index="true">
+              <url>roads.shp</url>
+        </features>
+          
+        <layout crop_features="true" tile_size="1000">
+            <level max_range="5000"/>
+        </layout>
+          
+        <styles>
+            <style type="text/css">
+                roads {
+                    stroke:  #ffff7f7f;
+                  }
+            </style>
+        </styles>        
+  </model>
+
+
+
 Levels
 ~~~~~~
 
@@ -374,3 +408,36 @@ sending large batches of similar geometry to the graphics card, tweaking the
 tile size can help with performance and throughput. Unfortunately there's no way
 for osgEarth to know exactly what the "best" tile size will be in advance;
 so, you have the opportunity to tweak using this setting.
+
+Layout Settings
+~~~~~~~~~~~~~~~
+
+    :tile_size:         The size (in one dimension) of each tile of features in the layout
+                        at the maximum range. Maximum range must be set for this to take effect.                                                      
+    :tile_size_factor:  The ratio of visibility range to feature tile radius. Default is 15.
+                        Increase this to produce more, smaller tiles at a given visibility
+                        range; decrease this to produce fewer, larger tiles.
+                        For example, for factor=15, at a visibility range of (say) 120,000m
+                        the system will attempt to create tiles that are approximately
+                        8,000m in radius. (120,000 / 15 = 8,000).
+    :max_range:         The desired max range for pre-tiled feature sources like TFS.  The tileSizeFactor will be automatically computed
+                        based on the first level of the feature profile so that it shows up at that range.
+    :min_range:         Minimum visibility range for all tiles in the layout.
+    :crop_features:     Whether to crop geometry to fit within the cell extents when chopping
+                        a feature level up into grid cells. By default, this is false, meaning 
+                        that a feature whose centroid falls within the cell will be included.
+                        Setting this to true means that if any part of the feature falls within
+                        the working cell, it will be cropped to the cell extents and used.
+    :priority_offset:   Sets the offset that will be applied to the computed paging priority
+                        of tiles in this layout. Adjusting this can affect the priority of this
+                        data with respect to other paged data in the scene (like terrain or other
+                        feature layers).
+                        Default = 0.0
+    :priority_scale:    Sets the scale factor to be applied to the computed paging priority
+                        of tiles in this layout. Adjusting this can affect the priority of this
+                        data with respect to other paged data in the scene (like terrain or other
+                        feature layers).
+                        Default = 1.0.
+    :min_expiry_time:   Minimum time, in second, before a feature tile is eligible for pageout.
+                        Set this to a negative number to disable expiration altogether (i.e., tiles
+                        will never page out).

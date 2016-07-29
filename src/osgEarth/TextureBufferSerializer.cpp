@@ -33,6 +33,5 @@ namespace
     {
         ADD_IMAGE_SERIALIZER( Image, osg::Image, NULL );  // _image
         ADD_INT_SERIALIZER( TextureWidth, 0 );  // _textureWidth
-        ADD_UINT_SERIALIZER( UsageHint, GL_STREAM_DRAW );
     }
 }

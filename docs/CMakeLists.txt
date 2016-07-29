@@ -49,7 +49,6 @@ set( DOCS_REFERENCES_DRIVERS_MODEL
     source/references/drivers/model/feature_geom.rst
     source/references/drivers/model/feature_model_shared_blocks.rst
     source/references/drivers/model/feature_model_shared_props.rst
-    source/references/drivers/model/feature_stencil.rst
     source/references/drivers/model/index.rst
     source/references/drivers/model/simple.rst
 )

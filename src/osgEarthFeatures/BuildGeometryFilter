@@ -103,7 +103,6 @@ namespace osgEarth { namespace Features
             const SpatialReference* featureSRS,
             const SpatialReference* mapSRS,
             bool                    makeECEF,
-            bool                    tessellate,
             osg::Geometry*          osgGeom,
             const osg::Matrixd      &world2local);
 

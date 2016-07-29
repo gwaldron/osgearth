@@ -822,7 +822,6 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)
     {
         Geometry* geom = tiles[ringIndex].get();
-        //Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
         if (geom)
         {
             // temporary target geometry for this cell:
@@ -836,7 +835,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
             cellCenter.createWorldToLocal( world2cell );
 
             // build the localized polygon:
-            buildPolygon(geom, featureSRS, mapSRS, makeECEF, tessellate, temp.get(), world2cell);
+            buildPolygon(geom, featureSRS, mapSRS, makeECEF, temp.get(), world2cell);
 
             // if successful, transform the verts back into our master LTP:
             if ( temp->getNumPrimitiveSets() > 0 )
@@ -912,7 +911,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                                   const SpatialReference* featureSRS,
                                   const SpatialReference* mapSRS,
                                   bool                    makeECEF,
-                                  bool                    tessellate,
                                   osg::Geometry*          osgGeom,
                                   const osg::Matrixd      &world2local)
 {

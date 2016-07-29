@@ -21,6 +21,8 @@
 #include <osg/Transform>
 #include <osgEarth/Registry>
 #include <osg/ValueObject>
+#include <osg/Geometry>
+#include <osg/Geode>
 
 #define LC "[Horizon] "
 
@@ -406,5 +408,84 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     else
     {
         traverse(node, nv);
+    }
+}
+
+
+
+
+HorizonNode::HorizonNode()
+{
+    const float r = 25.0f;
+
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    for (unsigned x = 0; x<=(unsigned)r; ++x) {
+        verts->push_back(osg::Vec3(-0.5f + float(x) / r, -0.5f, 0.0f));
+        verts->push_back(osg::Vec3(-0.5f + float(x) / r,  0.5f, 0.0f));
+    }
+    for (unsigned y=0; y<=(unsigned)r; ++y) {
+        verts->push_back(osg::Vec3(-0.5f, -0.5f + float(y)/r, 0.0f));
+        verts->push_back(osg::Vec3( 0.5f, -0.5f + float(y)/r, 0.0f));
+    }
+
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    colors->push_back(osg::Vec4(1,1,1,1));
+
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setVertexArray(verts);
+    geom->setColorArray(colors);
+    geom->setColorBinding(geom->BIND_OVERALL);
+    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable(geom);
+
+    this->addChild(geode);
+
+    setMatrix(osg::Matrix::scale(15e6, 15e6, 15e6));
+}
+
+void
+HorizonNode::traverse(osg::NodeVisitor& nv)
+{
+    bool isStealth = (VisitorData::isSet(nv, "osgEarth.Stealth"));
+
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    {
+        if (!isStealth)
+        {
+            //Horizon* h = Horizon::get(nv);
+            osg::ref_ptr<Horizon> h = new Horizon();
+
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+
+            osg::Vec3d eye = osg::Vec3d(0,0,0) * cv->getCurrentCamera()->getInverseViewMatrix();
+            h->setEye(eye);
+
+            osg::Plane plane;
+            if (h->getPlane(plane))
+            {
+                osg::Quat q;
+                q.makeRotate(osg::Plane::Vec3_type(0,0,1), plane.getNormal());
+
+                double dist = plane.distance(osg::Vec3d(0,0,0));
+
+                osg::Matrix m;
+                m.preMultRotate(q);
+                m.preMultTranslate(osg::Vec3d(0, 0, -dist));
+                m.preMultScale(osg::Vec3d(15e6, 15e6, 15e6));
+
+                setMatrix(m);
+            }
+        }
+        else
+        {
+            osg::MatrixTransform::traverse(nv);
+        }
+    }
+       
+    else
+    {
+        osg::MatrixTransform::traverse(nv);
     }
 }

@@ -221,6 +221,12 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         _requireParentTextures = true;
     }
 
+    // Terrain morphing doesn't work in projected maps:
+    if (map->getSRS()->isProjected())
+    {
+        _terrainOptions.morphTerrain() = false;
+    }
+
     // if the envvar for tile expiration is set, overide the options setting
     const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
     if ( val )
@@ -259,10 +265,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 #endif
 
     // A shared geometry pool.
-    if ( ::getenv("OSGEARTH_REX_NO_POOL") == 0L )
-    {
-        _geometryPool = new GeometryPool( _terrainOptions );
-    }
+    _geometryPool = new GeometryPool( _terrainOptions );
 
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
@@ -436,9 +439,20 @@ RexTerrainEngineNode::dirtyTerrain()
         setupRenderBindings();
     }
 
-    // recalculate the LOD morphing parameters:
-    //destroySelectionInfo();
-    //buildSelectionInfo();
+    // Calculate the LOD morphing parameters:
+    double averageRadius = 0.5*(
+        _update_mapf->getMapInfo().getSRS()->getEllipsoid()->getRadiusEquator() +
+        _update_mapf->getMapInfo().getSRS()->getEllipsoid()->getRadiusPolar());
+
+    double farLOD = 
+        _terrainOptions.minTileRangeFactor().get() *
+        3.214 * averageRadius;
+
+    _selectionInfo.initialize(
+        0u, // always zero, not the terrain options firstLOD
+        std::min( _terrainOptions.maxLOD().get(), 19u ),
+        _terrainOptions.tileSize().get(),
+        farLOD );
 
     // clear out the tile registry:
     if ( _liveTiles.valid() )

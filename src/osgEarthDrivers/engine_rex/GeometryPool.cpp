@@ -47,6 +47,7 @@ _debug   ( false )
     if ( ::getenv("OSGEARTH_REX_NO_POOL") )
     {
         _enabled = false;
+        OE_INFO << LC << "Geometry pool disabled (environment)" << std::endl;
     }
 }
 

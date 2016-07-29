@@ -159,8 +159,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
 
-        float getVisibilityRangeHint(EngineContext*) const;
-
         void createPayloadStateSet(EngineContext*);
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);

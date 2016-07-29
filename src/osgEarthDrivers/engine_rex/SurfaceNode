@@ -43,19 +43,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct HorizonTileCuller
     {
-        double      _radiusPolar, _radiusEquator;
         osg::Vec3d  _points[4];
-        osg::Matrix _local2world;
         osg::ref_ptr<Horizon> _horizon;
 
         void set(const SpatialReference* srs, const osg::Matrix& local2world, const osg::BoundingBox& bbox);
 
-        inline bool isVisible(const osg::Vec3d& from) const {
-            for(unsigned i=0; i<4; ++i)
-                if ( _horizon->isVisible(from, _points[i], 0.0) )
-                    return true;
-            return false;
-        }
+        bool isVisible(const osg::Vec3d& from) const;
     };
 
 

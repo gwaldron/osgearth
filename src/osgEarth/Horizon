@@ -28,6 +28,7 @@
 #include <osg/observer_ptr>
 #include <osg/Version>
 #include <osg/ValueObject>
+#include <osg/MatrixTransform>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
 #    define OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
@@ -187,6 +188,14 @@ namespace osgEarth
         osg::observer_ptr<osg::Node> _proxy;
     };
 
+
+    // Debugging node for visualizing the horizon in stealth mode
+    class OSGEARTH_EXPORT HorizonNode : public osg::MatrixTransform
+    {
+    public:
+        HorizonNode();
+        void traverse(osg::NodeVisitor& nv);
+    };
 
 }
 

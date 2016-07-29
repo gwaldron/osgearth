@@ -130,24 +130,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         patchDrawable );
 
-    // PPP: Better way to do this rather than here?
-    // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
-    if (context->getSelectionInfo().initialized()==false)
-    {
-        static Threading::Mutex s_selInfoMutex;
-        Threading::ScopedMutexLock lock(s_selInfoMutex);
-        if ( context->getSelectionInfo().initialized()==false)
-        {
-            SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
-
-            unsigned uiFirstLOD = *(context->_options.firstLOD());
-            unsigned uiMaxLod   = std::min( context->_options.maxLOD().get(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
-            unsigned uiTileSize = *(context->_options.tileSize());
-
-            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(context));
-        }
-    }
-
     // initialize all the per-tile uniforms the shaders will need:
     createPayloadStateSet(context);
 
@@ -282,25 +264,6 @@ TileNode::releaseGLObjects(osg::State* state) const
     osg::Group::releaseGLObjects(state);
 }
 
-float
-TileNode::getVisibilityRangeHint(EngineContext* context) const
-{    
-    unsigned firstLOD = context->_options.firstLOD().get();
-    float mtrf = context->_options.minTileRangeFactor().get();
-
-    if (getTileKey().getLOD()!=firstLOD)
-    {
-        OE_INFO << LC <<"Error: Visibility Range hint can be computed only using the first LOD"<<std::endl;
-        return -1;
-    }
-    // The motivation here is to use the extents of the tile at lowest resolution
-    // along with a factor as an estimate of the visibility range
-    const float factor = mtrf * 3.214f; //2.5f;
-    const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
-    return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
-}
-
-
 bool
 TileNode::shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo)
 {
@@ -331,7 +294,7 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 {
     bool visible = false;
 
-    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG); //static_cast<EngineContext*>( cv->getUserData() );
+    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
 
     // Shows all culled tiles, good for testing culling
     unsigned frame = cv->getFrameStamp()->getFrameNumber();

@@ -247,6 +247,8 @@ main( int argc, char** argv )
     mct->addCallback( new PlacerCallback(place, viewer.getView(0)) );
     viewer.getView(1)->addEventHandler( mct );
 
+    mapNode->addChild(new HorizonNode());
+
     viewer.getView(1)->getCamera()->addCullCallback( new VisitorData::Install("osgEarth.Stealth") );
 
     while (!viewer.done())

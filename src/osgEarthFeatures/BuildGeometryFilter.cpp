@@ -683,42 +683,7 @@ void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsign
     }
 }
 
-/**
- * Tiles the geometry up until all the cells have less than given number of points.
- */
-void downsizeGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsigned int maxPoints, GeometryCollection& out)
-{
-    // If the geometyr is greater than the maximum number of points, we need to tile it up further.
-    if (geometry->size() > maxPoints)
-    {
-        OE_NOTICE << "Downsizing geometry of size " << geometry->size() << std::endl;
-        // Tile the geometry.
-        GeometryCollection tmp;
-        tileGeometry(geometry, featureSRS, 2, 2, tmp );
-        
-        for (unsigned int i = 0; i < tmp.size(); i++)
-        {
-            Geometry* g = tmp[i].get();
 
-            // If the generated geometry still has too many points, continue to downsample it recursively.
-            if (g->size() > maxPoints)
-            {
-                // We pass "out" as the destination here since downsizeGeometry will only append tiles that are less than the max size.
-                downsizeGeometry( g, featureSRS, maxPoints, out );
-            }
-            else
-            {
-                // Append the geometry to the output list.
-                out.push_back( g );
-            }
-        }
-    }
-    else
-    {
-        // The geometry is valid, so add it to the output list.
-        out.push_back( geometry );
-    }
-}
 
 /**
  * Prepares a geometry into a grid if it is too big geospatially to have a sensible local tangent plane
@@ -764,29 +729,8 @@ void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSR
 
     out.clear();
 
-#if 1
-    // Just copy the output tiles to the output.
+    // Copy the output tiles to the output.
     std::copy(tiles.begin(), tiles.end(), std::back_inserter(out));
-#else
-    // Calling this code will recursively subdivide the cells based on the number of points they have.
-    // This works but it will produces a non-regular grid which doesn't render well in geocentric
-    // due to the curvature of the earth so we disable it for now.
-    //
-    // Reduce the size of the tiles if needed.
-    for (unsigned int i = 0; i < tiles.size(); i++)
-    {
-        if (tiles[i]->size() > maxPointsPerTile)
-        {
-            GeometryCollection tmp;
-            downsizeGeometry(tiles[i].get(), featureSRS, maxPointsPerTile, tmp);
-            std::copy(tmp.begin(), tmp.end(), std::back_inserter(out));
-        }
-        else
-        {
-            out.push_back( tiles[i].get() );
-        }
-    }
-#endif
 }
 
 void
@@ -799,7 +743,6 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                                          const osg::Matrixd      &world2local)
 {
 #define MAX_POINTS_PER_CROP_TILE 1024
-//#define TARGET_TILE_SIZE_EXTENT_DEGREES 5
 
     if ( ring == 0L )
     {
@@ -812,7 +755,6 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
     GeometryCollection tiles;
     prepareForTesselation( ring, featureSRS, _maxPolyTilingAngle_deg.get(), MAX_POINTS_PER_CROP_TILE, tiles);    
-    //tiles.push_back( ring );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 

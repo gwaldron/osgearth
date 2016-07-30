@@ -33,7 +33,6 @@ namespace osgEarth
         optional() : _set(false), _value(T()), _defaultValue(T()) { }
         optional(T defaultValue) : _set(false), _value(defaultValue), _defaultValue(defaultValue) { }
         optional(T defaultValue, T value) : _set(true), _value(value), _defaultValue(defaultValue) { }
-        //optional(const optional<T>& rhs) { (*this)=rhs; }
         optional(const optional<T>& rhs) { operator=(rhs); }
         virtual ~optional() { }
         optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; _defaultValue=rhs._defaultValue; return *this; }
@@ -49,6 +48,7 @@ namespace osgEarth
         bool isSetTo(const T& value) const { return _set && _value==value; } // differs from == in that the value must be explicity set
         bool isSet() const { return _set; }
         void unset() { _set = false; _value=_defaultValue; }
+        void clear() { unset(); }
 
         const T& get() const { return _value; }
         const T& value() const { return _value; }

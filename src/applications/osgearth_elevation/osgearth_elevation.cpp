@@ -187,6 +187,7 @@ int main(int argc, char** argv)
 
     // Make the readout:
     Grid* grid = new Grid();
+    grid->setBackColor(osg::Vec4(0,0,0,0.5));
     grid->setControl(0,0,new LabelControl("Coords (Lat, Long):"));
     grid->setControl(0,1,new LabelControl("Map vertical datum:"));
     grid->setControl(0,2,new LabelControl("Height above geoid:"));

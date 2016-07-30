@@ -42,13 +42,13 @@ struct Settings
         if (chop.isSet())
         {
             ocean.SetChoppiness(chop.get());
-            chop.unset();
+            chop.clear();
         }
 
         if (seaState.isSet())
         {
             env.SimulateSeaState(seaState.get(), 0.0);
-            seaState.unset();
+            seaState.clear();
         }
 
         if (alpha.isSet())

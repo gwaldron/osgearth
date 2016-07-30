@@ -45,27 +45,27 @@ struct Settings
         if (visibility.isSet())
         {
             atmo.GetConditions().SetVisibility(visibility.get());
-            visibility.unset();
+            visibility.clear();
         }
 
         if (rain.isSet())
         {
             atmo.GetConditions().SetPrecipitation(CloudLayer::NONE, 0.0);
             atmo.GetConditions().SetPrecipitation(CloudLayer::RAIN, rain.get());
-            rain.unset();
+            rain.clear();
         }
 
         if (snow.isSet())
         {
             atmo.GetConditions().SetPrecipitation(CloudLayer::NONE, 0.0);
             atmo.GetConditions().SetPrecipitation(CloudLayer::DRY_SNOW, snow.get());
-            snow.unset();
+            snow.clear();
         }
 
         if (lighting.isSet())
         {
             sky->setLighting(lighting.get());
-            lighting.unset();
+            lighting.clear();
         }
     }
 };

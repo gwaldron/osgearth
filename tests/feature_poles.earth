@@ -1,0 +1,64 @@
+<!--
+osgEarth Sample
+
+This tests the rendering of features close to the poles.
+
+-->
+
+<map name="Feature Pole Tesselation Test" type="geocentric" version="2">
+
+    <options>
+        <lighting>false</lighting>
+    </options>
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+
+
+    <model name="polygon" driver="feature_geom">
+        <features driver="ogr">
+            <geometry>
+                POLYGON((191.026667 87.63333,114.75 78,89.5 77.333336,81.833336 75.333336,70.683334 74.5,70.916664 73.666664,68.666664 73.666664,66.291664 71.505,57.65 71.166664,58 73.9,48.616665 73,49.198334 71.43,49.5 70.5,43.266666 68.666664,32.083332 71.5,32.083332 74,35 74,35 81,32 81,32 90,191.026667 87.63333))
+            </geometry>
+        </features>
+
+        <geo_interpolation>rhumb_line</geo_interpolation>
+
+
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ff00ff6f;
+                   stroke: #ffffff;  
+                   altitude-clamping: terrain-drape;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+
+       <model name="polygon" driver="feature_geom">
+        <features driver="ogr">
+            <geometry>
+                POLYGON((191.026667 -87.63333,114.75 -78,89.5 -77.333336,81.833336 -75.333336,70.683334 -74.5,70.916664 -73.666664,68.666664 -73.666664,66.291664 -71.505,57.65 -71.166664,58 -73.9,48.616665 -73,49.198334 -71.43,49.5 -70.5,43.266666 -68.666664,32.083332 -71.5,32.083332 -74,35 -74,35 -81,32 -81,32 -90,191.026667 -87.63333))
+            </geometry>
+        </features>
+
+        <geo_interpolation>rhumb_line</geo_interpolation>
+
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ff00ff6f;
+                   stroke: #ffffff;
+                   altitude-clamping: terrain-drape;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+
+    
+  
+</map>

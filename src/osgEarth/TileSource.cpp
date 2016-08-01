@@ -218,7 +218,8 @@ const TileSource::Mode TileSource::MODE_CREATE = 0x04;
 TileSource::TileSource(const TileSourceOptions& options) :
 _options( options ),
 _status ( Status::Error("Not initialized") ),
-_mode   ( 0 )
+_mode   ( 0 ),
+_openCalled( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -279,27 +280,32 @@ const Status&
 TileSource::open(const Mode&           openMode,
                  const osgDB::Options* options)
 {
-    _mode = openMode;
-
-    // Initialize the underlying data store
-    Status status = initialize(options);
-
-    // Check the return status. The TileSource MUST have a valid
-    // Profile after initialization.
-    if ( status == STATUS_OK )
+    if (!_openCalled)
     {
-        if ( getProfile() != 0L )
+        _mode = openMode;
+
+        // Initialize the underlying data store
+        Status status = initialize(options);
+
+        // Check the return status. The TileSource MUST have a valid
+        // Profile after initialization.
+        if ( status == STATUS_OK )
+        {
+            if ( getProfile() != 0L )
+            {
+                _status = status;
+            }
+            else 
+            {
+                _status = Status::Error("No profile available");
+            }
+        }
+        else
         {
             _status = status;
         }
-        else 
-        {
-            _status = Status::Error("No profile available");
-        }
-    }
-    else
-    {
-        _status = status;
+
+        _openCalled = true;
     }
 
     return _status;

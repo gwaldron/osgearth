@@ -23,7 +23,7 @@ http://readymap.org
     
     
     <!-- Ocean parameters. -->
-    <ocean>
+    <ocean driver="simple">
     
         <!-- Surface texture to use -->
         <!--

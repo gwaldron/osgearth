@@ -191,7 +191,7 @@ SkyNode::create(const SkyOptions& options, MapNode* mapNode)
         return 0L;
     }
 
-    osg::ref_ptr<SkyNode> result = factory->createSkyNode( mapNode->getMap()->getProfile() );
+    osg::ref_ptr<SkyNode> result = factory->createSkyNode(mapNode->getMap()->getProfile());
 
     return result.release();
 }

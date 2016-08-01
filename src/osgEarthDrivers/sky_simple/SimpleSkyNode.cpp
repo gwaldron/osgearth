@@ -426,11 +426,12 @@ SimpleSkyNode::makeSceneLighting()
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
     vp->setName( "SimpleSky Scene Lighting" );
 
-    if (_options.atmosphericLighting() == true && !Registry::capabilities().isGLES() )
+    if (_options.atmosphericLighting() == true)// && !Registry::capabilities().isGLES() )
     {
         Shaders pkg;
         pkg.load( vp, pkg.Ground_ONeil_Vert );
         pkg.load( vp, pkg.Ground_ONeil_Frag );
+        OE_INFO << LC << "Using O'Neil atmospheric lighting\n";
     }
 
     else
@@ -438,6 +439,7 @@ SimpleSkyNode::makeSceneLighting()
         _phong = new PhongLightingEffect();
         _phong->setCreateLightingUniform( false );
         _phong->attach( stateset );
+        OE_INFO << LC << "Using Phong lighting\n";
     }
 
     // calculate and apply the uniforms:

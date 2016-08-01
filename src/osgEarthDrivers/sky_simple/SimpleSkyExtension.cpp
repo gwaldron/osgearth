@@ -103,7 +103,7 @@ namespace osgEarth { namespace SimpleSky
     public: // SkyNodeFactory
 
         SkyNode* createSkyNode(const Profile* profile) {
-            return new SimpleSkyNode(profile->getSRS());
+            return new SimpleSkyNode(profile->getSRS(), *this);
         }
 
 

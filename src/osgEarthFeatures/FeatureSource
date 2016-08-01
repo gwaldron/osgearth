@@ -217,6 +217,12 @@ namespace osgEarth { namespace Features
          */
         bool isBlacklisted( FeatureID fid ) const; 
 
+        /**
+         * Sets the feature profile for this source.
+         * This is required. Usually the subclass should call this from initialize().
+         */
+        void setFeatureProfile(const FeatureProfile* profile);
+
 
     public: // Styling
 
@@ -260,12 +266,6 @@ namespace osgEarth { namespace Features
          * If you override this function, please call this base implementation from within.
          */
         virtual Status initialize(const osgDB::Options* readOptions) =0;
-
-        /**
-         * Subclass sets the feature profile for this source.
-         * This is required, and the subclass should call this from initialize().
-         */
-        void setFeatureProfile(const FeatureProfile* profile);
 
         /**
          * Creates and returns a metadata structure describing the features in a named

@@ -126,51 +126,6 @@ public:
     }
 
 
-#if 0
-    /** Called once at startup to create the profile for this feature set. Successful profile
-        creation implies that the datasource opened succesfully. */
-    const FeatureProfile* createFeatureProfile()
-    {
-        FeatureProfile* result = NULL;
-        if (_layerValid)
-        {
-            result = new FeatureProfile(_layer.getExtent());
-            result->setTiled( true );
-            result->setFirstLevel( _layer.getFirstLevel());
-            result->setMaxLevel( _layer.getMaxLevel());
-            result->setProfile( osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1) );
-            if ( _options.geoInterp().isSet() )
-                result->geoInterp() = _options.geoInterp().get();
-        }
-        else
-        {
-            // Try to get the results from the settings instead
-            if ( !_options.profile().isSet())
-            {
-                OE_NOTICE << LC << "TFS driver needs an explicit profile set" << std::endl;
-                return 0;
-            }
-
-            if (!_options.minLevel().isSet() || !_options.maxLevel().isSet())
-            {
-                OE_NOTICE << LC << "TFS driver needs a min and max level set" << std::endl;
-                return 0;
-            }
-           
-            osg::ref_ptr<const Profile> profile = Profile::create( *_options.profile() );            
-            result = new FeatureProfile(profile->getExtent());
-            result->setTiled( true );
-            result->setFirstLevel( *_options.minLevel() );
-            result->setMaxLevel( *_options.maxLevel() );
-            result->setProfile( profile );
-            if ( _options.geoInterp().isSet() )
-                result->geoInterp() = _options.geoInterp().get();
-        }
-        return result;        
-    }
-#endif
-
-
     bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features )
     {            
         if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")

@@ -36,6 +36,9 @@ _defaultExtent( defaultExtent )
 FeatureCursor*
 FeatureListSource::createFeatureCursor( const Symbology::Query& query )
 {
+    if (getFeatureProfile() == 0L)
+        setFeatureProfile(createFeatureProfile());
+
     //Create a copy of all of the features before returning the cursor.
     //The processing filters in osgEarth can modify the features as they are operating and we don't want our original data destroyed.
     FeatureList cursorFeatures;

@@ -110,6 +110,9 @@ VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
 {
     _sources.push_back( FeatureSourceMapping(source, predicate) );
     dirty();
+
+    if (_sources.size() == 1)
+        setFeatureProfile(createFeatureProfile());
 }
 
 FeatureCursor* 

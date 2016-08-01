@@ -33,6 +33,9 @@
 
 namespace osgEarth { namespace Features
 {   
+    /**
+     * @deprecated - use a FeatureNode instead
+     */
     class OSGEARTHFEATURES_EXPORT FeatureListSource : public osgEarth::Features::FeatureSource
     {
     public:

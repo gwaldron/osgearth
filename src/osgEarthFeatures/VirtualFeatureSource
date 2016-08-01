@@ -66,7 +66,6 @@ namespace osgEarth { namespace Features
 
     public: // FeatureSource
         virtual FeatureCursor* createFeatureCursor( const Query& query );
-        virtual const FeatureProfile* createFeatureProfile();
         virtual const FeatureSchema& getSchema() const;
         virtual Feature* getFeature( FeatureID id ) { return 0L; }
 
@@ -75,6 +74,9 @@ namespace osgEarth { namespace Features
 
     protected:
         FeatureSourceMappingVector _sources;
+
+    private:
+        const FeatureProfile* createFeatureProfile();
     };
 
 } } // namespace osgEarth::Features

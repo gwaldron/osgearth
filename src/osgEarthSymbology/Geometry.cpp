@@ -311,6 +311,18 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 }
 
 bool
+Geometry::crop( const Bounds& bounds, osg::ref_ptr<Geometry>& output ) const
+{
+    osg::ref_ptr<Polygon> poly = new Polygon;
+    poly->resize( 4 );        
+    (*poly)[0].set(bounds.xMin(), bounds.yMin(), 0);
+    (*poly)[1].set(bounds.xMax(), bounds.yMin(), 0);
+    (*poly)[2].set(bounds.xMax(), bounds.yMax(), 0);
+    (*poly)[3].set(bounds.xMin(), bounds.yMax(), 0);
+    return crop(poly, output);
+}
+
+bool
 Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) const
 {
 #ifdef OSGEARTH_HAVE_GEOS

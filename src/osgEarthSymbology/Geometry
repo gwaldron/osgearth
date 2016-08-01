@@ -161,6 +161,14 @@ namespace osgEarth { namespace Symbology
             osg::ref_ptr<Geometry>& output ) const;
 
         /**
+         * Crops this geometry to the bounds, returning the result in the output parameter.
+         * Returns true if the op succeeded.
+         */
+        bool crop(
+            const Bounds& bounds,
+            osg::ref_ptr<Geometry>& output) const;
+
+        /**
          * Creates the union of this geometry with the other geometry, returning
          * the result in the output parameter. Returns true if the op succeeded.
          */

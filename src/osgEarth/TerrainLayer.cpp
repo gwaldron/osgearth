@@ -410,7 +410,7 @@ TerrainLayer::open()
             {
                 // User supplied the tile source, so attempt to get its profile:
                 _profile = _tileSource->getProfile();
-                if (_profile.valid())
+                if (!_profile.valid())
                 {
                     setStatus( Status::Error(getName(), "Cannot establish profile") );
                 }

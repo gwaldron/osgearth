@@ -184,6 +184,9 @@ struct InstanceGroup : public osg::Group
                     // the instance count per frame.
                     g->setDrawCallback( _ig->_drawCallback.get() );
 
+                    // disable frustum culling because the instance doesn't have a real location
+                    g->setCullingActive(false);
+
                     ++_count;
                 }
             }
@@ -203,7 +206,7 @@ struct InstanceGroup : public osg::Group
 #define XFB_SLOT 7
 
 // Generator that just writes each incoming vertex to the XFB.
-const char* VS_XF =
+const char* VS_GENERATOR =
     "#version " GLSL_VERSION_STR "\n"
     "out vec4 position; \n"
     "void main(void) { \n"
@@ -212,7 +215,7 @@ const char* VS_XF =
 
 // Geometry shader perform GPU culling on the control point set.
 // The "cullingRadius" bit isn't working quite right; not sure why atm.
-const char* GS_XF =
+const char* GS_GENERATOR =
     "#version " GLSL_VERSION_STR "\n"
     "layout(points) in; \n"
     "layout(points, max_vertices=1) out; \n"
@@ -231,11 +234,11 @@ const char* GS_XF =
     "    } \n"
     "} \n";
 
-osg::Program* makeXFProgram()
+osg::Program* makeGeneratorProgram()
 {
     osg::Program* program = new osg::Program();
-    program->addShader( new osg::Shader(osg::Shader::VERTEX, VS_XF) );
-    program->addShader( new osg::Shader(osg::Shader::GEOMETRY, GS_XF) );
+    program->addShader( new osg::Shader(osg::Shader::VERTEX, VS_GENERATOR) );
+    program->addShader( new osg::Shader(osg::Shader::GEOMETRY, GS_GENERATOR) );
     program->addTransformFeedBackVarying( "xfb_output" );
     program->setTransformFeedBackMode( GL_INTERLEAVED_ATTRIBS );
 
@@ -250,7 +253,7 @@ void makeVisibleVP(osg::StateSet* ss)
 }
 
 
-struct XFBDrawCallback : public osg::Drawable::DrawCallback
+struct RenderToXFB : public osg::Drawable::DrawCallback
 {
     /**
      * Constructs a Transform Feedback draw callback.
@@ -261,7 +264,7 @@ struct XFBDrawCallback : public osg::Drawable::DrawCallback
      * before creating this callback. Otherwise, it will not be able to calculate
      * a correct offset into the VBO.
      */
-    XFBDrawCallback(osg::Array* xfb)
+    RenderToXFB(osg::Array* xfb)
     {
         _vbo = xfb->getVertexBufferObject();
         int numBufferData = _vbo->getNumBufferData();
@@ -340,10 +343,11 @@ struct XFBDrawCallback : public osg::Drawable::DrawCallback
 
 
 
-osg::Geometry* makeXFGeometry(osg::Array* xfb, int dim, float width)
+osg::Geometry* makeGeneratorGeometry(osg::Array* xfb, int dim, float width)
 {
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
+    geom->setUseDisplayList(false);
 
     // input points -- 
     osg::Vec3Array* verts = new osg::Vec3Array();
@@ -355,9 +359,12 @@ osg::Geometry* makeXFGeometry(osg::Array* xfb, int dim, float width)
     osg::DrawArrays* da = new osg::DrawArrays(GL_POINTS, 0, dim*dim);
     geom->addPrimitiveSet( da );
 
-    // add callbacks AFTER setting up the geometry
-    geom->setDrawCallback( new XFBDrawCallback(xfb) );
+    // Add a custom draw callback that will render the control points 
+    // into the the XF buffer. (Must add this callbacks AFTER setting up the geometry)
+    geom->setDrawCallback( new RenderToXFB(xfb) );
 
+    // Still trying to figure out exactly how this geometry gets culled -gw
+    // If you zoom to the middle of the field, it culls.
     geom->setCullingActive(false);
 
     return geom;
@@ -370,7 +377,7 @@ osg::Node* makeSceneGraph()
     //root->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(10.0f));
     //root->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, false));
     
-    // Mode to instance:
+    // Model to instance:
     osg::Node* instancedModel = osgDB::readNodeFile("../data/tree.ive.osgearth_shadergen");
     float radius = instancedModel->getBound().radius();
 
@@ -380,21 +387,25 @@ osg::Node* makeSceneGraph()
 
     const int dim = 256;
     const int maxNumInstances = dim*dim;
+    OE_NOTICE "Rendering " << maxNumInstances << " instances; radius = " << radius << "\n";
 
+    // This is the group containing the instanced model. The "configure" method will set up
+    // the instance model for dynamic XFB instancing.
     InstanceGroup* ig = new InstanceGroup();
     ig->addChild( instancedModel );
     ig->configure( XFB_SLOT, maxNumInstances );
     root->addChild( ig );
 
-    // construct the geometry that will generate the instancing control points:
-    osg::Geometry* xfGeom = makeXFGeometry( ig->getControlPoints(), dim, radius );
-    xfGeom->getOrCreateStateSet()->setAttribute( makeXFProgram() );
-    xfGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius) ); // since we don't know where the cente rpoint it
-    osg::Geode* xfGeode = new osg::Geode();
-    xfGeode->addDrawable( xfGeom );    
+    // construct the geometry that will generate the instancing control points and render them
+    // into the Transform Feedback buffer.
+    osg::Geometry* genGeom = makeGeneratorGeometry( ig->getControlPoints(), dim, radius );
+    genGeom->getOrCreateStateSet()->setAttribute( makeGeneratorProgram() );
+    genGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius) ); // since we don't know where ther center point is
+    osg::Geode* genGeode = new osg::Geode();
+    genGeode->addDrawable( genGeom );    
     
     root->addChild( ig );
-    root->addChild( xfGeode );
+    root->addChild( genGeode );
 
     return root;
 }
@@ -410,6 +421,8 @@ main(int argc, char** argv)
 
     viewer.addEventHandler( new osgViewer::StatsHandler() );    
     viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
+    
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     viewer.setSceneData( makeSceneGraph() );
 

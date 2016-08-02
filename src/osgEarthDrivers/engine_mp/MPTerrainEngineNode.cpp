@@ -717,12 +717,15 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-#if 0
+#if 1
     static int c = 0;
     if ( ++c % 60 == 0 )
     {
-        OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
+        //OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
         _liveTiles->run( CheckForOrphans() );
+        Registry::instance()->startActivity("MP live tiles", Stringify() << _liveTiles->size());
+        if (_deadTiles.valid())
+            Registry::instance()->startActivity("MP dead tiles", Stringify() << _deadTiles->size());
     }
 #endif
 

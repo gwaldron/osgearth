@@ -31,12 +31,13 @@ namespace
     // registry to the DEAD registry.
     struct ExpirationCollector : public osg::NodeVisitor
     {
-        TileNodeRegistry*      _live;
-        TileNodeRegistry*      _dead;
+        TileNodeRegistry*      _tiles;
         unsigned               _count;
 
-        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : _live(live), _dead(dead), _count(0)
+        ResourceReleaser::ObjectList _nodes;
+
+        ExpirationCollector(TileNodeRegistry* tiles)
+            : _tiles(tiles), _count(0)
         {
             // set up to traverse the entire subgraph, ignoring node masks.
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -49,7 +50,8 @@ namespace
             TileNode* tn = dynamic_cast<TileNode*>( &node );
             if ( tn )
             {
-                _live->move( tn, _dead );
+                _nodes.push_back(tn);
+                _tiles->remove( tn );
                 _count++;
             }
             traverse(node);
@@ -59,27 +61,16 @@ namespace
 
 //........................................................................
 
+
 #undef  LC
 #define LC "[UnloaderGroup] "
 
-UnloaderGroup::UnloaderGroup(TileNodeRegistry* live, TileNodeRegistry* dead) :
-_live     ( live ),
-_dead     ( dead ),
+UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
+_tiles(tiles),
 _threshold( INT_MAX )
 {
     this->setNumChildrenRequiringUpdateTraversal( 1u );
 }
-
-#if 0
-void
-UnloaderGroup::unloadChildren(const TileKey& key)
-{
-    _mutex.lock();
-    ///_parentKeys.insert(key);
-    _parentKeys.push_back( key ); 
-    _mutex.unlock();
-}
-#endif
 
 void
 UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
@@ -87,7 +78,6 @@ UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
     _mutex.lock();
     for(std::vector<TileKey>::const_iterator i = keys.begin(); i != keys.end(); ++i)
         _parentKeys.push_back( *i );
-    //_parentKeys.insert(keys.begin(), keys.end());
     _mutex.unlock();
 }
 
@@ -103,16 +93,21 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
             for(std::vector<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
-                if ( _live->get(*parentKey, parentNode) )
+                if ( _tiles->get(*parentKey, parentNode) )
                 {
                     // re-check for dormancy in case something has changed
                     if ( parentNode->areSubTilesDormant(nv.getFrameStamp()) )
                     {
                         // find and move all tiles to be unloaded to the dead pile.
-                        ExpirationCollector collector( _live, _dead );
+                        ExpirationCollector collector( _tiles );
                         for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
                             parentNode->getSubTile(i)->accept( collector );
                         unloaded += collector._count;
+
+                        // submit all collected nodes for GL resource release:
+                        if (!collector._nodes.empty() && _releaser.valid())
+                            _releaser->push(collector._nodes);
+
                         parentNode->removeSubTiles();
                     }
                     else notDormant++;

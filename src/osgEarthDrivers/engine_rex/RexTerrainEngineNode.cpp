@@ -50,10 +50,6 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
-
-// TODO: bins don't work with SSDK. No idea why.
-#define USE_RENDER_BINS 1
-
 //------------------------------------------------------------------------
 
 namespace
@@ -255,17 +251,14 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
-#if 0
-    if ( _terrainOptions.quickReleaseGLObjects() == true )
-    {
-        _deadTiles = new TileNodeRegistry("dead");
-        _quickReleaseInstalled = false;
-        ADJUST_UPDATE_TRAV_COUNT( this, +1 );
-    }
-#endif
+    // A resource releaser that will call releaseGLObjects() on expired objects.
+    ResourceReleaser* releaser = new ResourceReleaser();
+    this->addChild( releaser );
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool( _terrainOptions );
+    _geometryPool->setReleaser( releaser );
+    this->addChild( _geometryPool.get() );
 
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
@@ -274,8 +267,9 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     this->addChild( _loader.get() );
 
     // Make a tile unloader
-    _unloader = new UnloaderGroup( _liveTiles.get(), _deadTiles.get() );
+    _unloader = new UnloaderGroup( _liveTiles.get() );
     _unloader->setThreshold( _terrainOptions.expirationThreshold().get() );
+    _unloader->setReleaser( releaser );
     this->addChild( _unloader.get() );
     
     // handle an already-established map profile:

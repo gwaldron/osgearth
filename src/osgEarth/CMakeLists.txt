@@ -140,6 +140,7 @@ SET(LIB_PUBLIC_HEADERS
     QuadTree
     Random
     Registry
+    ResourceReleaser
     Revisioning
     ScreenSpaceLayout
     Shaders
@@ -298,6 +299,7 @@ set(TARGET_SRC
     QuadTree.cpp
     Random.cpp
     Registry.cpp
+    ResourceReleaser.cpp
     Revisioning.cpp
     ScreenSpaceLayout.cpp
     ShaderFactory.cpp

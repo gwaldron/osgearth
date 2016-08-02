@@ -37,18 +37,28 @@ _options ( options ),
 _enabled ( true ),
 _debug   ( false )
 {
+    // sign up for the update traversal so we can prune unused pool objects.
+    setNumChildrenRequiringUpdateTraversal(1u);
+
+    _tileSize = _options.tileSize().get();
+
+    // activate debugging mode
     if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
     {
         _debug = true;
     }
-
-    _tileSize = _options.tileSize().get();
 
     if ( ::getenv("OSGEARTH_REX_NO_POOL") )
     {
         _enabled = false;
         OE_INFO << LC << "Geometry pool disabled (environment)" << std::endl;
     }
+
+    //if ( ::getenv( "OSGEARTH_MEMORY_PROFILE" ) )
+    //{
+    //    _enabled = false;
+    //    OE_INFO << LC << "Geometry pool disabled (memory profile mode)" << std::endl;
+    //}
 }
 
 void
@@ -358,16 +368,54 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             geom->addPrimitiveSet( maskPrim );
     }
 
-#if 0
-    // if we're using patches, we must create a "proxy" primitive set that supports
-    // PrimitiveFunctor et al (for intersections, bounds testing, etc.)
-    if ( mode == GL_PATCHES )
-    {
-        osg::PrimitiveSet* patchesAsTriangles = osg::clone( primSet, osg::CopyOp::SHALLOW_COPY );
-        patchesAsTriangles->setMode( GL_TRIANGLES );
-        geom->setPatchTriangles( patchesAsTriangles );
-    }
-#endif
-
     return geom;
+}
+
+
+void
+GeometryPool::setReleaser(ResourceReleaser* releaser)
+{
+    if (_releaser.valid())
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+
+    _releaser = releaser;
+
+    if (_releaser.valid())
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+}
+
+
+void
+GeometryPool::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _releaser.valid() && _enabled)
+    {
+        // look for usused pool objects and push them to the resource releaser.
+        ResourceReleaser::ObjectList objects;
+        {
+            Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+
+            std::vector<GeometryKey> keys;
+
+            for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+            {
+                if (i->second.get()->referenceCount() == 1)
+                {
+                    keys.push_back(i->first);
+                    objects.push_back(i->second.get());
+                }
+            }
+            for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
+            {
+                _geometryMap.erase(*key);
+            }
+        }
+
+        if (!objects.empty())
+        {
+            _releaser->push(objects);
+        }
+    }
+
+    osg::Group::traverse(nv);
 }

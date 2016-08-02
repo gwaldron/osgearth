@@ -18,6 +18,7 @@
  */
 #include "MonitorUI"
 #include <osgEarth/Memory>
+#include <osgEarth/Registry>
 
 using namespace osgEarth::Monitor;
 using namespace osgEarth;
@@ -53,5 +54,8 @@ MonitorUI::update(const osg::FrameStamp* fs)
         unsigned bytes = Memory::getProcessUsage();
         _pb->setText(Stringify() << (bytes / 1048576) << " M");
         _peak->setText(Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+
+        //Registry::instance()->startActivity("Current Mem", Stringify() <<  (bytes / 1048576) << " M");
+        //Registry::instance()->startActivity("Peak Mem", Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
     }
 }

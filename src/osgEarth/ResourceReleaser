@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_RESOURCE_RELEASER
+#define OSGEARTH_RESOURCE_RELEASER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Drawable>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Scene graph node that will call releaseGLObjects() on objects
+     * during the Draw traversal.
+     */
+    class OSGEARTH_EXPORT ResourceReleaser : public osg::Drawable
+    {
+    public:
+        typedef std::vector<osg::ref_ptr<osg::Object> > ObjectList;
+
+        /** Construct a releaser. */
+        ResourceReleaser();
+
+        /** Submit and object for release. */
+        void push(osg::Object* node);
+
+        /** Submit a collection of objects for release. */
+        void push(const ObjectList& nodes);
+
+    public: // osg::Drawable
+
+        /** Calls releaseGLObjects() on all objects in the list, then clears the list. */
+        void drawImplementation(osg::RenderInfo& ri) const;
+
+    private:
+        mutable ObjectList _toRelease;
+        mutable Threading::Mutex _mutex;
+    };
+}
+
+#endif // OSGEARTH_RESOURCE_RELEASER

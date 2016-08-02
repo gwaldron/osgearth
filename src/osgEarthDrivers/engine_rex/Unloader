@@ -23,10 +23,10 @@
 
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
+#include <osgEarth/ResourceReleaser>
 
 #include <osg/Group>
 
-#include <set>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -40,15 +40,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual void unloadChildren(const std::vector<TileKey>& keys) =0;
     };
 
-
     /** Group-based tile unloader. */
     class UnloaderGroup : public osg::Group, public Unloader
     {
     public:
-        UnloaderGroup(TileNodeRegistry* live, TileNodeRegistry* dead);
+        UnloaderGroup(TileNodeRegistry* tiles);
 
-        // sets the key count at which unloading will begin
+        /** Sets the key count at which unloading will begin */
         void setThreshold(int t) { _threshold = t; }
+
+        /** Service that will release GL objects on unloaded nodes. */
+        void setReleaser(ResourceReleaser* releaser) { _releaser = releaser; }
 
     public: // Unloader
 
@@ -58,11 +60,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void traverse(osg::NodeVisitor& nv);
 
     protected:
-        int                  _threshold;
-        std::vector<TileKey> _parentKeys;
-        TileNodeRegistry*    _live;
-        TileNodeRegistry*    _dead;
-        mutable Threading::Mutex  _mutex;
+        int                            _threshold;
+        std::vector<TileKey>           _parentKeys;
+        TileNodeRegistry*              _tiles;
+        osg::ref_ptr<ResourceReleaser> _releaser;
+        mutable Threading::Mutex       _mutex;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

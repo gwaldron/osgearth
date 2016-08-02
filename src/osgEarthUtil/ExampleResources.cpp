@@ -120,8 +120,8 @@ namespace
      */
     struct ToggleCanvasEventHandler : public osgGA::GUIEventHandler
     {
-        ToggleCanvasEventHandler(osg::Node* canvas):
-            _canvas(canvas)
+        ToggleCanvasEventHandler(osg::Node* canvas, char key) :
+            _canvas(canvas), _key(key)
         {
         }
 
@@ -129,7 +129,7 @@ namespace
         {
             if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
             {
-                if (ea.getKey() == 'y')
+                if (ea.getKey() == _key)
                 {
                     osg::ref_ptr< osg::Node > safeNode = _canvas.get();
                     if (safeNode.valid())
@@ -143,6 +143,7 @@ namespace
         }
 
         osg::observer_ptr<osg::Node> _canvas;
+        char _key;
     };
 
     // sets a user-specified uniform.
@@ -417,18 +418,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
     canvas->addControl( mainContainer );
 
     // Add an event handler to toggle the canvas with a key press;
-    view->addEventHandler(new ToggleCanvasEventHandler(canvas) );
-
-
-
+    view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
 
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
-
-    //const Config& screenSpaceLayoutConf = 
-    //    externals.hasChild("screen_space_layout") ? externals.child("screen_space_layout") :
-    //    externals.child("decluttering"); // backwards-compatibility
-
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.

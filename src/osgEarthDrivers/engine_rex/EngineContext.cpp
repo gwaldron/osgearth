@@ -20,6 +20,7 @@
 #include "TileNodeRegistry"
 #include <osgEarth/TraversalData>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Registry>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -94,23 +95,58 @@ namespace
 {
     struct Scanner : public TileNodeRegistry::ConstOperation
     {
+        enum Policy {
+            POLICY_FIND_ALL,
+            POLICY_FIND_SOME,
+            POLICY_FIND_ONE
+        };
+
         std::vector<TileKey>& _keys;
         const osg::FrameStamp* _stamp;
-        Scanner(std::vector<TileKey>& keys, const osg::FrameStamp* stamp) : _keys(keys), _stamp(stamp) { }
+        Policy _policy;
+
+        Scanner(std::vector<TileKey>& keys, const osg::FrameStamp* stamp) : _keys(keys), _stamp(stamp)
+        {
+            _policy = POLICY_FIND_ALL;
+        }
 
         void operator()(const TileNodeRegistry::TileNodeMap& tiles) const
         {
             if ( tiles.empty() ) return;
             unsigned f = _stamp->getFrameNumber(), s = tiles.size();
-            unsigned index[4];
-            index[0] = f;
-            index[1] = (f+s/4);
-            index[2] = (f+s/2);
-            index[3] = (index[1]*2);
-            for(unsigned i=0; i<4; ++i) {
-                const TileNode* tile = tiles.at(index[i]%s);
-                if ( tile->areSubTilesDormant(_stamp) )
-                    _keys.push_back( tile->getTileKey() );
+
+            switch (_policy)
+            {
+                case POLICY_FIND_ALL:
+                {
+                    for (TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin(); i != tiles.end(); ++i)
+                    {
+                        const TileNode* tile = i->second.tile.get();
+                        if (tile->areSubTilesDormant(_stamp))
+                            _keys.push_back(i->first);
+                    }
+                }
+                break;
+
+                case POLICY_FIND_ONE:
+                {
+                    const TileNode* tile = tiles.at(f%s);
+                    if (tile->areSubTilesDormant(_stamp))
+                    {
+                        _keys.push_back(tile->getTileKey());
+                    }
+                }
+                break;
+
+                default:
+                case POLICY_FIND_SOME:
+                {
+                    for(unsigned i=0; i<4; ++i) {
+                        const TileNode* tile = tiles.at((f+i)%s);
+                        if ( tile->areSubTilesDormant(_stamp) )
+                            _keys.push_back( tile->getTileKey() );
+                    }
+                }
             }
         }
     };
@@ -153,6 +189,8 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
         getUnloader()->unloadChildren( _tilesWithChildrenToUnload );
         _tilesWithChildrenToUnload.clear();
     }
+
+    Registry::instance()->startActivity("REX live tiles", Stringify()<<_liveTiles->size());
 }
 
 bool

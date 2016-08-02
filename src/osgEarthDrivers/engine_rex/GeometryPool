@@ -25,6 +25,7 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ResourceReleaser>
 #include <osg/Geometry>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -44,10 +45,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * This object creates and returns geometries based on TileKeys, sharing instances
      * whenever possible. Concept adapted from OSG's osgTerrain::GeometryPool.
      */
-    class GeometryPool : public osg::Referenced
+    class GeometryPool : public osg::Group
     {
     public:
+        /** Construct the geometry pool */
         GeometryPool(const RexTerrainEngineOptions& options);
+
+        /** Sets an object to release unused GL resources */
+        void setReleaser(ResourceReleaser* releaser);
 
     public:
         /**
@@ -65,7 +70,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 if (yMin > rhs.yMin) return false;
                 if (size < rhs.size) return true;
                 if (size > rhs.size) return false;
-                return patch != rhs.patch;
+                return patch == false && rhs.patch == true;
             }
 
             int      lod;
@@ -91,6 +96,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
          */
         int getNumSkirtElements() const;
 
+    public: // osg::Node
+
+        /** Perform an update traversal to check for unused resources. */
+        void traverse(osg::NodeVisitor& nv);
+
     protected:
         virtual ~GeometryPool() { }
 
@@ -98,6 +108,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GeometryMap                    _geometryMap;
         unsigned                       _tileSize;
         const RexTerrainEngineOptions& _options; 
+        osg::ref_ptr<ResourceReleaser> _releaser;
 
         mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
         

@@ -250,6 +250,8 @@ TileNode::setDirty(bool value)
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
+    OE_DEBUG << LC << "Tile " << _key.str() << " : Release GL objects\n";
+
     if ( getStateSet() )
         getStateSet()->releaseGLObjects(state);
     if ( _payloadStateSet.valid() )

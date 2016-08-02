@@ -45,8 +45,6 @@ namespace osgEarth { namespace Symbology
          * Constructs a new resource cache.
          */
         ResourceCache();
-        //ResourceCache( 
-        //    const osgDB::Options* dbOptions );
 
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
@@ -67,6 +65,8 @@ namespace osgEarth { namespace Symbology
          */
         bool getOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output, const osgDB::Options* readOptions );
         bool cloneOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output, const osgDB::Options* readOptions );
+
+        const CacheStats getInstanceStats() const { return _instanceCache.getStats(); }
 
         /**
          * Fetches the StateSet implemention for an entire ResourceLibrary.  This will contain a Texture2DArray with all of the skins merged into it.

@@ -537,6 +537,8 @@ namespace osgEarth
         Status         _status;
         Mode           _mode;
 
+        bool _openCalled;
+
         mutable Threading::Mutex _mutex;
     };
 

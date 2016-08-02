@@ -693,33 +693,39 @@ void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSR
 
     unsigned int tx = 1;
     unsigned int ty = 1;
-
-    // Tile the geometry if it's geospatial size is too large to have a sensible local tangent plane.
-    GeoExtent featureExtentDeg = GeoExtent(featureSRS, geometry->getBounds()).transform(SpatialReference::create("wgs84"));
+    
     double maxLatitude= 70;
-    if (featureExtentDeg.yMax() > maxLatitude)
+
+    // If the feature extent is near the poles, then we split the feature into since the tiling and tesselation doesn't work well
+    // near the poles
+    osg::ref_ptr< Feature > feature = new Feature(geometry, featureSRS);
+    feature->transform(SpatialReference::create("wgs84"));
+
+    GeoExtent featureExtentDeg = GeoExtent(feature->getSRS(), feature->getGeometry()->getBounds());
+
+    // Do the top of the extents.  We don't tile this b/c geos isn't happy with it.
+    osg::ref_ptr< Geometry > top;
+    if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), maxLatitude, featureExtentDeg.xMax(), 90.0), top))
     {
-        // If the feature extent is above 80 degrees latitude, then we split the feature into two since the tiling and tesselation doesn't work well
-        // at high levels of latitude
-        osg::ref_ptr< Feature > feature = new Feature(geometry, featureSRS);
-        feature->transform(SpatialReference::create("wgs84"));
-
-        // Do the top of the extents.  We don't tile this b/c geos isn't happy with it.
-        osg::ref_ptr< Geometry > top;
-        if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), maxLatitude, featureExtentDeg.xMax(), featureExtentDeg.yMax()), top))
-        {
-            tiles.push_back( top.get() );
-        }
-
-        // Do the bottom of the extents.  We tile this b/c it's at a lower latitiude.
-        osg::ref_ptr< Geometry > bottom;
-        if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), featureExtentDeg.yMin(), featureExtentDeg.xMax(), maxLatitude), bottom))
-        {
-            prepareForTesselation( bottom.get(), feature->getSRS(), targetTileSizeDeg, maxPointsPerTile, tiles);
-        }
+        tiles.push_back( top.get() );
     }
-    else
+
+    // Do the middle
+    osg::ref_ptr< Geometry > middle;
+    feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), -maxLatitude, featureExtentDeg.xMax(), maxLatitude), middle);
+
+    // Do the bottom of the extents.  We don't tile this b/c geos isn't happy with it.
+    osg::ref_ptr< Geometry > bottom;
+    if (feature->getGeometry()->crop(Bounds(featureExtentDeg.xMin(), -90.0, featureExtentDeg.xMax(), -maxLatitude), bottom))
     {
+        tiles.push_back( bottom.get() );
+    }
+
+    if (middle.valid())
+    {
+        // Tile the geometry if it's geospatial size is too large to have a sensible local tangent plane.
+        featureExtentDeg = GeoExtent(feature->getSRS(), middle->getBounds());
+
         // Tile based on the extent
         if ( featureExtentDeg.width() > targetTileSizeDeg  || featureExtentDeg.height() > targetTileSizeDeg)
         {
@@ -735,14 +741,16 @@ void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSR
             ty = tx;        
         }
 
+        // We only process the "middle" portion of the geometry here since it is all that can be tiled.  If there is data near the poles we just include it in
+        // the tiles list as is.
         if (tx == 1 && ty == 1)
         {
             // The geometry doesn't need modified so just add it to the list.
-            tiles.push_back( geometry );
+            tiles.push_back( middle.get() );
         }
         else
         {
-            tileGeometry( geometry, featureSRS, tx, ty, tiles );
+            tileGeometry( middle.get(), featureSRS, tx, ty, tiles );
         }        
     }
 

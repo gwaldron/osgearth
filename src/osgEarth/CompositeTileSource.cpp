@@ -355,12 +355,12 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
 
-    osg::ref_ptr<const Profile> profile = getProfile();    
+    osg::ref_ptr<const Profile> profile = getProfile();
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
         i != _options._components.end(); )
     {        
-        if ( i->_imageLayerOptions.isSet() )
+        if ( i->_imageLayerOptions.isSet() && !i->_layer.valid() )
         {
             // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
             i->_imageLayerOptions->driver()->L2CacheSize() = 0;
@@ -379,7 +379,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 OE_WARN << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
             }            
         }
-        else if (i->_elevationLayerOptions.isSet())
+        else if (i->_elevationLayerOptions.isSet() && !i->_layer.valid())
         {
             // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
             i->_elevationLayerOptions->driver()->L2CacheSize() = 0;

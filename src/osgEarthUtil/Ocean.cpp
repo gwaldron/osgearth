@@ -180,42 +180,6 @@ OceanNode::create(const OceanOptions& options, MapNode* mapNode)
     return result.release();
 }
 
-#if 0
-OceanNode*
-OceanNode::create(const OceanOptions& options,
-                  MapNode*            mapNode)
-{
-    OceanNode* result = 0L;
-
-    std::string driver = options.getDriver();
-    if ( driver.empty() )
-    {
-        OE_INFO << LC << "No driver in options; defaulting to \"simple\"." << std::endl;
-        //OE_INFO << LC << options.getConfig().toJSON(true) << std::endl;
-        driver = "simple";
-    }
-
-    std::string driverExt = std::string("ocean_") + driver;
-
-    osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-    rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
-    rwopts->setPluginData( OPTIONS_TAG, (void*)&options );
-
-    result = Extension::create(driver)
-    result = dynamic_cast<OceanNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
-    if ( result )
-    {
-        OE_INFO << LC << "Loaded ocean driver \"" << driver << "\" OK." << std::endl;
-    }
-    else
-    {
-        OE_WARN << LC << "FAIL, unable to load ocean driver \"" << driver << "\"" << std::endl;
-    }
-
-    return result;
-}
-#endif
-
 OceanNode*
 OceanNode::create(MapNode* mapNode)
 {

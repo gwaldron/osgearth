@@ -426,7 +426,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     MapNodeOptions mapNodeOptions( conf.child( "options" ) );
 
     // Create a map node.
-    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
@@ -461,19 +461,20 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             mapNode->externalConfig() = *i;
             for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
             {
-                addExtension( *e, mapNode );
+                addExtension( *e, mapNode.get() );
             }
         }
 
         else // plugins/extensions.
         {
-            addExtension( *i, mapNode );
+            addExtension( *i, mapNode.get() );
         }
     }
 
     // return the topmost parent of the mapnode. It's possible that
     // an extension added parents!
-    osg::Node* top = mapNode;
+    osg::Node* top = mapNode.release();
+
     while( top->getNumParents() > 0 )
         top = top->getParent(0);
 

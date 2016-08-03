@@ -177,13 +177,17 @@ SimpleOceanNode::rebuild()
         // install the shaders on the ocean map node.
         VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
         vp->setName( "osgEarth SimpleOcean" );
+        
+        Shaders shaders;
+        shaders.define("USE_OCEAN_MASK", maskLayer().isSet());
+        shaders.loadAll(vp, 0L);
 
-        // use the appropriate shader for the active technique:
-        std::string vertSource = maskLayer().isSet() ? source_vertMask : source_vertProxy;
-        std::string fragSource = maskLayer().isSet() ? source_fragMask : source_fragProxy;
+        //// use the appropriate shader for the active technique:
+        //std::string vertSource = maskLayer().isSet() ? source_vertMask : source_vertProxy;
+        //std::string fragSource = maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
-        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
+        //vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
+        //vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
 
         // install the slot attribute(s)
         ss->getOrCreateUniform( "ocean_data", osg::Uniform::SAMPLER_2D )->set( 0 );

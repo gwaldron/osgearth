@@ -253,11 +253,11 @@ SimpleOceanNode::rebuild()
 
         // Material.
         osg::Material* m = new osg::Material();
-        m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
+        m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(.5,.5,.5,1));
         m->setDiffuse(m->FRONT_AND_BACK, osg::Vec4(1,1,1,1));
-        m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.1,0.1,0.1,1));
+        m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.2,0.2,0.2,1));
         m->setEmission(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
-        m->setShininess(m->FRONT_AND_BACK, 32.0);
+        m->setShininess(m->FRONT_AND_BACK, 40.0);
         ss->setAttributeAndModes(m, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
         // force apply options:

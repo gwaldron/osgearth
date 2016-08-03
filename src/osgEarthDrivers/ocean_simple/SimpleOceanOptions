@@ -92,7 +92,7 @@ namespace osgEarth { namespace SimpleOcean
               _maxRange         ( 1000000.0f ),
               _fadeRange        ( 125000.0f ),
               _maxLOD           ( 20 ),
-              _baseColor        ( osg::Vec4(0.2, 0.3, 0.5, 0.8) ),
+              _baseColor        ( Color("#1c6ba0ef") ),
               _renderBinNumber  ( 12 )
         {
             mergeConfig( _conf );

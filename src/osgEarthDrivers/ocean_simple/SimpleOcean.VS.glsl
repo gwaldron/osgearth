@@ -2,7 +2,7 @@
 
 #pragma vp_name       SimpleOcean with Proxy VS
 #pragma vp_entryPoint oe_ocean_vertex
-#pragma vp_location   vertex_model
+#pragma vp_location   vertex_view
 #pragma vp_define     USE_OCEAN_MASK
 
 // convert an ecef coordinate to lon/lat (low precision)
@@ -29,7 +29,7 @@ out float ocean_v_range;                    // distance from camera to current v
 out float ocean_v_enorm;                    // normalized terrain height at vertex [0..1]
 
 // stage global
-vec3 vp_Normal;   
+vec3 vp_Normal;
 
 
 #ifdef USE_OCEAN_MASK
@@ -61,9 +61,9 @@ void oe_ocean_vertex(inout vec4 VertexMODEL)
     // scale the texture mapping to something reasonable:
     vec4 worldVertex = osg_ViewMatrixInverse * mvVertex;  
     vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w );  
-    ocean_surface_tex_coord.xy = lonlat / 0.0005;  
+    ocean_surface_tex_coord.xy = lonlat/0.0005;
     ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy;  
-    ocean_surface_tex_coord.x += mod(osg_FrameTime,100.0)/100.0; 
+    ocean_surface_tex_coord.w -= mod(0.1*osg_FrameTime,25.0)/25.0; 
 }
 
 #else
@@ -94,17 +94,9 @@ void oe_ocean_vertex(inout vec4 VertexVIEW)
     // scale the texture mapping to something reasonable:
     vec4 worldVertex = osg_ViewMatrixInverse * mvVertex;  
     vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w );  
-    ocean_surface_tex_coord.xy = lonlat / 0.0005;  
+    ocean_surface_tex_coord.xy = lonlat/0.0005;
     ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy;  
     ocean_surface_tex_coord.w -= mod(0.1*osg_FrameTime,25.0)/25.0; 
-
-    // fake waves:
-    if (ocean_has_surface_tex)
-    {  
-        vec4 t0 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.xy);  
-        vec4 t1 = texture2D(ocean_surface_tex, ocean_surface_tex_coord.zw);  
-        vp_Normal = normalize((3.0*t0.rgb*t1.rgb)*2.0-1.0);  
-    }  
  }
 
 #endif

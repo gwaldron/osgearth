@@ -54,9 +54,12 @@ void oe_ocean_fragment(inout vec4 color)
     if (ocean_has_surface_tex)  
     {  
         float a1 = texture(ocean_surface_tex, ocean_surface_tex_coord.xy).r;  
-        float a2 = texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r;  
-        color = clamp(color+(a1*a2), 0.0, 1.0);  
-        color.a = max(color.a, ocean_baseColor.a);  
+        float a2 = -texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r;  
+        const float contrast = 1.0;
+        float brightness = 1.0 + 0.5*(a1+a2);
+        color = clamp(((color-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
+        color.a = ocean_baseColor.a; 
+        color.a = max(color.a, ocean_baseColor.a);
     }  
 
     // effect of the terrain mask [0..1] in the alpha component.
@@ -88,9 +91,12 @@ void oe_ocean_fragment(inout vec4 color)
     if (ocean_has_surface_tex)  
     {  
         float a1 = texture(ocean_surface_tex, ocean_surface_tex_coord.xy).r;  
-        float a2 = texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r;  
-        color = clamp(color+(a1*a2), 0.0, 1.0);  
-        color.a = max(color.a, ocean_baseColor.a);  
+        float a2 = -texture(ocean_surface_tex, ocean_surface_tex_coord.zw).r;  
+        const float contrast = 1.0;
+        float brightness = 1.0 + 0.5*(a1+a2);
+        color = clamp(((color-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
+        color.a = ocean_baseColor.a; 
+        color.a = max(color.a, ocean_baseColor.a);
     }  
 
     // un-normalize the heightfield data

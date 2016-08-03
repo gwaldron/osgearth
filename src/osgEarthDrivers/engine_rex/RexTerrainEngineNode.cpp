@@ -77,7 +77,7 @@ namespace
 //---------------------------------------------------------------------------
 
 static Threading::ReadWriteMutex s_engineNodeCacheMutex;
-//Caches the MapNodes that have been created
+//Caches the engines that have been created
 typedef std::map<UID, osg::observer_ptr<RexTerrainEngineNode> > EngineNodeCache;
 
 static
@@ -93,18 +93,6 @@ RexTerrainEngineNode::registerEngine(RexTerrainEngineNode* engineNode)
     Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
     getEngineNodeCache()[engineNode->_uid] = engineNode;
     OE_DEBUG << LC << "Registered engine " << engineNode->_uid << std::endl;
-}
-
-void
-RexTerrainEngineNode::unregisterEngine( UID uid )
-{
-    Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
-    EngineNodeCache::iterator k = getEngineNodeCache().find( uid );
-    if (k != getEngineNodeCache().end())
-    {
-        getEngineNodeCache().erase(k);
-        OE_DEBUG << LC << "Unregistered engine " << uid << std::endl;
-    }
 }
 
 // since this method is called in a database pager thread, we use a ref_ptr output
@@ -175,8 +163,6 @@ _stateUpdateRequired  ( false )
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
 {
-    unregisterEngine( _uid );
-
     if ( _update_mapf )
     {
         delete _update_mapf;

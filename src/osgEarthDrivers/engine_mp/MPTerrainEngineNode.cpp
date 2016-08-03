@@ -688,7 +688,7 @@ namespace
                 }
             }
             if ( count > 0 )
-                OE_WARN << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
+                OE_DEBUG << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
         }
     };
 }

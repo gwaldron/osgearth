@@ -177,13 +177,17 @@ SimpleOceanNode::rebuild()
         // install the shaders on the ocean map node.
         VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
         vp->setName( "osgEarth SimpleOcean" );
+        
+        Shaders shaders;
+        shaders.define("USE_OCEAN_MASK", maskLayer().isSet());
+        shaders.loadAll(vp, 0L);
 
-        // use the appropriate shader for the active technique:
-        std::string vertSource = maskLayer().isSet() ? source_vertMask : source_vertProxy;
-        std::string fragSource = maskLayer().isSet() ? source_fragMask : source_fragProxy;
+        //// use the appropriate shader for the active technique:
+        //std::string vertSource = maskLayer().isSet() ? source_vertMask : source_vertProxy;
+        //std::string fragSource = maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
-        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
+        //vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
+        //vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
 
         // install the slot attribute(s)
         ss->getOrCreateUniform( "ocean_data", osg::Uniform::SAMPLER_2D )->set( 0 );
@@ -249,11 +253,11 @@ SimpleOceanNode::rebuild()
 
         // Material.
         osg::Material* m = new osg::Material();
-        m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
+        m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(.5,.5,.5,1));
         m->setDiffuse(m->FRONT_AND_BACK, osg::Vec4(1,1,1,1));
-        m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.1,0.1,0.1,1));
+        m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.2,0.2,0.2,1));
         m->setEmission(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
-        m->setShininess(m->FRONT_AND_BACK, 32.0);
+        m->setShininess(m->FRONT_AND_BACK, 40.0);
         ss->setAttributeAndModes(m, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
         // force apply options:

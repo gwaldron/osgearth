@@ -417,28 +417,39 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 HorizonNode::HorizonNode()
 {
     const float r = 25.0f;
+    osg::DrawElements* de = new osg::DrawElementsUByte(GL_QUADS);
+    de->addElement(0);
+    de->addElement(1);
 
     osg::Vec3Array* verts = new osg::Vec3Array();
     for (unsigned x = 0; x<=(unsigned)r; ++x) {
         verts->push_back(osg::Vec3(-0.5f + float(x) / r, -0.5f, 0.0f));
         verts->push_back(osg::Vec3(-0.5f + float(x) / r,  0.5f, 0.0f));
     }
+
+    de->addElement(verts->size()-1);
+    de->addElement(verts->size()-2);
+
     for (unsigned y=0; y<=(unsigned)r; ++y) {
         verts->push_back(osg::Vec3(-0.5f, -0.5f + float(y)/r, 0.0f));
         verts->push_back(osg::Vec3( 0.5f, -0.5f + float(y)/r, 0.0f));
     }
 
     osg::Vec4Array* colors = new osg::Vec4Array();
-    colors->push_back(osg::Vec4(1,1,1,1));
+    colors->push_back(osg::Vec4(1,0,0,0.5f));
 
     osg::Geometry* geom = new osg::Geometry();
     geom->setVertexArray(verts);
     geom->setColorArray(colors);
     geom->setColorBinding(geom->BIND_OVERALL);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
+    
+    geom->addPrimitiveSet(de);
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable(geom);
+    geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+    geom->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 
     this->addChild(geode);
 

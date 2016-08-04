@@ -195,18 +195,6 @@ MPTerrainEngineNode::registerEngine(MPTerrainEngineNode* engineNode)
     OE_DEBUG << LC << "Registered engine " << engineNode->_uid << std::endl;
 }
 
-void
-MPTerrainEngineNode::unregisterEngine( UID uid )
-{
-    Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
-    EngineNodeCache::iterator k = getEngineNodeCache().find( uid );
-    if (k != getEngineNodeCache().end())
-    {
-        getEngineNodeCache().erase(k);
-        OE_DEBUG << LC << "Unregistered engine " << uid << std::endl;
-    }
-}
-
 // since this method is called in a database pager thread, we use a ref_ptr output
 // parameter to avoid the engine node being destructed between the time we 
 // return it and the time it's accessed; this could happen if the user removed the
@@ -258,6 +246,7 @@ _stateUpdateRequired  ( false )
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
 
+#ifdef USE_RENDER_BINS
     // Register our render bins protos.
     {
         // Mutex because addRenderBinPrototype isn't thread-safe.
@@ -272,6 +261,7 @@ _stateUpdateRequired  ( false )
         _payloadRenderBinPrototype->setName( Stringify() << "oe.PayloadBin." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _payloadRenderBinPrototype->getName(), _payloadRenderBinPrototype.get() );
     }
+#endif
 
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
@@ -287,10 +277,10 @@ _stateUpdateRequired  ( false )
 
 MPTerrainEngineNode::~MPTerrainEngineNode()
 {
-    unregisterEngine( _uid );
-
+#ifdef USE_RENDER_BINS
     osgUtil::RenderBin::removeRenderBinPrototype( _terrainRenderBinPrototype.get() );
     osgUtil::RenderBin::removeRenderBinPrototype( _payloadRenderBinPrototype.get() );
+#endif
 
     if ( _update_mapf )
     {
@@ -698,7 +688,7 @@ namespace
                 }
             }
             if ( count > 0 )
-                OE_WARN << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
+                OE_DEBUG << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
         }
     };
 }

@@ -96,7 +96,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public: // statics    
         static void registerEngine( MPTerrainEngineNode* engineNode );
-        static void unregisterEngine( UID uid );
         static void getEngineByUID( UID uid, osg::ref_ptr<MPTerrainEngineNode>& output );
 
     public:

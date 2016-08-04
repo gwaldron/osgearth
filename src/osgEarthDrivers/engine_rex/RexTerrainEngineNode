@@ -88,7 +88,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     public: // statics    
         static void registerEngine( RexTerrainEngineNode* engineNode );
-        static void unregisterEngine( UID uid );
         static void getEngineByUID( UID uid, osg::ref_ptr<RexTerrainEngineNode>& output );
 
         /** Access to the asychronous data loader */

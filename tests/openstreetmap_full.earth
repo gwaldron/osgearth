@@ -1,0 +1,239 @@
+<!--
+osgEarth Sample - Openstreetmap buildings.
+
+This shows how to use the TFS driver to connect to a worldwide openstreetmap building dataset.
+You must have the mapnik vector tiles driver built by including the protobuf libraries in cmake.
+-->
+<map name="TFS" type="geocentric" version="2">
+
+ 
+ 
+
+    <model name="osm" driver="feature_geom">
+
+   
+       <features name="osm" driver="tfs">
+            <url>http://readymap.org/osm/osm/osm/</url>
+            <invert_y>true</invert_y>
+            <min_level>14</min_level>
+            <max_level>14</max_level>
+            <profile>spherical-mercator</profile>
+            <format>pbf</format>            
+        </features>
+
+        <instancing>true</instancing>
+
+        <feature_indexing enabled="false"></feature_indexing>
+
+        <styles>
+            
+            <library name="us_resources">
+                <url>../data/resources/textures_us/catalog.xml</url>
+            </library>
+
+            <style type="text/css">
+                hospital {
+                     icon: "../data/hospital.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }     
+
+                school {
+                     icon: "../data/school.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }     
+
+                bank {
+                     icon: "../data/bank.png";
+                     icon-align:    center-center;
+                     icon-declutter: true;
+                     text-content:  getName();
+                     altitude-clamping:       terrain;
+                }
+
+                forest {
+                   model:               "../data/tree.ive";
+                   model-placement:     random;
+                   model-density:       10000;
+                   model-scale:         2.5;
+                   model-random-seed:   1;
+                   altitude-clamping:       terrain;
+                }            
+
+                grass {
+                   model:               "../data/tree.ive";
+                   model-placement:     random;
+                   model-density:       10000;
+                   model-scale:         2.5;
+                   model-random-seed:   1;
+                   altitude-clamping:       terrain;
+                }
+
+                water {
+                   fill:               #6BA8FF;
+                   render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
+                }
+
+                buildings {
+                  extrusion-height:      Math.random()*30.0 + 5.0;
+                  extrusion-flatten:     true;
+                  extrusion-wall-style:  building-wall;
+                  extrusion-roof-style:  building-rooftop;
+                }            
+
+                building-wall {
+                  skin-library:     us_resources;
+                  skin-tags:        building;
+                  skin-random-seed: 1;
+                  fill:             #ffffff;
+                }
+                building-rooftop {
+                  skin-library:     us_resources;
+                  skin-tags:        rooftop;
+                  skin-tiled:       true;
+                  skin-random-seed: 1;
+                  fill:             #ffffff;
+                }
+
+            </style>
+
+            <selector name="default" style_expr="selectStyle()"/>
+            
+            <script language="javascript">
+              <![CDATA[
+
+                function selectStyle() {
+                    if ("building" in feature.properties) {
+                        return "buildings";
+                    }
+                    else if ("landuse" in feature.properties) {
+                        var landuse = feature.properties["landuse"];
+                        if ( landuse == "forest" ||
+                             landuse == "grass" ||
+                             landuse == "meadow"
+                            ) {
+                                return "forest";
+                            }                                            
+                        else if (landuse == "reservoir") {
+                            return "water";
+                        }
+                    }
+                    else if ("natural" in feature.properties) {
+                        var natural = feature.properties["natural"];
+                        if (natural == "wood" || natural == "tree") {
+                            return "forest"
+                        }
+                        else if (natural == "water") {
+                            return "water";
+                        }
+                    }
+                    else if ("surface" in feature.properties) {
+                        var surface = feature.properties["surface"];
+                        if (surface == "grass") {
+                            return "grass";
+                        }
+                    }
+                    else if ("amenity" in feature.properties) {
+                        var amenity = feature.properties["amenity"];
+                        if (amenity == "hospital") {
+                            return "hospital";
+                        }
+                        else if (amenity == "school") {
+                            return "school";
+                        }
+                        else if (amenity == "bank") {
+                            return "bank";
+                        }
+                    }
+                    return null;                    
+                }
+
+                function getName() {
+                    if ("name" in feature.properties) {
+                        return feature.properties["name"];
+                    }
+                    return "";
+                }
+              ]]>
+            </script>
+
+        </styles>
+    </model>
+ 
+ 
+
+    <image name="esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+
+    <image name="osm_roads" driver="agglite" min_level="14">
+      
+       <max_data_level>14</max_data_level>
+       
+       <profile>spherical-mercator</profile>
+        
+        <features name="roads" driver="tfs">
+            <url>http://readymap.org/osm/osm/osm/</url>
+            <invert_y>true</invert_y>
+            <min_level>14</min_level>
+            <max_level>14</max_level>
+            <profile>spherical-mercator</profile>
+            <format>pbf</format>            
+
+            <filters>
+                <script language="javascript">
+                    <![CDATA[
+                    function filter() {
+                        if ("highway" in feature.properties) {
+                            return true;             
+                        }
+                        return false;
+                    }
+
+                    filter();                    
+
+                    ]]>
+                </script>
+            </filters>
+        </features>
+
+
+        <styles>
+            <style type="text/css">
+                roads {
+                  stroke: #656363;
+                  stroke-width: 15m;
+                  stroke-linecap: square;
+                }           
+            </style>
+        </styles>
+        
+        <cache_policy usage="none"/>
+    </image>
+
+
+
+<!--
+    <image name="readymap_streets" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/119/</url>
+    </image>
+-->
+
+
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    
+    <external>
+        <sky hours="20.0"/>    
+    </external>
+  
+</map>

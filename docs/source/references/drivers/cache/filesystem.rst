@@ -22,7 +22,7 @@ Notes::
 	property on map layers to customize the naming to some extent.
 	
 	This cache supports expiration, but does NOT support size limits --
-	there is to way to cap the size of the cache.
+	there is no way to cap the size of the cache.
 	
 	Cache access is serialized since we are reading and writing
 	individual files on disk.

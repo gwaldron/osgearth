@@ -25,6 +25,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/URI>
+#include <osgEarth/Lighting>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -95,59 +96,62 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
+namespace
 {
-    OSGEarthShaderGenPseudoLoader()
+    struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
     {
-        this->supportsExtension( SHADERGEN_PL_EXTENSION, "ShaderGen pseudoloader" );
-    }
+        OSGEarthShaderGenPseudoLoader()
+        {
+            this->supportsExtension( SHADERGEN_PL_EXTENSION, "ShaderGen pseudoloader" );
+        }
 
-    const char* className() const
-    {
-        return "OSGEarth ShaderGen pseudoloader";
-    }
+        const char* className() const
+        {
+            return "OSGEarth ShaderGen pseudoloader";
+        }
 
-    bool acceptsExtension(const std::string& extension) const
-    {
-        return osgDB::equalCaseInsensitive( extension, SHADERGEN_PL_EXTENSION );
-    }
+        bool acceptsExtension(const std::string& extension) const
+        {
+            return osgDB::equalCaseInsensitive( extension, SHADERGEN_PL_EXTENSION );
+        }
 
-    ReadResult readObject(const std::string& filename, const osgDB::Options* options) const
-    {
-        return readNode( filename, options );
-    }
+        ReadResult readObject(const std::string& filename, const osgDB::Options* options) const
+        {
+            return readNode( filename, options );
+        }
 
-    ReadResult readNode(const std::string& filename, const osgDB::Options* options) const
-    {
-        if ( !acceptsExtension(osgDB::getFileExtension(filename)) )
-            return ReadResult::FILE_NOT_HANDLED;
+        ReadResult readNode(const std::string& filename, const osgDB::Options* options) const
+        {
+            if ( !acceptsExtension(osgDB::getFileExtension(filename)) )
+                return ReadResult::FILE_NOT_HANDLED;
 
-        std::string stripped = osgDB::getNameLessExtension(filename);
+            std::string stripped = osgDB::getNameLessExtension(filename);
 
-        OE_INFO << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
+            OE_INFO << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
         
-        osgEarth::ReadResult result = URI(stripped).readNode(options);
-        if ( result.succeeded() && result.getNode() != 0L )
-        {
-            osg::ref_ptr<osg::Node> node = result.releaseNode();
+            osgEarth::ReadResult result = URI(stripped).readNode(options);
+            if ( result.succeeded() && result.getNode() != 0L )
+            {
+                osg::ref_ptr<osg::Node> node = result.releaseNode();
 
-            osgEarth::Registry::shaderGenerator().run(
-                node.get(),
-                osgDB::getSimpleFileName(stripped),
-                Registry::stateSetCache() );
+                osgEarth::Registry::shaderGenerator().run(
+                    node.get(),
+                    osgDB::getSimpleFileName(stripped),
+                    Registry::stateSetCache() );
 
-            return ReadResult( node.release() );
+                return ReadResult( node.release() );
+            }
+
+            else
+            {
+                OE_WARN << LC << "Error loading \"" << stripped << "\": " << result.errorDetail() << "\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+            }
         }
+    };
 
-        else
-        {
-            OE_WARN << LC << "Error loading \"" << stripped << "\": " << result.errorDetail() << "\n";
-            return ReadResult::ERROR_IN_READING_FILE;
-        }
-    }
-};
-
-REGISTER_OSGPLUGIN(SHADERGEN_PL_EXTENSION, OSGEarthShaderGenPseudoLoader)
+    REGISTER_OSGPLUGIN(SHADERGEN_PL_EXTENSION, OSGEarthShaderGenPseudoLoader)
+}
 
 //------------------------------------------------------------------------
 
@@ -188,8 +192,12 @@ namespace
         osg::StateAttribute* _sa;
         unsigned             _unit;
     };
+}
+    
+//------------------------------------------------------------------------
 
-
+namespace
+{
     /**
      * The OSG State extended with mode/attribute accessors.
      */
@@ -424,6 +432,10 @@ ShaderGenerator::run(osg::Node*         graph,
         // perform GL state sharing
         optimizeStateSharing( graph, cache );
 
+        // generate uniforms and uniform callbacks for lighting and material elements.
+        GenerateGL3LightingUniforms generateUniforms;
+        graph->accept(generateUniforms);
+
         osg::StateSet* stateset = cloneOrCreateStateSet(graph);
 
         // install a blank VP at the top as the default.
@@ -574,18 +586,18 @@ ShaderGenerator::apply( osg::Geode& node )
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,3,3)
 void
-ShaderGenerator::apply( osg::Drawable& drawable )
+ShaderGenerator::apply( osg::Drawable& node )
 {
     if ( !_active )
         return;
 
-    if ( ignore(&drawable) )
+    if ( ignore(&node) )
         return;
 
     if ( _duplicateSharedSubgraphs )
-        duplicateSharedNode(drawable);
+        duplicateSharedNode(node);
 
-    apply( &drawable );
+    apply( &node );
 }
 #endif
 

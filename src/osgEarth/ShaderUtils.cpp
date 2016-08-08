@@ -25,6 +25,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/GLSLChunker>
 #include <osg/ComputeBoundsVisitor>
+#include <osg/LightSource>
 #include <osgDB/FileUtils>
 #include <list>
 
@@ -346,7 +347,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
             declPos = 0;
         }
 
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+#if 0 //!defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
 
         int maxLights = Registry::capabilities().getMaxLights();
 
@@ -388,6 +389,8 @@ ShaderPreProcessor::run(osg::Shader* shader)
         replaceVaryings( shader->getType(), chunks );
         chunker.write( chunks, source );
         shader->setShaderSource( source );
+
+        //OE_WARN << source << std::endl << std::endl;
     }
 }
 

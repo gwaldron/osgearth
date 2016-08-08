@@ -22,12 +22,14 @@
 
 #include "GLSkyNode"
 #include "GLSkyShaders"
-#include <osgEarthUtil/Ephemeris>
+#include <osg/LightSource>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/GeoData>
+#include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
+#include <osgEarthUtil/Ephemeris>
 
 #define LC "[GLSkyNode] "
 
@@ -55,11 +57,13 @@ void
 GLSkyNode::initialize(const Profile* profile)
 {
     _profile = profile;
-    _light = new osg::Light(0);
+    //_light = new osg::Light(0);
+    _light = new LightGL3(0);
+    _light->setDataVariance(_light->DYNAMIC);
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
     _light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
     _light->setSpecular(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
-    
+
     if ( _options.ambient().isSet() )
     {
         float a = osg::clampBetween(_options.ambient().get(), 0.0f, 1.0f);
@@ -72,6 +76,13 @@ GLSkyNode::initialize(const Profile* profile)
     _lighting = new PhongLightingEffect();
     _lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
+
+    // install the Sun as a lightsource.
+    osg::LightSource* lightSource = new osg::LightSource();
+    lightSource->setLight(_light.get());
+    lightSource->setCullingActive(false);
+    this->addChild( lightSource );
+    lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
 
     onSetDateTime();
 }
@@ -106,8 +117,14 @@ GLSkyNode::onSetDateTime()
 
     if ( _profile->getSRS()->isGeographic() )
     {
-        sunPosECEF.normalize();
-        getSunLight()->setPosition( osg::Vec4(sunPosECEF, 0.0) );
+        // Convert a Vec3d into a Vec4f without losing precision.
+        // This is critical if we are going to convert the position to View space
+        // and pass it in a uniform.
+        osg::Vec4 pos(sunPosECEF, 1.0);
+        while (osg::Vec3(pos.x(), pos.y(), pos.z()).length() > 1000000.0f)
+            pos *= 0.1f;
+
+        _light->setPosition(pos);
     }
     else
     {
@@ -149,8 +166,23 @@ GLSkyNode::attach( osg::View* view, int lightNum )
     if ( !view ) return;
 
     _light->setLightNum( lightNum );
-    view->setLight( _light.get() );
-    view->setLightingMode( osg::View::SKY_LIGHT );
 
+    //OE_INFO << LC << "Attaching light to view" << std::endl;
+    //view->setLight( _light.get() );
+    view->setLightingMode( osg::View::NO_LIGHT );
+    //view->setLightingMode( osg::View::SKY_LIGHT );
+
+    // install or convert the default material for this view.
+    osg::StateSet* camSS = view->getCamera()->getOrCreateStateSet();
+    osg::Material* material = dynamic_cast<osg::Material*>(camSS->getAttribute(osg::StateAttribute::MATERIAL));
+    material = material ? new MaterialGL3(*material) : new MaterialGL3();
+
+    // install the replacement:
+    camSS->setAttribute(material);
+
+    // Create static uniforms for this material.
+    MaterialGL3UniformGenerator().generate(camSS, material);
+
+    // initial date/time setup.
     onSetDateTime();
 }

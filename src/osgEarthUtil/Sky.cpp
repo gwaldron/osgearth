@@ -154,7 +154,7 @@ SkyNode::traverse(osg::NodeVisitor& nv)
         // update the light model uniforms.
         if ( _lightingUniformsHelper.valid() )
         {
-            _lightingUniformsHelper->cullTraverse( this, &nv );
+            //_lightingUniformsHelper->cullTraverse( this, &nv );
         }
     }
     osg::Group::traverse(nv);

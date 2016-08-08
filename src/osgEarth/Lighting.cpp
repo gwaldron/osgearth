@@ -30,6 +30,9 @@ using namespace osgEarth;
 
 #define LC "[Lighting] "
 
+// prefix to use for uniforms.
+#define UPREFIX "osg_"
+
 //............................................................................
 
 void
@@ -121,8 +124,8 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         osg::Light* light = lightSource->getLight();
 
         // replace the index with the light number:
-        std::string prefix("osg_LightSource[#].");
-        prefix.at(16) = (char)('0' + light->getLightNum());
+        std::string prefix(UPREFIX "LightSource[#].");
+        prefix.at(prefix.length()-3) = (char)('0' + light->getLightNum());
 
         // Lights are positional state so their location in the scene graph is only important
         // in terms of model transformation, and not in terms of what gets lit.
@@ -147,6 +150,9 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         ss->addUniform(new osg::Uniform((prefix + "linearAttenuation").c_str(), light->getLinearAttenuation()));
         ss->addUniform(new osg::Uniform((prefix + "quadraticAttenuation").c_str(), light->getQuadraticAttenuation()));
 
+        LightGL3* lightGL3 = dynamic_cast<LightGL3*>(light);
+        bool enabled = lightGL3 ? lightGL3->getEnabled() : true;
+        ss->addUniform(new osg::Uniform((prefix + "enabled").c_str(), enabled));
     }
     return traverse(obj, data);
 }
@@ -156,11 +162,11 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 void
 MaterialGL3UniformGenerator::generate(osg::StateSet* ss, const osg::Material* m)
 {
-    ss->addUniform(new osg::Uniform("osg_FrontMaterial.ambient", m->getAmbient(m->FRONT)));
-    ss->addUniform(new osg::Uniform("osg_FrontMaterial.diffuse", m->getDiffuse(m->FRONT)));
-    ss->addUniform(new osg::Uniform("osg_FrontMaterial.specular", m->getSpecular(m->FRONT)));
-    ss->addUniform(new osg::Uniform("osg_FrontMaterial.emission", m->getEmission(m->FRONT)));
-    ss->addUniform(new osg::Uniform("osg_FrontMaterial.shininess", m->getShininess(m->FRONT)));
+    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.ambient", m->getAmbient(m->FRONT)));
+    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.diffuse", m->getDiffuse(m->FRONT)));
+    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.specular", m->getSpecular(m->FRONT)));
+    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.emission", m->getEmission(m->FRONT)));
+    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.shininess", m->getShininess(m->FRONT)));
 
     //TODO: back-face materials
 }
@@ -203,11 +209,14 @@ LightGL3::apply(osg::State& state) const
 // in the same namespace in the same cpp file.
 namespace osgEarth_TEMP1
 {
-    REGISTER_OBJECT_WRAPPER( 
+    REGISTER_OBJECT_WRAPPER(
         LightGL3,
         new osgEarth::LightGL3,
         osgEarth::LightGL3,
-        "osg::Object osg::StateAttribute osg::Light osgEarth::LightGL3" ) { }
+        "osg::Object osg::StateAttribute osg::Light osgEarth::LightGL3")
+    {
+        ADD_BOOL_SERIALIZER(Enabled, true);
+    }
 }
 
 //............................................................................
@@ -216,7 +225,7 @@ void
 MaterialGL3::apply(osg::State& state) const
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
-    osg::Light::apply(state);
+    osg::Material::apply(state);
 #endif
 }
 

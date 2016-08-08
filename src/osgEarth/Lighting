@@ -34,7 +34,10 @@
 namespace osgEarth
 {
     /**
-     * Traverses a graph and generates static Uniforms for Materials.
+     * Traverses a graph, looking for Lights and Materials, and generates either static
+     * uniforms or dynamic cull callbacks for them so they will work with core profile
+     * shaders. (This is necessary for GL3+ core, OSX, Mesa etc. that don't support
+     * compatibility mode.)
      */
     class OSGEARTH_EXPORT GenerateGL3LightingUniforms : public osg::NodeVisitor
     {
@@ -68,7 +71,14 @@ namespace osgEarth
 
     /**
      * Cull callback that dynamically creates GL3 Material uniforms each frame.
-     * This makes sense if the Material is marked with a DYNAMIC data variance.
+     * This makes sense if the Material is marked with a DYNAMIC data variance (and
+     * you intend to change it after installing it).
+     *
+     * Install as a cull callback on the node whose StateSet contains the Material.
+     *
+     * Alternately, you can generate one-time static uniforms corresponding to the 
+     * Material if you don't intend to change them. To do this, call the generate()
+     * method directly instead of installing the cull callback.
      */
     class OSGEARTH_EXPORT MaterialGL3UniformGenerator : public osg::Callback
     {
@@ -77,23 +87,27 @@ namespace osgEarth
         void generate(osg::StateSet* stateSet, const osg::Material* material);
 
     public: // osg::Callback
-        //void operator()(osg::Node*, osg::NodeVisitor*);
+
         bool run(osg::Object* obj, osg::Object* data);
     };
 
     /**
      * Light that will work in both FFP and non-FFP mode.
      * To use this, find a LightSource and replace the Light with a LightGL3.
-     * Then install the ConvertLightSourceToUniforms cull callback on the LightSource.
+     * Then install the LightSourceGL3UniformGenerator cull callback on the LightSource.
      */
     class OSGEARTH_EXPORT LightGL3 : public osg::Light
     {
     public:
-        LightGL3() : osg::Light() { }
-        LightGL3(int lightnum) : osg::Light(lightnum) { }
-        LightGL3(const LightGL3& light, const osg::CopyOp& copyop =osg::CopyOp::SHALLOW_COPY) : osg::Light(light, copyop) {}
-        LightGL3(const osg::Light& light) : osg::Light(light) { }
-        
+        LightGL3() : osg::Light(), _enabled(true) { }
+        LightGL3(int lightnum) : osg::Light(lightnum), _enabled(true) { }
+        LightGL3(const LightGL3& light, const osg::CopyOp& copyop =osg::CopyOp::SHALLOW_COPY)
+            : osg::Light(light, copyop), _enabled(light._enabled) {}
+        LightGL3(const osg::Light& light)
+            : osg::Light(light), _enabled(true) { }
+
+        void setEnabled(bool value) { _enabled = value; }
+        bool getEnabled() const { return _enabled; }
 
         virtual osg::Object* cloneType() const { return new LightGL3(_lightnum); }
         virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new LightGL3(*this,copyop); }
@@ -103,14 +117,26 @@ namespace osgEarth
         virtual Type getType() const { return LIGHT; }
 
         virtual void apply(osg::State&) const;
+
+    protected:
+        bool _enabled;
     };
 
+    /**
+     * Cull callback that will install Light uniforms based on the Light in a LightSource.
+     * Install this directly on the LightSource node. 
+     */
     class OSGEARTH_EXPORT LightSourceGL3UniformGenerator : public osg::NodeCallback
     {
     public:
+        /**
+         * Creates and installs Uniforms on the stateset for the Light components
+         * of the Light that are non-positional (everything but the position and direction)
+         */
         void generateNonPositionalData(osg::StateSet* ss, osg::Light* light);
 
     public: // osg::NodeCallback
+
         bool run(osg::Object* obj, osg::Object* data);
     };
 }

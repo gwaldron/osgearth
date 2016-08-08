@@ -154,13 +154,6 @@ GLSkyNode::onSetDateTime()
 }
 
 void
-GLSkyNode::onSetMinimumAmbient()
-{
-    // GLSky doesn't adjust the ambient lighting automatically, so just set it.
-    _light->setAmbient( getMinimumAmbient() );
-}
-
-void
 GLSkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;
@@ -168,14 +161,24 @@ GLSkyNode::attach( osg::View* view, int lightNum )
     _light->setLightNum( lightNum );
 
     //OE_INFO << LC << "Attaching light to view" << std::endl;
-    //view->setLight( _light.get() );
+
+    // Tell the view not to automatically include a light.
     view->setLightingMode( osg::View::NO_LIGHT );
-    //view->setLightingMode( osg::View::SKY_LIGHT );
 
     // install or convert the default material for this view.
     osg::StateSet* camSS = view->getCamera()->getOrCreateStateSet();
     osg::Material* material = dynamic_cast<osg::Material*>(camSS->getAttribute(osg::StateAttribute::MATERIAL));
     material = material ? new MaterialGL3(*material) : new MaterialGL3();
+
+    // Set up some default material properties.
+    material->setDiffuse(material->FRONT, osg::Vec4(1,1,1,1));
+    // Set ambient reflectance to 1 so that ambient light is in control:
+    material->setAmbient(material->FRONT, osg::Vec4(1,1,1,1));
+
+    osg::Uniform* numLights = camSS->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
+    int value = 0;
+    numLights->get(value);
+    numLights->set(value+1);
 
     // install the replacement:
     camSS->setAttribute(material);

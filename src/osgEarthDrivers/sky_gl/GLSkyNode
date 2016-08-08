@@ -56,7 +56,6 @@ namespace osgEarth { namespace GLSky
         void onSetEphemeris();
         void onSetDateTime();
         void onSetReferencePoint();
-        void onSetMinimumAmbient();
 
     protected:
         virtual ~GLSkyNode();

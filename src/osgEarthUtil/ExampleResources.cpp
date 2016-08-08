@@ -803,7 +803,7 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         skyYearSlider->addEventHandler( new SkyYearSlider(sky, yearLabel) );
 
         ++r;
-        grid->setControl(0, r, new ui::LabelControl("Min.Ambient: ", 16) );
+        grid->setControl(0, r, new ui::LabelControl("Ambient Light: ", 16) );
         ui::HSliderControl* ambient = grid->setControl(1, r, new ui::HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
         ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
         grid->setControl(2, r, new ui::LabelControl(ambient) );

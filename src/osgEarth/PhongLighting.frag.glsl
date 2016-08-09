@@ -13,7 +13,6 @@ vec3 vp_Normal;
 
 
 // Toatl number of lights in the scene
-#define MAX_LIGHTS 8
 uniform int osg_NumLights;
 
 // Parameters of each light:
@@ -107,5 +106,5 @@ void oe_phong_fragment(inout vec4 color)
         }
     }
     
-    color.rgb *= clamp(totalLighting, 0.0, 1.0);
+    color.rgb *= totalLighting;
 }

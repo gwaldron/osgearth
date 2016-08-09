@@ -36,6 +36,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Shaders>
+#include <osgEarth/Lighting>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -214,11 +215,18 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
 
-    _light = new osg::Light( 0 );
+    _light = new LightGL3( 0 );
     _light->setPosition( osg::Vec4f(0.0f, 0.0f, 1.0, 0.0f) );
     _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
     _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
     _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
+
+    // install the Sun as a lightsource.
+    osg::LightSource* lightSource = new osg::LightSource();
+    lightSource->setLight(_light.get());
+    lightSource->setCullingActive(false);
+    this->addChild( lightSource );
+    lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
 
     if ( _options.ambient().isSet() )
     {
@@ -350,9 +358,33 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
         return;
 
     _light->setLightNum( lightNum );
-    view->setLight( _light.get() );
-    view->setLightingMode( osg::View::SKY_LIGHT );
+    //view->setLight( _light.get() );
+    //view->setLightingMode( osg::View::SKY_LIGHT );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
+
+    // Tell the view not to automatically include a light.
+    view->setLightingMode( osg::View::NO_LIGHT );
+
+    // install or convert the default material for this view.
+    osg::StateSet* camSS = view->getCamera()->getOrCreateStateSet();
+    osg::Material* material = dynamic_cast<osg::Material*>(camSS->getAttribute(osg::StateAttribute::MATERIAL));
+    material = material ? new MaterialGL3(*material) : new MaterialGL3();
+
+    // Set up some default material properties.
+    material->setDiffuse(material->FRONT, osg::Vec4(1,1,1,1));
+    // Set ambient reflectance to 1 so that ambient light is in control:
+    material->setAmbient(material->FRONT, osg::Vec4(1,1,1,1));
+
+    osg::Uniform* numLights = camSS->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
+    int value = 0;
+    numLights->get(value);
+    numLights->set(value+1);
+
+    // install the replacement:
+    camSS->setAttribute(material);
+
+    // Create static uniforms for this material.
+    MaterialGL3UniformGenerator().generate(camSS, material);
 
     onSetDateTime();
 }

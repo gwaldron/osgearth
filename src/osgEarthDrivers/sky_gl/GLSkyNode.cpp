@@ -21,7 +21,6 @@
 */
 
 #include "GLSkyNode"
-#include "GLSkyShaders"
 #include <osg/LightSource>
 
 #include <osgEarth/VirtualProgram>

@@ -99,7 +99,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_server)
     ADD_SUBDIRECTORY(osgearth_deformation)
     ADD_SUBDIRECTORY(osgearth_srstest)
-
+    ADD_SUBDIRECTORY(osgearth_lights)
 
     IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
         ADD_SUBDIRECTORY(osgearth_qt_simple)

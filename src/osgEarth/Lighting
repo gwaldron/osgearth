@@ -42,6 +42,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT GenerateGL3LightingUniforms : public osg::NodeVisitor
     {
     public:
+        GenerateGL3LightingUniforms();
+
+    public: // osg::NodeVisitor
         virtual void apply(osg::Node& node);
         virtual void apply(osg::LightSource& node);
 

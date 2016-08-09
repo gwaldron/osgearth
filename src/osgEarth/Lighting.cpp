@@ -35,6 +35,12 @@ using namespace osgEarth;
 
 //............................................................................
 
+GenerateGL3LightingUniforms::GenerateGL3LightingUniforms() :
+osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
+{
+    setNodeMaskOverride(~0);
+}
+
 void
 GenerateGL3LightingUniforms::apply(osg::Node& node)
 {
@@ -142,10 +148,11 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         const osg::Matrix& mvm = *cv->getModelViewMatrix();
         ss->addUniform(new osg::Uniform((prefix + "position").c_str(), light->getPosition() * mvm));
         osg::Vec3 directionLocal = osg::Matrix::transform3x3(light->getDirection(), mvm);
-        ss->addUniform(new osg::Uniform((prefix + "spotDirection").c_str(), directionLocal));
+        ss->addUniform(new osg::Uniform((prefix + "direction").c_str(), directionLocal));
 
         ss->addUniform(new osg::Uniform((prefix + "spotExponent").c_str(), light->getSpotExponent()));
-        ss->addUniform(new osg::Uniform((prefix + "spotCosCutoff").c_str(), cos(light->getSpotExponent())));
+        ss->addUniform(new osg::Uniform((prefix + "spotCutoff").c_str(), light->getSpotCutoff()));
+        ss->addUniform(new osg::Uniform((prefix + "spotCosCutoff").c_str(), cos(light->getSpotCutoff())));
         ss->addUniform(new osg::Uniform((prefix + "constantAttenuation").c_str(), light->getConstantAttenuation()));
         ss->addUniform(new osg::Uniform((prefix + "linearAttenuation").c_str(), light->getLinearAttenuation()));
         ss->addUniform(new osg::Uniform((prefix + "quadraticAttenuation").c_str(), light->getQuadraticAttenuation()));

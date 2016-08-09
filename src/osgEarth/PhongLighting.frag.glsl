@@ -12,26 +12,24 @@ in vec3 oe_phong_vertexView3;
 vec3 vp_Normal;
 
 
-// Toatl number of lights in the scene
+// Total number of lights in the scene
+#define MAX_LIGHTS 8
 uniform int osg_NumLights;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
 {   
-   vec4 ambient;              // Aclarri   
-   vec4 diffuse;              // Dcli   
-   vec4 specular;             // Scli   
-   vec4 position;             // Ppli   
-   //vec4 halfVector;           // Derived: Hi   
-   vec3 spotDirection;        // Sdli   
-   float spotExponent;        // Srli   
-   float spotCutoff;          // Crli                              
-                              // (range: [0.0,90.0], 180.0)   
-   float spotCosCutoff;       // Derived: cos(Crli)                 
-                              // (range: [1.0,0.0],-1.0)   
-   float constantAttenuation; // K0   
-   float linearAttenuation;   // K1   
-   float quadraticAttenuation;// K2  
+   vec4 ambient;
+   vec4 diffuse;
+   vec4 specular;
+   vec4 position;
+   vec3 direction;
+   float spotExponent;
+   float spotCutoff;
+   float spotCosCutoff;
+   float constantAttenuation;
+   float linearAttenuation;
+   float quadraticAttenuation;
 
    bool enabled;
 };  
@@ -57,9 +55,9 @@ void oe_phong_fragment(inout vec4 color)
     // See:
     // https://en.wikipedia.org/wiki/Phong_reflection_model
     // https://www.opengl.org/sdk/docs/tutorials/ClockworkCoders/lighting.php
+    // https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Multiple_Lights
 
     vec3 N = normalize(vp_Normal);
-    vec3 V = normalize(oe_phong_vertexView3); 
 
     float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0); 
 
@@ -76,12 +74,46 @@ void oe_phong_fragment(inout vec4 color)
 
         if (osg_LightSource[i].enabled)
         {
+            float attenuation = 1.0;
+            vec3 L; // vertex-to-light-source vector.
+
+            // directional light:
+            if (osg_LightSource[i].position.w == 0.0)
+            {
+                L = -osg_LightSource[i].direction;
+            }
+
+            // point or spot light:
+            else
+            {
+                // calculate VL, the vertex-to-light vector:
+                vec4 V = vec4(oe_phong_vertexView3, 1.0) * osg_LightSource[i].position.w;
+                vec4 VL4 = osg_LightSource[i].position - V;
+                L = normalize(VL4.xyz);
+
+                // calculate attentuation:
+                float distance = length(VL4);
+                attenuation = 1.0 / (
+                    osg_LightSource[i].constantAttenuation +
+                    osg_LightSource[i].linearAttenuation * distance +
+                    osg_LightSource[i].quadraticAttenuation * distance * distance);
+
+                // for a spot light, the attentuation help form the cone:
+                if (osg_LightSource[i].spotCutoff <= 90.0)
+                {
+                    vec3 D = normalize(osg_LightSource[i].direction);
+                    float clampedCos = max(0.0, dot(-L,D));
+                    attenuation = clampedCos < osg_LightSource[i].spotCosCutoff ?
+                        0.0 :
+                        attenuation * pow(clampedCos, osg_LightSource[i].spotExponent);
+                }
+            }
+
             vec3 ambientReflection =
                 attenuation
                 * osg_FrontMaterial.ambient.rgb
                 * osg_LightSource[i].ambient.rgb;
 
-            vec3 L = normalize(osg_LightSource[i].position.xyz);
             float NdotL = max(dot(N,L), 0.0); 
 
             vec3 diffuseReflection =

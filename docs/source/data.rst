@@ -78,7 +78,7 @@ Tips for Preparing your own Data
     
     **Reproject your data**
 
-    osgEarth will reproject your data on your fly if it does not have the necessary
+    osgEarth will reproject your data on-the-fly if it does not have the necessary
     coordinate system.  For instance, if you are trying to view a UTM image on a
     geodetic globe (epsg:4326).  However, osgEarth will run much faster if your data
     is already in the correct coordinate system.  You can use any tool you want to 

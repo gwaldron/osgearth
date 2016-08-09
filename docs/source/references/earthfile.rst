@@ -424,7 +424,7 @@ tiling scheme that it should use to render map tiles.
 | Property              | Description                                                        |
 +=======================+====================================================================+
 | srs                   | Spatial reference system of the map. This can be a WKT string, an  |
-|                       | ESPG code, a PROJ4 initialization string, or a stock profile name. |
+|                       | EPSG code, a PROJ4 initialization string, or a stock profile name. |
 |                       | Please refer to :doc:`/user/spatialreference` for details.         |
 +-----------------------+--------------------------------------------------------------------+
 | vdatum                | Vertical datum of the profile, which describes how to treat        |

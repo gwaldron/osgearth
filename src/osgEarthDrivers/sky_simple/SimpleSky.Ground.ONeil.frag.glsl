@@ -17,27 +17,25 @@ varying vec3 atmos_vert;
 vec3 vp_Normal;          // surface normal (from osgEarth)
 
 
-// Toatl number of lights in the scene
-#define MAX_LIGHTS 8
+#define MAX_LIGHTS 64
+
+// Total number of lights in the scene
 uniform int osg_NumLights;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
 {   
-   vec4 ambient;              // Aclarri   
-   vec4 diffuse;              // Dcli   
-   vec4 specular;             // Scli   
-   vec4 position;             // Ppli   
-   //vec4 halfVector;           // Derived: Hi   
-   vec3 spotDirection;        // Sdli   
-   float spotExponent;        // Srli   
-   float spotCutoff;          // Crli                              
-                              // (range: [0.0,90.0], 180.0)   
-   float spotCosCutoff;       // Derived: cos(Crli)                 
-                              // (range: [1.0,0.0],-1.0)   
-   float constantAttenuation; // K0   
-   float linearAttenuation;   // K1   
-   float quadraticAttenuation;// K2  
+   vec4 ambient;
+   vec4 diffuse;
+   vec4 specular;
+   vec4 position;
+   vec3 spotDirection;
+   float spotExponent;
+   float spotCutoff;
+   float spotCosCutoff;
+   float constantAttenuation;
+   float linearAttenuation;
+   float quadraticAttenuation;
 
    bool enabled;
 };  
@@ -59,58 +57,111 @@ uniform osg_MaterialParameters osg_FrontMaterial;
 void atmos_fragment_main(inout vec4 color) 
 { 
     if ( oe_mode_GL_LIGHTING == false )
-    {
         return; 
-    }
 
-    vec3 totalLighting = osg_FrontMaterial.emission.rgb;
+    // See:
+    // https://en.wikipedia.org/wiki/Phong_reflection_model
+    // https://www.opengl.org/sdk/docs/tutorials/ClockworkCoders/lighting.php
+    // https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Multiple_Lights
 
-    if (osg_LightSource[0].enabled)
+    vec3 N = normalize(vp_Normal);
+
+    float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0); 
+    
+    vec3 U = normalize(atmos_up);
+
+    // Accumulate the lighting, starting with material emission. We are currently
+    // omitting the ambient term for now since we are not using LightModel ambience.
+    vec3 totalLighting =
+        osg_FrontMaterial.emission.rgb;
+        // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
+
+    for (int i=0; i<osg_NumLights; ++i)
     {
-        vec3 ambient = osg_LightSource[0].ambient.rgb;
-        float minAmbient = ambient.r;
+        const float attenuation = 1.0;
 
-        vec3 N = normalize(vp_Normal); 
-        vec3 L = normalize(atmos_lightDir);
-        vec3 U = normalize(atmos_up); 
+        if (osg_LightSource[i].enabled)
+        {
+            float attenuation = 1.0;
+            vec3 L; // vertex-to-light-source vector.
 
-        const float maxAmbient = 0.5;
-        float daytime = max(0.0, dot(U,L));
-        float ambientLightLevel = clamp(daytime, minAmbient, maxAmbient);
+            // directional light:
+            if (osg_LightSource[i].position.w == 0.0)
+            {
+                L = normalize(osg_LightSource[i].position.xyz);
+            }
 
-        float NdotL = max(dot(N,L), 0.0);
+            // point or spot light:
+            else
+            {
+                // calculate VL, the vertex-to-light vector:
+                vec4 V = vec4(atmos_vert, 1.0) * osg_LightSource[i].position.w;
+                vec4 VL4 = osg_LightSource[i].position - V;
+                L = normalize(VL4.xyz);
 
-        const float lowAlt  = 1.0;
-        const float highAlt = 14.0;
-        float altitudeInfluence = 1.0 - clamp( (atmos_space-lowAlt)/(highAlt-lowAlt), 0.0, 1.0);
-        float useNormals = altitudeInfluence * (1.0-ambientLightLevel);
+                // calculate attentuation:
+                float distance = length(VL4);
+                attenuation = 1.0 / (
+                    osg_LightSource[i].constantAttenuation +
+                    osg_LightSource[i].linearAttenuation * distance +
+                    osg_LightSource[i].quadraticAttenuation * distance * distance);
 
-        // try to brighten up surfaces the sun is shining on
-        float overExposure = 1.0;
+                // for a spot light, the attentuation help form the cone:
+                if (osg_LightSource[i].spotCutoff <= 90.0)
+                {
+                    vec3 D = normalize(osg_LightSource[i].spotDirection);
+                    float clampedCos = max(0.0, dot(-L,D));
+                    attenuation = clampedCos < osg_LightSource[i].spotCosCutoff ?
+                        0.0 :
+                        attenuation * pow(clampedCos, osg_LightSource[i].spotExponent);
+                }
+            }
 
-        // calculate the base scene color. Skip ambience since we'll be
-        // factoring that in later.
-        vec4 sceneColor = mix(color*overExposure, color*NdotL, useNormals);
+            // a term indicating whether it's daytime for light 0 (the sun).
+            float dayTerm = i==0? dot(U,L) : 1.0;
 
-        if (NdotL > 0.0 ) { 
-            vec3 V = normalize(atmos_vert); 
-            vec3 H = reflect(-L, N);
-            float HdotN = max(dot(H,N), 0.0); 
-            float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0); 
-            sceneColor += osg_LightSource[0].specular * osg_FrontMaterial.specular * pow(HdotN, shine); 
-        } 
+            // This term boosts the ambient lighting for the sun (light 0) when it's daytime.
+            // TODO: make the boost a uniform?
+            float ambientBoost = i==0? 1.0 + 2.0*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
 
-        // clamp the attentuation to the minimum ambient lighting:
-        vec3 attenuation = max(atmos_atten, ambient); 
+            vec3 ambientReflection =
+                attenuation
+                * osg_FrontMaterial.ambient.rgb
+                * osg_LightSource[i].ambient.rgb
+                * ambientBoost;
 
-        // ramp exposure from ground (full) to space (50%).
-        float exposure = atmos_exposure*clamp(1.0-atmos_space, 0.5, 1.0); 
+            float NdotL = max(dot(N,L), 0.0); 
 
-        vec3 atmosColor = 1.0 - exp(-exposure * (atmos_color + sceneColor.rgb * attenuation));
+            // this term, applied to light 0 (the sun), attenuates the diffuse light
+            // during the nighttime.
+            float diffuseAttenuation = clamp(dayTerm+0.35, 0.0, 1.0);
+            
+            vec3 diffuseReflection =
+                attenuation
+                * diffuseAttenuation
+                * osg_LightSource[i].diffuse.rgb * osg_FrontMaterial.diffuse.rgb
+                * NdotL;
+                
+            vec3 specularReflection = vec3(0.0);
+            if (NdotL > 0.0)
+            {
+                vec3 H = reflect(-L,N); 
+                float HdotN = max(dot(H,N), 0.0); 
 
-        totalLighting += atmosColor;
+                specularReflection =
+                    attenuation
+                    * osg_LightSource[i].specular.rgb
+                    * osg_FrontMaterial.specular.rgb
+                    * pow(HdotN, shine);
+            }
+
+            totalLighting += ambientReflection + diffuseReflection + specularReflection;
+        }
     }
-
-    //color.rgb += totalLighting; //*= totalLighting;
-    color.rgb = totalLighting;
+    
+    // add the atmosphere color, and scale by the lighting.
+    color.rgb = (color.rgb + atmos_color) * totalLighting;
+    
+    // Simulate HDR by applying an exposure factor (1.0 is none, 2-3 are reasonable)
+    color.rgb = 1.0 - exp(-atmos_exposure * color.rgb);
 }

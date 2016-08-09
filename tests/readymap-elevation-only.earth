@@ -18,4 +18,8 @@ http://readymap.org
     </elevation>
     
     <xi:include href="viewpoints.xml"/>
+    
+    <options>
+        <terrain driver="rex"/>
+    </options>
 </map>

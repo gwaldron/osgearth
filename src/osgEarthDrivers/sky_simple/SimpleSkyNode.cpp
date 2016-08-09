@@ -217,7 +217,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     _light = new LightGL3( 0 );
     _light->setPosition( osg::Vec4f(0.0f, 0.0f, 1.0, 0.0f) );
-    _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
+    _light->setAmbient ( osg::Vec4f(0.1f, 0.1f, 0.1f, 1.0f) );
     _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
     _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
 
@@ -357,7 +357,7 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
     if ( !view || !_light.valid() )
         return;
 
-    _light->setLightNum( lightNum );
+//    _light->setLightNum( lightNum );
     //view->setLight( _light.get() );
     //view->setLightingMode( osg::View::SKY_LIGHT );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
@@ -365,34 +365,17 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
     // Tell the view not to automatically include a light.
     view->setLightingMode( osg::View::NO_LIGHT );
 
-    // install or convert the default material for this view.
-    osg::StateSet* camSS = view->getCamera()->getOrCreateStateSet();
-    osg::Material* material = dynamic_cast<osg::Material*>(camSS->getAttribute(osg::StateAttribute::MATERIAL));
-    material = material ? new MaterialGL3(*material) : new MaterialGL3();
-
-    // Set up some default material properties.
-    material->setDiffuse(material->FRONT, osg::Vec4(1,1,1,1));
-    // Set ambient reflectance to 1 so that ambient light is in control:
-    material->setAmbient(material->FRONT, osg::Vec4(1,1,1,1));
-
-    osg::Uniform* numLights = camSS->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
-    int value = 0;
-    numLights->get(value);
-    numLights->set(value+1);
-
-    // install the replacement:
-    camSS->setAttribute(material);
-
-    // Create static uniforms for this material.
-    MaterialGL3UniformGenerator().generate(camSS, material);
-
     onSetDateTime();
 }
 
 void
 SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
 {
-    _light->setPosition( osg::Vec4(pos, 0.0f) );
+    osg::Vec3 npos = pos;
+    npos.normalize();
+    _light->setPosition( osg::Vec4(npos, 0.0f) ); // directional light
+
+    //OE_NOTICE << pos.x() << ", " << pos.y() << ", " << pos.z() << std::endl;
     
     if ( _lightPosUniform.valid() )
     {

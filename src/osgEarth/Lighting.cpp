@@ -138,7 +138,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         // Place these uniforms at the root stateset so they affect the entire graph:
         osg::StateSet* ss = cv->getCurrentRenderStage()->getStateSet();
         if (ss == 0L)
-            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());
+            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());        
 
         ss->addUniform(new osg::Uniform((prefix + "ambient").c_str(), light->getAmbient()));
         ss->addUniform(new osg::Uniform((prefix + "diffuse").c_str(), light->getDiffuse()));
@@ -148,7 +148,8 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         const osg::Matrix& mvm = *cv->getModelViewMatrix();
         ss->addUniform(new osg::Uniform((prefix + "position").c_str(), light->getPosition() * mvm));
         osg::Vec3 directionLocal = osg::Matrix::transform3x3(light->getDirection(), mvm);
-        ss->addUniform(new osg::Uniform((prefix + "direction").c_str(), directionLocal));
+        directionLocal.normalize();
+        ss->addUniform(new osg::Uniform((prefix + "spotDirection").c_str(), directionLocal));
 
         ss->addUniform(new osg::Uniform((prefix + "spotExponent").c_str(), light->getSpotExponent()));
         ss->addUniform(new osg::Uniform((prefix + "spotCutoff").c_str(), light->getSpotCutoff()));
@@ -160,6 +161,24 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         LightGL3* lightGL3 = dynamic_cast<LightGL3*>(light);
         bool enabled = lightGL3 ? lightGL3->getEnabled() : true;
         ss->addUniform(new osg::Uniform((prefix + "enabled").c_str(), enabled));
+        
+        osg::Uniform* fsu = ss->getOrCreateUniform("oe_lighting_framestamp", osg::Uniform::UNSIGNED_INT);
+        unsigned fs;
+        fsu->get(fs);
+
+        osg::Uniform* numLights = ss->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
+
+        if (fs != cv->getFrameStamp()->getFrameNumber())
+        {
+            numLights->set(1);
+            fsu->set(cv->getFrameStamp()->getFrameNumber());
+        }
+        else
+        {
+            int value;
+            numLights->get(value);
+            numLights->set(value + 1);
+        }
     }
     return traverse(obj, data);
 }

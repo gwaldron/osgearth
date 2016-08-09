@@ -86,7 +86,6 @@ addLights(MapNode* mapNode, int lightNum)
         sun->setDiffuse(osg::Vec4(1.0, 1.0, 0.9, 1.0));
 
         osg::LightSource* sunLS = new osg::LightSource();
-        sunLS->setCullingActive(false);
         sunLS->setLight(sun);
 
         lights->addChild( sunLS );
@@ -133,8 +132,7 @@ addLights(MapNode* mapNode, int lightNum)
         lights->addChild( pointLS );
     }
 
-    // Finally, generate the necessary uniforms for our light sources so the shaders
-    // will pick them up.
+    // Generate the necessary uniforms for the shaders.
     lights->accept(GenerateGL3LightingUniforms());
 
     mapNode->addChild(lights);
@@ -175,21 +173,23 @@ main(int argc, char** argv)
 
         // Does a Sky already exist (loaded from the earth file)?
         SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
+        if (!sky)
+        {
+            // Add phong lighting.
+            PhongLightingEffect* phong = new PhongLightingEffect();
+            phong->attach(node->getOrCreateStateSet());
+        }
 
         int numAdded = addLights(mapNode, sky?1:0);
 
         // Update the per-view light count:
-        osg::Uniform* numLights = viewer.getCamera()->getOrCreateStateSet()->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
-        int value;
-        numLights->get(value);
-        numLights->set(value + numAdded );
-        OE_NOTICE << LC << "Total number of lights = " << value+numAdded << std::endl;
-
-        // Add phong lighting.
-        PhongLightingEffect* phong = new PhongLightingEffect();
-        phong->attach(node->getOrCreateStateSet());
+        //osg::Uniform* numLights = viewer.getCamera()->getOrCreateStateSet()->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
+        //int value;
+        //numLights->get(value);
+        //numLights->set(value + numAdded );
+        //OE_NOTICE << LC << "Total number of lights = " << value+numAdded << std::endl;
         
-        viewer.setSceneData(node.get());
+        viewer.setSceneData(node.get()); 
         viewer.run();
     }
     else

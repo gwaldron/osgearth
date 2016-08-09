@@ -9,7 +9,7 @@ uniform bool oe_mode_GL_LIGHTING;
 
 uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz 
 uniform mat4 osg_ViewMatrix;          // GL view matrix 
-uniform vec3 atmos_v3LightDir;        // The direction vector to the light source 
+//uniform vec3 atmos_v3LightDir;        // The direction vector to the light source 
 uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels 
 uniform float atmos_fOuterRadius;     // Outer atmosphere radius 
 uniform float atmos_fOuterRadius2;    // fOuterRadius^2 		

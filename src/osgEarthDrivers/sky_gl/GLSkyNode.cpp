@@ -164,27 +164,6 @@ GLSkyNode::attach( osg::View* view, int lightNum )
     // Tell the view not to automatically include a light.
     view->setLightingMode( osg::View::NO_LIGHT );
 
-    // install or convert the default material for this view.
-    osg::StateSet* camSS = view->getCamera()->getOrCreateStateSet();
-    osg::Material* material = dynamic_cast<osg::Material*>(camSS->getAttribute(osg::StateAttribute::MATERIAL));
-    material = material ? new MaterialGL3(*material) : new MaterialGL3();
-
-    // Set up some default material properties.
-    material->setDiffuse(material->FRONT, osg::Vec4(1,1,1,1));
-    // Set ambient reflectance to 1 so that ambient light is in control:
-    material->setAmbient(material->FRONT, osg::Vec4(1,1,1,1));
-
-    osg::Uniform* numLights = camSS->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
-    int value = 0;
-    numLights->get(value);
-    numLights->set(value+1);
-
-    // install the replacement:
-    camSS->setAttribute(material);
-
-    // Create static uniforms for this material.
-    MaterialGL3UniformGenerator().generate(camSS, material);
-
     // initial date/time setup.
     onSetDateTime();
 }

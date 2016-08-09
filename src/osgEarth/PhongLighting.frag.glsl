@@ -12,8 +12,9 @@ in vec3 oe_phong_vertexView3;
 vec3 vp_Normal;
 
 
+#define MAX_LIGHTS 64
+
 // Total number of lights in the scene
-#define MAX_LIGHTS 8
 uniform int osg_NumLights;
 
 // Parameters of each light:
@@ -23,7 +24,7 @@ struct osg_LightSourceParameters
    vec4 diffuse;
    vec4 specular;
    vec4 position;
-   vec3 direction;
+   vec3 spotDirection;
    float spotExponent;
    float spotCutoff;
    float spotCosCutoff;
@@ -49,8 +50,8 @@ uniform osg_MaterialParameters osg_FrontMaterial;
 
 void oe_phong_fragment(inout vec4 color) 
 {         
-    //if ( oe_mode_GL_LIGHTING == false )
-    //    return; 
+    if ( oe_mode_GL_LIGHTING == false )
+        return; 
 
     // See:
     // https://en.wikipedia.org/wiki/Phong_reflection_model
@@ -80,7 +81,7 @@ void oe_phong_fragment(inout vec4 color)
             // directional light:
             if (osg_LightSource[i].position.w == 0.0)
             {
-                L = -osg_LightSource[i].direction;
+                L = normalize(osg_LightSource[i].position.xyz);
             }
 
             // point or spot light:
@@ -101,7 +102,7 @@ void oe_phong_fragment(inout vec4 color)
                 // for a spot light, the attentuation help form the cone:
                 if (osg_LightSource[i].spotCutoff <= 90.0)
                 {
-                    vec3 D = normalize(osg_LightSource[i].direction);
+                    vec3 D = normalize(osg_LightSource[i].spotDirection);
                     float clampedCos = max(0.0, dot(-L,D));
                     attenuation = clampedCos < osg_LightSource[i].spotCosCutoff ?
                         0.0 :

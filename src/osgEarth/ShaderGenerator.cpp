@@ -866,6 +866,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         needNewStateSet = true;
         osg::StateAttribute::GLModeValue value = current->getMode(GL_LIGHTING);
         newStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
+        //newStateSet->setDefine("OE_GL_LIGHTING_ENABLED", value == osg::StateAttribute::ON ? "1" : "0");
     }
     
     // start generating the shader source.

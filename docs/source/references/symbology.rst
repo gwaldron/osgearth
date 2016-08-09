@@ -40,7 +40,7 @@ property includes the value type in parantheses following its description.
   :integer:               Integral number
   :numeric_expr:          Expression (simple or JavaScript) resolving to a number
   :string:                Simple text string
-  :string_expr:           Expression (simple or JacaScript) resolving to a text string
+  :string_expr:           Expression (simple or JavaScript) resolving to a text string
   :uri_string:            String denoting a resource location (like a URL or file path).
                           URIs can be absolute or relative; relative URIs are always
                           relative to the location of the *referrer*, i.e. the entity
@@ -128,7 +128,7 @@ the terrain under its location.
 |                       |   :gpu:    clamp geometry to the terrain on the GPU                |
 |                       |   :scene:  re-clamp geometry to new paged tiles (annotations only) |
 +-----------------------+--------------------------------------------------------------------+
-| altitude-binding      | Granulatiry at which to sample the terrain when                    |
+| altitude-binding      | Granularity at which to sample the terrain when                    |
 |                       | ``altitude-technique`` is ``map``:                                 |
 |                       |   :vertex:   clamp every vertex                                    |
 |                       |   :centroid: only clamp the centroid of each feature               |

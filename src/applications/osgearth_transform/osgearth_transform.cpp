@@ -117,9 +117,9 @@ ui::Control* makeUI(App& app)
     grid->setControl(0, 5, new ui::LabelControl("Roll:"));
     grid->setControl(0, 6, new ui::LabelControl("Relative Z:"));
 
-    app.uiLat = grid->setControl(1, 0, new ui::HSliderControl(-80.0f, 80.0f, 44.7433f, new Apply(app)));
+    app.uiLat = grid->setControl(1, 0, new ui::HSliderControl(40.0f, 50.0f, 44.7433f, new Apply(app)));
     grid->setControl(2, 0, new LabelControl(app.uiLat));
-    app.uiLon = grid->setControl(1, 1, new ui::HSliderControl(-180.0f, 180.0f, 7.0f, new Apply(app)));
+    app.uiLon = grid->setControl(1, 1, new ui::HSliderControl(6.0f, 8.0f, 7.0f, new Apply(app)));
     grid->setControl(2, 1, new LabelControl(app.uiLon));
     app.uiAlt = grid->setControl(1, 2, new ui::HSliderControl(-3000.0f, 100000.0f, 25000.0f, new Apply(app)));
     grid->setControl(2, 2, new LabelControl(app.uiAlt));

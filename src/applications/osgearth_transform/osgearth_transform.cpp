@@ -64,13 +64,16 @@ struct App
     ui::HSliderControl* uiHeading;
     ui::HSliderControl* uiPitch;
     ui::HSliderControl* uiRoll;
+    ui::CheckBoxControl* uiRelativeZ;
 
     void apply()
     {
+        AltitudeMode altMode = uiRelativeZ->getValue() ? ALTMODE_RELATIVE : ALTMODE_ABSOLUTE;
+
         GeoPoint pos(
             srs,
             uiLon->getValue(), uiLat->getValue(), uiAlt->getValue(),
-            ALTMODE_ABSOLUTE);
+            altMode);
 
         geo->setPosition( pos );
 
@@ -92,9 +95,19 @@ struct Apply : public ui::ControlEventHandler
     App& _app;
 };
 
+struct ZeroAlt : public ui::ControlEventHandler {
+    ZeroAlt(App& app) : _app(app) { }
+    void onClick(ui::Control* control) {
+        _app.uiAlt->setValue(0.0f);
+        _app.apply();
+    }
+    App& _app;
+};
+
 ui::Control* makeUI(App& app)
 {
     ui::Grid* grid = new ui::Grid();
+    grid->setBackColor(0,0,0,0.5);
 
     grid->setControl(0, 0, new ui::LabelControl("Lat:"));
     grid->setControl(0, 1, new ui::LabelControl("Long:"));
@@ -102,15 +115,25 @@ ui::Control* makeUI(App& app)
     grid->setControl(0, 3, new ui::LabelControl("Heading:"));
     grid->setControl(0, 4, new ui::LabelControl("Pitch:"));
     grid->setControl(0, 5, new ui::LabelControl("Roll:"));
+    grid->setControl(0, 6, new ui::LabelControl("Relative Z:"));
 
-    app.uiLat = grid->setControl(1, 0, new ui::HSliderControl(-80.0f, 80.0f, 42.0f, new Apply(app)));
+    app.uiLat = grid->setControl(1, 0, new ui::HSliderControl(-80.0f, 80.0f, 44.7433f, new Apply(app)));
+    grid->setControl(2, 0, new LabelControl(app.uiLat));
     app.uiLon = grid->setControl(1, 1, new ui::HSliderControl(-180.0f, 180.0f, 7.0f, new Apply(app)));
-    app.uiAlt = grid->setControl(1, 2, new ui::HSliderControl(50000.0f, 500000.0f, 250000.0f, new Apply(app)));
+    grid->setControl(2, 1, new LabelControl(app.uiLon));
+    app.uiAlt = grid->setControl(1, 2, new ui::HSliderControl(-3000.0f, 100000.0f, 25000.0f, new Apply(app)));
+    grid->setControl(2, 2, new LabelControl(app.uiAlt));
+    grid->setControl(3, 2, new ButtonControl("Zero", new ZeroAlt(app)));
     app.uiHeading = grid->setControl(1, 3, new ui::HSliderControl(-180.0f, 180.0f, 0.0f, new Apply(app)));
+    grid->setControl(2, 3, new LabelControl(app.uiHeading));
     app.uiPitch   = grid->setControl(1, 4, new ui::HSliderControl(-90.0f, 90.0f, 0.0f, new Apply(app)));
+    grid->setControl(2, 4, new LabelControl(app.uiPitch));
     app.uiRoll    = grid->setControl(1, 5, new ui::HSliderControl(-180.0f, 180.0f, 0.0f, new Apply(app)));
+    grid->setControl(2, 5, new LabelControl(app.uiRoll));
+    app.uiRelativeZ = grid->setControl(1, 6, new ui::CheckBoxControl(true, new Apply(app))); app.uiRelativeZ->setWidth(15.0f);
+    grid->setControl(2, 6, new LabelControl(app.uiRelativeZ));
 
-    app.uiLat->setHorizFill(true, 300.0f);
+    app.uiLat->setHorizFill(true, 700.0f);
     return grid;
 }
 
@@ -136,7 +159,7 @@ main(int argc, char** argv)
 
     // load the model file into the local coordinate frame, which will be
     // +X=east, +Y=north, +Z=up.
-    osg::Node* model = osgDB::readNodeFile("../data/axes.osgt.(1000).scale");
+    osg::Node* model = osgDB::readNodeFile("../data/axes.osgt.(1000).scale.osgearth_shadergen");
     if ( !model )
         return usage(argv[0]);
 

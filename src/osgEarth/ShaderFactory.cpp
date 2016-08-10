@@ -909,7 +909,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         if (!outputStage)
         {
             buf << "\n// Fragment output\n"
-                << "out vec4 oe_FragColor;\n";
+                << "out vec4 vp_FragColor;\n";
         }
 
         buf << "\n// Fragment stage inputs:\n";
@@ -994,7 +994,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             // in the absense of any output functions, generate a default output statement
             // that simply writes to gl_FragColor.
-            buf << INDENT << "oe_FragColor = vp_Color;\n";
+            buf << INDENT << "vp_FragColor = vp_Color;\n";
         }
         buf << "}\n";
 

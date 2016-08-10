@@ -288,7 +288,13 @@ namespace
         // ref: https://github.com/openscenegraph/osg/commit/22af59482ac4f727eeed5b97476a3a47d7fe8a69
         bool isModeless(osg::StateAttribute* sa) const
         {
-#if OSG_VERSION_LESS_THAN(3,3,1)            
+
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+            // No modes in non-ffp
+            return true;
+#endif
+
+#if OSG_VERSION_LESS_THAN(3,3,1)
             return
                 dynamic_cast<osg::Texture2DArray*>(sa) ||
                 dynamic_cast<osg::Texture2DMultisample*>(sa) ||
@@ -496,6 +502,7 @@ ShaderGenerator::apply(osg::Node& node)
 
     if ( stateset.valid() )
     {
+        disableUnsupportedAttributes(stateset.get());
         _state->popStateSet();
     }
 }
@@ -580,6 +587,7 @@ ShaderGenerator::apply( osg::Geode& node )
 
     if ( stateset.valid() )
     {
+        disableUnsupportedAttributes(stateset.get());
         _state->popStateSet();
     }
 }
@@ -642,6 +650,7 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 
         if ( ss.valid() )
         {
+            disableUnsupportedAttributes(ss.get());
             _state->popStateSet();
         }
     }
@@ -760,7 +769,8 @@ ShaderGenerator::apply(osgSim::LightPointNode& node)
             replacement->removeTextureAttribute(0, sprite.get());
             node.setStateSet(replacement.get() );
         }
-
+        
+        disableUnsupportedAttributes(stateset);
         _state->popStateSet();
     }
 }
@@ -1293,4 +1303,20 @@ ShaderGenerator::apply(osg::StateAttribute* attr, GenBuffers& buf)
 {
     // NOP for now.
     return false;
+}
+
+void
+ShaderGenerator::disableUnsupportedAttributes(osg::StateSet* stateset)
+{
+    if (!stateset)
+        return;
+
+#if 0
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    stateset->removeAttribute(osg::StateAttribute::TEXENV);
+    stateset->removeAttribute(osg::StateAttribute::TEXENVFILTER);
+    stateset->removeAttribute(osg::StateAttribute::TEXGEN);
+    stateset->removeAttribute(osg::StateAttribute::LIGHTMODEL);
+#endif
+#endif
 }

@@ -235,6 +235,9 @@ namespace osgEarth
         // each parent has a complete separate copy of the child.
         virtual void duplicateSharedNode(osg::Node& child);
 
+        // disables (or removes) attributes that won't work in teh current configuration
+        virtual void disableUnsupportedAttributes(osg::StateSet* stateset);
+
     protected:
 
         osg::ref_ptr<osg::State> _state;

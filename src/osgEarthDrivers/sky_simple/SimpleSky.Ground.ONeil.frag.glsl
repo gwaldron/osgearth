@@ -6,7 +6,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_order      0.8
 
 uniform bool oe_mode_GL_LIGHTING; 
-uniform float atmos_exposure;   // scene exposure (ground level)
+uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
+uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
+
 varying vec3 atmos_lightDir;    // light direction (view coords)
 varying vec3 atmos_color;       // atmospheric lighting color
 varying vec3 atmos_atten;       // atmospheric lighting attentuation factor
@@ -122,8 +124,7 @@ void atmos_fragment_main(inout vec4 color)
 
             // This term boosts the ambient lighting for the sun (light 0) when it's daytime.
             // TODO: make the boostFactor a uniform?
-            const float boostFactor = 2.0;
-            float ambientBoost = i==0? 1.0 + boostFactor*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
+            float ambientBoost = i==0? 1.0 + oe_sky_ambientBoostFactor*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
 
             vec3 ambientReflection =
                 attenuation
@@ -165,5 +166,5 @@ void atmos_fragment_main(inout vec4 color)
     color.rgb = (color.rgb + atmos_color) * totalLighting;
     
     // Simulate HDR by applying an exposure factor (1.0 is none, 2-3 are reasonable)
-    color.rgb = 1.0 - exp(-atmos_exposure * color.rgb);
+    color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
 }

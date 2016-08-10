@@ -254,12 +254,14 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     
     if ( Registry::capabilities().supportsGLSL() )
     {
+        osg::StateSet* stateset = this->getOrCreateStateSet();
+
         _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
         _lightPosUniform->set( lightPos / lightPos.length() );
-        this->getOrCreateStateSet()->addUniform( _lightPosUniform.get() );
+        stateset->addUniform( _lightPosUniform.get() );
 
         // default GL_LIGHTING uniform setting
-        this->getOrCreateStateSet()->addUniform(
+        stateset->addUniform(
             Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
 
         // make the uniforms and the terrain lighting shaders.
@@ -469,6 +471,7 @@ SimpleSkyNode::makeSceneLighting()
 
     float Scale = 1.0f / (_outerRadius - _innerRadius);
 
+    //TODO: make all these constants. -gw
     stateset->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     stateset->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
     stateset->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
@@ -486,7 +489,10 @@ SimpleSkyNode::makeSceneLighting()
     stateset->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
     stateset->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     stateset->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
-    stateset->getOrCreateUniform( "atmos_exposure",        osg::Uniform::FLOAT )->set( _options.exposure().value() );
+
+    // options:
+    stateset->getOrCreateUniform("oe_sky_exposure",           osg::Uniform::FLOAT )->set( _options.exposure().value() );
+    stateset->getOrCreateUniform("oe_sky_ambientBoostFactor", osg::Uniform::FLOAT)->set(_options.daytimeAmbientBoost().get());
 }
 
 void

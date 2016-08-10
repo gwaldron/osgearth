@@ -359,9 +359,9 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
     if ( !view || !_light.valid() )
         return;
 
-//    _light->setLightNum( lightNum );
-    //view->setLight( _light.get() );
-    //view->setLightingMode( osg::View::SKY_LIGHT );
+    _light->setLightNum( lightNum );
+
+    // black background
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 
     // Tell the view not to automatically include a light.

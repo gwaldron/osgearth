@@ -35,7 +35,6 @@
 
 namespace osgEarth {
     class MapNode;
-    class UpdateLightingUniformsHelper;
 }
 namespace osgDB {
     class Options;

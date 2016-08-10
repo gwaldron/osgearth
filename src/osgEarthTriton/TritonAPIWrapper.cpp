@@ -23,9 +23,12 @@
 
 using namespace osgEarth::Triton;
 
+#define SETGET_EXPLICIT(NS, SETTER, GETTER, TYPE) \
+    void NS :: SETTER (TYPE value) { HANDLE-> SETTER (value); } \
+    TYPE NS :: GETTER () const     { return HANDLE -> GETTER (); }
+
 #define SETGET(NS, FUNC, TYPE) \
-    void NS :: Set##FUNC (TYPE value) { HANDLE-> Set##FUNC (value); } \
-    TYPE NS :: Get##FUNC () const     { return HANDLE -> Get##FUNC (); }
+    SETGET_EXPLICIT(NS, Set##FUNC, Get##FUNC, TYPE)
 
 #define TOVEC3(X)   ::Triton::Vector3(X.x(),X.y(),X.z())
 #define FROMVEC3(X) osg::Vec3(X.x,X.y,X.z)
@@ -65,6 +68,7 @@ osg::Vec3 Environment::GetAmbientLightColor() const {
 void Environment::SimulateSeaState(double bscale, double winddir) {
     HANDLE->SimulateSeaState(bscale, winddir);
 }
+SETGET(Environment, SunIntensity, float);
 
 //................................
 #undef  HANDLE
@@ -72,7 +76,10 @@ void Environment::SimulateSeaState(double bscale, double winddir) {
 
 SETGET(Ocean, Choppiness, float);
 //SETGET(Ocean, MaximumWavePeriod, double);
+SETGET_EXPLICIT(Ocean, EnableSpray, SprayEnabled, bool);
+SETGET_EXPLICIT(Ocean, EnableGodRays, GodRaysEnabled, bool);
+SETGET(Ocean, GodRaysFade, float);
 
+void Ocean::EnableWireframe(bool wireframe) { HANDLE->EnableWireframe(wireframe); }
 void Ocean::SetQuality(OceanQuality value) { HANDLE->SetQuality((::Triton::OceanQuality)value); }
 OceanQuality Ocean::GetQuality() const { return (OceanQuality)HANDLE->GetQuality(); }
-

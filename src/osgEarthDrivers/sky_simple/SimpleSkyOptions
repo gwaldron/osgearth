@@ -35,7 +35,7 @@ namespace osgEarth { namespace SimpleSky
         SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
           SkyOptions(options),
           _atmosphericLighting(true),
-          _exposure           (2.5f),
+          _exposure           (2.4f),
           _allowWireframe     (false)
         {
             setDriver( "simple" );
@@ -45,12 +45,11 @@ namespace osgEarth { namespace SimpleSky
 
     public: // properties
 
-        /** Use advanced atmospheric lighting (instead of simple shading) */
+        /** Use advanced atmospheric lighting on the terrain (instead of simple shading) */
         optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
         const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
 
-        /** Exposure factor for ground lighting when using advanced lighting.
-          * Default is 3.0; [1..4] is a good range. */
+        /** Exposure factor for simulated HDR ground lighting. Default is in CTOR */
         optional<float>& exposure() { return _exposure; }
         const optional<float>& exposure() const { return _exposure; }
 

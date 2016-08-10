@@ -121,8 +121,9 @@ void atmos_fragment_main(inout vec4 color)
             float dayTerm = i==0? dot(U,L) : 1.0;
 
             // This term boosts the ambient lighting for the sun (light 0) when it's daytime.
-            // TODO: make the boost a uniform?
-            float ambientBoost = i==0? 1.0 + 2.0*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
+            // TODO: make the boostFactor a uniform?
+            const float boostFactor = 2.0;
+            float ambientBoost = i==0? 1.0 + boostFactor*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
 
             vec3 ambientReflection =
                 attenuation
@@ -133,7 +134,8 @@ void atmos_fragment_main(inout vec4 color)
             float NdotL = max(dot(N,L), 0.0); 
 
             // this term, applied to light 0 (the sun), attenuates the diffuse light
-            // during the nighttime.
+            // during the nighttime, so that geometry doesn't get lit based on its
+            // normals during the night.
             float diffuseAttenuation = clamp(dayTerm+0.35, 0.0, 1.0);
             
             vec3 diffuseReflection =

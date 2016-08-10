@@ -323,7 +323,6 @@ ShaderPreProcessor::run(osg::Shader* shader)
     {
         bool dirty = false;
 
-        // only runs for non-FFP (GLES, GL3+, etc.)
         std::string source = shader->getShaderSource();
 
         // First replace any quotes with spaces. Quotes are illegal.
@@ -332,50 +331,6 @@ ShaderPreProcessor::run(osg::Shader* shader)
             osgEarth::replaceIn(source, "\"", " ");
             dirty = true;
         }
-
-        // find the first legal insertion point for replacement declarations. GLSL requires that nothing
-        // precede a "#version" compiler directive, so we must insert new declarations after it.
-        std::string::size_type declPos = source.rfind( "#version " );
-        if ( declPos != std::string::npos )
-        {
-            // found the string, now find the next linefeed and set the insertion point after it.
-            declPos = source.find( '\n', declPos );
-            declPos = declPos != std::string::npos ? declPos+1 : source.length();
-        }
-        else
-        {
-            declPos = 0;
-        }
-
-#if 0 //!defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
-
-        int maxLights = Registry::capabilities().getMaxLights();
-
-        for( int i=0; i<maxLights; ++i )
-        {
-            if ( replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_LightSource[" << i << "]",
-                Stringify() << "osg_LightSource" << i,
-                Stringify() 
-                    << osg_LightSourceParameters::glslDefinition() << "\n"
-                    << "uniform osg_LightSourceParameters " ) )
-            {
-                dirty = true;
-            }
-
-            if ( replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_FrontLightProduct[" << i << "]", 
-                Stringify() << "osg_FrontLightProduct" << i,
-                Stringify()
-                    << osg_LightProducts::glslDefinition() << "\n"
-                    << "uniform osg_LightProducts " ) )
-            {
-                dirty = true;
-            }
-        }
-#endif
 
         // Chunk the shader.
         GLSLChunker chunker;

@@ -60,8 +60,6 @@ SkyNode::baseInit(const SkyOptions& options)
     _atmosphereVisible = true;
     //_minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
 
-    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
-
     setLighting( osg::StateAttribute::ON );
 
     if ( options.hours().isSet() )
@@ -137,20 +135,6 @@ SkyNode::setAtmosphereVisible(bool value)
 {
     _atmosphereVisible = value;
     onSetAtmosphereVisible();
-}
-
-void
-SkyNode::traverse(osg::NodeVisitor& nv)
-{
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        // update the light model uniforms.
-        if ( _lightingUniformsHelper.valid() )
-        {
-            //_lightingUniformsHelper->cullTraverse( this, &nv );
-        }
-    }
-    osg::Group::traverse(nv);
 }
 
 //------------------------------------------------------------------------

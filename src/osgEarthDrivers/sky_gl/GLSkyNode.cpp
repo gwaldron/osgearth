@@ -116,14 +116,8 @@ GLSkyNode::onSetDateTime()
 
     if ( _profile->getSRS()->isGeographic() )
     {
-        // Convert a Vec3d into a Vec4f without losing precision.
-        // This is critical if we are going to convert the position to View space
-        // and pass it in a uniform.
-        osg::Vec4 pos(sunPosECEF, 1.0);
-        while (osg::Vec3(pos.x(), pos.y(), pos.z()).length() > 1000000.0f)
-            pos *= 0.1f;
-
-        _light->setPosition(pos);
+        sunPosECEF.normalize();
+        _light->setPosition(osg::Vec4(sunPosECEF, 0.0)); // directional light
     }
     else
     {

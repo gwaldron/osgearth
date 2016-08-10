@@ -12,7 +12,7 @@ in vec3 oe_phong_vertexView3;
 vec3 vp_Normal;
 
 
-#define MAX_LIGHTS 64
+#define MAX_LIGHTS 8
 
 // Total number of lights in the scene
 uniform int osg_NumLights;
@@ -64,7 +64,6 @@ void oe_phong_fragment(inout vec4 color)
 
     // Accumulate the lighting, starting with material emission. We are currently
     // omitting the ambient term for now since we are not using LightModel ambience.
-
     vec3 totalLighting =
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;

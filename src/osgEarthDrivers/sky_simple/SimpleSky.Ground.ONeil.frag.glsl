@@ -78,7 +78,9 @@ void atmos_fragment_main(inout vec4 color)
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
 
-    for (int i=0; i<osg_NumLights; ++i)
+    int numLights = min(osg_NumLights, MAX_LIGHTS);
+
+    for (int i=0; i<numLights; ++i)
     {
         const float attenuation = 1.0;
 

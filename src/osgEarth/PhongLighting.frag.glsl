@@ -67,8 +67,10 @@ void oe_phong_fragment(inout vec4 color)
     vec3 totalLighting =
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
+    
+    int numLights = min(osg_NumLights, MAX_LIGHTS);
 
-    for (int i=0; i<osg_NumLights; ++i)
+    for (int i=0; i<numLights; ++i)
     {
         const float attenuation = 1.0;
 

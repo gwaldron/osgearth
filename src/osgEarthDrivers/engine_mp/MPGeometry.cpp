@@ -141,6 +141,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
         texMatParentLocation = pcp->getUniformLocation( _texMatParentUniformNameID );
+        minRangeLocation = pcp->getUniformLocation( _minRangeUniformNameID );
+        maxRangeLocation = pcp->getUniformLocation( _maxRangeUniformNameID );
     }
     
     // apply the tilekey uniform once.
@@ -193,8 +195,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
     // remember whether we applied a parent texture.
     bool usedTexParent = false;
-    bool useMinVisibleRange = false;
-    bool useMaxVisibleRange = false;
 
     if ( _layers.size() > 0 )
     {
@@ -233,29 +233,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         }
                     }
                 }
-
-                // check for min/rax range usage.
-                const ImageLayerOptions& layerOptions = layer._imageLayer->getImageLayerOptions();
-
-                if ( layerOptions.minVisibleRange().isSet() )
-                    useMinVisibleRange = true;
-                if ( layerOptions.maxVisibleRange().isSet() )
-                    useMaxVisibleRange = true;
             }
         }
-
-        // look up the minRange uniform if necessary
-        if ( useMinVisibleRange && pcp )
-        {
-            minRangeLocation = pcp->getUniformLocation( _minRangeUniformNameID );
-        }
-        
-        // look up the maxRange uniform if necessary
-        if ( useMaxVisibleRange && pcp )
-        {
-            maxRangeLocation = pcp->getUniformLocation( _maxRangeUniformNameID );
-        }
-
         if (renderColor)
         {
             // find the first opaque layer, top-down, and start there:

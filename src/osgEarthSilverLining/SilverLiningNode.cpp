@@ -37,7 +37,8 @@ SilverLiningNode::SilverLiningNode(const osgEarth::SpatialReference*    mapSRS,
                                    const SilverLiningOptions& options,
                                    Callback*                  callback) :
 _options(options),
-_mapSRS(mapSRS)
+_mapSRS(mapSRS),
+_callback(callback)
 {
     // Create a new Light for the Sun.
     _light = new osg::Light();
@@ -50,7 +51,7 @@ _mapSRS(mapSRS)
     _lightSource = new osg::LightSource();
     _lightSource->setLight( _light.get() );
     _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
-    
+
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
     _lighting = new PhongLightingEffect();
@@ -109,27 +110,27 @@ SilverLiningNode::getSkyStateSet(unsigned index) const
 void
 SilverLiningNode::onSetDateTime()
 {
-  for (osg::NodeList::iterator itr = _children.begin();
-		itr != _children.end();
-		++itr)
-	{
-		SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
-		if(node)
-			node->onSetDateTime(); 
-	}
+  for (osg::NodeList::const_iterator itr = _children.begin();
+        itr != _children.end();
+        ++itr)
+    {
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        if(node)
+            node->onSetDateTime();
+    }
 }
 
 void
 SilverLiningNode::onSetMinimumAmbient()
 {
-  for (osg::NodeList::iterator itr = _children.begin();
-		itr != _children.end();
-		++itr)
-	{
-		SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
-		if(node)
-			node->onSetMinimumAmbient(); 
-	}
+    for (osg::NodeList::const_iterator itr = _children.begin();
+        itr != _children.end();
+        ++itr)
+    {
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        if(node)
+            node->onSetMinimumAmbient();
+    }
 }
 
 void
@@ -137,15 +138,15 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
     static Threading::Mutex s_mutex;
 
-	if ( nv.getVisitorType() == nv.CULL_VISITOR )
-	{
-		osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-		osg::Camera* camera = cv->getCurrentCamera();
-		if ( camera )
-		{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osg::Camera* camera = cv->getCurrentCamera();
+        if ( camera )
+        {
             Threading::ScopedMutexLock lock(s_mutex);
 
-            CameraContextMap::iterator i = _contexts.find(camera);
+            CameraContextMap::const_iterator i = _contexts.find(camera);
             if (i == _contexts.end())
             {
                 _camerasToAdd.insert(camera);
@@ -164,15 +165,15 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             Threading::ScopedMutexLock lock(s_mutex);
             if (!_camerasToAdd.empty())
             {
-                for (CameraSet::iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
+                for (CameraSet::const_iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
                 {
-                    _contexts[i->get()] = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options);
+                    _contexts[i->get()] = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options, _callback);
                 }
                 _camerasToAdd.clear();
             }
         }
 
-        for (CameraContextMap::iterator i = _contexts.begin(); i != _contexts.end(); ++i)
+        for (CameraContextMap::const_iterator i = _contexts.begin(); i != _contexts.end(); ++i)
         {
             i->second->accept(nv);
         }
@@ -181,7 +182,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
     else
     {
         Threading::ScopedMutexLock lock(s_mutex);
-        for (CameraContextMap::iterator i = _contexts.begin(); i != _contexts.end(); ++i)
+        for (CameraContextMap::const_iterator i = _contexts.begin(); i != _contexts.end(); ++i)
         {
             i->second->accept(nv);
         }

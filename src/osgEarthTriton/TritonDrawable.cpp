@@ -299,10 +299,6 @@ _mapNode(mapNode)
 
     // dynamic variance prevents update/cull overlap when drawing this
     setDataVariance( osg::Object::DYNAMIC );
-    
-    // Place in the depth-sorted bin and set a rendering order.
-    // We want Triton to render after the terrain.
-    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     _contextDirty.resize(64);
     dirtyAllContexts();

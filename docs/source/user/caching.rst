@@ -47,7 +47,7 @@ In code you can set a global cache in the osgEarth resgistry::
 
 Caching Policies
 ----------------
-Once you have a cache set up, osgEarth will use it be default for all your
+Once you have a cache set up, osgEarth will use it by default for all your
 imagery and elevation layers. If you want to override this behavior, you can
 use a *cache policy*. A cache policy tells osgEarth if and how a certain object 
 should utilize the cache.

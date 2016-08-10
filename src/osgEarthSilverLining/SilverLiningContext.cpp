@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <SilverLining.h> // SilverLinking SDK
+#include <SilverLining.h> // SilverLining SDK
 #include "SilverLiningContext"
 #include "SilverLiningNode"
 #include <osg/Light>
@@ -94,7 +94,7 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
             // constant random seed ensures consistent clouds across windows
             // TODO: replace this with something else since this is global! -gw
             ::srand(1234);
-            
+
             std::string resourcePath = _options.resourcePath().get();
             if (resourcePath.empty() && ::getenv("SILVERLINING_PATH"))
             {
@@ -122,7 +122,7 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 _atmosphere->SetRightVector( 1.0, 0.0, 0.0 );
 
 #if 0 // todo: review this
-                _maxAmbientLightingAlt = 
+                _maxAmbientLightingAlt =
                     _atmosphere->GetConfigOptionDouble("atmosphere-height");
 #endif
                 if ( _options.drawClouds() == true )
@@ -156,7 +156,7 @@ SilverLiningContext::setupClouds()
 
     clouds->SeedClouds( *_atmosphere );
     clouds->GenerateShadowMaps( false );
-    
+
     clouds->SetLayerPosition(0, 0);
 
     _atmosphere->GetConditions()->AddCloudLayer( clouds );

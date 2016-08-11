@@ -36,6 +36,7 @@ namespace osgEarth { namespace Triton
             setDriver( "triton" );
             _useHeightMap.init( true );
             _heightMapSize.init( 1024 );
+            _renderBinNumber.init( 12 );
             fromConfig( _conf );
         }
 
@@ -61,6 +62,10 @@ namespace osgEarth { namespace Triton
         osgEarth::optional<int>& heightMapSize() { return _heightMapSize; }
         const osgEarth::optional<int>& heightMapSize() const { return _heightMapSize; }
 
+        /** Render bin number to assign to the ocean (in DepthSortedBin) */
+        optional<int>& renderBinNumber() { return _renderBinNumber; }
+        const optional<int>& renderBinNumber() const { return _renderBinNumber; }
+
 
     public:
         osgEarth::Config getConfig() const {
@@ -70,6 +75,7 @@ namespace osgEarth { namespace Triton
             conf.addIfSet("resource_path", _resourcePath);
             conf.addIfSet("use_height_map", _useHeightMap);
             conf.addIfSet("height_map_size", _heightMapSize);
+            conf.addIfSet("render_bin_number",   _renderBinNumber);
             return conf;
         }
 
@@ -86,6 +92,7 @@ namespace osgEarth { namespace Triton
             conf.getIfSet("resource_path", _resourcePath);
             conf.getIfSet("use_height_map", _useHeightMap);
             conf.getIfSet("height_map_size", _heightMapSize);
+            conf.getIfSet("render_bin_number",   _renderBinNumber);
         }
 
     private:
@@ -94,6 +101,7 @@ namespace osgEarth { namespace Triton
         osgEarth::optional<std::string> _resourcePath;
         osgEarth::optional<bool>        _useHeightMap;
         osgEarth::optional<int>         _heightMapSize;
+        osgEarth::optional<int>         _renderBinNumber;
     };
 
 } } // namespace osgEarth::Triton

@@ -72,13 +72,14 @@ namespace osgEarth { namespace SilverLining
 
     protected:
         virtual ~SilverLiningNode();
-    
-		osg::ref_ptr<osg::LightSource> _lightSource;
+
+        osg::ref_ptr<osg::LightSource> _lightSource;
         osg::ref_ptr<osg::Light> _light;
-		const SilverLiningOptions _options;
+        const SilverLiningOptions _options;
         osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
-		const osgEarth::SpatialReference* _mapSRS;
-		
+        const osgEarth::SpatialReference* _mapSRS;
+        osg::ref_ptr<Callback> _callback;
+
         typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;
         CameraContextMap _contexts;
 

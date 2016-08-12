@@ -437,7 +437,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
             ShadowCaster* caster = new ShadowCaster();
             caster->setTextureImageUnit( unit );
             caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode );
+            caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
+            //insertParent(caster, mapNode);
+            //root = findTopOfGraph(caster)->asGroup();
             if ( mapNode->getNumParents() > 0 )
             {
                 insertGroup(caster, mapNode->getParent(0));

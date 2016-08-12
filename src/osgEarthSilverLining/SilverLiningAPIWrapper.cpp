@@ -35,7 +35,7 @@ using namespace osgEarth::SilverLining;
 #define HANDLE ((::SilverLining::Atmosphere*)_handle)
 
 SETGET_EXPLICIT(Atmosphere, EnableLensFlare, GetLensFlareEnabled, bool);
-void Atmosphere::SetSkyModel(SkyModel skyModel) { HANDLE->SetSkyModel(static_cast<::SkyModel>(skyModel)); }
+void Atmosphere::SetSkyModel(SkyModel skyModel) { HANDLE->SetSkyModel(static_cast< ::SkyModel >(skyModel)); }
 Atmosphere::SkyModel Atmosphere::GetSkyModel() const { return static_cast<SkyModel>(HANDLE->GetSkyModel()); }
 AtmosphericConditions Atmosphere::GetConditions() const { return AtmosphericConditions((uintptr_t)HANDLE->GetConditions()); }
 SETGET(Atmosphere, Gamma, double);
@@ -67,7 +67,7 @@ int AtmosphericConditions::SetWind(const WindVolume& windVolume)
 int AtmosphericConditions::SetWind(double metersPerSecond, double degreesFromNorth) { return SetWind(WindVolume(metersPerSecond, degreesFromNorth)); }
 bool AtmosphericConditions::RemoveWindVolume(int layerHandle) { return HANDLE->RemoveWindVolume(layerHandle); }
 void AtmosphericConditions::ClearWindVolumes() { HANDLE->ClearWindVolumes(); }
-void AtmosphericConditions::SetPresetConditions(ConditionPresets preset, Atmosphere& atm) { HANDLE->SetPresetConditions(static_cast<::SilverLining::AtmosphericConditions::ConditionPresets>(preset), *(::SilverLining::Atmosphere*)atm._handle); }
+void AtmosphericConditions::SetPresetConditions(ConditionPresets preset, Atmosphere& atm) { HANDLE->SetPresetConditions(static_cast< ::SilverLining::AtmosphericConditions::ConditionPresets >(preset), *(::SilverLining::Atmosphere*)atm._handle); }
 
 //................................
 WindVolume::WindVolume() :

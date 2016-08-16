@@ -80,7 +80,7 @@ SilverLiningNode::attach(osg::View* view, int lightNum)
 unsigned
 SilverLiningNode::getNumContexts() const
 {
-    return getNumChildren();
+    return static_cast<unsigned>(_contextList.size());
 }
 
 osg::StateSet*
@@ -88,7 +88,7 @@ SilverLiningNode::getCloudsStateSet(unsigned index) const
 {
     if (index < getNumContexts())
     {
-        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(_contextList[index].get());
         if ( node )
             return node->getCloudsStateSet();
     }
@@ -100,7 +100,7 @@ SilverLiningNode::getSkyStateSet(unsigned index) const
 {
     if (index < getNumContexts())
     {
-        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(_contextList[index].get());
         if ( node )
             return node->getSkyStateSet();
     }
@@ -110,11 +110,11 @@ SilverLiningNode::getSkyStateSet(unsigned index) const
 void
 SilverLiningNode::onSetDateTime()
 {
-  for (osg::NodeList::const_iterator itr = _children.begin();
-        itr != _children.end();
+    for (CameraContextMap::const_iterator itr = _contexts.begin();
+        itr != _contexts.end();
         ++itr)
     {
-        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).second.get());
         if(node)
             node->onSetDateTime();
     }
@@ -123,11 +123,11 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::onSetMinimumAmbient()
 {
-    for (osg::NodeList::const_iterator itr = _children.begin();
-        itr != _children.end();
+    for (CameraContextMap::const_iterator itr = _contexts.begin();
+        itr != _contexts.end();
         ++itr)
     {
-        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).second.get());
         if(node)
             node->onSetMinimumAmbient();
     }
@@ -167,7 +167,9 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             {
                 for (CameraSet::const_iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
                 {
-                    _contexts[i->get()] = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options, _callback);
+                    SilverLiningContextNode* newNode = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options, _callback);
+                    _contexts[i->get()] = newNode;
+                    _contextList.push_back(newNode);
                 }
                 _camerasToAdd.clear();
             }

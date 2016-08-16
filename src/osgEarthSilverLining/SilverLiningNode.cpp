@@ -110,11 +110,11 @@ SilverLiningNode::getSkyStateSet(unsigned index) const
 void
 SilverLiningNode::onSetDateTime()
 {
-  for (osg::NodeList::const_iterator itr = _children.begin();
-        itr != _children.end();
+    for (CameraContextMap::const_iterator itr = _contexts.begin();
+        itr != _contexts.end();
         ++itr)
     {
-        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).second.get());
         if(node)
             node->onSetDateTime();
     }
@@ -123,11 +123,11 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::onSetMinimumAmbient()
 {
-    for (osg::NodeList::const_iterator itr = _children.begin();
-        itr != _children.end();
+    for (CameraContextMap::const_iterator itr = _contexts.begin();
+        itr != _contexts.end();
         ++itr)
     {
-        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).get());
+        SilverLiningContextNode* node = dynamic_cast<SilverLiningContextNode* > ((*itr).second.get());
         if(node)
             node->onSetMinimumAmbient();
     }

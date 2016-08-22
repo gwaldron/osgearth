@@ -61,6 +61,16 @@ worldToVec4(const osg::Vec3d& ecef)
     return osg::Vec4(d.x(), d.y(), d.z(), result.w());
 }
 
+osg::Vec4
+randomColor()
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    float g = (float)rand() / (float)RAND_MAX;
+    float b = (float)rand() / (float)RAND_MAX;
+    return osg::Vec4(r,g,b,1.0f);
+}
+
+
 int
 addLights(MapNode* mapNode, int lightNum)
 {
@@ -140,6 +150,8 @@ addLights(MapNode* mapNode, int lightNum)
     return lights->getNumChildren();
 }
 
+
+
 int
 main(int argc, char** argv)
 {
@@ -151,6 +163,9 @@ main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
+
+    // Whether to test updating material
+    bool update = arguments.read("--update");
 
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
@@ -170,17 +185,19 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::get(node.get());
         if ( !mapNode )
             return -1;
-
-        /*
+        
         // Example of a custom material for the terrain.
-        osg::ref_ptr< osg::Material > material = new osg::Material;
-        material->setDiffuse(osg::Material::FRONT, osg::Vec4(1,0,0,1));
-        material->setAmbient(osg::Material::FRONT, osg::Vec4(0,1,0,1));
-        material->setEmission(osg::Material::FRONT, osg::Vec4(0.2,1.0,0.5,0.0));
-        // Attach our StateAttributeCallback so that uniforms are updated.
-        material->setUpdateCallback(new MaterialCallback());
-        mapNode->getOrCreateStateSet()->setAttributeAndModes(material);
-        */
+        osg::ref_ptr< osg::Material > material = 0;
+        if (update)
+        {
+            OE_NOTICE << "Custom material" << std::endl;
+            material = new osg::Material;
+            material->setDiffuse(osg::Material::FRONT, osg::Vec4(1,1,1,1));        
+            material->setAmbient(osg::Material::FRONT, osg::Vec4(1,1,1,1));
+            // Attach our StateAttributeCallback so that uniforms are updated.
+            material->setUpdateCallback(new MaterialCallback());
+            mapNode->getOrCreateStateSet()->setAttributeAndModes(material);
+        }
 
         // Does a Sky already exist (loaded from the earth file)?
         SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
@@ -203,6 +220,13 @@ main(int argc, char** argv)
         viewer.setSceneData(node.get()); 
         while (!viewer.done())
         {         
+            if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
+            {
+                if (material)
+                {
+                    material->setDiffuse(osg::Material::FRONT, randomColor());
+                }
+            }
             viewer.frame();
         }
         return 0;

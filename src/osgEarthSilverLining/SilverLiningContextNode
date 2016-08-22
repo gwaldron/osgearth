@@ -30,7 +30,7 @@
 namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-	class SilverLiningNode;
+    class SilverLiningNode;
 
     /**
      * Node that roots the silverlining adapter.
@@ -40,22 +40,22 @@ namespace osgEarth { namespace SilverLining
     public:
         SilverLiningContextNode(
             SilverLiningNode*          node,
-		    osg::Camera*               camera,
-			osg::Light*                light,
+            osg::Camera*               camera,
+            osg::Light*                light,
             const osgEarth::SpatialReference*    mapSRS,
             const SilverLiningOptions& options,
             Callback*                  callback =0L);
 
     public: 
-	    void attach(osg::View* view, int lightNum);
+        void attach(osg::View* view, int lightNum);
 
         // callbacks from SilverLiningNode.
         void onSetDateTime();
         void onSetMinimumAmbient();
-		//get target camera
-		osg::Camera* getTargetCamera() const {return _camera;}
-		osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}
-		SilverLiningContext* getSLContext() {return _SL.get();}
+        //get target camera
+        osg::Camera* getTargetCamera() const {return _camera;}
+        osg::ref_ptr<osg::Geode> getSLGeode() {return _geode;}
+        SilverLiningContext* getSLContext() {return _SL.get();}
 
         osg::StateSet* getCloudsStateSet() const { return _cloudsDrawable.valid() ? _cloudsDrawable->getStateSet() : 0L; }
         osg::StateSet* getSkyStateSet() const { return _skyDrawable.valid() ? _skyDrawable->getStateSet() : 0L; }
@@ -68,13 +68,13 @@ namespace osgEarth { namespace SilverLining
         virtual ~SilverLiningContextNode();
 
         osg::ref_ptr<SilverLiningContext> _SL;
-		osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<osg::Geode> _geode;
         osg::ref_ptr<osg::Drawable> _skyDrawable;
-		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
-		SilverLiningNode* _silverLiningNode;
+        osg::ref_ptr<osg::Drawable> _cloudsDrawable;
+        SilverLiningNode* _silverLiningNode;
         double _lastAltitude;
-		const SilverLiningOptions _options;
-		osg::Camera* _camera;
+        const SilverLiningOptions _options;
+        osg::Camera* _camera;
     };
 
 } } // namespace osgEarth::SilverLining

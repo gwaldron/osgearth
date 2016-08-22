@@ -56,6 +56,10 @@ _options ( options )
     this->addChild( geode );
 
     this->setNumChildrenRequiringUpdateTraversal(1);
+
+    // Place in the depth-sorted bin and set a rendering order.
+    // We want Triton to render after the terrain.
+    _drawable->getOrCreateStateSet()->setRenderBinDetails( options.renderBinNumber().get(), "DepthSortedBin" );
 }
 
 TritonNode::~TritonNode()

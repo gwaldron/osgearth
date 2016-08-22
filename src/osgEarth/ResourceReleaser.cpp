@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ResourceReleaser>
+#include <osg/Version>
 
 using namespace osgEarth;
 
@@ -25,8 +26,10 @@ using namespace osgEarth;
 
 ResourceReleaser::ResourceReleaser()
 {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
     // ensure this node always gets traversed:
     this->setCullingActive(false);
+#endif
 
     // ensure the draw runs synchronously:
     this->setDataVariance(DYNAMIC);

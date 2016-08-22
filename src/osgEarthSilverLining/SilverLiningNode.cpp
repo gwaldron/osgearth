@@ -53,11 +53,7 @@ _callback(callback)
     _lightSource->setLight( _light.get() );
     _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
     _lightSource->accept(GenerateGL3LightingUniforms());
-<<<<<<< HEAD
-    
-=======
-   
->>>>>>> 511fbe50d0565bf98a8509b72dbdf7194da1aac0
+
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
     _lighting = new PhongLightingEffect();

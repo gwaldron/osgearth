@@ -73,25 +73,12 @@ namespace osgEarth
     };
 
     /**
-     * Cull callback that dynamically creates GL3 Material uniforms each frame.
-     * This makes sense if the Material is marked with a DYNAMIC data variance (and
-     * you intend to change it after installing it).
-     *
-     * Install as a cull callback on the node whose StateSet contains the Material.
-     *
-     * Alternately, you can generate one-time static uniforms corresponding to the 
-     * Material if you don't intend to change them. To do this, call the generate()
-     * method directly instead of installing the cull callback.
+     * StateAttributeCallback that will update osg::Material properties as Uniforms
      */
-    class OSGEARTH_EXPORT MaterialGL3UniformGenerator : public osg::Callback
+    class OSGEARTH_EXPORT MaterialCallback : public osg::StateAttributeCallback
     {
     public:
-        // install uniforms on the stateset for the given material.
-        void generate(osg::StateSet* stateSet, const osg::Material* material);
-
-    public: // osg::Callback
-
-        bool run(osg::Object* obj, osg::Object* data);
+        virtual void operator() (osg::StateAttribute* attr, osg::NodeVisitor* nv);        
     };
 
     /**

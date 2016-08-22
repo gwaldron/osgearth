@@ -55,34 +55,24 @@ GenerateGL3LightingUniforms::apply(osg::Node& node)
                 osg::Material* material = dynamic_cast<osg::Material*>(rap->first.get());
                 if (material)
                 {
-                    // DYNAMIC variance? Install a callback that will update the material uniforms each frame.
-                    if (material->getDataVariance() == material->DYNAMIC)
-                    {
-                        for (osg::StateSet::ParentList::iterator parent = stateset->getParents().begin();
-                             parent != stateset->getParents().end();
-                             ++parent)
-                        {
-                            if (!alreadyInstalled<MaterialGL3UniformGenerator>((*parent)->getCullCallback()))
-                            {
-                                (*parent)->addCullCallback(new MaterialGL3UniformGenerator());
-                            }
-                        }
-                    }
-
-                    // STATIC variance? hard-code the material uniforms in the stateset.
-                    else
-                    {
-                        MaterialGL3UniformGenerator().generate(stateset, material);
-                    }
+                    osg::Material* mat = material;
 
     #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
                     // If there's no FFP, we need to replace the Material with a GL3 Material to prevent
                     // error messages on the console.
                     if (dynamic_cast<MaterialGL3*>(material) == 0L)
                     {
-                        stateset->setAttributeAndModes(new MaterialGL3(*material), rap->second);
+                        mat = new MaterialGL3(*material), rap->second;
+                        stateset->setAttributeAndModes(mat);    
                     }
     #endif
+
+                    // Install the MaterialCallback so uniforms are updated.
+                    if (!mat->getUpdateCallback())
+                    {
+                        mat->setUpdateCallback(new MaterialCallback());
+                    }
+
                 }
 
 
@@ -184,40 +174,21 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 }
 
 //............................................................................
-
-void
-MaterialGL3UniformGenerator::generate(osg::StateSet* ss, const osg::Material* m)
+void MaterialCallback::operator() (osg::StateAttribute* attr, osg::NodeVisitor* nv)
 {
-    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.ambient", m->getAmbient(m->FRONT)));
-    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.diffuse", m->getDiffuse(m->FRONT)));
-    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.specular", m->getSpecular(m->FRONT)));
-    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.emission", m->getEmission(m->FRONT)));
-    ss->addUniform(new osg::Uniform(UPREFIX "FrontMaterial.shininess", m->getShininess(m->FRONT)));
-
-    //TODO: back-face materials
-}
-
-bool
-MaterialGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
-{
-    osg::Node* node = obj->asNode();
-    osg::NodeVisitor* nv = data->asNodeVisitor();
-
-    if (node && node->getStateSet() && nv)
+    osg::Material* material = static_cast<osg::Material*>(attr);
+    for (unsigned int i = 0; i < attr->getNumParents(); i++)
     {
-        const osg::Material* m = dynamic_cast<const osg::Material*>(node->getStateSet()->getAttribute(osg::StateAttribute::MATERIAL));
-        if ( m )
-        {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-    
-            osg::StateSet* ss = cv->getCurrentRenderBin()->getStateSet();
-            if (!ss) cv->getCurrentRenderBin()->setStateSet(ss = new osg::StateSet());
+        osg::StateSet* stateSet = attr->getParent(i);
 
-            generate(ss, m);
-        }
+        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.ambient", osg::Uniform::FLOAT_VEC4)->set(material->getAmbient(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.diffuse", osg::Uniform::FLOAT_VEC4)->set(material->getDiffuse(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.specular", osg::Uniform::FLOAT_VEC4)->set(material->getSpecular(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.emission", osg::Uniform::FLOAT_VEC4)->set(material->getEmission(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.shininess", osg::Uniform::FLOAT)->set(material->getShininess(osg::Material::FRONT));
+
+        //TODO: back-face materials
     }
-
-    return traverse(node, nv);
 }
 
 //............................................................................

@@ -171,6 +171,17 @@ main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
+        /*
+        // Example of a custom material for the terrain.
+        osg::ref_ptr< osg::Material > material = new osg::Material;
+        material->setDiffuse(osg::Material::FRONT, osg::Vec4(1,0,0,1));
+        material->setAmbient(osg::Material::FRONT, osg::Vec4(0,1,0,1));
+        material->setEmission(osg::Material::FRONT, osg::Vec4(0.2,1.0,0.5,0.0));
+        // Attach our StateAttributeCallback so that uniforms are updated.
+        material->setUpdateCallback(new MaterialCallback());
+        mapNode->getOrCreateStateSet()->setAttributeAndModes(material);
+        */
+
         // Does a Sky already exist (loaded from the earth file)?
         SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
         if (!sky)
@@ -190,7 +201,11 @@ main(int argc, char** argv)
         //OE_NOTICE << LC << "Total number of lights = " << value+numAdded << std::endl;
         
         viewer.setSceneData(node.get()); 
-        viewer.run();
+        while (!viewer.done())
+        {         
+            viewer.frame();
+        }
+        return 0;
     }
     else
     {

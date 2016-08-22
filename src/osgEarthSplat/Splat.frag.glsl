@@ -137,7 +137,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
 {
     vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
-    float coverageValue = texture2D(oe_splat_coverageTex, tc).r;
+    float coverageValue = texture(oe_splat_coverageTex, tc).r;
     oe_SplatRenderInfo ri;
     oe_splat_getRenderInfo(coverageValue, env, ri);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);

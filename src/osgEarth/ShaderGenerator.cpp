@@ -805,7 +805,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
 
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
-        "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
+        "out " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
         "void " VERTEX_FUNCTION "(inout vec4 vertexVIEW)\n"
         "{ \n"
         INDENT TEX_COORD_TEXT " = gl_MultiTexCoord0;\n"
@@ -814,11 +814,10 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     std::string fragSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
         "uniform sampler2D " SAMPLER_TEXT ";\n"
-        "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
+        "in " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
         "void " FRAGMENT_FUNCTION "(inout vec4 color)\n"
         "{ \n"
-        INDENT MEDIUMP "vec4 texel = texture2D(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
-        //INDENT MEDIUMP "vec4 texel = texture2DLod(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy, 0.0);\n"
+        INDENT MEDIUMP "vec4 texel = texture(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
@@ -985,8 +984,8 @@ ShaderGenerator::apply(osg::Texture*     tex,
 {
    bool ok = true;
 
-   buf._vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
-   buf._fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+   buf._vertHead << "out " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+   buf._fragHead << "in " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
    apply( texgen, unit, buf );
    apply( texmat, unit, buf );
@@ -1126,7 +1125,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::SPHERE_MAP:
             buf._vertHead
-                << "varying vec3 vp_Normal;\n";
+                << "vec3 vp_Normal; // stage global\n";
             buf._vertBody 
                 << INDENT "{\n" // scope it in case there are > 1
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
@@ -1139,7 +1138,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::REFLECTION_MAP:
             buf._vertHead
-                << "varying vec3 vp_Normal;\n";
+                << "vec3 vp_Normal; // stage global\n";
             buf._vertBody
                 << INDENT "{\n"
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
@@ -1149,7 +1148,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::NORMAL_MAP:
             buf._vertHead
-                << "varying vec3 vp_Normal;\n";
+                << "vec3 vp_Normal; //stage global\n";
             buf._vertBody
                 << INDENT "{\n"
                 << INDENT TEX_COORD << unit << " = vec4(vp_Normal, 1.0); \n"
@@ -1207,7 +1206,7 @@ bool
 ShaderGenerator::apply(osg::Texture1D* tex, int unit, GenBuffers& buf)
 {
     buf._fragHead << "uniform sampler1D " SAMPLER << unit << ";\n";
-    buf._fragBody << INDENT "texel = texture1D(" SAMPLER << unit << ", " TEX_COORD << unit << ".x);\n";
+    buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".x);\n";
     buf._stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
 
     return true;
@@ -1217,7 +1216,7 @@ bool
 ShaderGenerator::apply(osg::Texture2D* tex, int unit, GenBuffers& buf)
 {
     buf._fragHead << "uniform sampler2D " SAMPLER << unit << ";\n";
-    buf._fragBody << INDENT "texel = texture2D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
+    buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
     buf._stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;
@@ -1227,7 +1226,7 @@ bool
 ShaderGenerator::apply(osg::Texture3D* tex, int unit, GenBuffers& buf)
 {
     buf._fragHead << "uniform sampler3D " SAMPLER << unit << ";\n";
-    buf._fragBody << INDENT "texel = texture3D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
+    buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
     buf._stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
 
     return true;
@@ -1239,7 +1238,7 @@ ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
     buf._vertHead << "#extension GL_ARB_texture_rectangle : enable\n";
 
     buf._fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
-    buf._fragBody << INDENT "texel = texture2DRect(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
+    buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
     buf._stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;
@@ -1251,7 +1250,7 @@ ShaderGenerator::apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf)
     buf._fragHead <<  "#extension GL_EXT_texture_array : enable \n";    
 
     buf._fragHead << "uniform sampler2DArray " SAMPLER << unit << ";\n";
-    buf._fragBody << INDENT "texel = texture2DArray(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
+    buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
     buf._stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D_ARRAY )->set( unit );         
 
     return true;
@@ -1262,7 +1261,7 @@ ShaderGenerator::apply(osg::TextureCubeMap* tex, int unit, GenBuffers& buf)
 {
     std::string sampler = Stringify() << SAMPLER << unit;
     buf._fragHead << "uniform samplerCube " << sampler << ";\n";
-    buf._fragBody << INDENT "texel = textureCube(" << sampler << ", " TEX_COORD << unit << ".xyz);\n";
+    buf._fragBody << INDENT "texel = texture(" << sampler << ", " TEX_COORD << unit << ".xyz);\n";
     buf._stateSet->getOrCreateUniform( sampler, osg::Uniform::SAMPLER_CUBE )->set( unit );         
 
     return true;
@@ -1275,7 +1274,7 @@ ShaderGenerator::apply(osg::PointSprite* tex, int unit, GenBuffers& buf)
 
     std::string sampler = Stringify() << SAMPLER << unit;
     buf._fragHead << "uniform sampler2D " << sampler << ";\n";
-    buf._fragBody << INDENT << "texel = texture2D(" << sampler << ", gl_PointCoord);\n";
+    buf._fragBody << INDENT << "texel = texture(" << sampler << ", gl_PointCoord);\n";
     buf._stateSet->getOrCreateUniform( sampler, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;

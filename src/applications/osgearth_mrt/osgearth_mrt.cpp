@@ -132,6 +132,7 @@ createFramebufferPass(App& app)
         "    texcoord = gl_MultiTexCoord0; \n"
         "}\n";
 
+    // fragment shader that performs edge detection and tints edges red.
     static const char* fragSource =
         "#version " GLSL_VERSION_STR "\n"
         "#extension GL_ARB_texture_rectangle : enable\n"
@@ -142,45 +143,32 @@ createFramebufferPass(App& app)
 
         "void effect_frag(inout vec4 color)\n"
         "{\n"
-        "    color = texture2DRect(gcolor, texcoord.st); \n"
-        "    float depth = texture2DRect(gdepth, texcoord.st).r; \n"
-        "    vec3 normal = texture2DRect(gnormal,texcoord.st).xyz *2.0-1.0; \n"
+        "    color = texture(gcolor, texcoord.st); \n"
+        "    float depth = texture(gdepth, texcoord.st).r; \n"
+        "    vec3 normal = texture(gnormal,texcoord.st).xyz *2.0-1.0; \n"
 
         // sample radius in pixels:
-        "    float e = 5.0; \n"
+        "    float e = 2.0; \n"
 
         // sample the normals around our pixel and find the approximate
         // deviation from our center normal:
         "    vec3 avgNormal =\n"
-        "       texture2DRect(gnormal, texcoord.st+vec2( e, e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2(-e, e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2(-e,-e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2( e,-e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2( 0, e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2( e, 0)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2( 0,-e)).xyz + \n"
-        "       texture2DRect(gnormal, texcoord.st+vec2(-e, 0)).xyz;  \n"
+        "       texture(gnormal, texcoord.st+vec2( e, e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2(-e, e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2(-e,-e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2( e,-e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2( 0, e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2( e, 0)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2( 0,-e)).xyz + \n"
+        "       texture(gnormal, texcoord.st+vec2(-e, 0)).xyz;  \n"
         "    avgNormal = normalize((avgNormal/8.0)*2.0-1.0); \n"
+
+        // average deviation from normal:
         "    float deviation = clamp(dot(normal, avgNormal),0.0,1.0); \n"
 
-        // set a blur factor based on the normal deviation, so that we
-        // blur more around edges.
+        // use that to tint the pixel red:
         "    e = 2.5 * (1.0-deviation); \n"
-
-        "    vec4 blurColor = \n"
-        "       color + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2( e, e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2(-e, e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2(-e,-e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2( e,-e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2( 0, e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2( e, 0)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2( 0,-e)) + \n"
-        "       texture2DRect(gcolor, texcoord.st+vec2(-e, 0));  \n"
-        "    blurColor /= 9.0; \n"
-
-        // blur the color and darken the edges at the same time
-        "    color.rgb = blurColor.rgb * deviation; \n"
+        "    color.rgb = color.rgb + vec3(e,0,0);\n"
         "}\n";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

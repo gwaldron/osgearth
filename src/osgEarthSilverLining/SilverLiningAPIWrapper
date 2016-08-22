@@ -57,7 +57,7 @@ namespace osgEarth { namespace SilverLining
 
     public:
         CloudLayer(uintptr_t handle) : _handle(handle) { }
-        
+
         void SetEnabled(bool value);
         bool GetEnabled() const;
 
@@ -82,6 +82,9 @@ namespace osgEarth { namespace SilverLining
         void SetIsInfinite(bool value);
         bool GetIsInfinite() const;
 
+        void SetWind(double windEast, double windSouth);
+        void GetWind(double& windEast, double& windSouth) const;
+
         void SetCloudWrapping(bool value);
         bool GetCloudWrapping() const;
 
@@ -105,15 +108,53 @@ namespace osgEarth { namespace SilverLining
         static CloudLayer Create(int kind);
     };
 
+    class OSGEARTHSILVERLINING_EXPORT WindVolume
+    {
+    public:
+        WindVolume();
+        WindVolume(double windSpeed, double direction);
+
+        void SetMinAltitude(double metersMSL);
+        double GetMinAltitude() const;
+        void SetMaxAltitude(double metersMSL);
+        double GetMaxAltitude() const;
+        void SetWindSpeed(double metersPerSecond);
+        double GetWindSpeed() const;
+        void SetDirection(double degreesFromNorth);
+        double GetDirection() const;
+
+    private:
+        double _minAltitude;
+        double _maxAltitude;
+        double _windSpeed;
+        double _direction;
+    };
+
     class OSGEARTHSILVERLINING_EXPORT AtmosphericConditions
     {
     public:
-        void AddCloudLayer(class CloudLayer&);
-        
+        int AddCloudLayer(class CloudLayer&);
+        bool RemoveCloudLayer(int layerHandle);
+        void RemoveAllCloudLayers();
+
         void SetVisibility(double vis);
         double GetVisibility() const;
 
         void SetPrecipitation(int type, double rate);
+
+        int SetWind(double metersPerSecond, double degreesFromNorth);
+        int SetWind(const WindVolume& windVolume);
+        bool RemoveWindVolume(int windVolumeHandle);
+        void ClearWindVolumes();
+
+        enum ConditionPresets
+        {
+            FAIR = 0,
+            PARTLY_CLOUDY,
+            MOSTLY_CLOUDY,
+            OVERCAST
+        };
+        void SetPresetConditions(ConditionPresets preset, Atmosphere& atm);
 
     public:
         AtmosphericConditions(uintptr_t handle) : _handle(handle) { }
@@ -125,6 +166,21 @@ namespace osgEarth { namespace SilverLining
     public:
         void EnableLensFlare(bool value);
         bool GetLensFlareEnabled() const;
+
+        enum SkyModel
+        {
+            PREETHAM,
+            HOSEK_WILKIE
+        };
+
+        void SetSkyModel(SkyModel skyModel);
+        SkyModel GetSkyModel() const;
+
+        void SetGamma(double gamma);
+        double GetGamma() const;
+
+        void SetInfraRedMode(bool infraRed);
+        bool GetInfraRedMode() const;
 
         AtmosphericConditions GetConditions() const;
 

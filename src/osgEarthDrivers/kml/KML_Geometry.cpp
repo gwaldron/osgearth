@@ -128,6 +128,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
         am = "clampToGround"; // default.
 
     bool isPoly = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_POLYGON;
+    bool isLine = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_LINESTRING;
 
     // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
     // technique will depend on the geometry's type and setup.
@@ -185,6 +186,10 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
         else if ( isPoly )
         {
             alt->technique() = alt->TECHNIQUE_DRAPE;
+        }
+        else if ( isLine)
+        {
+            alt->technique() = alt->TECHNIQUE_DRAPE; // or could be GPU.
         }
         else // line or point
         {

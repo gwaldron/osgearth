@@ -37,6 +37,10 @@ using namespace osgEarth::Triton;
 
 namespace
 {
+
+/** Default size of _contextDirty */
+static const size_t NUM_CONTEXTS = 64;
+
 #ifdef DEBUG_HEIGHTMAP
     osg::Node*
     makeFrustumFromCamera( osg::Camera* camera )
@@ -234,8 +238,6 @@ namespace
      */
     class OceanTerrainChangedCallback : public osgEarth::TerrainCallback
     {
-        TritonDrawable* _drawable;
-
     public:
         OceanTerrainChangedCallback(TritonDrawable* drawable)
             : _drawable(drawable) { }
@@ -246,10 +248,15 @@ namespace
         // When this happens we need to update the Triton height map.
         void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, osgEarth::TerrainCallbackContext& context)
         {
-            _drawable->dirtyAllContexts();
+            osg::ref_ptr<TritonDrawable> drawable;
+            if ( _drawable.lock(drawable) )
+                drawable->dirtyAllContexts();
         }
+
+    private:
+        osg::observer_ptr<TritonDrawable> _drawable;
     };
-    
+
 
     const char* vertexShader =
         "#version " GLSL_VERSION_STR "\n"
@@ -300,8 +307,18 @@ _mapNode(mapNode)
     // dynamic variance prevents update/cull overlap when drawing this
     setDataVariance( osg::Object::DYNAMIC );
 
-    _contextDirty.resize(64);
+    _contextDirty.resize(NUM_CONTEXTS);
     dirtyAllContexts();
+}
+
+TritonDrawable::~TritonDrawable()
+{
+    osg::ref_ptr<MapNode> mapNode;
+    osg::ref_ptr<osgEarth::TerrainCallback> callback;
+    if ( _mapNode.lock(mapNode) && _terrainChangedCallback.lock(callback) && mapNode->getTerrain() )
+    {
+        _mapNode->getTerrain()->removeTerrainCallback( callback );
+    }
 }
 
 void
@@ -409,7 +426,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         return;
 
     if ( _TRITON->passHeightMapToTriton() && !_terrainChangedCallback.valid() )
-    {        
+    {
         const_cast<TritonDrawable*>(this)->setupHeightMap(*state);
     }
 
@@ -435,19 +452,21 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         environment->SetProjectionMatrix( state->getProjectionMatrix().ptr() );
     }
 
-    if ( _TRITON->passHeightMapToTriton() ) 
+    if ( _TRITON->passHeightMapToTriton() )
     {
         unsigned cid = renderInfo.getContextID();
+        const bool validCid = (cid < _contextDirty.size());
 
         bool dirty =
-            ( _contextDirty[cid] ) ||
+            ( validCid && _contextDirty[cid] ) ||
             ( renderInfo.getView()->getCamera()->getViewMatrix()       != _viewMatrix ) ||
             ( renderInfo.getView()->getCamera()->getProjectionMatrix() != _projMatrix );
 
         if ( dirty )
         {
             updateHeightMap( renderInfo );
-            _contextDirty[renderInfo.getContextID()] = 0;
+            if ( validCid )
+                _contextDirty[renderInfo.getContextID()] = 0;
             _viewMatrix = renderInfo.getView()->getCamera()->getViewMatrix();
             _projMatrix = renderInfo.getView()->getCamera()->getProjectionMatrix();
         }
@@ -457,7 +476,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     // Now light and draw the ocean:
     if ( environment )
-    {        
+    {
         // User pre-draw callback:
         if (_TRITON->getCallback())
         {
@@ -506,7 +525,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             osg::Vec3d pos3 = osg::Vec3d(position.x(), position.y(), position.z());
             pos3.normalize();
             float dot = osg::clampAbove(up*pos3, 0.0); dot*=dot;
-            float sunAmbient = (float)osg::clampBetween( dot, 0.0f, 0.88f );            
+            float sunAmbient = (float)osg::clampBetween( dot, 0.0f, 0.88f );
             float fa = std::max(sunAmbient, ambient[0]);
 
             // Ambient color based on the zenith color in the cube map
@@ -556,7 +575,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             _TRITON->getOcean()->Draw( renderInfo.getView()->getFrameStamp()->getSimulationTime() );
         }
     }
-    
+
     // Put GL back in a state that won't confuse the OSG state tracking:
     state->dirtyAllVertexArrays();
     state->dirtyAllAttributes();
@@ -590,13 +609,13 @@ namespace
             { GL_RGBA16F_ARB,           GL_RGBA,      "GL_RGBA16F_ARB" },
             { GL_RGB32F_ARB,            GL_RGB,       "GL_RGB32F_ARB" },
             { GL_RGBA32F_ARB,           GL_RGBA,      "GL_RGBA32F_ARB" }
-        };           
+        };
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
         osg::GLExtensions* ext = osg::GLExtensions::Get(state.getContextID(), true);
 #else
         osg::FBOExtensions* ext = osg::FBOExtensions::instance(state.getContextID(), true);
-#endif        
+#endif
 
         osg::State::CheckForGLErrors check = state.getCheckForGLErrors();
         state.setCheckForGLErrors(state.NEVER_CHECK_GL_ERRORS);
@@ -683,10 +702,11 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     osgEarth::VirtualProgram* heightProgram = osgEarth::VirtualProgram::getOrCreate(stateSet);
     heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
     heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
-    
+
     _heightCamera->addChild( mapNode->getTerrainEngine() );
     _terrainChangedCallback = new OceanTerrainChangedCallback(this);
-    mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
+    if ( mapNode->getTerrain() )
+        mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
 
     osg::Group* root = osgEarth::findTopMostNodeOfType<osg::Group>(mapNode);
     root->addChild(_heightCamera.get());

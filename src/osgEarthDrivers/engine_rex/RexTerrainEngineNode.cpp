@@ -238,8 +238,13 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
-    ResourceReleaser* releaser = new ResourceReleaser();
+    ResourceReleaser* releaser = 0;//
+// TODO:  This is simply to get osgearth to build against osg 3.2.0 for travis.  If we can update the travis build then we'll 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
+    releaser = new ResourceReleaser();
     this->addChild( releaser );
+#endif
+
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool( _terrainOptions );

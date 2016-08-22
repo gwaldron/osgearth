@@ -21,95 +21,80 @@
 */
 
 #include <osg/Notify>
+#include <osg/MatrixTransform>
+#include <osgGA/TrackballManipulator>
 #include <osgViewer/Viewer>
-#include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
+#include <osgEarth/Registry>
+#include <osgDB/ReadFile>
+
 #include <osgEarthUtil/Fog>
 #include <osg/Fog>
 
-
-#define LC "[viewer] "
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-int
-usage(const char* name)
-{
-    OE_NOTICE 
-        << "\nUsage: " << name << " file.earth" << std::endl
-        << MapNodeHelper().usage() << std::endl;
-
-    return 0;
-}
 
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    // help?
-    if ( arguments.read("--help") )
-        return usage(argv[0]);
-
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
-
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    //Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
+    osg::Group* root = new osg::Group();    
 
-    // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );
+    // Setup a Fog state attribute    
+    osg::Fog* fog = new osg::Fog;            
+    fog->setColor( viewer.getCamera()->getClearColor() );                
+    fog->setDensity( 0.02 );    
+    fog->setMode(osg::Fog::LINEAR);
+    fog->setStart(5.0);
+    fog->setEnd(50.0);
+    root->getOrCreateStateSet()->setAttributeAndModes( fog, osg::StateAttribute::ON );                
+    
+    // Attach the FogCallback to keep the Fog uniforms up to date.
+    fog->setUpdateCallback(new FogCallback()); 
 
-    // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );    
-    if ( node )
-    {
-        MapNode* mapNode = MapNode::findMapNode( node );
+    // Add the regular cow.
+    root->addChild(osgDB::readNodeFile("cow.osg"));
 
-        FogEffect* fogEffect = new FogEffect;
-        fogEffect->attach( node->getOrCreateStateSet() );
-        
-        float maxDensity = 0.000125; 
-        float fogStartHeight = 10000.0f;        
+    // Add a shader based cow to the right for comparison.
+    osg::MatrixTransform* mt = new osg::MatrixTransform;    
+    osg::Node* cowShader = osgDB::readNodeFile("cow.osg.10,0,0.trans");    
+    osgEarth::Registry::instance()->shaderGenerator().run(cowShader);    
+    
+    // Attach the fog effect so fog will take effect.
+    FogEffect* fogEffect = new FogEffect;
+    fogEffect->attach( cowShader->getOrCreateStateSet() );
+    mt->addChild( cowShader );
+    root->addChild(mt);
 
-        // Setup a Fog state attribute
-        osg::Vec4 fogColor(0.66f, 0.7f, 0.81f, 1.0f);
-        osg::Fog* fog = new osg::Fog;        
-        fog->setColor( fogColor ); //viewer.getCamera()->getClearColor() );                
-        fog->setDensity( 0 );
-        node->getOrCreateStateSet()->setAttributeAndModes( fog, osg::StateAttribute::ON );                
+    viewer.setCameraManipulator(new osgGA::TrackballManipulator());
+    
+    viewer.setSceneData( root );
 
-        viewer.setSceneData( node );
-
-        // configure the near/far so we don't clip things that are up close
-        viewer.getCamera()->setNearFarRatio(0.00002);
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-        while (!viewer.done())
+    while (!viewer.done())
+    {        
+        // Change fog modes ever 200 frames.
+        if (viewer.getFrameStamp()->getFrameNumber() % 200 == 0)
         {
-            // Get the height above the terrain
-            osg::Vec3d eye, center, up;
-            viewer.getCamera()->getViewMatrixAsLookAt(eye,center, up);
-            GeoPoint map;
-            map.fromWorld( mapNode->getMapSRS(), eye );            
-            
-            // Compute the fog density based on the camera height
-            float ratio = ((fogStartHeight - map.z()) / fogStartHeight);
-            ratio = osg::clampBetween(ratio, 0.0f, 1.0f);
-            float density = ratio * maxDensity;
-            fog->setDensity( density );            
-            viewer.frame();
-        }        
-    }
-    else
-    {
-        return usage(argv[0]);
+            if (fog->getMode() == osg::Fog::LINEAR)
+            {
+                fog->setMode(osg::Fog::EXP);
+                OE_NOTICE << "switching to osg::Fog::EXP" << std::endl;
+            }
+            else if (fog->getMode() == osg::Fog::EXP)
+            {
+                fog->setMode(osg::Fog::EXP2);
+                OE_NOTICE << "switching to osg::Fog::EXP2" << std::endl;
+            }
+            else
+            {
+                fog->setMode(osg::Fog::LINEAR);
+                OE_NOTICE << "switching to osg::Fog::LINEAR" << std::endl;
+            }
+        }
+        viewer.frame();
     }
     return 0;
 }

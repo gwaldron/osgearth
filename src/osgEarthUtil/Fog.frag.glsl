@@ -2,8 +2,7 @@
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_fog_frag
-#pragma vp_location   fragment_coloring
-#pragma vp_order      0.7
+#pragma vp_location   fragment_lighting
 
 varying float oe_fogFactor;
 

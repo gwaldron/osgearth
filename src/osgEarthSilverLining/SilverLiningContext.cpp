@@ -29,6 +29,46 @@
 using namespace osgEarth::SilverLining;
 
 
+/**
+ * Adapter that converts the return value of osgEarth::SilverLining::Callback::getMilliseconds()
+ * into a usable value for SilverLining using the SilverLining MillisecondTimer callback.
+ */
+class MillisecondTimerAdapter : public ::SilverLining::MillisecondTimer
+{
+public:
+    MillisecondTimerAdapter(SilverLiningContext* context) :
+    _context(context),
+    _defaultTimer(new ::SilverLining::MillisecondTimer)
+    {
+    }
+
+    virtual ~MillisecondTimerAdapter()
+    {
+        delete _defaultTimer;
+    }
+
+    virtual unsigned long GetMilliseconds() const
+    {
+        osg::ref_ptr<SilverLiningContext> context;
+        unsigned long milliseconds = 0;
+        if (_context.lock(context))
+        {
+            osg::ref_ptr<Callback> callback = context->getCallback();
+            if (callback.valid())
+                milliseconds = callback->getMilliseconds();
+        }
+
+        // As per documentation, use the default SilverLining timer instead of returning 0
+        if (milliseconds != 0)
+            return milliseconds;
+        return _defaultTimer->GetMilliseconds();
+    }
+
+private:
+    osg::observer_ptr<SilverLiningContext> _context;
+    ::SilverLining::MillisecondTimer* _defaultTimer;
+};
+
 SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
 _options              ( options ),
 _initAttempted        ( false ),
@@ -37,6 +77,9 @@ _maxAmbientLightingAlt( -1.0 ),
 _atmosphere           ( 0L ),
 _minAmbient           ( 0,0,0,0 )
 {
+    // Create the millisecond timer that we'll use to control time
+    _msTimer = new MillisecondTimerAdapter(this);
+
     // Create a SL atmosphere (the main SL object).
     _atmosphere = new ::SilverLining::Atmosphere(
         options.user()->c_str(),
@@ -47,11 +90,9 @@ _minAmbient           ( 0,0,0,0 )
 
 SilverLiningContext::~SilverLiningContext()
 {
-    if ( _atmosphereWrapper )
-        delete _atmosphereWrapper;
-
-    if ( _atmosphere )
-        delete _atmosphere;
+    delete _atmosphereWrapper;
+    delete _atmosphere;
+    delete _msTimer;
 
     OE_INFO << LC << "Destroyed\n";
 }
@@ -120,6 +161,9 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 // in updateLocation().
                 _atmosphere->SetUpVector( 0.0, 0.0, 1.0 );
                 _atmosphere->SetRightVector( 1.0, 0.0, 0.0 );
+
+                // Configure the timer used for animations
+                _atmosphere->GetConditions()->SetMillisecondTimer(_msTimer);
 
 #if 0 // todo: review this
                 _maxAmbientLightingAlt =

@@ -46,6 +46,8 @@ SETGET(Atmosphere, InfraRedMode, bool);
 #define HANDLE ((::SilverLining::AtmosphericConditions*)_handle)
 
 SETGET(AtmosphericConditions, Visibility, double);
+SETGET(AtmosphericConditions, Turbidity, double);
+SETGET(AtmosphericConditions, LightPollution, double);
 
 void AtmosphericConditions::SetPrecipitation(int type, double rate) {
     HANDLE->SetPrecipitation((::CloudLayer::PrecipitationTypes)type, rate);
@@ -68,6 +70,7 @@ int AtmosphericConditions::SetWind(double metersPerSecond, double degreesFromNor
 bool AtmosphericConditions::RemoveWindVolume(int layerHandle) { return HANDLE->RemoveWindVolume(layerHandle); }
 void AtmosphericConditions::ClearWindVolumes() { HANDLE->ClearWindVolumes(); }
 void AtmosphericConditions::SetPresetConditions(ConditionPresets preset, Atmosphere& atm) { HANDLE->SetPresetConditions(static_cast< ::SilverLining::AtmosphericConditions::ConditionPresets >(preset), *(::SilverLining::Atmosphere*)atm._handle); }
+void AtmosphericConditions::EnableTimePassage(bool enabled, long relightFrequencyMS) { HANDLE->EnableTimePassage(enabled, relightFrequencyMS); }
 
 //................................
 WindVolume::WindVolume() :

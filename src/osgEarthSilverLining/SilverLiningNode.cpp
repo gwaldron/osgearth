@@ -80,7 +80,7 @@ SilverLiningNode::attach(osg::View* view, int lightNum)
 unsigned
 SilverLiningNode::getNumContexts() const
 {
-    return getNumChildren();
+    return static_cast<unsigned>(_contextList.size());
 }
 
 osg::StateSet*
@@ -88,7 +88,7 @@ SilverLiningNode::getCloudsStateSet(unsigned index) const
 {
     if (index < getNumContexts())
     {
-        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(_contextList[index].get());
         if ( node )
             return node->getCloudsStateSet();
     }
@@ -100,7 +100,7 @@ SilverLiningNode::getSkyStateSet(unsigned index) const
 {
     if (index < getNumContexts())
     {
-        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(getChild(index));
+        const SilverLiningContextNode* node = dynamic_cast<const SilverLiningContextNode*>(_contextList[index].get());
         if ( node )
             return node->getSkyStateSet();
     }

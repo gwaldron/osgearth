@@ -101,8 +101,30 @@ main(int argc, char** argv)
     
     viewer.setSceneData( root );
 
+    float lightFactor = 1.0f;      
+    float lightAngle = osg::PI/2.0;      
     while (!viewer.done())
-    {        
+    { 
+        // Change light parameters ever 60 frames
+        //if (viewer.getFrameStamp()->getFrameNumber() % 60 == 0)
+        {
+          lightFactor -= 0.05f;
+          if (lightFactor <= 0.0f)
+          {
+            lightFactor = 1.0f;
+          }
+          //light->setDiffuse(osg::Vec4(lightFactor, lightFactor, lightFactor, 1.0f));
+
+          lightAngle -= osg::PI/180;
+          if (lightAngle <= -osg::PI)
+          {
+            lightAngle = osg::PI;
+          }          
+          light->setPosition(osg::Vec4(
+             0.0, cos(lightAngle), sin(lightAngle), 0.0));
+
+        }        
+
         // Change fog modes ever 200 frames.
         if (viewer.getFrameStamp()->getFrameNumber() % 200 == 0)
         {

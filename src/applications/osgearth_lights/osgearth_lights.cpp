@@ -143,7 +143,8 @@ addLights(MapNode* mapNode, int lightNum)
     }
 
     // Generate the necessary uniforms for the shaders.
-    lights->accept(GenerateGL3LightingUniforms());
+    GenerateGL3LightingUniforms gen;
+    lights->accept(gen);
 
     mapNode->addChild(lights);
 

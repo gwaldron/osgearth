@@ -47,7 +47,7 @@ public:
         delete _defaultTimer;
     }
 
-    virtual unsigned long GetMilliseconds() const
+    virtual unsigned long SILVERLINING_API GetMilliseconds() const
     {
         osg::ref_ptr<SilverLiningContext> context;
         unsigned long milliseconds = 0;

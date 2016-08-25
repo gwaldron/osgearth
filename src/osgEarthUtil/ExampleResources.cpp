@@ -630,6 +630,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
     }
+
+    // Arbitrary extension:
+    std::string extname;
+    if (args.read("--extension", extname))
+    {
+        Extension* ext = Extension::create(extname, ConfigOptions());
+        if (ext)
+            mapNode->addExtension(ext);
+    }
     
 
     // Hook up the extensions!

@@ -82,7 +82,9 @@ set(TARGET_GLSL
     Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
     LogDepthBuffer.VertOnly.vert.glsl    
-    LogDepthBuffer.frag.glsl )
+    LogDepthBuffer.frag.glsl
+    Shadowing.vert.glsl
+    Shadowing.frag.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)

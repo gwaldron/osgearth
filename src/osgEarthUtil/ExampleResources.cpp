@@ -428,30 +428,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
 
-    // Shadowing.
-    if (args.read("--shadows"))
-    {
-        int unit;
-        if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
-        {
-            ShadowCaster* caster = new ShadowCaster();
-            caster->setTextureImageUnit( unit );
-            caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
-            //insertParent(caster, mapNode);
-            //root = findTopOfGraph(caster)->asGroup();
-            if ( mapNode->getNumParents() > 0 )
-            {
-                insertGroup(caster, mapNode->getParent(0));
-            }
-            else
-            {
-                caster->addChild(mapNode);
-                root = caster;
-            }
-        }
-    }
-
     // Loading KML from the command line:
     if ( !kmlFile.empty() )
     {
@@ -654,6 +630,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
     }
+
+    // Arbitrary extension:
+    std::string extname;
+    if (args.read("--extension", extname))
+    {
+        Extension* ext = Extension::create(extname, ConfigOptions());
+        if (ext)
+            mapNode->addExtension(ext);
+    }
     
 
     // Hook up the extensions!
@@ -672,6 +657,32 @@ MapNodeHelper::parse(MapNode*             mapNode,
         ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
         if ( controlIF )
             controlIF->connect( mainContainer );
+    }
+
+
+    // Shadowing. This is last because it needs access to a light which may be provided
+    // by one of the Sky extensions.
+    if (args.read("--shadows"))
+    {
+        int unit;
+        if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
+        {
+            ShadowCaster* caster = new ShadowCaster();
+            caster->setTextureImageUnit( unit );
+            caster->setLight( view->getLight() );
+            caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
+            //insertParent(caster, mapNode);
+            //root = findTopOfGraph(caster)->asGroup();
+            if ( mapNode->getNumParents() > 0 )
+            {
+                insertGroup(caster, mapNode->getParent(0));
+            }
+            else
+            {
+                caster->addChild(mapNode);
+                root = caster;
+            }
+        }
     }
 
     root->addChild( canvas );

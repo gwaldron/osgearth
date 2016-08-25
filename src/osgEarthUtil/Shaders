@@ -43,7 +43,10 @@ namespace osgEarth { namespace Util
 
             LogDepthBuffer_VertFile,
             LogDepthBuffer_FragFile,
-            LogDepthBuffer_VertOnly_VertFile;
+            LogDepthBuffer_VertOnly_VertFile,
+
+            Shadowing_Vertex,
+            Shadowing_Fragment;
 	};	
 } } // namespace osgEarth::Util
 

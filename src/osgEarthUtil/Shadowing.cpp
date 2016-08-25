@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Shadowing>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
@@ -39,8 +40,8 @@ using namespace osgEarth::Util;
 ShadowCaster::ShadowCaster() :
 _size         ( 2048 ),
 _texImageUnit ( 7 ),
-_blurFactor   ( 0.002f ),
-_color        ( osg::Vec4f(0.4f, 0.4f, 0.4f, 1.0f) ),
+_blurFactor   ( 0.0f ),
+_color        ( 0.4f ),
 _traversalMask( ~0 )
 {
     _castingGroup = new osg::Group();
@@ -91,7 +92,7 @@ ShadowCaster::setBlurFactor(float value)
 }
 
 void
-ShadowCaster::setShadowColor(const osg::Vec4f& value)
+ShadowCaster::setShadowColor(float value)
 {
     _color = value;
     if ( _shadowColorUniform.valid() )
@@ -154,108 +155,15 @@ ShadowCaster::reinitialize()
 
     _renderStateSet = new osg::StateSet();
     
-    std::string vertex = Stringify() << 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
-        "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
-        "void oe_shadow_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        "    for(int i=0; i<" << numSlices << "; ++i) \n"
-        "        oe_shadow_coord[i] = oe_shadow_matrix[i] * VertexVIEW;\n"
-        "} \n";
 
-    std::string fragment = Stringify() << 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "#extension GL_EXT_texture_array : enable \n"
-
-        "uniform sampler2DArray oe_shadow_map; \n"
-        "uniform vec4 oe_shadow_color; \n"
-        "uniform float oe_shadow_blur; \n"
-        "varying vec3 vp_Normal; \n"
-        "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
-
-        //TODO-run a generator and rplace
-        "#define OE_SHADOW_NUM_SAMPLES 16\n"
-        "const vec2 oe_shadow_samples[OE_SHADOW_NUM_SAMPLES] = vec2[]( vec2( -0.942016, -0.399062 ), vec2( 0.945586, -0.768907 ), vec2( -0.094184, -0.929389 ), vec2( 0.344959, 0.293878 ), vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ), vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ), vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 )); \n"
-
-        "float oe_shadow_rand(vec2 co){\n"
-        "   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);\n"
-        "}\n"
-        
-        "vec2 oe_shadow_rot(vec2 p, float a) { \n"
-        "    vec2 sincos = vec2(sin(a), cos(a)); \n"
-        "    return vec2(dot(p, vec2(sincos.y, -sincos.x)), dot(p, sincos.xy)); \n"
-        "}\n"
-
-        // slow PCF sampling.
-        "float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur) \n"
-        "{ \n"
-        "    float shadowed = 0.0; \n"
-        "    float a = 6.283185 * oe_shadow_rand(c.xy); \n"
-        "    vec4 b = vec4(oe_shadow_rot(vec2(1,0),a), oe_shadow_rot(vec2(0,1),a)); \n"
-        "    for(int i=0; i<OE_SHADOW_NUM_SAMPLES; ++i) { \n"
-        "        vec2 off = oe_shadow_samples[i];\n"
-        "        off = vec2(dot(off,b.xz), dot(off,b.yw)); \n"
-        "        vec3 pc = vec3(c.xy + off*blur, c.z); \n"
-        "        float depth = texture2DArray(oe_shadow_map, pc).r; \n"
-        "        if ( depth < 1.0 && depth < refvalue ) { \n"
-        "           shadowed += 1.0; \n"
-        "        } \n"
-        "    } \n"
-        "    return 1.0-(shadowed/OE_SHADOW_NUM_SAMPLES); \n"
-        "} \n"
-
-        "void oe_shadow_fragment( inout vec4 color )\n"
-        "{\n"
-        "    float alpha = color.a; \n"
-        "    float factor = 1.0; \n"
-
-        // pre-pixel biasing to reduce moire/acne
-        "    const float b0 = 0.001; \n"
-        "    const float b1 = 0.01; \n"
-        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(vp_Normal); \n"
-        "    float costheta = clamp(dot(L,N), 0.0, 1.0); \n"
-        "    float bias = b0*tan(acos(costheta)); \n"
-
-        // loop over the slices:
-        "    for(int i=0; i<" << numSlices << " && factor > 0.0; ++i) \n"
-        "    { \n"
-        "        vec4 c = oe_shadow_coord[i]; \n"
-        "        vec3 coord = vec3(c.x, c.y, float(i)); \n"
-
-        "        if ( oe_shadow_blur > 0.0 ) \n"
-        "        { \n"
-        "            factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur)); \n"
-        "        } \n"
-        "        else \n"
-        "        { \n"
-        "            float depth = texture2DArray(oe_shadow_map, coord).r; \n"
-        "            if ( depth < 1.0 && depth < c.z-bias ) \n"
-        "                factor = 0.0; \n"
-        "        } \n"
-        "    } \n"
-
-        "    vec4 colorInFullShadow = color * oe_shadow_color; \n"
-        "    color = mix(colorInFullShadow, color, factor); \n"
-        "    color.a = alpha;\n"
-        "}\n";
-
+    // Establish a Virtual Program on the stateset.
     VirtualProgram* vp = VirtualProgram::getOrCreate(_renderStateSet.get());
 
-    vp->setFunction(
-        "oe_shadow_vertex", 
-        vertex, 
-        ShaderComp::LOCATION_VERTEX_VIEW,
-        0.9f );
-
-    vp->setFunction(
-        "oe_shadow_fragment",
-        fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING,
-        0.9f );
+    // Load the shadowing shaders.
+    Shaders package;
+    package.replace("$OE_SHADOW_NUM_SLICES", Stringify()<<numSlices);
+    package.load(vp, package.Shadowing_Vertex);
+    package.load(vp, package.Shadowing_Fragment);
 
     // the texture coord generator matrix array (from the caster):
     _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(
@@ -264,24 +172,15 @@ ShadowCaster::reinitialize()
         numSlices );
 
     // bind the shadow map texture itself:
-    _renderStateSet->setTextureAttribute(
-        _texImageUnit,
-        _shadowmap.get(),
-        osg::StateAttribute::ON );
-
+    _renderStateSet->setTextureAttribute(_texImageUnit, _shadowmap.get(), osg::StateAttribute::ON );
     _renderStateSet->addUniform( new osg::Uniform("oe_shadow_map", _texImageUnit) );
 
     // blur factor:
-    _shadowBlurUniform = _renderStateSet->getOrCreateUniform(
-        "oe_shadow_blur",
-        osg::Uniform::FLOAT);
-
+    _shadowBlurUniform = _renderStateSet->getOrCreateUniform("oe_shadow_blur", osg::Uniform::FLOAT);
     _shadowBlurUniform->set(_blurFactor);
 
     // shadow color:
-    _shadowColorUniform = _renderStateSet->getOrCreateUniform(
-        "oe_shadow_color",
-        osg::Uniform::FLOAT_VEC4);
+    _shadowColorUniform = _renderStateSet->getOrCreateUniform("oe_shadow_color", osg::Uniform::FLOAT);
 
     _shadowColorUniform->set(_color);
 }

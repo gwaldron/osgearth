@@ -82,6 +82,7 @@ namespace osgEarth { namespace SilverLining
 
         typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;
         CameraContextMap _contexts;
+        osg::NodeList _contextList;
 
         typedef std::set<osg::ref_ptr<osg::Camera> > CameraSet;
         CameraSet _camerasToAdd;

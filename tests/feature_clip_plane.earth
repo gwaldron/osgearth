@@ -23,6 +23,7 @@ way to mitigate z-fighting issues.
                    stroke:            #ffff00;
 				   render-depth-test: false;
 				   render-clip-plane: 0;
+                   render-order:      1;
                 }                    
             </style>
         </styles>        

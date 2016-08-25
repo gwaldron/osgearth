@@ -491,7 +491,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         BuildGeometryFilter filter( style );
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
+
+        if (_options.maxPolygonTilingAngle().isSet())
+            filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
 
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();

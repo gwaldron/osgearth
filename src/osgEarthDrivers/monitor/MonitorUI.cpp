@@ -30,10 +30,19 @@ namespace ui = osgEarth::Util::Controls;
 
 MonitorUI::MonitorUI()
 {
+    _t0 = 0.0;
+
     this->setHorizAlign(ALIGN_RIGHT);
     this->setVertAlign(ALIGN_BOTTOM);
 
     int r=0;
+
+    this->setControl(0, r, new ui::LabelControl("FPS:"));
+    _fps = new ui::LabelControl();
+    _fps->setHorizAlign(ALIGN_RIGHT);
+    this->setControl(1, r, _fps.get());
+
+    ++r;
     this->setControl(0, r, new ui::LabelControl("Current Mem:"));
     _pb = new ui::LabelControl();
     _pb->setHorizAlign(ALIGN_RIGHT);
@@ -49,13 +58,22 @@ MonitorUI::MonitorUI()
 void
 MonitorUI::update(const osg::FrameStamp* fs)
 {
-    if (fs && fs->getFrameNumber() % 60 == 0)
+    if (fs)
     {
-        unsigned bytes = Memory::getProcessUsage();
-        _pb->setText(Stringify() << (bytes / 1048576) << " M");
-        _peak->setText(Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+        double t = fs->getReferenceTime();
+        if (t-_t0 >= 1.0)
+        {
+            unsigned bytes = Memory::getProcessUsage();
+            _pb->setText(Stringify() << (bytes / 1048576) << " M");
+            _peak->setText(Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
 
-        //Registry::instance()->startActivity("Current Mem", Stringify() <<  (bytes / 1048576) << " M");
-        //Registry::instance()->startActivity("Peak Mem", Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+            //Registry::instance()->startActivity("Current Mem", Stringify() <<  (bytes / 1048576) << " M");
+            //Registry::instance()->startActivity("Peak Mem", Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+
+            double fps = (double(fs->getFrameNumber())-_frame0) / (t - _t0);
+            _fps->setText(Stringify() << fps);
+            _t0 = t;
+            _frame0 = (double)fs->getFrameNumber();
+        }
     }
 }

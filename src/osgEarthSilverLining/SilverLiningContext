@@ -28,6 +28,7 @@
 namespace SilverLining {
     class Atmosphere;
     class CloudLayer;
+    class MillisecondTimer;
 }
 namespace osgEarth {
     class SpatialReference;
@@ -42,7 +43,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         SilverLiningContext(const SilverLiningOptions& options);
-        
+
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
 
@@ -115,6 +116,8 @@ namespace osgEarth { namespace SilverLining
         osg::ref_ptr<Callback> _callback;
 
         Atmosphere* _atmosphereWrapper;
+
+        ::SilverLining::MillisecondTimer* _msTimer;
     };
 
 } } // namespace osgEarth::SilverLining

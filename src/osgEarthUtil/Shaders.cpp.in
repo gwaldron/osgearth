@@ -33,4 +33,9 @@ Shaders::Shaders()
     Graticule_Vertex = "Graticule.vert.glsl";
     _sources[Graticule_Vertex] = "@Graticule.vert.glsl@";
 
+    Shadowing_Vertex = "Shadowing.vert.glsl";
+    _sources[Shadowing_Vertex] = "@Shadowing.vert.glsl@";
+
+    Shadowing_Fragment = "Shadowing.frag.glsl";
+    _sources[Shadowing_Fragment] = "@Shadowing.frag.glsl@";
 }

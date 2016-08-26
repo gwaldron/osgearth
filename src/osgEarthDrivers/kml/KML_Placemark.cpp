@@ -88,9 +88,26 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
 
                 // check for symbols.
-                ModelSymbol*    model = style.get<ModelSymbol>();
-                IconSymbol*     icon  = style.get<IconSymbol>();
-                TextSymbol*     text  = style.get<TextSymbol>();
+                ModelSymbol* model = style.get<ModelSymbol>();
+                IconSymbol*  icon  = style.get<IconSymbol>();
+                TextSymbol*  text  = style.get<TextSymbol>();
+
+                // for a single point placemark, apply the default icon and text symbols
+                // if none are specified in the KML.
+                if (geom->getTotalPointCount() == 1)
+                {
+                    if (!model && !icon && cx._options->defaultIconSymbol().valid())
+                    {
+                        icon = cx._options->defaultIconSymbol().get();
+                        style.add(icon);
+                    }
+
+                    if (!text && cx._options->defaultTextSymbol().valid())
+                    {
+                        text = cx._options->defaultTextSymbol().get();
+                        style.add(text);
+                    }
+                }
 
                 // the annotation name:
                 std::string name = getValue(node, "name");
@@ -102,14 +119,6 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 // one coordinate? It's a place marker or a label.
                 if ( (model || icon || text) && geom->getTotalPointCount() == 1 )
                 {
-                    // load up the default icon if there we don't have one.
-                    if ( !model && !icon )
-                    {
-                        icon = cx._options->defaultIconSymbol().get();
-                        if ( icon )
-                            style.add( icon );
-                    }
-
                     // if there's a model, render that - models do NOT get labels.
                     if ( model )
                     {
@@ -135,13 +144,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // is there a label?
                     else if ( !name.empty() )
                     {
-                        if ( !text && cx._options->defaultTextSymbol().valid() )
-                        {
-                            text = cx._options->defaultTextSymbol().get();
-                            style.addSymbol( text );
-
-                        }
-                        else
+                        if ( !text )
                         {
                             text = style.getOrCreate<TextSymbol>();
                             text->encoding() = TextSymbol::ENCODING_UTF8;

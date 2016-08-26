@@ -3,7 +3,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_fog_vertex
 #pragma vp_location   vertex_view
-#pragma vp_order      0.5
 
 uniform int oe_fog_algo;
 

@@ -2236,8 +2236,13 @@ TileModelCompiler::compile(TileModel*        model,
     // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
     // in DrapingTechnique.cpp for more information.
     // NOTE: cannot set this until optimizations (above) are complete
+
+    // Using VAOs on MPGeometry doesn't work if the data variance is set to DYNAMIC,
+    // so for now, don't run with for VAO testing
+#ifndef USE_VAO
     SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
     tile->accept( sdv );
+#endif
 
     osg::ComputeBoundsVisitor cbv;
     d.surfaceGeode->accept(cbv);

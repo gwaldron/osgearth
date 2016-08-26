@@ -30,6 +30,10 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 
+#if OSG_MIN_VERSION_REQUIRED(3,5,4)
+    #define USE_VAO
+#endif
+
 using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
@@ -135,6 +139,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         // all the code that handles non-fastPath (don't need it) and
         // called into our custom renderPrimitiveSets method.
         void drawImplementation(osg::RenderInfo& renderInfo) const;
+
+        
+        //void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
         
         // override to correctly process GL_PATCHES if necessary
         void accept(osg::PrimitiveFunctor& functor) const;

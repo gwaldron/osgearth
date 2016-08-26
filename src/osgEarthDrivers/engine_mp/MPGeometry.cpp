@@ -65,6 +65,10 @@ _imageUnit       ( imageUnit )
     // we will set these later (in TileModelCompiler)
     this->setUseDisplayList(false);
     this->setUseVertexBufferObjects(true);
+
+#ifdef USE_VAO
+    this->setUseVertexArrayObject(true);
+#endif
 }
 
 
@@ -178,17 +182,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // emit a default terrain color since we're not binding a color array:
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     }
-#endif
-
-    // activate the elevation texture if there is one. Same for all layers.
-    //if ( _elevTex.valid() )
-    //{
-    //    state.setActiveTextureUnit( 2 );
-    //    state.setTexCoordPointer( 1, _tileCoords.get() ); // necessary?? since we do it above
-    //    _elevTex->apply( state );
-    //    // todo: probably need an elev texture matrix as well. -gw
-    //}
-    
+#endif    
 
     // track the active image unit.
     int activeImageUnit = -1;
@@ -496,29 +490,27 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
     }
 }
 
-
 void 
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
     State& state = *renderInfo.getState();
-    
+
     // compile the image textures:
-    for(unsigned i=0; i<_layers.size(); ++i)
+    for (unsigned i = 0; i < _layers.size(); ++i)
     {
         const Layer& layer = _layers[i];
-        if ( layer._tex.valid() )
-            layer._tex->apply( state );
+        if (layer._tex.valid())
+            layer._tex->apply(state);
     }
 
     // compile the elevation texture:
-    if ( _elevTex.valid() )
+    if (_elevTex.valid())
     {
-        _elevTex->apply( state );
+        _elevTex->apply(state);
     }
 
-    osg::Geometry::compileGLObjects( renderInfo );
+    osg::Geometry::compileGLObjects(renderInfo);
 }
-
 
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
@@ -530,99 +522,20 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
         (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
         ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
 
-    osg::State& state = *renderInfo.getState();
+    State& state = *renderInfo.getState();
 
-    bool hasVertexAttributes = !_vertexAttribList.empty();
+    drawVertexArraysImplementation(renderInfo);
 
-    osg::ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
-
-    arrayDispatchers.reset();
-    arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
-
-
-    //Remove?
-#if OSG_VERSION_LESS_THAN(3,1,8)
-    arrayDispatchers.setUseGLBeginEndAdapter(false);
-#endif
-
-#if OSG_MIN_VERSION_REQUIRED(3,1,8)
-    arrayDispatchers.activateNormalArray(_normalArray.get());
-#else
-    arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
-#endif
-    
-
-    if (hasVertexAttributes)
-    {
-        for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
-        {
-#if OSG_MIN_VERSION_REQUIRED(3,1,8)
-            arrayDispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
-#else
-            arrayDispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
-#endif             
-        }
-    }
-
-    // dispatch any attributes that are bound overall
-    arrayDispatchers.dispatch(BIND_OVERALL,0);
-    state.lazyDisablingOfVertexAttributes();
-
-
-    // set up arrays
-#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8 )
-    if( _vertexArray.valid() )
-        state.setVertexPointer(_vertexArray.get());
-
-    if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setNormalPointer(_normalArray.get());
-#else
-    if( _vertexData.array.valid() )
-        state.setVertexPointer(_vertexData.array.get());
-
-    if (_normalData.binding==BIND_PER_VERTEX && _normalData.array.valid())
-        state.setNormalPointer(_normalData.array.get());
-#endif
-
-    if( hasVertexAttributes )
-    {
-        for(unsigned int index = 0; index < _vertexAttribList.size(); ++index )
-        {
-#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8)
-            const Array* array = _vertexAttribList[index].get();
-            if (array && array->getBinding()==osg::Array::BIND_PER_VERTEX)
-            {
-                if (array->getPreserveDataType())
-                {
-                    GLenum dataType = array->getDataType();
-                    if (dataType==GL_FLOAT) state.setVertexAttribPointer( index, array );
-                    else if (dataType==GL_DOUBLE) state.setVertexAttribLPointer( index, array );
-                    else state.setVertexAttribIPointer( index, array );
-                }
-                else
-                {
-                    state.setVertexAttribPointer( index, array );
-                }
-            }
-#else            
-            const osg::Array* array = _vertexAttribList[index].array.get();
-            const AttributeBinding ab = _vertexAttribList[index].binding;
-            if( ab == BIND_PER_VERTEX && array )
-            {
-                state.setVertexAttribPointer( index, array, _vertexAttribList[index].normalize );
-            }
-#endif
-        }
-    }
-
-    state.applyDisablingOfVertexAttributes();
-
-    // draw the multipass geometry.
     renderPrimitiveSets(state, renderColor, true);
 
-    // unbind the VBO's if any are used.
-    state.unbindVertexBufferObject();
-    state.unbindElementBufferObject();
+#ifdef USE_VAO
+    if (!state.useVertexArrayObject(_useVertexArrayObject) || state.getCurrentVertexArrayState()->getRequiresSetArrays())
+#endif
+    {
+        // unbind the VBO's if any are used.
+        state.unbindVertexBufferObject();
+        state.unbindElementBufferObject();
+    }
 }
 
 void

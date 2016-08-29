@@ -12,72 +12,62 @@
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-
-    <!--
-    <elevation name="chesapeake 1arcsec" driver="gdal">
-        <url>H:/data/mak/M130_B30/M130_B30.tif</url>
-        <tile_size>257</tile_size>
-    </elevation>
-    -->
     
-    <extensions>
-        <viewpoints>
-            <viewpoint name="Bay">
-              <heading>-35.951</heading>
-              <pitch>-10.6651</pitch>
-              <range>18689.6m</range>
-              <long>-76.29989904111727</long>
-              <lat>37.96073270502878</lat>
-              <height>-11.00035870634019</height>
-              <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
-            </viewpoint>            
-        </viewpoints>
-        
-        <ocean driver="triton"/>
-        
-        <terrainshader>
-          <code>
-            <![CDATA[
-              #pragma vp_entryPoint dropTheOcean
-              #pragma vp_location vertex_view
+    <viewpoints>
+        <viewpoint name="Bay">
+          <heading>-35.951</heading>
+          <pitch>-10.6651</pitch>
+          <range>18689.6m</range>
+          <long>-76.29989904111727</long>
+          <lat>37.96073270502878</lat>
+          <height>-11.00035870634019</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>            
+    </viewpoints>
+    
+    <ocean driver="triton"/>
+    
+    <terrainshader>
+      <code>
+        <![CDATA[
+          #pragma vp_entryPoint dropTheOcean
+          #pragma vp_location vertex_view
+            
+          float oe_terrain_getElevation(in vec2);   // osgEarth SDK
+          
+          vec4 oe_layer_tilec;
+          vec3 oe_UpVectorView;
+          
+          out float oe_triton_elev; // osgearth-specific
+          
+          // amount by which to perturb the ocean verts
+          const float strength = 2.9;
+          //uniform float strength;
+          
+          // Triton maximum underwater visibility distance (negated)
+          const float minElev = -100.0;
+          
+          // speed up the dropoff near the shoreline
+          float mix_decel(float y0, float y1, float t)
+          {
+              return mix(y0, y1, 1.0-(1.0-t)*(1.0-t));
+          }
+
+          void dropTheOcean(inout vec4 vert)
+          {
+            float elev = oe_terrain_getElevation(oe_layer_tilec.st);
+            if ( elev < 0.0 && elev > minElev )
+            {
+                float elev2 = max(elev - pow(abs(elev), strength), minElev);
+                float t = clamp( (minElev-elev)/minElev, 0.0, 1.0 );
+                elev2 = mix_decel(elev, elev2, t);                    
+                vert.xyz += oe_UpVectorView*(elev2-elev);
                 
-              float oe_terrain_getElevation(in vec2);   // osgEarth SDK
-              
-              vec4 oe_layer_tilec;
-              vec3 oe_UpVectorView;
-              
-              out float oe_triton_elev; // osgearth-specific
-              
-              // amount by which to perturb the ocean verts
-              const float strength = 2.9;
-              //uniform float strength;
-              
-              // Triton maximum underwater visibility distance (negated)
-              const float minElev = -100.0;
-              
-              // speed up the dropoff near the shoreline
-              float mix_decel(float y0, float y1, float t)
-              {
-                  return mix(y0, y1, 1.0-(1.0-t)*(1.0-t));
-              }
- 
-              void dropTheOcean(inout vec4 vert)
-              {
-                float elev = oe_terrain_getElevation(oe_layer_tilec.st);
-                if ( elev < 0.0 && elev > minElev )
-                {
-                    float elev2 = max(elev - pow(abs(elev), strength), minElev);
-                    float t = clamp( (minElev-elev)/minElev, 0.0, 1.0 );
-                    elev2 = mix_decel(elev, elev2, t);                    
-                    vert.xyz += oe_UpVectorView*(elev2-elev);
-                    
-                    oe_triton_elev = elev2; // osgearth specific
-                }
-              }
-            ]]>
-          </code>
-        </terrainshader>
-        
-    </extensions>
+                oe_triton_elev = elev2; // osgearth specific
+            }
+          }
+        ]]>
+      </code>
+    </terrainshader>
     
 </map>

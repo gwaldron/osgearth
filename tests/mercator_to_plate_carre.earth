@@ -6,14 +6,14 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
 <map name="OpenStreetMap" type="projected" version="2">
 
     <options>
-        <profile>global-geodetic</profile>    
+        <profile>plate-carre</profile>    
         <lighting>false</lighting>
     </options>
     
-    <image name="mapquest_osm" driver="xyz" cache_enabled="false">
-        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
-        <profile>global-mercator</profile>
+    <image name="osm_mapnik" driver="xyz">
+        <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
     </image>
-    
     
 </map>

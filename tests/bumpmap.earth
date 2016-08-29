@@ -22,4 +22,6 @@ osgEarth Sample - Shows an elevation-derived normal map.
         <octaves>8</octaves>
         <intensity>2.5</intensity>
     </bumpmap>
+    
+    <xi:include href="viewpoints.xml"/>
 </map>

@@ -6,16 +6,9 @@ rasterizing it into image tiles.
 -->
 
 <map name="Rasterization Example" type="geocentric" version="2">
-  
-    <options>
-        <lighting>false</lighting>
-    </options>
-    
-    <image name="mapquest_open_aerial" driver="xyz">
-        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-        <profile>spherical-mercator</profile>
-        <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
+      
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
     <image name="states" driver="agglite">
@@ -32,7 +25,7 @@ rasterizing it into image tiles.
             <style type="text/css">
                 default {
                     stroke:       #ffff00;
-					stroke-width: .2km;
+					stroke-width: .5km;
                 }            
             </style>              
         </styles>
@@ -53,15 +46,11 @@ rasterizing it into image tiles.
             <style type="text/css">
                 default {
                     stroke:            #ff6666ff;
-                    stroke-width:      2km;
+                    stroke-width:      4km;
 					stroke-min-pixels: 2;
                 }            
             </style>
         </styles>
         
     </image>
-	
-	<external>
-		<lod_blending/>
-	</external>
 </map>

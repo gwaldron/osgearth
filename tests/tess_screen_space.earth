@@ -7,7 +7,7 @@ This example demonstrates screen-space terrain tessellation.
 <map name="readymap.org" type="geocentric">
     
     <options>        
-        <terrain first_lod="3" max_lod="3" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
+        <terrain max_lod="3" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" opacity="0.5">
@@ -76,7 +76,7 @@ This example demonstrates screen-space terrain tessellation.
                 layout(triangles, equal_spacing, ccw) in;
 
                 // Internal helpers:
-                void VP_InterpolateVertex();
+                void VP_Interpolate3();
                 void VP_EmitVertex();
                 
                 // User must supply interpolators for all the base types:
@@ -106,7 +106,7 @@ This example demonstrates screen-space terrain tessellation.
                 // simplest possible pass-though:
                 void generateVertex()
                 {                    
-                    VP_InterpolateVertex();
+                    VP_Interpolate3();
                     VP_EmitVertex();
                 }
             ]]></code>

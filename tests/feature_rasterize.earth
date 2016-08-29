@@ -5,11 +5,6 @@ Demonstrates use of the "agglite" feature rasterization driver.
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
 
-    <options lighting="false">
-        <terrain first_lod="1">
-        </terrain>
-    </options>
-
     <external>
         <lod_blending/>
     </external>

@@ -110,6 +110,18 @@ Terrain::getHeight(osg::Node*              patch,
     if ( !getProfile()->getExtent().contains(x, y) )
         return 0L;
 
+    if (srs && srs->isGeographic())
+    {
+        // perturb polar latitudes slightly to prevent intersection anomaly at the poles
+        if (getSRS()->isGeographic())
+        {
+            if (osg::equivalent(y, 90.0))
+                y -= 1e-7;
+            else if (osg::equivalent(y, -90))
+                y += 1e-7;
+        }
+    }
+
     const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 

@@ -36,6 +36,8 @@ using namespace osgEarth;
 
 #define LC "[MPGeometry] "
 
+#define CHECK(x) state.checkGLErrors(x)
+
 
 MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
 osg::Geometry    ( ),
@@ -145,14 +147,15 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
         texMatParentLocation = pcp->getUniformLocation( _texMatParentUniformNameID );
-        minRangeLocation = pcp->getUniformLocation( _minRangeUniformNameID );
-        maxRangeLocation = pcp->getUniformLocation( _maxRangeUniformNameID );
+        minRangeLocation     = pcp->getUniformLocation( _minRangeUniformNameID );
+        maxRangeLocation     = pcp->getUniformLocation( _maxRangeUniformNameID );
     }
     
     // apply the tilekey uniform once.
     if ( tileKeyLocation >= 0 )
     {
         ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+        CHECK("tileKeyLocation");
     }
 
     // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
@@ -168,20 +171,26 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             }
         }
         ext->glUniform1f( birthTimeLocation, pcd.birthTime );
+        CHECK("birthTimeLocation");
     }
 
+    // GW: no longer need to separate renderColor?
+    // NOTE: _tileCoords is now bound in drawVertexArraysImplementation
     // activate the tile coordinate set - same for all layers
-    if ( renderColor )
-    {
-        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
-    }
+    //if ( renderColor )
+    //{
+    //    state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
+    //    CHECK("state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );");
+    //}
 
 #ifndef OSG_GLES2_AVAILABLE
-    if ( renderColor )
-    {
-        // emit a default terrain color since we're not binding a color array:
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    }
+    // GW: throws an openGL error
+    //if ( renderColor )
+    //{
+    //    // emit a default terrain color since we're not binding a color array:
+    //    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    //    CHECK("glColor4f");
+    //}
 #endif    
 
     // track the active image unit.
@@ -189,6 +198,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
     // remember whether we applied a parent texture.
     bool usedTexParent = false;
+    
+    VertexArrayState* vas = state.getCurrentVertexArrayState();
 
     if ( _layers.size() > 0 )
     {
@@ -211,9 +222,11 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     ++sharedLayers;
                     int sharedUnit = layer._imageLayer->shareImageUnit().get();
                     {
+                        vas->setTexCoordArray(state, sharedUnit, layer._texCoords.get());
                         state.setActiveTextureUnit( sharedUnit );
+                        //CHECK("state.setActiveTextureUnit( sharedUnit");     
+                        //state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
 
-                        state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
                         // bind the texture for this layer to the active share unit.
                         layer._tex->apply( state );
 
@@ -257,6 +270,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     if ( activeImageUnit != _imageUnit )
                     {
                         state.setActiveTextureUnit( _imageUnit );
+                        CHECK("state.setActiveTextureUnit( _imageUnit");  
                         activeImageUnit = _imageUnit;
                     }
 
@@ -273,6 +287,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                     {
                         state.setActiveTextureUnit( _imageUnitParent );
+                        CHECK("state.setActiveTextureUnit( _imageUnitParent");  
                         activeImageUnit = _imageUnitParent;
                         layer._texParent->apply( state );
                         usedTexParent = true;
@@ -281,7 +296,9 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     // bind the texture coordinates for this layer.
                     // TODO: can probably optimize this by sharing or using texture matrixes.
                     // State::setTexCoordPointer does some redundant work under the hood.
-                    state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
+                    //state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
+                    //CHECK("state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );");  
+                    vas->setTexCoordArray(state, _imageUnit, layer._texCoords.get());
 
                     // apply uniform values:
                     if ( pcp )
@@ -335,6 +352,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         if ( primitiveset )
                         {
                             primitiveset->draw(state, usingVBOs);
+                            CHECK("primitiveset->draw(state, usingVBOs);");
                         }
                         else
                         {
@@ -394,12 +412,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 #    define COMPUTE_BOUND computeBoundingBox
 #else
 #    define COMPUTE_BOUND computeBound
-#endif
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
-#   define GET_ARRAY(a) (a)
-#else
-#   define GET_ARRAY(a) (a).array
 #endif
 
 osg::BoundingBox
@@ -511,6 +523,88 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 
     osg::Geometry::compileGLObjects(renderInfo);
 }
+
+void
+MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
+{
+    State& state = *renderInfo.getState();
+    VertexArrayState* vas = state.getCurrentVertexArrayState();
+
+    bool handleVertexAttributes = !_vertexAttribList.empty();
+
+    ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
+
+    arrayDispatchers.reset();
+    arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
+
+    if (handleVertexAttributes)
+    {
+        for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
+        {
+            arrayDispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
+        }
+    }
+
+    arrayDispatchers.activateNormalArray(_normalArray.get());
+    arrayDispatchers.activateColorArray(_colorArray.get());
+    arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
+    arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
+
+    // dispatch any attributes that are bound overall
+    arrayDispatchers.dispatch(osg::Array::BIND_OVERALL,0);
+
+
+    if (state.useVertexArrayObject(_useVertexArrayObject))
+    {
+        // This test will fail, because we are setting the data variance of the tile
+        // to DYNAMIC over in TileModelCompiler. So the arrays will always be set ATM.
+        if (!vas->getRequiresSetArrays()) return;
+    }
+
+    vas->lazyDisablingOfVertexAttributes();
+
+    // set up arrays
+    if( _vertexArray.valid() )
+        vas->setVertexArray(state, _vertexArray.get());
+
+    if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        vas->setNormalArray(state, _normalArray.get());
+
+    if (_colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        vas->setColorArray(state, _colorArray.get());
+
+    if (_secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        vas->setSecondaryColorArray(state, _secondaryColorArray.get());
+
+    if (_fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        vas->setFogCoordArray(state, _fogCoordArray.get());
+
+    //for(unsigned int unit=0;unit<_texCoordList.size();++unit)
+    //{
+    //    const Array* array = _texCoordList[unit].get();
+    //    if (array)
+    //    {
+    //        vas->setTexCoordArray(state, unit,array);
+    //    }
+    //}
+
+    // add this:
+    vas->setTexCoordArray(state, _imageUnit+1, _tileCoords.get());
+
+    if ( handleVertexAttributes )
+    {
+        for(unsigned int index = 0; index < _vertexAttribList.size(); ++index)
+        {
+            const Array* array = _vertexAttribList[index].get();
+            if (array && array->getBinding()==osg::Array::BIND_PER_VERTEX)
+            {
+                vas->setVertexAttribArray(state, index, array);
+            }
+        }
+    }
+
+    vas->applyDisablingOfVertexAttributes(state);
+}        
 
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const

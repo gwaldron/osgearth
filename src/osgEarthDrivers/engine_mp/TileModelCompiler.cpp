@@ -1980,6 +1980,13 @@ namespace
         if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
 
+        // install the tile coordinates in the geometry.
+        if ( d.surface->_tileCoords.valid() )
+        {
+            int index = d.surface->getTexCoordArrayList().size();
+            d.surface->setTexCoordArray( index, d.surface->_tileCoords.get() );
+        }
+
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
@@ -2050,13 +2057,6 @@ namespace
                 mr->_geom->_layers[order] = layer;
                 mr->_geom->_tileCoords = d.stitchTileCoords.get();
             }
-        }
-
-        // install the tile coordinates in the geometry.
-        if ( d.surface->_tileCoords.valid() )
-        {
-            int index = d.surface->getTexCoordArrayList().size();
-            d.surface->setTexCoordArray( index, d.surface->_tileCoords.get() );
         }
 
         // elevation texture.
@@ -2239,10 +2239,10 @@ TileModelCompiler::compile(TileModel*        model,
 
     // Using VAOs on MPGeometry doesn't work if the data variance is set to DYNAMIC,
     // so for now, don't run with for VAO testing
-#ifndef USE_VAO
+//#ifndef USE_VAO
     SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
     tile->accept( sdv );
-#endif
+//#endif
 
     osg::ComputeBoundsVisitor cbv;
     d.surfaceGeode->accept(cbv);

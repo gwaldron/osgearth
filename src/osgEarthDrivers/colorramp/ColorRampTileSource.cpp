@@ -56,6 +56,7 @@ public:
         }
         
         _layer = new ElevationLayer(*_options.elevationLayer() );
+        _layer->open();
 
         setProfile(_layer->getProfile());
 

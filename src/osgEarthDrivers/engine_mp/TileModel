@@ -191,9 +191,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 osg::Image*                 image,
                 GeoLocator*                 locator,
                 bool                        fallbackData =false );
-    
-            void resizeGLObjectBuffers(unsigned maxSize);
-            void releaseGLObjects(osg::State* state) const;
 
 
             osgEarth::UID getUID() const {

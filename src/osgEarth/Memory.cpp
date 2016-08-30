@@ -114,8 +114,8 @@ Memory::getProcessUsage()
 {
 #if defined(_WIN32)
     /* Windows -------------------------------------------------- */
-    PROCESS_MEMORY_COUNTERS info;
-    GetProcessMemoryInfo( GetCurrentProcess( ), &info, sizeof(info) );
+    PROCESS_MEMORY_COUNTERS_EX info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), (PROCESS_MEMORY_COUNTERS*)&info, sizeof(info) );
     return (size_t)info.WorkingSetSize;
 
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -144,5 +144,18 @@ Memory::getProcessUsage()
 #else
     /* AIX, BSD, Solaris, and Unknown OS ------------------------ */
     return (size_t)0L;          /* Unsupported. */
+#endif
+}
+
+unsigned
+Memory::getProcessPrivateUsage()
+{
+#if defined(_WIN32)
+    /* Windows -------------------------------------------------- */
+    PROCESS_MEMORY_COUNTERS_EX info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), (PROCESS_MEMORY_COUNTERS*)&info, sizeof(info) );
+    return (size_t)info.PrivateUsage;
+#else
+    return (size_t)0L;
 #endif
 }

@@ -34,26 +34,26 @@ MonitorUI::MonitorUI()
     this->setVertAlign(ALIGN_BOTTOM);
 
     int r=0;
-    this->setControl(0, r, new ui::LabelControl("Current Mem:"));
+    this->setControl(0, r, new ui::LabelControl("Private Mem:"));
     _pb = new ui::LabelControl();
     _pb->setHorizAlign(ALIGN_RIGHT);
     this->setControl(1, r, _pb.get());
 
     ++r;
-    this->setControl(0, r, new ui::LabelControl("Peak Mem:"));
-    _peak = new ui::LabelControl();
-    _peak->setHorizAlign(ALIGN_RIGHT);
-    this->setControl(1, r, _peak.get());
+    this->setControl(0, r, new ui::LabelControl("Working Set:"));
+    _ws = new ui::LabelControl();
+    _ws->setHorizAlign(ALIGN_RIGHT);
+    this->setControl(1, r, _ws.get());
 }
 
 void
 MonitorUI::update(const osg::FrameStamp* fs)
 {
-    if (fs && fs->getFrameNumber() % 60 == 0)
+    if (fs && fs->getFrameNumber() % 15 == 0)
     {
-        unsigned bytes = Memory::getProcessUsage();
+        unsigned bytes = Memory::getProcessPrivateUsage();
         _pb->setText(Stringify() << (bytes / 1048576) << " M");
-        _peak->setText(Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");
+        _ws->setText(Stringify() << (Memory::getProcessUsage() / 1048576) << " M");
 
         //Registry::instance()->startActivity("Current Mem", Stringify() <<  (bytes / 1048576) << " M");
         //Registry::instance()->startActivity("Peak Mem", Stringify() << (Memory::getProcessPeakUsage() / 1048576) << " M");

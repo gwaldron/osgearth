@@ -425,7 +425,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.
-    const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
 
     // Loading KML from the command line:
@@ -554,12 +553,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
             mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
-    }
-
-    // Install elevation morphing
-    if ( !lodBlendingConf.empty() )
-    {
-        mapNode->getTerrainEngine()->addEffect( new LODBlending(lodBlendingConf) );
     }
 
     // Install vertical scaler

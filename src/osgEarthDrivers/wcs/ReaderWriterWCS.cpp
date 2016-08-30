@@ -32,7 +32,7 @@ class WCSSourceFactory : public TileSourceDriver
 public:
     WCSSourceFactory() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "WCS 1.1.0 Reader";
     }

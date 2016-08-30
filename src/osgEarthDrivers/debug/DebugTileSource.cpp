@@ -153,7 +153,7 @@ class DebugTileSourceDriver : public TileSourceDriver
             supportsExtension( "osgearth_debug", "Debugging driver" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Debugging Driver";
         }

@@ -484,7 +484,7 @@ class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
     public:
         AGGLiteRasterizerTileSourceDriver() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "AGG-Lite feature rasterizer";
         }

@@ -275,7 +275,7 @@ class ReaderWriterFeatureElevationTile : public TileSourceDriver
 public:
     ReaderWriterFeatureElevationTile() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "Feature Elevation Tile Reader";
     }

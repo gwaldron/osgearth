@@ -221,7 +221,7 @@ public:
         supportsExtension( "osgearth_feature_raster", "Raster feature driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "Raster Feature Reader";
     }

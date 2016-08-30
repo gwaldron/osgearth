@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
             supportsExtension( "osgearth_cache_rocksdb", "rocksdb cache for osgEarth" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "rocksdb cache for osgEarth";
         }

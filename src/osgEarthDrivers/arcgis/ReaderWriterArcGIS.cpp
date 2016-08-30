@@ -269,7 +269,7 @@ public:
         supportsExtension( "osgearth_arcgis", "ArcGIS Server" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "ArcGIS Server REST ReaderWriter";
     }

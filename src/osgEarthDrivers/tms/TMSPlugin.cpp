@@ -49,7 +49,7 @@ namespace osgEarth { namespace Drivers { namespace TileMapService
             supportsExtension( "osgearth_tms", "Tile Map Service Driver" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Tile Map Service Driver";
         }

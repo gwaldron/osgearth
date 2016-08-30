@@ -33,7 +33,7 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
             supportsExtension("template","Template");
         }
 
-        virtual const char* className() { return "TemplateReaderWriter"; }
+        virtual const char* className() const { return "TemplateReaderWriter"; }
 
         virtual bool acceptsExtension(const std::string& extension) const
         {

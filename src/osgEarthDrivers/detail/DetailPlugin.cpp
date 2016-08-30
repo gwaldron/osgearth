@@ -36,7 +36,7 @@ namespace osgEarth { namespace Detail
             supportsExtension( "osgearth_detail", "osgEarth Detail Texture Extension" );
         }
         
-        const char* className() {
+        const char* className() const {
             return "osgEarth Detail Texture Extension";
         }
 

@@ -142,7 +142,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
     }
 
-    const char* className()
+    const char* className() const
     { // override
         return "osgEarth Feature Model Pseudo-Loader";
     }

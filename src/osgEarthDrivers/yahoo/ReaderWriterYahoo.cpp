@@ -133,7 +133,7 @@ class ReaderWriterYahoo : public TileSourceDriver
             supportsExtension( "osgearth_yahoo", "Yahoo maps data" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Yahoo Imagery ReaderWriter";
         }

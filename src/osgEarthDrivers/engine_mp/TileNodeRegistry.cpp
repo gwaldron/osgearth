@@ -169,7 +169,7 @@ TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
     Threading::ScopedReadLock shared( _tilesMutex );
 
     TileNodeMap::iterator i = _tiles.find(key);
-    if ( i != _tiles.end() )
+    if ( i != _tiles.end() && i->second.valid() )
     {
         out_tile = i->second.get();
         return true;

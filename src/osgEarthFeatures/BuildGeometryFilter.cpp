@@ -890,12 +890,15 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                 if (g)
                 {
                     osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(g->getVertexArray());
-                    OE_WARN << "Geometry " << i << " has " << verts->size() << " verts" << std::endl;
-                    OE_WARN << "Geometry " << i << " has " << g->getNumPrimitiveSets() << " primitive sets" << std::endl;
-                    for (unsigned int j = 0; j < g->getNumPrimitiveSets(); j++)
+                    if (verts)
                     {
-                        osg::PrimitiveSet* ps = g->getPrimitiveSet(j);
-                        OE_WARN << "PrimitiveSet " << j << ps->className() << std::endl;
+                        OE_WARN << "Geometry " << i << " has " << verts->size() << " verts" << std::endl;
+                        OE_WARN << "Geometry " << i << " has " << g->getNumPrimitiveSets() << " primitive sets" << std::endl;
+                        for (unsigned int j = 0; j < g->getNumPrimitiveSets(); j++)
+                        {
+                            osg::PrimitiveSet* ps = g->getPrimitiveSet(j);
+                            OE_WARN << "PrimitiveSet " << j << ps->className() << std::endl;
+                        }
                     }
                 }
             }

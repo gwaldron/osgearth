@@ -562,18 +562,22 @@ namespace osgEarth { namespace Util
     class MGRSGraticuleFactory : public osgDB::ReaderWriter
     {
     public:
-        virtual const char* className()
+        MGRSGraticuleFactory()
         {
             supportsExtension( MGRS_GRATICULE_EXTENSION, "osgEarth MGRS graticule" );
+        }
+
+        const char* className() const
+        {
             return "osgEarth MGRS graticule LOD loader";
         }
 
-        virtual bool acceptsExtension(const std::string& extension) const
+        bool acceptsExtension(const std::string& extension) const
         {
             return osgDB::equalCaseInsensitive(extension, MGRS_GRATICULE_EXTENSION);
         }
 
-        virtual ReadResult readNode(const std::string& uri, const Options* options) const
+        ReadResult readNode(const std::string& uri, const Options* options) const
         {        
             std::string ext = osgDB::getFileExtension( uri );
             if ( !acceptsExtension( ext ) )

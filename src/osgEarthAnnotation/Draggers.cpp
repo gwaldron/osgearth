@@ -180,6 +180,9 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
               osgUtil::LineSegmentIntersector::Intersections intersections;
               osg::Node::NodeMask intersectionMask = 0xffffffff;
               osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
+              if ( !view )
+                  return true;
+
               if (view->computeIntersections(ea.getX(),ea.getY(),intersections, intersectionMask))
               {
                   for (osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
@@ -195,7 +198,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
                           Dragger* dragger = dynamic_cast<Dragger*>(*itr);
                           if (dragger==this)
                           {
-                            draggerFound = true;
+                              draggerFound = true;
                               osg::Camera *rootCamera = view->getCamera();
                               osg::NodePath nodePath = _pointer._hitList.front().first;
                               osg::NodePath::reverse_iterator ritr;

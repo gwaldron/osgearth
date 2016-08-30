@@ -627,7 +627,7 @@ class VPBSourceFactory : public TileSourceDriver
             supportsExtension( "osgearth_vpb", "VirtualPlanetBuilder data" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "VirtualPlanetBuilder ReaderWriter";
         }

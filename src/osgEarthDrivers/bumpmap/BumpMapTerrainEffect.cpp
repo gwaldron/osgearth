@@ -38,7 +38,9 @@ using namespace osgEarth;
 using namespace osgEarth::BumpMap;
 
 
-BumpMapTerrainEffect::BumpMapTerrainEffect(const osgDB::Options* dbOptions)
+BumpMapTerrainEffect::BumpMapTerrainEffect(const osgDB::Options* dbOptions) :
+_ok(true),
+_bumpMapUnit(-1)
 {
     BumpMapOptions defaults;
     _octaves = defaults.octaves().get();

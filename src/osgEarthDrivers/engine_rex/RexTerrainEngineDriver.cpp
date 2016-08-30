@@ -43,7 +43,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             //nop
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "osgEarth Rex Terrain Engine";
         }

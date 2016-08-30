@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             supportsExtension( "osgearth_cache_leveldb", "leveldb cache for osgEarth" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "leveldb cache for osgEarth";
         }

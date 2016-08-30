@@ -24,7 +24,10 @@ using namespace osgEarth;
 ElevationField::ElevationField() :
 _width ( 0 ),
 _height( 0 ),
-_dirty ( false )
+_dirty ( false ),
+_min( 0.0f ),
+_max( 0.0f ),
+_spacing( 0.0f )
 {
     //nop
 }

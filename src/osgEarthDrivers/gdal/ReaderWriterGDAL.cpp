@@ -51,11 +51,11 @@
 // From easyrgb.com
 float Hue_2_RGB( float v1, float v2, float vH )
 {
-   if ( vH < 0 ) vH += 1;
-   if ( vH > 1 ) vH -= 1;
-   if ( ( 6 * vH ) < 1 ) return ( v1 + ( v2 - v1 ) * 6 * vH );
-   if ( ( 2 * vH ) < 1 ) return ( v2 );
-   if ( ( 3 * vH ) < 2 ) return ( v1 + ( v2 - v1 ) * ( ( 2 / 3 ) - vH ) * 6 );
+   if ( vH < 0.0f ) vH += 1.0f;
+   if ( vH > 1.0f ) vH -= 1.0f;
+   if ( ( 6.0f * vH ) < 1.0f ) return ( v1 + ( v2 - v1 ) * 6.0f * vH );
+   if ( ( 2.0f * vH ) < 1.0f ) return ( v2 );
+   if ( ( 3.0f * vH ) < 2.0f ) return ( v1 + ( v2 - v1 ) * ( ( 2.0f / 3.0f ) - vH ) * 6.0f );
    return ( v1 );
 }
 
@@ -1227,9 +1227,9 @@ public:
 
                     var_1 = 2 * L - var_2;
 
-                    R = Hue_2_RGB( var_1, var_2, H + ( 1 / 3 ) );
+                    R = Hue_2_RGB( var_1, var_2, H + ( 1.0f / 3.0f ) );
                     G = Hue_2_RGB( var_1, var_2, H );
-                    B = Hue_2_RGB( var_1, var_2, H - ( 1 / 3 ) );
+                    B = Hue_2_RGB( var_1, var_2, H - ( 1.0f / 3.0f ) );
                 }
                 color.r() = static_cast<unsigned char>(R*255.0f);
                 color.g() = static_cast<unsigned char>(G*255.0f);
@@ -2301,7 +2301,7 @@ class ReaderWriterGDALTile : public TileSourceDriver
 public:
     ReaderWriterGDALTile() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "GDAL Tile Reader";
     }

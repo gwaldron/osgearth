@@ -429,7 +429,7 @@ public:
         supportsExtension( "osgearth_feature_wfs", "WFS feature driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "WFS Feature Reader";
     }

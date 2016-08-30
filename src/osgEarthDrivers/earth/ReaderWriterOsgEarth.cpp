@@ -102,7 +102,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "OSG Earth ReaderWriter";
         }

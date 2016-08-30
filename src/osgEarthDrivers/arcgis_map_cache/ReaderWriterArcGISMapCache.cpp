@@ -129,7 +129,7 @@ class ReaderWriterAGSMapCache : public TileSourceDriver
             supportsExtension( "osgearth_arcgis_map_cache", "ArcGIS Server Map Service Cache" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "ArcGIS Server Map Service Cache Imagery ReaderWriter";
         }

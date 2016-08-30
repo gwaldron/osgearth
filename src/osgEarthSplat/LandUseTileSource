@@ -163,7 +163,7 @@ namespace osgEarth { namespace Splat
             supportsExtension( "osgearth_landuse", "Land Use Driver" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Land Use Driver";
         }

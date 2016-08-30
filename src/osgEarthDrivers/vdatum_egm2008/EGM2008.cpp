@@ -88,7 +88,7 @@ public:
         supportsExtension( "osgearth_vdatum_egm2008", "osgEarth EGM2008 vertical datum" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth EGM2008 vertical datum";
     }

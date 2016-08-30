@@ -310,7 +310,7 @@ public:
         supportsExtension( "osgearth_model_simple", "osgEarth simple model plugin" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth Simple Model Plugin";
     }

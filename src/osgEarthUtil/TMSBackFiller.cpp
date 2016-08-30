@@ -34,8 +34,12 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
-TMSBackFiller::TMSBackFiller()
+TMSBackFiller::TMSBackFiller() :
+_minLevel(0u),
+_maxLevel(0u),
+_verbose(false)
 {
+    //nop
 }
 
 

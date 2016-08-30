@@ -141,7 +141,7 @@ class TemplateMatClassDriver : public TileSourceDriver
     public:
         TemplateMatClassDriver() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Template mat class driver";
         }

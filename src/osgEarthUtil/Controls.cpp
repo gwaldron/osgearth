@@ -2452,7 +2452,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
             if ( node->getNumParents() == 0 )
             {
               _renderNodes.erase( node );
-              _controlNodes.erase( i );
+              i = _controlNodes.erase( i );
             }
             else
             {

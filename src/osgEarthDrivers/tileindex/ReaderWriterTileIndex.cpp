@@ -165,7 +165,7 @@ class ReaderWriterTileIndex : public TileSourceDriver
 public:
     ReaderWriterTileIndex() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "TileIndex Reader";
     }

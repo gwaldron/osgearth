@@ -579,7 +579,7 @@ class WMSSourceFactory : public TileSourceDriver
     public:
         WMSSourceFactory() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "WMS Reader";
         }

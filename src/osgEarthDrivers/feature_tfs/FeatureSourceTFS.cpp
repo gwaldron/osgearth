@@ -117,10 +117,7 @@ public:
                 fp->geoInterp() = _options.geoInterp().get();
         }
 
-        if (fp)
-            setFeatureProfile(fp);
-        else
-            return Status::Error(Status::ResourceUnavailable, "Failed to establish a feature profile");
+        setFeatureProfile(fp);
 
         return Status::OK();
     }
@@ -390,7 +387,7 @@ public:
         supportsExtension( "osgearth_feature_tfs", "TFS feature driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "TFS Feature Reader";
     }

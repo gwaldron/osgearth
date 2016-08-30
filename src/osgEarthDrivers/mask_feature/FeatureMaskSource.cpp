@@ -136,7 +136,7 @@ public:
         supportsExtension( "osgearth_mask_feature", "osgEarth feature mask plugin" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth Feature Mask Plugin";
     }

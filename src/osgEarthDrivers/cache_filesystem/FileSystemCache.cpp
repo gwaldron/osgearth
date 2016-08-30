@@ -617,7 +617,7 @@ public:
         supportsExtension( "osgearth_cache_filesystem", "File system cache for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "File system cache for osgEarth";
     }

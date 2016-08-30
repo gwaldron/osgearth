@@ -35,7 +35,7 @@ namespace osgEarth { namespace Viewpoints
             supportsExtension( "osgearth_viewpoints", "osgEarth Viewpoints Extension" );
         }
         
-        const char* className() {
+        const char* className() const {
             return "osgEarth Viewpoints Extension";
         }
 

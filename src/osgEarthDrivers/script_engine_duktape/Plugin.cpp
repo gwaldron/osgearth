@@ -39,7 +39,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
                 "osgearth_scriptengine_javascript", "osgEarth Duktape JavaScript Engine" );
         }
 
-        const char* className()
+        const char* className() const
         {
             return "osgEarth Duktape JavaScript Engine";
         }

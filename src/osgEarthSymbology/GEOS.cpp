@@ -139,15 +139,18 @@ namespace
                     {
                         const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
                         std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
-                        for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                        if (holes)
                         {
-                            geom::Geometry* hole = import( r->get(), f );
-                            if ( hole ) holes->push_back( hole );
-                        }
-                        if ( holes && holes->size() == 0 )
-                        {
-                            delete holes;
-                            holes = 0L;
+                            for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                            {
+                                geom::Geometry* hole = import( r->get(), f );
+                                if ( hole ) holes->push_back( hole );
+                            }
+                            if (holes->size() == 0)
+                            {
+                                delete holes;
+                                holes = 0L;
+                            }
                         }
                         output = f->createPolygon( shell, holes );
                     }

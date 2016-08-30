@@ -105,7 +105,7 @@ class TileCacheSourceFactory : public TileSourceDriver
     public:
         TileCacheSourceFactory() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "TileCache disk cache ReaderWriter";
         }

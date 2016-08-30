@@ -385,7 +385,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // instance substitution (replaces marker)
     else if ( model )
     {
-        const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
+        const InstanceSymbol* instance = (const InstanceSymbol*)model;
 
         // use a separate filter context since we'll be munging the data
         FilterContext localCX = sharedCX;

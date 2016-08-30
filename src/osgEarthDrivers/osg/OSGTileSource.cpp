@@ -178,7 +178,7 @@ public:
         supportsExtension( "osgearth_osg", "OSG image driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "OSG Image Driver";
     }

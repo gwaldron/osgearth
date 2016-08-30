@@ -77,7 +77,7 @@ public:
         supportsExtension( "osgearth_model_feature_geom", "osgEarth feature geom plugin" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth Feature Geom Model Plugin";
     }

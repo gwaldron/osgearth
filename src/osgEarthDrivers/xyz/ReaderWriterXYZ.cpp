@@ -162,7 +162,7 @@ public:
         supportsExtension( "osgearth_xyz", "XYZ Driver" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "XYZ Driver";
     }

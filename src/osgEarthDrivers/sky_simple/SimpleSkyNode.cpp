@@ -664,7 +664,10 @@ SimpleSkyNode::makeMoon()
     }
 }
 
-SimpleSkyNode::StarData::StarData(std::stringstream &ss)
+SimpleSkyNode::StarData::StarData(std::stringstream &ss) :
+right_ascension(0.0),
+declination(0.0),
+magnitude(0.0)
 {
     std::getline( ss, name, ',' );
     std::string buff;

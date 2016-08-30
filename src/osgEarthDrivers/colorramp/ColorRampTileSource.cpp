@@ -145,7 +145,7 @@ public:
         supportsExtension( "osgearth_colorramp", "Color ramp driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "ColorRamp Image Driver";
     }

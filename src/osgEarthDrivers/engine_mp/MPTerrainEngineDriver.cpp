@@ -48,7 +48,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 _profiling = as<int>(std::string(p), 1);
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "osgEarth MP Terrain Engine";
         }

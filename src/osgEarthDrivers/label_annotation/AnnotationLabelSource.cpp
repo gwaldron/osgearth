@@ -187,7 +187,7 @@ public:
         supportsExtension( "osgearth_label_annotation", "osgEarth annotation label plugin" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth Annotation Label Plugin";
     }

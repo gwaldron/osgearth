@@ -233,7 +233,7 @@ public:
         supportsExtension( "osgearth_refresh", "Refresh" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "ReaderWriterRefresh";
     }

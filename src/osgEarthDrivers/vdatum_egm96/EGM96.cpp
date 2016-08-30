@@ -90,7 +90,7 @@ public:
         supportsExtension( "osgearth_vdatum_egm96", "osgEarth EGM96 vertical datum" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth EGM96 vertical datum";
     }

@@ -157,7 +157,7 @@ namespace osgEarth
         // Maks a new unit definition (SPEED)
         Units( const std::string& name, const std::string& abbr, const Units& distance, const Units& time );
 
-        Units() : _type(TYPE_INVALID) { }
+        Units() : _type(TYPE_INVALID), _toBase(0.0), _distance(0L), _time(0L) { }
 
     private:
 

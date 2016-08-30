@@ -33,7 +33,7 @@ class osgEarth_BYOTerrainEngineDriver : public osgDB::ReaderWriter
 public:
     osgEarth_BYOTerrainEngineDriver() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth BYO Terrain Engine";
     }

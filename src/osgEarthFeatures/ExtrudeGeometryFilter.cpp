@@ -81,7 +81,7 @@ _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
 _gpuClamping           ( false )
 {
-    //NOP
+    _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
 
 void

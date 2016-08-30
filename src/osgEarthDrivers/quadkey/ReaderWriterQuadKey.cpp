@@ -182,7 +182,7 @@ public:
         supportsExtension( "osgearth_quadkey", "QuadKey Driver" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "QuadKey Driver";
     }

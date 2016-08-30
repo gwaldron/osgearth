@@ -70,7 +70,7 @@ namespace
             supportsExtension( "osgearth_pseudo_simple", "" );
         }
 
-        const char* className()
+        const char* className() const
         { // override
             return "Simple Pager";
         }

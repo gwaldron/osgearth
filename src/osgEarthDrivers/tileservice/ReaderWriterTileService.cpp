@@ -112,7 +112,7 @@ class TileServiceSourceFactory : public TileSourceDriver
     public:
         TileServiceSourceFactory() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "TileService Reader";
         }

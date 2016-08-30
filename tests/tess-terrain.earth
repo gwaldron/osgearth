@@ -17,7 +17,7 @@ Press 'w' for wireframe mode to see the tessellation!
 <map name="readymap.org" type="geocentric">
     
     <options>        
-        <terrain driver="mp" gpu_tessellation="true" min_lod="25" tile_size="8" />
+        <terrain driver="mp" gpu_tessellation="true" min_lod="25" tile_size="9" skirt_ratio="0"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">

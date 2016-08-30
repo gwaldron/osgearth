@@ -60,9 +60,8 @@ This example shows how to use the TFS driver.
     </model>
                     
  
-    <image name="mapquest_osm" driver="xyz">
-        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
-        <profile>global-mercator</profile>
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
     <external>

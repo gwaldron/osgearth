@@ -7,13 +7,13 @@ Demonstrates how to apply a color ramp to an elevation ( or any other type of si
 
     <!-- Elevation as a true elevation source -->       
     <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
     <!--Displays the same elevation using an elevaton contour-->
     <image name="color ramp" driver="colorramp">
     	<elevation name="readymap_elevation" driver="tms">
-            <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+            <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         </elevation>
         <ramp>..\data\colorramps\elevation.clr</ramp>
     </image>

@@ -19,36 +19,25 @@ Footprint Extrusion using the "feature_geom" driver.
             <url>../data/dcbuildings.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        
-        <!-- The stylesheet will describe how to render the feature data. -->
              
         <styles>
             <style type="text/css">
                 buildings {
-                    fill:                    #ff7f2f;
-                    extrusion-height:        15;
-                    extrusion-flatten:       true;
-                    extrusion-wall-gradient: 0.7;
-                    altitude-clamping:       terrain;
-                    altitude-resolution:     0.001;
+                    fill:              #ff7f2f;
+                    extrusion-height:  15;
+                    extrusion-flatten: true;
+                    altitude-clamping: terrain;
                 }            
             </style>
-        </styles>   
-
-        <lighting>true</lighting>
+        </styles>
     </model>
-	
-    <image name="mapquest_osm" driver="xyz" max_level="14">
-        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
-        <profile>global-mercator</profile>
-    </image>
     
-    <image name="ReadyMap.org - Imagery" driver="tms" enabled="false">
+    <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 	
 	<options>
@@ -59,7 +48,7 @@ Footprint Extrusion using the "feature_geom" driver.
 		<viewpoints>
 			<viewpoint name="Zoom to Buildings" heading="12.4" lat="38.8982" long="-77.0365" height="20.67" pitch="-51.4" range="4500" />
 		</viewpoints>
-        <sky driver="gl" hours="21.0"/>
+        <sky driver="gl" hours="20.0"/>
     </external>
   
 </map>

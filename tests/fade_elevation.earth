@@ -8,19 +8,17 @@ Run:
 -->
 
 <map name="readymap.org" type="geocentric">
-        
+
     <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
     </image>
-        
+
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>    
-  
-    
-    <extensions>
 
-         <terrainshader>
+
+    <terrainshader>
         <code><![CDATA[
         
             #version 330 compatibility
@@ -39,7 +37,7 @@ Run:
         ]]></code>
     </terrainshader>
 
-        <terrainshader>
+    <terrainshader>
         <code><![CDATA[
         
             #version 330 compatibility
@@ -58,8 +56,4 @@ Run:
         ]]></code>
     </terrainshader>
 
-        
-        
-        
-    </extensions>
 </map>

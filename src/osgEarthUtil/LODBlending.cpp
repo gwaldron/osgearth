@@ -24,6 +24,8 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Extension>
+#include <osgEarth/MapNode>
 
 #define LC "[LODBlending] "
 
@@ -188,27 +190,9 @@ namespace
 }
 
 
-LODBlending::LODBlending() :
-TerrainEffect(),
-_delay         ( 0.0f ),
-_duration      ( 0.25f ),
-_vscale        ( 1.0f ),
-_blendImagery  ( true ),
-_blendElevation( true )
+LODBlending::LODBlending(const LODBlendingOptions& options) :
+LODBlendingOptions(options)
 {
-    init();
-}
-
-
-LODBlending::LODBlending(const Config& conf) :
-TerrainEffect(),
-_delay         ( 0.0f ),
-_duration      ( 0.25f ),
-_vscale        ( 1.0f ),
-_blendImagery  ( true ),
-_blendElevation( true )
-{
-    mergeConfig(conf);
     init();
 }
 
@@ -217,65 +201,15 @@ void
 LODBlending::init()
 {
     _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_delay");
-    _delayUniform->set( (float)*_delay );
+    _delayUniform->set( osg::clampAbove(delay().get(), 0.0f));
 
     _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_duration");
-    _durationUniform->set( (float)*_duration );
+    _durationUniform->set( osg::clampAbove(duration().get(), 0.0f) );
 
     _vscaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_vscale");
-    _vscaleUniform->set( (float)*_vscale );
+    _vscaleUniform->set(osg::clampAbove(verticalScale().get(), 0.0f));
 }
 
-
-void
-LODBlending::setDelay(float delay)
-{
-    if ( delay != _delay.get() )
-    {
-        _delay = osg::clampAbove( delay, 0.0f );
-        _delayUniform->set( _delay.get() );
-    }
-}
-
-
-void
-LODBlending::setDuration(float duration)
-{
-    if ( duration != _duration.get() )
-    {
-        _duration = osg::clampAbove( duration, 0.0f );
-        _durationUniform->set( _duration.get() );
-    }
-}
-
-
-void
-LODBlending::setVerticalScale(float vscale)
-{
-    if ( vscale != _vscale.get() )
-    {
-        _vscale = osg::clampAbove( vscale, 0.0f );
-        _vscaleUniform->set( _vscale.get() );
-    }
-}
-
-void
-LODBlending::setBlendImagery(bool value)
-{
-   if ( value != _blendImagery.get() )
-   {
-      _blendImagery = value;
-   }
-}
-
-void
-LODBlending::setBlendElevation(bool value)
-{
-   if ( value != _blendElevation.get() )
-   {
-      _blendElevation = value;
-   }
-}
 
 void
 LODBlending::onInstall(TerrainEngineNode* engine)
@@ -294,12 +228,12 @@ LODBlending::onInstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName( "osgEarth::Util::LODBlending" );
 
-        if ( _blendElevation == true )
+        if ( blendElevation() == true )
         {
             vp->setFunction("oe_lodblend_elevation_vertex", vs_elevation, ShaderComp::LOCATION_VERTEX_MODEL );
         }
 
-        if ( _blendImagery == true )
+        if ( blendImagery() == true )
         {
             vp->setFunction("oe_lodblend_imagery_vertex", vs_imagery, ShaderComp::LOCATION_VERTEX_VIEW);
             vp->setFunction("oe_lodblend_imagery_fragment", fs_imagery, ShaderComp::LOCATION_FRAGMENT_COLORING);
@@ -334,27 +268,63 @@ LODBlending::onUninstall(TerrainEngineNode* engine)
 }
 
 
-//-------------------------------------------------------------
+//--------------------------------------------------------------
 
 
-void
-LODBlending::mergeConfig(const Config& conf)
+#undef  LC
+#define LC "[LODBlendingExtension] "
+
+/**
+    * Extension for loading the graticule node on demand.
+    */
+class LODBlendingExtension : public Extension,
+                             public ExtensionInterface<MapNode>,
+                             public LODBlendingOptions
 {
-    conf.getIfSet( "delay",    _delay );
-    conf.getIfSet( "duration", _duration );
-    conf.getIfSet( "vertical_scale", _vscale );
-    conf.getIfSet( "blend_imagery",  _blendImagery );
-    conf.getIfSet( "blend_elevation", _blendElevation );
-}
+public:
+    META_Object(osgearth_ext_lodblending, LODBlendingExtension);
 
-Config
-LODBlending::getConfig() const
-{
-    Config conf("lod_blending");
-    conf.addIfSet( "delay",    _delay );
-    conf.addIfSet( "duration", _duration );
-    conf.addIfSet( "vertical_scale", _vscale );
-    conf.addIfSet( "blend_imagery",  _blendImagery );
-    conf.addIfSet( "blend_elevation", _blendElevation );
-    return conf;
-}
+    // CTORs
+    LODBlendingExtension() { }
+    LODBlendingExtension(const ConfigOptions& options) : LODBlendingOptions(options) { }
+
+    // DTOR
+    virtual ~LODBlendingExtension() { }
+
+
+public: // Extension
+
+    virtual const ConfigOptions& getConfigOptions() const { return *this; }
+
+
+public: // ExtensionInterface<MapNode>
+
+    bool connect(MapNode* mapNode)
+    {
+        if (!_effect.valid())
+        {
+            _effect = new LODBlending(*this);
+            mapNode->getTerrainEngine()->addEffect(_effect.get());
+        }
+        return true;
+    }
+
+    bool disconnect(MapNode* mapNode)
+    {
+        if (mapNode && _effect.valid())
+        {
+            mapNode->getTerrainEngine()->removeEffect(_effect.get());
+            _effect = 0L;
+        }
+        return true;
+    }
+
+
+protected: // Object
+    LODBlendingExtension(const LODBlendingExtension& rhs, const osg::CopyOp& op) { }
+
+private:
+    osg::ref_ptr<LODBlending> _effect;
+};
+
+REGISTER_OSGEARTH_EXTENSION( osgearth_lod_blending, LODBlendingExtension );

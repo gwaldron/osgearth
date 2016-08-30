@@ -428,6 +428,16 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
+    // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        if ( i->key() == "elevation" || i->key() == "heightfield" )
+        {
+            addElevationLayer( *i, map );
+        }
+    }
+
+
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
@@ -439,11 +449,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         else if ( i->key() == "image" )
         {
             addImageLayer( *i, map );
-        }
-
-        else if ( i->key() == "elevation" || i->key() == "heightfield" )
-        {
-            addElevationLayer( *i, map );
         }
 
         else if ( i->key() == "model" )

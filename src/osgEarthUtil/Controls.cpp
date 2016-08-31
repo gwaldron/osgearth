@@ -2446,18 +2446,25 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
     if ( _sortingEnabled && _sortByDistance )
     {
-        for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); i++) 
+        for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end();)
         {
             ControlNode* node = i->second.get();
             if ( node->getNumParents() == 0 )
             {
+              // Save the iterator and erase it before we increment it.  erase will invalidate i so we can't increment it directly.
+              ControlNodeCollection::iterator saveItr = i;
+              ++saveItr;
               _renderNodes.erase( node );
-              i = _controlNodes.erase( i );
+              // Erase the current iterator
+              _controlNodes.erase( i );
+              // Assign i to the incremented iterator
+              i = saveItr;
             }
             else
             {
                 ControlNode::TravSpecificData& nodeData = node->getData( context._view->getCamera() );
                 byDepth.insert( ControlNodePair(nodeData._screenPos.z(), node) );
+                i++;
             }
         }
 

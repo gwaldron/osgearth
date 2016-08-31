@@ -707,7 +707,7 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-#if 1
+#if 0
     static int c = 0;
     if ( ++c % 60 == 0 )
     {

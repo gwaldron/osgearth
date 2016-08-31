@@ -113,27 +113,54 @@ TileNodeRegistry::add( TileNode* tile )
         Notifications::iterator i = _notifications.find(tile->getKey());
         if ( i != _notifications.end() )
         {
-            TileKeyVector& waiters = i->second;
-            for(unsigned j=0; j<waiters.size(); )
+            TileKeySet& waiters = i->second;
+
+            for (TileKeySet::iterator j = waiters.begin(); j != waiters.end(); ++j)
             {
-                TileKey& waiter = waiters[j];
+                const TileKey& waiter = *j;
                 TileNodeMap::iterator k = _tiles.find(waiter);
                 if ( k != _tiles.end() )
                 {
+                    // notify the listener:
                     k->second->notifyOfArrival( tile );
-                    waiter = waiters.back();
-                    waiters.resize( waiters.size()-1 );
-                }
-                else
-                {
-                    ++j;
                 }
             }
-            if ( waiters.size() == 0 )
-            {
-                _notifications.erase( i );
-            }
+
+            // clear the wait list for this tile.
+            // if there were waiters whose keys weren't found in the registry,
+            // they should not have been there anyway!
+            _notifications.erase(i);
+                    
+            //for(unsigned j=0; j<waiters.size(); )
+            //{
+            //    TileKey& waiter = waiters[j];
+            //    TileNodeMap::iterator k = _tiles.find(waiter);
+            //    if ( k != _tiles.end() )
+            //    {
+            //        k->second->notifyOfArrival( tile );
+
+            //        // erase the waiter by swapping the back element into the 
+            //        // current position and resizing the vector:
+            //        waiter = waiters.back();
+            //        waiters.resize( waiters.size()-1 );
+            //    }
+            //    else
+            //    {
+            //        ++j;
+            //    }
+            //}
+
+            //// when the waiters list goes empty, remove the entire list
+            //if ( waiters.size() == 0 )
+            //{
+            //    _notifications.erase( i );
+            //}
         }
+
+        // Listen for east and south neighbors of the new tile:
+        const TileKey& key = tile->getTileNode()->getKey();
+        startListeningFor( key.createNeighborKey(1, 0), tile->getTileNode() );
+        startListeningFor( key.createNeighborKey(0, 1), tile->getTileNode() );
     }
 }
 
@@ -145,6 +172,11 @@ TileNodeRegistry::remove( TileNode* tile )
         Threading::ScopedWriteLock exclusive( _tilesMutex );
         _tiles.erase( tile->getKey() );
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+        
+        // remove neighbor listeners:
+        const TileKey& key = tile->getTileNode()->getKey();
+        stopListeningFor( key.createNeighborKey(1, 0), tile->getTileNode() );
+        stopListeningFor( key.createNeighborKey(0, 1), tile->getTileNode() );
     }
 }
 
@@ -202,7 +234,7 @@ TileNodeRegistry::run( TileNodeRegistry::Operation& op )
     unsigned size = _tiles.size();
     op.operator()( _tiles );
     if ( size != _tiles.size() )
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << ", notifications=" << _notifications.size() << std::endl;
 }
 
 
@@ -211,7 +243,7 @@ TileNodeRegistry::run( const TileNodeRegistry::ConstOperation& op ) const
 {
     Threading::ScopedReadLock lock( _tilesMutex );
     op.operator()( _tiles );
-    OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+    OE_TEST << LC << _name << ": tiles=" << _tiles.size() << ", notifications=" << _notifications.size() << std::endl;
 }
 
 
@@ -223,9 +255,11 @@ TileNodeRegistry::empty() const
 }
 
 void
-TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
+TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
-    Threading::ScopedWriteLock lock( _tilesMutex );
+    //Threading::ScopedWriteLock lock( _tilesMutex );
+    // ASSUME EXCLUSIVE LOCK
+
     TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
     if ( i != _tiles.end() )
     {
@@ -237,6 +271,26 @@ TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
     else
     {
         OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
-        _notifications[tileToWaitFor].push_back( waiter->getKey() );
+        _notifications[tileToWaitFor].insert( waiter->getKey() );
+    }
+}
+
+void
+TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
+{
+    //Threading::ScopedWriteLock lock( _tilesMutex );
+    // ASSUME EXCLUSIVE LOCK
+
+    Notifications::iterator i = _notifications.find(tileToWaitFor);
+    if (i != _notifications.end())
+    {
+        // remove the waiter from this set:
+        i->second.erase(waiter->getKey());
+
+        // if the set is now empty, remove the set entirely
+        if (i->second.empty())
+        {
+            _notifications.erase(i);
+        }
     }
 }

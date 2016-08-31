@@ -28,6 +28,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <OpenThreads/Atomic>
 #include <map>
+#include <set>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
@@ -123,11 +124,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
 
-        /** Tells the registry to listen for the TileNode for the specific key
-            to arrive, and upon its arrival, notifies the waiter. After notifying
-            the waiter, it removes the listen request. */
-        void listenFor(const TileKey& keyToWaitFor, TileNode* waiter);
-
     protected:
 
         bool                              _revisioningEnabled;
@@ -137,9 +133,18 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
 
-        typedef std::vector<TileKey> TileKeyVector;
-        typedef std::map<TileKey, TileKeyVector> Notifications;
+        typedef std::set<TileKey> TileKeySet;
+        typedef std::map<TileKey, TileKeySet> Notifications;
         Notifications _notifications;
+
+    private:
+        /** Tells the registry to listen for the TileNode for the specific key
+            to arrive, and upon its arrival, notifies the waiter. After notifying
+            the waiter, it removes the listen request. (assumes lock held) */
+        void startListeningFor(const TileKey& keyToWaitFor, TileNode* waiter);
+
+        /** Removes a listen request set by startListeningFor (assumes lock held) */
+        void stopListeningFor(const TileKey& keyToWairFor, TileNode* waiter);
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

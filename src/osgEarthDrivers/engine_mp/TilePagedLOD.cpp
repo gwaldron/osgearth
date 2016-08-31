@@ -192,11 +192,6 @@ TilePagedLOD::addChild(osg::Node* node)
         if ( tilenode && _live.get() )
         {
             _live->add( tilenode );
-
-            // Listen for out east and south neighbors.
-            const TileKey& key = tilenode->getKey();
-            _live->listenFor( key.createNeighborKey(1, 0), tilenode );
-            _live->listenFor( key.createNeighborKey(0, 1), tilenode );
         }
 
         return osg::PagedLOD::addChild( node );

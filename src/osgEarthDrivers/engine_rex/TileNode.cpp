@@ -158,9 +158,11 @@ TileNode::computeBound() const
 bool
 TileNode::isDormant(const osg::FrameStamp* fs) const
 {
+    const unsigned minMinExpiryFrames = 3u;
+
     bool dormant = 
            fs &&
-           fs->getFrameNumber() - _lastTraversalFrame > _minExpiryFrames &&
+           fs->getFrameNumber() - _lastTraversalFrame > std::max(_minExpiryFrames, minMinExpiryFrames) &&
            fs->getReferenceTime() - _lastTraversalTime > _minExpiryTime;
     return dormant;
 }

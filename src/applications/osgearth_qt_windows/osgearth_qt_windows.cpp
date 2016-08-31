@@ -73,6 +73,8 @@ struct MyMainWindow : public QMainWindow, public ViewController
     MyMainWindow(osg::ArgumentParser& args, osg::Node* scene) 
         : _viewer(args), _scene(scene)
     {
+        _viewer.setThreadingModel(_viewer.SingleThreaded);
+
         // we have to add a starting view, otherwise the CV will automatically
         // mark itself as done :/
         addView();

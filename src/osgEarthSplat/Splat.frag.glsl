@@ -302,6 +302,7 @@ void oe_splat_complex(inout vec4 color)
     vec4 texel = mix(texel0, texel1, lodBlend);
 
     color = mix(color, texel, texel.a);
+    color.a = 1.0;
 
     // uncomment to visualize slope.
     //color.rgba = vec4(env.slope,0,0,1);

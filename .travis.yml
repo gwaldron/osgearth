@@ -30,12 +30,13 @@ notifications:
   email:
     recipients:
     - jasonbeverage@pelicanmapping.com
+    - gwaldron@pelicanmapping.com
 addons:
   coverity_scan:
     project:
       name: "gwaldron/osgearth"
       description: "osgEarth"
-    notification_email: jasonbeverage@gmail.com
+    notification_email: jasonbeverage@pelicanmapping.com
     build_command_prepend: cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_OSGEARTH_EXAMPLES=OFF .
     build_command: make -j3
     branch_pattern: coverity_scan

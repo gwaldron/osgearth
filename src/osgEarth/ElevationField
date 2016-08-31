@@ -70,7 +70,7 @@ namespace osgEarth
         virtual ~ElevationField() { }
 
         // Copy CTOR hidden for now
-        ElevationField(const ElevationField& rhs, const osg::CopyOp& copy) { }
+        ElevationField(const ElevationField& rhs, const osg::CopyOp& copy);
 
         void computeSlopeAndCurvature();
     };

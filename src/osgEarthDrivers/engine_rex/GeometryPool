@@ -60,7 +60,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
          */
         struct GeometryKey
         {
-            GeometryKey() : lod(-1) {}
+            GeometryKey() :
+                lod(-1),
+                yMin(0.0),
+                patch(false),
+                size(0u)
+                {
+                }
 
             bool operator < (const GeometryKey& rhs) const
             {

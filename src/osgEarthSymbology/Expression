@@ -103,7 +103,7 @@ namespace osgEarth { namespace Symbology
         typedef std::vector<Variable> Variables;
 
     public:
-        StringExpression() { }
+        StringExpression();
 
         StringExpression( const Config& conf );
 

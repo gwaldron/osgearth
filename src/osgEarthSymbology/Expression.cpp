@@ -357,6 +357,11 @@ NumericExpression::eval() const
 
 //------------------------------------------------------------------------
 
+StringExpression::StringExpression():
+_dirty(true)
+{
+}
+
 StringExpression::StringExpression( const std::string& expr ) : 
 _src( expr ),
 _dirty( true )

@@ -29,7 +29,21 @@ _min( 0.0f ),
 _max( 0.0f ),
 _spacing( 0.0f )
 {
-    //nop
+}
+
+ElevationField::ElevationField(const ElevationField& rhs, const osg::CopyOp& copy):
+_width(rhs._width),
+_height(rhs._height),
+_dirty(rhs._dirty),
+_min(rhs._min),
+_max(rhs._max),
+_spacing(rhs._spacing),
+_heights(rhs._height),
+_slopes(rhs._slopes),
+_curvatures(rhs._curvatures),
+_aspects(rhs._aspects),
+_normals(rhs._normals)
+{
 }
 
 void

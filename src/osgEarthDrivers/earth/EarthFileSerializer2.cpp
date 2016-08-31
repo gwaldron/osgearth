@@ -470,7 +470,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             }
         }
 
-        else // plugins/extensions.
+        else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
             addExtension( *i, mapNode.get() );
         }

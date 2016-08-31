@@ -142,9 +142,13 @@ namespace osgEarth { namespace Annotation
 
     public:
         // required by META_Node, but this object is not cloneable
-        PlaceNode() { }
-        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+        PlaceNode();
+
         void setConfig(const Config& conf);
+
+    private:
+        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) : GeoPositionNode(rhs, op) { }
+
     };
 
 } } // namespace osgEarth::Annotation

@@ -42,6 +42,12 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+PlaceNode::PlaceNode() :
+_labelRotationRad ( 0. ),
+_followFixedCourse( false )
+{
+    //nop
+}
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
                      const GeoPoint&    position,

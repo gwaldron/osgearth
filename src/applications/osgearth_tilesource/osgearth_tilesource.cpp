@@ -103,7 +103,9 @@ int main(int argc, char** argv)
 
     // Create out image layer with a custom tile source.
     ImageLayerOptions options( "custom" );
-    map->addImageLayer( new ImageLayer(options, new CustomTileSource()) );
+    CustomTileSource* tileSource = new CustomTileSource();
+    tileSource->open();
+    map->addImageLayer( new ImageLayer(options, tileSource) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNode* mapNode = new MapNode( map );

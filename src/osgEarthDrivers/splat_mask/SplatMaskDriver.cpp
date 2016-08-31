@@ -186,12 +186,12 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
                 supportsExtension( "osgearth_splat_mask", "Detail texture splat mask generator" );
             }
 
-            virtual const char* className()
+            const char* className() const
             {
                 return "Detail Splat Mask Driver";
             }
 
-            virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+            ReadResult readObject(const std::string& file_name, const Options* options) const
             {
                 if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                     return ReadResult::FILE_NOT_HANDLED;

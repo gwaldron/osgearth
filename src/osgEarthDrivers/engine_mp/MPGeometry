@@ -137,7 +137,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void drawImplementation(osg::RenderInfo& renderInfo) const;
         
         // override to correctly process GL_PATCHES if necessary
+        bool supports(const osg::PrimitiveFunctor&) const { return true; }
         void accept(osg::PrimitiveFunctor& functor) const;
+
+        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
         void accept(osg::PrimitiveIndexFunctor& functor) const;
 
         // recalculate the bound for the tile key uniform.

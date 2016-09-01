@@ -103,7 +103,7 @@ namespace
 
 //------------------------------------------------------------------------
 
-GeoObject::GeoObject()
+GeoObject::GeoObject() : _priority(0.0f)
 {
     //NOP
 }
@@ -176,7 +176,8 @@ _depth( depth ),
 _minObjects( (maxObjects/10)*8 ), // 80%
 _count( 0 ),
 _boundaryPoints( 10 ),
-_frameStamp( 0 )
+_frameStamp( 0 ),
+_boundaryColor(0L)
 {
     generateBoundaries();
     //generateBoundaryGeometry();

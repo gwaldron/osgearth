@@ -202,7 +202,7 @@ namespace osgEarth
         }
 
         // loads the qualified number from an old-school config (e.g., { value="123" units="km" } )
-        qualified_double<T>( const Config& conf, const Units& defaultUnits ) {
+        qualified_double<T>( const Config& conf, const Units& defaultUnits ) : _value(0.0) {
             if ( conf.hasValue("value") ) {
                 _value = conf.value<double>("value", 0.0);
                 if ( !Units::parse( conf.value("units"), _units ) )

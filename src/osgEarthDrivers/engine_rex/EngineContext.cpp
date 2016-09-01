@@ -53,7 +53,9 @@ _deadTiles     ( deadTiles ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
-_tilePatchCallbacks( tilePatchCallbacks )
+_tilePatchCallbacks( tilePatchCallbacks ),
+_tick(0),
+_tilesLastCull(0)
 {
     _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
 }

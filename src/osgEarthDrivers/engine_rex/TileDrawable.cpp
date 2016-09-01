@@ -79,7 +79,8 @@ _skirtSize   ( skirtSize )
     
     int tileSize2 = tileSize*tileSize;
     _heightCache = new float[ tileSize2 ];
-    for(int i=0; i<tileSize2; ++i) _heightCache[i] = 0.0f;    
+    for(int i=0; i<tileSize2; ++i)
+        _heightCache[i] = 0.0f;    
 }
 
 TileDrawable::~TileDrawable()

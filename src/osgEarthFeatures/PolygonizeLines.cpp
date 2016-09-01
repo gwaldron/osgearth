@@ -119,7 +119,8 @@ namespace
 
 
 PolygonizeLinesOperator::PolygonizeLinesOperator(const Stroke& stroke) :
-_stroke( stroke )
+_stroke( stroke ),
+_makeScalable(false)
 {
     //nop
 }
@@ -588,7 +589,8 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
 
 
 PolygonizeLinesFilter::PolygonizeLinesFilter(const Style& style) :
-_style( style )
+_style( style ),
+_makeScalable(false)
 {
     //nop
 }

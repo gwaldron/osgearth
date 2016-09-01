@@ -666,8 +666,6 @@ MPTerrainEngineNode::dirtyTerrain()
                 OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
             }
         }
-
-        _rootTilesRegistered = false;
     }
 
     updateState();

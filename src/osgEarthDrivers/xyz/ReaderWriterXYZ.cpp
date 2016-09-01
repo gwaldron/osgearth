@@ -50,7 +50,7 @@ class XYZSource : public TileSource
 {
 public:
     XYZSource(const TileSourceOptions& options) : 
-      TileSource(options), _options(options), _rotate_iter(0u)
+        TileSource(options), _options(options), _rotate_iter(0u), _rotateStart(0), _rotateEnd(0)
     {
         //nop
     }

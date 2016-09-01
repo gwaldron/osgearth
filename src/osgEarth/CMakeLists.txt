@@ -79,7 +79,6 @@ SET(LIB_PUBLIC_HEADERS
     DrapingTechnique
     DrawInstanced
     ECEF
-    ElevationField
     ElevationLayer
     ElevationLOD
     ElevationQuery
@@ -245,7 +244,6 @@ set(TARGET_SRC
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
-    ElevationField.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationQuery.cpp

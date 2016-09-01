@@ -51,7 +51,10 @@ using namespace osgEarth::Splat;
 SplatTerrainEffect::SplatTerrainEffect() :
 _renderOrder ( -1.0f ),
 _editMode    ( false ),
-_gpuNoise    ( false )
+_gpuNoise    ( false ),
+_splatTexUnit(-1),
+_lutTexUnit(-1),
+_noiseTexUnit(-1)
 {
     _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffsetInt", 0 );
     _warpUniform        = new osg::Uniform("oe_splat_warp",           0.0f );

@@ -129,7 +129,8 @@ TileModel::NormalData::NormalData(osg::HeightField* hf,
                                   bool              fallbackData) :
 _hf          ( hf ),
 _locator     ( locator ),
-_fallbackData( fallbackData )
+_fallbackData( fallbackData ),
+_unit        ( -1 )
 {
     _neighbors._center = hf;
 }

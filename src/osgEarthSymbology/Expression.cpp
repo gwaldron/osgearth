@@ -28,6 +28,13 @@ using namespace osgEarth::Symbology;
 
 #define LC "[Expression] "
 
+NumericExpression::NumericExpression() :
+_value(0.0),
+_dirty(true)
+{
+    //nop
+}
+
 NumericExpression::NumericExpression( const std::string& expr ) : 
 _src  ( expr ),
 _value( 0.0 ),
@@ -54,7 +61,9 @@ _dirty( false )
     init();
 }
 
-NumericExpression::NumericExpression( const Config& conf )
+NumericExpression::NumericExpression( const Config& conf ) :
+_value( 0.0 ),
+_dirty( true )
 {
     mergeConfig( conf );
     init();
@@ -356,6 +365,12 @@ NumericExpression::eval() const
 }
 
 //------------------------------------------------------------------------
+
+StringExpression::StringExpression() :
+_dirty(true)
+{
+    //nop
+}
 
 StringExpression::StringExpression( const std::string& expr ) : 
 _src( expr ),

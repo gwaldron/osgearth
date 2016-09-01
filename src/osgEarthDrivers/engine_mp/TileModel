@@ -124,7 +124,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         class NormalData
         {
         public:
-            NormalData() : _fallbackData(true) { }
+            NormalData() : _fallbackData(true), _unit(0) { }
             NormalData(const NormalData& rhs);
 
             virtual ~NormalData() { }
@@ -177,7 +177,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         class ColorData
         {
         public:
-            ColorData() : _fallbackData(true) { }
+            ColorData() : _fallbackData(true), _order(0), _hasAlpha(false) { }
 
             /** Copy ctor - shallow */
             ColorData(const ColorData& rhs);

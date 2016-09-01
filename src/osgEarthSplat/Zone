@@ -55,7 +55,7 @@ namespace osgEarth { namespace Splat
         typedef std::vector<Boundary> Boundaries;
 
     public:
-        Zone() { }
+        Zone() : _uid(0) { }
 
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }

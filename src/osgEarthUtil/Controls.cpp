@@ -2377,7 +2377,8 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 ControlNode::TravSpecificData::TravSpecificData() :
 _obscured   ( true ),
 _visibleTime( 0.0 ),
-_screenPos  ( 0.0, 0.0, 0.0 )
+_screenPos  ( 0.0, 0.0, 0.0 ),
+_visitFrame(0)
 {
     //nop
 }

@@ -173,7 +173,8 @@ namespace
 PagerLoader::PagerLoader(TerrainEngine* engine) :
 _engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
-_mergesPerFrame( 0 )
+_mergesPerFrame( 0 ),
+_frameNumber   ( 0 )
 {
     _myNodePath.push_back( this );
 

@@ -142,6 +142,13 @@ namespace
             stitchTileCoords = 0L;
             installParentData = false;
             usePatches       = false;
+            numVerticesInSkirt = 0;
+            numVerticesInSurface = 0;
+            numRows = 0;
+            numCols = 0;
+            originalNumRows = 0;
+            originalNumCols = 0;
+            useUInt = false;
         }
 
         osg::Matrixd local2world, world2local;

@@ -148,8 +148,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _stateUpdateRequired;
-        bool               _rootTilesRegistered;
-        Threading::Mutex   _rootTilesRegisteredMutex;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 

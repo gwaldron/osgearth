@@ -46,7 +46,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _uidUniformNameID;
         unsigned _orderUniformNameID;
         unsigned _opacityUniformNameID;
-        unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
         unsigned _texMatrixParentUniformNameID;
         unsigned _texParentExistsUniformNameID;

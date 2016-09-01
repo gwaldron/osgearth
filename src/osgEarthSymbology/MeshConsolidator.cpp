@@ -48,7 +48,7 @@ namespace
         unsigned _maxSize;
         T* _current;
 
-        Collector() : _current(0L) { }
+        Collector() : _current(0L), _newPrimSets(0L), _maxSize(0u) { }
 
         void operator()( unsigned i0, unsigned i1, unsigned i2 )
         {

@@ -716,7 +716,7 @@ namespace
     {
     public:
         RadialLOSDraggerCallback(RadialLineOfSightNode* los):
-          _los(los)
+            _los(los), _start(true)
           {
           }
 

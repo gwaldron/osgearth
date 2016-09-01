@@ -50,6 +50,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             Layer()
             {
                 _texMatUniformID = ~0;
+                _layerID = 0u;
+                _opaque = true;
             }
 
             osgEarth::UID                  _layerID;

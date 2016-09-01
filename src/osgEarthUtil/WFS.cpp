@@ -63,8 +63,12 @@ WFSCapabilities::getFeatureTypeByName(const std::string& name)
 #define ATTR_MAXY              "maxy"
 
 /**************************************************************************************/
-WFSFeatureType::WFSFeatureType()
+WFSFeatureType::WFSFeatureType() :
+_tiled(false),
+_maxLevel(0),
+_firstLevel(0)
 {    
+    //nop
 }
 /**************************************************************************************/
 

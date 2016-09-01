@@ -80,7 +80,8 @@ _numTilesHigh(-1),
 _numTilesWide(-1),
 _timestamp(0),
 _version("1.0"),
-_tileMapService("http://tms.osgeo.org/1.0.0")
+_tileMapService("http://tms.osgeo.org/1.0.0"),
+_profile_type(Profile::TYPE_MERCATOR)
 {   
 }
 

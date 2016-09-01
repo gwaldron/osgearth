@@ -31,21 +31,24 @@
 using namespace osgEarth;
 
 Horizon::Horizon() :
-_valid( false )
+_valid( false ),
+_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid(osg::EllipsoidModel());
 }
 
 Horizon::Horizon(const osg::EllipsoidModel& e) :
-_valid( false )
+_valid( false ),
+_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid( e );
 }
 
 Horizon::Horizon(const SpatialReference* srs) :
-_valid( false )
+_valid( false ),
+_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     if ( srs && !srs->isProjected() )

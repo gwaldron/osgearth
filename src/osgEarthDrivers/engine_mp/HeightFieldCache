@@ -90,7 +90,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     private:
         bool                            _enabled;
         mutable LRUCache<HFKey,HFValue> _cache;
-        int                             _firstLOD;
         int                             _tileSize;
         bool                            _useParentAsReferenceHF;
     };

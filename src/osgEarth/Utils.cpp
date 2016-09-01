@@ -45,7 +45,8 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 PixelAutoTransform::PixelAutoTransform() :
 osg::AutoTransform         (),
 _rotateInScreenSpace       ( false ),
-_screenSpaceRotationRadians( 0.0 )
+_screenSpaceRotationRadians( 0.0 ),
+_dirty( true )
 {
     // deactivate culling for the first traversal. We will reactivate it later.
     setCullingActive( false );

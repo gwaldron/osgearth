@@ -252,7 +252,8 @@ namespace
     {
         ComputeClusterCullingParams( const osg::Vec3d& ecefControlPoint )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _minDeviation( 1.0 )
+              _minDeviation( 1.0 ),
+              _maxOffset(0)
         {
             _ecefControl = ecefControlPoint;
             _ecefNormal = ecefControlPoint;

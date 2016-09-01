@@ -1053,6 +1053,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<TetherCallback> _tetherCallback;
 
         void collisionDetect();
+
+        void ctor_init();
     };
 
 } } // namespace osgEarth::Util

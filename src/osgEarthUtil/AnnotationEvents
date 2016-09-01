@@ -45,6 +45,7 @@ namespace osgEarth { namespace Util
     {
         struct EventArgs
         {
+            EventArgs() : x(0.0f), y(0.0f), buttons(0), modkeys(0) { }
             float x, y;
             int   buttons;   // see osgGA::GUIEventAdapter::MouseButtonMask
             int   modkeys;   // see osgGA::GUIEventAdapter::ModKeyMask

@@ -38,7 +38,7 @@ namespace osgEarth
         /**
          * Constructs an invalid TileKey.
          */
-        TileKey() { }
+        TileKey() : _lod(0), _x(0), _y(0) { }
 
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail

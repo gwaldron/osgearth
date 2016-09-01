@@ -148,7 +148,7 @@ namespace
         float     warp;
         ImageUtils::PixelReader* read;
 
-        ILayer() : valid(true), read(0L) { }
+        ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f) { }
 
         ~ILayer() { if (read) delete read; }
 

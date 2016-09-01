@@ -389,7 +389,7 @@ namespace osgEarth
 
         CacheStats getStats() const {
             return CacheStats(
-                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
+                _map.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
         }
 
     private:
@@ -409,7 +409,7 @@ namespace osgEarth
                 _map[key] = std::make_pair(value, last);
             }
 
-            if ( _lru.size() > _max ) {
+            if ( _map.size() > _max ) {
                 for( unsigned i=0; i < _buf; ++i ) {
                     const K& key = _lru.front();
                     _map.erase( key );
@@ -429,11 +429,7 @@ namespace osgEarth
                 _hits++;
                 result._value = mi->second.first;
                 result._valid = true;
-                //return Record( &(mi->second.first) );
             }
-            //else {
-            //    return Record( 0L );
-            //}
         }
 
         bool has_impl( const K& key ) {
@@ -458,7 +454,7 @@ namespace osgEarth
         void setMaxSize_impl( unsigned max ) {
             _max = max;
             _buf = max/10;
-            while( _lru.size() > _max ) {
+            while( _map.size() > _max ) {
                 const K& key = _lru.front();
                 _map.erase( key );
                 _lru.pop_front();

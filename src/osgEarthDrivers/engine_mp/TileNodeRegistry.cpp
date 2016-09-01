@@ -56,7 +56,7 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
     {
         if ( _maprev != rev || setToDirty )
         {
-            Threading::ScopedWriteLock exclusive( _tilesMutex );
+            Threading::ScopedMutexLock exclusive( _tilesMutex );
 
             if ( _maprev != rev || setToDirty )
             {
@@ -81,7 +81,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
                            unsigned         minLevel,
                            unsigned         maxLevel)
 {
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    Threading::ScopedMutexLock exclusive( _tilesMutex );
     
     bool checkSRS = false;
     for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
@@ -102,7 +102,7 @@ TileNodeRegistry::add( TileNode* tile )
 {
     if ( tile )
     {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
+        Threading::ScopedMutexLock exclusive( _tilesMutex );
         _tiles[ tile->getKey() ] = tile;
         if ( _revisioningEnabled )
             tile->setMapRevision( _maprev );
@@ -169,7 +169,7 @@ TileNodeRegistry::remove( TileNode* tile )
 {
     if ( tile )
     {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
+        Threading::ScopedMutexLock exclusive( _tilesMutex );
         _tiles.erase( tile->getKey() );
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
         
@@ -198,7 +198,7 @@ TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
 bool
 TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {
-    Threading::ScopedReadLock shared( _tilesMutex );
+    Threading::ScopedMutexLock shared( _tilesMutex );
 
     TileNodeMap::iterator i = _tiles.find(key);
     if ( i != _tiles.end() && i->second.valid() )
@@ -213,7 +213,7 @@ TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 bool
 TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    Threading::ScopedMutexLock exclusive( _tilesMutex );
 
     TileNodeMap::iterator i = _tiles.find(key);
     if ( i != _tiles.end() )
@@ -230,7 +230,7 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 void
 TileNodeRegistry::run( TileNodeRegistry::Operation& op )
 {
-    Threading::ScopedWriteLock lock( _tilesMutex );
+    Threading::ScopedMutexLock lock( _tilesMutex );
     unsigned size = _tiles.size();
     op.operator()( _tiles );
     if ( size != _tiles.size() )
@@ -241,7 +241,7 @@ TileNodeRegistry::run( TileNodeRegistry::Operation& op )
 void
 TileNodeRegistry::run( const TileNodeRegistry::ConstOperation& op ) const
 {
-    Threading::ScopedReadLock lock( _tilesMutex );
+    Threading::ScopedMutexLock lock( _tilesMutex );
     op.operator()( _tiles );
     OE_TEST << LC << _name << ": tiles=" << _tiles.size() << ", notifications=" << _notifications.size() << std::endl;
 }
@@ -257,7 +257,7 @@ TileNodeRegistry::empty() const
 void
 TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
-    //Threading::ScopedWriteLock lock( _tilesMutex );
+    //Threading::ScopedMutexLock lock( _tilesMutex );
     // ASSUME EXCLUSIVE LOCK
 
     TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
@@ -278,7 +278,7 @@ TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* wait
 void
 TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
 {
-    //Threading::ScopedWriteLock lock( _tilesMutex );
+    //Threading::ScopedMutexLock lock( _tilesMutex );
     // ASSUME EXCLUSIVE LOCK
 
     Notifications::iterator i = _notifications.find(tileToWaitFor);

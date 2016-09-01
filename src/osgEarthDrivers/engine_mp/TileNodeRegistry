@@ -131,7 +131,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         std::string                       _name;
         TileNodeMap                       _tiles;
         OpenThreads::Atomic               _frameNumber;
-        mutable Threading::ReadWriteMutex _tilesMutex;
+        mutable Threading::Mutex          _tilesMutex;
 
         typedef std::set<TileKey> TileKeySet;
         typedef std::map<TileKey, TileKeySet> Notifications;

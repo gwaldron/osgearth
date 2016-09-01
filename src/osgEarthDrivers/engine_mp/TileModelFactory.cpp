@@ -214,7 +214,8 @@ TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
                                    TerrainEngineRequirements*    terrainReqs) :
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions ),
-_terrainReqs   ( terrainReqs )
+_terrainReqs   ( terrainReqs ),
+_normalMapUnit ( 0 )
 {
     _meshHFCache = new HeightFieldCache( terrainOptions );
 

@@ -154,8 +154,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         META_Object(osgEarth, MPGeometry);
-        MPGeometry() : osg::Geometry(), _frame(0L) { }
-        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _frame(rhs._frame) { }
+        MPGeometry();
+        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop);
         virtual ~MPGeometry() { }
     };
 

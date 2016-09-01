@@ -37,6 +37,9 @@ Loader::Request::Request()
     _uid = osgEarth::Registry::instance()->createUID();
     _state = IDLE;
     _loadCount = 0;
+    _priority = 0;
+    _lastFrameSubmitted = 0;
+    _lastTick = 0;
 }
 
 osg::StateSet*

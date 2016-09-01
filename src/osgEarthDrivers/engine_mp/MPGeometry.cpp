@@ -37,10 +37,58 @@ using namespace osgEarth;
 #define LC "[MPGeometry] "
 
 
+MPGeometry::MPGeometry() :
+osg::Geometry(),
+_frame(0L),
+_uidUniformNameID(0),
+_birthTimeUniformNameID(0u),
+_orderUniformNameID(0u),
+_opacityUniformNameID(0u),
+_texMatParentUniformNameID(0u),
+_tileKeyUniformNameID(0u),
+_minRangeUniformNameID(0u),
+_maxRangeUniformNameID(0u),
+_imageUnit(0),
+_imageUnitParent(0),
+_elevUnit(0),
+_supportsGLSL(false)
+{
+}
+
+MPGeometry::MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) :
+osg::Geometry(rhs, cop),
+_frame(rhs._frame),
+_uidUniformNameID(rhs._uidUniformNameID),
+_birthTimeUniformNameID(rhs._birthTimeUniformNameID),
+_orderUniformNameID(rhs._orderUniformNameID),
+_opacityUniformNameID(rhs._opacityUniformNameID),
+_texMatParentUniformNameID(rhs._texMatParentUniformNameID),
+_tileKeyUniformNameID(rhs._tileKeyUniformNameID),
+_minRangeUniformNameID(rhs._minRangeUniformNameID),
+_maxRangeUniformNameID(rhs._maxRangeUniformNameID),
+_imageUnit(rhs._imageUnit),
+_imageUnitParent(rhs._imageUnitParent),
+_elevUnit(rhs._elevUnit),
+_supportsGLSL(rhs._supportsGLSL)
+{
+}
+
+
 MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
 osg::Geometry    ( ),
 _frame           ( frame ),
-_imageUnit       ( imageUnit )
+_imageUnit       ( imageUnit ),
+_uidUniformNameID(0),
+_birthTimeUniformNameID(0u),
+_orderUniformNameID(0u),
+_opacityUniformNameID(0u),
+_texMatParentUniformNameID(0u),
+_tileKeyUniformNameID(0u),
+_minRangeUniformNameID(0u),
+_maxRangeUniformNameID(0u),
+_imageUnitParent(0),
+_elevUnit(0),
+_supportsGLSL(false)
 {
     _supportsGLSL = Registry::capabilities().supportsGLSL();
 

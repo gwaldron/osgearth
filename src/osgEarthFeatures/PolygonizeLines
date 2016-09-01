@@ -67,7 +67,6 @@ namespace osgEarth { namespace Features
 
     protected:
         Stroke _stroke;
-        bool   _makeScalable;
         friend class PolygonizeLinesFilter;
     };
 
@@ -92,7 +91,6 @@ namespace osgEarth { namespace Features
     protected:
 
         Style _style;
-        bool  _makeScalable;
     };
 
 } } // namespace osgEarth::Features

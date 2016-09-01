@@ -165,5 +165,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
 const ScriptEngineOptions&
 ScriptEngineDriver::getScriptEngineOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    return *static_cast<const ScriptEngineOptions*>( options->getPluginData( SCRIPT_ENGINE_OPTIONS_TAG ) );
+    static ScriptEngineOptions s_default;
+    const void* data = options->getPluginData(SCRIPT_ENGINE_OPTIONS_TAG);
+    return data ? *static_cast<const ScriptEngineOptions*>(data) : s_default;
 }

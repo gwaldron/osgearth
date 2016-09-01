@@ -183,7 +183,9 @@ CacheFactory::create( const CacheOptions& options )
 const CacheOptions&
 CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const 
 {
-    return *static_cast<const CacheOptions*>( rwopt->getPluginData( CACHE_OPTIONS_TAG ) );
+    static CacheOptions s_default;
+    const void* data = rwopt->getPluginData(CACHE_OPTIONS_TAG);
+    return data ? *static_cast<const CacheOptions*>(data) : s_default;
 }
 
 CacheDriver::~CacheDriver()

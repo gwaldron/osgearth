@@ -229,7 +229,9 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
 const ModelSourceOptions&
 ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
+    static ModelSourceOptions s_default;
+    const void* data = options->getPluginData(MODEL_SOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const ModelSourceOptions*>(data) : s_default;
 }
 
 ModelSourceDriver::~ModelSourceDriver()

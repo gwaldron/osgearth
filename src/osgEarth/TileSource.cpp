@@ -758,7 +758,9 @@ TileSourceFactory::create(const TileSourceOptions& options)
 const TileSourceOptions&
 TileSourceDriver::getTileSourceOptions(const osgDB::Options* dbopt ) const
 {
-    return *static_cast<const TileSourceOptions*>( dbopt->getPluginData( TILESOURCE_OPTIONS_TAG ) );
+    static TileSourceOptions s_default;
+    const void* data = dbopt->getPluginData(TILESOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const TileSourceOptions*>(data) : s_default;
 }
 
 const std::string

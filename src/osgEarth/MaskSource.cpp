@@ -124,5 +124,7 @@ MaskSourceFactory::create( const MaskSourceOptions& options )
 const MaskSourceOptions&
 MaskSourceDriver::getMaskSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    return *static_cast<const MaskSourceOptions*>( options->getPluginData( MASK_SOURCE_OPTIONS_TAG ) );
+    static MaskSourceOptions s_default;
+    const void* data = options->getPluginData(MASK_SOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const MaskSourceOptions*>(data) : s_default;
 }

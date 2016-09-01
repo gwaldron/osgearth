@@ -217,7 +217,9 @@ SkyNode::create(const std::string& driver, MapNode* mapNode)
 const SkyOptions&
 SkyDriver::getSkyOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const SkyOptions*>( options->getPluginData(SKY_OPTIONS_TAG) );
+    static SkyOptions s_default;
+    const void* data = options->getPluginData(SKY_OPTIONS_TAG);
+    return data ? *static_cast<const SkyOptions*>(data) : s_default;
 }
 
 

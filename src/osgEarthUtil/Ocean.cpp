@@ -192,7 +192,9 @@ OceanNode::create(MapNode* mapNode)
 const OceanOptions&
 OceanDriver::getOceanOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const OceanOptions*>( options->getPluginData(OPTIONS_TAG) );
+    static OceanOptions s_default;
+    const void* data = options->getPluginData(OPTIONS_TAG);
+    return data ? *static_cast<const OceanOptions*>(data) : s_default;
 }
 
 

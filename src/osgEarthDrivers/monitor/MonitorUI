@@ -38,7 +38,7 @@ namespace osgEarth { namespace Monitor
         void update(const osg::FrameStamp*);
 
     private:
-        osg::ref_ptr<ui::LabelControl> _pb, _ws;
+        osg::ref_ptr<ui::LabelControl> _pb, _ws, _ppb;
     };
 
 } } // namespace

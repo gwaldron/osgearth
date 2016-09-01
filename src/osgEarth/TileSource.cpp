@@ -40,7 +40,8 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-TileBlacklist::TileBlacklist()
+TileBlacklist::TileBlacklist() :
+_tiles(true, 1024)
 {
     //NOP
 }
@@ -48,15 +49,13 @@ TileBlacklist::TileBlacklist()
 void
 TileBlacklist::add(const TileKey& key)
 {
-    Threading::ScopedWriteLock lock(_mutex);
-    _tiles.insert(key);
+    _tiles.insert(key, true);
     OE_DEBUG << "Added " << key.str() << " to blacklist" << std::endl;
 }
 
 void
 TileBlacklist::remove(const TileKey& key)
 {
-    Threading::ScopedWriteLock lock(_mutex);
     _tiles.erase(key);
     OE_DEBUG << "Removed " << key.str() << " from blacklist" << std::endl;
 }
@@ -64,7 +63,6 @@ TileBlacklist::remove(const TileKey& key)
 void
 TileBlacklist::clear()
 {
-    Threading::ScopedWriteLock lock(_mutex);
     _tiles.clear();
     OE_DEBUG << "Cleared blacklist" << std::endl;
 }
@@ -72,15 +70,7 @@ TileBlacklist::clear()
 bool
 TileBlacklist::contains(const TileKey& key) const
 {
-    Threading::ScopedReadLock lock(_mutex);
-    return _tiles.find(key) != _tiles.end();
-}
-
-unsigned int
-TileBlacklist::size() const
-{
-    Threading::ScopedReadLock lock(_mutex);
-    return _tiles.size();
+    return _tiles.has(key);
 }
 
 TileBlacklist*
@@ -130,14 +120,21 @@ TileBlacklist::write(const std::string &filename) const
     write(out);
 }
 
+namespace {
+    struct WriteFunctor : public LRUCache<TileKey,bool>::Functor {
+        std::ostream& _out;
+        WriteFunctor(std::ostream& out) : _out(out) { }
+        void operator()(const TileKey& key, const bool& value) {
+            _out << key.getLOD() << ' ' << key.getTileX() << ' ' << key.getTileY() << std::endl;
+        }
+    };
+}
+
 void
 TileBlacklist::write(std::ostream &output) const
 {
-    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
-    for (BlacklistedTiles::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
-    {
-        output << itr->getLOD() << " " << itr->getTileX() << " " << itr->getTileY() << std::endl;
-    }
+    WriteFunctor writer(output);
+    _tiles.iterate(writer);
 }
 
 
@@ -625,7 +622,7 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
         if (key.getExtent().intersects( *itr ))
         {
             // check that the extent isn't higher-resolution than our key:
-            if ( !itr->minLevel().isSet() || layerLOD >= itr->minLevel().get() )
+            if ( !itr->minLevel().isSet() || layerLOD >= (int)itr->minLevel().get() )
             {
                 // Got an intersetion; now test the LODs:
                 intersects = true;
@@ -640,7 +637,7 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
 
                 // Is our key at a lower or equal LOD than the max key in this extent?
                 // If so, our key is good.
-                else if ( layerLOD <= itr->maxLevel().get() )
+                else if ( layerLOD <= (int)itr->maxLevel().get() )
                 {
                     output = key;
                     return true;

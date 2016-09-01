@@ -301,6 +301,7 @@ namespace osgEarth
         typedef typename std::pair<T, lru_iter>      map_value_type;
         typedef typename std::map<K, map_value_type> map_type;
         typedef typename map_type::iterator          map_iter;
+        typedef typename map_type::const_iterator    map_const_iter;
 
         map_type _map;
         lru_type _lru;
@@ -476,7 +477,7 @@ namespace osgEarth
         }
 
         void iterate_impl(Functor& f) const {
-            for (map_type::const_iterator i = _map.begin(); i != _map.end(); ++i) {
+            for (map_const_iter i = _map.begin(); i != _map.end(); ++i) {
                 f(i->first, i->second.first);
             }
         }

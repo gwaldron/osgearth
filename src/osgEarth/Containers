@@ -291,6 +291,10 @@ namespace osgEarth
             friend class LRUCache;
         };
 
+        struct Functor {
+            virtual void operator()(const K& key, const T& value) =0;
+        };
+
     protected:
         typedef typename std::list<K>::iterator      lru_iter;
         typedef typename std::list<K>                lru_type;
@@ -392,6 +396,16 @@ namespace osgEarth
                 _map.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
         }
 
+        void iterate(Functor& functor) const {
+            if (_threadsafe) {
+                Threading::ScopedMutexLock lock(_mutex);
+                iterate_impl(functor);
+            }
+            else {
+                iterate_impl(functor);
+            }
+        }
+
     private:
 
         void insert_impl( const K& key, const T& value ) {
@@ -461,6 +475,11 @@ namespace osgEarth
             }
         }
 
+        void iterate_impl(Functor& f) const {
+            for (map_type::const_iterator i = _map.begin(); i != _map.end(); ++i) {
+                f(i->first, i->second.first);
+            }
+        }
     };
 
     //--------------------------------------------------------------------

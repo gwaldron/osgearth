@@ -24,70 +24,68 @@
 
 #include "Common"
 #include "TileNodeRegistry"
+#include <osgEarth/ResourceReleaser>
 #include <osg/Camera>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
-     * A draw callback to calls another, nested draw callback.
+     * This is an adapter for MP to use the ResourceReleaser. 
+     * Each frame it will copy tiles from the "dead pool" over to
+     * the releaser, which will release them during the next DRAW.
      */
-    struct NestingDrawCallback : public osg::Camera::DrawCallback
+    class MPResourceReleaser : public ResourceReleaser
     {
-        NestingDrawCallback( osg::Camera::DrawCallback* next ) : _next(next) { }
-
-        virtual void operator()( osg::RenderInfo& renderInfo ) const
+    public:
+        MPResourceReleaser(TileNodeRegistry* deadTiles) :
+            ResourceReleaser(),
+            _deadTiles(deadTiles)
         {
-            dispatch( renderInfo );
+            //nop
         }
 
-        void dispatch( osg::RenderInfo& renderInfo ) const
+        virtual ~MPResourceReleaser()
         {
-            if ( _next )
-                _next->operator ()( renderInfo );
+            //nop
         }
 
-        osg::ref_ptr<osg::Camera::DrawCallback> _next;
-    };
+    public: // ResourceReleaser
 
-
-    // a simple draw callback, to be installed on a Camera, that immediately releases the
-    // GL memory associated with a dead tile (instead of wating for OSG to do it in the
-    // future).
-    struct QuickReleaseGLObjects : public NestingDrawCallback
-    {
-        struct ReleaseOperation : public TileNodeRegistry::Operation
+        // thread-safe operation that transfers dead tiles from the registry
+        // to the resource releaser for processing.
+        struct TransferOp : public TileNodeRegistry::Operation
         {
-            osg::State* _state;
-            ReleaseOperation( osg::State* state ) : _state(state) { }
-            void operator()( TileNodeRegistry::TileNodeMap& tiles )
+            TransferOp(ResourceReleaser* releaser) : _releaser(releaser) { }
+
+            void operator()(TileNodeRegistry::TileNodeMap& tiles)
             {
-                unsigned size = tiles.size();
+                ResourceReleaser::ObjectList objects;
+
                 for( TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i )
                 {
-                    i->second.get()->releaseGLObjects( _state );
+                    objects.push_back(i->second.get());
                 }
                 tiles.clear();
-                OE_DEBUG << "Quick-released " << size << " tiles" << std::endl;
+
+                _releaser->push(objects);
             }
+
+            ResourceReleaser* _releaser;
         };
 
-        QuickReleaseGLObjects( TileNodeRegistry* tiles, osg::Camera::DrawCallback* nextCB) 
-            : NestingDrawCallback( nextCB ), _tilesToRelease(tiles) { }
-
-        // from DrawCallback
-        void operator()( osg::RenderInfo& renderInfo ) const
+        void accept(osg::NodeVisitor& nv) // traverse doesn't work here
         {
-            dispatch( renderInfo );
-
-            if ( !_tilesToRelease->empty() )
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
             {
-                ReleaseOperation op(renderInfo.getState());
-                _tilesToRelease->run( op );
+                TransferOp transfer(this);
+                _deadTiles->run(transfer);
             }
+            ResourceReleaser::accept(nv);
         }
 
-        osg::ref_ptr<TileNodeRegistry> _tilesToRelease;
-    };
+    private:
+        osg::ref_ptr<TileNodeRegistry> _deadTiles;
+    };    
 
 } } } // namespace
 

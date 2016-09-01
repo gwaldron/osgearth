@@ -40,50 +40,11 @@ using namespace OpenThreads;
 
 //----------------------------------------------------------------------------
 
-TerrainNode::TerrainNode(TileNodeRegistry* removedTiles ) :
-_tilesToQuickRelease            ( removedTiles ),
-_quickReleaseCallbackInstalled  ( false )
+TerrainNode::TerrainNode(TileNodeRegistry* deadTiles)
 {
-    // tick the update count to install the quick release callback:
-    if ( _tilesToQuickRelease.valid() )
+    if (deadTiles)
     {
-        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        this->addChild(new MPResourceReleaser(deadTiles));
+        OE_INFO << LC << "MP Resource Releaser installed" << std::endl;
     }
-}
-
-
-void
-TerrainNode::traverse( osg::NodeVisitor &nv )
-{
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-    {
-        // if the terrain engine requested "quick release", install the quick release
-        // draw callback now.
-        if ( !_quickReleaseCallbackInstalled && _tilesToQuickRelease.valid() )
-        {
-            osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
-            if ( cam )
-            {
-                // get the installed PDC so we can nest them:
-                osg::Camera::DrawCallback* cbToNest = cam->getPostDrawCallback();
-
-                // if it's another QR callback, we'll just replace it.
-                QuickReleaseGLObjects* previousQR = dynamic_cast<QuickReleaseGLObjects*>(cbToNest);
-                if ( previousQR )
-                    cbToNest = previousQR->_next.get();
-
-                cam->setPostDrawCallback( new QuickReleaseGLObjects(
-                    _tilesToQuickRelease.get(),
-                    cbToNest ) );
-
-                _quickReleaseCallbackInstalled = true;
-                OE_INFO << LC << "Quick release enabled" << std::endl;
-
-                // knock down the trav count set in the constructor.
-                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-            }
-        }
-    }
-
-    osg::Group::traverse( nv );
 }

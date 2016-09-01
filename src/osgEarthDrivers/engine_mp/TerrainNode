@@ -45,16 +45,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          */
         TerrainNode( TileNodeRegistry* deadTiles );
 
-    public: // osg::Node
+    //public: // osg::Node
 
-        virtual void traverse( osg::NodeVisitor &nv );
+    //    virtual void traverse( osg::NodeVisitor &nv );
 
     protected:
 
         virtual ~TerrainNode() { }
 
-        osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
-        bool _quickReleaseCallbackInstalled;
+//        osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
+//        bool _quickReleaseCallbackInstalled;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

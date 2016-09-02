@@ -242,3 +242,22 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, TileNode* waite
         }
     }
 }
+
+void
+TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
+{
+    ResourceReleaser::ObjectList objects;
+    {
+        Threading::ScopedMutexLock exclusive(_tilesMutex);
+
+        for (TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
+        {
+            objects.push_back(i->second.get());
+        }
+
+        _tiles.clear();
+        _notifications.clear();
+    }
+
+    releaser->push(objects);
+}

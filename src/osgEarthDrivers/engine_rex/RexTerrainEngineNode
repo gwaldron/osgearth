@@ -25,6 +25,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/ResourceReleaser>
 
 #include "RexTerrainEngineOptions"
 #include "EngineContext"
@@ -159,7 +160,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
-        osg::ref_ptr<TileNodeRegistry> _deadTiles;      // tiles that used to be in the scene graph.
+        osg::ref_ptr<ResourceReleaser> _releaser;
 
         PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;
         EngineContext* getEngineContext();

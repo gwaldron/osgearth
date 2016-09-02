@@ -614,7 +614,11 @@ MPTerrainEngineNode::dirtyTerrain()
     }
 
     // New terrain
-    _terrain = new TerrainNode(); // _deadTiles.get() );
+    _terrain = new TerrainNode();
+
+    // Clear out the tile registry:
+    _liveTiles->releaseAll(_releaser.get());
+
 
 #ifdef USE_RENDER_BINS
     _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );

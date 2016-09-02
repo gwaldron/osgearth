@@ -23,7 +23,8 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/TerrainEngineNode>
+//#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ResourceReleaser>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
 #include <map>
@@ -110,7 +111,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         typedef RandomAccessTileMap TileNodeMap;
-        //typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
 
         // Prototype for a locked tileset operation (see run)
         struct Operation {
@@ -174,13 +174,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void remove( TileNode* tile );
 
         /** Clears all tiles from the registry */
-        void clear();
+        //void clear();
 
         /** Moves a tile from this registry to another registry */
-        void move( TileNode* tile, TileNodeRegistry* destination );
+        //void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Moves all tiles to another registry. */
-        void moveAll(TileNodeRegistry* destinataion);
+        //void moveAll(TileNodeRegistry* destinataion);
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -207,6 +207,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Take an arbitrary node from the registry. */
         TileNode* takeAny();
+
+        /** Empty the registry, releasing all tiles. */
+        void releaseAll(ResourceReleaser*);
 
     protected:
 

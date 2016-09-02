@@ -26,6 +26,7 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ResourceReleaser>
 #include <OpenThreads/Atomic>
 #include <map>
 #include <set>
@@ -114,6 +115,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
+
+        /** Empty the registry, releasing all tiles. */
+        void releaseAll(ResourceReleaser*);
 
     protected:
 

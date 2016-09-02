@@ -50,7 +50,6 @@ SET(TARGET_H
     LoadTileData
     MaskGenerator
     MPTexture
-    QuickReleaseGLObjects
     RenderBindings
     SurfaceNode
 	TileDrawable

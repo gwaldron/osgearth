@@ -29,6 +29,7 @@
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
+#if 0
     /**
      * This is an adapter for MP to use the ResourceReleaser. 
      * Each frame it will copy tiles from the "dead pool" over to
@@ -86,6 +87,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     private:
         osg::ref_ptr<TileNodeRegistry> _deadTiles;
     };    
+#endif
 
 } } } // namespace
 

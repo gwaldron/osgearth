@@ -130,31 +130,6 @@ TileNodeRegistry::add( TileNode* tile )
             // if there were waiters whose keys weren't found in the registry,
             // they should not have been there anyway!
             _notifications.erase(i);
-                    
-            //for(unsigned j=0; j<waiters.size(); )
-            //{
-            //    TileKey& waiter = waiters[j];
-            //    TileNodeMap::iterator k = _tiles.find(waiter);
-            //    if ( k != _tiles.end() )
-            //    {
-            //        k->second->notifyOfArrival( tile );
-
-            //        // erase the waiter by swapping the back element into the 
-            //        // current position and resizing the vector:
-            //        waiter = waiters.back();
-            //        waiters.resize( waiters.size()-1 );
-            //    }
-            //    else
-            //    {
-            //        ++j;
-            //    }
-            //}
-
-            //// when the waiters list goes empty, remove the entire list
-            //if ( waiters.size() == 0 )
-            //{
-            //    _notifications.erase( i );
-            //}
         }
 
         // Listen for east and south neighbors of the new tile:
@@ -177,20 +152,6 @@ TileNodeRegistry::remove( TileNode* tile )
         const TileKey& key = tile->getTileNode()->getKey();
         stopListeningFor( key.createNeighborKey(1, 0), tile->getTileNode() );
         stopListeningFor( key.createNeighborKey(0, 1), tile->getTileNode() );
-    }
-}
-
-
-void
-TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
-{
-    if ( tile )
-    {
-        // ref just in case remove() is the last reference
-        osg::ref_ptr<TileNode> tileSafe = tile;
-        remove( tile );
-        if ( destination )
-            destination->add( tileSafe.get() );
     }
 }
 
@@ -226,24 +187,11 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
     return false;
 }
 
-
-void
-TileNodeRegistry::run( TileNodeRegistry::Operation& op )
-{
-    Threading::ScopedMutexLock lock( _tilesMutex );
-    unsigned size = _tiles.size();
-    op.operator()( _tiles );
-    if ( size != _tiles.size() )
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << ", notifications=" << _notifications.size() << std::endl;
-}
-
-
 void
 TileNodeRegistry::run( const TileNodeRegistry::ConstOperation& op ) const
 {
     Threading::ScopedMutexLock lock( _tilesMutex );
     op.operator()( _tiles );
-    OE_TEST << LC << _name << ": tiles=" << _tiles.size() << ", notifications=" << _notifications.size() << std::endl;
 }
 
 

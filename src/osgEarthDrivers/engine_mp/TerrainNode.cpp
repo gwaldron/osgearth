@@ -20,31 +20,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TerrainNode"
-#include "QuickReleaseGLObjects"
-
-#include <osgEarth/Registry>
-#include <osgEarth/Map>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/ThreadingUtils>
-
-#include <osg/NodeCallback>
-#include <osg/NodeVisitor>
-#include <osg/Node>
-#include <osgGA/EventVisitor>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
-using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[TerrainNode] "
 
 //----------------------------------------------------------------------------
 
-TerrainNode::TerrainNode(TileNodeRegistry* deadTiles)
+TerrainNode::TerrainNode()
 {
-    if (deadTiles)
-    {
-        this->addChild(new MPResourceReleaser(deadTiles));
-        OE_INFO << LC << "MP Resource Releaser installed" << std::endl;
-    }
+    //nop
 }

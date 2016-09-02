@@ -423,11 +423,9 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     _liveTiles->setRevisioningEnabled( _terrainOptions.incrementalUpdate() == true );
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
-    // set up a registry for quick release:
-    if ( _terrainOptions.quickReleaseGLObjects() == true )
-    {
-        _deadTiles = new TileNodeRegistry("dead");
-    }
+    // Facility to properly release GL objects
+    _releaser = new ResourceReleaser();
+    this->addChild(_releaser.get());
 
     // reserve GPU resources. Must do this before initializing the model factory.
     if ( _primaryUnit < 0 )
@@ -568,17 +566,15 @@ MPTerrainEngineNode::getTerrainStateSet()
 
 namespace
 {
-    struct NotifyExistingNodesOp : public TileNodeRegistry::Operation
+    struct NotifyExistingNodesOp : public TileNodeRegistry::ConstOperation
     {
         TerrainEngine::NodeCallback* _cb;
 
         NotifyExistingNodesOp(TerrainEngine::NodeCallback* cb) : _cb(cb) { }
 
-        void operator()(TileNodeRegistry::TileNodeMap& tiles)
+        void operator()(const TileNodeRegistry::TileNodeMap& tiles) const
         {
-            //OE_INFO << LC << "Gonna notify " << tiles.size() << " existing nodes...\n";
-
-            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin();
+            for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin();
                 i != tiles.end();
                 ++i)
             {
@@ -618,7 +614,7 @@ MPTerrainEngineNode::dirtyTerrain()
     }
 
     // New terrain
-    _terrain = new TerrainNode( _deadTiles.get() );
+    _terrain = new TerrainNode(); // _deadTiles.get() );
 
 #ifdef USE_RENDER_BINS
     _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
@@ -641,7 +637,7 @@ MPTerrainEngineNode::dirtyTerrain()
         // create a root node for each root tile key.
         OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
-        TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
+        TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _releaser.get() );
         root->setRangeFactor(_terrainOptions.minTileRangeFactor().get());
         _terrain->addChild( root );
 
@@ -712,8 +708,6 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         //OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
         _liveTiles->run( CheckForOrphans() );
         Registry::instance()->startActivity("MP live tiles", Stringify() << _liveTiles->size());
-        if (_deadTiles.valid())
-            Registry::instance()->startActivity("MP dead tiles", Stringify() << _deadTiles->size());
     }
 #endif
 
@@ -745,7 +739,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _tileModelFactory.get(),
             compiler,
             _liveTiles.get(),
-            _deadTiles.get(),
+            _releaser.get(),
             _terrainOptions,
             this );
     }

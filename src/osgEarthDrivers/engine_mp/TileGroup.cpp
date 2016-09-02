@@ -73,11 +73,11 @@ namespace
 TileGroup::TileGroup(const TileKey&    key, 
                      const UID&        engineUID,
                      TileNodeRegistry* live,
-                     TileNodeRegistry* dead) :
+                     ResourceReleaser* releaser) :
 _key      ( key ),
 _engineUID( engineUID ),
 _live     ( live ),
-_dead     ( dead )
+_releaser ( releaser )
 {
     this->setName( key.str() );
 }
@@ -135,7 +135,10 @@ TileGroup::applyUpdate(osg::Node* node)
                 oldTileNode = plod->getTileNode();
                 plod->setTileNode( newTileNode );
                 if ( _live.valid() )
-                    _live->move( oldTileNode.get(), _dead.get() );
+                {
+                    _live->remove(oldTileNode.get());
+                    _releaser->push(oldTileNode.get());
+                }
             }
             else
             {
@@ -149,11 +152,16 @@ TileGroup::applyUpdate(osg::Node* node)
 
                 this->setChild( i, newTileNode );
                 if ( _live.valid() )
-                    _live->move( oldTileNode.get(), _dead.get() );
+                {
+                    _live->remove(oldTileNode.get());
+                    _releaser->push(oldTileNode.get());
+                }
             }
 
             if ( _live.valid() )
+            {
                 _live->add( newTileNode );
+            }
         }
     }
 

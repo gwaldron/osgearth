@@ -1222,7 +1222,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     AllocateAndMergeBufferObjectsVisitor allocAndMerge;
     group->accept( allocAndMerge );
 
-    // set a uniform indiciating that clamping attributes are available.
+    // set a uniform indicating that clamping attributes are available.
     Clamping::installHasAttrsUniform( group->getOrCreateStateSet() );
 
     // if we drew outlines, apply a poly offset too.

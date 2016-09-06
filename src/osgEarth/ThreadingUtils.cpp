@@ -20,7 +20,7 @@
 
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
-#elif defined(__APPLE__) || defined(__LINUX__)
+#elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
 #else
@@ -44,6 +44,10 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   return gettid();
 #elif __LINUX__
   return (unsigned)::syscall(SYS_gettid);
+#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+  long  tid;
+  syscall(SYS_thr_self, &tid);
+  return (unsigned)tid;
 #else
   /* :XXX: this truncates to 32 bits, but better than nothing */
   return (unsigned)pthread_self();

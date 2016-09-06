@@ -20,9 +20,11 @@
 
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
-#else
+#elif defined(__APPLE__) || defined(__LINUX__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
+#else
+#   include <pthread.h>
 #endif
 
 using namespace osgEarth::Threading;
@@ -40,7 +42,10 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   return ::syscall(SYS_thread_selfid);
 #elif __ANDROID__
   return gettid();
-#else
+#elif __LINUX__
   return (unsigned)::syscall(SYS_gettid);
+#else
+  /* :XXX: this truncates to 32 bits, but better than nothing */
+  return (unsigned)pthread_self();
 #endif
 }

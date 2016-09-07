@@ -29,6 +29,7 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Map>
+#include <osgEarth/TerrainClamper>
 
 namespace osgEarth { namespace Features
 {
@@ -96,6 +97,9 @@ namespace osgEarth { namespace Features
         /** Shared resource cache (optional) */
         void setResourceCache(ResourceCache* cache);
         ResourceCache* getResourceCache();
+
+        /** Terrain clamper */
+        TerrainClamper* getTerrainClamper() const { return _clamper.get(); }
 
         /** Optional name for this session */
         void setName(const std::string& name) { _name = name; }
@@ -184,6 +188,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<StateSetCache>        _stateSetCache;
         osg::ref_ptr<ResourceCache>        _resourceCache;
         std::string                        _name;
+        osg::ref_ptr<TerrainClamper>       _clamper;
     };
 
 } }

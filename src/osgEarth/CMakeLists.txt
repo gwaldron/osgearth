@@ -156,6 +156,7 @@ SET(LIB_PUBLIC_HEADERS
     StringUtils
     TaskService
     Terrain
+    TerrainClamper
     TerrainEffect
     TerrainLayer
     TerrainOptions
@@ -312,6 +313,7 @@ set(TARGET_SRC
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp
+    TerrainClamper.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp

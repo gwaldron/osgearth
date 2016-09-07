@@ -58,6 +58,12 @@ _dbOptions     ( dbOptions )
     _stateSetCache = new StateSetCache();
 
     _name = "Session (unnamed)";
+
+    if (_map.valid())
+    {
+        _clamper = new TerrainClamper();
+        _clamper->setMap( map );
+    }
 }
 
 Session::~Session()

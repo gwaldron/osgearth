@@ -1,0 +1,186 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TERRAIN_CLAMPER_H
+#define OSGEARTH_TERRAIN_CLAMPER_H
+
+#include <osgEarth/Common>
+#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
+#include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
+#include <osgEarth/ElevationQuery>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Timer>
+#include <map>
+
+namespace osgEarth
+{
+    // defined at the end of this file
+    class TerrainEnvelope;
+
+    /**
+     * Shared terrain clamping service.
+     */
+    class OSGEARTH_EXPORT TerrainClamper : public osg::Referenced
+    {
+    public:
+        /** ctor */
+        TerrainClamper();
+
+        /** Sets the map to use for clamping. Mandatory. */
+        void setMap(const Map* map);
+
+        /** Creates a terrain envelope to use for elevation queries in a certain area. */
+        TerrainEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
+
+        /** Maximum number of elevation tiles to cache */
+        void setMaxEntries(unsigned maxEntries) { _maxEntries = maxEntries; }
+        unsigned getMaxEntries() const          { return _maxEntries; }
+
+    protected:
+
+        MapFrame _frame;
+
+        enum Status
+        {
+            STATUS_EMPTY = 0u,
+            STATUS_IN_PROGRESS = 1u,
+            STATUS_AVAILABLE = 2u,
+            STATUS_FAIL = 3u
+        };
+
+        // Single elevation tile along with its load status
+        class Tile : public osg::Referenced
+        {
+        public:
+            Tile() : _status(STATUS_EMPTY) { }
+            TileKey             _key;
+            Bounds              _bounds;
+            GeoHeightField      _hf;
+            OpenThreads::Atomic _status;
+            osg::Timer_t        _loadTime;
+        };
+
+        // Custom comparator for Tile that sorts Tiles in a set from
+        // highest resolution to lowest resolution; This ensures we are
+        // sampling overlapping tiles in the proper order
+        struct TileSortHiResToLoRes
+        {
+            bool operator()(
+                const osg::ref_ptr<Tile>& lhs,
+                const osg::ref_ptr<Tile>& rhs) const
+            {
+                // works because the KEY less-than function checks the LOD number
+                // first, which corresponds to the resolution. Higher LOD = higher res.
+                return rhs->_key < lhs->_key;
+            }
+        };
+                
+        // Keeps track of the most-recently-used tiles, in order from MRU (front)
+        // to LRU (back). Multiple pointers to the same Tile may exist in the MRU list.
+        // Once all pointers to a Tile disappear from the MRU (by popping off the back)
+        // the corresponding Tile observer in the Tiles data structure will go NULL
+        // and the Tile will destruct.
+        typedef std::list<osg::ref_ptr<Tile> > MRU;
+        MRU _mru;
+
+        // Cached set of tiles, sorted by TileKey. These are observer pointers; the 
+        // actual references are held in the MRU. The downside of this scheme is that
+        // expired tiles (i.e. tiles that fall off the end of the MRU) will leave empty
+        // observer_ptrs in the Tiles map which can lead to memory growth (albeit minor).
+        // So keep that in mind if you intend to keep a TerrainClamper instance around
+        // indefinitely (which is not the intended use case).
+        typedef std::map<TileKey, osg::observer_ptr<Tile> > Tiles;
+        Tiles _tiles;
+        Threading::Mutex  _tilesMutex;
+
+        // Track the number of entries in the MRU manually since std::list::size
+        // can be O(n) on some platforms
+        unsigned _entries;
+        unsigned _maxEntries;
+
+        // QuerySet is a collection of Tiles, sorted from high to low resolution,
+        // that a TerrainEnvelope uses for a terrain sampling opteration.
+        typedef std::set<osg::ref_ptr<Tile>, TileSortHiResToLoRes> QuerySet;
+
+    protected:
+
+        /** dtor - prevent stack allocation */
+        virtual ~TerrainClamper() { }
+
+        // safely popluate the tile; called when Tile._status = IN_PROGRESS
+        bool fetchTileFromMap(const TileKey& key, Tile* tile);
+        
+        // safely fetch a tile from the central repo, loading from map if necessary
+        bool getTile(const TileKey& key, osg::ref_ptr<Tile>& output);
+        
+        // safely fetch a tile from the central repo, loading from map if necessary
+        bool tryTile(const TileKey& key, osg::ref_ptr<Tile>& output);
+
+        friend class TerrainEnvelope;
+    };
+
+
+    /**s
+     * Set of terrain tiles corresponding to a geographic extent that the pager
+     * uses to clamp a feature set.
+     */
+    class OSGEARTH_EXPORT TerrainEnvelope : public osg::Referenced
+    {
+    public:
+
+        /**
+         * Gets a single elevation, or returns NO_DATA_VALUE upon failure
+         */
+        float getElevation(const osg::Vec3d& point);
+
+        /**
+         * Gets a elevation value for each input point and puts them in output.
+         * Returns the number of successful elevations. Failed queries are set to
+         * NO_DATA_VALUE in the output vector.
+         */
+        unsigned getElevations(
+            const std::vector<osg::Vec3d>& input,
+            std::vector<float>& output);
+
+        /**
+         * Gets the elevation extrema over a collection of point data.
+         * Returns false if the points don't fall inside the envelope
+         */
+        bool getElevationExtrema(
+            const std::vector<osg::Vec3d>& points, 
+            float& out_min, float& out_max);
+
+    protected:
+        virtual ~TerrainEnvelope() { }
+
+        TerrainClamper::QuerySet _tiles;
+        const SpatialReference* _inputSRS;
+        const Profile* _mapProfile;
+        unsigned _lod;
+        osg::ref_ptr<TerrainClamper> _clamper;
+        friend class TerrainClamper;
+
+    private:
+        float sample(double x, double y);
+    };
+
+} // namespace
+
+#endif // OSGEARTH_TERRAIN_CLAMPER_H

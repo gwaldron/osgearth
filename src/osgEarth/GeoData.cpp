@@ -319,6 +319,33 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
+GeoPoint::transformInPlace(const SpatialReference* srs) 
+{
+    if ( isValid() && srs )
+    {
+        osg::Vec3d out;
+        if ( _altMode == ALTMODE_ABSOLUTE )
+        {
+            if ( _srs->transform(_p, srs, out) )
+            {
+                set(srs, out, ALTMODE_ABSOLUTE);
+                return true;
+            }
+        }
+        else // if ( _altMode == ALTMODE_RELATIVE )
+        {
+            if ( _srs->transform2D(_p.x(), _p.y(), srs, out.x(), out.y()) )
+            {
+                out.z() = _p.z();
+                set(srs, out, ALTMODE_RELATIVE);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool
 GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain ) 
 {
     double z;

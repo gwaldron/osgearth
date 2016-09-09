@@ -5,7 +5,7 @@ uniform vec4 oe_tile_key;  // osgEarth TileKey
 
 // Number of LOD range. Do not increase this past 25; doing so will result in precision errors
 // and rendering artifacts when the camera is very close to the ground.
-#define LOD_COUNT 25
+#define LOD_COUNT 26
 
 const float oe_SplatRanges[LOD_COUNT] = float[](
        100000000.0, // 0
@@ -32,7 +32,8 @@ const float oe_SplatRanges[LOD_COUNT] = float[](
               25.0, // 21
               12.0, // 22
                6.0, // 23
-               3.0  // 24
+               3.0, // 24
+               1.0  // 25
     );
 
 /**

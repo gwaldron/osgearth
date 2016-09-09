@@ -1,6 +1,6 @@
 #version 330
 
-#pragma vp_entryPoint oe_splat_complex
+#pragma vp_entryPoint oe_splat_simple
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.4
 
@@ -35,7 +35,8 @@ uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
-uniform float oe_splat_scaleOffset;
+//uniform float oe_splat_scaleOffset;
+uniform int oe_splat_scaleOffsetInt;
 
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
@@ -260,8 +261,15 @@ void oe_splat_simple(inout vec4 color)
     env.slope = oe_splat_getSlope();
     env.noise = oe_splat_getNoise(noiseCoords);
     env.elevation = 0.0;
+    
+    float lod0;
+    float rangeOuter, rangeInner;
+    oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
+    vec2 tc = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
 
-    color = oe_splat_bilinear(oe_layer_tilec.st, env);
+    color = oe_splat_bilinear(tc, env);
+
+    //color = mix(color, vec4(tc.s, tc.t, 0.0, 1.0), 0.5);
 }
 
 // Main entry point for fragment shader.
@@ -278,7 +286,8 @@ void oe_splat_complex(inout vec4 color)
     env.elevation = 0.0;
 
     // quantize the scale offset so we take the hit in the FS
-    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);
+    //float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);
+    float scaleOffset = float(oe_splat_scaleOffsetInt);
         
     // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
     // it's quite possible for a single triangle to span more than 2 LODs.

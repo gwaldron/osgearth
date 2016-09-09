@@ -88,7 +88,7 @@ public:
 
         if ( !image.valid() )
         {
-            return Status::Error( Status::ResourceUnavailable, Stringify() <<  "Faild to load data from \"" << _options.url()->full() << "\"" );
+            return Status::Error( Status::ResourceUnavailable, Stringify() <<  "Failed to load data from \"" << _options.url()->full() << "\"" );
         }
 
         // calculate and store the maximum LOD for which to return data

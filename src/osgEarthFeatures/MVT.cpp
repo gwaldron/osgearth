@@ -90,11 +90,12 @@ bool
         {
             const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
+
             for (unsigned int j = 0; j < layer.features().size(); j++)
             {
                 const mapnik::vector::tile_feature &feature = layer.features().Get(j);
 
-                osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
+                osg::ref_ptr< osgEarth::Symbology::Geometry > geometry;
 
                 eGeomType geomType = static_cast<eGeomType>(feature.type());
                 if (geomType == ::Polygon)
@@ -115,7 +116,10 @@ bool
                 }
 
                 osg::ref_ptr< Feature > oeFeature = new Feature(geometry, key.getProfile()->getSRS());
-                features.push_back(oeFeature.get());                    
+                features.push_back(oeFeature.get());
+
+                // Set the layer name as "mvt_layer" so we can filter it later
+                oeFeature->set("mvt_layer", layer.name());
 
                 // Read attributes
                 for (unsigned int k = 0; k < feature.tags().size(); k+=2)
@@ -159,7 +163,7 @@ bool
 
                         StringTokenizer tok("=>");
                         StringVector tized;
-                        tok.tokenize(other_tags, tized);            
+                        tok.tokenize(other_tags, tized);
                         if (tized.size() == 3)
                         {
                             if (tized[0] == "height")
@@ -169,7 +173,7 @@ bool
                                 float height = as<float>(value, FLT_MAX);
                                 if (height != FLT_MAX)
                                 {
-                                    oeFeature->set("height", height);                                            
+                                    oeFeature->set("height", height);
                                 }
                             }
                         }
@@ -193,7 +197,7 @@ bool
                         unsigned int cmd_length = feature.geometry(k++);
                         cmd = cmd_length & ((1 << cmd_bits) - 1);
                         length = cmd_length >> cmd_bits;
-                    } 
+                    }
                     if (length > 0)
                     {
                         length--;
@@ -223,7 +227,7 @@ bool
 
                 if (geometry->getType() == Geometry::TYPE_POLYGON)
                 {
-                    geometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);                                               
+                    geometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
                 }
             }
         }

@@ -91,10 +91,19 @@ _elevUnit(0),
 _supportsGLSL(false)
 {
     _supportsGLSL = Registry::capabilities().supportsGLSL();
-
+    
+    // Encode the tile key in a uniform. Note! The X and Y components are scaled
+    // to that we don't use precision on the GPU when the values get large.
+    // If you need the raw X and Y, you must scale them back up on the GPU.
     unsigned tw, th;
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
-    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
+    
+    const float tileXYScale = 0.0625f; // 1/16
+    _tileKeyValue.set(
+        tileXYScale * (float)(key.getTileX()),
+        tileXYScale * (float)(th-key.getTileY()-1.0f),
+        (float)key.getLOD(),
+        -1.0f);
 
     _imageUnitParent = _imageUnit + 1; // temp
 

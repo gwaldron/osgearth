@@ -26,8 +26,7 @@ void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, 
 vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
 
 // from the terrain engine:
-in vec4 oe_layer_tilec;
-uniform vec4 oe_tile_key;
+in vec4 oe_layer_tilec;                     // unit tile coords
 
 // from the vertex shader:
 in vec2 oe_splat_covtc;                     // coverage texture coords
@@ -35,15 +34,12 @@ in float oe_splat_range;                    // distance from camera to vertex
 flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
 // from SplatTerrainEffect:
-uniform float oe_splat_warp;
-uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
 uniform int oe_splat_scaleOffsetInt;
 
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
-uniform float oe_splat_useBilinear; // 1=true, -1=false
 
 #ifdef SPLAT_EDIT
 uniform float oe_splat_brightness;
@@ -52,15 +48,16 @@ uniform float oe_splat_threshold;
 uniform float oe_splat_minSlope;
 #endif
 
-
+// lookup table containing the coverage value => texture index mappings
 uniform samplerBuffer oe_splat_coverageLUT;
+
 
 // reads the encoded splatting render information for a coverage value.
 // this data was encoded in Surface::createLUTBUffer().
 void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRenderInfo ri)
 {
     const int num_lods = 26;
-    const float inv255 = 1.0/255.0;
+    const float inv255 = 0.00392156862;
 
     int index = int(value)*num_lods + int(env.lod);
 
@@ -79,15 +76,6 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
     ri.minSlope     = fract(t[3])*100.0;
 }
 
-// Warps the coverage sampling coordinates to mitigate blockiness.
-vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc, in oe_SplatEnv env)
-{
-    vec2 seed = oe_splat_covtc;
-    float n1 = 2.0*env.noise.y-1.0;
-    vec2 tc = oe_splat_covtc + n1*oe_splat_warp;
-    return clamp(tc, 0.0, 1.0);
-}
-
 vec4 oe_splat_getTexel(in float index, in vec2 tc)
 {
     return texture(oe_splatTex, vec3(tc, index));
@@ -97,7 +85,7 @@ vec4 oe_splat_getTexel(in float index, in vec2 tc)
 // Returns the weighting factor in the alpha channel.
 vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env)
 {
-    float hasDetail = clamp(ri.detailIndex+1.0, 0.0, 1.0); //ri.detailIndex >= 0.0 ? 1.0 : 0.0;
+    float hasDetail = clamp(ri.detailIndex+1.0, 0.0, 1.0);
 
 #ifdef SPLAT_EDIT
     float brightness = oe_splat_brightness;
@@ -132,8 +120,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 	n = n < threshold ? 0.0 : n;
 
     // sample the texel and return it.
-    vec4 result = oe_splat_getTexel( ri.detailIndex, tc);
-    //vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc);
+    vec4 result = oe_splat_getTexel(ri.detailIndex, tc);
     return vec4(result.rgb, hasDetail*n);
 }
 

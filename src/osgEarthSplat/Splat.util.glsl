@@ -2,8 +2,6 @@
 
 #pragma vp_location fragment_coloring
 
-uniform vec4 oe_tile_key;  // osgEarth TileKey
-
 // Number of LOD range. Do not increase this past 25; doing so will result in precision errors
 // and rendering artifacts when the camera is very close to the ground.
 #define LOD_COUNT 26

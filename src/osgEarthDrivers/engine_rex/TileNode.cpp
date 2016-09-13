@@ -227,7 +227,6 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
         (float)_key.getLOD(),
         width));
 
-
     // update the morph constants
 
     float start = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;

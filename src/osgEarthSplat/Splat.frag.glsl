@@ -21,7 +21,9 @@
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
-vec2 oe_splat_getSplatCoords(in vec2 coords, in float lod);
+
+// from terrain SDK:
+vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
 
 // from the terrain engine:
 in vec4 oe_layer_tilec;
@@ -240,7 +242,7 @@ vec4 oe_splat_getNoise(in vec2 tc)
 void oe_splat_simple(inout vec4 color)
 {
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD);
+    vec2 noiseCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, noiseLOD);
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -251,7 +253,7 @@ void oe_splat_simple(inout vec4 color)
     float lod0;
     float rangeOuter, rangeInner;
     oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
-    vec2 tc = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
+    vec2 tc = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
 
     color = oe_splat_bilinear(tc, env);
 
@@ -263,7 +265,7 @@ void oe_splat_complex(inout vec4 color)
 {
     // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD); //TODO: move to VS for slight speedup
+    vec2 noiseCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, noiseLOD); //TODO: move to VS for slight speedup
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -282,11 +284,11 @@ void oe_splat_complex(inout vec4 color)
     oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
     
     // Sample the two LODs:
-    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + scaleOffset);
+    vec2 tc0 = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + scaleOffset);
     env.lod = lod0;
     vec4 texel0 = oe_splat_bilinear(tc0, env);
     
-    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
+    vec2 tc1 = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
     env.lod = lod0+1.0;
     vec4 texel1 = oe_splat_bilinear(tc1, env);
 

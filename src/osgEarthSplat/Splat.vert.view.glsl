@@ -25,6 +25,7 @@ void oe_splat_vertex_view(inout vec4 VertexVIEW)
     // for any super-sampling that might be in effect for the current LOD.
     oe_splat_covtc = (COVERAGE_TEXTURE_MATRIX * oe_layer_tilec).st;
 
-    // precalculate texture size.
+    // Precalculate the size of the coverage texture. This is faster than
+    // calling textureSize per pixel in the fragment shader.
     oe_splat_coverageTexSize = textureSize(oe_splat_coverageTex, 0).x;
 }

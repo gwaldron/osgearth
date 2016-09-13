@@ -65,9 +65,3 @@ oe_splat_getLodBlend(in float range, out float out_LOD0, out float out_rangeOute
     out_rangeOuter = oe_SplatRanges[int(out_LOD0)];
     out_rangeInner = oe_SplatRanges[int(out_LOD0)+1];
 }
-
-float
-oe_splat_getRangeForLod(in float lod)
-{
-    return oe_SplatRanges[int(lod)];
-}

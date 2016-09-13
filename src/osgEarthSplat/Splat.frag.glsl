@@ -274,7 +274,6 @@ void oe_splat_complex(inout vec4 color)
     env.elevation = 0.0;
 
     // quantize the scale offset so we take the hit in the FS
-    //float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);
     float scaleOffset = float(oe_splat_scaleOffsetInt);
         
     // Calculate the 2 LODs we need to blend. We have to do this in the FS because 

@@ -1,4 +1,5 @@
-#version 110
+#version $GLSL_VERSION_STR
+
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex 
 //               noise functions.

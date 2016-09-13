@@ -1,4 +1,5 @@
-#version 120
+#version $GLSL_VERSION_STR
+
 #pragma vp_location fragment_coloring
 
 uniform vec4 oe_tile_key;  // osgEarth TileKey

@@ -40,7 +40,7 @@ using namespace osgEarth::Util;
 ShadowCaster::ShadowCaster() :
 _size         ( 2048 ),
 _texImageUnit ( 7 ),
-_blurFactor   ( 0.0f ),
+_blurFactor   ( 0.001f ),
 _color        ( 0.4f ),
 _traversalMask( ~0 )
 {

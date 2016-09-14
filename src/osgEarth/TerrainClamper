@@ -24,7 +24,6 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
-#include <osgEarth/ElevationQuery>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Timer>
 #include <map>
@@ -43,7 +42,7 @@ namespace osgEarth
         /** ctor */
         TerrainClamper();
 
-        /** Sets the map to use for clamping. Mandatory. */
+        /** Sets the map to use for clamping. */
         void setMap(const Map* map);
 
         /** Creates a terrain envelope to use for elevation queries in a certain area. */
@@ -70,7 +69,7 @@ namespace osgEarth
         {
         public:
             Tile() : _status(STATUS_EMPTY) { }
-            TileKey             _key;
+            TileKey             _key;           // key used to request this tile
             Bounds              _bounds;
             GeoHeightField      _hf;
             OpenThreads::Atomic _status;
@@ -137,18 +136,26 @@ namespace osgEarth
     };
 
 
-    /**s
+    /**
      * Set of terrain tiles corresponding to a geographic extent that the pager
-     * uses to clamp a feature set.
+     * uses to clamp a feature set. You cannot create this object directly;
+     * instead call TerrainClamper::createEnvelope().
      */
     class OSGEARTH_EXPORT TerrainEnvelope : public osg::Referenced
     {
     public:
 
         /**
-         * Gets a single elevation, or returns NO_DATA_VALUE upon failure
+         * Gets a single elevation, or returns NO_DATA_VALUE upon failure.
+         * The Z value is ignored.
          */
-        float getElevation(const osg::Vec3d& point);
+        float getElevation(double x, double y);
+
+        /**
+         * Gets a single elevation along with the resolution of the data from
+         * which that sample was taken.
+         */
+        std::pair<float, float> getElevationAndResolution(double x, double y);
 
         /**
          * Gets a elevation value for each input point and puts them in output.
@@ -167,18 +174,29 @@ namespace osgEarth
             const std::vector<osg::Vec3d>& points, 
             float& out_min, float& out_max);
 
+        /**
+         * The SRS that this envelope expects query points to be in
+         */
+        const SpatialReference* getSRS() const;
+
+        /**
+         * LOD at which this envelope will try to sample the elevation
+         */
+        unsigned getLOD() const { return _lod; }
+
     protected:
+        TerrainEnvelope() { }
         virtual ~TerrainEnvelope() { }
 
         TerrainClamper::QuerySet _tiles;
-        const SpatialReference* _inputSRS;
+        osg::ref_ptr<const SpatialReference> _inputSRS;
         const Profile* _mapProfile;
         unsigned _lod;
         osg::ref_ptr<TerrainClamper> _clamper;
         friend class TerrainClamper;
 
     private:
-        float sample(double x, double y);
+        bool sample(double x, double y, float& out_elevation, float& out_resolution);
     };
 
 } // namespace

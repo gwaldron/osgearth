@@ -34,7 +34,11 @@ _maxEntries( 128u )
 void
 TerrainClamper::setMap(const Map* map)
 {
+    Threading::ScopedMutexLock lock(_tilesMutex);
     _frame.setMap( map );
+    _tiles.clear();
+    _mru.clear();
+    _entries = 0u;
 }
 
 bool
@@ -217,10 +221,11 @@ TerrainClamper::createEnvelope(const SpatialReference* srs, unsigned lod)
 
 //........................................................................
 
-float
-TerrainEnvelope::sample(double x, double y)
+bool
+TerrainEnvelope::sample(double x, double y, float& out_elevation, float& out_resolution)
 {
-    float elevation = NO_DATA_VALUE;
+    out_elevation = NO_DATA_VALUE;
+    out_resolution = 0.0f;
     bool foundTile = false;
 
     GeoPoint p(_inputSRS, x, y, 0.0f, ALTMODE_ABSOLUTE);
@@ -239,8 +244,9 @@ TerrainEnvelope::sample(double x, double y)
                 foundTile = true;
 
                 // Found an intersecting tile; sample the elevation:
-                if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, elevation))
+                if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
                 {
+                    out_resolution = tile->_hf.getXInterval();
                     // got it; finished
                     break;
                 }
@@ -259,7 +265,10 @@ TerrainEnvelope::sample(double x, double y)
                 _tiles.insert(tile.get());
 
                 // Then sample the elevation:
-                tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, elevation);
+                if (tile->_hf.getElevation(0L, p.x(), p.y(), INTERP_BILINEAR, 0L, out_elevation))
+                {
+                    out_resolution = 0.5*(tile->_hf.getXInterval() + tile->_hf.getYInterval());
+                }
             }
         }
     }
@@ -269,7 +278,23 @@ TerrainEnvelope::sample(double x, double y)
     }
 
     // push the result, even if it was not found and it's NO_DATA_VALUE
+    return out_elevation != NO_DATA_VALUE;
+}
+
+float
+TerrainEnvelope::getElevation(double x, double y)
+{
+    float elevation, resolution;
+    sample(x, y, elevation, resolution);
     return elevation;
+}
+
+std::pair<float, float>
+TerrainEnvelope::getElevationAndResolution(double x, double y)
+{
+    float elevation, resolution;
+    sample(x, y, elevation, resolution);
+    return std::make_pair(elevation, resolution);
 }
 
 unsigned
@@ -284,7 +309,8 @@ TerrainEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
     // for each input point:
     for (std::vector<osg::Vec3d>::const_iterator v = input.begin(); v != input.end(); ++v)
     {
-        float elevation = sample(v->x(), v->y());
+        float elevation, resolution;
+        sample(v->x(), v->y(), elevation, resolution);
         output.push_back(elevation);
         if (elevation != NO_DATA_VALUE)
             ++count;
@@ -321,8 +347,9 @@ TerrainEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
     {
         centroid += *v;
 
-        float elevation = sample(v->x(), v->y());
-        if ( elevation != NO_DATA_VALUE )
+        float elevation, resolution;
+        
+        if (sample(v->x(), v->y(), elevation, resolution))
         {
             if (elevation < min) min = elevation;
             if (elevation > max) max = elevation;
@@ -335,8 +362,8 @@ TerrainEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
     {
         centroid /= input.size();
 
-        float elevation = sample(centroid.x(), centroid.y());
-        if (elevation != NO_DATA_VALUE)
+        float elevation, resolution;
+        if (sample(centroid.x(), centroid.y(), elevation, resolution))
         {
             if (elevation < min) min = elevation;
             if (elevation > max) max = elevation;
@@ -344,4 +371,10 @@ TerrainEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
     }
 
     return (min <= max);
+}
+
+const SpatialReference*
+TerrainEnvelope::getSRS() const
+{
+    return _inputSRS.get();
 }

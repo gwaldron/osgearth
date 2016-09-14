@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/TerrainClamper>
 
 using namespace osgEarth;
 
@@ -89,6 +90,12 @@ MapFrame::setMap(const Map* map)
     _highestMinLevel = 0;
 
     sync();
+}
+
+TerrainClamper*
+MapFrame::getClamper() const
+{
+    return _map->getClamper();
 }
 
 bool

@@ -33,13 +33,11 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/ElevationQuery>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoTransform>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/ExampleResources>
 #include <osg/TriangleFunctor>
 #include <osgDB/WriteFile>

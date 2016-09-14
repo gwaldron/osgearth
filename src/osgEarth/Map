@@ -36,6 +36,7 @@
 namespace osgEarth
 {
     class MapInfo;
+    class TerrainClamper;
 
     /**
      * Map is the main data model that the MapNode will render. It is a
@@ -272,6 +273,11 @@ namespace osgEarth
          */
         void setLayersFromMap( const Map* map );
 
+        /**
+         * Access to an elevation sampling service
+         */
+        TerrainClamper* getClamper() const;
+
     public:
         /**
          * Gets the user-provided options structure stored in this map.
@@ -357,6 +363,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<TerrainClamper> _clamper;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

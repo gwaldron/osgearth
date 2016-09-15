@@ -108,7 +108,7 @@ OceanNode::traverse(osg::NodeVisitor& nv)
             _srs->transformFromWorld(eye, local, &altitude);
 
             // check against max altitude:
-            if ( _options.maxAltitude().isSet() && altitude > *_options.maxAltitude() )
+            if ( altitude > _options.maxAltitude().get() )
                 return;
             
             // Set the near clip plane to account for an ocean sphere.

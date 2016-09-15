@@ -40,6 +40,9 @@ namespace osgEarth
      * be anywhere geographically, but the algorithm will optimize lots of
      * queries in a particular area (like a terrain tile).
      *
+     * Each Map contains an ElevationPool you can access for queries against
+     * that Map. The ElevationQuery object uses it under the hood.
+     *
      * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
      * float z = envelope->getElevation(point);
      */

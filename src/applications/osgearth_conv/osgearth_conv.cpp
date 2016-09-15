@@ -195,6 +195,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *      --in driver gdal
  *      --in url world.tif
  *      --out driver mbtiles
+ *      --out format image/png
  *      --out filename world.db
  *
  * The "in" properties come from the GDALOptions getConfig method. The
@@ -345,6 +346,12 @@ main(int argc, char** argv)
         if (heightFields)
         {
             ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
+            Status layerStatus = layer->open();
+            if (layerStatus.isError())
+            {
+                OE_WARN << "Failed to create input ElevationLayer " << layerStatus.message() << std::endl;
+                return -1;
+            }
             if ( !layer->getProfile() || !layer->getProfile()->isOK() )
             {
                 OE_WARN << LC << "Input profile is not valid" << std::endl;
@@ -355,6 +362,12 @@ main(int argc, char** argv)
         else
         {
             ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
+            Status layerStatus = layer->open();
+            if (layerStatus.isError())
+            {
+                OE_WARN << "Failed to create input ImageLayer " << layerStatus.message() << std::endl;
+                return -1;
+            }
             if ( !layer->getProfile() || !layer->getProfile()->isOK() )
             {
                 OE_WARN << LC << "Input profile is not valid" << std::endl;

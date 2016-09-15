@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TERRAIN_CLAMPER_H
-#define OSGEARTH_TERRAIN_CLAMPER_H
+#ifndef OSGEARTH_ELEVATION_POOL_H
+#define OSGEARTH_ELEVATION_POOL_H
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
@@ -31,22 +31,29 @@
 namespace osgEarth
 {
     // defined at the end of this file
-    class TerrainEnvelope;
+    class ElevationEnvelope;
 
     /**
-     * Shared terrain clamping service.
+     * A pool of elevation data that can be used to manage regional elevation
+     * data queries. To use this, call createEnvelope() and use that object
+     * to make your elevation queries at a particular LOD. The queries can
+     * be anywhere geographically, but the algorithm will optimize lots of
+     * queries in a particular area (like a terrain tile).
+     *
+     * ElevationSampler* sampler = pool->createEnvelope(srs, lod);
+     * float z = sampler->getElevation(point);
      */
-    class OSGEARTH_EXPORT TerrainClamper : public osg::Referenced
+    class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
     {
     public:
         /** ctor */
-        TerrainClamper();
+        ElevationPool();
 
         /** Sets the map to use for clamping. */
         void setMap(const Map* map);
 
-        /** Creates a terrain envelope to use for elevation queries in a certain area. */
-        TerrainEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
+        /** Creates a query envelope to use for elevation queries in a certain area. */
+        ElevationEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
 
         /** Maximum number of elevation tiles to cache */
         void setMaxEntries(unsigned maxEntries) { _maxEntries = maxEntries; }
@@ -121,7 +128,7 @@ namespace osgEarth
     protected:
 
         /** dtor - prevent stack allocation */
-        virtual ~TerrainClamper() { }
+        virtual ~ElevationPool() { }
 
         // safely popluate the tile; called when Tile._status = IN_PROGRESS
         bool fetchTileFromMap(const TileKey& key, Tile* tile);
@@ -132,7 +139,7 @@ namespace osgEarth
         // safely fetch a tile from the central repo, loading from map if necessary
         bool tryTile(const TileKey& key, osg::ref_ptr<Tile>& output);
 
-        friend class TerrainEnvelope;
+        friend class ElevationEnvelope;
     };
 
 
@@ -141,7 +148,7 @@ namespace osgEarth
      * uses to clamp a feature set. You cannot create this object directly;
      * instead call TerrainClamper::createEnvelope().
      */
-    class OSGEARTH_EXPORT TerrainEnvelope : public osg::Referenced
+    class OSGEARTH_EXPORT ElevationEnvelope : public osg::Referenced
     {
     public:
 
@@ -185,15 +192,15 @@ namespace osgEarth
         unsigned getLOD() const { return _lod; }
 
     protected:
-        TerrainEnvelope() { }
-        virtual ~TerrainEnvelope() { }
+        ElevationEnvelope() { }
+        virtual ~ElevationEnvelope() { }
 
-        TerrainClamper::QuerySet _tiles;
+        ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
         const Profile* _mapProfile;
         unsigned _lod;
-        osg::ref_ptr<TerrainClamper> _clamper;
-        friend class TerrainClamper;
+        osg::ref_ptr<ElevationPool> _clamper;
+        friend class ElevationPool;
 
     private:
         bool sample(double x, double y, float& out_elevation, float& out_resolution);
@@ -201,4 +208,4 @@ namespace osgEarth
 
 } // namespace
 
-#endif // OSGEARTH_TERRAIN_CLAMPER_H
+#endif // OSGEARTH_ELEVATION_POOL_H

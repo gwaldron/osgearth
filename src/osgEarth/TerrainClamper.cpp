@@ -22,9 +22,9 @@
 
 using namespace osgEarth;
 
-#define LC "[TerrainClamper] "
+#define LC "[ElevationPool] "
 
-TerrainClamper::TerrainClamper() :
+ElevationPool::ElevationPool() :
 _entries(0u),
 _maxEntries( 128u )
 {
@@ -32,7 +32,7 @@ _maxEntries( 128u )
 }
 
 void
-TerrainClamper::setMap(const Map* map)
+ElevationPool::setMap(const Map* map)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     _frame.setMap( map );
@@ -42,7 +42,7 @@ TerrainClamper::setMap(const Map* map)
 }
 
 bool
-TerrainClamper::fetchTileFromMap(const TileKey& key, Tile* tile)
+ElevationPool::fetchTileFromMap(const TileKey& key, Tile* tile)
 {
     // TODO: parameterize me
     const int tileSize = 33;
@@ -73,7 +73,7 @@ TerrainClamper::fetchTileFromMap(const TileKey& key, Tile* tile)
 }
 
 bool
-TerrainClamper::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
+ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
 {
     // first see whether the tile is available
     _tilesMutex.lock();
@@ -159,7 +159,7 @@ TerrainClamper::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
 }
 
 bool
-TerrainClamper::getTile(const TileKey& key, osg::ref_ptr<TerrainClamper::Tile>& output)
+ElevationPool::getTile(const TileKey& key, osg::ref_ptr<ElevationPool::Tile>& output)
 {
     // Synchronize the MapFrame to its Map; if there's an update,
     // clear out the internal cache and MRU.
@@ -208,10 +208,10 @@ TerrainClamper::getTile(const TileKey& key, osg::ref_ptr<TerrainClamper::Tile>& 
     return tile.valid();
 }
 
-TerrainEnvelope*
-TerrainClamper::createEnvelope(const SpatialReference* srs, unsigned lod)
+ElevationEnvelope*
+ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
-    TerrainEnvelope* e = new TerrainEnvelope();
+    ElevationEnvelope* e = new ElevationEnvelope();
     e->_inputSRS = srs;
     e->_mapProfile = _frame.getProfile();
     e->_lod = lod;
@@ -222,7 +222,7 @@ TerrainClamper::createEnvelope(const SpatialReference* srs, unsigned lod)
 //........................................................................
 
 bool
-TerrainEnvelope::sample(double x, double y, float& out_elevation, float& out_resolution)
+ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_resolution)
 {
     out_elevation = NO_DATA_VALUE;
     out_resolution = 0.0f;
@@ -233,11 +233,11 @@ TerrainEnvelope::sample(double x, double y, float& out_elevation, float& out_res
     if (p.transformInPlace(_mapProfile->getSRS()))
     {
         // find the tile containing the point:
-        for(TerrainClamper::QuerySet::const_iterator tile_ref = _tiles.begin();
+        for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
             tile_ref != _tiles.end();
             ++tile_ref)
         {
-            TerrainClamper::Tile* tile = tile_ref->get();
+            ElevationPool::Tile* tile = tile_ref->get();
 
             if (tile->_bounds.contains(p.x(), p.y()))
             {
@@ -258,7 +258,7 @@ TerrainEnvelope::sample(double x, double y, float& out_elevation, float& out_res
         if (!foundTile)
         {
             TileKey key = _mapProfile->createTileKey(p.x(), p.y(), _lod);
-            osg::ref_ptr<TerrainClamper::Tile> tile;
+            osg::ref_ptr<ElevationPool::Tile> tile;
             if (_clamper->getTile(key, tile))
             {
                 // Got the new tile; put it in the query set:
@@ -282,7 +282,7 @@ TerrainEnvelope::sample(double x, double y, float& out_elevation, float& out_res
 }
 
 float
-TerrainEnvelope::getElevation(double x, double y)
+ElevationEnvelope::getElevation(double x, double y)
 {
     float elevation, resolution;
     sample(x, y, elevation, resolution);
@@ -290,7 +290,7 @@ TerrainEnvelope::getElevation(double x, double y)
 }
 
 std::pair<float, float>
-TerrainEnvelope::getElevationAndResolution(double x, double y)
+ElevationEnvelope::getElevationAndResolution(double x, double y)
 {
     float elevation, resolution;
     sample(x, y, elevation, resolution);
@@ -298,7 +298,7 @@ TerrainEnvelope::getElevationAndResolution(double x, double y)
 }
 
 unsigned
-TerrainEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
+ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
                                std::vector<float>& output)
 {
     unsigned count = 0u;
@@ -319,9 +319,9 @@ TerrainEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
     if (count < input.size())
     {
         OE_WARN << LC << "Issue: Envelope had failed samples" << std::endl;
-        for (TerrainClamper::QuerySet::const_iterator tile_ref = _tiles.begin(); tile_ref != _tiles.end(); ++tile_ref)
+        for (ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin(); tile_ref != _tiles.end(); ++tile_ref)
         {
-            TerrainClamper::Tile* tile = tile_ref->get();
+            ElevationPool::Tile* tile = tile_ref->get();
             OE_WARN << LC << " ... tile " << tile->_bounds.toString() << std::endl;
         }
         OE_WARN << LC << std::endl;
@@ -331,7 +331,7 @@ TerrainEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
 }
 
 bool
-TerrainEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
+ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
                                      float& min, float& max)
 {
     if (input.empty())
@@ -374,7 +374,7 @@ TerrainEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
 }
 
 const SpatialReference*
-TerrainEnvelope::getSRS() const
+ElevationEnvelope::getSRS() const
 {
     return _inputSRS.get();
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -148,7 +148,7 @@ namespace
         float     warp;
         ImageUtils::PixelReader* read;
 
-        ILayer() : valid(true), read(0L) { }
+        ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f) { }
 
         ~ILayer() { if (read) delete read; }
 

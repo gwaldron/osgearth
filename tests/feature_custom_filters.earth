@@ -19,7 +19,9 @@ Shows how you can use a custom FeatureFilter, even one that is defined in an Ear
             <url>../data/world.shp</url>
 			
 			<!--Define a ChangeAttributeFilter, which is defined in the osgearth_featurefilter example.  This will change the cntry_name of all countries to osgEarthLand.-->
-			<change_attribute key="cntry_name" value="osgEarthLand"/>
+            <filters>
+                <change_attribute key="cntry_name" value="osgEarthLand"/>
+            </filters>
         </features>
 
         <styles>

@@ -46,7 +46,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _uidUniformNameID;
         unsigned _orderUniformNameID;
         unsigned _opacityUniformNameID;
-        unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
         unsigned _texMatrixParentUniformNameID;
         unsigned _texParentExistsUniformNameID;
@@ -142,17 +141,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // These methods defer functors (like stats collection) to the underlying
         // (possibly shared) geometry instance.
-        bool supports(osg::Drawable::AttributeFunctor& f) const { return true; }
-        void accept(osg::Drawable::AttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        bool supports(const osg::Drawable::AttributeFunctor& f) const { return true; }
+        void accept(osg::Drawable::AttributeFunctor& f) { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(osg::Drawable::ConstAttributeFunctor& f) const { return true; }
+        bool supports(const osg::Drawable::ConstAttributeFunctor& f) const { return true; }
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(osg::PrimitiveFunctor& f) const { return true; }
+        bool supports(const osg::PrimitiveFunctor& f) const { return true; }
         void accept(osg::PrimitiveFunctor& f) const;
         
         /** indexed functor is NOT supported since we need to apply elevation dynamically */
-        bool supports(osg::PrimitiveIndexFunctor& f) const { return false; }
+        bool supports(const osg::PrimitiveIndexFunctor& f) const { return false; }
 
     public:
         META_Object(osgEarth, TileDrawable);

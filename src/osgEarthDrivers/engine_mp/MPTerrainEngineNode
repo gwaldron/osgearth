@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/ResourceReleaser>
 
 #include "MPTerrainEngineOptions"
 #include "KeyNodeFactory"
@@ -148,8 +149,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _stateUpdateRequired;
-        bool               _rootTilesRegistered;
-        Threading::Mutex   _rootTilesRegisteredMutex;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 
@@ -159,7 +158,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
-        osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
+        //osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
+        osg::ref_ptr<ResourceReleaser> _releaser;
 
         PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
         KeyNodeFactory* getKeyNodeFactory();

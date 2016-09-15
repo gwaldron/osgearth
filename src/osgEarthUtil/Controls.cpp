@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -2377,7 +2377,8 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 ControlNode::TravSpecificData::TravSpecificData() :
 _obscured   ( true ),
 _visibleTime( 0.0 ),
-_screenPos  ( 0.0, 0.0, 0.0 )
+_screenPos  ( 0.0, 0.0, 0.0 ),
+_visitFrame(0)
 {
     //nop
 }
@@ -2446,18 +2447,25 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
     if ( _sortingEnabled && _sortByDistance )
     {
-        for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); i++) 
+        for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end();)
         {
             ControlNode* node = i->second.get();
             if ( node->getNumParents() == 0 )
             {
+              // Save the iterator and erase it before we increment it.  erase will invalidate i so we can't increment it directly.
+              ControlNodeCollection::iterator saveItr = i;
+              ++saveItr;
               _renderNodes.erase( node );
+              // Erase the current iterator
               _controlNodes.erase( i );
+              // Assign i to the incremented iterator
+              i = saveItr;
             }
             else
             {
                 ControlNode::TravSpecificData& nodeData = node->getData( context._view->getCamera() );
                 byDepth.insert( ControlNodePair(nodeData._screenPos.z(), node) );
+                i++;
             }
         }
 

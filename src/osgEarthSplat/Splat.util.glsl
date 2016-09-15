@@ -1,11 +1,10 @@
-#version 120
-#pragma vp_location fragment_coloring
+#version $GLSL_VERSION_STR
 
-uniform vec4 oe_tile_key;  // osgEarth TileKey
+#pragma vp_location fragment_coloring
 
 // Number of LOD range. Do not increase this past 25; doing so will result in precision errors
 // and rendering artifacts when the camera is very close to the ground.
-#define LOD_COUNT 25
+#define LOD_COUNT 26
 
 const float oe_SplatRanges[LOD_COUNT] = float[](
        100000000.0, // 0
@@ -32,7 +31,8 @@ const float oe_SplatRanges[LOD_COUNT] = float[](
               25.0, // 21
               12.0, // 22
                6.0, // 23
-               3.0  // 24
+               3.0, // 24
+               1.0  // 25
     );
 
 /**
@@ -63,37 +63,3 @@ oe_splat_getLodBlend(in float range, out float out_LOD0, out float out_rangeOute
     out_rangeOuter = oe_SplatRanges[int(out_LOD0)];
     out_rangeInner = oe_SplatRanges[int(out_LOD0)+1];
 }
-
-float
-oe_splat_getRangeForLod(in float lod)
-{
-    return oe_SplatRanges[int(lod)];
-}
-
-/**
- * Scales the incoming tile splat coordinates to match the requested
- * LOD level. We offset the level from the current tile key's LOD (.z)
- * because otherwise you run into single-precision jitter at high LODs.
- */
-vec2 
-oe_splat_getSplatCoords(in vec2 tc, float lod)
-{
-    float dL = oe_tile_key.z - lod;
-    float factor = exp2(dL);
-    float invFactor = 1.0/factor;
-    vec2 scale = vec2(invFactor); 
-    vec2 result = tc * scale;
-
-    // For upsampling we need to calculate an offset as well
-    vec2 a = floor(oe_tile_key.xy * invFactor);
-    vec2 b = a * factor;
-    vec2 c = (a+1.0) * factor;
-    vec2 offset = (oe_tile_key.xy-b)/(c-b);
-
-    // only apply offset if factor >= 1.0
-    float m = floor(clamp(factor,0.0,1.0));
-    result += (m*offset);
-
-    return result;
-}
-

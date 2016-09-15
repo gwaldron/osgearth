@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ResourceReleaser>
 
 using namespace osgEarth;
 
@@ -44,7 +45,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             TileModelFactory*                   modelFactory,
             TileModelCompiler*                  modelCompiler,
             TileNodeRegistry*                   liveTiles,
-            TileNodeRegistry*                   deadTiles,
+            ResourceReleaser*                   releaser,
             const MPTerrainEngineOptions&       options,
             TerrainEngine*                      terrainEngine );
 
@@ -80,7 +81,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileModelFactory>      _modelFactory;
         osg::ref_ptr<TileModelCompiler>     _modelCompiler;
         osg::ref_ptr<TileNodeRegistry>      _liveTiles;
-        osg::ref_ptr<TileNodeRegistry>      _deadTiles;
+        osg::ref_ptr<ResourceReleaser>      _releaser;
         const MPTerrainEngineOptions&       _options;
         TerrainEngine*                      _engine;
 

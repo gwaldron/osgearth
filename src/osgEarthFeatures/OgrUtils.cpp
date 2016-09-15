@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -204,11 +204,14 @@ OgrUtils::createOgrGeometry(const osgEarth::Symbology::Geometry* geometry, OGRwk
         case Geometry::TYPE_MULTI: 
             {
                 const osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
-                osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
-                requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon : 
-                    componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
-                    componentType == Geometry::TYPE_LINESTRING ? wkbMultiLineString :
-                    wkbNone;                    
+                if (multi)
+                {
+                    osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
+                    requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon : 
+                        componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
+                        componentType == Geometry::TYPE_LINESTRING ? wkbMultiLineString :
+                        wkbNone;                    
+                }
             }
             break;
         }

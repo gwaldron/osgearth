@@ -158,9 +158,11 @@ TileNode::computeBound() const
 bool
 TileNode::isDormant(const osg::FrameStamp* fs) const
 {
+    const unsigned minMinExpiryFrames = 3u;
+
     bool dormant = 
            fs &&
-           fs->getFrameNumber() - _lastTraversalFrame > _minExpiryFrames &&
+           fs->getFrameNumber() - _lastTraversalFrame > std::max(_minExpiryFrames, minMinExpiryFrames) &&
            fs->getReferenceTime() - _lastTraversalTime > _minExpiryTime;
     return dormant;
 }
@@ -208,10 +210,22 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
     const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
     float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
 
+
+    // Encode the tile key in a uniform. Note! The X and Y components are presented
+    // modulo 2^16 form so they don't overrun single-precision space.
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
 
-    _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
+    const double m = pow(2.0, 16.0);
+
+    double x = (double)_key.getTileX();
+    double y = (double)(th - _key.getTileY()-1);
+
+    _tileKeyUniform->set(osg::Vec4f(
+        (float)fmod(x, m),
+        (float)fmod(y, m),
+        (float)_key.getLOD(),
+        width));
 
     // update the morph constants
 

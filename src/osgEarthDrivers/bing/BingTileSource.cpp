@@ -290,7 +290,7 @@ public:
         supportsExtension( "osgearth_bing", "Microsoft Bing Driver" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "Microsoft Bing Driver";
     }

@@ -58,10 +58,17 @@ void oe_rexEngine_frag(inout vec4 color)
     float firstLayer = (applyImagery == 1.0 && oe_layer_order == 0) ? 1.0 : 0.0;
 
 #ifdef OE_REX_GL_BLENDING
+    
+    // Blend RGB with the incoming color:
+    //color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);
 
-    // If this is the first image layer, simply replace the color with the texture.
-    // Otherwise, blend the texture with the incoming color value.
-    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);
+    // If this is a first image layer, use the max alpha; otherwise just leave it
+    // to GL blending
+    if (firstLayer == 1.0) {
+        color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);
+        color.a = max(color.a, texel.a);
+    }
+    else color = texel;
 
 #else
 

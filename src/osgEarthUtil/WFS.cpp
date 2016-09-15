@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -63,8 +63,12 @@ WFSCapabilities::getFeatureTypeByName(const std::string& name)
 #define ATTR_MAXY              "maxy"
 
 /**************************************************************************************/
-WFSFeatureType::WFSFeatureType()
+WFSFeatureType::WFSFeatureType() :
+_tiled(false),
+_maxLevel(0),
+_firstLevel(0)
 {    
+    //nop
 }
 /**************************************************************************************/
 

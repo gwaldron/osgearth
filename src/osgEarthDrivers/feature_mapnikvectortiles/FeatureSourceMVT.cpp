@@ -47,7 +47,8 @@ public:
       FeatureSource( options ),
       _options     ( options ),
       _minLevel(0),
-      _maxLevel(14)
+      _maxLevel(14),
+      _database(0L)
     {
         _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
         if (!_compressor.valid())
@@ -296,7 +297,7 @@ public:
         supportsExtension( "osgearth_feature_mapnikvectortiles", "Mapnik Vector Tiles feature driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "Mapnik Vector Tiles Feature Reader";
     }

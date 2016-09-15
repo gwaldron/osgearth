@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -55,7 +55,7 @@ namespace osgEarth { namespace Splat
         typedef std::vector<Boundary> Boundaries;
 
     public:
-        Zone() { }
+        Zone() : _uid(0) { }
 
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }

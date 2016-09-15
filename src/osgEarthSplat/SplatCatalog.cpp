@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -334,7 +334,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     }
 
     // Create the texture array.
-    if ( imagesInOrder.size() > 0 )
+    if ( imagesInOrder.size() > 0 && firstImage )
     {
         out._texture = new osg::Texture2DArray();
         out._texture->setTextureSize( firstImage->s(), firstImage->t(), imagesInOrder.size() );

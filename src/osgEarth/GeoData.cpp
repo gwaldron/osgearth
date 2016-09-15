@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -316,6 +316,33 @@ GeoPoint::transform(const SpatialReference* outSRS) const
         }
     }
     return GeoPoint::INVALID;
+}
+
+bool
+GeoPoint::transformInPlace(const SpatialReference* srs) 
+{
+    if ( isValid() && srs )
+    {
+        osg::Vec3d out;
+        if ( _altMode == ALTMODE_ABSOLUTE )
+        {
+            if ( _srs->transform(_p, srs, out) )
+            {
+                set(srs, out, ALTMODE_ABSOLUTE);
+                return true;
+            }
+        }
+        else // if ( _altMode == ALTMODE_RELATIVE )
+        {
+            if ( _srs->transform2D(_p.x(), _p.y(), srs, out.x(), out.y()) )
+            {
+                out.z() = _p.z();
+                set(srs, out, ALTMODE_RELATIVE);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool

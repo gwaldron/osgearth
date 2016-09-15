@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -73,6 +73,8 @@ struct MyMainWindow : public QMainWindow, public ViewController
     MyMainWindow(osg::ArgumentParser& args, osg::Node* scene) 
         : _viewer(args), _scene(scene)
     {
+        _viewer.setThreadingModel(_viewer.SingleThreaded);
+
         // we have to add a starting view, otherwise the CV will automatically
         // mark itself as done :/
         addView();

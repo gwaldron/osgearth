@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,9 +20,11 @@
 
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
-#else
+#elif defined(__APPLE__) || defined(__LINUX__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 #   include <unistd.h>
 #   include <sys/syscall.h>
+#else
+#   include <pthread.h>
 #endif
 
 using namespace osgEarth::Threading;
@@ -40,7 +42,14 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   return ::syscall(SYS_thread_selfid);
 #elif __ANDROID__
   return gettid();
-#else
+#elif __LINUX__
   return (unsigned)::syscall(SYS_gettid);
+#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+  long  tid;
+  syscall(SYS_thr_self, &tid);
+  return (unsigned)tid;
+#else
+  /* :XXX: this truncates to 32 bits, but better than nothing */
+  return (unsigned)pthread_self();
 #endif
 }

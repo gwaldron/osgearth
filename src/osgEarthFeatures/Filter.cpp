@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -115,9 +115,11 @@ FeatureFilterRegistry::create(const Config& conf, const osgDB::Options* dbo)
 } 
 
 const ConfigOptions&
-FeatureFilterDriver::getConfigOptions(const osgDB::Options* dbo) const
+FeatureFilterDriver::getConfigOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const ConfigOptions*>( dbo->getPluginData(FEATURE_FILTER_OPTIONS_TAG) );
+    static ConfigOptions s_default;
+    const void* data = options->getPluginData(FEATURE_FILTER_OPTIONS_TAG);
+    return data ? *static_cast<const ConfigOptions*>(data) : s_default;
 }
 
 /********************************************************************************/

@@ -35,6 +35,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class SelectionInfo
     {
     public:
+        SelectionInfo() : _numLods(0), _uiFirstLOD(0) { }
+
         bool initialized(void) const;
         void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
 

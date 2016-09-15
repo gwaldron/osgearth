@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -89,7 +89,7 @@ int
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
         << "        [--mt]                          ; Use multithreading to process the tiles." << std::endl
-        << "        [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
+        << "        [--concurrency]                 ; The number of threads or processes to use if --mp or --mt are provided." << std::endl
         << "        [--verbose]                     ; Displays progress of the seed operation" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl

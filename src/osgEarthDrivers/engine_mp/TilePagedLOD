@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osg/PagedLOD>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/ResourceReleaser>
 
 using namespace osgEarth;
 
@@ -42,7 +43,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TilePagedLOD(
             const UID&        engineUID,
             TileNodeRegistry* liveTiles,
-            TileNodeRegistry* deadTiles);
+            ResourceReleaser* releaser);
 
         /**
          * Sets a bounding box and localization matrix that will allow
@@ -81,7 +82,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:
         osg::ref_ptr<TileNodeRegistry> _live;
-        osg::ref_ptr<TileNodeRegistry> _dead;
+        osg::ref_ptr<ResourceReleaser> _releaser;
         UID                            _engineUID;
         Threading::Mutex               _updateMutex;
         std::vector<osg::BoundingBox>  _childBBoxes;

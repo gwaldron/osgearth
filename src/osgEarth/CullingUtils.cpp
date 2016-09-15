@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -252,7 +252,8 @@ namespace
     {
         ComputeClusterCullingParams( const osg::Vec3d& ecefControlPoint )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _minDeviation( 1.0 )
+              _minDeviation( 1.0 ),
+              _maxOffset(0)
         {
             _ecefControl = ecefControlPoint;
             _ecefNormal = ecefControlPoint;

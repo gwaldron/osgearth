@@ -171,7 +171,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
 
-    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, mainHF, progress))
+    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, mainHF, progress) && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );

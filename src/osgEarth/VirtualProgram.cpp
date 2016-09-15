@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -703,7 +703,8 @@ _inherit           ( rhs._inherit ),
 _inheritSet        ( rhs._inheritSet ),
 _logShaders        ( rhs._logShaders ),
 _logPath           ( rhs._logPath ),
-_template          ( osg::clone(rhs._template.get()) )
+_template          ( osg::clone(rhs._template.get()) ),
+_acceptCallbacksVaryPerFrame( rhs._acceptCallbacksVaryPerFrame )
 {    
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
@@ -1685,14 +1686,16 @@ void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerF
 
 PolyShader::PolyShader() :
 _dirty( true ),
-_location( ShaderComp::LOCATION_UNDEFINED )
+_location( ShaderComp::LOCATION_UNDEFINED ),
+_nominalType(osg::Shader::VERTEX)
 {
     //nop
 }
 
 PolyShader::PolyShader(osg::Shader* shader) :
 _location( ShaderComp::LOCATION_UNDEFINED ),
-_nominalShader( shader )
+_nominalShader( shader ),
+_nominalType(osg::Shader::VERTEX)
 {
     _dirty = shader != 0L;
     if ( shader )
@@ -1701,9 +1704,6 @@ _nominalShader( shader )
 
         // extract the source before preprocessing:
         _source = shader->getShaderSource();
-
-        // then preprocess the shader:
-        //ShaderPreProcessor::run( shader );
     }
 }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ namespace
         unsigned _maxSize;
         T* _current;
 
-        Collector() : _current(0L) { }
+        Collector() : _current(0L), _newPrimSets(0L), _maxSize(0u) { }
 
         void operator()( unsigned i0, unsigned i1, unsigned i2 )
         {

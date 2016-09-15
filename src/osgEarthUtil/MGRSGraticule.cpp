@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -562,18 +562,22 @@ namespace osgEarth { namespace Util
     class MGRSGraticuleFactory : public osgDB::ReaderWriter
     {
     public:
-        virtual const char* className()
+        MGRSGraticuleFactory()
         {
             supportsExtension( MGRS_GRATICULE_EXTENSION, "osgEarth MGRS graticule" );
+        }
+
+        const char* className() const
+        {
             return "osgEarth MGRS graticule LOD loader";
         }
 
-        virtual bool acceptsExtension(const std::string& extension) const
+        bool acceptsExtension(const std::string& extension) const
         {
             return osgDB::equalCaseInsensitive(extension, MGRS_GRATICULE_EXTENSION);
         }
 
-        virtual ReadResult readNode(const std::string& uri, const Options* options) const
+        ReadResult readNode(const std::string& uri, const Options* options) const
         {        
             std::string ext = osgDB::getFileExtension( uri );
             if ( !acceptsExtension( ext ) )

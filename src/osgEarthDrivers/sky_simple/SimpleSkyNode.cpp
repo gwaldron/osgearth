@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -679,7 +679,10 @@ SimpleSkyNode::makeMoon()
     }
 }
 
-SimpleSkyNode::StarData::StarData(std::stringstream &ss)
+SimpleSkyNode::StarData::StarData(std::stringstream &ss) :
+right_ascension(0.0),
+declination(0.0),
+magnitude(0.0)
 {
     std::getline( ss, name, ',' );
     std::string buff;

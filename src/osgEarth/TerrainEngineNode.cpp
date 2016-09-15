@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -120,13 +120,11 @@ _initStage               ( INIT_NONE ),
 _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
-_requireParentTextures   ( false )
+_requireParentTextures   ( false ),
+_redrawRequired          ( true )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
-
-    // So we can draw coplanar geometry on flat ground if necessary.
-    //this->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 }
 
 TerrainEngineNode::~TerrainEngineNode()

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 namespace osgEarth
 {
     class MapInfo;
+    class ElevationPool;
 
     /**
      * Map is the main data model that the MapNode will render. It is a
@@ -272,6 +273,11 @@ namespace osgEarth
          */
         void setLayersFromMap( const Map* map );
 
+        /**
+         * Access to an elevation sampling pool tied to this map
+         */
+        ElevationPool* getElevationPool() const;
+
     public:
         /**
          * Gets the user-provided options structure stored in this map.
@@ -357,6 +363,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<ElevationPool> _elevationPool;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -395,7 +395,6 @@ namespace osgEarth
         {
             ShaderEntry();
             bool accept(const osg::State& state) const;
-            //osg::ref_ptr<osg::Shader>                _shader;
             osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
@@ -414,7 +413,6 @@ namespace osgEarth
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
 
-        //typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
         typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
@@ -497,10 +495,6 @@ namespace osgEarth
         std::string _logPath;
 
         AttribAliasMap _attribAliases;
-
-        // whether to use the "attribute stack memory" feature. default = true.
-        // see below.
-        bool _useStackMemory;
 
         bool _acceptCallbacksVaryPerFrame;
 

@@ -81,9 +81,9 @@ SET(LIB_PUBLIC_HEADERS
     DrapingTechnique
     DrawInstanced
     ECEF
-    ElevationField
     ElevationLayer
     ElevationLOD
+    ElevationPool
     ElevationQuery
     Export
     Extension
@@ -248,9 +248,9 @@ set(TARGET_SRC
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
-    ElevationField.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
+    ElevationPool.cpp
     ElevationQuery.cpp
     Extension.cpp
     FadeEffect.cpp

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -164,13 +164,10 @@ Style buildStyle( const osg::Vec4 &color, float width )
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
     ls->stroke()->width() = width;        
-
-
-    /*
+    
     AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
     as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     as->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-    */
 
     style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Red;
 

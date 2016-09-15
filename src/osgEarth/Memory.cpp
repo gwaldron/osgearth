@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -65,7 +65,7 @@ using namespace osgEarth;
  * determined on this OS.
  */
 unsigned
-Memory::getProcessPeakUsage()
+Memory::getProcessPeakPhysicalUsage()
 {
 #if defined(_WIN32)
     /* Windows -------------------------------------------------- */
@@ -110,12 +110,12 @@ Memory::getProcessPeakUsage()
  * in bytes, or zero if the value cannot be determined on this OS.
  */
 unsigned
-Memory::getProcessUsage()
+Memory::getProcessPhysicalUsage()
 {
 #if defined(_WIN32)
     /* Windows -------------------------------------------------- */
-    PROCESS_MEMORY_COUNTERS info;
-    GetProcessMemoryInfo( GetCurrentProcess( ), &info, sizeof(info) );
+    PROCESS_MEMORY_COUNTERS_EX info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), (PROCESS_MEMORY_COUNTERS*)&info, sizeof(info) );
     return (size_t)info.WorkingSetSize;
 
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -144,5 +144,32 @@ Memory::getProcessUsage()
 #else
     /* AIX, BSD, Solaris, and Unknown OS ------------------------ */
     return (size_t)0L;          /* Unsupported. */
+#endif
+}
+
+unsigned
+Memory::getProcessPrivateUsage()
+{
+#if defined(_WIN32)
+    /* Windows -------------------------------------------------- */
+    PROCESS_MEMORY_COUNTERS_EX info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), (PROCESS_MEMORY_COUNTERS*)&info, sizeof(info) );
+    return (size_t)info.PrivateUsage;
+#else
+    return (size_t)0L;
+#endif
+}
+
+
+unsigned
+Memory::getProcessPeakPrivateUsage()
+{
+#if defined(_WIN32)
+    /* Windows -------------------------------------------------- */
+    PROCESS_MEMORY_COUNTERS_EX info;
+    GetProcessMemoryInfo( GetCurrentProcess( ), (PROCESS_MEMORY_COUNTERS*)&info, sizeof(info) );
+    return (size_t)info.PeakPagefileUsage;
+#else
+    return (size_t)0L;
 #endif
 }

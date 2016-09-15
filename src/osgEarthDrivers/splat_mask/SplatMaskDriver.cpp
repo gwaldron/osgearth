@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -186,12 +186,12 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
                 supportsExtension( "osgearth_splat_mask", "Detail texture splat mask generator" );
             }
 
-            virtual const char* className()
+            const char* className() const
             {
                 return "Detail Splat Mask Driver";
             }
 
-            virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+            ReadResult readObject(const std::string& file_name, const Options* options) const
             {
                 if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                     return ReadResult::FILE_NOT_HANDLED;

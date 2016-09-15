@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
 
@@ -89,6 +90,12 @@ MapFrame::setMap(const Map* map)
     _highestMinLevel = 0;
 
     sync();
+}
+
+ElevationPool*
+MapFrame::getElevationPool() const
+{
+    return _map->getElevationPool();
 }
 
 bool

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -194,7 +194,9 @@ SkyNode::create(const std::string& driver, MapNode* mapNode)
 const SkyOptions&
 SkyDriver::getSkyOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const SkyOptions*>( options->getPluginData(SKY_OPTIONS_TAG) );
+    static SkyOptions s_default;
+    const void* data = options->getPluginData(SKY_OPTIONS_TAG);
+    return data ? *static_cast<const SkyOptions*>(data) : s_default;
 }
 
 

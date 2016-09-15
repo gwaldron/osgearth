@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -124,7 +124,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         class NormalData
         {
         public:
-            NormalData() : _fallbackData(true) { }
+            NormalData() : _fallbackData(true), _unit(0) { }
             NormalData(const NormalData& rhs);
 
             virtual ~NormalData() { }
@@ -177,7 +177,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         class ColorData
         {
         public:
-            ColorData() : _fallbackData(true) { }
+            ColorData() : _fallbackData(true), _order(0), _hasAlpha(false) { }
 
             /** Copy ctor - shallow */
             ColorData(const ColorData& rhs);
@@ -191,9 +191,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 osg::Image*                 image,
                 GeoLocator*                 locator,
                 bool                        fallbackData =false );
-    
-            void resizeGLObjectBuffers(unsigned maxSize);
-            void releaseGLObjects(osg::State* state) const;
 
 
             osgEarth::UID getUID() const {

@@ -38,7 +38,6 @@ EngineContext::EngineContext(const Map*                     map,
                              Loader*                        loader,
                              Unloader*                      unloader,
                              TileNodeRegistry*              liveTiles,
-                             TileNodeRegistry*              deadTiles,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
                              const SelectionInfo&           selectionInfo,
@@ -49,11 +48,12 @@ _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _unloader      ( unloader ),
 _liveTiles     ( liveTiles ),
-_deadTiles     ( deadTiles ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
-_tilePatchCallbacks( tilePatchCallbacks )
+_tilePatchCallbacks( tilePatchCallbacks ),
+_tick(0),
+_tilesLastCull(0)
 {
     _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -56,6 +56,7 @@ public:
         }
         
         _layer = new ElevationLayer(*_options.elevationLayer() );
+        _layer->open();
 
         setProfile(_layer->getProfile());
 
@@ -144,7 +145,7 @@ public:
         supportsExtension( "osgearth_colorramp", "Color ramp driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "ColorRamp Image Driver";
     }

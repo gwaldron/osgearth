@@ -5,18 +5,15 @@ at a given levels of detail.
 Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of service.
 -->
 
-<map name="Yahoo Levels" type="geocentric" version="2">
+<map name="Levels" type="geocentric" version="2">
 
-    <image name="mapquest_open_aerial" driver="xyz" max_level="5">
-        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-        <profile>spherical-mercator</profile>
+    <image driver="gdal" name="world-tiff" max_level="5">
+        <url>../data/world.tif</url>
         <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
-	
-    <image name="mapquest_osm" driver="xyz" min_level="6">
-        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
-        <profile>global-mercator</profile>
+    
+    <image name="readymap_imagery" driver="tms" min_level="6">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-   
+    
 </map>

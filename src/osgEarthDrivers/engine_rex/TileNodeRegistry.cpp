@@ -176,44 +176,7 @@ TileNodeRegistry::remove( TileNode* tile )
         removeSafely( tile->getTileKey() );
     }
 }
-
-void
-TileNodeRegistry::clear()
-{
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
-    _tiles.clear();
-}
-
-void
-TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
-{
-    if ( tile )
-    {
-        // ref just in case remove() is the last reference
-        osg::ref_ptr<TileNode> tileSafe = tile;
-        remove( tile );
-        if ( destination )
-            destination->add( tileSafe.get() );
-    }
-}
-
-void
-TileNodeRegistry::moveAll(TileNodeRegistry* destination)
-{
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
-
-    if ( destination )
-    {
-        for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
-        {
-            if ( i->second.tile.valid() )
-                destination->add( i->second.tile.get() );
-        }
-    }
-
-    _tiles.clear();
-}
-    
+  
 
 bool
 TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
@@ -293,4 +256,23 @@ TileNodeRegistry::takeAny()
     osg::ref_ptr<TileNode> tile = _tiles.begin()->second.tile.get();
     removeSafely( tile->getTileKey() );
     return tile.release();
+}
+
+void
+TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
+{
+    ResourceReleaser::ObjectList objects;
+    {
+        Threading::ScopedWriteLock exclusive(_tilesMutex);
+
+        for (TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i)
+        {
+            objects.push_back(i->second.tile.get());
+        }
+
+        _tiles.clear();
+        _notifiers.clear();
+    }
+
+    releaser->push(objects);
 }

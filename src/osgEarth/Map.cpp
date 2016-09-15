@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
+#include <osgEarth/ElevationPool>
 #include <iterator>
 
 using namespace osgEarth;
@@ -102,11 +103,21 @@ _dataModelRevision   ( 0 )
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
     _elevationLayerCB = new ElevationLayerCB(this);
+
+    // elevation sampling
+    _elevationPool = new ElevationPool();
+    _elevationPool->setMap( this );
 }
 
 Map::~Map()
 {
     OE_DEBUG << "~Map" << std::endl;
+}
+
+ElevationPool*
+Map::getElevationPool() const
+{
+    return _elevationPool.get();
 }
 
 void

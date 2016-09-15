@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,7 @@ namespace osgEarth { namespace Detail
             supportsExtension( "osgearth_detail", "osgEarth Detail Texture Extension" );
         }
         
-        const char* className() {
+        const char* className() const {
             return "osgEarth Detail Texture Extension";
         }
 

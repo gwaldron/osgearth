@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,14 +44,14 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileModelFactory*             modelFactory,
                                            TileModelCompiler*            modelCompiler,
                                            TileNodeRegistry*             liveTiles,
-                                           TileNodeRegistry*             deadTiles,
+                                           ResourceReleaser*             releaser,
                                            const MPTerrainEngineOptions& options,
                                            TerrainEngine*                engine ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
-_deadTiles       ( deadTiles ),
+_releaser        ( releaser ),
 _options         ( options ),
 _engine          ( engine )
 {
@@ -113,7 +113,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
     if ( prepareForChildren )
     {
         osg::BoundingSphere bs = tileNode->getBound();
-        TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles, _deadTiles );
+        TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles.get(), _releaser.get() );
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
@@ -298,7 +298,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     {
         if ( _options.incrementalUpdate() == true )
         {
-            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _deadTiles.get());
+            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _releaser.get());
         }
         else
         {

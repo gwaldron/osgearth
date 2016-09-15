@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,11 +30,17 @@ namespace osgEarth
     class OSGEARTH_EXPORT Memory
     {
     public:
-        /** Memory usage, in bytes, for the calling process. */
-        static unsigned getProcessUsage();
+        /** Physical memory usage, in bytes, for the calling process. (aka working set or resident set) */
+        static unsigned getProcessPhysicalUsage();
 
-        /** Peak memory usage, in bytes, for the calling process since it started. */
-        static unsigned getProcessPeakUsage();
+        /** Peak physical memory usage, in bytes, for the calling process since it started. */
+        static unsigned getProcessPeakPhysicalUsage();
+
+        /** Private bytes allocated solely to this process */
+        static unsigned getProcessPrivateUsage();
+
+        /** Maximum bytes allocated privately to thie process (peak pagefile usage) */
+        static unsigned getProcessPeakPrivateUsage();
 
     private:
         // Not creatable.

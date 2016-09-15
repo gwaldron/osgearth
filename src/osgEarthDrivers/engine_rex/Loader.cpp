@@ -37,6 +37,9 @@ Loader::Request::Request()
     _uid = osgEarth::Registry::instance()->createUID();
     _state = IDLE;
     _loadCount = 0;
+    _priority = 0;
+    _lastFrameSubmitted = 0;
+    _lastTick = 0;
 }
 
 osg::StateSet*
@@ -173,7 +176,8 @@ namespace
 PagerLoader::PagerLoader(TerrainEngine* engine) :
 _engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
-_mergesPerFrame( 0 )
+_mergesPerFrame( 0 ),
+_frameNumber   ( 0 )
 {
     _myNodePath.push_back( this );
 
@@ -434,7 +438,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             //nop
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "osgEarth REX Loader Agent";
         }

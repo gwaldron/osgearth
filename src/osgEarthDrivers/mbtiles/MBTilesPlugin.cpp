@@ -40,7 +40,7 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
             supportsExtension( "osgearth_mbtiles", "MBTiles tile driver" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "MBTiles Driver";
         }

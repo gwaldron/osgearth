@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -368,20 +368,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
 
     bool useAutoClip   = args.read("--autoclip");
-    bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
     bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
-
-    if (args.read("--verbose"))
-        osgEarth::setNotifyLevel(osg::INFO);
-    
-    if (args.read("--quiet"))
-        osgEarth::setNotifyLevel(osg::FATAL);
-
-    float ambientBrightness = 0.2f;
-    args.read("--ambientBrightness", ambientBrightness);
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -425,7 +415,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.
-    const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
 
     // Loading KML from the command line:
@@ -556,13 +545,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }
 
-    // Install elevation morphing
-    if ( !lodBlendingConf.empty() )
-    {
-        mapNode->getTerrainEngine()->addEffect( new LODBlending(lodBlendingConf) );
-    }
-
-    // Install vertical scaler
+    // Install vertical scaler.
+    // TODO: deprecate this, or move it to an extension.
     if ( !vertScaleConf.empty() )
     {
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
@@ -717,11 +701,13 @@ MapNodeHelper::usage() const
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
+        << "  --shadows                     : activates model layer shadows\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
-        << "  --path [file]                 : load and playback an animation path\n";
+        << "  --path [file]                 : load and playback an animation path\n"
+        << "  --extension [name]            : loads a named extension\n";
 }
 
 

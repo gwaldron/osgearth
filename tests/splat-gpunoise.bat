@@ -1,7 +1,7 @@
 setlocal
 set OSGEARTH_SPLAT_EDIT=1
 set OSGEARTH_SPLAT_GPU_NOISE=1
-osgearth_viewer splat-test.earth ^
+osgearth_viewer splat.earth ^
 	--ico ^
 	--logdepth ^
 	--sky ^

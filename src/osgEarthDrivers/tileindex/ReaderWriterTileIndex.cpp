@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -165,7 +165,7 @@ class ReaderWriterTileIndex : public TileSourceDriver
 public:
     ReaderWriterTileIndex() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "TileIndex Reader";
     }

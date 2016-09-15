@@ -57,7 +57,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Loader*                             loader,
             Unloader*                           unloader,
             TileNodeRegistry*                   liveTiles,
-            TileNodeRegistry*                   deadTiles,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options,
             const SelectionInfo&                selectionInfo,
@@ -76,8 +75,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainEngineNode* getEngine() const { return _terrainEngine; }
 
         TileNodeRegistry* liveTiles() const { return _liveTiles.get(); }
-
-        TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
@@ -115,7 +112,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         MapFrame                              _frame;
         osg::ref_ptr<TileNodeRegistry>        _liveTiles;
-        osg::ref_ptr<TileNodeRegistry>        _deadTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;
         TerrainEngineNode*                    _terrainEngine;

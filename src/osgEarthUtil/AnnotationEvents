@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -45,6 +45,7 @@ namespace osgEarth { namespace Util
     {
         struct EventArgs
         {
+            EventArgs() : x(0.0f), y(0.0f), buttons(0), modkeys(0) { }
             float x, y;
             int   buttons;   // see osgGA::GUIEventAdapter::MouseButtonMask
             int   modkeys;   // see osgGA::GUIEventAdapter::ModKeyMask

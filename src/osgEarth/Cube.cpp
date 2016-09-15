@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -394,7 +394,7 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 // --------------------------------------------------------------------------
 
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
-SpatialReference( handle, "OSGEARTH" )
+SpatialReference(handle, std::string("OSGEARTH"))
 {
     _key.horiz      = "unified-cube";
     _key.horizLower = "unified-cube";

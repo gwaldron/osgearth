@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -39,16 +39,76 @@ using namespace osgEarth;
 #define CHECK(x) state.checkGLErrors(x)
 
 
+MPGeometry::MPGeometry() :
+osg::Geometry(),
+_frame(0L),
+_uidUniformNameID(0),
+_birthTimeUniformNameID(0u),
+_orderUniformNameID(0u),
+_opacityUniformNameID(0u),
+_texMatParentUniformNameID(0u),
+_tileKeyUniformNameID(0u),
+_minRangeUniformNameID(0u),
+_maxRangeUniformNameID(0u),
+_imageUnit(0),
+_imageUnitParent(0),
+_elevUnit(0),
+_supportsGLSL(false)
+{
+}
+
+MPGeometry::MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) :
+osg::Geometry(rhs, cop),
+_frame(rhs._frame),
+_uidUniformNameID(rhs._uidUniformNameID),
+_birthTimeUniformNameID(rhs._birthTimeUniformNameID),
+_orderUniformNameID(rhs._orderUniformNameID),
+_opacityUniformNameID(rhs._opacityUniformNameID),
+_texMatParentUniformNameID(rhs._texMatParentUniformNameID),
+_tileKeyUniformNameID(rhs._tileKeyUniformNameID),
+_minRangeUniformNameID(rhs._minRangeUniformNameID),
+_maxRangeUniformNameID(rhs._maxRangeUniformNameID),
+_imageUnit(rhs._imageUnit),
+_imageUnitParent(rhs._imageUnitParent),
+_elevUnit(rhs._elevUnit),
+_supportsGLSL(rhs._supportsGLSL)
+{
+}
+
+
 MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
 osg::Geometry    ( ),
 _frame           ( frame ),
-_imageUnit       ( imageUnit )
+_imageUnit       ( imageUnit ),
+_uidUniformNameID(0),
+_birthTimeUniformNameID(0u),
+_orderUniformNameID(0u),
+_opacityUniformNameID(0u),
+_texMatParentUniformNameID(0u),
+_tileKeyUniformNameID(0u),
+_minRangeUniformNameID(0u),
+_maxRangeUniformNameID(0u),
+_imageUnitParent(0),
+_elevUnit(0),
+_supportsGLSL(false)
 {
     _supportsGLSL = Registry::capabilities().supportsGLSL();
-
+    
+    // Encode the tile key in a uniform. Note! The X and Y components are presented
+    // modulo 2^16 form so they don't overrun single-precision space.
     unsigned tw, th;
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
-    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
+
+    const double m = pow(2.0, 16.0);
+
+    double x = (double)key.getTileX();
+    double y = (double)(th - key.getTileY()-1);
+
+    _tileKeyValue.set(
+        (float)fmod(x, m),
+        (float)fmod(y, m),
+        (float)key.getLOD(),
+        -1.0f);
 
     _imageUnitParent = _imageUnit + 1; // temp
 

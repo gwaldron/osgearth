@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -60,7 +60,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         progress->stats()["hfcache_try_count"] += 1;
 
     LRUCache<HFKey,HFValue>::Record rec;
-    if ( _cache.get(cachekey, rec) )
+    if ( _enabled && _cache.get(cachekey, rec) )
     {
         // Found it in the cache.
         out_hf         = rec.value()._hf.get();
@@ -131,7 +131,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         // while the tile's parent expires from the scene graph. In that case the result
         // of this task will be discarded. Therefore we should not cache the result here.
         // This was causing intermittent rare "flat tiles" to appear in the terrain.
-        if ( parent_hf )
+        if ( _enabled && parent_hf )
         {
             // cache it.
             HFValue cacheval;

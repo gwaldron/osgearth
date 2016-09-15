@@ -238,17 +238,12 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
-    ResourceReleaser* releaser = 0;//
-// TODO:  This is simply to get osgearth to build against osg 3.2.0 for travis.  If we can update the travis build then we'll 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
-    releaser = new ResourceReleaser();
-    this->addChild( releaser );
-#endif
-
+    _releaser = new ResourceReleaser();
+    this->addChild(_releaser.get());
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool( _terrainOptions );
-    _geometryPool->setReleaser( releaser );
+    _geometryPool->setReleaser( _releaser.get());
     this->addChild( _geometryPool.get() );
 
     // Make a tile loader
@@ -260,7 +255,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // Make a tile unloader
     _unloader = new UnloaderGroup( _liveTiles.get() );
     _unloader->setThreshold( _terrainOptions.expirationThreshold().get() );
-    _unloader->setReleaser( releaser );
+    _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
     
     // handle an already-established map profile:
@@ -442,7 +437,7 @@ RexTerrainEngineNode::dirtyTerrain()
     // clear out the tile registry:
     if ( _liveTiles.valid() )
     {
-        _liveTiles->moveAll( _deadTiles.get() );
+        _liveTiles->releaseAll(_releaser.get());
     }
 
     // Factory to create the root keys:
@@ -570,7 +565,6 @@ RexTerrainEngineNode::getEngineContext()
             _loader.get(),
             _unloader.get(),
             _liveTiles.get(),
-            _deadTiles.get(),
             _renderBindings,
             _terrainOptions,
             _selectionInfo,

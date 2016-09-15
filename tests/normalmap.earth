@@ -16,5 +16,7 @@ osgEarth Sample - Shows an elevation-derived normal map.
     </elevation>
     
     <sky_simple/>
+    
+    <xi:include href="viewpoints.xml"/>
 
 </map>

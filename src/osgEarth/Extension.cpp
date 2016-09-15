@@ -84,6 +84,7 @@ Extension::create(const std::string& name, const ConfigOptions& options)
 const ConfigOptions&
 Extension::getConfigOptions(const osgDB::Options* options)
 {
-    return *static_cast<const ConfigOptions*>(
-        options->getPluginData( EXTENSION_OPTIONS_TAG ) );
+    static ConfigOptions s_default;
+    const void* data = options->getPluginData(EXTENSION_OPTIONS_TAG);
+    return data ? *static_cast<const ConfigOptions*>(data) : s_default;
 }

@@ -69,6 +69,12 @@ namespace osgEarth_osgearth
          */
         Config serialize( const MapNode* mapNode, const std::string& referrer ) const;
 
+    protected:
+        /**
+         * Internal method to parse a Config structure representing a MapNode.
+         */
+        bool deserializeItems(const Config &conf, Map *map) const;
+
     private:
 
         bool _rewritePaths;

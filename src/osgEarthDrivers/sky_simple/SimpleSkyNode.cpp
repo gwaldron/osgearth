@@ -216,7 +216,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
 
     _light = new LightGL3( 0 );
-    _light->setPosition( osg::Vec4f(0.0f, 0.0f, 1.0, 0.0f) );
+    _light->setPosition( osg::Vec4f(0.0f, 0.0f, 1.0f, 0.0f) );
     _light->setAmbient ( osg::Vec4f(0.1f, 0.1f, 0.1f, 1.0f) );
     _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
     _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
@@ -363,9 +363,13 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
 
     // black background
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
+    
+    // install the light in the view (so other modules can access it, like shadowing)
+    view->setLight(_light.get());
 
     // Tell the view not to automatically include a light.
     view->setLightingMode( osg::View::NO_LIGHT );
+
 
     onSetDateTime();
 }

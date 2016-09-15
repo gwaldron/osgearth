@@ -152,8 +152,9 @@ GLSkyNode::attach( osg::View* view, int lightNum )
     if ( !view ) return;
 
     _light->setLightNum( lightNum );
-
-    //OE_INFO << LC << "Attaching light to view" << std::endl;
+    
+    // install the light in the view (so other modules can access it, like shadowing)
+    view->setLight(_light.get());
 
     // Tell the view not to automatically include a light.
     view->setLightingMode( osg::View::NO_LIGHT );

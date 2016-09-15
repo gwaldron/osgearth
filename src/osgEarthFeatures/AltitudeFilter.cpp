@@ -18,7 +18,6 @@
  */
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarth/ElevationQuery>
-#include <osgEarth/TerrainClamper>
 #include <osgEarth/GeoData>
 
 #define LC "[AltitudeFilter] "

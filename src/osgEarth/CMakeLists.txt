@@ -81,6 +81,7 @@ SET(LIB_PUBLIC_HEADERS
     ECEF
     ElevationLayer
     ElevationLOD
+    ElevationPool
     ElevationQuery
     Export
     Extension
@@ -156,7 +157,6 @@ SET(LIB_PUBLIC_HEADERS
     StringUtils
     TaskService
     Terrain
-    TerrainClamper
     TerrainEffect
     TerrainLayer
     TerrainOptions
@@ -247,6 +247,7 @@ set(TARGET_SRC
     ECEF.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
+    ElevationPool.cpp
     ElevationQuery.cpp
     Extension.cpp
     FadeEffect.cpp
@@ -313,7 +314,6 @@ set(TARGET_SRC
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp
-    TerrainClamper.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp

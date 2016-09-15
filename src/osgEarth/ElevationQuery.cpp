@@ -262,12 +262,12 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
             lod = level;
     }
 
-    // do we need a new TerrainEnvelope?
+    // do we need a new ElevationEnvelope?
     if (!_envelope.valid() ||
         !point.getSRS()->isHorizEquivalentTo(_envelope->getSRS()) ||
         lod != _envelope->getLOD())
     {
-        _envelope = _mapf.getClamper()->createEnvelope(point.getSRS(), lod);
+        _envelope = _mapf.getElevationPool()->createEnvelope(point.getSRS(), lod);
     }
 
     // sample the elevation, and if requested, the resolution as well:

@@ -110,8 +110,8 @@ namespace osgEarth
         // actual references are held in the MRU. The downside of this scheme is that
         // expired tiles (i.e. tiles that fall off the end of the MRU) will leave empty
         // observer_ptrs in the Tiles map which can lead to memory growth (albeit minor).
-        // So keep that in mind if you intend to keep a TerrainClamper instance around
-        // indefinitely (which is not the intended use case).
+        // So keep that in mind if you intend to keep an ElevationPool instance around
+        // indefinitely.
         typedef std::map<TileKey, osg::observer_ptr<Tile> > Tiles;
         Tiles _tiles;
         Threading::Mutex  _tilesMutex;
@@ -122,7 +122,7 @@ namespace osgEarth
         unsigned _maxEntries;
 
         // QuerySet is a collection of Tiles, sorted from high to low resolution,
-        // that a TerrainEnvelope uses for a terrain sampling opteration.
+        // that a ElevationEnvelope uses for a terrain sampling opteration.
         typedef std::set<osg::ref_ptr<Tile>, TileSortHiResToLoRes> QuerySet;
 
     protected:
@@ -146,7 +146,7 @@ namespace osgEarth
     /**
      * Set of terrain tiles corresponding to a geographic extent that the pager
      * uses to clamp a feature set. You cannot create this object directly;
-     * instead call TerrainClamper::createEnvelope().
+     * instead call ElevationPool::createEnvelope().
      */
     class OSGEARTH_EXPORT ElevationEnvelope : public osg::Referenced
     {

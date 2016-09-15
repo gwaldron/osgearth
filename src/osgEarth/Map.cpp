@@ -23,7 +23,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
-#include <osgEarth/TerrainClamper>
+#include <osgEarth/ElevationPool>
 #include <iterator>
 
 using namespace osgEarth;
@@ -105,8 +105,8 @@ _dataModelRevision   ( 0 )
     _elevationLayerCB = new ElevationLayerCB(this);
 
     // elevation sampling
-    _clamper = new TerrainClamper();
-    _clamper->setMap( this );
+    _elevationPool = new ElevationPool();
+    _elevationPool->setMap( this );
 }
 
 Map::~Map()
@@ -114,10 +114,10 @@ Map::~Map()
     OE_DEBUG << "~Map" << std::endl;
 }
 
-TerrainClamper*
-Map::getClamper() const
+ElevationPool*
+Map::getElevationPool() const
 {
-    return _clamper.get();
+    return _elevationPool.get();
 }
 
 void

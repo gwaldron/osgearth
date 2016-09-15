@@ -18,7 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
-#include <osgEarth/TerrainClamper>
+#include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
 
@@ -92,10 +92,10 @@ MapFrame::setMap(const Map* map)
     sync();
 }
 
-TerrainClamper*
-MapFrame::getClamper() const
+ElevationPool*
+MapFrame::getElevationPool() const
 {
-    return _map->getClamper();
+    return _map->getElevationPool();
 }
 
 bool

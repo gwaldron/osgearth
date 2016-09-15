@@ -21,7 +21,7 @@
 
 #include <osgEarth/MapFrame>
 #include <osgEarth/Containers>
-#include <osgEarth/TerrainClamper>
+#include <osgEarth/ElevationPool>
 #include <osgEarth/DPLineSegmentIntersector>
 
 namespace osgEarth
@@ -130,7 +130,7 @@ namespace osgEarth
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
 
         // Active elevation sampler
-        osg::ref_ptr<TerrainEnvelope> _envelope;
+        osg::ref_ptr<ElevationEnvelope> _envelope;
 
     private:
         void reset();

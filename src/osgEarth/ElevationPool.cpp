@@ -72,6 +72,26 @@ ElevationPool::fetchTileFromMap(const TileKey& key, Tile* tile)
     return tile->_hf.valid();
 }
 
+void
+ElevationPool::popMRU()
+{
+    // first rememeber the key of the item we're about the pop:
+    TileKey key = _mru.back()->_key;
+
+    // establish a temporary observer on the item:
+    osg::observer_ptr<Tile> temp = _mru.back().get();
+
+    // pop the Tile from the MRU:
+    _mru.pop_back();
+
+    // if our observer went to NULL, we know there are no more pointers
+    // to that Tile in the MRU, and we can remove it from the main list:
+    if (!temp.valid())
+    {
+        _tiles.erase(key);
+    }
+}
+
 bool
 ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
 {
@@ -97,7 +117,7 @@ ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
         // prune the MRU if necessary:
         if (++_entries > _maxEntries )
         {
-            _mru.pop_back();
+            popMRU();
             --_entries;
         }
 
@@ -131,7 +151,7 @@ ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
         // prune the MRU if necessary
         if (++_entries > _maxEntries)
         {
-            _mru.pop_back();
+            popMRU();
             --_entries;
         }
 

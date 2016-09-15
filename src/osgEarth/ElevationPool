@@ -107,11 +107,9 @@ namespace osgEarth
         MRU _mru;
 
         // Cached set of tiles, sorted by TileKey. These are observer pointers; the 
-        // actual references are held in the MRU. The downside of this scheme is that
-        // expired tiles (i.e. tiles that fall off the end of the MRU) will leave empty
-        // observer_ptrs in the Tiles map which can lead to memory growth (albeit minor).
-        // So keep that in mind if you intend to keep an ElevationPool instance around
-        // indefinitely.
+        // actual references are held in the MRU. That way when all pointers drop off
+        // the back of the MRU, the Tile is destroyed and the main observer goes to 
+        // NULL and is removed.
         typedef std::map<TileKey, osg::observer_ptr<Tile> > Tiles;
         Tiles _tiles;
         Threading::Mutex  _tilesMutex;
@@ -138,6 +136,9 @@ namespace osgEarth
         
         // safely fetch a tile from the central repo, loading from map if necessary
         bool tryTile(const TileKey& key, osg::ref_ptr<Tile>& output);
+
+        // safely remove the oldest item on the MRU
+        void popMRU();
 
         friend class ElevationEnvelope;
     };

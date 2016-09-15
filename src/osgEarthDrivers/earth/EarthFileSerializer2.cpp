@@ -428,40 +428,9 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
-    // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if ( i->key() == "elevation" || i->key() == "heightfield" )
-        {
-            addElevationLayer( *i, map );
-        }
-    }
-
-
-    // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
-    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
-    {
-        if (i->key() == "options" || i->key() == "name" || i->key() == "type" || i->key() == "version")
-        {
-            // nop - handled earlier
-        }
-
-        else if ( i->key() == "image" )
-        {
-            addImageLayer( *i, map );
-        }
-
-        else if ( i->key() == "model" )
-        {
-            addModelLayer( *i, map );
-        }
-
-        else if ( i->key() == "mask" )
-        {
-            addMaskLayer( *i, map );
-        }
-
-        else if ( i->key() == "external" || i->key() == "extensions" )
+        if ( i->key() == "external" || i->key() == "extensions" )
         {
             mapNode->externalConfig() = *i;
             for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
@@ -475,6 +444,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             addExtension( *i, mapNode.get() );
         }
     }
+
+    deserializeItems(conf, map);
 
     // return the topmost parent of the mapnode. It's possible that
     // an extension added parents!
@@ -561,4 +532,52 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
     }
 
     return mapConf;
+}
+
+bool
+EarthFileSerializer2::deserializeItems(const Config &conf, Map* map) const
+{
+    // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        if ( i->key() == "elevation" || i->key() == "heightfield" )
+        {
+            addElevationLayer( *i, map );
+        }
+    }
+
+    // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        if ( i->key() == "group" )
+        {
+            optional<bool> _enabled;
+            i->getIfSet( "enabled", _enabled );
+            if (_enabled.isSetTo(false))
+                continue;
+            deserializeItems(*i, map);
+        }
+
+        else if (i->key() == "options" || i->key() == "name" || i->key() == "type" || i->key() == "version")
+        {
+            // nop - handled earlier
+        }
+
+        else if ( i->key() == "image" )
+        {
+            addImageLayer( *i, map );
+        }
+
+        else if ( i->key() == "model" )
+        {
+            addModelLayer( *i, map );
+        }
+
+        else if ( i->key() == "mask" )
+        {
+            addMaskLayer( *i, map );
+        }
+
+    }
+    return true;
 }

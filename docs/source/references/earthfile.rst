@@ -16,7 +16,8 @@ The *map* is the top-level element in an earth file.
         <:ref:`elevation <ElevationLayer>`>
         <:ref:`model     <ModelLayer>`>
         <:ref:`mask      <MaskLayer>`>
-        
+        <:ref:`xi:include <IncludeFile>`>
+        <:ref:`group     <GroupLayer>`>
 
 +------------------------+--------------------------------------------------------------------+
 | Property               | Description                                                        |
@@ -400,6 +401,53 @@ Or you use a shapefile or other feature source, in which case osgEarth will use 
 
 Refer to the *mask.earth* sample for an example.
 
+
+.. _GroupLayer:
+
+Group Layer
+~~~~~~~~~~~~~~~
+A *Group Layer* groups other layers. A group layer is optional in the main earth file but mandatory
+in xml files included with <:ref:`xi:include <IncludeFile>`>
+
+.. parsed-literal::
+
+    <map>
+        <group name            = "text"
+               enabled         = "true">
+
+               <:ref:`image     <ImageLayer>`>
+               <:ref:`elevation <ElevationLayer>`>
+               <:ref:`model     <ModelLayer>`>
+               <:ref:`mask      <MaskLayer>`>
+        </group>
+
++-----------------------+--------------------------------------------------------------------+
+| Property              | Description                                                        |
++=======================+====================================================================+
+| name                  | Readable layer name. Not used in the engine.                       |
++-----------------------+--------------------------------------------------------------------+
+| enabled               | Whether to include this layer in the map. You can only set this at |
+|                       | load time; it is just an easy way of "commenting out" a layer in   |
+|                       | the earth file. By default this property is set to 'true'.         |
++-----------------------+--------------------------------------------------------------------+
+
+.. _IncludeFile:
+
+Include File
+~~~~~~~~~~~~~~~
+Include xml file containing earth file elements. Included xml files need to have a top level
+<:ref:`group     <GroupLayer>`>.
+
+.. parsed-literal::
+
+    <map>
+        <xi:include href = "URI">
+
++-----------------------+--------------------------------------------------------------------+
+| Property              | Description                                                        |
++=======================+====================================================================+
+| href                  | URI of file to include                                             |
++-----------------------+--------------------------------------------------------------------+
 
 
 .. _Profile:

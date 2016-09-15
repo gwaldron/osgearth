@@ -40,8 +40,8 @@ namespace osgEarth
      * be anywhere geographically, but the algorithm will optimize lots of
      * queries in a particular area (like a terrain tile).
      *
-     * ElevationSampler* sampler = pool->createEnvelope(srs, lod);
-     * float z = sampler->getElevation(point);
+     * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
+     * float z = envelope->getElevation(point);
      */
     class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
     {
@@ -49,7 +49,7 @@ namespace osgEarth
         /** ctor */
         ElevationPool();
 
-        /** Sets the map to use for clamping. */
+        /** Sets the map from which to read elevation data. */
         void setMap(const Map* map);
 
         /** Creates a query envelope to use for elevation queries in a certain area. */

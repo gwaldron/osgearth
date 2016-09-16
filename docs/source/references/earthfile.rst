@@ -529,16 +529,10 @@ Preload any libraries.
 
 .. parsed-literal::
 
-    <extensions>
-        <libraries>a;b;c;d;e</libraries>
-    </extensions>
-    <external>
-        <libraries>a;b;c;d;e</libraries>
-    </external>
-    <map>
-        <libraries>a;b;c;d;e</libraries>
-    </map>
+    <libraries>a</libraries>
 
-Libraries could be defined on any of the mentioned xml tags. Multiple library names could
-be listed by using ';' as separator. The libraries are searched in the osg library path
-and library name needs to follow the osg nodekit library name conventions (postfixed with osg library version)
+Multiple library names could be listed by using ';' as separator. 
+    
+    <libraries>a;b;c;d;e</libraries>
+
+The libraries are searched in the osg library path and library name needs to follow the osg nodekit library name convention (postfixed with osg library version)

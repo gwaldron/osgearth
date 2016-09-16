@@ -52,53 +52,6 @@ static osg::Uniform*     s_highlightUniform;
 
 //-----------------------------------------------------------------------
 
-// Tests the (old) intersection-based picker.
-struct TestIsectPicker : public osgGA::GUIEventHandler
-{
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-    {
-        if ( ea.getEventType() == ea.RELEASE )
-        {
-            IntersectionPicker picker(dynamic_cast<osgViewer::View*>(aa.asView()));
-            IntersectionPicker::Hits hits;
-            if(picker.pick(ea.getX(), ea.getY(), hits)) {
-                std::set<ObjectID> oids;
-                if (picker.getObjectIDs(hits, oids)) {
-                    ObjectIndex* index = Registry::objectIndex();
-                    ObjectID oid = *oids.begin();
-                    osg::ref_ptr<FeatureIndex> fi = index->get<FeatureIndex>(oid);
-                    if ( fi.valid() ) {
-                        OE_NOTICE << "IsectPicker: found OID " << oid << "\n";
-                        Feature* f = fi->getFeature(oid);
-                        if ( f ) {
-                            OE_NOTICE << "...feature ID = " << f->getFID() << "\n";
-                        }
-                    }      
-                    osg::ref_ptr<Feature> f = index->get<Feature>(oid);
-                    if ( f.valid() ) {
-                        OE_NOTICE << "IsectPicker: found OID " << oid << "\n";
-                        OE_NOTICE << "...feature ID = " << f->getFID() << "\n";
-                    }
-                    osg::ref_ptr<AnnotationNode> a = index->get<AnnotationNode>(oid);
-                    if ( a ) {
-                        OE_NOTICE << "IsectPicker: found annotation " << a->getName() << "\n";
-                    }
-                }
-                else {
-                    OE_NOTICE << "IsectPicker: picked, but no OIDs\n";
-                }
-            }
-            else {
-                OE_NOTICE << "IsectPicker: no intersect\n";
-            }
-        }
-        return false;
-    }
-};
-
-
-//-----------------------------------------------------------------------
-
 /**
  * Callback that you install on the RTTPicker.
  */
@@ -285,8 +238,7 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load( arguments, mainView, uiContainer );
     if ( node )
     {
-        mainView->setSceneData( node );    
-        mainView->addEventHandler( new TestIsectPicker() );
+        mainView->setSceneData( node );
 
         // create a picker of the specified size.
         RTTPicker* picker = new RTTPicker();

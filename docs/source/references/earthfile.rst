@@ -16,7 +16,7 @@ The *map* is the top-level element in an earth file.
         <:ref:`elevation <ElevationLayer>`>
         <:ref:`model     <ModelLayer>`>
         <:ref:`mask      <MaskLayer>`>
-        
+        <:ref:`libraries <Libraries>`>
 
 +------------------------+--------------------------------------------------------------------+
 | Property               | Description                                                        |
@@ -520,3 +520,25 @@ color data in a layer before the osgEarth engine composites it into the terrain.
             
 You can chain multiple color filters together. Please refer to :doc:`/references/colorfilters` for
 details on color filters.
+
+.. _Libraries:
+
+Libraries
+~~~~~~~~~
+Preload any libraries.
+
+.. parsed-literal::
+
+    <extensions>
+        <libraries>a;b;c;d;e</libraries>
+    </extensions>
+    <external>
+        <libraries>a;b;c;d;e</libraries>
+    </external>
+    <map>
+        <libraries>a;b;c;d;e</libraries>
+    </map>
+
+Libraries could be defined on any of the mentioned xml tags. Multiple library names could
+be listed by using ';' as separator. The libraries are searched in the osg library path
+and library name needs to follow the osg nodekit library name conventions (postfixed with osg library version)

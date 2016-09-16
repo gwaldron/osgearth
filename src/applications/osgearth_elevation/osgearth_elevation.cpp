@@ -82,9 +82,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             mapPoint.fromWorld( _terrain->getSRS(), world );
 
             // do an elevation query:
-            float query_resolution  = 0.0f; // max.
-            float elevation         = 0.0f;
-            float actual_resolution = 0.0f;
+            double query_resolution  = 0.0;  // max.
+            double actual_resolution = 0.0;
+            float elevation          = 0.0f;
 
             elevation = _query.getElevation( 
                 mapPoint,

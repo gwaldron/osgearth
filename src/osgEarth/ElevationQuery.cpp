@@ -95,8 +95,8 @@ ElevationQuery::gatherPatchLayers()
 
 float
 ElevationQuery::getElevation(const GeoPoint& point,
-                             float           desiredResolution,
-                             float *         out_actualResolution)
+                             double          desiredResolution,
+                             double*         out_actualResolution)
 {
     float result = NO_DATA_VALUE;
 
@@ -114,12 +114,11 @@ ElevationQuery::getElevation(const GeoPoint& point,
     return result;
 }
 
-
 bool
 ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
                               const SpatialReference*  pointsSRS,
                               bool                     ignoreZ,
-                              float                    desiredResolution )
+                              double                   desiredResolution )
 {
     sync();
     for( osg::Vec3dArray::iterator i = points.begin(); i != points.end(); ++i )
@@ -139,7 +138,7 @@ bool
 ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
                               const SpatialReference*        pointsSRS,
                               std::vector<float>&            out_elevations,
-                              float                          desiredResolution )
+                              double                         desiredResolution )
 {
     sync();
     for( osg::Vec3dArray::const_iterator i = points.begin(); i != points.end(); ++i )
@@ -162,8 +161,8 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
 bool
 ElevationQuery::getElevationImpl(const GeoPoint& point,
                                  float&          out_elevation,
-                                 float           desiredResolution,
-                                 float*          out_actualResolution)
+                                 double          desiredResolution,
+                                 double*         out_actualResolution)
 {
     // assertion.
     if ( !point.isAbsolute() )

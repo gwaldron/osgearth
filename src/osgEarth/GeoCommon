@@ -23,11 +23,11 @@
 #include <limits.h>
 #include <cfloat>
 
-namespace osgEarth
-{
-    // Default normalized no-data value for elevation
+#undef  NO_DATA_VALUE
 #define NO_DATA_VALUE -FLT_MAX
 
+namespace osgEarth
+{
     /**
      * Types of interpolation between two geodetic locations.
      */

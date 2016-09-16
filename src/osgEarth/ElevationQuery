@@ -73,24 +73,22 @@ namespace osgEarth
         void setMapFrame(const MapFrame& frame);
 
         /**
-         * Gets the terrain elevation at a point, given a terrain resolution.
+         * Gets the elevation data at a point, given a terrain resolution.
          *
          * @param point
          *      Coordinates for which to query elevation.
-         * @param out_elevation
-         *      Stores the elevation result in this variable upon success.
          * @param desiredResolution
          *      Optimal resolution of elevation data to use for the query (if available).
          *      Pass in 0 (zero) to use the best available resolution.
          * @param out_resolution
          *      Resolution of the resulting elevation value (if the method returns true).
          *
-         * @return True if the query succeeded, false upon failure.
+         * @return Sampled elevation value (or NO_DATA_VALUE)
          */
         float getElevation(
             const GeoPoint& point,
-            float          desiredResolution    =0.0f,
-            float*         out_actualResolution =0L );
+            double          desiredResolution    =0.0,
+            double*         out_actualResolution =0L );
 
         /**
          * Gets elevations for a whole array of points, storing the result in the
@@ -101,7 +99,7 @@ namespace osgEarth
             std::vector<osg::Vec3d>& points,
             const SpatialReference*  pointsSRS,
             bool                     ignoreZ = true,
-            float                    desiredResolution =0.0f );
+            double                   desiredResolution =0.0 );
 
         /**
          * Gets elevations for a whole array of points, storing the results in the
@@ -111,7 +109,7 @@ namespace osgEarth
             const std::vector<osg::Vec3d>& points,
             const SpatialReference*        pointsSRS,
             std::vector<float>&            out_elevations,
-            float                          desiredResolution =0.0f );
+            double                         desiredResolution =0.0 );
 
         /** dtor */
         virtual ~ElevationQuery() { }
@@ -140,8 +138,8 @@ namespace osgEarth
         bool getElevationImpl(
             const GeoPoint& point,
             float&          out_elevation,
-            float           desiredResolution,
-            float*          out_actualResolution );
+            double          desiredResolution,
+            double*         out_actualResolution );
     };
 
 } // namespace osgEarth

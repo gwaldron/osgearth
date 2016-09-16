@@ -362,9 +362,9 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             mapPoint.z() = 0;
 
             // do an elevation query:
-            float query_resolution = 0.0f; // max.
-            float out_hamsl        = 0.0f;
-            float out_resolution   = 0.0f;
+            double query_resolution = 0.0;  // max.
+            double out_resolution   = 0.0;
+            float  out_hamsl        = 0.0f;
 
             out_hamsl = _query.getElevation( 
                 mapPoint,

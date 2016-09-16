@@ -40,6 +40,7 @@
 
 #define LC "[GeoData] "
 
+
 using namespace osgEarth;
 
 

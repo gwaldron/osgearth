@@ -41,6 +41,9 @@
 #include <osg/Uniform>
 #include <osg/Timer>
 
+#include <list>
+#include <map>
+
 using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -94,22 +97,31 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 }
             }
         };
-        typedef std::list<LayerRenderer> Layers;
+        typedef std::list<LayerRenderer> LayerList;
+        typedef std::map<UID, LayerRenderer*> LayerMap;
 
         void render(osg::RenderInfo& ri)
         {
-            for (Layers::iterator layer = _layers.begin();
-                layer != _layers.end();
+            for (LayerList::iterator layer = _layerList.begin();
+                layer != _layerList.end();
                 ++layer)
             {
                 layer->render(ri);
             }
         }
 
-        Layers& layers() { return _layers; }
+        void addLayer(UID uid) {
+            _layerList.push_back(LayerRenderer());
+            _layerMap[uid] = &_layerList.back();
+        }
 
+        LayerList& layers() { return _layerList; }
+        LayerRenderer& layer(UID uid) { return *_layerMap[uid]; }
+        
     private:
-        Layers _layers;
+        LayerList _layerList;
+        LayerMap  _layerMap;
+
     };
     
 
@@ -119,6 +131,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TerrainDrawable> _drawable;
 
     public:
+        TerrainCuller()
+        {
+            setVisitorType(CULL_VISITOR);
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        }
+        
+        void apply(osg::Node& node)
+        {
+
+        }
     };
 
 

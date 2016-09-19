@@ -45,6 +45,84 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class TerrainDrawable : public osg::Drawable
+    {
+    public:
+        struct TileRenderer : public osgUtil::RenderLeaf
+        {
+            TileKey _key;
+            unsigned _keyLocation;
+            osg::Vec4f _keyValue;
+
+            void render(osg::RenderInfo& ri, osgUtil::RenderLeaf* previous)
+            {
+                osg::GLExtensions* gl = osg::GLExtensions::Get(ri.getContextID(), true);
+
+                // tilekey uniform
+                gl->glUniform4fv(_keyLocation, 1, _keyValue.ptr());
+
+                // apply the tex matrix and tex parent matrix uniforms;
+                // later, pull them from a sampler or uniform buffer and
+                // just apply the buffer index uniform.
+
+                osgUtil::RenderLeaf::render(ri, previous);
+            }
+        };
+        typedef std::list<TileRenderer> Tiles;
+
+
+        struct LayerRenderer
+        {
+            Tiles _tiles;
+            osg::ref_ptr<osg::StateSet> _stateSet;
+
+            void render(osg::RenderInfo& ri)
+            {
+                if (_stateSet)
+                {
+                    ri.getState()->apply(_stateSet.get());
+                }
+
+                // apply the layer UID uniform.. still need this??
+                // apply the layer Order uniform
+                // apply the layer opacity uniform
+                // apply the range uniforms
+
+                for (Tiles::iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
+                {
+                    tile->render(ri, 0L);
+                }
+            }
+        };
+        typedef std::list<LayerRenderer> Layers;
+
+        void render(osg::RenderInfo& ri)
+        {
+            for (Layers::iterator layer = _layers.begin();
+                layer != _layers.end();
+                ++layer)
+            {
+                layer->render(ri);
+            }
+        }
+
+        Layers& layers() { return _layers; }
+
+    private:
+        Layers _layers;
+    };
+    
+
+    class TerrainCuller : public osgUtil::CullVisitor
+    {
+    public:
+        osg::ref_ptr<TerrainDrawable> _drawable;
+
+    public:
+    };
+
+
+
     class SelectionInfo;
 
     class RexTerrainEngineNode : public TerrainEngineNode

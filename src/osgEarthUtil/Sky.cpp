@@ -58,9 +58,7 @@ SkyNode::baseInit(const SkyOptions& options)
     _moonVisible = true;
     _starsVisible = true;
     _atmosphereVisible = true;
-    _minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
-
-    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
+    //_minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
 
     setLighting( osg::StateAttribute::ON );
 
@@ -137,27 +135,6 @@ SkyNode::setAtmosphereVisible(bool value)
 {
     _atmosphereVisible = value;
     onSetAtmosphereVisible();
-}
-
-void
-SkyNode::setMinimumAmbient(const osg::Vec4f& value)
-{
-    _minimumAmbient = value;
-    onSetMinimumAmbient();
-}
-
-void
-SkyNode::traverse(osg::NodeVisitor& nv)
-{
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        // update the light model uniforms.
-        if ( _lightingUniformsHelper.valid() )
-        {
-            _lightingUniformsHelper->cullTraverse( this, &nv );
-        }
-    }
-    osg::Group::traverse(nv);
 }
 
 //------------------------------------------------------------------------

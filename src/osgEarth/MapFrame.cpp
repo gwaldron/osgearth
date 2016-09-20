@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
 
@@ -89,6 +90,12 @@ MapFrame::setMap(const Map* map)
     _highestMinLevel = 0;
 
     sync();
+}
+
+ElevationPool*
+MapFrame::getElevationPool() const
+{
+    return _map->getElevationPool();
 }
 
 bool

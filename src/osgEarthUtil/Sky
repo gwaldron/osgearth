@@ -35,7 +35,6 @@
 
 namespace osgEarth {
     class MapNode;
-    class UpdateLightingUniformsHelper;
 }
 namespace osgDB {
     class Options;
@@ -174,20 +173,18 @@ namespace osgEarth { namespace Util
 
         /** Access the osg::Light representing the sun */
         virtual osg::Light* getSunLight() = 0;
+        virtual const osg::Light* getSunLight() const { return getSunLight(); }
 
-        /** Sets a minimum ambient lighting value. */
-        virtual void setMinimumAmbient(const osg::Vec4f& ambient);
-        const osg::Vec4& getMinimumAmbient() const { return _minimumAmbient; }
+        /** @deprecated. use getSunLight()->setAmbient instead */
+        void setMinimumAmbient(const osg::Vec4f& ambient) { getSunLight()->setAmbient(ambient); }
+        /** @deprecated; use getSunLight()->getAmbient instead */
+        const osg::Vec4& getMinimumAmbient() const { return getSunLight()->getAmbient(); }
 
     public:
         
         /** Attaches this sky node to a view (placing a sky light). Optional */
         virtual void attach(osg::View* view, int lightNum) { }
         void attach(osg::View* view) { attach(view, 0); }
-
-    public: // osg::Node
-
-        virtual void traverse(osg::NodeVisitor&);
 
     protected:
 
@@ -199,7 +196,6 @@ namespace osgEarth { namespace Util
         virtual void onSetStarsVisible() { }
         virtual void onSetSunVisible() { }
         virtual void onSetAtmosphereVisible() { }
-        virtual void onSetMinimumAmbient() { }
 
     private:
 
@@ -214,8 +210,6 @@ namespace osgEarth { namespace Util
 
         osg::StateAttribute::OverrideValue _lightingValue;
         osg::ref_ptr<osg::Uniform>         _lightingUniform;
-
-        osg::ref_ptr<UpdateLightingUniformsHelper> _lightingUniformsHelper;
 
         void baseInit(const SkyOptions&);
     };

@@ -21,13 +21,14 @@
 */
 
 #include "GLSkyNode"
-#include "GLSkyShaders"
-#include <osgEarthUtil/Ephemeris>
+#include <osg/LightSource>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/GeoData>
+#include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
+#include <osgEarthUtil/Ephemeris>
 
 #define LC "[GLSkyNode] "
 
@@ -55,11 +56,13 @@ void
 GLSkyNode::initialize(const Profile* profile)
 {
     _profile = profile;
-    _light = new osg::Light(0);
+    //_light = new osg::Light(0);
+    _light = new LightGL3(0);
+    _light->setDataVariance(_light->DYNAMIC);
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
     _light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
     _light->setSpecular(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
-    
+
     if ( _options.ambient().isSet() )
     {
         float a = osg::clampBetween(_options.ambient().get(), 0.0f, 1.0f);
@@ -72,6 +75,13 @@ GLSkyNode::initialize(const Profile* profile)
     _lighting = new PhongLightingEffect();
     _lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
+
+    // install the Sun as a lightsource.
+    osg::LightSource* lightSource = new osg::LightSource();
+    lightSource->setLight(_light.get());
+    lightSource->setCullingActive(false);
+    this->addChild( lightSource );
+    lightSource->addCullCallback(new LightSourceGL3UniformGenerator());
 
     onSetDateTime();
 }
@@ -107,7 +117,7 @@ GLSkyNode::onSetDateTime()
     if ( _profile->getSRS()->isGeographic() )
     {
         sunPosECEF.normalize();
-        getSunLight()->setPosition( osg::Vec4(sunPosECEF, 0.0) );
+        _light->setPosition(osg::Vec4(sunPosECEF, 0.0)); // directional light
     }
     else
     {
@@ -137,20 +147,18 @@ GLSkyNode::onSetDateTime()
 }
 
 void
-GLSkyNode::onSetMinimumAmbient()
-{
-    // GLSky doesn't adjust the ambient lighting automatically, so just set it.
-    _light->setAmbient( getMinimumAmbient() );
-}
-
-void
 GLSkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;
 
     _light->setLightNum( lightNum );
-    view->setLight( _light.get() );
-    view->setLightingMode( osg::View::SKY_LIGHT );
+    
+    // install the light in the view (so other modules can access it, like shadowing)
+    view->setLight(_light.get());
 
+    // Tell the view not to automatically include a light.
+    view->setLightingMode( osg::View::NO_LIGHT );
+
+    // initial date/time setup.
     onSetDateTime();
 }

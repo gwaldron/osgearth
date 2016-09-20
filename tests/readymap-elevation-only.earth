@@ -1,0 +1,25 @@
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric">    
+            
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <xi:include href="viewpoints.xml"/>
+    
+    <options>
+        <terrain driver="rex"/>
+    </options>
+</map>

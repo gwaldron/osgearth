@@ -2722,7 +2722,7 @@ ControlCanvas::init()
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
    
-#ifndef OSG_GLES2_AVAILABLE
+#if defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
     // don't use shaders unless we have to.
     this->getOrCreateStateSet()->setAttributeAndModes(
         new osg::Program(), 
@@ -2854,6 +2854,10 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
             control->calcPos( _context, osg::Vec2f(0,0), surfaceSize );
 
             control->draw( _context );
+
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+            osgEarth::Registry::shaderGenerator().run(control);
+#endif
         }
     }
 

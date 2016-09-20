@@ -1,22 +1,15 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
+#version $GLSL_VERSION_STR 
 
-#pragma vp_entryPoint atmos_fragment_main
+#pragma vp_name       Phong Lighting Vertex Stage
+#pragma vp_entryPoint oe_phong_fragment
 #pragma vp_location   fragment_lighting
-#pragma vp_order      0.8
 
 uniform bool oe_mode_GL_LIGHTING; 
-uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
-uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
 
-varying vec3 atmos_lightDir;    // light direction (view coords)
-varying vec3 atmos_color;       // atmospheric lighting color
-varying vec3 atmos_atten;       // atmospheric lighting attentuation factor
-varying vec3 atmos_up;          // earth up vector at fragment (in view coords)
-varying float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
-varying vec3 atmos_vert; 
-        
-vec3 vp_Normal;          // surface normal (from osgEarth)
+in vec3 oe_phong_vertexView3; 
+
+// stage global
+vec3 vp_Normal;
 
 
 #define MAX_LIGHTS 8
@@ -55,9 +48,8 @@ struct osg_MaterialParameters
 uniform osg_MaterialParameters osg_FrontMaterial; 
 
 
-
-void atmos_fragment_main(inout vec4 color) 
-{ 
+void oe_phong_fragment(inout vec4 color) 
+{         
     if ( oe_mode_GL_LIGHTING == false )
         return; 
 
@@ -69,15 +61,13 @@ void atmos_fragment_main(inout vec4 color)
     vec3 N = normalize(vp_Normal);
 
     float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0); 
-    
-    vec3 U = normalize(atmos_up);
 
     // Accumulate the lighting, starting with material emission. We are currently
     // omitting the ambient term for now since we are not using LightModel ambience.
     vec3 totalLighting =
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
-
+    
     int numLights = min(osg_NumLights, MAX_LIGHTS);
 
     for (int i=0; i<numLights; ++i)
@@ -99,7 +89,7 @@ void atmos_fragment_main(inout vec4 color)
             else
             {
                 // calculate VL, the vertex-to-light vector:
-                vec4 V = vec4(atmos_vert, 1.0) * osg_LightSource[i].position.w;
+                vec4 V = vec4(oe_phong_vertexView3, 1.0) * osg_LightSource[i].position.w;
                 vec4 VL4 = osg_LightSource[i].position - V;
                 L = normalize(VL4.xyz);
 
@@ -121,29 +111,15 @@ void atmos_fragment_main(inout vec4 color)
                 }
             }
 
-            // a term indicating whether it's daytime for light 0 (the sun).
-            float dayTerm = i==0? dot(U,L) : 1.0;
-
-            // This term boosts the ambient lighting for the sun (light 0) when it's daytime.
-            // TODO: make the boostFactor a uniform?
-            float ambientBoost = i==0? 1.0 + oe_sky_ambientBoostFactor*clamp(2.0*(dayTerm-0.5), 0.0, 1.0) : 1.0;
-
             vec3 ambientReflection =
                 attenuation
                 * osg_FrontMaterial.ambient.rgb
-                * osg_LightSource[i].ambient.rgb
-                * ambientBoost;
+                * osg_LightSource[i].ambient.rgb;
 
             float NdotL = max(dot(N,L), 0.0); 
 
-            // this term, applied to light 0 (the sun), attenuates the diffuse light
-            // during the nighttime, so that geometry doesn't get lit based on its
-            // normals during the night.
-            float diffuseAttenuation = clamp(dayTerm+0.35, 0.0, 1.0);
-            
             vec3 diffuseReflection =
                 attenuation
-                * diffuseAttenuation
                 * osg_LightSource[i].diffuse.rgb * osg_FrontMaterial.diffuse.rgb
                 * NdotL;
                 
@@ -164,9 +140,5 @@ void atmos_fragment_main(inout vec4 color)
         }
     }
     
-    // add the atmosphere color, and scale by the lighting.
-    color.rgb = (color.rgb + atmos_color) * totalLighting;
-    
-    // Simulate HDR by applying an exposure factor (1.0 is none, 2-3 are reasonable)
-    color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
+    color.rgb *= totalLighting;
 }

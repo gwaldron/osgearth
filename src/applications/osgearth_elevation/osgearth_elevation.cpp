@@ -63,8 +63,6 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
           _query    ( s_mapNode->getMap() )
     {
         _map = s_mapNode->getMap();
-        _query.setMaxTilesToCache(10);
-        _query.setFallBackOnNoData( false );
         _path.push_back( s_mapNode->getTerrainEngine() );
     }
 
@@ -84,20 +82,19 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             mapPoint.fromWorld( _terrain->getSRS(), world );
 
             // do an elevation query:
-            double query_resolution = 0; // max.
-            double out_hamsl        = 0.0;
-            double out_resolution   = 0.0;
+            double query_resolution  = 0.0;  // max.
+            double actual_resolution = 0.0;
+            float elevation          = 0.0f;
 
-            bool ok = _query.getElevation( 
+            elevation = _query.getElevation( 
                 mapPoint,
-                out_hamsl,
                 query_resolution, 
-                &out_resolution );
+                &actual_resolution );
 
-            if ( ok )
+            if ( elevation != NO_DATA_VALUE )
             {
                 // convert to geodetic to get the HAE:
-                mapPoint.z() = out_hamsl;
+                mapPoint.z() = elevation;
                 GeoPoint mapPointGeodetic( s_mapNode->getMapSRS()->getGeodeticSRS(), mapPoint );
 
                 static LatLongFormatter s_f;
@@ -108,9 +105,15 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                     << ", " 
                     << s_f.format(mapPointGeodetic.x(), false) );
 
-                s_mslLabel->setText( Stringify() << out_hamsl );
-                s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );
-                s_resLabel->setText( Stringify() << out_resolution );
+                if (s_mapNode->getMapSRS()->isGeographic())
+                {
+                    osg::ref_ptr<const SpatialReference> tm = s_mapNode->getMapSRS()->createUTMFromLonLat(mapPointGeodetic.x(), mapPointGeodetic.y());
+                    actual_resolution = tm->transformUnits(Distance(actual_resolution, Units::DEGREES), tm.get(), mapPointGeodetic.y());
+                }
+
+                s_mslLabel->setText( Stringify() << elevation << " m" );
+                s_haeLabel->setText( Stringify() << mapPointGeodetic.z() << " m" );
+                s_resLabel->setText( Stringify() << actual_resolution << " m" );
 
                 double egm96z = mapPoint.z();
 
@@ -121,7 +124,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                     mapPointGeodetic.x(),
                     egm96z);
                 
-                s_egm96Label->setText(Stringify() << egm96z);
+                s_egm96Label->setText(Stringify() << egm96z << " m");
 
                 yes = true;
             }
@@ -129,7 +132,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             // finally, get a normal ISECT HAE point.
             GeoPoint isectPoint;
             isectPoint.fromWorld( _terrain->getSRS()->getGeodeticSRS(), world );
-            s_mapLabel->setText( Stringify() << isectPoint.alt() );
+            s_mapLabel->setText( Stringify() << isectPoint.alt() << " m");
 
             // and move the marker.
             s_marker->setPosition(mapPoint);

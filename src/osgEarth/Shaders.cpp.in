@@ -38,5 +38,13 @@ namespace osgEarth
         // DrawInstanced
         InstancingVertex = "Instancing.vert.glsl";
         _sources[InstancingVertex] = "@Instancing.vert.glsl@";
+
+
+        // PhongLightingEffect
+        PhongLightingVertex = "PhongLighting.vert.glsl";
+        _sources[PhongLightingVertex] = "@PhongLighting.vert.glsl@";
+        
+        PhongLightingFragment = "PhongLighting.frag.glsl";
+        _sources[PhongLightingFragment] = "@PhongLighting.frag.glsl@";
     }
 };

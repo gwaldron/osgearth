@@ -36,7 +36,9 @@ set(TARGET_GLSL
     GPUClamping.vert.glsl
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl
-    Instancing.vert.glsl)
+    Instancing.vert.glsl
+    PhongLighting.vert.glsl
+    PhongLighting.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -81,6 +83,7 @@ SET(LIB_PUBLIC_HEADERS
     ECEF
     ElevationLayer
     ElevationLOD
+    ElevationPool
     ElevationQuery
     Export
     Extension
@@ -103,6 +106,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    Lighting
     LineFunctor
     Locators
     LocalTangentPlane
@@ -246,6 +250,7 @@ set(TARGET_SRC
     ECEF.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
+    ElevationPool.cpp
     ElevationQuery.cpp
     Extension.cpp
     FadeEffect.cpp
@@ -266,6 +271,7 @@ set(TARGET_SRC
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
+    Lighting.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp

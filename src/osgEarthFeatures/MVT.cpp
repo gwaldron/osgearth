@@ -58,6 +58,214 @@ int zig_zag_decode(int n)
     return (n >> 1) ^ (-(n & 1));
 }
 
+#ifdef OSGEARTH_HAVE_MVT
+
+Geometry* decodeLine(const mapnik::vector::tile_feature& feature, const TileKey& key, unsigned int tileres)
+{
+    unsigned int length = 0;
+    int cmd = -1;
+    const int cmd_bits = 3;
+
+    int x = 0;
+    int y = 0;
+
+    osgEarth::Symbology::LineString *geometry = new osgEarth::Symbology::LineString();
+
+    for (int k = 0; k < feature.geometry_size();)
+    {
+        if (!length)
+        {
+            unsigned int cmd_length = feature.geometry(k++);
+            cmd = cmd_length & ((1 << cmd_bits) - 1);
+            length = cmd_length >> cmd_bits;
+        }
+        if (length > 0)
+        {
+            length--;
+            if (cmd == SEG_MOVETO || cmd == SEG_LINETO)
+            {
+                int px = feature.geometry(k++);
+                int py = feature.geometry(k++);
+                px = zig_zag_decode(px);
+                py = zig_zag_decode(py);
+
+                x += px;
+                y += py;
+
+                double width = key.getExtent().width();
+                double height = key.getExtent().height();
+
+                double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
+                double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                geometry->push_back(geoX, geoY, 0);
+            }
+        }
+    }
+
+    return geometry;
+}
+
+Geometry* decodePoint(const mapnik::vector::tile_feature& feature, const TileKey& key, unsigned int tileres)
+{
+    unsigned int length = 0;
+    int cmd = -1;
+    const int cmd_bits = 3;
+
+    int x = 0;
+    int y = 0;
+
+    osgEarth::Symbology::PointSet *geometry = new osgEarth::Symbology::PointSet();
+
+    for (int k = 0; k < feature.geometry_size();)
+    {
+        if (!length)
+        {
+            unsigned int cmd_length = feature.geometry(k++);
+            cmd = cmd_length & ((1 << cmd_bits) - 1);
+            length = cmd_length >> cmd_bits;
+        }
+        if (length > 0)
+        {
+            length--;
+            if (cmd == SEG_MOVETO || cmd == SEG_LINETO)
+            {
+                int px = feature.geometry(k++);
+                int py = feature.geometry(k++);
+                px = zig_zag_decode(px);
+                py = zig_zag_decode(py);
+
+                x += px;
+                y += py;
+
+                double width = key.getExtent().width();
+                double height = key.getExtent().height();
+
+                double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
+                double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                geometry->push_back(geoX, geoY, 0);
+            }
+        }
+    }
+
+    return geometry;
+}
+
+Geometry* decodePolygon(const mapnik::vector::tile_feature& feature, const  TileKey& key, unsigned int tileres)
+{
+    /*
+     https://github.com/mapbox/vector-tile-spec/tree/master/2.1
+     Decoding polygons is a bit more difficult than lines or points.
+     A Polygon geometry is either a single polygon or a multipolygon.  Each polygon has one exterior ring and zero or more interior rings.
+     The rings are in sequence and you must check the orientation of the ring to know if it's an exterior ring (new polygon) or an 
+     interior ring (inner polygon of the current polygon).
+     */
+    
+
+    unsigned int length = 0;
+    int cmd = -1;
+    const int cmd_bits = 3;
+
+    int x = 0;
+    int y = 0;
+
+    // The list of polygons we've collected
+    std::vector< osg::ref_ptr< osgEarth::Symbology::Polygon > > polygons;
+
+    osg::ref_ptr< osgEarth::Symbology::Polygon > currentPolygon;    
+
+    osg::ref_ptr< osgEarth::Symbology::Ring > currentRing;
+    
+    for (int k = 0; k < feature.geometry_size();)
+    {
+        if (!length)
+        {
+            unsigned int cmd_length = feature.geometry(k++);
+            cmd = cmd_length & ((1 << cmd_bits) - 1);
+            length = cmd_length >> cmd_bits;
+        }
+        if (length > 0)
+        {
+            length--;
+            if (cmd == SEG_MOVETO || cmd == SEG_LINETO)
+            {
+                if (!currentRing)
+                {
+                    currentRing = new osgEarth::Symbology::Ring();
+                }
+
+                int px = feature.geometry(k++);
+                int py = feature.geometry(k++);
+                px = zig_zag_decode(px);
+                py = zig_zag_decode(py);
+
+                x += px;
+                y += py;
+
+                double width = key.getExtent().width();
+                double height = key.getExtent().height();
+
+                double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
+                double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                currentRing->push_back(geoX, geoY, 0);
+            }
+            else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
+            {
+                // The orientation is the opposite of what we want for features.  clockwise means exterior ring, counter clockwise means interior                
+
+                // Figure out what to do with the ring based on the orientation of the ring
+                Geometry::Orientation orientation = currentRing->getOrientation();
+                // Close the ring.
+                currentRing->close();
+                
+                // Clockwise means exterior ring.  Start a new polygon and add the ring.
+                if (orientation == Geometry::ORIENTATION_CW)
+                {
+                    // osgearth orientations are reversed from mvt
+                    currentRing->rewind(Geometry::ORIENTATION_CCW);
+                    
+                    currentPolygon = new osgEarth::Symbology::Polygon(&currentRing->asVector());                                            
+                    polygons.push_back(currentPolygon.get());
+                }                
+                else if (orientation == Geometry::ORIENTATION_CCW)
+                // Counter clockwise means a hole, add it to the existing polygon.
+                {
+                    // osgearth orientations are reversed from mvt
+                    currentRing->rewind(Geometry::ORIENTATION_CW);                                       
+                    currentPolygon->getHoles().push_back( currentRing );
+                }
+
+                // Start a new ring
+                currentRing = 0;
+            }
+        }
+    }
+
+    currentRing = 0;
+    currentPolygon = 0;
+
+    if (polygons.size() == 0)
+    {        
+        return 0;
+    }
+    else if (polygons.size() == 1)
+    {
+        // Just return a simple polygon
+        return polygons[0].release();
+    }
+    else
+    {
+        // Return a multipolygon
+        MultiGeometry* multi = new MultiGeometry;
+        for (unsigned int i = 0; i < polygons.size(); i++)
+        {
+            multi->add(polygons[i].get());
+        }
+        return multi;
+    }
+}
+
+#endif
+
 
 bool
     MVT::read(std::istream& in, const TileKey& key, FeatureList& features)
@@ -95,28 +303,8 @@ bool
             {
                 const mapnik::vector::tile_feature &feature = layer.features().Get(j);
 
-                osg::ref_ptr< osgEarth::Symbology::Geometry > geometry;
-
-                eGeomType geomType = static_cast<eGeomType>(feature.type());
-                if (geomType == ::Polygon)
-                {
-                    geometry = new osgEarth::Symbology::Polygon();
-                }
-                else if (geomType == ::LineString)
-                {
-                    geometry = new osgEarth::Symbology::LineString();
-                }
-                else if (geomType == ::Point)
-                {
-                    geometry = new osgEarth::Symbology::PointSet();
-                }
-                else
-                {
-                    geometry = new osgEarth::Symbology::LineString();
-                }
-
-                osg::ref_ptr< Feature > oeFeature = new Feature(geometry, key.getProfile()->getSRS());
-                features.push_back(oeFeature.get());
+                
+                osg::ref_ptr< Feature > oeFeature = new Feature(0, key.getProfile()->getSRS());
 
                 // Set the layer name as "mvt_layer" so we can filter it later
                 oeFeature->set("mvt_layer", layer.name());
@@ -180,54 +368,32 @@ bool
                     }
                 }
 
+                
 
-                unsigned int length = 0;
-                int cmd = -1;
-                const int cmd_bits = 3;
+                osg::ref_ptr< osgEarth::Symbology::Geometry > geometry;
 
-                unsigned int tileres = layer.extent();
-
-                int x = 0;
-                int y = 0;
-
-                for (int k = 0; k < feature.geometry_size();)
+                eGeomType geomType = static_cast<eGeomType>(feature.type());
+                if (geomType == ::Polygon)
                 {
-                    if (!length)
-                    {
-                        unsigned int cmd_length = feature.geometry(k++);
-                        cmd = cmd_length & ((1 << cmd_bits) - 1);
-                        length = cmd_length >> cmd_bits;
-                    }
-                    if (length > 0)
-                    {
-                        length--;
-                        if (cmd == SEG_MOVETO || cmd == SEG_LINETO)
-                        {
-                            int px = feature.geometry(k++);
-                            int py = feature.geometry(k++);
-                            px = zig_zag_decode(px);
-                            py = zig_zag_decode(py);
-
-                            x += px;
-                            y += py;
-
-                            double width = key.getExtent().width();
-                            double height = key.getExtent().height();
-
-                            double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                            double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
-                            geometry->push_back(geoX, geoY, 0);
-                        }
-                        else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
-                        {
-                            geometry->push_back(geometry->front());
-                        }
-                    }
+                    geometry = decodePolygon(feature, key, layer.extent());
+                }
+                else if (geomType == ::LineString)
+                {
+                    geometry = decodeLine(feature, key, layer.extent());
+                }
+                else if (geomType == ::Point)
+                {
+                    geometry = decodePoint(feature, key, layer.extent());
+                }
+                else
+                {
+                    geometry = decodeLine(feature, key, layer.extent());
                 }
 
-                if (geometry->getType() == Geometry::TYPE_POLYGON)
+                if (geometry)
                 {
-                    geometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                    oeFeature->setGeometry( geometry );
+                    features.push_back(oeFeature.get());
                 }
             }
         }

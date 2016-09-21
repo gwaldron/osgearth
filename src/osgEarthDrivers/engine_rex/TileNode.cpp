@@ -24,6 +24,7 @@
 #include "LoadTileData"
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
+#include "TerrainCuller"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -281,15 +282,15 @@ TileNode::releaseGLObjects(osg::State* state) const
 }
 
 bool
-TileNode::shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo)
-{
+TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionInfo)
+{    
     unsigned currLOD = _key.getLOD();
     if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
     {
         return _surface->anyChildBoxIntersectsSphere(
-            cv->getViewPointLocal(), 
+            culler->getViewPointLocal(), 
             (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2,
-            cv->getLODScale());
+            culler->getLODScale());
     }
     return false;
 }
@@ -306,25 +307,25 @@ TileNode::isVisible(osg::CullStack* stack) const
 }
 
 bool
-TileNode::cull_stealth(osgUtil::CullVisitor* cv)
+TileNode::cull_stealth(TerrainCuller* culler)
 {
     bool visible = false;
 
-    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
+    EngineContext* context = culler->getEngineContext(); //VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
 
     // Shows all culled tiles, good for testing culling
-    unsigned frame = cv->getFrameStamp()->getFrameNumber();
+    unsigned frame = culler->getFrameStamp()->getFrameNumber();
 
     if ( frame - _lastAcceptSurfaceFrame < 2u )
     {
-        acceptSurface( cv, context );
+        acceptSurface( culler, context );
     }
 
     else if ( _childrenReady )
     {
         for(int i=0; i<4; ++i)
         {
-            getSubTile(i)->accept_cull_stealth( cv );
+            getSubTile(i)->accept_cull_stealth( culler );
         }
     }
 
@@ -332,19 +333,19 @@ TileNode::cull_stealth(osgUtil::CullVisitor* cv)
 }
 
 bool
-TileNode::cull(osgUtil::CullVisitor* cv)
+TileNode::cull(TerrainCuller* culler)
 {
-    EngineContext* context = VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
+    EngineContext* context = culler->getEngineContext(); //VisitorData::fetch<EngineContext>(*cv, ENGINE_CONTEXT_TAG);
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
     // Horizon check the surface first:
-    if ( !_surface->isVisible(cv) )
+    if (!_surface->isVisibleFrom(culler->getViewPointLocal()))
     {
         return false;
     }
     
     // determine whether we can and should subdivide to a higher resolution:
-    bool childrenInRange = shouldSubDivide(cv, selectionInfo);
+    bool childrenInRange = shouldSubDivide(culler, selectionInfo);
 
     // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = childrenInRange;
@@ -363,7 +364,7 @@ TileNode::cull(osgUtil::CullVisitor* cv)
     
     // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
     // because we want only the tiles loaded by the true viewpoint.
-    const osg::Camera* cam = cv->getCurrentCamera();
+    const osg::Camera* cam = culler->getCamera();
     if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
     {
         canCreateChildren = false;
@@ -398,7 +399,7 @@ TileNode::cull(osgUtil::CullVisitor* cv)
         {
             for(int i=0; i<4; ++i)
             {
-                getSubTile(i)->accept_cull(cv);
+                getSubTile(i)->accept_cull(culler);
             }
 
             // if we traversed all children, but they all return "not visible",
@@ -422,25 +423,29 @@ TileNode::cull(osgUtil::CullVisitor* cv)
     // accept this surface if necessary.
     if ( canAcceptSurface )
     {
-        acceptSurface( cv, context );
-        _lastAcceptSurfaceFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
+        acceptSurface( culler, context );
+        _lastAcceptSurfaceFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
     }
 
        
     // Run any patch callbacks.
+#if 0 //TODO!
     context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _patch.get() );
+#else
+    //OE_WARN << "TODO: patch callbacks\n";
+#endif
 
     // If this tile is marked dirty, try loading data.
     if ( _dirty && canLoadData )
     {
-        load( *cv );
+        load( culler );
     }
 
     return true;
 }
 
 bool
-TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
+TileNode::acceptSurface(TerrainCuller* culler, EngineContext* context)
 {
     OE_START_TIMER(acceptSurface);
 
@@ -448,11 +453,11 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
     // of the patch callbacks. Instead of doing this we need a way to put
     // patch traversals in their own top-level bin...
 
-    cv->pushStateSet( context->_surfaceSS.get() );
-    cv->pushStateSet( _payloadStateSet.get() );
-    _surface->accept( *cv );
-    cv->popStateSet();
-    cv->popStateSet();
+    culler->pushStateSet( context->_surfaceSS.get() );
+    culler->pushStateSet( _payloadStateSet.get() );
+    _surface->accept( *culler );
+    culler->popStateSet();
+    culler->popStateSet();
 
     REPORT("TileNode::acceptSurface", acceptSurface);
 
@@ -460,23 +465,23 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 }
 
 bool
-TileNode::accept_cull(osgUtil::CullVisitor* cv)
+TileNode::accept_cull(TerrainCuller* culler)
 {
     bool visible = false;
     
-    if (cv)
+    if (culler)
     {
         // update the timestamp so this tile doesn't become dormant.
-        _lastTraversalFrame.exchange( cv->getFrameStamp()->getFrameNumber() );
-        _lastTraversalTime = cv->getFrameStamp()->getReferenceTime();
+        _lastTraversalFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
+        _lastTraversalTime = culler->getFrameStamp()->getReferenceTime();
 
-        if ( !cv->isCulled(*this) )
+        if ( !culler->isCulled(*this) )
         {
-            cv->pushStateSet( getStateSet() );
+            culler->pushStateSet( getStateSet() );
 
-            visible = cull( cv );
+            visible = cull( culler );
 
-            cv->popStateSet();
+            culler->popStateSet();
         }
     }
 
@@ -484,17 +489,17 @@ TileNode::accept_cull(osgUtil::CullVisitor* cv)
 }
 
 bool
-TileNode::accept_cull_stealth(osgUtil::CullVisitor* cv)
+TileNode::accept_cull_stealth(TerrainCuller* culler)
 {
     bool visible = false;
     
-    if (cv)
+    if (culler)
     {
-        cv->pushStateSet( getStateSet() );
+        culler->pushStateSet( getStateSet() );
 
-        visible = cull_stealth( cv );
+        visible = cull_stealth( culler );
 
-        cv->popStateSet();
+        culler->popStateSet();
     }
 
     return visible;
@@ -506,15 +511,16 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-
+        TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
+        //osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        
         if (VisitorData::isSet(nv, "osgEarth.Stealth"))
         {
-            accept_cull_stealth( cv );
+            accept_cull_stealth( culler );
         }
         else
         {
-            accept_cull( cv );
+            accept_cull( culler );
         }
     }
 
@@ -680,10 +686,10 @@ TileNode::mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderB
 }
 
 void
-TileNode::load(osg::NodeVisitor& nv)
+TileNode::load(TerrainCuller* culler) //osg::NodeVisitor& nv)
 {
     // Access the context:
-    EngineContext* context = VisitorData::fetch<EngineContext>(nv, ENGINE_CONTEXT_TAG);
+    EngineContext* context = culler->getEngineContext(); //VisitorData::fetch<EngineContext>(nv, ENGINE_CONTEXT_TAG);
 
     // Create a new load request on demand:
     if ( !_loadRequest.valid() )
@@ -709,7 +715,7 @@ TileNode::load(osg::NodeVisitor& nv)
     if ( context->getOptions().highResolutionFirst() == false )
         lodPriority = (float)(numLods - lod);
 
-    float distance = nv.getDistanceToViewPoint(getBound().center(), true);
+    float distance = culler->getDistanceToViewPoint(getBound().center(), true);
 
     // dist priority uis in the range [0..1]
     float distPriority = 1.0 - distance/si.visParameters(0)._visibilityRange;
@@ -722,7 +728,7 @@ TileNode::load(osg::NodeVisitor& nv)
     priority /= (float)(numLods+1);
 
     // Submit to the loader.
-    context->getLoader()->load( _loadRequest.get(), priority, nv );
+    context->getLoader()->load( _loadRequest.get(), priority, *culler );
 }
 
 bool

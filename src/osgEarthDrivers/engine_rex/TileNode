@@ -43,6 +43,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class SurfaceNode;
     class ProxySurfaceNode;
     class SelectionInfo;
+    class TerrainCuller;
 
     /**
      * TileNode represents a single tile. TileNode has 5 children:
@@ -80,9 +81,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Whether the tile drawables are visible */
         bool isVisible(osg::CullStack* cs) const;
-
-        /** Load (or continue loading) content for the tiles in this quad. */
-        void load(osg::NodeVisitor& nv);
 
         /** Notifies this tile that another tile has come into existence. */
         void notifyOfArrival(TileNode* that) { } // nyi - todo
@@ -146,22 +144,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void createChildren(EngineContext* context);
 
         /** Returns false if the Surface node fails visiblity test */
-        bool cull(osgUtil::CullVisitor* cv);
+        bool cull(TerrainCuller*); //osgUtil::CullVisitor* cv);
 
-        bool accept_cull(osgUtil::CullVisitor* cv);
+        bool accept_cull(TerrainCuller*); //osgUtil::CullVisitor* cv);
 
-        bool cull_stealth(osgUtil::CullVisitor* cv);
+        bool cull_stealth(TerrainCuller*); //osgUtil::CullVisitor* cv);
 
-        bool accept_cull_stealth(osgUtil::CullVisitor* cv);
+        bool accept_cull_stealth(TerrainCuller*); //osgUtil::CullVisitor* cv);
 
         // returns true if any surface geometry was added (visible).
-        bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
+        bool acceptSurface(TerrainCuller*, EngineContext*); //osgUtil::CullVisitor* nv, EngineContext*);
 
-        bool shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
+        bool shouldSubDivide(TerrainCuller*, const SelectionInfo&); //osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
 
         void createPayloadStateSet(EngineContext*);
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);
+
+        /** Load (or continue loading) content for the tiles in this quad. */
+        void load(TerrainCuller*); //osg::NodeVisitor& nv);
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

@@ -19,6 +19,7 @@
 #include "RexTerrainEngineNode"
 #include "Shaders"
 #include "SelectionInfo"
+#include "TerrainCuller"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -537,7 +538,38 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         this->getEngineContext()->_surfaceSS = _surfaceSS.get();
 
         this->getEngineContext()->startCull( cv );
+
+
+#if 0
         TerrainEngineNode::traverse( nv );
+#else
+        TerrainCuller culler;
+        culler.setFrameStamp(new osg::FrameStamp(*nv.getFrameStamp()));
+        culler.setDatabaseRequestHandler(nv.getDatabaseRequestHandler());
+        culler.pushViewport(cv->getViewport());
+        culler.pushProjectionMatrix(cv->getProjectionMatrix());
+        culler.pushModelViewMatrix(cv->getModelViewMatrix(), osg::Transform::ABSOLUTE_RF);
+        culler._camera = cv->getCurrentCamera();
+        culler._context = this->getEngineContext();
+        culler.setup(*_update_mapf, this->getEngineContext()->getRenderBindings());
+
+        _terrain->accept(culler);
+
+        //OE_INFO << LC << "Draw commmands = " << culler.getNumCommands() << std::endl;
+
+        cv->pushStateSet(_surfaceSS.get());
+
+        //culler._drawable->setStateSet(_surfaceSS.get());
+
+        cv->apply(*culler._drawable.get());
+
+        cv->popStateSet();
+
+        //const osg::BoundingSphere& bs = culler._drawable->getBound();
+        //OE_INFO << "bs = " << bs.radius() << "\n";
+
+#endif
+
         this->getEngineContext()->endCull( cv );
 
         //if ( data.valid() )
@@ -1030,8 +1062,9 @@ RexTerrainEngineNode::updateState()
 
                 if ( b->isActive() )
                 {
-                    terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
-                    OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+                    osg::Uniform* u = new osg::Uniform(b->samplerName().c_str(), b->unit());
+                    terrainStateSet->addUniform( u );
+                    OE_INFO << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
                     terrainStateSet->setTextureAttribute(b->unit(), tex.get());
                 }
 

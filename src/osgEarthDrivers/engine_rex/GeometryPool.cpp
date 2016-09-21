@@ -209,6 +209,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
+#if 1
+    // colors
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    colors->push_back(osg::Vec4f(1,1,1,1));
+    geom->setColorArray(colors);
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+#endif
+
     osg::Vec3Array* neighbors = 0L;
     if ( _options.morphTerrain() == true )
     {

@@ -72,8 +72,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         TileDrawable* getDrawable() const { return _drawable.get(); }
 
-        inline bool isVisible(osgUtil::CullVisitor* cv) const {
-            return _horizonCuller.isVisible(cv->getViewPointLocal());
+        inline bool isVisibleFrom(const osg::Vec3& viewpoint) const {
+            return _horizonCuller.isVisible(viewpoint);
         }
         
         // A box can have 4 children. 

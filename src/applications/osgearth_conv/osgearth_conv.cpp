@@ -29,6 +29,8 @@
 #include <osg/ArgumentParser>
 #include <osg/Timer>
 #include <iomanip>
+#include <algorithm>
+#include <iterator>
 
 using namespace osgEarth;
 
@@ -298,6 +300,10 @@ main(int argc, char** argv)
         OE_WARN << LC << "Failed to open output" << std::endl;
         return -1;
     }
+
+    // Copy over the data extents to the output datasource.
+    std::copy( input->getDataExtents().begin(), input->getDataExtents().end(), std::back_inserter(output->getDataExtents()) );
+
 
     Status outputStatus = output->open(
         TileSource::MODE_WRITE | TileSource::MODE_CREATE,

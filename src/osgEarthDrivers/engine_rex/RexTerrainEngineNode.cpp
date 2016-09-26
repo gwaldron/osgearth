@@ -350,33 +350,33 @@ RexTerrainEngineNode::getSurfaceStateSet()
 void
 RexTerrainEngineNode::setupRenderBindings()
 {
-    _renderBindings.push_back( SamplerBinding() );
-    SamplerBinding& color = _renderBindings.back();
+    // "SHARED" is the start of shared layers, so we always want the bindings
+    // vector to be at least that size.
+    _renderBindings.resize(SamplerBinding::SHARED);
+
+    SamplerBinding& color = _renderBindings[SamplerBinding::COLOR];
     color.usage()       = SamplerBinding::COLOR;
     color.samplerName() = "oe_layer_tex";
     color.matrixName()  = "oe_layer_texMatrix";
-    this->getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
-
-    _renderBindings.push_back( SamplerBinding() );
-    SamplerBinding& elevation = _renderBindings.back();
+    getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
+    
+    SamplerBinding& elevation = _renderBindings[SamplerBinding::ELEVATION];
     elevation.usage()       = SamplerBinding::ELEVATION;
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
-    this->getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
-
-    _renderBindings.push_back( SamplerBinding() );
-    SamplerBinding& normal = _renderBindings.back();
+    getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
+    
+    SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
     normal.matrixName()  = "oe_tile_normalTexMatrix";
-    this->getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
-
-    _renderBindings.push_back( SamplerBinding() );
-    SamplerBinding& colorParent = _renderBindings.back();
+    getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
+    
+    SamplerBinding& colorParent = _renderBindings[SamplerBinding::COLOR_PARENT];
     colorParent.usage()       = SamplerBinding::COLOR_PARENT;
     colorParent.samplerName() = "oe_layer_texParent";
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
-    this->getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
+    getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
 }
 
 void RexTerrainEngineNode::destroySelectionInfo()
@@ -466,7 +466,7 @@ RexTerrainEngineNode::dirtyTerrain()
         }
                 
         // Next, build the surface geometry for the node.
-        tileNode->create( keys[i], context );
+        tileNode->create( keys[i], 0L, context );
 
         _terrain->addChild( tileNode );
     }
@@ -557,11 +557,15 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         //OE_INFO << LC << "Draw commmands = " << culler.getNumCommands() << std::endl;
 
-        cv->pushStateSet(_surfaceSS.get());
+        cv->pushStateSet(_terrain->getOrCreateStateSet());
 
-        //culler._drawable->setStateSet(_surfaceSS.get());
+        if (_surfaceSS.valid())
+            cv->pushStateSet(_surfaceSS.get());
 
         cv->apply(*culler._drawable.get());
+
+        if (_surfaceSS.valid())
+            cv->popStateSet();
 
         cv->popStateSet();
 
@@ -834,20 +838,24 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             // Build a sampler binding for the layer.
             if ( unit.isSet() )
             {
-                _renderBindings.push_back( SamplerBinding() );
-                SamplerBinding& binding = _renderBindings.back();
+                unsigned newIndex = _renderBindings.size();
+                for (unsigned i = 0; i<_renderBindings.size() && newIndex == _renderBindings.size(); ++i)
+                {
+                    if (!_renderBindings[i].isUsed())
+                        newIndex = i;
+                }
+                SamplerBinding& newBinding = _renderBindings[newIndex];
 
-                //binding.usage()     = binding.MATERIAL; // ?... not COLOR at least
-                binding.sourceUID() = layerAdded->getUID();
-                binding.unit()      = unit.get();
-
-                binding.samplerName() = layerAdded->shareTexUniformName().get();
-                binding.matrixName()  = layerAdded->shareTexMatUniformName().get();
+                newBinding.usage()     = SamplerBinding::SHARED;
+                newBinding.sourceUID() = layerAdded->getUID();
+                newBinding.unit()      = unit.get();
+                newBinding.samplerName() = layerAdded->shareTexUniformName().get();
+                newBinding.matrixName()  = layerAdded->shareTexMatUniformName().get();
 
                 OE_INFO << LC 
-                    << " .. Sampler=\"" << binding.samplerName() << "\", "
-                    << "Matrix=\"" << binding.matrixName() << ", "
-                    << "unit=" << binding.unit() << "\n";                
+                    << " .. Sampler=\"" << newBinding.samplerName() << "\", "
+                    << "Matrix=\"" << newBinding.matrixName() << ", "
+                    << "unit=" << newBinding.unit() << "\n";                
             }
         }
     }
@@ -870,7 +878,15 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
                 layerRemoved->shareImageUnit().unset();
             }
 
-            //TODO: remove the sampler/matrix uniforms
+            // Remove from RenderBindings (mark as unused)
+            for (unsigned i = 0; i < _renderBindings.size(); ++i)
+            {
+                SamplerBinding& binding = _renderBindings[i];
+                if (binding.isUsed() && binding.sourceUID() == layerRemoved->getUID())
+                {
+                    binding.usage().clear();
+                }
+            }
         }
     }
 
@@ -1055,20 +1071,33 @@ RexTerrainEngineNode::updateState()
 
             // Apply uniforms for sampler bindings:
             OE_DEBUG << LC << "Render Bindings:\n";
-            for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
+            osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+            for (unsigned i = 0; i < _renderBindings.size(); ++i)
             {
-                osg::Image* empty = ImageUtils::createEmptyImage(1,1);
-                osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
-
-                if ( b->isActive() )
+                SamplerBinding& b = _renderBindings[i];
+                if (b.isActive())
                 {
-                    osg::Uniform* u = new osg::Uniform(b->samplerName().c_str(), b->unit());
+                    osg::Uniform* u = new osg::Uniform(b.samplerName().c_str(), b.unit());
                     terrainStateSet->addUniform( u );
-                    OE_INFO << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
-                    terrainStateSet->setTextureAttribute(b->unit(), tex.get());
+                    OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+                    terrainStateSet->setTextureAttribute(b.unit(), tex.get());
                 }
-
             }
+
+            //for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
+            //{
+            //    osg::Image* empty = ImageUtils::createEmptyImage(1,1);
+            //    osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
+
+            //    if ( b->isActive() )
+            //    {
+            //        osg::Uniform* u = new osg::Uniform(b->samplerName().c_str(), b->unit());
+            //        terrainStateSet->addUniform( u );
+            //        OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+            //        terrainStateSet->setTextureAttribute(b->unit(), tex.get());
+            //    }
+
+            //}
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

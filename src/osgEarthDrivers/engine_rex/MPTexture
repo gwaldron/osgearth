@@ -70,7 +70,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         MPTexture();
 
         /** Sets or adds an image layer and associated texture object as a pass. */
-        void setLayer(const ImageLayer* layer, osg::Texture* tex, int order);
+        void setPass(const ImageLayer* layer, osg::Texture* tex, int order);
 
         /** Passes to be drawn for this object. */
         const Passes& getPasses() const { return _passes; }

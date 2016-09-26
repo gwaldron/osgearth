@@ -153,6 +153,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** indexed functor is NOT supported since we need to apply elevation dynamically */
         bool supports(const osg::PrimitiveIndexFunctor& f) const { return false; }
 
+        osg::BoundingSphere computeBound() const;
+        osg::BoundingBox computeBoundingBox() const;
+
     public:
         META_Object(osgEarth, TileDrawable);
         TileDrawable() : osg::Drawable(){}

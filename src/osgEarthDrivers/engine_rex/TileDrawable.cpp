@@ -74,8 +74,8 @@ _skirtSize   ( skirtSize )
     _minRangeUniformNameID        = osg::Uniform::getNameID( "oe_layer_minRange" );
     _maxRangeUniformNameID        = osg::Uniform::getNameID( "oe_layer_maxRange" );
 
-    _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
-    _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
+    _textureImageUnit       = bindings[SamplerBinding::COLOR].unit();
+    _textureParentImageUnit = bindings[SamplerBinding::COLOR_PARENT].unit();
     
     int tileSize2 = tileSize*tileSize;
     _heightCache = new float[ tileSize2 ];
@@ -377,7 +377,7 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
 #if 1 // triangles (OSG-stats-friendly)
 
     //TODO: improve by caching the entire Vec3f, not just the height.
-
+    
     f.begin(GL_TRIANGLES);
     for(int t=0; t<_tileSize-1; ++t)
     {
@@ -400,6 +400,7 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             f.vertex( verts[i11] + normals[i11] * _heightCache[i11] );
         }
     }
+
     f.end();
 
 #else
@@ -424,6 +425,30 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
     }
 
 #endif
+}
+
+osg::BoundingSphere
+TileDrawable::computeBound() const
+{
+    return osg::BoundingSphere(getBoundingBox());
+}
+
+osg::BoundingBox
+TileDrawable::computeBoundingBox() const
+{
+    osg::BoundingBox box;
+
+    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+    const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
+
+    float lo=0, hi=0;
+    for(unsigned i=0; i<verts.size(); ++i)
+    {
+        float z = _heightCache[i];
+        box.expandBy(verts[i] + normals[i] * z);
+    }
+
+    return box;
 }
 
 void 

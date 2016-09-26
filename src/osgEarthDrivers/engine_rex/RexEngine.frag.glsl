@@ -21,6 +21,7 @@ in float oe_rex_morphFactor;
 #endif
 
 in vec4 oe_layer_texc;
+in vec4 oe_layer_tilec;
 
 in float oe_layer_rangeOpacity;
 

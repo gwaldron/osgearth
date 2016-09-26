@@ -30,7 +30,7 @@ osg::Texture2D()
 }
 
 void
-MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex, int order)
+MPTexture::setPass(const ImageLayer* layer, osg::Texture* tex, int order)
 {
     Passes::iterator insertionPoint = _passes.end();
 
@@ -66,7 +66,7 @@ MPTexture::merge(MPTexture* rhs)
     {
         for(Passes::const_iterator pass = rhs->getPasses().begin(); pass != rhs->getPasses().end(); ++pass)
         {
-            setLayer( pass->_layer.get(), pass->_texture.get(), pass->_order );
+            setPass( pass->_layer.get(), pass->_texture.get(), pass->_order );
         }
     }
 }

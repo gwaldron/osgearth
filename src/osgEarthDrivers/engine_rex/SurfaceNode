@@ -91,15 +91,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setDebugText(const std::string& strText);
 
+        osg::BoundingSphere computeBound() const;
+
     protected:
         virtual ~SurfaceNode() { }
 
         TileKey                    _tileKey;
         osg::BoundingBox           _bbox;
         osg::ref_ptr<TileDrawable> _drawable;
-        osg::ref_ptr<osg::Geode>   _surfaceGeode;
-
-        osg::ref_ptr<osg::Geode>    _debugGeode;
+        osg::ref_ptr<osg::Group>    _debugGeode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
         

@@ -7,9 +7,9 @@
 
 // Stage globals
 vec4 oe_layer_tilec;
+vec3 oe_UpVectorView;
 vec4 oe_layer_texc;
 vec4 oe_layer_texcParent;
-vec3 oe_UpVectorView;
 
 vec4 vp_Color;
 

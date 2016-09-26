@@ -87,7 +87,7 @@ LoadTileData::invoke()
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
-        osg::ref_ptr<ProgressCallback> progress; // = new ProgressCallback();
+        osg::ref_ptr<ProgressCallback> progress;
 
         // Assemble all the components necessary to display this tile
         _model = _context->getEngine()->createTileModel(
@@ -111,108 +111,186 @@ LoadTileData::invoke()
                 }
             }
 #endif
+            _data._passes.clear();
+            _data._passesByUID.clear();
 
             const RenderBindings& bindings = _context->getRenderBindings();
 
-            osg::StateSet* stateSet = getStateSet();
-
-            // Insert all the color layers into a new MPTexture state attribute,
-            // which exists to facilitate GL pre-compilation.
-            if ( _model->colorLayers().size() > 0 )
+            // Add color passes:
+            const SamplerBinding& color = bindings[SamplerBinding::COLOR];
+            if (color.isUsed())
             {
-                const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
-                if ( colorBinding )
+                for (TerrainTileImageLayerModelVector::const_iterator i = _model->colorLayers().begin();
+                    i != _model->colorLayers().end();
+                    ++i)
                 {
-                    osg::ref_ptr<MPTexture> mptex = new MPTexture();
-
-                    for(TerrainTileImageLayerModelVector::iterator i = _model->colorLayers().begin();
-                        i != _model->colorLayers().end();
-                        ++i)
-                    {
-                        TerrainTileImageLayerModel* layerModel = i->get();
-                        if ( layerModel && layerModel->getTexture() )
-                        {
-                            applyDefaultUnRefPolicy( layerModel->getTexture() );
-                            mptex->setLayer( layerModel->getImageLayer(), layerModel->getTexture(), layerModel->getOrder() );
-                        }
+                    TerrainTileImageLayerModel* layer = i->get();
+                    if (layer && layer->getTexture())
+                    {                        
+                        RenderingPass& pass = _data.addPass(layer->getImageLayer()->getUID());
+                        pass._valid = true;
+                        pass._samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
+                        applyDefaultUnRefPolicy(layer->getTexture());
                     }
-
-                    if ( !mptex->getPasses().empty() )
-                    {
-                        stateSet->setTextureAttribute(
-                            colorBinding->unit(),
-                            mptex );
-                    }
-                }
+                }                
+            }
+            else
+            {
+                // No color layers? We need a rendering pass with a null texture then
+                // to accomadate the other samplers.
+                RenderingPass& pass = _data.addPass(-1);
+                pass._valid = true;
             }
 
-            // Insert the elevation texture and an identity matrix:
-            if ( _model->elevationModel().valid() && _model->elevationModel()->getTexture())
+            // Elevation:
+            const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
+            if (elevation.isUsed() && _model->elevationModel().valid() && _model->elevationModel()->getTexture())
             {
-                const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
-                if ( binding )
-                {                
-                    applyDefaultUnRefPolicy( _model->elevationModel()->getTexture() );
-
-                    stateSet->setTextureAttribute(
-                        binding->unit(),
-                        _model->elevationModel()->getTexture() );
-
-                    stateSet->removeUniform(binding->matrixName());
-
-                    stateSet->addUniform( _context->getOrCreateMatrixUniform(
-                        binding->matrixName(),
-                        osg::Matrixf::identity() ) );    
-                }
-            }
-            
-            // Insert the normal texture and an identity matrix:
-            if ( _model->normalModel().valid() && _model->normalModel()->getTexture() )
-            {
-                const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::NORMAL);
-                if ( binding )
+                osg::Texture* tex = _model->elevationModel()->getTexture();
+                // always keep the elevation image around because we use it for bounding box computation:
+                tex->setUnRefImageDataAfterApply(false);
+                for (unsigned p = 0; p<_data._passes.size(); ++p)
                 {
-                    //TODO: if we subload the normal texture later on, we will need to change unref to false.
-                    applyDefaultUnRefPolicy( _model->normalModel()->getTexture() );
-
-                    stateSet->setTextureAttribute(
-                        binding->unit(),
-                        _model->normalModel()->getTexture() );
-
-                    stateSet->removeUniform(binding->matrixName());
-
-                    stateSet->addUniform( _context->getOrCreateMatrixUniform(
-                        binding->matrixName(),
-                        osg::Matrixf::identity() ) );
+                    _data._passes[p]._samplers[SamplerBinding::ELEVATION]._texture = tex;
                 }
             }
 
-            // Process any shared image layers, each of which should have its
-            // own sampler binding point
-            for(TerrainTileImageLayerModelVector::iterator i = _model->sharedLayers().begin();
-                i != _model->sharedLayers().end();
-                ++i)
+            // Normals:
+            const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
+            if (normals.isUsed() && _model->normalModel().valid() && _model->normalModel()->getTexture())
             {
-                TerrainTileImageLayerModel* layerModel = i->get();
+                osg::Texture* tex = _model->normalModel()->getTexture();
+                applyDefaultUnRefPolicy(tex);
+                for (unsigned p = 0; p<_data._passes.size(); ++p)
+                {
+                     _data._passes[p]._samplers[SamplerBinding::NORMAL]._texture = tex;
+                }
+            }
+
+            // Shared Layers:
+            for (unsigned i = 0; i < _model->sharedLayers().size(); ++i)
+            {
+                unsigned bindingIndex = SamplerBinding::SHARED + i;
+                const SamplerBinding& binding = bindings[bindingIndex];
+               
+                TerrainTileImageLayerModel* layerModel = _model->sharedLayers().at(i);
                 if ( layerModel->getTexture() )
                 {
-                    const SamplerBinding* binding = SamplerBinding::findUID(bindings, layerModel->getImageLayer()->getUID());
-                    if ( binding )
+                    osg::Texture* tex = layerModel->getTexture();
+                    applyDefaultUnRefPolicy(tex);
+                    for (unsigned p = 0; p<_data._passes.size(); ++p)
                     {
-                        applyDefaultUnRefPolicy( layerModel->getTexture() );
+                         _data._passes[p]._samplers[bindingIndex]._texture = tex;
+                    }
+                }
+            }
+
+#if 0
+            // OLD CODE:
+            {
+                const RenderBindings& bindings = _context->getRenderBindings();
+
+                osg::StateSet* stateSet = getStateSet();
+
+                // Insert all the color layers into a new MPTexture state attribute,
+                // which exists to facilitate GL pre-compilation.
+                if (_model->colorLayers().size() > 0)
+                {
+                    const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
+                    if (colorBinding)
+                    {
+                        osg::ref_ptr<MPTexture> mptex = new MPTexture();
+
+                        for (TerrainTileImageLayerModelVector::iterator i = _model->colorLayers().begin();
+                            i != _model->colorLayers().end();
+                            ++i)
+                        {
+                            TerrainTileImageLayerModel* layerModel = i->get();
+                            if (layerModel && layerModel->getTexture())
+                            {
+                                applyDefaultUnRefPolicy(layerModel->getTexture());
+                                mptex->setPass(layerModel->getImageLayer(), layerModel->getTexture(), layerModel->getOrder());
+                            }
+                        }
+
+                        if (!mptex->getPasses().empty())
+                        {
+                            stateSet->setTextureAttribute(
+                                colorBinding->unit(),
+                                mptex);
+                        }
+                    }
+                }
+
+                // Insert the elevation texture and an identity matrix:
+                if (_model->elevationModel().valid() && _model->elevationModel()->getTexture())
+                {
+                    const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
+                    if (binding)
+                    {
+                        applyDefaultUnRefPolicy(_model->elevationModel()->getTexture());
 
                         stateSet->setTextureAttribute(
                             binding->unit(),
-                            layerModel->getTexture() );
+                            _model->elevationModel()->getTexture());
 
                         stateSet->removeUniform(binding->matrixName());
 
-                        stateSet->addUniform( _context->getOrCreateMatrixUniform(
+                        stateSet->addUniform(_context->getOrCreateMatrixUniform(
                             binding->matrixName(),
-                            osg::Matrixf::identity() ) );
+                            osg::Matrixf::identity()));
+                    }
+                }
+
+                // Insert the normal texture and an identity matrix:
+                if (_model->normalModel().valid() && _model->normalModel()->getTexture())
+                {
+                    const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::NORMAL);
+                    if (binding)
+                    {
+                        //TODO: if we subload the normal texture later on, we will need to change unref to false.
+                        applyDefaultUnRefPolicy(_model->normalModel()->getTexture());
+
+                        stateSet->setTextureAttribute(
+                            binding->unit(),
+                            _model->normalModel()->getTexture());
+
+                        stateSet->removeUniform(binding->matrixName());
+
+                        stateSet->addUniform(_context->getOrCreateMatrixUniform(
+                            binding->matrixName(),
+                            osg::Matrixf::identity()));
+                    }
+                }
+
+                // Process any shared image layers, each of which should have its
+                // own sampler binding point
+                for (TerrainTileImageLayerModelVector::iterator i = _model->sharedLayers().begin();
+                    i != _model->sharedLayers().end();
+                    ++i)
+                {
+                    TerrainTileImageLayerModel* layerModel = i->get();
+                    if (layerModel->getTexture())
+                    {
+                        const SamplerBinding* binding = SamplerBinding::findUID(bindings, layerModel->getImageLayer()->getUID());
+                        if (binding)
+                        {
+                            applyDefaultUnRefPolicy(layerModel->getTexture());
+
+                            stateSet->setTextureAttribute(
+                                binding->unit(),
+                                layerModel->getTexture());
+
+                            stateSet->removeUniform(binding->matrixName());
+
+                            stateSet->addUniform(_context->getOrCreateMatrixUniform(
+                                binding->matrixName(),
+                                osg::Matrixf::identity()));
+                        }
                     }
                 }
             }
+#endif
         }
     }
 }
@@ -231,6 +309,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
             const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
             const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
 
+#if 0
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 
             // Find the mptexture, and then remove it since it was only in the state set for ICO compilation.
@@ -244,6 +323,9 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
 
             // Merge our prepped stateset into the live one.
             tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings);
+#endif
+            // Merge the new data into the tile.
+            tilenode->merge( _data, bindings );
 
             // Update existing inheritance matrices as necessary.
             UpdateInheritance update( _context, getChangeSet() );

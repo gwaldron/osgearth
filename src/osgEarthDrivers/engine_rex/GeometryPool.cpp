@@ -209,7 +209,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
-#if 1
+#if 0
     // colors
     osg::Vec4Array* colors = new osg::Vec4Array();
     colors->push_back(osg::Vec4f(1,1,1,1));

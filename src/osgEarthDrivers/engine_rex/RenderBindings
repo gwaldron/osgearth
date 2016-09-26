@@ -22,7 +22,10 @@
 #include "Common"
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osg/Texture>
+#include <osg/Matrix>
 #include <vector>
+#include <map>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -31,15 +34,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         enum Usage
         {
-            COLOR,
-            ELEVATION,
-            NORMAL,
-            MATERIAL,
-            COLOR_PARENT
+            COLOR         = 0,
+            COLOR_PARENT  = 1,
+            ELEVATION     = 2,
+            NORMAL        = 3,
+            MATERIAL      = 4,
+            SHARED        = 5   // non-core shared layers start at this index
         };
 
     public:
         SamplerBinding() : _unit(-1) { }
+
+        /** Whether this binding is being used. */
+        bool isUsed() const { return _usage.isSet(); }
 
         /** Optional UID of the source (usually a layer) to which this binding applies */
         optional<osgEarth::UID>& sourceUID()             { return _sourceUID; }
@@ -89,8 +96,199 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
     };
 
-    typedef std::vector<SamplerBinding> RenderBindings;
+    // borrowed from osg::buffered_object. Auto-resizing array.
+    // TODO: move this elsewhere
+    template<class T>
+    class AutoArray
+    {
+    public:
+        inline AutoArray() { }
 
+        inline AutoArray(unsigned int size) : _array(size) { }
+
+        AutoArray& operator = (const AutoArray& rhs)
+        {
+            _array = rhs._array;
+            return *this;
+        }
+
+        inline void setAllElementsTo(const T& t) { std::fill(_array.begin(), _array.end(), t); }
+        inline void clear() { _array.clear(); }
+        inline bool empty() const { return _array.empty(); }
+        inline unsigned int size() const { return _array.size(); }
+        inline void resize(unsigned int newSize) { _array.resize(newSize); }
+
+        inline T& operator[] (unsigned int pos)
+        {
+            if (_array.size() <= pos)
+                _array.resize(pos + 1);
+
+            return _array[pos];
+        }
+
+        inline const T& operator[] (unsigned int pos) const
+        {
+            // automatically resize array.
+            if (_array.size() <= pos)
+                _array.resize(pos + 1);
+
+            return _array[pos];
+        }
+
+        inline T& back() { return _array[size()-1]; }
+        inline const T& back() const { return _array[size()-1]; }
+
+    protected:
+
+        mutable std::vector<T> _array;
+    };
+
+
+    typedef AutoArray<SamplerBinding> RenderBindings;
+
+    /**
+     * A single texture and its matrix. This corresponds to a 
+     * single SamplerBinding (above).
+     */
+    struct Sampler
+    {
+        osg::ref_ptr<osg::Texture> _texture;
+        osg::Matrixf _matrix;
+    };
+    typedef AutoArray<Sampler> Samplers;
+
+    /**
+     * All the samplers (one per RenderBinding) needed to render one pass 
+     * of a tile. The UID is the UID of the image layer that necessitated
+     * this rendering pass. A UID of -1 means there is no image layer.
+     */
+    struct RenderingPass
+    {
+        bool _valid;
+        UID _sourceUID;
+        Samplers _samplers;
+
+        RenderingPass() : _valid(false), _sourceUID(-1) { }
+        bool valid() const { return _valid; }
+    };
+    typedef AutoArray<RenderingPass> RenderingPassList;
+    typedef std::map<UID, RenderingPass*> RenderingPassMap;
+
+    /**
+     * A collection of rendering passes needed to completely render a tile.
+     */
+    struct TileRenderingData
+    {
+        RenderingPassList _passes;
+        RenderingPassMap _passesByUID;
+
+        RenderingPass& addPass(UID uid)
+        {
+            _passes.resize(_passes.size()+1);
+            //_passes.push_back(RenderingPass());
+            RenderingPass& pass = _passes.back();
+            pass._sourceUID = uid;
+            _passesByUID[uid] = &pass;
+            return pass;
+        }
+
+        const RenderingPass* getPass(UID uid) const
+        {
+            RenderingPassMap::const_iterator i = _passesByUID.find(uid);
+            return i != _passesByUID.end() ? i->second : 0L;
+        }
+
+        RenderingPass* getPass(UID uid)
+        {
+            RenderingPassMap::iterator i = _passesByUID.find(uid);
+            return i != _passesByUID.end() ? i->second : 0L;
+        }
+
+        TileRenderingData() { }
+
+        TileRenderingData(const TileRenderingData& rhs)
+        {
+            *this = rhs;
+        }
+
+        TileRenderingData& operator=(const TileRenderingData& rhs)
+        {
+            _passes = rhs._passes;
+            for (unsigned p = 0; p < _passes.size(); ++p) {
+                if ( _passes[p]._sourceUID >= 0 ) {
+                    _passesByUID[_passes[p]._sourceUID] = &_passes[p];
+                }
+            }
+            return *this;
+        }
+    };
+
+#if 0
+    struct SamplerData
+    {
+        SamplerData() : 
+            _unit(-1),
+            _textureInherited(false), 
+            //_parentUnit(-1),
+            _sourceUID(-1) { }
+        GLint _unit;
+        osg::ref_ptr<osg::Texture> _texture;
+        osg::Matrixf _matrix;
+        bool _textureInherited;
+        //GLint _parentUnit;
+        //osg::ref_ptr<osg::Texture> _parentTexture;
+        //osg::Matrixf  _parentTextureMatrix;
+        UID _sourceUID;
+    };
+    
+    struct TileSamplerData
+    {
+        std::vector<SamplerData> _colorPasses;
+        std::vector<SamplerData> _parentColorPasses;
+        AutoArray<SamplerData> _samplers;
+    };
+#endif
+
+    
+#if 0
+    struct SamplerPass
+    {
+        UID                        _sourceUID;
+        osg::ref_ptr<osg::Texture> _texture;
+        osg::Matrixf               _textureMatrix;
+        osg::ref_ptr<osg::Texture> _parentTexture;
+        osg::Matrixf               _parentTextureMatrix;
+        bool                       _inherited;
+
+        SamplerPass() : _sourceUID(-1), _inherited(false) { }
+    };
+    typedef std::vector<SamplerPass> SamplerPasses;
+
+    struct SamplerUnit
+    {
+        const SamplerBinding* _binding;
+        SamplerPasses _passes;
+
+        SamplerPass& add() {
+            _passes.push_back(SamplerPass());
+            return _passes.back();
+        }
+
+        SamplerPass& get(UID uid) {
+            for (SamplerPasses::iterator i = _passes.begin(); i != _passes.end(); ++i) {
+                if (uid == i->_sourceUID)
+                    return *i;
+            }
+            SamplerPass& pass = add();
+            pass._sourceUID = uid;
+            return pass;
+        }
+
+        SamplerUnit() : _binding(0L) { }
+    };
+
+    typedef std::map<int, SamplerUnit> SamplerData;
+#endif
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 

@@ -44,9 +44,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::observer_ptr<TileNode> _tilenode;
         EngineContext* _context;
         osg::ref_ptr<TerrainTileModel> _model;
-        //SamplerData _newData;
-        //TileSamplerData _newData;        
         TileRenderingData _data;
+
+        virtual ~LoadTileData() { }
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

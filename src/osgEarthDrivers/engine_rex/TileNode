@@ -67,9 +67,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Creates the geometry and state for this tilenode. */
         void create(const TileKey& key, TileNode* parent, EngineContext* context);
 
-        /** Whether this node has enough data to traverse. */
-        bool isReadyToTraverse() const;
-
         /** Whether the tile is expired; i.e. has not been visited in some time. */
         bool isDormant(const osg::FrameStamp*) const;
 
@@ -85,17 +82,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Notifies this tile that another tile has come into existence. */
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
-        /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(EngineContext* context);
-
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
-        
-        /** merge in new stuff from a state set. */
-        void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
-
-        /** Access to the multipass texture attribute */
-        MPTexture* getMPTexture() const { return _mptex.get(); }
 
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
@@ -112,13 +100,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
         void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
 
-        void merge(const TileRenderingData& newData, const RenderBindings& bindings);
+        //void merge(const TileRenderingData& newData, const RenderBindings& bindings);
+        
+        /** Merge new Tile model data into this tile's rendering data model. */
+        void merge(const TerrainTileModel* model, const RenderBindings& bindings);
 
         TileRenderingData& renderingData() { return _renderingData; }
 
         const osg::Vec4f& getTileKeyValue() const { return _tileKeyValue; }
 
         const osg::Vec2f& getMorphConstants() const { return _morphConstants; }
+
+        void loadSync(EngineContext* context);
         
     public: // osg::Node
 
@@ -170,10 +163,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void createPayloadStateSet(EngineContext*);
 
-        void updateTileMetadata(const SelectionInfo& selectionInfo);
-
         /** Load (or continue loading) content for the tiles in this quad. */
-        void load(TerrainCuller*); //osg::NodeVisitor& nv);
+        void load(TerrainCuller*);
+
+        void refreshInheritedData(TileNode* parent);
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

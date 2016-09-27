@@ -468,7 +468,12 @@ RexTerrainEngineNode::dirtyTerrain()
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], 0L, context );
 
+        // Add it to the scene graph
         _terrain->addChild( tileNode );
+
+        // And load the tile's data synchronously (only for root tiles).
+        tileNode->loadSync( context );
+
     }
 
     updateState();

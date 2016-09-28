@@ -99,8 +99,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
         void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
-
-        //void merge(const TileRenderingData& newData, const RenderBindings& bindings);
         
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* model, const RenderBindings& bindings);
@@ -166,7 +164,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Load (or continue loading) content for the tiles in this quad. */
         void load(TerrainCuller*);
 
-        void refreshInheritedData(TileNode* parent);
+        /** Ensure that inherited data from the parent node is up to date. */
+        void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

@@ -45,9 +45,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         SamplerBinding() : _unit(-1) { }
 
-        /** Whether this binding is being used. */
-        bool isUsed() const { return _usage.isSet(); }
-
         /** Optional UID of the source (usually a layer) to which this binding applies */
         optional<osgEarth::UID>& sourceUID()             { return _sourceUID; }
         const optional<osgEarth::UID>& sourceUID() const { return _sourceUID; }
@@ -69,6 +66,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const std::string& matrixName() const { return _matrixName; }
 
     public:
+        /** True if this binding is bound to a teture image unit and therefore active. */
         bool isActive() const { return _unit >= 0; }
 
     private:

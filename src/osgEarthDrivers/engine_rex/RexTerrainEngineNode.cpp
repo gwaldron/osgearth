@@ -846,7 +846,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 unsigned newIndex = _renderBindings.size();
                 for (unsigned i = 0; i<_renderBindings.size() && newIndex == _renderBindings.size(); ++i)
                 {
-                    if (!_renderBindings[i].isUsed())
+                    if (!_renderBindings[i].isActive())
                         newIndex = i;
                 }
                 SamplerBinding& newBinding = _renderBindings[newIndex];
@@ -887,9 +887,10 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
             for (unsigned i = 0; i < _renderBindings.size(); ++i)
             {
                 SamplerBinding& binding = _renderBindings[i];
-                if (binding.isUsed() && binding.sourceUID() == layerRemoved->getUID())
+                if (binding.isActive() && binding.sourceUID() == layerRemoved->getUID())
                 {
                     binding.usage().clear();
+                    binding.unit() = -1;
                 }
             }
         }

@@ -171,6 +171,11 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
                 sampler._matrix.preMult(scaleBias[quadrant]);
             }
 
+            if (context->getRenderBindings()[SamplerBinding::COLOR_PARENT].isActive())
+            {
+                pass._samplers[SamplerBinding::COLOR_PARENT] = pass._samplers[SamplerBinding::COLOR];
+            }
+
             // Use the elevation sampler in the first pass to initialize
             // the elevation raster (used for primitive functors, intersection, etc.)
             if (p == 0)
@@ -187,11 +192,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     {
         //OE_INFO << LC << _key.str() << ": No parent found in create\n";
     }
-
-    //if (_renderingData._passes.size() == 0)
-    //{
-    //    OE_WARN << _key.str() << ": No passes.\n";
-    //}
 
     // need to recompute the bounds after adding payload:
     dirtyBound();
@@ -571,7 +571,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 {
     // Add color passes:
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
-    if (color.isUsed())
+    if (color.isActive())
     {
         for (TerrainTileImageLayerModelVector::const_iterator i = model->colorLayers().begin();
             i != model->colorLayers().end();
@@ -603,7 +603,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     // Elevation:
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
-    if (elevation.isUsed() && model->elevationModel().valid() && model->elevationModel()->getTexture())
+    if (elevation.isActive() && model->elevationModel().valid() && model->elevationModel()->getTexture())
     {
         osg::Texture* tex = model->elevationModel()->getTexture();
         // always keep the elevation image around because we use it for bounding box computation:
@@ -619,7 +619,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     // Normals:
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
-    if (normals.isUsed() && model->normalModel().valid() && model->normalModel()->getTexture())
+    if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
         for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
@@ -650,15 +650,15 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     if (_childrenReady)
     {
-        getSubTile(0)->refreshInheritedData(this);
-        getSubTile(1)->refreshInheritedData(this);
-        getSubTile(2)->refreshInheritedData(this);
-        getSubTile(3)->refreshInheritedData(this);
+        getSubTile(0)->refreshInheritedData(this, bindings);
+        getSubTile(1)->refreshInheritedData(this, bindings);
+        getSubTile(2)->refreshInheritedData(this, bindings);
+        getSubTile(3)->refreshInheritedData(this, bindings);
     }
 }
 
 void
-TileNode::refreshInheritedData(TileNode* parent)
+TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 {
     // Run through this tile's rendering data and re-inherit textures and matrixes
     // from the parent. When a TileNode gets new data (via a call to merge), any
@@ -686,6 +686,38 @@ TileNode::refreshInheritedData(TileNode* parent)
             for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
             {
                 Sampler& mySampler = myPass->_samplers[s];
+                
+                // the color-parent gets special treatment, since it is not included
+                // in the TileModel (rather it is always derived here).
+                if (s == SamplerBinding::COLOR_PARENT)
+                {
+                    const Sampler& parentSampler = parentPass._samplers[SamplerBinding::COLOR];
+                    osg::Matrixf newMatrix = parentSampler._matrix;
+                    newMatrix.preMult(scaleBias[quadrant]);
+
+                    // Did something change?
+                    if (mySampler._texture.get() != parentSampler._texture.get() ||
+                        mySampler._matrix != newMatrix)
+                    {
+                        if (parentSampler._texture.valid())
+                        {
+                            // set the parent-color texture to the parent's color texture
+                            // and scale/bias the matrix.
+                            mySampler._texture = parentSampler._texture.get();
+                            mySampler._matrix = newMatrix;
+                        }
+                        else
+                        {
+                            // parent has no color texture? Then set our parent-color
+                            // equal to our normal color texture.
+                            mySampler._texture = myPass->_samplers[SamplerBinding::COLOR]._texture.get();
+                            mySampler._matrix = myPass->_samplers[SamplerBinding::COLOR]._matrix;
+                        }
+                        ++changes;
+                    }
+                }
+
+                else
                 if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
                 {
                     const Sampler& parentSampler = parentPass._samplers[s];
@@ -711,6 +743,8 @@ TileNode::refreshInheritedData(TileNode* parent)
 
     if (!_renderingData._passes.empty())
     {
+        // Locate the elevation sampler and pass its raster data along to use
+        // for intersections, primitive functors, etc.
         const Sampler& elevation = _renderingData._passes[0]._samplers[SamplerBinding::ELEVATION];
         if (elevation._texture.valid())
         {
@@ -730,10 +764,10 @@ TileNode::refreshInheritedData(TileNode* parent)
         
         if (_childrenReady)
         {
-            getSubTile(0)->refreshInheritedData(this);
-            getSubTile(1)->refreshInheritedData(this);
-            getSubTile(2)->refreshInheritedData(this);
-            getSubTile(3)->refreshInheritedData(this);
+            getSubTile(0)->refreshInheritedData(this, bindings);
+            getSubTile(1)->refreshInheritedData(this, bindings);
+            getSubTile(2)->refreshInheritedData(this, bindings);
+            getSubTile(3)->refreshInheritedData(this, bindings);
         }
     }
     else

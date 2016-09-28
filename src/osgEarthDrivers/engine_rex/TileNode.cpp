@@ -160,10 +160,12 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     {    
         unsigned quadrant = getTileKey().getQuadrant();
 
+        // Copy the parent's rendering model.
         _renderingData = parent->_renderingData;
 
         for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
         {
+            // Scale/bias each matrix for this key quadrant.
             RenderingPass& pass = _renderingData._passes[p];
             for (unsigned s = 0; s < pass._samplers.size(); ++s)
             {
@@ -171,6 +173,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
                 sampler._matrix.preMult(scaleBias[quadrant]);
             }
 
+            // Are we using image blending? If so, initialize the color_parent 
+            // to the color texture.
             if (context->getRenderBindings()[SamplerBinding::COLOR_PARENT].isActive())
             {
                 pass._samplers[SamplerBinding::COLOR_PARENT] = pass._samplers[SamplerBinding::COLOR];
@@ -333,7 +337,7 @@ TileNode::cull_stealth(TerrainCuller* culler)
 
     if ( frame - _lastAcceptSurfaceFrame < 2u )
     {
-        acceptSurface( culler, context );
+        _surface->accept( *culler );
     }
 
     else if ( _childrenReady )
@@ -433,7 +437,7 @@ TileNode::cull(TerrainCuller* culler)
     // accept this surface if necessary.
     if ( canAcceptSurface )
     {
-        acceptSurface( culler, context );
+        _surface->accept( *culler );
         _lastAcceptSurfaceFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
     }
 
@@ -450,18 +454,6 @@ TileNode::cull(TerrainCuller* culler)
     {
         load( culler );
     }
-
-    return true;
-}
-
-bool
-TileNode::acceptSurface(TerrainCuller* culler, EngineContext* context)
-{
-    OE_START_TIMER(acceptSurface);
-
-    _surface->accept( *culler );
-
-    REPORT("TileNode::acceptSurface", acceptSurface);
 
     return true;
 }

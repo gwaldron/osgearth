@@ -1,0 +1,182 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_TERRAIN_DRAWABLE_H
+#define OSGEARTH_REX_TERRAIN_DRAWABLE_H 1
+
+#include <osgEarth/MapFrame>
+#include <osgEarth/ImageLayer>
+
+#include "EngineContext"
+
+#include <osg/NodeVisitor>
+#include <osg/GLExtensions>
+#include <osg/StateSet>
+
+#include <list>
+#include <map>
+#include <vector>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * Tracks the state of a single sampler through the draw process,
+     * to prevent redundant OpenGL texture binding and matrix uniform sets.
+     */
+    struct SamplerState
+    {
+        SamplerState() : _matrixUL(-1) { }
+        optional<osg::Texture*> _texture;    // Texture currently bound
+        optional<osg::Matrixf> _matrix;      // Matrix that is currently set
+        GLint _matrixUL;                     // Matrix uniform location
+    };
+
+    /**
+     * Tracks the state of all samplers used in render a tile,
+     * to prevent redundant OpenGL binds.
+     */
+    struct TileSamplerState
+    {
+        std::map<UID, SamplerState> _colorPasses;
+        std::vector<SamplerState> _samplers;
+    };
+
+    /**
+     * Tracks the state of terrain drawing settings in a single frame,
+     * to prevent redundant OpenGL calls.
+     */
+    struct DrawState
+    {
+        // uniform locations
+        GLint _tileKeyUL;
+        GLint _parentTextureExistsUL;
+        GLint _layerUidUL;
+        GLint _layerOpacityUL;
+        GLint _layerOrderUL;
+        GLint _layerMinRangeUL;
+        GLint _layerMaxRangeUL;
+        GLint _elevTexelCoeffUL;
+        GLint _morphConstantsUL;
+
+        osg::GLExtensions* _ext;
+
+        optional<int>        _layerOrder;
+        optional<osg::Vec2f> _elevTexelCoeff;
+        optional<osg::Vec2f> _morphConstants;
+        optional<bool>       _parentTextureExists;
+
+        TileSamplerState _samplerState;
+
+        const RenderBindings* _bindings;
+
+        DrawState() { }
+    };
+
+    /**
+     * All data necessary to draw a single terrain tile.
+     */
+    struct DrawTileCommand
+    {
+        osg::Matrixd _matrix;
+        osg::Matrixf _modelViewMatrix;
+        osg::ref_ptr<osg::Geometry> _geom;
+        double _depth;
+        TileKey _key;
+        unsigned _keyLocation;
+        osg::Vec4f _keyValue;
+        osg::Vec2f _elevTexelCoeff;
+        osg::Vec2f _morphConstants;
+        RenderingPass _pass;
+
+        void draw(osg::RenderInfo& ri, DrawState& env) const;
+
+        DrawTileCommand() : _geom(0L) { }
+    };
+
+    /**
+     * Ordered list of tile drawing commands.
+     */
+    typedef std::list<DrawTileCommand> DrawTileCommands;
+
+    /**
+     * All data necessary to draw a single map layer.
+     */
+    struct DrawLayerCommand
+    {
+        const ImageLayer* _layer;
+        DrawTileCommands _tiles;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+
+        void draw(osg::RenderInfo& ri, DrawState& env) const;
+    };
+
+    /**
+     * Ordered list of map layers to draw.
+     */
+    typedef std::list<DrawLayerCommand> DrawLayerCommandList;
+
+    /**
+     * Map layers indexed by layer UID (for fast lookups)
+     */
+    typedef std::map<UID, DrawLayerCommand*> DrawLayerCommandMap;
+
+
+    /**
+     * Drawable submitted to the OSG cull visitor that is responsible
+     * for rendering the entire terrain. The TerrainCuller assembles
+     * this object during the CULL traversal.
+     */
+    class TerrainDrawable : public osg::Drawable
+    {
+    public: // osg::Drawable
+        void drawImplementation(osg::RenderInfo& ri) const;
+
+        osg::BoundingSphere computeBound() const { return _bs; }
+
+        osg::BoundingBox computeBoundingBox() const { return _box; }
+
+    public:
+        TerrainDrawable();
+
+        void draw(osg::RenderInfo& ri, DrawState& env) const;
+
+        /** Set up the map layers before culling the terrain */
+        void setup(const MapFrame& frame, const RenderBindings& bindings);
+
+        /** Add a layer (in order) */
+        void addLayer(const ImageLayer*);
+
+        /** Layers to draw */
+        DrawLayerCommandList& layers() { return _layerList; }
+        const DrawLayerCommandList& layers() const { return _layerList; }
+        DrawLayerCommand& layer(UID uid) { return *_layerMap[uid]; }
+
+        osg::BoundingSphere   _bs;
+        osg::BoundingBox      _box;
+        
+    private:
+        DrawLayerCommandList  _layerList;
+        DrawLayerCommandMap   _layerMap;
+        const RenderBindings* _bindings;
+    };
+
+} } } // namespace 
+
+#endif // OSGEARTH_REX_TERRAIN_DRAWABLE_H

@@ -545,9 +545,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         this->getEngineContext()->startCull( cv );
 
 
-#if 0
-        TerrainEngineNode::traverse( nv );
-#else
         TerrainCuller culler;
         culler.setFrameStamp(new osg::FrameStamp(*nv.getFrameStamp()));
         culler.setDatabaseRequestHandler(nv.getDatabaseRequestHandler());
@@ -559,8 +556,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         culler.setup(*_update_mapf, this->getEngineContext()->getRenderBindings());
 
         _terrain->accept(culler);
-
-        //OE_INFO << LC << "Draw commmands = " << culler.getNumCommands() << std::endl;
 
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
@@ -574,10 +569,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         cv->popStateSet();
 
-        //const osg::BoundingSphere& bs = culler._drawable->getBound();
-        //OE_INFO << "bs = " << bs.radius() << "\n";
-
-#endif
 
         this->getEngineContext()->endCull( cv );
 

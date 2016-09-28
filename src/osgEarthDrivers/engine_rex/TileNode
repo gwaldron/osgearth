@@ -154,9 +154,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool accept_cull_stealth(TerrainCuller*); //osgUtil::CullVisitor* cv);
 
-        // returns true if any surface geometry was added (visible).
-        bool acceptSurface(TerrainCuller*, EngineContext*); //osgUtil::CullVisitor* nv, EngineContext*);
-
         bool shouldSubDivide(TerrainCuller*, const SelectionInfo&); //osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
 
         void createPayloadStateSet(EngineContext*);

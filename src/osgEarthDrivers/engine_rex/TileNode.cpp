@@ -190,7 +190,9 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     }
     else
     {
-        //OE_INFO << LC << _key.str() << ": No parent found in create\n";
+        RenderingPass& defaultPass = _renderingData.addPass();
+        defaultPass._sourceUID = -1;
+        defaultPass._valid = true;
     }
 
     // need to recompute the bounds after adding payload:

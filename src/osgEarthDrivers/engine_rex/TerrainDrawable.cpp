@@ -30,7 +30,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 {
     osg::State& state = *ri.getState();
 
-    //OE_INFO << LC << "Drawing: " << _geom.get() << std::endl;
+    //OE_INFO << LC << "  TILE: " << _geom << std::endl;
         
     // Tile key encoding, if the uniform is required.
     // TODO: calculate this elsewhere, not here!

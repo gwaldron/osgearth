@@ -65,14 +65,18 @@ TerrainCuller::apply(osg::Node& node)
             {
                 const RenderingPass& pass = data._passes[p];
 
-                // add a new Draw command to the appropriate layer
                 UID uid = pass._sourceUID;
+
+                if (uid < 0 && data._passes.size() > 1)
+                    continue;
+
+                // add a new Draw command to the appropriate layer
                 DrawLayerCommand& layer = _drawable->layer(uid);
                 layer._tiles.push_back(DrawTileCommand());
                 DrawTileCommand& tile = layer._tiles.back();
 
                 tile._key = _currentTileNode->getTileKey();
-                tile._pass = pass; 
+                tile._pass = pass; // pointer instead?
                             
                 tile._matrix = surface->getMatrix();
                 tile._modelViewMatrix = *this->getModelViewMatrix();

@@ -842,17 +842,16 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 }
             }
 
-            // Build a sampler binding for the layer.
+            // Build a sampler binding for the shared layer.
             if ( unit.isSet() )
             {
-                unsigned newIndex = _renderBindings.size();
-                for (unsigned i = 0; i<_renderBindings.size() && newIndex == _renderBindings.size(); ++i)
-                {
-                    if (!_renderBindings[i].isActive())
-                        newIndex = i;
-                }
-                SamplerBinding& newBinding = _renderBindings[newIndex];
+                // Find the next empty SHARED slot:
+                unsigned newIndex = SamplerBinding::SHARED;
+                while (_renderBindings[newIndex].isActive())
+                    ++newIndex;
 
+                // Put thenew binding there:
+                SamplerBinding& newBinding = _renderBindings[newIndex];
                 newBinding.usage()     = SamplerBinding::SHARED;
                 newBinding.sourceUID() = layerAdded->getUID();
                 newBinding.unit()      = unit.get();

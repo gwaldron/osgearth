@@ -103,7 +103,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec4f _keyValue;
         osg::Vec2f _elevTexelCoeff;
         osg::Vec2f _morphConstants;
-        RenderingPass _pass;
+        const RenderingPass* _pass;
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 

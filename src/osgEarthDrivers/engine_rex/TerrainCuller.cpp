@@ -76,7 +76,7 @@ TerrainCuller::apply(osg::Node& node)
                 DrawTileCommand& tile = layer._tiles.back();
 
                 tile._key = _currentTileNode->getTileKey();
-                tile._pass = pass; // pointer instead?
+                tile._pass = &pass;
                             
                 tile._matrix = surface->getMatrix();
                 tile._modelViewMatrix = *this->getModelViewMatrix();

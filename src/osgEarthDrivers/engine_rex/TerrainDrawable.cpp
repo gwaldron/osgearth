@@ -33,7 +33,6 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
     //OE_INFO << LC << "  TILE: " << _geom << std::endl;
         
     // Tile key encoding, if the uniform is required.
-    // TODO: calculate this elsewhere, not here!
     if (env._tileKeyUL >= 0 )
     {
         env._ext->glUniform4fv(env._tileKeyUL, 1, _keyValue.ptr());
@@ -63,9 +62,9 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
     }
 
     // Apply samplers for this tile draw:
-    for(unsigned s=0; s<_pass._samplers.size(); ++s)
+    for(unsigned s=0; s<_pass->_samplers.size(); ++s)
     {
-        const Sampler& sampler = _pass._samplers[s];
+        const Sampler& sampler = _pass->_samplers[s];
 
         SamplerState& samplerState = env._samplerState._samplers[s];
 
@@ -99,12 +98,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 
     for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
     {
-        osg::PrimitiveSet* pset = _geom->getPrimitiveSet(i);
-        if (pset)
-        {
-            pset->draw(state, true);
-        }
-        //_geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
+        _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
     }
 }
 

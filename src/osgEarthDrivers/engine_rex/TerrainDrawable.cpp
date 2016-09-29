@@ -147,6 +147,8 @@ DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
             env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)FLT_MAX);
     }
 
+    //_tiles.sort();
+
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
         tile->draw(ri, env);

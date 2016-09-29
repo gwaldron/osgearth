@@ -106,6 +106,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
+        bool operator < (const DrawTileCommand& rhs) const {
+            return _geom.get() < rhs._geom.get();
+        }
+
         DrawTileCommand() { }
     };
 
@@ -113,6 +117,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * Ordered list of tile drawing commands.
      */
     typedef std::list<DrawTileCommand> DrawTileCommands;
+    //typedef std::map<uintptr_t, DrawTileCommand> DrawTileCommands;
 
     /**
      * All data necessary to draw a single map layer.

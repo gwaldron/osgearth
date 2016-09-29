@@ -35,9 +35,16 @@ using namespace osgEarth;
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     /**
-     * A Geometry that will draw its primitive sets multiple time,
-     * once for each configured "layer". For rendering multipass
-     * data from a single cull.
+     * TileDrawable is an osg::Drawable that represents an individual terrain tile
+     * for the purposes of scene graph operations (like intersections, bounds
+     * computation, statistics, etc.)
+     * 
+     * NOTE: TileDrawable does not actually render anything!
+     * The TerrainDrawable object does all the rendering of tiles.
+     *
+     * Instead, it exposes various osg::Drawable Functors for traversing
+     * the terrain's geometry. It also hold a pointer to the tile's elevation
+     * raster so it can properly reflect the elevation data in the texture.
      */
     class TileDrawable : public osg::Drawable
     {
@@ -53,7 +60,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<const osg::Image> _elevationRaster;
         osg::Matrixf                   _elevationScaleBias;
 
-        float* _heightCache;
+        // cached 3D mesh of the terrain tile (derived from the elevation raster)
+        osg::Vec3f* _mesh;
 
     public:
         
@@ -67,8 +75,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Sets the elevation raster for this tile
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
-        const osg::Image* getElevationRaster() const;
-        const osg::Matrixf& getElevationMatrix() const;
+
+        const osg::Image* getElevationRaster() const {
+            return _elevationRaster.get();
+        }
+
+        const osg::Matrixf& getElevationMatrix() const {
+            return _elevationScaleBias;
+        }
 
     public: // osg::Drawable overrides
 

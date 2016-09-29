@@ -39,15 +39,16 @@ _key         ( key ),
 _geom        ( geometry ),
 _tileSize    ( tileSize )
 {   
-    int tileSize2 = tileSize*tileSize;
-    _heightCache = new float[ tileSize2 ];
-    for(int i=0; i<tileSize2; ++i)
-        _heightCache[i] = 0.0f;    
+    //int tileSize2 = tileSize*tileSize;
+    //_heightCache = new float[ tileSize2 ];
+    //for(int i=0; i<tileSize2; ++i)
+    //    _heightCache[i] = 0.0f;    
+    _mesh = new osg::Vec3f[ tileSize*tileSize ];
 }
 
 TileDrawable::~TileDrawable()
 {
-    delete [] _heightCache;
+    delete [] _mesh;
 }
 
 #if 0
@@ -113,7 +114,10 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
             {
                 float u = (float)s / (float)(_tileSize-1);
                 u = u*scaleU + biasU;
-                _heightCache[t*_tileSize+s] = elevation(u, v).r();
+                //_heightCache[t*_tileSize+s] = elevation(u, v).r();
+
+                unsigned index = t*_tileSize+s;
+                _mesh[index] = verts[index] + normals[index] * elevation(u, v).r();
             }
         }
     }
@@ -121,27 +125,11 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     dirtyBound();
 }
 
-const osg::Image*
-TileDrawable::getElevationRaster() const
-{
-    return _elevationRaster.get();
-}
-
-const osg::Matrixf&
-TileDrawable::getElevationMatrix() const
-{
-    return _elevationScaleBias;
-}
-
 // Functor supplies triangles to things like IntersectionVisitor, ComputeBoundsVisitor, etc.
 void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
-{
-    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
-    const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
-        
+{        
 #if 1 // triangles (OSG-stats-friendly)
-
     //TODO: improve by caching the entire Vec3f, not just the height.
     
     f.begin(GL_TRIANGLES);
@@ -153,17 +141,9 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             int i10 = i00 + 1;
             int i01 = i00 + _tileSize;
             int i11 = i01 + 1;
-            
-            osg::Vec3d v01 = verts[i01] + normals[i01] * _heightCache[i01];
-            osg::Vec3d v10 = verts[i10] + normals[i10] * _heightCache[i10];
 
-            f.vertex( verts[i00] + normals[i00] * _heightCache[i00] );
-            f.vertex( v01 );
-            f.vertex( v10 );
-            
-            f.vertex( v10 );
-            f.vertex( v01 );
-            f.vertex( verts[i11] + normals[i11] * _heightCache[i11] );
+            f.vertex(_mesh[i00]);  f.vertex(_mesh[i01]);  f.vertex(_mesh[i10]);
+            f.vertex(_mesh[i10]);  f.vertex(_mesh[i01]);  f.vertex(_mesh[i11]);
         }
     }
 
@@ -181,10 +161,10 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
         for(int s=0; s<_tileSize; ++s)
         {
             int i = t*_tileSize + s;
-            f.vertex( verts[i] + normals[i] * _heightCache[i] );
+            f.vertex( _mesh[i] );
 
             i += _tileSize;
-            f.vertex( verts[i] + normals[i] * _heightCache[i] );
+            f.vertex( _mesh[i] );
         }
 
         f.end();
@@ -204,14 +184,11 @@ TileDrawable::computeBoundingBox() const
 {
     osg::BoundingBox box;
 
-    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
-    const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
+    unsigned numVerts = _geom->getVertexArray()->getNumElements();
 
-    float lo=0, hi=0;
-    for(unsigned i=0; i<verts.size(); ++i)
+    for(unsigned i=0; i<numVerts; ++i)
     {
-        float z = _heightCache[i];
-        box.expandBy(verts[i] + normals[i] * z);
+        box.expandBy(_mesh[i]);
     }
 
     return box;

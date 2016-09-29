@@ -40,7 +40,7 @@ namespace osgDB {
     class Options;
 }
 
-namespace osgEarth { namespace Util 
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
@@ -78,20 +78,20 @@ namespace osgEarth { namespace Util
             DriverConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
-        
+
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet("hours", _hours);
             conf.getIfSet("ambient", _ambient);
         }
-        
+
         optional<float> _hours;
         optional<float> _ambient;
     };
 
 
     /**
-    * Interface for classes that provide sky, lighting, and other 
+    * Interface for classes that provide sky, lighting, and other
     * environmental effect.
     */
     class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
@@ -103,14 +103,14 @@ namespace osgEarth { namespace Util
          */
         static SkyNode* create(
             osgEarth::MapNode* mapNode );
-        
+
         /**
          * Creates a new SkyNode with custom options.
          */
         static SkyNode* create(
             const SkyOptions&  options,
             osgEarth::MapNode* mapNode );
-        
+
         /**
          * Creates a new SkyNode with a named driver.
          */
@@ -140,7 +140,7 @@ namespace osgEarth { namespace Util
          */
         void setReferencePoint(const GeoPoint& point);
         const GeoPoint& getReferencePoint() const { return *_refpoint; }
-       
+
         /**
          * Whether the sky lights its subgraph.
          */
@@ -176,12 +176,12 @@ namespace osgEarth { namespace Util
         virtual const osg::Light* getSunLight() const { return getSunLight(); }
 
         /** @deprecated. use getSunLight()->setAmbient instead */
-        void setMinimumAmbient(const osg::Vec4f& ambient) { getSunLight()->setAmbient(ambient); }
+        void setMinimumAmbient(const osg::Vec4f& ambient) { if (getSunLight()) getSunLight()->setAmbient(ambient); }
         /** @deprecated; use getSunLight()->getAmbient instead */
-        const osg::Vec4& getMinimumAmbient() const { return getSunLight()->getAmbient(); }
+        const osg::Vec4& getMinimumAmbient() const { if (!getSunLight()) return osg::Vec4(0,0,0,0); return getSunLight()->getAmbient(); }
 
     public:
-        
+
         /** Attaches this sky node to a view (placing a sky light). Optional */
         virtual void attach(osg::View* view, int lightNum) { }
         void attach(osg::View* view) { attach(view, 0); }

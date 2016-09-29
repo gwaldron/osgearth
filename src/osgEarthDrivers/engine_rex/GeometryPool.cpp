@@ -423,7 +423,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
                     keys.push_back(i->first);
                     objects.push_back(i->second.get());
                     
-                    OE_INFO << "Releasing: " << i->second.get() << std::endl;
+                    //OE_INFO << "Releasing: " << i->second.get() << std::endl;
                 }
             }
             for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)

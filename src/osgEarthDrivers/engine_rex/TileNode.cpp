@@ -69,15 +69,10 @@ _childrenReady( false ),
 _minExpiryTime( 0.0 ),
 _minExpiryFrames( 0 ),
 _lastTraversalTime(0.0),
-_lastTraversalFrame(0.0)
+_lastTraversalFrame(0.0),
+_count(0)
 {
-    osg::StateSet* stateSet = getOrCreateStateSet();
-
-    // The StateSet must have a dynamic data variance since we plan to alter it
-    // as new data becomes available.
-    stateSet->setDataVariance(osg::Object::DYNAMIC);
-
-    _count = 0;
+    //nop
 }
 
 void
@@ -104,13 +99,15 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         (float)_key.getLOD(),
         -1.0f);
 
-    // Create mask records
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, context->getOptions().tileSize().get(), context->getMapFrame());
+    // Mask generator creates geometry from masking boundaries when they exist.
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
+        key, 
+        context->getOptions().tileSize().get(), 
+        context->getMapFrame());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
     context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom, masks.get());
-
 
     // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(
@@ -263,19 +260,6 @@ TileNode::getElevationMatrix() const
 }
 
 void
-TileNode::createPayloadStateSet(EngineContext* context)
-{
-    _payloadStateSet = new osg::StateSet();
-
-    // Install the tile key uniform.
-    _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
-    _payloadStateSet->addUniform( _tileKeyUniform.get() );
-
-    _tileMorphUniform = new osg::Uniform("oe_tile_morph", osg::Vec2f(0,0));
-    _payloadStateSet->addUniform( _tileMorphUniform.get() );
-}
-
-void
 TileNode::setDirty(bool value)
 {
     _dirty = value;
@@ -284,18 +268,15 @@ TileNode::setDirty(bool value)
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
-    OE_DEBUG << LC << "Tile " << _key.str() << " : Release GL objects\n";
+    //OE_WARN << LC << "Tile " << _key.str() << " : Release GL objects\n";
 
-    if ( getStateSet() )
-        getStateSet()->releaseGLObjects(state);
-    if ( _payloadStateSet.valid() )
-        _payloadStateSet->releaseGLObjects(state);
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
+
     if ( _patch.valid() )
         _patch->releaseGLObjects(state);
-    if ( _mptex.valid() )
-        _mptex->releaseGLObjects(state);
+
+    _renderingData.releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -312,17 +293,6 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
             culler->getLODScale());
     }
     return false;
-}
-
-
-bool
-TileNode::isVisible(osg::CullStack* stack) const
-{
-#ifdef VISIBILITY_PRECHECK
-    return _surface->isVisible( stack );
-#else
-    return true;
-#endif
 }
 
 bool

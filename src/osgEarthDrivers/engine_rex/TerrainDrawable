@@ -96,7 +96,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
         osg::Matrixd _matrix;
         osg::Matrixf _modelViewMatrix;
-        osg::ref_ptr<osg::Geometry> _geom;
+        //osg::ref_ptr<osg::Geometry> _geom;
+        osg::Geometry* _geom;
         double _depth;
         TileKey _key;
         osg::Vec4f _keyValue;
@@ -107,7 +108,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
         bool operator < (const DrawTileCommand& rhs) const {
-            return _geom.get() < rhs._geom.get();
+            //return _geom.get() < rhs._geom.get();
+            return _geom < rhs._geom;
         }
 
         DrawTileCommand() { }

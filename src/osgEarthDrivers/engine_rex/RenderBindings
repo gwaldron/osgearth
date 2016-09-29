@@ -123,7 +123,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Samplers _samplers;
 
         RenderingPass() : _valid(false), _sourceUID(-1) { }
+
         bool valid() const { return _valid; }
+
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned s = 0; s<_samplers.size(); ++s)
+                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                    _samplers[s]._texture->releaseGLObjects(state);
+        }
+
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned s = 0; s<_samplers.size(); ++s)
+                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                    _samplers[s]._texture->resizeGLObjectBuffers(size);
+        }
+
     };
     typedef std::vector<RenderingPass> RenderingPassList;
 
@@ -158,23 +174,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return 0L;
         }
 
-        //TileRenderingData() { }
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].releaseGLObjects(state);
+        }
 
-        //TileRenderingData(const TileRenderingData& rhs)
-        //{
-        //    *this = rhs;
-        //}
-
-        //TileRenderingData& operator=(const TileRenderingData& rhs)
-        //{
-        //    _passes = rhs._passes;
-        //    for (unsigned p = 0; p < _passes.size(); ++p) {
-        //        if ( _passes[p]._sourceUID >= 0 ) {
-        //            _passesByUID[_passes[p]._sourceUID] = &_passes[p];
-        //        }
-        //    }
-        //    return *this;
-        //}
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].resizeGLObjectBuffers(size);
+        }
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

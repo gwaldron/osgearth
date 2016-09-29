@@ -577,8 +577,14 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         cv->popStateSet();
 
-
         this->getEngineContext()->endCull( cv );
+
+        // traverse all the other children :)
+        for (unsigned i = 0; i<getNumChildren(); ++i)
+        {
+            if (getChild(i) != _terrain.get())
+                getChild(i)->accept(nv);
+        }
     }
 
     else

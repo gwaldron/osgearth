@@ -76,9 +76,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
         void removeSubTiles();
 
-        /** Whether the tile drawables are visible */
-        bool isVisible(osg::CullStack* cs) const;
-
         /** Notifies this tile that another tile has come into existence. */
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
@@ -131,8 +128,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         double                             _lastTraversalTime;
         OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
-        osg::ref_ptr<MPTexture>            _mptex;
-        osg::ref_ptr<osg::StateSet>        _payloadStateSet;
         bool                               _childrenReady;
         unsigned int                       _minExpiryFrames;
         double                             _minExpiryTime;
@@ -146,17 +141,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void createChildren(EngineContext* context);
 
         /** Returns false if the Surface node fails visiblity test */
-        bool cull(TerrainCuller*); //osgUtil::CullVisitor* cv);
+        bool cull(TerrainCuller*);
 
-        bool accept_cull(TerrainCuller*); //osgUtil::CullVisitor* cv);
+        bool accept_cull(TerrainCuller*);
 
-        bool cull_stealth(TerrainCuller*); //osgUtil::CullVisitor* cv);
+        bool cull_stealth(TerrainCuller*);
 
-        bool accept_cull_stealth(TerrainCuller*); //osgUtil::CullVisitor* cv);
+        bool accept_cull_stealth(TerrainCuller*);
 
-        bool shouldSubDivide(TerrainCuller*, const SelectionInfo&); //osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
-
-        void createPayloadStateSet(EngineContext*);
+        bool shouldSubDivide(TerrainCuller*, const SelectionInfo&);
 
         /** Load (or continue loading) content for the tiles in this quad. */
         void load(TerrainCuller*);

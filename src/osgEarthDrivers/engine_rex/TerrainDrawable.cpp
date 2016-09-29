@@ -22,11 +22,15 @@
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
+#undef  LC
+#define LC "[DrawTileCommand] "
 
 void
 DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 {
     osg::State& state = *ri.getState();
+
+    //OE_INFO << LC << "Drawing: " << _geom.get() << std::endl;
         
     // Tile key encoding, if the uniform is required.
     // TODO: calculate this elsewhere, not here!
@@ -95,14 +99,26 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 
     for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
     {
-        _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
+        osg::PrimitiveSet* pset = _geom->getPrimitiveSet(i);
+        if (pset)
+        {
+            pset->draw(state, true);
+        }
+        //_geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
     }
 }
 
+#undef  LC
+#define LC "[DrawLayerCommand] "
 
 void
 DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 {
+    if (_tiles.empty())
+        return;
+
+    //OE_INFO << LC << "LAYER (camera=" << ri.getCurrentCamera()->getName() << ")" << std::endl;
+
     if (_stateSet)
     {
         ri.getState()->apply(_stateSet.get());
@@ -136,7 +152,6 @@ DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
         tile->draw(ri, env);
     }
 }
-
 
 
 TerrainDrawable::TerrainDrawable()
@@ -237,3 +252,14 @@ TerrainDrawable::addLayer(const ImageLayer* imageLayer)
     layer._layer = imageLayer;
 }
 
+void
+TerrainDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
+{
+    for (DrawLayerCommandList::const_iterator layer = _layerList.begin(); layer != _layerList.end(); ++layer)
+    {
+        for (DrawTileCommands::const_iterator tile = layer->_tiles.begin(); tile != layer->_tiles.end(); ++tile)
+        {
+            tile->_geom->compileGLObjects(renderInfo);
+        }
+    }
+}

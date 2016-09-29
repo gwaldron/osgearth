@@ -64,8 +64,8 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
         {
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
-                osg::Object* node = i->get();
-                node->releaseGLObjects(ri.getState());
+                osg::Object* object = i->get();
+                object->releaseGLObjects(ri.getState());
             }
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();

@@ -99,7 +99,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Geometry> _geom;
         double _depth;
         TileKey _key;
-        unsigned _keyLocation;
         osg::Vec4f _keyValue;
         osg::Vec2f _elevTexelCoeff;
         osg::Vec2f _morphConstants;
@@ -107,7 +106,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
-        DrawTileCommand() : _geom(0L) { }
+        DrawTileCommand() { }
     };
 
     /**
@@ -152,6 +151,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::BoundingBox computeBoundingBox() const { return _box; }
 
+        void compileGLObjects(osg::RenderInfo& renderInfo) const;
+
     public:
         TerrainDrawable();
 
@@ -170,6 +171,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::BoundingSphere   _bs;
         osg::BoundingBox      _box;
+
         
     private:
         DrawLayerCommandList  _layerList;

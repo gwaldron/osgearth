@@ -112,12 +112,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(
         key, 
-        context->getRenderBindings(), 
         geom.get(),
-        context->getOptions().tileSize().get(),
-        context->getGeometryPool()->getNumSkirtElements() );
-
-    surfaceDrawable->setDrawAsPatches(false);
+        context->getOptions().tileSize().get() );
 
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
@@ -126,16 +122,18 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         context->getRenderBindings(),
         surfaceDrawable );
 
+    // This was the old patch drawable.
+    // Future: This will be the same thing at the TileDrawCommand but with a "drawAsPatch" boolean
+    // and will be a separate layer.
+#if 0
     // Create a drawable for "patch" geometry, which is rendered as GL patches, not triangles.
     // Patch geometry can be used to place land cover or render other tile-specific data.
     TileDrawable* patchDrawable = new TileDrawable(
         key, 
-        context->getRenderBindings(),
         geom.get(),
-        context->getOptions().tileSize().get(),
-        context->getGeometryPool()->getNumSkirtElements() );
+        context->getOptions().tileSize().get() );
     
-    patchDrawable->setDrawAsPatches(true);
+    //patchDrawable->setDrawAsPatches(true);
 
     // And a node to house that as well:
     _patch = new SurfaceNode(
@@ -143,6 +141,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );
+#endif
 
     // initialize all the per-tile uniforms the shaders will need:
     float start = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphStart;

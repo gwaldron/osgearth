@@ -42,50 +42,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileDrawable : public osg::Drawable
     {
     public:
-        // uniform name IDs.
-        unsigned _uidUniformNameID;
-        unsigned _orderUniformNameID;
-        unsigned _opacityUniformNameID;
-        unsigned _texMatrixUniformNameID;
-        unsigned _texMatrixParentUniformNameID;
-        unsigned _texParentExistsUniformNameID;
-        unsigned _minRangeUniformNameID;
-        unsigned _maxRangeUniformNameID;
-
-        // Data stored for each graphics context:
-        struct PerContextData {
-            PerContextData() : birthTime(-1.0f), lastFrame(0) { }
-            float    birthTime;
-            unsigned lastFrame;
-        };
-        mutable osg::buffered_object<PerContextData> _pcd;
-
-        mutable osg::Vec4f _tileMorphCValue;
-        mutable osg::Vec4f _tileGridDimsValue;
-        mutable osg::Vec4f _tileExtentsValue;
-        RenderBindings _bindings;
-
-        bool _supportsGLSL;
-
-        // underlying geometry, possible shared between this tile and other.
+        // underlying geometry, possibly shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
 
         // tile dimensions
         int _tileSize;
 
-        bool _drawPatch;
-
-        osg::ref_ptr<MPTexture> _mptex;
-
-        int _textureImageUnit;
-        int _textureParentImageUnit;
-
         const TileKey _key;
 
         osg::ref_ptr<const osg::Image> _elevationRaster;
         osg::Matrixf                   _elevationScaleBias;
-
-        int _skirtSize;
 
         float* _heightCache;
 
@@ -93,49 +59,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
-            const TileKey&        key,
-            const RenderBindings& bindings,
-            osg::Geometry*        geometry,
-            int                   tileSize,
-            int                   skirtSize);
-
-        // whether to draw this as a multi-image geometry or as a tesselation patch.
-        void setDrawAsPatches(bool value) { _drawPatch = value; }
-
-        /** Sets the multipass texture to use when rendering geometry. */
-        void setMPTexture(MPTexture* tex) { _mptex = tex; }
+            const TileKey& key,
+            osg::Geometry* geometry,
+            int            tileSize);
 
     public:
-
-        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
-
-        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
-
-        void drawPatches(osg::RenderInfo& renderInfo) const;
-
-        void drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const;
-
-        // validate the geometry is OK.
-        void validate();
 
         // Sets the elevation raster for this tile
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
-
-    public: // osg::Geometry overrides
-
-        // override so we can properly release the GL buffer objects
-        // that are not tracked by the Geometry itself but rather are
-        // stored in the LayerRenderData.
-        void releaseGLObjects(osg::State* state) const;
-        void resizeGLObjectBuffers(unsigned maxSize);
-        void compileGLObjects(osg::RenderInfo& renderInfo) const;
-
-        // this is copied mostly from osg::Geometry, but we've removed 
-        // all the code that handles non-fastPath (don't need it) and
-        // called into our custom renderPrimitiveSets method.
-        void drawImplementation(osg::RenderInfo& renderInfo) const;
 
     public: // osg::Drawable overrides
 

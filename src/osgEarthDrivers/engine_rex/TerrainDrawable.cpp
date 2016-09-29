@@ -147,8 +147,6 @@ DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
             env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)FLT_MAX);
     }
 
-    //_tiles.sort();
-
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
         tile->draw(ri, env);
@@ -203,6 +201,17 @@ TerrainDrawable::drawImplementation(osg::RenderInfo& ri) const
     // unbind local buffers when finished.
     env._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
     env._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+}
+
+void
+TerrainDrawable::sortDrawCommands()
+{
+    // finish preparing the drawable by sorting each layer's tiles
+    // for maximum state sharing.
+    for (DrawLayerCommandList::iterator layer = _layerList.begin(); layer != _layerList.end(); ++layer)
+    {
+        layer->_tiles.sort();
+    }
 }
 
 void

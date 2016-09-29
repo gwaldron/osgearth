@@ -76,7 +76,6 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
             const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
 
             // Merge the new data into the tile.
-            //tilenode->merge( _data, bindings );
             tilenode->merge(_model.get(), bindings);
 
             // Mark as complete. TODO: per-data requests will do something different.

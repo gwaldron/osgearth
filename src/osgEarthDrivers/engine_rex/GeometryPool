@@ -102,6 +102,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
          */
         int getNumSkirtElements() const;
 
+        /**
+         * Are we doing pooling?
+         */
+        bool isEnabled() const { return _enabled; }
+
     public: // osg::Node
 
         /** Perform an update traversal to check for unused resources. */

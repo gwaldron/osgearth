@@ -534,34 +534,42 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
         VisitorData::store(nv, ENGINE_CONTEXT_TAG, this->getEngineContext());
-        // Pass the tile creation context to the traversal.
-        //osg::ref_ptr<osg::Referenced> data = nv.getUserData();
-        //nv.setUserData( this->getEngineContext() );
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
         this->getEngineContext()->_surfaceSS = _surfaceSS.get();
 
         this->getEngineContext()->startCull( cv );
-
-
+        
         TerrainCuller culler;
         culler.setFrameStamp(new osg::FrameStamp(*nv.getFrameStamp()));
         culler.setDatabaseRequestHandler(nv.getDatabaseRequestHandler());
+        culler.pushReferenceViewPoint(cv->getReferenceViewPoint());
         culler.pushViewport(cv->getViewport());
         culler.pushProjectionMatrix(cv->getProjectionMatrix());
-        culler.pushModelViewMatrix(cv->getModelViewMatrix(), osg::Transform::ABSOLUTE_RF);
+        culler.pushModelViewMatrix(cv->getModelViewMatrix(), cv->getCurrentCamera()->getReferenceFrame());
         culler._camera = cv->getCurrentCamera();
         culler._context = this->getEngineContext();
         culler.setup(*_update_mapf, this->getEngineContext()->getRenderBindings());
 
+        // Assemble the terrain drawable:
         _terrain->accept(culler);
+
+        // If we're using geometry pooling, optimize the drawable for shared state:
+        if (getEngineContext()->getGeometryPool()->isEnabled())
+        {
+            culler._drawable->sortDrawCommands();
+        }
 
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
+        // this will normally be the "image layer state set". Later, instead of this,
+        // we should set up the Layers from the MapFrame, and put this stateset on 
+        // any normal ImageLayer.
         if (_surfaceSS.valid())
             cv->pushStateSet(_surfaceSS.get());
 
+        // submit our terrain drawable to OSG's cull visitor.
         cv->apply(*culler._drawable.get());
 
         if (_surfaceSS.valid())
@@ -571,9 +579,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
 
         this->getEngineContext()->endCull( cv );
-
-        //if ( data.valid() )
-        //    nv.setUserData( data.get() );
     }
 
     else

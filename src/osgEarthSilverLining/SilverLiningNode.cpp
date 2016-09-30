@@ -52,7 +52,8 @@ _callback(callback)
     _lightSource = new osg::LightSource();
     _lightSource->setLight( _light.get() );
     _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
-    _lightSource->accept(GenerateGL3LightingUniforms());
+    GenerateGL3LightingUniforms generateLightingVisitor;
+    _lightSource->accept(generateLightingVisitor);
 
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();

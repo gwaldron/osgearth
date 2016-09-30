@@ -93,6 +93,11 @@ public:
                 _grid->setVisible( true );
         
             _lastFID = feature->getFID();
+
+            // Print out the feature as geojson, useful for debugging.
+            osg::ref_ptr< Feature > clone = new Feature(*feature);
+            clone->transform(SpatialReference::create("wgs84"));
+            OE_NOTICE << clone->getGeoJSON() << std::endl;
         }
     }
 

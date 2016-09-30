@@ -44,6 +44,7 @@ namespace osg
     class Texture2DMultisample;
     class TextureCubeMap;
     class PointSprite;
+    class LightSource;
 }
 
 namespace osgSim
@@ -57,7 +58,7 @@ namespace osgEarth
      * Traverses a scene graph and generates VirtualProgram attributes to
      * render the geometry using GLSL shaders.
      *
-     * You can use this class directly, but they osgEarth Registry holds
+     * You can use this class directly, but the osgEarth Registry holds
      * a system-wide implementation that the user can replace. So the best
      * way to use this class is:
      *
@@ -177,6 +178,7 @@ namespace osgEarth
         
         virtual void apply( osgSim::LightPointNode& );
 
+
     protected: // high-level entry points:
 
         virtual void optimizeStateSharing(osg::Node* graph, StateSetCache* cache);
@@ -232,6 +234,9 @@ namespace osgEarth
         // and if so, it will clone a node that has multiple parents such that
         // each parent has a complete separate copy of the child.
         virtual void duplicateSharedNode(osg::Node& child);
+
+        // disables (or removes) attributes that won't work in teh current configuration
+        virtual void disableUnsupportedAttributes(osg::StateSet* stateset);
 
     protected:
 

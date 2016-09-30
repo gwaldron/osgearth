@@ -17,7 +17,6 @@ in vec3 oe_normalMapBinormal;
 void oe_normalMapFragment(inout vec4 color)
 {
     vec4 encodedNormal = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
-    //vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_normalMapCoords);
     vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
 
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));

@@ -15,7 +15,12 @@ in vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
 
 #define OE_SHADOW_NUM_SAMPLES 16
 
-const vec2 oe_shadow_samples[OE_SHADOW_NUM_SAMPLES] = vec2[]( vec2( -0.942016, -0.399062 ), vec2( 0.945586, -0.768907 ), vec2( -0.094184, -0.929389 ), vec2( 0.344959, 0.293878 ), vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ), vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ), vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 ));
+const vec2 oe_shadow_samples[16] = vec2[](
+    vec2( -0.942016, -0.399062 ), vec2( 0.945586, -0.768907 ), vec2( -0.094184, -0.929389 ), vec2( 0.344959, 0.293878 ),
+    vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ),
+    vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ),
+    vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 )
+);
 
 float oe_shadow_rand(vec2 co)
 {
@@ -32,15 +37,15 @@ vec2 oe_shadow_rot(vec2 p, float a)
 float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur)
 {
     float shadowed = 0.0;
-    float a = 6.283185 * oe_shadow_rand(c.xy);
-    vec4 b = vec4(oe_shadow_rot(vec2(1,0),a), oe_shadow_rot(vec2(0,1),a));
+    float randomAngle = 6.283185 * oe_shadow_rand(c.xy);
     for(int i=0; i<OE_SHADOW_NUM_SAMPLES; ++i)
     {
-        vec2 off = oe_shadow_samples[i];
-        off = vec2(dot(off,b.xz), dot(off,b.yw));
+        vec2 off = oe_shadow_rot(oe_shadow_samples[i], randomAngle);
         vec3 pc = vec3(c.xy + off*blur, c.z);
         float depth = texture(oe_shadow_map, pc).r;
-        if ( depth < 1.0 && depth < refvalue ) {
+        
+        if (depth < 1.0 && depth < refvalue )
+        {
            shadowed += 1.0;
         }
     }
@@ -69,11 +74,11 @@ void oe_shadow_fragment(inout vec4 color)
         vec3 coord = vec3(c.x, c.y, float(i));
 
         // TODO: This causes an NVIDIA error (DUI_foreachId) - disable for now.
-        //if ( oe_shadow_blur > 0.0 )
-        //{
-        //    factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur));
-        //}
-        //else
+        if ( oe_shadow_blur > 0.0 )
+        {
+            factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur));
+        }
+        else
         {
             //float depth = texture(oe_shadow_map, coord).r;
             depth = texture(oe_shadow_map, coord).r;

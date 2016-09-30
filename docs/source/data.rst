@@ -10,10 +10,6 @@ Help us add useful sources of Free data to this list.
 
     * `ReadyMap.org`_ - Free 15m imagery, elevation, and street tiles for osgEarth developers
     
-    * MapQuest_ - MapQuest open aerial imagery and rasterized OpenStreetMap layers
-    
-    * `Bing Maps`_ - Microsoft's worldwide imagery and map data ($)
-    
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
     
@@ -27,6 +23,8 @@ Help us add useful sources of Free data to this list.
     * `Natural Earth`_ - Free vector and raster map data at various scales
     
     * `Virtual Terrain Project`_ - Various sources for whole-earth imagery
+    
+    * `Bing Maps`_ - Microsoft's worldwide imagery and map data ($)
         
         
 **Elevation data**
@@ -54,7 +52,6 @@ Help us add useful sources of Free data to this list.
 .. _GEBCO:                      http://www.gebco.net/
 .. _GLCF:                       http://glcf.umiacs.umd.edu/data/srtm/
 .. _OpenStreetMap:              http://openstreetmap.org
-.. _MapQuest:                   http://developer.mapquest.com/web/products/open/map
 .. _NASA EOSDIS:                http://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs
 .. _NASA BlueMarble:            http://visibleearth.nasa.gov/view_cat.php?categoryID=1484
 .. _Natural Earth:              http://www.naturalearthdata.com/

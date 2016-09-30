@@ -100,7 +100,7 @@ public:
             "varying vec4 mask_layer_texc; \n"
             "void my_color_filter(inout vec4 color) \n"
             "{ \n"
-            "    vec4 mask_texel = texture2D(mask_layer_tex, mask_layer_texc.st); \n"
+            "    vec4 mask_texel = texture(mask_layer_tex, mask_layer_texc.st); \n"
             "    if ( mask_texel.a >= 0.5 ) \n"
             "    { \n"
             "        color.r = 1.0; \n"

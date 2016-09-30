@@ -39,6 +39,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/Lighting>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -409,6 +410,13 @@ MapNode::init()
     // install the default rendermode uniform:
     stateset->addUniform( new osg::Uniform("oe_isPickCamera", false) );
     stateset->addUniform( new osg::Uniform("oe_isShadowCamera", false) );
+
+    // install a default material for everything in the map
+    osg::Material* defaultMaterial = new MaterialGL3();
+    defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
+    defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
+    stateset->setAttributeAndModes(defaultMaterial, 1);
+    defaultMaterial->setUpdateCallback(new MaterialCallback());
 
     dirtyBound();
 

@@ -28,6 +28,7 @@
 namespace osgEarth
 {
     class Profile;
+    class ElevationPool;
 
     /**
      * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
@@ -125,6 +126,8 @@ namespace osgEarth
             const TileKey&                  key,
             bool                            expressHeightsAsHAE,
             ProgressCallback*               progress) const;
+
+        ElevationPool* getElevationPool() const;
 
     private:
         bool _initialized;

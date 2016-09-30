@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 2.8 DRAFT (September 2016)
+Version 2.8 (September 2016)
 ---------------------------
 
 * Disabled feature tesselation tiling in BuildGeometryFilter unless max_polygon_tiling_angle is explicitly set.  Cropping code was causing issues especially around the poles.  Need to come up with a more general solution in the future.

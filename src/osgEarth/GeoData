@@ -168,6 +168,11 @@ namespace osgEarth
         bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
 
         /**
+         * Transforms this point in place to another SRS.
+         */
+        bool transformInPlace(const SpatialReference* srs);
+
+        /**
          * Transforms this geopoint's Z coordinate (in place)
          */
         bool transformZ(const AltitudeMode& altMode, const TerrainResolver* t );

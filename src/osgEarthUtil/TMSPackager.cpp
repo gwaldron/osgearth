@@ -42,22 +42,22 @@ WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, TMSPack
 
 std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
 {
-    std::string layerFolder = toLegalFileName( _packager->getLayerName() );         
+    std::string layerFolder = toLegalFileName( _packager->getLayerName() );
     unsigned w, h;
-    key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );         
+    key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
 
-    return Stringify() 
+    return Stringify()
         << _packager->getDestination()
         << "/" << layerFolder
-        << "/" << key.getLevelOfDetail() 
-        << "/" << key.getTileX() 
+        << "/" << key.getLevelOfDetail()
+        << "/" << key.getTileX()
         << "/" << h - key.getTileY() - 1
         << "." << _packager->getExtension();
 }
 
 
 bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
-{    
+{
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
 
@@ -73,19 +73,12 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
         return true;
     }
 
-    if (!tileSource)
-    {
-        // attempt to create the output folder:        
-        osgEarth::makeDirectoryForFile( path );       
-    }
-
-
     if (imageLayer)
-    {                        
+    {
         GeoImage geoImage = imageLayer->createImage( key );
 
         if (geoImage.valid())
-        {                             
+        {
             if (!_packager->getKeepEmpties() && ImageUtils::isEmptyImage(geoImage.getImage()))
             {
                 OE_INFO << "Not writing completely transparent image for key " << key.str() << std::endl;
@@ -104,13 +97,13 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             }
 
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
-            osg::ref_ptr< osg::Image > final = geoImage.getImage();                        
+            osg::ref_ptr< osg::Image > final = geoImage.getImage();
 
-            // convert to RGB if necessary            
+            // convert to RGB if necessary
             if ( _packager->getExtension() == "jpg" && final->getPixelFormat() != GL_RGB )
             {
                 final = ImageUtils::convertToRGB8( final );
-            }            
+            }
 
             // use the TileSource provided if set, else use writeImageFile
             if (tileSource)
@@ -120,9 +113,11 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             }
             else
             {
+                // attempt to create the output folder:
+                osgEarth::makeDirectoryForFile( path );
                 return osgDB::writeImageFile(*final, path, _packager->getOptions());
             }
-        }            
+        }
     }
     else if (elevationLayer )
     {
@@ -131,7 +126,7 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
         {
             // convert the HF to an image
             ImageToHeightFieldConverter conv;
-            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );	
+            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );
 
             // use the TileSource provided if set, else use writeImageFile
             if (tileSource)
@@ -141,19 +136,21 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             }
             else
             {
+                // attempt to create the output folder:
+                osgEarth::makeDirectoryForFile( path );
                 return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
             }
-        }            
+        }
     }
-        
-    // If we didn't produce a result but the key isn't within range then we should continue to 
+
+    // If we didn't produce a result but the key isn't within range then we should continue to
     // traverse the children b/c a min level was set.
     if (!_layer->isKeyInRange(key))
     {
         return true;
     }
-    return false;        
-} 
+    return false;
+}
 
 bool WriteTMSTileHandler::hasData( const TileKey& key ) const
 {
@@ -168,12 +165,12 @@ bool WriteTMSTileHandler::hasData( const TileKey& key ) const
 std::string WriteTMSTileHandler::getProcessString() const
 {
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
-    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
 
     std::stringstream buf;
     buf << "osgearth_package --tms ";
     if (imageLayer)
-    {        
+    {
         for (int i = 0; i < _map->getNumImageLayers(); i++)
         {
             if (imageLayer == _map->getImageLayerAt(i))
@@ -201,12 +198,12 @@ std::string WriteTMSTileHandler::getProcessString() const
     buf << " --elevation-pixel-depth " << _packager->getElevationPixelDepth() << " ";
     if (_packager->getOptions())
     {
-        buf << " --db-options " << _packager->getOptions()->getOptionString() << " ";    
+        buf << " --db-options " << _packager->getOptions()->getOptionString() << " ";
     }
     if (_packager->getOverwrite())
     {
         buf << " --overwrite ";
-    }            
+    }
     if (_packager->getApplyAlphaMask())
     {
         buf << " --alpha-mask ";
@@ -329,10 +326,10 @@ TileVisitor* TMSPackager::getTileVisitor() const
 void TMSPackager::setVisitor(TileVisitor* visitor)
 {
     _visitor = visitor;
-}    
+}
 
 void TMSPackager::run( TerrainLayer* layer,  Map* map  )
-{    
+{
     // fetch one tile to see what the image size should be
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
@@ -344,7 +341,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 
         unsigned int index = 0;
         if (imageLayer)
-        {            
+        {
             layerName << "image";
             // Get the index of the layer
             for (int i = 0; i < map->getNumImageLayers(); i++)
@@ -354,7 +351,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
                     index = i;
                     break;
                 }
-            }            
+            }
         }
         else if (elevationLayer)
         {
@@ -412,9 +409,9 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     }
 
 
-    _handler = new WriteTMSTileHandler(layer, map, this);    
-    _visitor->setTileHandler( _handler );    
-    _visitor->run( map->getProfile() );    
+    _handler = new WriteTMSTileHandler(layer, map, this);
+    _visitor->setTileHandler( _handler );
+    _visitor->run( map->getProfile() );
 }
 
 void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
@@ -424,7 +421,7 @@ void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
      // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
-        map->getProfile(),        
+        map->getProfile(),
         dataExtents,
         _extension,
         _width,
@@ -449,7 +446,7 @@ void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
     tileMap->generateTileSets( std::min(23u, maxLevel+1) );
-    
+
 
     // write out the tilemap catalog:
     std::string tileMapFilename = osgDB::concatPaths( osgDB::concatPaths(_destination, toLegalFileName( _layerName )), "tms.xml");

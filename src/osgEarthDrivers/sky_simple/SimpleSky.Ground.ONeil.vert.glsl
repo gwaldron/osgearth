@@ -9,7 +9,7 @@ uniform bool oe_mode_GL_LIGHTING;
 
 uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz 
 uniform mat4 osg_ViewMatrix;          // GL view matrix 
-uniform vec3 atmos_v3LightDir;        // The direction vector to the light source 
+//uniform vec3 atmos_v3LightDir;        // The direction vector to the light source 
 uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels 
 uniform float atmos_fOuterRadius;     // Outer atmosphere radius 
 uniform float atmos_fOuterRadius2;    // fOuterRadius^2 		
@@ -25,18 +25,46 @@ uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth
 uniform int atmos_nSamples; 	
 uniform float atmos_fSamples; 
 
-varying vec3 atmos_color;          // primary sky light color
-varying vec3 atmos_atten;          // sky light attenuation factor
-varying vec3 atmos_lightDir;       // light direction in view space
+out vec3 atmos_color;          // primary sky light color
+out vec3 atmos_atten;          // sky light attenuation factor
+out vec3 atmos_lightDir;       // light direction in view space
         
 float atmos_fCameraHeight;            // The camera's current height 		
 float atmos_fCameraHeight2;           // fCameraHeight^2 
 
-varying vec3 atmos_up;             // earth up vector at vertex location (not the normal)
-varying float atmos_space;         // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
-varying vec3 atmos_vert; 
+out vec3 atmos_up;             // earth up vector at vertex location (not the normal)
+out float atmos_space;         // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
+out vec3 atmos_vert; 
 
 vec3 vp_Normal;             // surface normal (from osgEarth)
+
+
+// Toatl number of lights in the scene
+uniform int osg_NumLights;
+
+// Parameters of each light:
+struct osg_LightSourceParameters 
+{   
+   vec4 ambient;              // Aclarri   
+   vec4 diffuse;              // Dcli   
+   vec4 specular;             // Scli   
+   vec4 position;             // Ppli   
+   //vec4 halfVector;           // Derived: Hi   
+   vec3 spotDirection;        // Sdli   
+   float spotExponent;        // Srli   
+   float spotCutoff;          // Crli                              
+                              // (range: [0.0,90.0], 180.0)   
+   float spotCosCutoff;       // Derived: cos(Crli)                 
+                              // (range: [1.0,0.0],-1.0)   
+   float constantAttenuation; // K0   
+   float linearAttenuation;   // K1   
+   float quadraticAttenuation;// K2  
+
+   bool enabled;
+};  
+uniform osg_LightSourceParameters osg_LightSource[8];
+
+
 
 float atmos_scale(float fCos) 	
 { 
@@ -146,11 +174,11 @@ void atmos_GroundFromAtmosphere(in vec4 vertexVIEW)
 
 void atmos_vertex_main(inout vec4 vertexVIEW) 
 { 
-    if ( oe_mode_GL_LIGHTING == false ) return; 
+    //if ( oe_mode_GL_LIGHTING == false ) return; 
 
     atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz); 
     atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; 
-    atmos_lightDir = normalize(gl_LightSource[0].position.xyz);  // view space
+    atmos_lightDir = normalize(osg_LightSource[0].position.xyz);  // view space
     atmos_vert = vertexVIEW.xyz; 
 
     atmos_space = max(0.0, (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius));

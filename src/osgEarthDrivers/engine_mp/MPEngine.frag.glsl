@@ -21,7 +21,7 @@ void oe_mp_apply_coloring(inout vec4 color)
     color = oe_terrain_color.a >= 0.0 ? oe_terrain_color : color;
 
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
-    vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery);
+    vec4 texel = mix(color, texture(oe_layer_tex, oe_layer_texc.st), applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, applyImagery);
 
 #ifdef MP_USE_BLENDING

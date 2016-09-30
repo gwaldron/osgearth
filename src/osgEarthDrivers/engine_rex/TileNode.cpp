@@ -211,20 +211,21 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
     float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
 
 
-    // Encode the tile key in a uniform. Note! The X and Y components are scaled
-    // to that we don't use precision on the GPU when the values get large.
-    // If you need the raw X and Y, you must scale them back up on the GPU.
+    // Encode the tile key in a uniform. Note! The X and Y components are presented
+    // modulo 2^16 form so they don't overrun single-precision space.
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
 
-    const float tileXYScale = 0.0625f; // 1/16
+    const double m = pow(2.0, 16.0);
+
+    double x = (double)_key.getTileX();
+    double y = (double)(th - _key.getTileY()-1);
 
     _tileKeyUniform->set(osg::Vec4f(
-        tileXYScale * (float)(_key.getTileX()),
-        tileXYScale * (float)(th-_key.getTileY()-1.0f),
+        (float)fmod(x, m),
+        (float)fmod(y, m),
         (float)_key.getLOD(),
         width));
-
 
     // update the morph constants
 

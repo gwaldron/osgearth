@@ -322,9 +322,6 @@ _maxTextureBufferSize   ( 0 )
         _supportsFragDepthWrite = true;
 #endif
 
-        //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
-        //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
-
         // NVIDIA:
         bool isNVIDIA = _vendor.find("NVIDIA") == 0;
 

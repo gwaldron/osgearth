@@ -81,10 +81,11 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                 }
 
                 buildings {
-                  extrusion-height:      Math.random()*30.0 + 5.0;
+                  extrusion-height:      getBuildingHeight();
                   extrusion-flatten:     true;
                   extrusion-wall-style:  building-wall;
                   extrusion-roof-style:  building-rooftop;
+                  altitude-clamping:     terrain;
                 }            
 
                 building-wall {
@@ -160,6 +161,20 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                     }
                     return "";
                 }
+                
+                function getBuildingHeight() {                    
+					if ("height" in feature.properties) {
+						var h = feature.properties["height"].replace('m','');
+						return Math.max(h, 4.0);
+					} else if ("building:height" in feature.properties) {
+						var h = feature.properties["building:height"].replace('m','');
+						return Math.max(h, 4.0);
+					} else if ("building:levels" in feature.properties){
+						var l = feature.properties["building:levels"];
+						return Math.max(l * 4.0, 4.0);
+					}
+					return Math.floor((Math.random() * 5.0) + 4.0);
+                }
               ]]>
             </script>
 
@@ -219,21 +234,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     </image>
 
 
-
-<!--
-    <image name="readymap_streets" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/119/</url>
-    </image>
--->
-
-
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    
-    <external>
-        <sky hours="20.0"/>    
-    </external>
-  
+    <xi:include href="viewpoints.xml"/>
 </map>

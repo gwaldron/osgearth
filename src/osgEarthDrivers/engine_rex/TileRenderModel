@@ -49,8 +49,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _valid;
         UID _sourceUID;
         Samplers _samplers;
+        osg::ref_ptr<const ImageLayer> _layer;
 
-        RenderingPass() : _valid(false), _sourceUID(-1) { }
+        RenderingPass() : _valid(false), _sourceUID(-1), _samplers(SamplerBinding::SHARED) { }
 
         bool valid() const { return _valid; }
 

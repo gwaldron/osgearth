@@ -289,11 +289,13 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
     if ( _initStage == INIT_POSTINIT_COMPLETE )
     {
-        if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+        if (change.getAction() == MapModelChange::ADD_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->addCallback( _imageLayerController.get() );
         }
-        else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
+        else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->removeCallback( _imageLayerController.get() );
         }

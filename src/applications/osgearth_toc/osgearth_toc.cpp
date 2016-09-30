@@ -44,7 +44,9 @@ static Grid* s_imageBox;
 static Grid* s_elevationBox;
 static Grid* s_modelBox;
 static bool s_updateRequired = true;
-static MapModelChange::ActionType s_changeAction;
+static MapModelChange s_change;
+//static MapModelChange::ActionType s_changeAction;
+//static Layer* s_changeLayer;
 
 //------------------------------------------------------------------------
 
@@ -52,7 +54,7 @@ struct MyMapListener : public MapCallback
 {
     void onMapModelChanged( const MapModelChange& change ) {
         s_updateRequired = true;
-        s_changeAction = change.getAction();
+        s_change = change;
     }
 };
 
@@ -67,8 +69,7 @@ struct UpdateOperation : public osg::Operation
             updateControlPanel();
             s_updateRequired = false;
 
-            if (s_changeAction == MapModelChange::ADD_ELEVATION_LAYER ||
-                s_changeAction == MapModelChange::REMOVE_ELEVATION_LAYER)
+            if (s_change.getElevationLayer())
             {
                 OE_NOTICE << "Dirtying model layers.\n";
                 dirtyModelLayers();

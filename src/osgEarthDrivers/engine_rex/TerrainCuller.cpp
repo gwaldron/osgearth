@@ -67,7 +67,12 @@ TerrainCuller::apply(osg::Node& node)
 
                 UID uid = pass._sourceUID;
 
+                // skip the "default" layer if we appear to have real layers
                 if (uid < 0 && renderModel._passes.size() > 1)
+                    continue;
+
+                // skip layers that are not visible:
+                if (pass._layer.valid() && !pass._layer->getVisible())
                     continue;
 
                 // add a new Draw command to the appropriate layer

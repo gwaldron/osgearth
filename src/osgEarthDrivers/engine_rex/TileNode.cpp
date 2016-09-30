@@ -156,6 +156,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     {    
         unsigned quadrant = getTileKey().getQuadrant();
 
+        const RenderBindings& bindings = context->getRenderBindings();
+
         // Copy the parent's rendering model.
         _renderModel = parent->_renderModel;
 
@@ -171,14 +173,14 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
             // Are we using image blending? If so, initialize the color_parent 
             // to the color texture.
-            if (context->getRenderBindings()[SamplerBinding::COLOR_PARENT].isActive())
+            if (bindings[SamplerBinding::COLOR_PARENT].isActive())
             {
                 pass._samplers[SamplerBinding::COLOR_PARENT] = pass._samplers[SamplerBinding::COLOR];
             }
 
             // Use the elevation sampler in the first pass to initialize
             // the elevation raster (used for primitive functors, intersection, etc.)
-            if (p == 0)
+            if (p == 0 && bindings[SamplerBinding::ELEVATION].isActive())
             {
                 const Sampler& elevation = pass._samplers[SamplerBinding::ELEVATION];
                 if (elevation._texture.valid())
@@ -549,9 +551,9 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                 if (!pass)
                 {
                     pass = &_renderModel.addPass();
+                    pass->_layer = layer->getImageLayer();
                     pass->_sourceUID = layer->getImageLayer()->getUID();
                     pass->_valid = true;
-                    //OE_INFO << LC << _key.str() << ": addPass for layer " << layer->getImageLayer()->getName() << "\n";
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();

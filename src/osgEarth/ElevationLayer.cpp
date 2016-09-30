@@ -158,6 +158,10 @@ void
 ElevationLayer::init()
 {
     TerrainLayer::init();
+
+    // elevation layers do not render directly; rather, a composite of elevation data
+    // feeds the terrain engine to permute the mesh.
+    setRenderType(RENDERTYPE_NONE);
 }
 
 void

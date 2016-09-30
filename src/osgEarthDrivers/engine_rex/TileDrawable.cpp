@@ -39,11 +39,11 @@ _key         ( key ),
 _geom        ( geometry ),
 _tileSize    ( tileSize )
 {   
-    //int tileSize2 = tileSize*tileSize;
-    //_heightCache = new float[ tileSize2 ];
-    //for(int i=0; i<tileSize2; ++i)
-    //    _heightCache[i] = 0.0f;    
+    // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];
+    
+    // builds the initial mesh.
+    setElevationRaster(0L, osg::Matrixf::identity());
 }
 
 TileDrawable::~TileDrawable()
@@ -83,10 +83,11 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     {
         OE_WARN << "("<<_key.str()<<") precision error\n";
     }
+    
+    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
 
     if ( _elevationRaster.valid() )
     {
-        const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
         const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
 
         //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
@@ -114,11 +115,18 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
             {
                 float u = (float)s / (float)(_tileSize-1);
                 u = u*scaleU + biasU;
-                //_heightCache[t*_tileSize+s] = elevation(u, v).r();
 
                 unsigned index = t*_tileSize+s;
                 _mesh[index] = verts[index] + normals[index] * elevation(u, v).r();
             }
+        }
+    }
+
+    else
+    {
+        for (int i = 0; i < _tileSize*_tileSize; ++i)
+        {
+            _mesh[i] = verts[i];
         }
     }
 

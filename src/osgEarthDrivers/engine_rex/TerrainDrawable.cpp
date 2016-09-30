@@ -30,7 +30,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 {
     osg::State& state = *ri.getState();
 
-    //OE_INFO << LC << "  TILE: " << _geom << std::endl;
+    //OE_INFO << LC << "      TILE: " << _geom << std::endl;
         
     // Tile key encoding, if the uniform is required.
     if (env._tileKeyUL >= 0 )
@@ -111,7 +111,7 @@ DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
     if (_tiles.empty())
         return;
 
-    //OE_INFO << LC << "LAYER (camera=" << ri.getCurrentCamera()->getName() << ")" << std::endl;
+    //OE_INFO << LC << "   LAYER; tiles = " << _tiles.size() << std::endl;
 
     if (_stateSet)
     {
@@ -158,6 +158,8 @@ TerrainDrawable::TerrainDrawable()
 void
 TerrainDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    //OE_INFO << LC << "TERRAIN (camera=" << ri.getCurrentCamera()->getName() << ") layers = " << _layerList.size() << "\n";
+
     DrawState env;
 
     env._bindings = _bindings;

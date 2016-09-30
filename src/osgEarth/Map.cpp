@@ -425,8 +425,11 @@ Map::addImageLayer( ImageLayer* layer )
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+            //i->get()->onMapModelChanged( MapModelChange(
+            //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+
+            i->get()->onMapModelChanged(MapModelChange(
+                MapModelChange::ADD_LAYER, newRevision, layer, index));
         }
     }
 }
@@ -468,7 +471,7 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+                MapModelChange::ADD_LAYER, newRevision, layer, index) );
         }   
     } 
 }
@@ -507,7 +510,7 @@ Map::addElevationLayer( ElevationLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_ELEVATION_LAYER, newRevision, layer, index) );
+                MapModelChange::ADD_LAYER, newRevision, layer, index) );
         }
     }
 }
@@ -542,8 +545,7 @@ Map::removeImageLayer( ImageLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_IMAGE_LAYER, newRevision, layerToRemove.get(), index) );
-            //i->get()->onImageLayerRemoved( layerToRemove.get(), index, newRevision );
+                MapModelChange::REMOVE_LAYER, newRevision, layerToRemove.get(), index) );
         }
     }
 }
@@ -580,7 +582,7 @@ Map::removeElevationLayer( ElevationLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, layerToRemove.get(), index) );
+                MapModelChange::REMOVE_LAYER, newRevision, layerToRemove.get(), index) );
         }
     }
 }
@@ -627,7 +629,7 @@ Map::moveImageLayer( ImageLayer* layer, unsigned int newIndex )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::MOVE_IMAGE_LAYER, newRevision, layer, oldIndex, newIndex) );
+                MapModelChange::MOVE_LAYER, newRevision, layer, oldIndex, newIndex) );
         }
     }
 }
@@ -674,7 +676,7 @@ Map::moveElevationLayer( ElevationLayer* layer, unsigned int newIndex )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::MOVE_ELEVATION_LAYER, newRevision, layer, oldIndex, newIndex) );
+                MapModelChange::MOVE_LAYER, newRevision, layer, oldIndex, newIndex) );
         }
     }
 }
@@ -704,7 +706,7 @@ Map::addModelLayer( ModelLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index ) );
+                MapModelChange::ADD_LAYER, newRevision, layer, index ) );
         }
     }
 }
@@ -731,7 +733,7 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index) );
+                MapModelChange::ADD_LAYER, newRevision, layer, index) );
         }
     }
 }
@@ -761,7 +763,7 @@ Map::removeModelLayer( ModelLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); ++i )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MODEL_LAYER, newRevision, layerRef.get()) );
+                MapModelChange::REMOVE_LAYER, newRevision, layerRef.get()) );
         }
     }
 }
@@ -808,7 +810,7 @@ Map::moveModelLayer( ModelLayer* layer, unsigned int newIndex )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::MOVE_MODEL_LAYER, newRevision, layer, oldIndex, newIndex) );
+                MapModelChange::MOVE_LAYER, newRevision, layer, oldIndex, newIndex) );
         }
     }
 }
@@ -833,7 +835,7 @@ Map::addTerrainMaskLayer( MaskLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
+                MapModelChange::ADD_LAYER, newRevision, layer) );
         }
     }
 }
@@ -863,7 +865,7 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MASK_LAYER, newRevision, layerRef.get()) );
+                MapModelChange::REMOVE_LAYER, newRevision, layerRef.get()) );
         }   
     }
 }
@@ -893,11 +895,13 @@ Map::clear()
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
         for( ImageLayerVector::iterator k = imageLayersRemoved.begin(); k != imageLayersRemoved.end(); ++k )
-            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_IMAGE_LAYER, newRevision, k->get()) );
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, k->get()) );
         for( ElevationLayerVector::iterator k = elevLayersRemoved.begin(); k != elevLayersRemoved.end(); ++k )
-            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, k->get()) );
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, k->get()) );
         for( ModelLayerVector::iterator k = modelLayersRemoved.begin(); k != modelLayersRemoved.end(); ++k )
-            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MODEL_LAYER, newRevision, k->get()) );
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, k->get()) );
+        for (MaskLayerVector::iterator k = maskLayersRemoved.begin(); k != maskLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, k->get()));
     }
 }
 

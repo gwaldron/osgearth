@@ -329,7 +329,7 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         CameraData& cdata = getCameraData(cv->getCurrentCamera());
         
         // Only update if the view matrix has changed.
-        //if (viewMatrix != cdata._lastViewMatrix)
+        if (viewMatrix != cdata._lastViewMatrix)
         {            
             GeoPoint eyeGeo;
             eyeGeo.fromWorld( _mapNode->getMapSRS(), vp );
@@ -362,6 +362,9 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
                 cdata._lastViewMatrix = viewMatrix;
             }
 
+            // Get the view extent.
+            cdata._viewExtent = getViewExtent( cv );
+
             double targetResolution = (cdata._viewExtent.height() / 180.0) / _options.gridLines().get();
 
             double resolution = _resolutions[0];
@@ -376,8 +379,6 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
 
             // Trippy
             //resolution = targetResolution;
-
-            cdata._viewExtent = getViewExtent( cv );
 
             // Try to compute an approximate meters to pixel value at this view.
             double fovy, aspectRatio, zNear, zFar;

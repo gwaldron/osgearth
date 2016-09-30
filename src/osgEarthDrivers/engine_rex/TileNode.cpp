@@ -157,12 +157,12 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         unsigned quadrant = getTileKey().getQuadrant();
 
         // Copy the parent's rendering model.
-        _renderingData = parent->_renderingData;
+        _renderModel = parent->_renderModel;
 
-        for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
+        for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
         {
             // Scale/bias each matrix for this key quadrant.
-            RenderingPass& pass = _renderingData._passes[p];
+            RenderingPass& pass = _renderModel._passes[p];
             for (unsigned s = 0; s < pass._samplers.size(); ++s)
             {
                 Sampler& sampler = pass._samplers[s];
@@ -190,7 +190,9 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     }
     else
     {
-        RenderingPass& defaultPass = _renderingData.addPass();
+        // If there's no parent, create a default rendering pass with no source.
+        // Otherwise we won't get any tiles at all.
+        RenderingPass& defaultPass = _renderModel.addPass();
         defaultPass._sourceUID = -1;
         defaultPass._valid = true;
     }
@@ -277,7 +279,7 @@ TileNode::releaseGLObjects(osg::State* state) const
     if ( _patch.valid() )
         _patch->releaseGLObjects(state);
 
-    _renderingData.releaseGLObjects(state);
+    _renderModel.releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -543,10 +545,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
             TerrainTileImageLayerModel* layer = i->get();
             if (layer && layer->getTexture())
             {
-                RenderingPass* pass = _renderingData.getPass(layer->getImageLayer()->getUID());
+                RenderingPass* pass = _renderModel.getPass(layer->getImageLayer()->getUID());
                 if (!pass)
                 {
-                    pass = &_renderingData.addPass();
+                    pass = &_renderModel.addPass();
                     pass->_sourceUID = layer->getImageLayer()->getUID();
                     pass->_valid = true;
                     //OE_INFO << LC << _key.str() << ": addPass for layer " << layer->getImageLayer()->getName() << "\n";
@@ -560,7 +562,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     {
         // No color layers? We need a rendering pass with a null texture then
         // to accomadate the other samplers.
-        RenderingPass& pass = _renderingData.addPass();
+        RenderingPass& pass = _renderModel.addPass();
         pass._valid = true;
     }
 
@@ -571,10 +573,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         osg::Texture* tex = model->elevationModel()->getTexture();
         // always keep the elevation image around because we use it for bounding box computation:
         tex->setUnRefImageDataAfterApply(false);
-        for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
+        for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
         {
-            _renderingData._passes[p]._samplers[SamplerBinding::ELEVATION]._texture = tex;
-            _renderingData._passes[p]._samplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
+            _renderModel._passes[p]._samplers[SamplerBinding::ELEVATION]._texture = tex;
+            _renderModel._passes[p]._samplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
         }
 
         setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
@@ -585,10 +587,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
-        for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
+        for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
         {
-            _renderingData._passes[p]._samplers[SamplerBinding::NORMAL]._texture = tex;
-            _renderingData._passes[p]._samplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
+            _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._texture = tex;
+            _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
         }
     }
 
@@ -603,10 +605,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         {
             osg::Texture* tex = layerModel->getTexture();
             //applyDefaultUnRefPolicy(tex);
-            for (unsigned p = 0; p < _renderingData._passes.size(); ++p)
+            for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
             {
-                _renderingData._passes[p]._samplers[bindingIndex]._texture = tex;
-                _renderingData._passes[p]._samplers[bindingIndex]._matrix.makeIdentity();
+                _renderModel._passes[p]._samplers[bindingIndex]._texture = tex;
+                _renderModel._passes[p]._samplers[bindingIndex]._matrix.makeIdentity();
             }
         }
     }
@@ -637,13 +639,13 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // down the Tile tree.
     unsigned changes = 0;
 
-    RenderingPassList& parentPasses = parent->_renderingData._passes;
+    RenderingPassList& parentPasses = parent->_renderModel._passes;
 
     for (unsigned p = 0; p<parentPasses.size(); ++p)
     {
         const RenderingPass& parentPass = parentPasses[p];
 
-        RenderingPass* myPass = _renderingData.getPass(parentPass._sourceUID);
+        RenderingPass* myPass = _renderModel.getPass(parentPass._sourceUID);
         if (myPass)
         {
             for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
@@ -693,7 +695,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         }
         else
         {
-            myPass = &_renderingData.addPass();
+            myPass = &_renderModel.addPass();
             *myPass = parentPass;
             for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
             {
@@ -704,11 +706,11 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         }
     }
 
-    if (!_renderingData._passes.empty())
+    if (!_renderModel._passes.empty())
     {
         // Locate the elevation sampler and pass its raster data along to use
         // for intersections, primitive functors, etc.
-        const Sampler& elevation = _renderingData._passes[0]._samplers[SamplerBinding::ELEVATION];
+        const Sampler& elevation = _renderModel._passes[0]._samplers[SamplerBinding::ELEVATION];
         if (elevation._texture.valid())
         {
             const osg::Image* elevRaster = elevation._texture->getImage(0);

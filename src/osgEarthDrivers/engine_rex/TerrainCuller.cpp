@@ -58,16 +58,16 @@ TerrainCuller::apply(osg::Node& node)
             surface->computeLocalToWorldMatrix(*matrix, this);
             pushModelViewMatrix(matrix, osg::Transform::ABSOLUTE_RF);
             
-            const RenderBindings&    bindings = _context->getRenderBindings();
-            const TileRenderingData& data     = _currentTileNode->renderingData();
+            const RenderBindings&  bindings    = _context->getRenderBindings();
+            const TileRenderModel& renderModel = _currentTileNode->renderModel();
 
-            for (unsigned p = 0; p < data._passes.size(); ++p)
+            for (unsigned p = 0; p < renderModel._passes.size(); ++p)
             {
-                const RenderingPass& pass = data._passes[p];
+                const RenderingPass& pass = renderModel._passes[p];
 
                 UID uid = pass._sourceUID;
 
-                if (uid < 0 && data._passes.size() > 1)
+                if (uid < 0 && renderModel._passes.size() > 1)
                     continue;
 
                 // add a new Draw command to the appropriate layer
@@ -75,24 +75,22 @@ TerrainCuller::apply(osg::Node& node)
                 layer._tiles.push_back(DrawTileCommand());
                 DrawTileCommand& tile = layer._tiles.back();
 
-                tile._key = _currentTileNode->getTileKey();
-                tile._pass = &pass;
-                            
+                // install everything we need in the Draw Command:
+                tile._pass = &pass;                            
                 tile._matrix = surface->getMatrix();
                 tile._modelViewMatrix = *this->getModelViewMatrix();
                 tile._keyValue = _currentTileNode->getTileKeyValue();
                 tile._geom = surface->getDrawable()->_geom.get();
                 tile._morphConstants = _currentTileNode->getMorphConstants();
 
+                // don't need this for drawing, but nice for debugging
+                tile._key = _currentTileNode->getTileKey(); 
+
                 const osg::Image* elevRaster = _currentTileNode->getElevationRaster();
                 if (elevRaster)
                 {
                     float size = (float)elevRaster->s();
                     tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
-                }
-                else
-                {
-                    tile._elevTexelCoeff.set(1.0f, 0.0f);
                 }
             }                
 

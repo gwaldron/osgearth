@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_TILE_RENDER_MODEL
+#define OSGEARTH_REX_TILE_RENDER_MODEL 1
+
+#include "Common"
+#include <osgEarth/Common>
+#include <osgEarth/Containers> // for AutoArray
+#include <osg/Texture>
+#include <osg/Matrix>
+#include <vector>
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * A single texture and its matrix. This corresponds to a 
+     * single SamplerBinding (above).
+     */
+    struct Sampler
+    {
+        osg::ref_ptr<osg::Texture> _texture;
+        osg::Matrixf _matrix;
+    };
+    typedef AutoArray<Sampler> Samplers;
+
+    /**
+     * All the samplers (one per RenderBinding) needed to render one pass 
+     * of a tile. The UID is the UID of the image layer that necessitated
+     * this rendering pass. A UID of -1 means there is no image layer.
+     */
+    struct RenderingPass
+    {
+        bool _valid;
+        UID _sourceUID;
+        Samplers _samplers;
+
+        RenderingPass() : _valid(false), _sourceUID(-1) { }
+
+        bool valid() const { return _valid; }
+
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned s = 0; s<_samplers.size(); ++s)
+                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                    _samplers[s]._texture->releaseGLObjects(state);
+        }
+
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned s = 0; s<_samplers.size(); ++s)
+                if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
+                    _samplers[s]._texture->resizeGLObjectBuffers(size);
+        }
+
+    };
+
+    /**
+     * Ordered list of rendering passes.
+     */
+    typedef std::vector<RenderingPass> RenderingPassList;
+
+    /**
+     * Everything necessary to render a single terrain tile.
+     */
+    struct TileRenderModel
+    {
+        RenderingPassList _passes;
+
+        /** Add a new rendering pass to the end of the list. */
+        RenderingPass& addPass()
+        {
+            _passes.resize(_passes.size()+1);
+            return _passes.back();
+        }
+
+        /** Look up a rendering pass by the corresponding layer ID */
+        const RenderingPass* getPass(UID uid) const
+        {
+            for (unsigned i = 0; i < _passes.size(); ++i) {
+                if (_passes[i]._sourceUID == uid)
+                    return &_passes[i];
+            }
+            return 0L;
+        }
+
+        /** Look up a rendering pass by the corresponding layer ID */
+        RenderingPass* getPass(UID uid)
+        {
+            for (unsigned i = 0; i < _passes.size(); ++i) {
+                if (_passes[i]._sourceUID == uid)
+                    return &_passes[i];
+            }
+            return 0L;
+        }
+
+        /** Deallocate GPU objects associated with this model */
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].releaseGLObjects(state);
+        }
+
+        /** Resize GL buffers associated with thie model */
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].resizeGLObjectBuffers(size);
+        }
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_REX_TILE_RENDER_MODEL

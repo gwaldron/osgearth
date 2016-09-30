@@ -17,10 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "LoadTileData"
-#include "MPTexture"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Terrain>
-#include <osgEarth/Registry>
 #include <osg/NodeVisitor>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -36,15 +34,6 @@ _context(context)
     //nop
 }
 
-namespace
-{
-    void applyDefaultUnRefPolicy(osg::Texture* tex)
-    {
-        const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
-        tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
-    }
-}
-
 
 // invoke runs in the background pager thread.
 void
@@ -54,7 +43,7 @@ LoadTileData::invoke()
     if ( _tilenode.lock(tilenode) )
     {
         // Assemble all the components necessary to display this tile
-        _model = _context->getEngine()->createTileModel(
+        _dataModel = _context->getEngine()->createTileModel(
             _context->getMapFrame(),
             tilenode->getTileKey(),
             0L ); // progress
@@ -66,7 +55,7 @@ LoadTileData::invoke()
 void
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
-    if ( _model.valid() )
+    if ( _dataModel.valid() )
     {
         osg::ref_ptr<TileNode> tilenode;
         if ( _tilenode.lock(tilenode) )
@@ -76,7 +65,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
             const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
 
             // Merge the new data into the tile.
-            tilenode->merge(_model.get(), bindings);
+            tilenode->merge(_dataModel.get(), bindings);
 
             // Mark as complete. TODO: per-data requests will do something different.
             tilenode->setDirty( false );
@@ -84,10 +73,10 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
             // Notify listeners that we've added a tile.
             _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode );
 
-            OE_DEBUG << LC << "apply " << _model->getKey().str() << "\n";
+            OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
 
             // Delete the model immediately
-            _model = 0L;
+            _dataModel = 0L;
         }
         else
         {

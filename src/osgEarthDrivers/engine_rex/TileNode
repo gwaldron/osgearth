@@ -23,11 +23,11 @@
 #include "RenderBindings"
 #include "Loader"
 #include "MaskGenerator"
-#include "MPTexture"
-#include "ProxySurfaceNode"
+#include "TileRenderModel"
+
+#include <osgEarth/TerrainTileModel>
 
 #include <OpenThreads/Atomic>
-#include <osgEarth/TerrainTileNode>
 #include <vector>
 
 namespace osg {
@@ -41,7 +41,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
     class SurfaceNode;
-    class ProxySurfaceNode;
     class SelectionInfo;
     class TerrainCuller;
 
@@ -98,9 +97,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
         
         /** Merge new Tile model data into this tile's rendering data model. */
-        void merge(const TerrainTileModel* model, const RenderBindings& bindings);
+        void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
 
-        TileRenderingData& renderingData() { return _renderingData; }
+        /** Access the rendering model for this tile */
+        TileRenderModel& renderModel() { return _renderModel; }
 
         const osg::Vec4f& getTileKeyValue() const { return _tileKeyValue; }
 
@@ -134,7 +134,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;
 
-        TileRenderingData _renderingData;
+        TileRenderModel                    _renderModel;
 
     private:
 

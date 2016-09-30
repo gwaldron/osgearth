@@ -29,7 +29,6 @@ SET(TARGET_SRC
     RexTerrainEngineDriver.cpp
     LoadTileData.cpp
     MaskGenerator.cpp
-    MPTexture.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
@@ -51,12 +50,12 @@ SET(TARGET_H
     RexTerrainEngineOptions
     LoadTileData
     MaskGenerator
-    MPTexture
     RenderBindings
     SurfaceNode
     TerrainCuller
     TerrainDrawable
 	TileDrawable
+    TileRenderModel
     EngineContext
     TileNode
     TileNodeRegistry

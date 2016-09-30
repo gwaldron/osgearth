@@ -112,7 +112,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return _geom < rhs._geom;
         }
 
-        DrawTileCommand() { }
+        DrawTileCommand() :
+            _elevTexelCoeff(1.0f, 0.0f) { }
     };
 
     /**

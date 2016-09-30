@@ -20,15 +20,10 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_DRAWABLE 1
 
 #include "Common"
-#include "TileNode"
-#include "TileNodeRegistry"
-#include "RenderBindings"
-#include "MPTexture"
-
 #include <osg/Geometry>
-#include <osg/buffered_value>
-#include <osgEarth/Map>
-#include <osgEarth/MapFrame>
+#include <osg/Image>
+#include <osg/Matrixf>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth;
 

@@ -563,17 +563,21 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
-        // this will normally be the "image layer state set". Later, instead of this,
-        // we should set up the Layers from the MapFrame, and put this stateset on 
-        // any normal ImageLayer.
-        if (_surfaceSS.valid())
-            cv->pushStateSet(_surfaceSS.get());
+        //if (getSurfaceStateSet())
+        //    cv->pushStateSet(getSurfaceStateSet());
+
+        for(LayerDrawableList::iterator i = culler._drawable->layers().begin();
+            i != culler._drawable->layers().end();
+            ++i)
+        {
+            cv->apply(*i->get());
+        }
 
         // submit our terrain drawable to OSG's cull visitor.
-        cv->apply(*culler._drawable.get());
-
-        if (_surfaceSS.valid())
-            cv->popStateSet();
+//        cv->apply(*culler._drawable.get());
+        
+        //if (getSurfaceStateSet())
+        //    cv->popStateSet();
 
         cv->popStateSet();
 
@@ -818,6 +822,10 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
     if ( layerAdded && layerAdded->getEnabled() )
     {
+        // Install the image layer stateset on this layer.
+        // Later we will refactor this into an ImageLayerRenderer or something similar.
+        layerAdded->setStateSet(getSurfaceStateSet());
+
         // for a shared layer, allocate a shared image unit if necessary.
         if ( layerAdded->isShared() )
         {
@@ -844,7 +852,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 while (_renderBindings[newIndex].isActive())
                     ++newIndex;
 
-                // Put thenew binding there:
+                // Put the new binding there:
                 SamplerBinding& newBinding = _renderBindings[newIndex];
                 newBinding.usage()     = SamplerBinding::SHARED;
                 newBinding.sourceUID() = layerAdded->getUID();
@@ -855,7 +863,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 OE_INFO << LC 
                     << " .. Sampler=\"" << newBinding.samplerName() << "\", "
                     << "Matrix=\"" << newBinding.matrixName() << ", "
-                    << "unit=" << newBinding.unit() << "\n";                
+                    << "unit=" << newBinding.unit() << "\n";
             }
         }
     }
@@ -1084,21 +1092,6 @@ RexTerrainEngineNode::updateState()
                     terrainStateSet->setTextureAttribute(b.unit(), tex.get());
                 }
             }
-
-            //for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
-            //{
-            //    osg::Image* empty = ImageUtils::createEmptyImage(1,1);
-            //    osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
-
-            //    if ( b->isActive() )
-            //    {
-            //        osg::Uniform* u = new osg::Uniform(b->samplerName().c_str(), b->unit());
-            //        terrainStateSet->addUniform( u );
-            //        OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
-            //        terrainStateSet->setTextureAttribute(b->unit(), tex.get());
-            //    }
-
-            //}
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

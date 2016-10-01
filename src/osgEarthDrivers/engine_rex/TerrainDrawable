@@ -62,8 +62,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * Tracks the state of terrain drawing settings in a single frame,
      * to prevent redundant OpenGL calls.
      */
-    struct DrawState
+    struct DrawState : public osg::Referenced
     {
+        bool _stateInitialized;
+
         // uniform locations
         GLint _tileKeyUL;
         GLint _parentTextureExistsUL;
@@ -86,7 +88,43 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const RenderBindings* _bindings;
 
-        DrawState() { }
+        osg::BoundingSphere _bs;
+        osg::BoundingBox    _box;
+
+        DrawState() : _stateInitialized(false) { }
+        
+        void initialize(osg::RenderInfo& ri)
+        {
+            _ext = osg::GLExtensions::Get(ri.getContextID(), true);
+
+            // Size the sampler states property:
+            _samplerState._samplers.resize(_bindings->size());
+
+            const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+            if (pcp)
+            {
+                // for each sampler binding, initialize its state tracking structure 
+                // and resolve its matrix uniform location:
+                for (unsigned i = 0; i < _bindings->size(); ++i)
+                {
+                    const SamplerBinding& binding = (*_bindings)[i];
+                    _samplerState._samplers[i]._matrixUL = pcp->getUniformLocation(osg::Uniform::getNameID(binding.matrixName()));
+                }
+
+                // resolve all the other uniform locations:
+                _tileKeyUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key"));
+                _elevTexelCoeffUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
+                _parentTextureExistsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
+                _layerUidUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
+                _layerOpacityUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_opacity"));
+                _layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
+                _layerMinRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_minRange"));
+                _layerMaxRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_maxRange"));
+                _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
+            }
+
+            _stateInitialized = true;
+        }
     };
 
     /**
@@ -96,7 +134,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
         osg::Matrixd _matrix;
         osg::Matrixf _modelViewMatrix;
-        //osg::ref_ptr<osg::Geometry> _geom;
         osg::Geometry* _geom;
         double _depth;
         TileKey _key;
@@ -121,6 +158,40 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     typedef std::list<DrawTileCommand> DrawTileCommands;
 
+
+    class LayerDrawable : public osg::Drawable
+    {
+    public:
+        LayerDrawable();
+
+        //void setDrawState(DrawState* env) { _env = env; }
+
+        int _order;
+        DrawTileCommands  _tiles;
+        const ImageLayer* _layer;
+        class TerrainDrawable* _terrain;
+
+        osg::ref_ptr<DrawState> _env;
+
+        
+
+    public: // osg::Drawable
+        
+        void drawImplementation(osg::RenderInfo& ri) const;
+
+        osg::BoundingSphere computeBound() const { return _env->_bs; }
+
+        osg::BoundingBox computeBoundingBox() const { return _env->_box; }
+
+    private:
+        //DrawState* _env;
+    };
+
+    typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;
+
+    typedef std::map<UID, osg::ref_ptr<LayerDrawable> > LayerDrawableMap;
+    
+#if 0
     /**
      * All data necessary to draw a single map layer.
      */
@@ -131,6 +202,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::StateSet> _stateSet;
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
+
+        DrawLayerCommand() : _layer(0L) { }
     };
 
     /**
@@ -142,7 +215,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * Map layers indexed by layer UID (for fast lookups)
      */
     typedef std::map<UID, DrawLayerCommand*> DrawLayerCommandMap;
-
+#endif
 
     /**
      * Drawable submitted to the OSG cull visitor that is responsible
@@ -154,9 +227,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // osg::Drawable
         void drawImplementation(osg::RenderInfo& ri) const;
 
-        osg::BoundingSphere computeBound() const { return _bs; }
+        //osg::BoundingSphere computeBound() const { return _bs; }
 
-        osg::BoundingBox computeBoundingBox() const { return _box; }
+        //osg::BoundingBox computeBoundingBox() const { return _box; }
 
         void compileGLObjects(osg::RenderInfo& renderInfo) const;
 
@@ -173,20 +246,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void sortDrawCommands();
 
         /** Add a layer (in order) */
-        void addLayer(const ImageLayer*);
+        LayerDrawable* addLayer(const ImageLayer*);
 
         /** Layers to draw */
-        DrawLayerCommandList& layers() { return _layerList; }
-        const DrawLayerCommandList& layers() const { return _layerList; }
-        DrawLayerCommand& layer(UID uid) { return *_layerMap[uid]; }
+        LayerDrawableList& layers() { return _layerList; }
+        const LayerDrawableList& layers() const { return _layerList; }
+        osg::ref_ptr<LayerDrawable>& layer(UID uid) { return _layerMap[uid]; }
 
-        osg::BoundingSphere   _bs;
-        osg::BoundingBox      _box;
-
+        //osg::BoundingSphere   _bs;
+        //osg::BoundingBox      _box;
+        
+        osg::ref_ptr<DrawState> _drawState;
         
     private:
-        DrawLayerCommandList  _layerList;
-        DrawLayerCommandMap   _layerMap;
+
+        LayerDrawableList     _layerList;
+        LayerDrawableMap      _layerMap;
         const RenderBindings* _bindings;
     };
 

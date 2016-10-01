@@ -76,9 +76,10 @@ TerrainCuller::apply(osg::Node& node)
                     continue;
 
                 // add a new Draw command to the appropriate layer
-                DrawLayerCommand& layer = _drawable->layer(uid);
-                layer._tiles.push_back(DrawTileCommand());
-                DrawTileCommand& tile = layer._tiles.back();
+                osg::ref_ptr<LayerDrawable> layer = _drawable->layer(uid);
+                //DrawLayerCommand& layer = _drawable->layer(uid);
+                layer->_tiles.push_back(DrawTileCommand());
+                DrawTileCommand& tile = layer->_tiles.back();
 
                 // install everything we need in the Draw Command:
                 tile._pass = &pass;                            
@@ -99,8 +100,8 @@ TerrainCuller::apply(osg::Node& node)
                 }
             }                
 
-            _drawable->_bs.expandBy(surface->getBound());
-            _drawable->_box.expandBy(_drawable->_bs);
+            _drawable->_drawState->_bs.expandBy(surface->getBound());
+            _drawable->_drawState->_box.expandBy(_drawable->_drawState->_bs);
 
             // pop the surface matrix:
             popModelViewMatrix();

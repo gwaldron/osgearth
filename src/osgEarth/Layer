@@ -38,9 +38,7 @@ namespace osgEarth
         /** dtor */
         virtual ~Layer() { }
 
-        /**
-         * Gets this layer's unique ID.
-         */
+        /** Gets this layer's unique ID. */
         UID getUID() const { return _uid; }
 
         /** Sequence controller if the layer has one. */

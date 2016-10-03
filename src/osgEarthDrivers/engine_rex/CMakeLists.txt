@@ -32,7 +32,7 @@ SET(TARGET_SRC
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
-    TerrainDrawable.cpp
+    TerrainRenderData.cpp
 	TileDrawable.cpp
     EngineContext.cpp
     TileNode.cpp
@@ -53,7 +53,7 @@ SET(TARGET_H
     RenderBindings
     SurfaceNode
     TerrainCuller
-    TerrainDrawable
+    TerrainRenderData
 	TileDrawable
     TileRenderModel
     EngineContext

@@ -20,7 +20,7 @@
 #define OSGEARTH_REX_TERRAIN_CULLER_H 1
 
 #include "EngineContext"
-#include "TerrainDrawable"
+#include "TerrainRenderData"
 
 #include <osgEarth/MapFrame>
 

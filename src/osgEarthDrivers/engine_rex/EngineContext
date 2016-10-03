@@ -90,8 +90,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool maxLiveTilesExceeded() const;
 
-        osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
-
         void unloadChildrenOf(const TileNode*);
 
         double getExpirationRange2() const { return _expirationRange2; }
@@ -101,8 +99,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey&        tileKey,
             osg::StateSet*        tileStateSet,
             osg::Node*            tilePatch);
-        
-        osg::ref_ptr<osg::StateSet>           _surfaceSS;
 
     protected:
 
@@ -125,9 +121,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TilePatchCallbacks&                   _tilePatchCallbacks;        
         std::vector<TileKey>                  _tilesWithChildrenToUnload;
         double                                _expirationRange2;
-
-        typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
-        MatrixUniformMap _matrixUniforms;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

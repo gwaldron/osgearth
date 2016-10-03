@@ -190,7 +190,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void buildSelectionInfo(void);
         void destroySelectionInfo(void);
 
-        osg::ref_ptr<osg::StateSet> _surfaceSS;
+        osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

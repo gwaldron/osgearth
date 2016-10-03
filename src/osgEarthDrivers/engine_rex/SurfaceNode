@@ -53,7 +53,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
 
     /**
-     * SurfaceNode holds the geometry of the terrain surface.
+     * SurfaceNode holds the geometry and transform information
+     * for one terrain tile surface.
      */
     class SurfaceNode : public osg::MatrixTransform
     {

@@ -185,9 +185,6 @@ HorizonTileCuller::set(const SpatialReference* srs,
     if (_horizon.valid())
     {
         _horizon->setEllipsoid(*srs->getEllipsoid());
-        //_radiusPolar = srs->getEllipsoid()->getRadiusPolar();
-        //_radiusEquator = srs->getEllipsoid()->getRadiusEquator();
-        //_local2world = local2world;
 
         // Adjust the horizon ellipsoid based on the minimum Z value of the tile;
         // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
@@ -205,8 +202,6 @@ HorizonTileCuller::set(const SpatialReference* srs,
         {
             _points[i] = bbox.corner(4+i) * local2world;
         }
-
-        //_bs.set(bbox.center() * _local2world, bbox.radius());
     }
 }
 

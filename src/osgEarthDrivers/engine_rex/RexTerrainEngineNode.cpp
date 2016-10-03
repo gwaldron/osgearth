@@ -159,7 +159,9 @@ _stateUpdateRequired  ( false )
         package.load(vp, package.SDK);
     }
 
-    _surfaceSS = new osg::StateSet();
+    // TODO: replace with a "renderer" object that can return statesets
+    // for different layer types, or something.
+    _imageLayerStateSet = new osg::StateSet();
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -344,7 +346,7 @@ RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 osg::StateSet*
 RexTerrainEngineNode::getSurfaceStateSet()
 {
-    return _surfaceSS.get();
+    return _imageLayerStateSet.get();
 }
 
 void
@@ -536,8 +538,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         VisitorData::store(nv, ENGINE_CONTEXT_TAG, this->getEngineContext());
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-
-        this->getEngineContext()->_surfaceSS = _surfaceSS.get();
 
         this->getEngineContext()->startCull( cv );
         
@@ -1084,6 +1084,9 @@ RexTerrainEngineNode::updateState()
                     terrainStateSet->setTextureAttribute(b.unit(), tex.get());
                 }
             }
+
+            //TODO: reevaluate these, since they may not persist when using direct
+            // glUniform* calls in LayerDrawable etc.
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

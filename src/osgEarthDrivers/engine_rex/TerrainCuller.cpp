@@ -23,7 +23,11 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
-TerrainCuller::TerrainCuller()
+TerrainCuller::TerrainCuller() :
+_frame(0L),
+_context(0L),
+_camera(0L),
+_currentTileNode(0L)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
@@ -55,6 +59,8 @@ TerrainCuller::apply(osg::Node& node)
             // push the surface matrix:
             osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
             surface->computeLocalToWorldMatrix(*matrix, this);
+
+            // is this reference frame correct?
             pushModelViewMatrix(matrix, osg::Transform::ABSOLUTE_RF);
             
             const RenderBindings&  bindings    = _context->getRenderBindings();
@@ -87,7 +93,6 @@ TerrainCuller::apply(osg::Node& node)
                 tile._geom = surface->getDrawable()->_geom.get();
                 tile._morphConstants = _currentTileNode->getMorphConstants();
 
-                // don't need this for drawing, but nice for debugging
                 tile._key = _currentTileNode->getTileKey(); 
 
                 const osg::Image* elevRaster = _currentTileNode->getElevationRaster();

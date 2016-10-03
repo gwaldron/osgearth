@@ -98,6 +98,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
     };
 
+    /**
+     * Array of render bindings. This array is always indexed by the 
+     * SamplerBinding::USAGE itself. So for example, RenderBindings[0] is always
+     * the COLOR usage, [2] is the ELEVATION usage, etc. Shared layer bindings
+     * (i.e., custom samplers) start at index SHARED and go up from there.
+     */
     typedef AutoArray<SamplerBinding> RenderBindings;
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

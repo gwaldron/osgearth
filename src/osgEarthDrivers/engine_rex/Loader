@@ -40,7 +40,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileNodeRegistry; // for UnloaderGroup
 
 
-    /** Interface for a utility to satifies loading requests. */
+    /**
+     * Interface for a utility to satisty Tile loading requests.
+     */
     class Loader
     {
     public:
@@ -136,6 +138,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
 
 
+    /**
+     * A Loader encapsulated in a Group Node.
+     */
     class LoaderGroup : public osg::Group, public Loader
     {
     public: // Loader
@@ -160,7 +165,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
 
 
-    /** Loader that uses the OSG database pager to run requests in the background. */
+    /**
+     * Loader that uses the OSG database pager to run requests in the background.
+     */
     class PagerLoader : public LoaderGroup
     {
     public:

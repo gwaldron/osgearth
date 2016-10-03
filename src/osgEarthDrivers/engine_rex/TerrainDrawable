@@ -88,10 +88,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const RenderBindings* _bindings;
 
+        const osg::Program::PerContextProgram* _pcp;
+
         osg::BoundingSphere _bs;
         osg::BoundingBox    _box;
 
-        DrawState() : _stateInitialized(false) { }
+        DrawState() : _stateInitialized(false), _bindings(0L), _pcp(0L) { }
         
         void initialize(osg::RenderInfo& ri)
         {
@@ -100,8 +102,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             // Size the sampler states property:
             _samplerState._samplers.resize(_bindings->size());
 
+            refreshUniformLocations(ri);
+
+            _stateInitialized = true;
+        }
+
+        void refreshUniformLocations(osg::RenderInfo& ri)
+        {
             const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-            if (pcp)
+            if (pcp && pcp != _pcp)
             {
                 // for each sampler binding, initialize its state tracking structure 
                 // and resolve its matrix uniform location:
@@ -123,7 +132,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 _morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
             }
 
-            _stateInitialized = true;
+            _pcp = pcp;
         }
     };
 

@@ -187,28 +187,6 @@ TerrainDrawable::drawImplementation(osg::RenderInfo& ri) const
     // Size the sampler states property:
     env._samplerState._samplers.resize(_bindings->size());
 
-    const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-    if (pcp)
-    {        
-        // for each sampler binding, initialize its state tracking structure 
-        // and resolve its matrix uniform location:
-        for (unsigned i = 0; i < _bindings->size(); ++i)
-        {
-            const SamplerBinding& binding = (*_bindings)[i];
-            env._samplerState._samplers[i]._matrixUL = pcp->getUniformLocation(osg::Uniform::getNameID(binding.matrixName()));
-        }
-
-        // resolve all the other uniform locations:
-        env._tileKeyUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_key"));
-        env._elevTexelCoeffUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_elevTexelCoeff"));
-        env._parentTextureExistsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_texParentExists"));
-        env._layerUidUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_uid"));
-        env._layerOpacityUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_opacity"));
-        env._layerOrderUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_order"));
-        env._layerMinRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_minRange"));
-        env._layerMaxRangeUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_layer_maxRange"));
-        env._morphConstantsUL = pcp->getUniformLocation(osg::Uniform::getNameID("oe_tile_morph"));
-    }
 
     draw(ri, env);
 
@@ -291,12 +269,6 @@ TerrainDrawable::addLayer(const ImageLayer* imageLayer)
     ld->_layer = imageLayer;
     ld->_order = _layerList.size()-1;
     ld->_env = _drawState.get();
-
-    //_layerList.push_back(DrawLayerCommand());
-    //DrawLayerCommand& layer = _layerList.back();
-    //_layerMap[uid] = &layer;
-    //layer._layer = imageLayer;
-
     return ld;
 }
 
@@ -328,6 +300,10 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     if (!env._stateInitialized)
     {
         env.initialize(ri);
+    }
+    else
+    {
+        env.refreshUniformLocations(ri);
     }
 
     if (_layer)

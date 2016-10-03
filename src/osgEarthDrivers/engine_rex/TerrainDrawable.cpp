@@ -27,30 +27,30 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 void
-DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
+DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
 {
     osg::State& state = *ri.getState();
 
     //OE_INFO << LC << "      TILE: " << _geom << std::endl;
         
     // Tile key encoding, if the uniform is required.
-    if (env._tileKeyUL >= 0 )
+    if (ds._tileKeyUL >= 0 )
     {
-        env._ext->glUniform4fv(env._tileKeyUL, 1, _keyValue.ptr());
+        ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
     }
 
     // Elevation coefficients (can probably be terrain-wide)
-    if (env._elevTexelCoeffUL >= 0 && !env._elevTexelCoeff.isSetTo(_elevTexelCoeff))
+    if (ds._elevTexelCoeffUL >= 0 && !ds._elevTexelCoeff.isSetTo(_elevTexelCoeff))
     {
-        env._ext->glUniform2fv(env._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
-        env._elevTexelCoeff = _elevTexelCoeff;
+        ds._ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
+        ds._elevTexelCoeff = _elevTexelCoeff;
     }
 
     // Morphing constants for this LOD
-    if (env._morphConstantsUL >= 0 && !env._morphConstants.isSetTo(_morphConstants))
+    if (ds._morphConstantsUL >= 0 && !ds._morphConstants.isSetTo(_morphConstants))
     {
-        env._ext->glUniform2fv(env._morphConstantsUL, 1, _morphConstants.ptr());
-        env._morphConstants = _morphConstants;
+        ds._ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
+        ds._morphConstants = _morphConstants;
     }
 
     // MVM for this tile:
@@ -67,28 +67,28 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
     {
         const Sampler& sampler = _pass->_samplers[s];
 
-        SamplerState& samplerState = env._samplerState._samplers[s];
+        SamplerState& samplerState = ds._samplerState._samplers[s];
 
         if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
         {
-            state.setActiveTextureUnit((*env._bindings)[s].unit());
+            state.setActiveTextureUnit((*ds._bindings)[s].unit());
             sampler._texture->apply(state);
             samplerState._texture = sampler._texture.get();
         }
 
         if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
         {
-            env._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+            ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
             samplerState._matrix = sampler._matrix;
         }
 
         // Need a special uniform for color parents.
         if (s == SamplerBinding::COLOR_PARENT)
         {
-            if (env._parentTextureExistsUL >= 0 && !env._parentTextureExists.isSetTo(sampler._texture != 0L))
+            if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
             {
-                env._ext->glUniform1f(env._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
-                env._parentTextureExists = sampler._texture.valid();
+                ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
+                ds._parentTextureExists = sampler._texture.valid();
             }
         }
     }
@@ -104,107 +104,9 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& env) const
 }
 
 
-#if 0
-#undef  LC
-#define LC "[DrawLayerCommand] "
-
 void
-DrawLayerCommand::draw(osg::RenderInfo& ri, DrawState& env) const
+TerrainRenderData::sortDrawCommands()
 {
-    if (_tiles.empty())
-        return;
-
-    //OE_INFO << LC << "   LAYER; tiles = " << _tiles.size() << std::endl;
-
-    //if (_layer && _layer->getStateSet())
-    //{
-    //    ri.getState()->apply(_layer->getStateSet());
-    //    OE_NOTICE << "ype\n";
-    //}
-
-    if (_stateSet.valid())
-    {
-        //OE_WARN << " Applying stateset for layer\n";
-        //ri.getState()->apply(_stateSet.get());
-        ri.getState()->dirtyAllAttributes();
-        ri.getState()->apply(_stateSet.get());
-    }
-    
-    if (_layer)
-    {
-        if (env._layerUidUL >= 0)
-            env._ext->glUniform1i(env._layerUidUL,      (GLint)_layer->getUID());
-        if (env._layerOpacityUL >= 0)
-            env._ext->glUniform1f(env._layerOpacityUL,  (GLfloat)_layer->getOpacity());
-        if (env._layerMinRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMinRangeUL, (GLfloat)_layer->getMinVisibleRange());
-        if (env._layerMaxRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)_layer->getMaxVisibleRange());
-    }
-    else
-    {
-        if (env._layerUidUL >= 0)
-            env._ext->glUniform1i(env._layerUidUL,      (GLint)-1);
-        if (env._layerOpacityUL >= 0)
-            env._ext->glUniform1f(env._layerOpacityUL,  (GLfloat)1.0f);
-        if (env._layerMinRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMinRangeUL, (GLfloat)0.0f);
-        if (env._layerMaxRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)FLT_MAX);
-    }
-
-    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
-    {
-        tile->draw(ri, env);
-    }    
-
-    if (_stateSet.valid())
-    {
-    //    ri.getState()->popStateSet();
-    }
-}
-#endif
-
-
-TerrainDrawable::TerrainDrawable()
-{
-    setDataVariance(DYNAMIC);
-    setUseDisplayList(false);
-    setUseVertexBufferObjects(true);
-}
-
-void
-TerrainDrawable::drawImplementation(osg::RenderInfo& ri) const
-{
-    //OE_INFO << LC << "TERRAIN (camera=" << ri.getCurrentCamera()->getName() << ") layers = " << _layerList.size() << "\n";
-
-    DrawState env;
-
-    env._bindings = _bindings;
-
-    env._ext = osg::GLExtensions::Get(ri.getContextID(), true);
-
-    // Size the sampler states property:
-    env._samplerState._samplers.resize(_bindings->size());
-
-
-    draw(ri, env);
-
-    // unbind local buffers when finished.
-    env._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-    env._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-}
-
-void
-TerrainDrawable::sortDrawCommands()
-{
-    //// finish preparing the drawable by sorting each layer's tiles
-    //// for maximum state sharing.
-    //for (DrawLayerCommandList::iterator layer = _layerList.begin(); layer != _layerList.end(); ++layer)
-    //{
-    //    layer->_tiles.sort();
-    //}
-
     for (LayerDrawableList::iterator i = _layerList.begin(); i != _layerList.end(); ++i)
     {
         i->get()->_tiles.sort();
@@ -212,43 +114,23 @@ TerrainDrawable::sortDrawCommands()
 }
 
 void
-TerrainDrawable::draw(osg::RenderInfo& ri, DrawState& env) const
-{
-    //unsigned order = 0;
-
-    ////if (getStateSet())
-    ////{
-    ////    ri.getState()->apply(getStateSet());
-    ////}
-
-    //for (DrawLayerCommandList::const_iterator layer = _layerList.begin();
-    //    layer != _layerList.end();
-    //    ++layer, ++order)
-    //{
-    //    if (env._layerOrderUL >= 0 && !env._layerOrder.isSetTo(order))
-    //    {
-    //        env._ext->glUniform1i(env._layerOrderUL, (GLint)order);
-    //        env._layerOrder = order;
-    //    }
-
-    //    layer->draw(ri, env);
-    //}
-}
-
-void
-TerrainDrawable::setup(const MapFrame& frame, const RenderBindings& bindings)
+TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
     _drawState = new DrawState();
     _drawState->_bindings = &bindings;
-
-    //addLayer(0L);
 
     for (ImageLayerVector::const_iterator i = frame.imageLayers().begin();
         i != frame.imageLayers().end();
         ++i)
     {
-        LayerDrawable* ld = addLayer(i->get());
-        ld->setStateSet(i->get()->getStateSet());
+        const ImageLayer* imageLayer = i->get();
+        if (imageLayer->getEnabled())
+        {
+            LayerDrawable* ld = addLayer(i->get());
+
+            // someday, replace this with the stateset from an ImageLayerRenderer..?
+            ld->setStateSet(imageLayer->getStateSet());
+        }
     }
 
     if (layers().empty())
@@ -256,11 +138,14 @@ TerrainDrawable::setup(const MapFrame& frame, const RenderBindings& bindings)
         addLayer(0L);
     }
 
+    // The last layer needs to clear out the OSG state,
+    layers().back()->_clearOsgState = true;
+
     _bindings = &bindings;
 }
 
 LayerDrawable*
-TerrainDrawable::addLayer(const ImageLayer* imageLayer)
+TerrainRenderData::addLayer(const ImageLayer* imageLayer)
 {
     UID uid = imageLayer ? imageLayer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
@@ -268,24 +153,15 @@ TerrainDrawable::addLayer(const ImageLayer* imageLayer)
     _layerMap[uid] = ld;
     ld->_layer = imageLayer;
     ld->_order = _layerList.size()-1;
-    ld->_env = _drawState.get();
+    ld->_drawState = _drawState.get();
     return ld;
 }
 
-void
-TerrainDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
-{
-    //for (DrawLayerCommandList::const_iterator layer = _layerList.begin(); layer != _layerList.end(); ++layer)
-    //{
-    //    for (DrawTileCommands::const_iterator tile = layer->_tiles.begin(); tile != layer->_tiles.end(); ++tile)
-    //    {
-    //        tile->_geom->compileGLObjects(renderInfo);
-    //    }
-    //}
-}
-
 LayerDrawable::LayerDrawable() :
-_layer(0L)
+_order(0),
+_layer(0L),
+_terrain(0L),
+_clearOsgState(false)
 {
     setDataVariance(DYNAMIC);
     setUseDisplayList(false);
@@ -295,42 +171,60 @@ _layer(0L)
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {    
-    DrawState& env = *_env;
+    DrawState& ds = *_drawState;
 
-    if (!env._stateInitialized)
+    if (!ds._stateInitialized)
     {
-        env.initialize(ri);
+        ds.initialize(ri);
     }
     else
     {
-        env.refreshUniformLocations(ri);
+        ds.refreshUniformLocations(ri);
+    }
+
+    if (ds._layerOrderUL >= 0)
+    {
+        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_order);
     }
 
     if (_layer)
     {
-        if (env._layerUidUL >= 0)
-            env._ext->glUniform1i(env._layerUidUL,      (GLint)_layer->getUID());
-        if (env._layerOpacityUL >= 0)
-            env._ext->glUniform1f(env._layerOpacityUL,  (GLfloat)_layer->getOpacity());
-        if (env._layerMinRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMinRangeUL, (GLfloat)_layer->getMinVisibleRange());
-        if (env._layerMaxRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)_layer->getMaxVisibleRange());
+        if (ds._layerUidUL >= 0)
+            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
+        if (ds._layerOpacityUL >= 0)
+            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_layer->getOpacity());
+        if (ds._layerMinRangeUL >= 0)
+            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_layer->getMinVisibleRange());
+        if (ds._layerMaxRangeUL >= 0)
+            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_layer->getMaxVisibleRange());
     }
     else
     {
-        if (env._layerUidUL >= 0)
-            env._ext->glUniform1i(env._layerUidUL,      (GLint)-1);
-        if (env._layerOpacityUL >= 0)
-            env._ext->glUniform1f(env._layerOpacityUL,  (GLfloat)1.0f);
-        if (env._layerMinRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMinRangeUL, (GLfloat)0.0f);
-        if (env._layerMaxRangeUL >= 0)
-            env._ext->glUniform1f(env._layerMaxRangeUL, (GLfloat)FLT_MAX);
+        if (ds._layerUidUL >= 0)
+            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)-1);
+        if (ds._layerOpacityUL >= 0)
+            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
+        if (ds._layerMinRangeUL >= 0)
+            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
+        if (ds._layerMaxRangeUL >= 0)
+            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
     }
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, env);
+        tile->draw(ri, ds);
+    }
+
+    // If set, dirty all OSG state to prevent any leakage - this is sometimes
+    // necessary when doing custom OpenGL within a Drawable.
+    if (_clearOsgState)
+    {
+        ri.getState()->dirtyAllAttributes();
+        ri.getState()->dirtyAllModes();
+        ri.getState()->dirtyAllVertexArrays();
+        
+        // unbind local buffers when finished.
+        ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+        ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
     }
 }

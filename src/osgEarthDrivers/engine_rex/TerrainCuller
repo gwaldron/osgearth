@@ -32,14 +32,14 @@ using namespace osgEarth;
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     /**
-     * Node visitor responsible for assembling a TerrainDrawable that 
+     * Node visitor responsible for assembling a TerrainRenderData that 
      * contains all the information necessary to render the terrain.
      */
     class TerrainCuller : public osg::NodeVisitor, public osg::CullStack
     {
     public:
         const MapFrame* _frame;
-        osg::ref_ptr<TerrainDrawable> _drawable;
+        TerrainRenderData _terrain;
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;

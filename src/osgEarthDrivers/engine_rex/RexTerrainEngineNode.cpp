@@ -558,26 +558,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         // If we're using geometry pooling, optimize the drawable for shared state:
         if (getEngineContext()->getGeometryPool()->isEnabled())
         {
-            culler._drawable->sortDrawCommands();
+            culler._terrain.sortDrawCommands();
         }
 
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
-        //if (getSurfaceStateSet())
-        //    cv->pushStateSet(getSurfaceStateSet());
 
-        for(LayerDrawableList::iterator i = culler._drawable->layers().begin();
-            i != culler._drawable->layers().end();
+        for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
+            i != culler._terrain.layers().end();
             ++i)
         {
             cv->apply(*i->get());
         }
-
-        // submit our terrain drawable to OSG's cull visitor.
-//        cv->apply(*culler._drawable.get());
-        
-        //if (getSurfaceStateSet())
-        //    cv->popStateSet();
 
         cv->popStateSet();
 

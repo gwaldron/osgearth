@@ -32,8 +32,7 @@ TerrainCuller::TerrainCuller()
 void
 TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
-    _drawable = new TerrainDrawable();
-    _drawable->setup(frame, bindings);
+    _terrain.setup(frame, bindings);
 }
 
 void
@@ -76,8 +75,7 @@ TerrainCuller::apply(osg::Node& node)
                     continue;
 
                 // add a new Draw command to the appropriate layer
-                osg::ref_ptr<LayerDrawable> layer = _drawable->layer(uid);
-                //DrawLayerCommand& layer = _drawable->layer(uid);
+                osg::ref_ptr<LayerDrawable> layer = _terrain.layer(uid);
                 layer->_tiles.push_back(DrawTileCommand());
                 DrawTileCommand& tile = layer->_tiles.back();
 
@@ -100,8 +98,8 @@ TerrainCuller::apply(osg::Node& node)
                 }
             }                
 
-            _drawable->_drawState->_bs.expandBy(surface->getBound());
-            _drawable->_drawState->_box.expandBy(_drawable->_drawState->_bs);
+            _terrain._drawState->_bs.expandBy(surface->getBound());
+            _terrain._drawState->_box.expandBy(_terrain._drawState->_bs);
 
             // pop the surface matrix:
             popModelViewMatrix();

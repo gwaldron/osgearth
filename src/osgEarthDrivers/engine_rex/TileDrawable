@@ -35,7 +35,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * computation, statistics, etc.)
      * 
      * NOTE: TileDrawable does not actually render anything!
-     * The TerrainDrawable object does all the rendering of tiles.
+     * The TerrainRenderData object does all the rendering of tiles.
      *
      * Instead, it exposes various osg::Drawable Functors for traversing
      * the terrain's geometry. It also hold a pointer to the tile's elevation

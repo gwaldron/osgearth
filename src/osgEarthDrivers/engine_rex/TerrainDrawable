@@ -93,7 +93,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingSphere _bs;
         osg::BoundingBox    _box;
 
-        DrawState() : _stateInitialized(false), _bindings(0L), _pcp(0L) { }
+        DrawState() : 
+            _stateInitialized(false),
+            _tileKeyUL(-1),
+            _parentTextureExistsUL(-1),
+            _layerUidUL(-1),
+            _layerOpacityUL(-1),
+            _layerOrderUL(-1),
+            _layerMinRangeUL(-1),
+            _layerMaxRangeUL(-1),
+            _elevTexelCoeffUL(-1),
+            _morphConstantsUL(-1),
+            _ext(0L),
+            _bindings(0L),
+            _pcp(0L) { }
         
         void initialize(osg::RenderInfo& ri)
         {
@@ -107,6 +120,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _stateInitialized = true;
         }
 
+        // Ensures that the Uniform Locations in the DrawState correspond to
+        // the currently applied program object.
         void refreshUniformLocations(osg::RenderInfo& ri)
         {
             const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
@@ -143,22 +158,29 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
         osg::Matrixd _matrix;
         osg::Matrixf _modelViewMatrix;
+        const RenderingPass* _pass;
         osg::Geometry* _geom;
         double _depth;
         TileKey _key;
         osg::Vec4f _keyValue;
         osg::Vec2f _elevTexelCoeff;
         osg::Vec2f _morphConstants;
-        const RenderingPass* _pass;
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
-        bool operator < (const DrawTileCommand& rhs) const {
-            //return _geom.get() < rhs._geom.get();
+        // Less than operator will ensure that tiles are sorted high-to-low LOD
+        // (to minimize Z overdraw) and then grouped by shared geometry
+        // (to minimize buffer binds). Both of these make a significant performance
+        // difference based on benchmarking.
+        bool operator < (const DrawTileCommand& rhs) const
+        {
+            if (_key.getLOD() > rhs._key.getLOD()) return true;
+            if (_key.getLOD() < rhs._key.getLOD()) return false;
             return _geom < rhs._geom;
         }
 
         DrawTileCommand() :
+            _pass(0L), _geom(0L), _depth(0.0),
             _elevTexelCoeff(1.0f, 0.0f) { }
     };
 
@@ -168,85 +190,51 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     typedef std::list<DrawTileCommand> DrawTileCommands;
 
 
+    /**
+     * Drawable for single "Layer" i.e. rendering pass. 
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this 
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
     class LayerDrawable : public osg::Drawable
     {
     public:
         LayerDrawable();
 
-        //void setDrawState(DrawState* env) { _env = env; }
-
         int _order;
         DrawTileCommands  _tiles;
         const ImageLayer* _layer;
-        class TerrainDrawable* _terrain;
+        class TerrainRenderData* _terrain;
+        bool _clearOsgState;
 
-        osg::ref_ptr<DrawState> _env;
-
+        osg::ref_ptr<DrawState> _drawState;
         
 
     public: // osg::Drawable
         
         void drawImplementation(osg::RenderInfo& ri) const;
 
-        osg::BoundingSphere computeBound() const { return _env->_bs; }
-
-        osg::BoundingBox computeBoundingBox() const { return _env->_box; }
-
-    private:
-        //DrawState* _env;
+        // All LayerDrawables share the common terrain bounds.
+        osg::BoundingSphere computeBound() const { return _drawState->_bs; }
+        osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
     };
 
+    // Straight list of LayerDrawables.
     typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;
 
+    // LayerDrawables indexed by a UID.
     typedef std::map<UID, osg::ref_ptr<LayerDrawable> > LayerDrawableMap;
-    
-#if 0
+
+
     /**
-     * All data necessary to draw a single map layer.
+     * Main data structure assembled by the TerrainCuller that contains
+     * everything necessary to render one frame of the terrain.
      */
-    struct DrawLayerCommand
+    class TerrainRenderData
     {
-        const ImageLayer* _layer;
-        DrawTileCommands _tiles;
-        osg::ref_ptr<osg::StateSet> _stateSet;
-
-        void draw(osg::RenderInfo& ri, DrawState& env) const;
-
-        DrawLayerCommand() : _layer(0L) { }
-    };
-
-    /**
-     * Ordered list of map layers to draw.
-     */
-    typedef std::list<DrawLayerCommand> DrawLayerCommandList;
-
-    /**
-     * Map layers indexed by layer UID (for fast lookups)
-     */
-    typedef std::map<UID, DrawLayerCommand*> DrawLayerCommandMap;
-#endif
-
-    /**
-     * Drawable submitted to the OSG cull visitor that is responsible
-     * for rendering the entire terrain. The TerrainCuller assembles
-     * this object during the CULL traversal.
-     */
-    class TerrainDrawable : public osg::Drawable
-    {
-    public: // osg::Drawable
-        void drawImplementation(osg::RenderInfo& ri) const;
-
-        //osg::BoundingSphere computeBound() const { return _bs; }
-
-        //osg::BoundingBox computeBoundingBox() const { return _box; }
-
-        void compileGLObjects(osg::RenderInfo& renderInfo) const;
-
     public:
-        TerrainDrawable();
-
-        /** Draw the terrain. */
-        void draw(osg::RenderInfo& ri, DrawState& env) const;
+        TerrainRenderData() :
+            _bindings(0L) { }
 
         /** Set up the map layers before culling the terrain */
         void setup(const MapFrame& frame, const RenderBindings& bindings);
@@ -260,11 +248,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }
         const LayerDrawableList& layers() const { return _layerList; }
+
+        /** Look up a LayerDrawable by its source layer UID. */
         osg::ref_ptr<LayerDrawable>& layer(UID uid) { return _layerMap[uid]; }
 
-        //osg::BoundingSphere   _bs;
-        //osg::BoundingBox      _box;
-        
+        // Draw state shared by all layers during one frame.
         osg::ref_ptr<DrawState> _drawState;
         
     private:

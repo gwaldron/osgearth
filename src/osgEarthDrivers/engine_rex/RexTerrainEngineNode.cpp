@@ -550,7 +550,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         culler.pushModelViewMatrix(cv->getModelViewMatrix(), cv->getCurrentCamera()->getReferenceFrame());
         culler._camera = cv->getCurrentCamera();
         culler._context = this->getEngineContext();
-        culler.setup(*_update_mapf, this->getEngineContext()->getRenderBindings());
+        culler.setup(*_update_mapf, this->getEngineContext()->getRenderBindings(), getSurfaceStateSet());
 
         // Assemble the terrain drawable:
         _terrain->accept(culler);

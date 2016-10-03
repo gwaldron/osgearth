@@ -20,6 +20,8 @@
 #include "TileNode"
 #include "SurfaceNode"
 
+#define LC "[TerrainCuller] "
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
@@ -34,9 +36,9 @@ _currentTileNode(0L)
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
+TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
 {
-    _terrain.setup(frame, bindings);
+    _terrain.setup(frame, bindings, defaultStateSet);
 }
 
 void
@@ -82,24 +84,31 @@ TerrainCuller::apply(osg::Node& node)
 
                 // add a new Draw command to the appropriate layer
                 osg::ref_ptr<LayerDrawable> layer = _terrain.layer(uid);
-                layer->_tiles.push_back(DrawTileCommand());
-                DrawTileCommand& tile = layer->_tiles.back();
-
-                // install everything we need in the Draw Command:
-                tile._pass = &pass;                            
-                tile._matrix = surface->getMatrix();
-                tile._modelViewMatrix = *this->getModelViewMatrix();
-                tile._keyValue = _currentTileNode->getTileKeyValue();
-                tile._geom = surface->getDrawable()->_geom.get();
-                tile._morphConstants = _currentTileNode->getMorphConstants();
-
-                tile._key = _currentTileNode->getTileKey(); 
-
-                const osg::Image* elevRaster = _currentTileNode->getElevationRaster();
-                if (elevRaster)
+                if (layer.valid())
                 {
-                    float size = (float)elevRaster->s();
-                    tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+                    layer->_tiles.push_back(DrawTileCommand());
+                    DrawTileCommand& tile = layer->_tiles.back();
+
+                    // install everything we need in the Draw Command:
+                    tile._pass = &pass;                            
+                    tile._matrix = surface->getMatrix();
+                    tile._modelViewMatrix = *this->getModelViewMatrix();
+                    tile._keyValue = _currentTileNode->getTileKeyValue();
+                    tile._geom = surface->getDrawable()->_geom.get();
+                    tile._morphConstants = _currentTileNode->getMorphConstants();
+
+                    tile._key = _currentTileNode->getTileKey(); 
+
+                    const osg::Image* elevRaster = _currentTileNode->getElevationRaster();
+                    if (elevRaster)
+                    {
+                        float size = (float)elevRaster->s();
+                        tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+                    }
+                }
+                else
+                {
+                    OE_WARN << LC << "Internal error - _terrain.layer(uid) returned NULL\n";
                 }
             }                
 

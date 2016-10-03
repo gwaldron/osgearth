@@ -114,7 +114,7 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings)
+TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
 {
     _drawState = new DrawState();
     _drawState->_bindings = &bindings;
@@ -124,7 +124,7 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings)
         ++i)
     {
         const ImageLayer* imageLayer = i->get();
-        if (imageLayer->getEnabled())
+        if (imageLayer->getEnabled() && imageLayer->getVisible())
         {
             LayerDrawable* ld = addLayer(i->get());
 
@@ -135,7 +135,8 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings)
 
     if (layers().empty())
     {
-        addLayer(0L);
+        LayerDrawable* defaultLayer = addLayer(0L);
+        defaultLayer->setStateSet(defaultStateSet);
     }
 
     // The last layer needs to clear out the OSG state,

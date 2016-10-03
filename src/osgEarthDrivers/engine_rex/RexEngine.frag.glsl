@@ -28,7 +28,6 @@ in float oe_layer_rangeOpacity;
 void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
-    
 	vec4 texelSelf = texture(oe_layer_tex, oe_layer_texc.st);
 
 #ifdef OE_REX_MORPH_IMAGERY

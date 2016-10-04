@@ -252,7 +252,11 @@ GEOSContext::exportGeometry(const geom::Geometry* input)
 
     if ( dynamic_cast<const geom::Point*>( input ) )
     {
-        OE_NOTICE << LC << "GEOS 'Point' NYI" << std::endl;        
+        const geom::Point* point = dynamic_cast< const geom::Point* >(input);
+        Symbology::PointSet* part = new Symbology::PointSet();
+        const geom::Coordinate* c = point->getCoordinate();
+        part->push_back(osg::Vec3d(c->x, c->y, c->z));
+        return part;
     }
     else if ( dynamic_cast<const geom::MultiPoint*>( input ) )
     {

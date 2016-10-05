@@ -58,7 +58,7 @@ LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Opt
 
     if ( in.maskLayerName().isSet() )
     {
-        ImageLayer* layer = map->getImageLayerByName( in.maskLayerName().get() );
+        ImageLayer* layer = map->getLayerByName<ImageLayer>( in.maskLayerName().get() );
         if ( layer )
         {
             setMaskLayer( layer );

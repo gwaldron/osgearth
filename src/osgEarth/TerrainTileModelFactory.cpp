@@ -65,17 +65,20 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 }
 
 void
-TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
-                                        const MapFrame&              frame,
-                                        const TileKey&               key,
-                                        ProgressCallback*            progress)
+TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
+                                        const MapFrame&   frame,
+                                        const TileKey&    key,
+                                        ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
 
     int order = 0;
 
-    for(ImageLayerVector::const_iterator i = frame.imageLayers().begin();
-        i != frame.imageLayers().end();
+    ImageLayerVector imageLayers;
+    frame.getLayers(imageLayers);
+
+    for(ImageLayerVector::const_iterator i = imageLayers.begin();
+        i != imageLayers.end();
         ++i, ++order )
     {
         ImageLayer* layer = i->get();

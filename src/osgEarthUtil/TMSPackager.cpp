@@ -171,9 +171,12 @@ std::string WriteTMSTileHandler::getProcessString() const
     buf << "osgearth_package --tms ";
     if (imageLayer)
     {
-        for (int i = 0; i < _map->getNumImageLayers(); i++)
+        ImageLayerVector imageLayers;
+        _map->getLayers(imageLayers);
+
+        for (int i = 0; i < imageLayers.size(); i++)
         {
-            if (imageLayer == _map->getImageLayerAt(i))
+            if (imageLayer == imageLayers.at(i))
             {
                 buf << " --image " << i << " ";
                 break;
@@ -182,9 +185,12 @@ std::string WriteTMSTileHandler::getProcessString() const
     }
     else if (elevationLayer)
     {
-        for (int i = 0; i < _map->getNumElevationLayers(); i++)
+        ElevationLayerVector elevationLayers;
+        _map->getLayers(elevationLayers);
+
+        for (int i = 0; i < elevationLayers.size(); i++)
         {
-            if (elevationLayer == _map->getElevationLayerAt(i))
+            if (elevationLayer == elevationLayers.at(i))
             {
                 buf << " --elevation " << i << " ";
                 break;
@@ -342,11 +348,14 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
         unsigned int index = 0;
         if (imageLayer)
         {
+            ImageLayerVector imageLayers;
+            map->getLayers(imageLayers);
+
             layerName << "image";
             // Get the index of the layer
-            for (int i = 0; i < map->getNumImageLayers(); i++)
+            for (int i = 0; i < imageLayers.size(); i++)
             {
-                if (map->getImageLayerAt(i) == imageLayer)
+                if (imageLayers.at(i) == imageLayer)
                 {
                     index = i;
                     break;
@@ -355,11 +364,14 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
         }
         else if (elevationLayer)
         {
+            ElevationLayerVector elevationLayers;
+            map->getLayers(elevationLayers);
+
             layerName << "elevation";
             // Get the index of the layer
-            for (int i = 0; i < map->getNumElevationLayers(); i++)
+            for (int i = 0; i < elevationLayers.size(); i++)
             {
-                if (map->getElevationLayerAt(i) == elevationLayer)
+                if (elevationLayers.at(i) == elevationLayer)
                 {
                     index = i;
                     break;

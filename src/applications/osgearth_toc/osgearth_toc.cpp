@@ -79,16 +79,19 @@ struct UpdateOperation : public osg::Operation
 
     void dirtyModelLayers()
     {
-        for(unsigned i=0; i<s_activeMap->getNumModelLayers(); ++i)
+        ModelLayerVector modelLayers;
+        s_activeMap->getLayers(modelLayers);
+
+        for(unsigned i=0; i<modelLayers.size(); ++i)
         {
-            ModelSource* ms = s_activeMap->getModelLayerAt(i)->getModelSource();
+            ModelSource* ms = modelLayers.at(i)->getModelSource();
             if ( ms )
             {
                 ms->dirty();
             }
             else
             {
-                OE_NOTICE << s_activeMap->getModelLayerAt(i)->getName()
+                OE_NOTICE << modelLayers.at(i)->getName()
                     << " has no model source.\n";
             }
         }
@@ -407,19 +410,23 @@ updateControlPanel()
 
     // the active map layers:
     MapFrame mapf( s_activeMap.get(), Map::ENTIRE_MODEL );
-    int layerNum = mapf.imageLayers().size()-1;
-    for( ImageLayerVector::const_reverse_iterator i = mapf.imageLayers().rbegin(); i != mapf.imageLayers().rend(); ++i )
-        createLayerItem( s_imageBox, row++, layerNum--, mapf.imageLayers().size(), i->get(), true );
+    ImageLayerVector imageLayers;
+    mapf.getLayers(imageLayers);
+    int layerNum = imageLayers.size()-1;
+    for( ImageLayerVector::const_reverse_iterator i = imageLayers.rbegin(); i != imageLayers.rend(); ++i )
+        createLayerItem( s_imageBox, row++, layerNum--, imageLayers.size(), i->get(), true );
 
     MapFrame mapf2( s_inactiveMap.get() );
-    if ( mapf2.imageLayers().size() > 0 )
+    imageLayers.clear();
+    mapf2.getLayers(imageLayers);
+    if ( imageLayers.size() > 0 )
     {
         LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
         s_imageBox->setControl( 1, row++, inactiveLabel );
 
-        for( unsigned int i=0; i<mapf2.imageLayers().size(); ++i )
+        for( unsigned int i=0; i<imageLayers.size(); ++i )
         {
-            createLayerItem( s_imageBox, row++, -1, -1, mapf2.getImageLayerAt(i), false );
+            createLayerItem( s_imageBox, row++, -1, -1, imageLayers[i].get(), false );
         }
     }
 
@@ -435,9 +442,12 @@ updateControlPanel()
     s_elevationBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    layerNum = mapf.elevationLayers().size()-1;
-    for( ElevationLayerVector::const_reverse_iterator i = mapf.elevationLayers().rbegin(); i != mapf.elevationLayers().rend(); ++i )
-        createLayerItem( s_elevationBox, row++, layerNum--, mapf.elevationLayers().size(), i->get(), true );
+    ElevationLayerVector elevationLayers;
+    mapf.getLayers(elevationLayers);
+
+    layerNum = elevationLayers.size()-1;
+    for( ElevationLayerVector::const_reverse_iterator i = elevationLayers.rbegin(); i != elevationLayers.rend(); ++i )
+        createLayerItem( s_elevationBox, row++, layerNum--, elevationLayers.size(), i->get(), true );
 
     if ( mapf2.elevationLayers().size() > 0 )
     {
@@ -446,7 +456,7 @@ updateControlPanel()
 
         for( unsigned int i=0; i<mapf2.elevationLayers().size(); ++i )
         {
-            createLayerItem( s_elevationBox, row++, -1, -1, mapf2.getElevationLayerAt(i), false );
+            createLayerItem( s_elevationBox, row++, -1, -1, elevationLayers.at(i), false );
         }
     }
 
@@ -461,6 +471,8 @@ updateControlPanel()
     s_modelBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    for( ModelLayerVector::const_reverse_iterator i = mapf.modelLayers().rbegin(); i != mapf.modelLayers().rend(); ++i )
+    ModelLayerVector modelLayers;
+    mapf.getLayers(modelLayers);
+    for( ModelLayerVector::const_reverse_iterator i = modelLayers.rbegin(); i != modelLayers.rend(); ++i )
         createModelLayerItem( s_modelBox, row++, i->get(), true );
 }

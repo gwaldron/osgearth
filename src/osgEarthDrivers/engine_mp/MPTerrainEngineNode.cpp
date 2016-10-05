@@ -465,12 +465,12 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     _batchUpdateInProgress = true;
 
     ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
+    map->getLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
         addElevationLayer( i->get() );
 
     ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    map->getLayers( imageLayers );
     for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         addImageLayer( i->get() );
 
@@ -729,10 +729,16 @@ MPTerrainEngineNode::getKeyNodeFactory()
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+        MaskLayerVector maskLayers;
+        _update_mapf->getLayers(maskLayers);
+
+        ModelLayerVector modelLayers;
+        _update_mapf->getLayers(modelLayers);
+
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
+            maskLayers,
+            modelLayers,
             _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
@@ -837,9 +843,15 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+    MaskLayerVector maskLayers;
+    _update_mapf->getLayers(maskLayers);
+
+    ModelLayerVector modelLayers;
+    _update_mapf->getLayers(modelLayers);
+
     osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-        _update_mapf->terrainMaskLayers(),
-        _update_mapf->modelLayers(),
+        maskLayers,
+        modelLayers,
         _primaryUnit,
         optimizeTriangleOrientation,
         _terrainOptions );
@@ -1095,11 +1107,14 @@ MPTerrainEngineNode::updateState()
                     const char* I = "    ";
 
                     // second, install the per-layer color filter functions AND shared layer bindings.
+                    ImageLayerVector imageLayers;
+                    _update_mapf->getLayers(imageLayers);
+
                     bool ifStarted = false;
-                    int numImageLayers = _update_mapf->imageLayers().size();
+                    int numImageLayers = imageLayers.size();
                     for( int i=0; i<numImageLayers; ++i )
                     {
-                        ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                        ImageLayer* layer = imageLayers[i].get();
                         if ( layer->getEnabled() )
                         {
                             // install Color Filter function calls:
@@ -1196,10 +1211,13 @@ MPTerrainEngineNode::updateState()
             // assign the uniforms for each shared layer.
             if ( _update_mapf )
             {
-                int numImageLayers = _update_mapf->imageLayers().size();
+                ImageLayerVector imageLayers;
+                _update_mapf->getLayers(imageLayers);
+
+                int numImageLayers = imageLayers.size();
                 for( int i=0; i<numImageLayers; ++i )
                 {
-                    ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                    ImageLayer* layer = imageLayers[i].get();
                     if ( layer->getEnabled() && layer->isShared() )
                     {
                         terrainStateSet->addUniform( new osg::Uniform(

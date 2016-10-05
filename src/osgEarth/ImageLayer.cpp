@@ -324,6 +324,16 @@ ImageLayer::init()
         _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
 }
 
+Config
+ImageLayer::getConfig() const
+{    
+    Config layerConf = getImageLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    layerConf.key() = "image";
+    return layerConf;
+}
+
 void
 ImageLayer::addCallback( ImageLayerCallback* cb )
 {

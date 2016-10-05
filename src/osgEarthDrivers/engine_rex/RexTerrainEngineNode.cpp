@@ -21,28 +21,20 @@
 #include "SelectionInfo"
 #include "TerrainCuller"
 
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
-#include <osgEarth/TraversalData>
 
 #include <osg/Version>
 #include <osg/BlendFunc>
 #include <osg/Depth>
-#include <osgUtil/RenderBin>
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
-#   define HAVE_OSG_PATCH_PARAMETER
-#   include <osg/PatchParameter>
-#endif
+#include <osg/CullFace>
 
 #include <cstdlib> // for getenv
 
@@ -276,12 +268,12 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _batchUpdateInProgress = true;
 
     ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
+    map->getLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
         addElevationLayer( i->get() );
 
     ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    map->getLayers( imageLayers );
     for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         addImageLayer( i->get() );
 
@@ -816,7 +808,10 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
     {
         // Install the image layer stateset on this layer.
         // Later we will refactor this into an ImageLayerRenderer or something similar.
-        layerAdded->setStateSet(getSurfaceStateSet());
+        if (layerAdded->getStateSet() == 0L)
+        {
+            layerAdded->setStateSet(getSurfaceStateSet());
+        }
 
         // for a shared layer, allocate a shared image unit if necessary.
         if ( layerAdded->isShared() )
@@ -947,11 +942,14 @@ RexTerrainEngineNode::updateState()
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
         
-        terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
+        //terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
+
+        surfaceStateSet->setAttributeAndModes(
+            new osg::CullFace(), osg::StateAttribute::ON);
 
         // activate standard mix blending.
         terrainStateSet->setAttributeAndModes( 
@@ -1026,10 +1024,12 @@ RexTerrainEngineNode::updateState()
 
                 // second, install the per-layer color filter functions AND shared layer bindings.
                 bool ifStarted = false;
-                int numImageLayers = _update_mapf->imageLayers().size();
-                for( int i=0; i<numImageLayers; ++i )
+                ImageLayerVector imageLayers;
+                _update_mapf->getLayers(imageLayers);
+
+                for( int i=0; i<imageLayers.size(); ++i )
                 {
-                    ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                    ImageLayer* layer = imageLayers.at(i);
                     if ( layer->getEnabled() )
                     {
                         // install Color Filter function calls:

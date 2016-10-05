@@ -505,13 +505,28 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
     mapConf.add( "options", optionsConf );
 
     // the layers
+    LayerVector layers;
+    mapf.getLayers(layers);
+
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        const Layer* layer = i->get();
+
+        Config layerConf = layer->getConfig();
+        if (!layerConf.empty())
+        {
+            mapConf.add(layerConf);
+        }
+    }
+
+#if 0
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
         //Config layerConf = layer->getInitialOptions().getConfig();
         Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
+        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         mapConf.add( "image", layerConf );
     }
 
@@ -533,6 +548,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );
     }
+#endif
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
     for(Extensions::const_iterator i = input->getExtensions().begin(); i != input->getExtensions().end(); ++i)

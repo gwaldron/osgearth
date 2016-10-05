@@ -59,17 +59,17 @@ void DataManager::initialize()
   if (_map)
   {
     osgEarth::ElevationLayerVector elevLayers;
-    _map->getElevationLayers(elevLayers);
+    _map->getLayers(elevLayers);
     for (osgEarth::ElevationLayerVector::const_iterator it = elevLayers.begin(); it != elevLayers.end(); ++it)
       (*it)->addCallback(_elevationCallback);
 
     osgEarth::ImageLayerVector imageLayers;
-    _map->getImageLayers(imageLayers);
+    _map->getLayers(imageLayers);
     for (osgEarth::ImageLayerVector::const_iterator it = imageLayers.begin(); it != imageLayers.end(); ++it)
       (*it)->addCallback(_imageCallback);
 
     osgEarth::ModelLayerVector modelLayers;
-    _map->getModelLayers(modelLayers);
+    _map->getLayers(modelLayers);
     for (osgEarth::ModelLayerVector::const_iterator it = modelLayers.begin(); it != modelLayers.end(); ++it)
       (*it)->addCallback(_modelCallback);
 

@@ -186,6 +186,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     /**
      * Ordered list of tile drawing commands.
+     * List is faster than vector here (benchmarked)
      */
     typedef std::list<DrawTileCommand> DrawTileCommands;
 

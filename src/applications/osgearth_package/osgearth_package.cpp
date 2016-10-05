@@ -347,7 +347,7 @@ makeTMS( osg::ArgumentParser& args )
     // Package an individual image layer
     if (imageLayerIndex >= 0)
     {        
-        ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
+        ImageLayer* layer = map->getLayerAt<ImageLayer>(imageLayerIndex);
         if (layer)
         {
             packager.run(layer, map);
@@ -365,7 +365,7 @@ makeTMS( osg::ArgumentParser& args )
     // Package an individual elevation layer
     else if (elevationLayerIndex >= 0)
     {        
-        ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
+        ElevationLayer* layer = map->getLayerAt<ElevationLayer>(elevationLayerIndex);
         if (layer)
         {
             packager.run(layer, map);
@@ -381,11 +381,14 @@ makeTMS( osg::ArgumentParser& args )
         }
     }
     else
-    {        
+    {
+        ImageLayerVector imageLayers;
+        map->getLayers(imageLayers);
+
         // Package all the ImageLayer's
-        for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+        for (unsigned int i = 0; i < imageLayers.size(); i++)
         {            
-            ImageLayer* layer = map->getImageLayerAt(i);        
+            ImageLayer* layer = imageLayers.at(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
             packager.run(layer, map);
@@ -420,9 +423,12 @@ makeTMS( osg::ArgumentParser& args )
         }    
 
         // Package all the ElevationLayer's
-        for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+        ElevationLayerVector elevationLayers;
+        map->getLayers(elevationLayers);
+
+        for (unsigned int i = 0; i < elevationLayers.size(); i++)
         {            
-            ElevationLayer* layer = map->getElevationLayerAt(i);        
+            ElevationLayer* layer = elevationLayers.at(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
             packager.run(layer, map);

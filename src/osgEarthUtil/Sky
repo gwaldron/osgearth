@@ -178,7 +178,7 @@ namespace osgEarth { namespace Util
         /** @deprecated. use getSunLight()->setAmbient instead */
         void setMinimumAmbient(const osg::Vec4f& ambient) { if (getSunLight()) getSunLight()->setAmbient(ambient); }
         /** @deprecated; use getSunLight()->getAmbient instead */
-        const osg::Vec4& getMinimumAmbient() const { if (!getSunLight()) return osg::Vec4(0,0,0,0); return getSunLight()->getAmbient(); }
+        const osg::Vec4& getMinimumAmbient() const { if (!getSunLight()) return _minimumAmbient; return getSunLight()->getAmbient(); }
 
     public:
 

@@ -119,17 +119,20 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
     _drawState = new DrawState();
     _drawState->_bindings = &bindings;
 
-    for (ImageLayerVector::const_iterator i = frame.imageLayers().begin();
-        i != frame.imageLayers().end();
+    for(LayerVector::const_iterator i = frame.layers().begin();
+        i != frame.layers().end();
         ++i)
     {
-        const ImageLayer* imageLayer = i->get();
-        if (imageLayer->getEnabled() && imageLayer->getVisible())
+        Layer* layer = i->get();
+        if (layer->getRenderType() != Layer::RENDERTYPE_NONE) // TODO: change this later
         {
-            LayerDrawable* ld = addLayer(i->get());
-
-            // someday, replace this with the stateset from an ImageLayerRenderer..?
-            ld->setStateSet(imageLayer->getStateSet());
+            ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+            if (imageLayer &&
+                imageLayer->getEnabled() &&
+                imageLayer->getVisible())
+            {
+                LayerDrawable* drawable = addLayer(imageLayer);
+            }
         }
     }
 
@@ -155,6 +158,8 @@ TerrainRenderData::addLayer(const ImageLayer* imageLayer)
     ld->_layer = imageLayer;
     ld->_order = _layerList.size()-1;
     ld->_drawState = _drawState.get();
+    if (imageLayer)
+        ld->setStateSet(imageLayer->getStateSet());
     return ld;
 }
 

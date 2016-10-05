@@ -172,13 +172,13 @@ namespace osgEarth { namespace Util
         bool getAtmosphereVisible() const { return _atmosphereVisible; }
 
         /** Access the osg::Light representing the sun */
-        virtual osg::Light* getSunLight() = 0;
-        virtual const osg::Light* getSunLight() const { return getSunLight(); }
+        virtual osg::Light* getSunLight() const = 0;
+        //virtual const osg::Light* getSunLight() const = 0;
 
         /** @deprecated. use getSunLight()->setAmbient instead */
         void setMinimumAmbient(const osg::Vec4f& ambient) { if (getSunLight()) getSunLight()->setAmbient(ambient); }
         /** @deprecated; use getSunLight()->getAmbient instead */
-        const osg::Vec4& getMinimumAmbient() const { if (!getSunLight()) return osg::Vec4(0,0,0,0); return getSunLight()->getAmbient(); }
+        const osg::Vec4 getMinimumAmbient() const { if (!getSunLight()) return osg::Vec4(0,0,0,0); return getSunLight()->getAmbient(); }
 
     public:
 

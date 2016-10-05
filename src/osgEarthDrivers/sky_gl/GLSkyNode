@@ -49,7 +49,7 @@ namespace osgEarth { namespace GLSky
 
     public: // SkyNode
 
-        osg::Light* getSunLight() { return _light.get(); }
+        osg::Light* getSunLight() const { return _light.get(); }
 
         void attach(osg::View* view, int lightNum);
 

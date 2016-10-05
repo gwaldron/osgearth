@@ -98,6 +98,10 @@ namespace osgEarth
         /**
          * Constructs a new elevation layer with the specified layer options and with a custom
          * TileSource instance created by the user.
+         *
+         * Note: the ElevationLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ElevationLayerOptions will not be used.
          */
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
 

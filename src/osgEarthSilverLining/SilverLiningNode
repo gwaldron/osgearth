@@ -47,7 +47,7 @@ namespace osgEarth { namespace SilverLining
     public: // SkyNode
 
         /** The (sun) light that this node controls */
-        osg::Light* getSunLight() { return _light.get(); }
+        osg::Light* getSunLight() const { return _light.get(); }
 
         /** Attach to a view so that this node controls its light. */
         void attach(osg::View* view, int lightNum);

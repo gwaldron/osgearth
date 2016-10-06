@@ -182,6 +182,10 @@ namespace osgEarth
         
         /**
          * Constructs a new model layer with a user-provided model source.
+         *
+         * Note: the ModelLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ModelLayerOptions will not be used.
          */
         ModelLayer(const ModelLayerOptions& options, ModelSource* source );
 

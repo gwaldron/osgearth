@@ -227,6 +227,10 @@ namespace osgEarth
 
         /**
          * Constructs a new image layer with a custom TileSource.
+         *
+         * Note: the ImageLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ImageLayerOptions will not be used.
          */
         ImageLayer( const ImageLayerOptions& options, TileSource* tileSource );
 

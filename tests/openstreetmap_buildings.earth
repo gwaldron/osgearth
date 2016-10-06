@@ -9,29 +9,28 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <options>
         <terrain driver="rex"/>
     </options>
-    
+
     <model name="buildings" driver="feature_geom">
-    
+
         <features name="buildings" driver="tfs">
-            <url>http://readymap.org/osm/osm/osm/</url>
-            <invert_y>true</invert_y>
+            <url>http://readymap.org/osm-buildings/</url>
             <min_level>14</min_level>
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>
-            <format>pbf</format>    
+            <format>pbf</format>
             <filters>
                 <script>
                  <![CDATA[
                    ("building" in feature.properties);
                  ]]>
                 </script>
-            </filters>           
+            </filters>
         </features>
 
-        <styles>                
+        <styles>
             <library name="us_resources">
                 <url>../data/resources/textures_us/catalog.xml</url>
-            </library>            
+            </library>
 
             <style type="text/css">
                 buildings {
@@ -43,7 +42,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                     altitude-technique:    map;
                     altitude-binding:      vertex;
                     altitude-resolution:   0;
-                }            
+                }
                 building-wall {
                     skin-library:     us_resources;
                     skin-tags:        building;
@@ -58,9 +57,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                     fill:             #ffffff;
                 }
             </style>
-            
+
             <script>
-                function getHeight() {                    
+                function getHeight() {
 					if ("height" in feature.properties) {
 						var h = feature.properties["height"].replace('m','');
 						return Math.max(h, 4.0);
@@ -87,7 +86,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </elevation>
-    
+
     <xi:include href="viewpoints.xml"/>
-  
+
 </map>

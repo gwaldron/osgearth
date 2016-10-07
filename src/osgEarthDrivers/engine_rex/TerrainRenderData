@@ -46,6 +46,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<osg::Texture*> _texture;    // Texture currently bound
         optional<osg::Matrixf> _matrix;      // Matrix that is currently set
         GLint _matrixUL;                     // Matrix uniform location
+
+        void clear() {
+            _texture.clear();
+            _matrix.clear();
+        }
+
+        void clearUniformData() {
+            _matrix.clear();
+            _matrixUL = -1;
+        }
     };
 
     /**
@@ -54,8 +64,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct TileSamplerState
     {
-        std::map<UID, SamplerState> _colorPasses;
         std::vector<SamplerState> _samplers;
+
+        void clear() {
+            for (unsigned i = 0; i<_samplers.size(); ++i)
+                _samplers[i].clear();
+        }
+
+        void clearUniformData() {
+            for (unsigned i = 0; i<_samplers.size(); ++i)
+                _samplers[i].clearUniformData();
+        }
     };
 
     /**
@@ -77,7 +96,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GLint _elevTexelCoeffUL;
         GLint _morphConstantsUL;
 
-        osg::GLExtensions* _ext;
+        osg::ref_ptr<osg::GLExtensions> _ext;
 
         optional<int>        _layerOrder;
         optional<osg::Vec2f> _elevTexelCoeff;
@@ -93,7 +112,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingSphere _bs;
         osg::BoundingBox    _box;
 
-        DrawState() : 
+        DrawState() :
             _stateInitialized(false),
             _tileKeyUL(-1),
             _parentTextureExistsUL(-1),
@@ -106,27 +125,37 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _morphConstantsUL(-1),
             _ext(0L),
             _bindings(0L),
-            _pcp(0L) { }
-        
-        void initialize(osg::RenderInfo& ri)
+            _pcp(0L)
         {
-            _ext = osg::GLExtensions::Get(ri.getContextID(), true);
-
-            // Size the sampler states property:
-            _samplerState._samplers.resize(_bindings->size());
-
-            refreshUniformLocations(ri);
-
-            _stateInitialized = true;
+            //nop
         }
 
         // Ensures that the Uniform Locations in the DrawState correspond to
         // the currently applied program object.
-        void refreshUniformLocations(osg::RenderInfo& ri)
+        void refresh(osg::RenderInfo& ri)
         {
-            const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
-            if (pcp && pcp != _pcp)
+            // Establish a GL Extensions handle:
+            if (!_ext.valid())
             {
+                _ext = osg::GLExtensions::Get(ri.getContextID(), true);
+            }
+                
+            // Size the sampler states property:
+            if (_samplerState._samplers.size() < _bindings->size())
+            {
+                _samplerState._samplers.resize(_bindings->size());
+            }
+
+            const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
+            if (pcp && (pcp != _pcp))
+            {
+                // Reset all sampler matrix states since their uniform locations are going to change.
+                _layerOrder.clear();
+                _elevTexelCoeff.clear();
+                _morphConstants.clear();
+                _parentTextureExists.clear();
+                _samplerState.clear();
+
                 // for each sampler binding, initialize its state tracking structure 
                 // and resolve its matrix uniform location:
                 for (unsigned i = 0; i < _bindings->size(); ++i)
@@ -160,11 +189,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Matrixf _modelViewMatrix;
         const RenderingPass* _pass;
         osg::Geometry* _geom;
-        double _depth;
         TileKey _key;
         osg::Vec4f _keyValue;
         osg::Vec2f _elevTexelCoeff;
         osg::Vec2f _morphConstants;
+        Layer::DrawCallback* _drawCallback;
+        bool _drawPatch;
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
@@ -180,8 +210,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
 
         DrawTileCommand() :
-            _pass(0L), _geom(0L), _depth(0.0),
-            _elevTexelCoeff(1.0f, 0.0f) { }
+            _pass(0L), _geom(0L),
+            _elevTexelCoeff(1.0f, 0.0f),
+            _drawCallback(0L),
+            _drawPatch(false) { }
     };
 
     /**
@@ -204,7 +236,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         int _order;
         DrawTileCommands  _tiles;
-        const ImageLayer* _layer;
+        const Layer* _layer;
+        const ImageLayer* _imageLayer;
         class TerrainRenderData* _terrain;
         bool _clearOsgState;
 
@@ -244,7 +277,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void sortDrawCommands();
 
         /** Add a layer (in order) */
-        LayerDrawable* addLayer(const ImageLayer*);
+        LayerDrawable* addLayer(const Layer*);
 
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }

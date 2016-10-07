@@ -303,7 +303,7 @@ ImageLayer::init()
     TerrainLayer::init();
 
     // image layers render as a terrain texture.
-    setRenderType(RENDERTYPE_TEXTURE);
+    setRenderType(RENDERTYPE_COLOR);
 
     // Set the tile size to 256 if it's not explicitly set.
     if (!_runtimeOptions.driver()->tileSize().isSet())

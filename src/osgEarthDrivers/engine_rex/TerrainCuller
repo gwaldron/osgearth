@@ -60,6 +60,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
 
+        DrawTileCommand* addDrawCommand(const RenderingPass& pass, TileNode*);
+
     };
 
 } } } // namespace 

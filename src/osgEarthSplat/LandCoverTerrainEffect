@@ -30,6 +30,7 @@
 #include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
 #include <osgDB/Options>
+#include <osgEarth/MapNode>
 
 using namespace osgEarth;
 
@@ -61,6 +62,10 @@ namespace osgEarth { namespace Splat
          */
         void setCoverage(Coverage* coverage) { _coverage = coverage; }
         Coverage* getCoverage() const { return _coverage.get(); }
+
+
+        void addToMap(MapNode* mapNode);
+
 
     public: // TerrainEffect interface
 

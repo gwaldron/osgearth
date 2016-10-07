@@ -425,7 +425,7 @@ RexTerrainEngineNode::dirtyTerrain()
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        std::min( _terrainOptions.maxLOD().get(), 19u ),
+        std::min( _terrainOptions.maxLOD().get(), 20u ), //19u ),
         _terrainOptions.tileSize().get(),
         farLOD );
 
@@ -555,12 +555,12 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
-
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
         {
-            cv->apply(*i->get());
+            if (!i->get()->_tiles.empty())
+                cv->apply(*i->get());
         }
 
         cv->popStateSet();

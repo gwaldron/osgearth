@@ -50,6 +50,8 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
     // assemble all the components:
     addImageLayers( model.get(), frame, key, progress );
 
+    addPatchLayers(model.get(), frame, key, progress );
+
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         addElevation( model.get(), frame, key, progress );
@@ -62,6 +64,30 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 
     // done.
     return model.release();
+}
+
+void
+TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
+                                        const MapFrame&   frame,
+                                        const TileKey&    key,
+                                        ProgressCallback* progress)
+{
+    OE_START_TIMER(fetch_patch_layers);
+
+    for (unsigned i = 0; i<frame.layers().size(); ++i)
+    {
+        Layer* layer = frame.layers().at(i);
+        if (layer->getRenderType() == Layer::RENDERTYPE_PATCH && key.getLOD() == layer->getPatchLOD())
+        {
+            TerrainTilePatchLayerModel* layerModel = new TerrainTilePatchLayerModel();
+            layerModel->setLayer(layer);
+            model->patchLayers().push_back(layerModel);
+        }
+    }
+
+    if (progress)
+        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_patch_layers);
+
 }
 
 void

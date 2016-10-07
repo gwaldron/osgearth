@@ -81,6 +81,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
 
+        /** Returns the SurfaceNode under this node. */
+        SurfaceNode* getSurfaceNode() { return _surface.get(); }
+
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
         const osg::Image* getElevationRaster() const;

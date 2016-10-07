@@ -123,7 +123,8 @@ SplatExtension::connect(MapNode* mapNode)
         _landCoverEffect->setZones( myZones );
         _landCoverEffect->setCoverage( myCoverage.get() );
         
-        mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
+        //mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
+        _landCoverEffect->addToMap(mapNode);
     }
 
     // Install the zone switcher; this will select the best zone based on

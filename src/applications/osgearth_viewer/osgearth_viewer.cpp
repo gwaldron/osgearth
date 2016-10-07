@@ -25,9 +25,6 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
-#include <osgEarth/Cache>
-#include <osgEarthDrivers/cache_filesystem/FileSystemCache>
-
 #define LC "[viewer] "
 
 using namespace osgEarth;

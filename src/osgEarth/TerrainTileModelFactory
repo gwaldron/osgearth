@@ -56,6 +56,12 @@ namespace osgEarth
 
     protected:
 
+        virtual void addPatchLayers(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
         virtual void addImageLayers(
             TerrainTileModel*            model,
             const MapFrame&              frame,

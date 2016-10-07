@@ -63,9 +63,12 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
     }
 
     // Apply samplers for this tile draw:
-    for(unsigned s=0; s<_pass->_samplers.size(); ++s)
+    const Samplers& samplers = _pass->_surrogateSamplers ? *_pass->_surrogateSamplers : _pass->_samplers;
+
+
+    for(unsigned s=0; s<samplers.size(); ++s)
     {
-        const Sampler& sampler = _pass->_samplers[s];
+        const Sampler& sampler = samplers[s];
 
         SamplerState& samplerState = ds._samplerState._samplers[s];
 
@@ -93,13 +96,31 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
         }
     }
 
-
-    // Set up the vertex arrays:
-    _geom->drawVertexArraysImplementation(ri);
-
-    for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
+    // If there's a geometry, draw it now:
+    if (_geom)
     {
-        _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
+        // Set up the vertex arrays:
+        _geom->drawVertexArraysImplementation(ri);
+
+        // Draw as GL PATCHES?
+        GLenum mode = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
+
+        for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
+        {
+            osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
+            osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
+            state.bindElementBufferObject(ebo);
+            if (ebo)
+            {
+                glDrawElements(mode, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
+            }
+        }
+    }
+
+    // If there's a draw callback, draw it now:
+    if (_drawCallback)
+    {
+        _drawCallback->draw(ri);
     }
 }
 
@@ -116,50 +137,66 @@ TerrainRenderData::sortDrawCommands()
 void
 TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
 {
+    _bindings = &bindings;
+
+    // Create a new State object to track sampler and uniform settings
     _drawState = new DrawState();
     _drawState->_bindings = &bindings;
 
+    // The "default" layer if there's nothing else to draw.
+    // For now we always add it ... later we will look for another color layer
+    // to draw instead of this one because otherwise we are doing an unnecessary pass.
+    LayerDrawable* defaultLayer = addLayer(0L);
+    defaultLayer->setStateSet(defaultStateSet);
+
+    // Make a drawable for each rendering pass (i.e. each render-able map layer).
     for(LayerVector::const_iterator i = frame.layers().begin();
         i != frame.layers().end();
         ++i)
     {
         Layer* layer = i->get();
-        if (layer->getRenderType() != Layer::RENDERTYPE_NONE) // TODO: change this later
+        if (layer->getRenderType() != Layer::RENDERTYPE_NONE)
         {
+            bool render = false;
+
+            // If this is an image layer, check the enabled/visible states.
             ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
-            if (imageLayer &&
-                imageLayer->getEnabled() &&
-                imageLayer->getVisible())
+            if (imageLayer)
             {
-                LayerDrawable* drawable = addLayer(imageLayer);
+                if (imageLayer->getEnabled() && imageLayer->getVisible())
+                    render = true;
+            }
+            else
+            {
+                // all other types of renderable layers are true for now.
+                render = true;
+            }
+
+            if (render)
+            {
+                addLayer(layer);
             }
         }
     }
 
-    if (layers().empty())
-    {
-        LayerDrawable* defaultLayer = addLayer(0L);
-        defaultLayer->setStateSet(defaultStateSet);
-    }
-
-    // The last layer needs to clear out the OSG state,
+    // The final layer needs to clear out the OSG state.
     layers().back()->_clearOsgState = true;
-
-    _bindings = &bindings;
 }
 
 LayerDrawable*
-TerrainRenderData::addLayer(const ImageLayer* imageLayer)
+TerrainRenderData::addLayer(const Layer* layer)
 {
-    UID uid = imageLayer ? imageLayer->getUID() : -1;
+    UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
     _layerList.push_back( ld );
     _layerMap[uid] = ld;
-    ld->_layer = imageLayer;
+    ld->_layer = layer;
+    ld->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
     ld->_order = _layerList.size()-1;
     ld->_drawState = _drawState.get();
-    if (imageLayer)
-        ld->setStateSet(imageLayer->getStateSet());
+    if (layer)
+        ld->setStateSet(layer->getStateSet());
+
     return ld;
 }
 
@@ -179,14 +216,8 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {    
     DrawState& ds = *_drawState;
 
-    if (!ds._stateInitialized)
-    {
-        ds.initialize(ri);
-    }
-    else
-    {
-        ds.refreshUniformLocations(ri);
-    }
+    // Make sure the draw state is up to date:
+    ds.refresh(ri);
 
     if (ds._layerOrderUL >= 0)
     {
@@ -197,12 +228,12 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
         if (ds._layerUidUL >= 0)
             ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        if (ds._layerOpacityUL >= 0)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_layer->getOpacity());
-        if (ds._layerMinRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_layer->getMinVisibleRange());
-        if (ds._layerMaxRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_layer->getMaxVisibleRange());
+        if (ds._layerOpacityUL >= 0 && _imageLayer)
+            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_imageLayer->getOpacity());
+        if (ds._layerMinRangeUL >= 0 && _imageLayer)
+            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_imageLayer->getMinVisibleRange());
+        if (ds._layerMaxRangeUL >= 0 && _imageLayer)
+            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_imageLayer->getMaxVisibleRange());
     }
     else
     {

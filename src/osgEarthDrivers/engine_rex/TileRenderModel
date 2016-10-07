@@ -49,11 +49,28 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _valid;
         UID _sourceUID;
         Samplers _samplers;
-        osg::ref_ptr<const ImageLayer> _layer;
+        int _surrogatePass;
+        const Samplers* _surrogateSamplers;
+        osg::ref_ptr<const Layer> _layer;
+        osg::ref_ptr<const ImageLayer> _imageLayer;
 
-        RenderingPass() : _valid(false), _sourceUID(-1), _samplers(SamplerBinding::SHARED) { }
+        RenderingPass() :
+            _valid(false), _sourceUID(-1), _surrogatePass(-1), _samplers(SamplerBinding::SHARED), _surrogateSamplers(0L) { }
 
-        bool valid() const { return _valid; }
+        /** Whether this constitues a valid rendering pass and should be included in a tile */
+        bool valid() const {
+            return _valid;
+        }
+
+        /** Whether this rendering pass should be inherited from parent to child node. */
+        bool inheritable() const {
+            if (_layer.valid() && _layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+                return false;
+            return true;
+        }
+        bool usesSurrogateSamplers() const {
+            return _surrogateSamplers != 0L;
+        }
 
         void releaseGLObjects(osg::State* state) const
         {
@@ -68,7 +85,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
                     _samplers[s]._texture->resizeGLObjectBuffers(size);
         }
-
     };
 
     /**

@@ -41,6 +41,52 @@ TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg:
     _terrain.setup(frame, bindings, defaultStateSet);
 }
 
+DrawTileCommand*
+TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
+{
+    SurfaceNode* surface = tileNode->getSurfaceNode();
+
+    const RenderBindings&  bindings = _context->getRenderBindings();
+
+    UID uid = pass._sourceUID;
+
+    // skip layers that are not visible:
+    if (pass._imageLayer.valid() && !pass._imageLayer->getVisible())
+        return 0L;
+
+    // add a new Draw command to the appropriate layer
+    osg::ref_ptr<LayerDrawable> layer = _terrain.layer(uid);
+    if (layer.valid())
+    {
+        layer->_tiles.push_back(DrawTileCommand());
+        DrawTileCommand& tile = layer->_tiles.back();
+
+        // install everything we need in the Draw Command:
+        tile._pass = &pass;
+        tile._matrix = surface->getMatrix();
+        tile._modelViewMatrix = *this->getModelViewMatrix();
+        tile._keyValue = tileNode->getTileKeyValue();
+        tile._geom = surface->getDrawable()->_geom.get();
+        tile._morphConstants = tileNode->getMorphConstants();
+
+        tile._key = tileNode->getTileKey();
+
+        const osg::Image* elevRaster = tileNode->getElevationRaster();
+        if (elevRaster)
+        {
+            float size = (float)elevRaster->s();
+            tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+        }
+
+        return &tile;
+    }
+    else
+    {
+        OE_WARN << LC << "Internal error - _terrain.layer(uid=" << uid << ") returned NULL\n";
+        return 0L;
+    }
+}
+
 void
 TerrainCuller::apply(osg::Node& node)
 {
@@ -51,72 +97,79 @@ TerrainCuller::apply(osg::Node& node)
     if (tileNode)
     {
         _currentTileNode = tileNode;
+        
+        // todo: check for patch/virtual
+        const RenderBindings&  bindings    = _context->getRenderBindings();
+        TileRenderModel& renderModel = _currentTileNode->renderModel();
+
+        bool pushedMatrix = false;
+
+        for (unsigned p = 0; p < renderModel._passes.size(); ++p)
+        {
+            RenderingPass& pass = renderModel._passes[p];
+
+            if (pass._layer.valid() &&
+                pass._layer->getRenderType() == Layer::RENDERTYPE_PATCH )
+            {
+                // If this pass uses another pass's samplers, copy them over now.
+                // Pointer?
+                if (pass._surrogatePass >= 0)
+                {
+                    pass._surrogateSamplers = &renderModel._passes[pass._surrogatePass]._samplers;
+                    //pass._samplers = renderModel._passes[pass._surrogatePass]._samplers;
+                }
+
+                if (!pushedMatrix)
+                {
+                    SurfaceNode* surface = tileNode->getSurfaceNode();
+
+                    // push the surface matrix:
+                    osg::Matrix mvm = *getModelViewMatrix();
+                    surface->computeLocalToWorldMatrix(mvm, this);
+                    pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
+                    pushedMatrix = true;
+                }
+
+                DrawTileCommand* cmd = addDrawCommand(pass, tileNode);
+                if (cmd)
+                {
+                    cmd->_drawPatch = true;
+                }
+            }
+        }
+
+        if (pushedMatrix)
+        {
+            popModelViewMatrix();
+        }
     }
 
     else
     {
         SurfaceNode* surface = dynamic_cast<SurfaceNode*>(&node);
         if (surface)
-        {
-            // push the surface matrix:
-            osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
-            surface->computeLocalToWorldMatrix(*matrix, this);
-
-            // is this reference frame correct?
-            pushModelViewMatrix(matrix, osg::Transform::ABSOLUTE_RF);
-            
-            const RenderBindings&  bindings    = _context->getRenderBindings();
+        {            
             const TileRenderModel& renderModel = _currentTileNode->renderModel();
+
+            // push the surface matrix:
+            osg::Matrix mvm = *getModelViewMatrix();
+            surface->computeLocalToWorldMatrix(mvm, this);
+            pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
 
             for (unsigned p = 0; p < renderModel._passes.size(); ++p)
             {
                 const RenderingPass& pass = renderModel._passes[p];
-
-                UID uid = pass._sourceUID;
-
-                // skip the "default" layer if we appear to have real layers
-                if (uid < 0 && renderModel._passes.size() > 1)
-                    continue;
-
-                // skip layers that are not visible:
-                if (pass._layer.valid() && !pass._layer->getVisible())
-                    continue;
-
-                // add a new Draw command to the appropriate layer
-                osg::ref_ptr<LayerDrawable> layer = _terrain.layer(uid);
-                if (layer.valid())
+                
+                if (pass._sourceUID < 0 || pass._layer->getRenderType() == Layer::RENDERTYPE_COLOR)
                 {
-                    layer->_tiles.push_back(DrawTileCommand());
-                    DrawTileCommand& tile = layer->_tiles.back();
-
-                    // install everything we need in the Draw Command:
-                    tile._pass = &pass;                            
-                    tile._matrix = surface->getMatrix();
-                    tile._modelViewMatrix = *this->getModelViewMatrix();
-                    tile._keyValue = _currentTileNode->getTileKeyValue();
-                    tile._geom = surface->getDrawable()->_geom.get();
-                    tile._morphConstants = _currentTileNode->getMorphConstants();
-
-                    tile._key = _currentTileNode->getTileKey(); 
-
-                    const osg::Image* elevRaster = _currentTileNode->getElevationRaster();
-                    if (elevRaster)
-                    {
-                        float size = (float)elevRaster->s();
-                        tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
-                    }
+                    addDrawCommand(pass, _currentTileNode);
                 }
-                else
-                {
-                    OE_WARN << LC << "Internal error - _terrain.layer(uid) returned NULL\n";
-                }
-            }                
+            }
+
+            popModelViewMatrix();
 
             _terrain._drawState->_bs.expandBy(surface->getBound());
             _terrain._drawState->_box.expandBy(_terrain._drawState->_bs);
-
-            // pop the surface matrix:
-            popModelViewMatrix();
         }
     }
 

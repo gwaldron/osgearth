@@ -765,6 +765,8 @@ Map::sync( MapFrame& frame ) const
         if (!frame._initialized)
             frame._layers.reserve(_layers.size());
 
+        frame._layers.clear();
+
         std::copy(_layers.begin(), _layers.end(), std::back_inserter(frame._layers));
 
         // sync the revision numbers.

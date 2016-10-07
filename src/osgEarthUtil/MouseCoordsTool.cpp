@@ -67,7 +67,7 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 i->get()->reset( aa.asView(), _mapNode );
         }
 
-#if 0 // testing AGL
+#if 0 // testing AGL, Dist to Point
         osg::Vec3d eye, center, up;
         aa.asView()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
         DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(eye, osg::Vec3d(0,0,0));
@@ -79,7 +79,8 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         if ( !lsi->getIntersections().empty() )
         {            
             double agl = (eye - lsi->getFirstIntersection().getWorldIntersectPoint()).length();
-            OE_NOTICE << "AGL = " << agl << "m" << std::endl;
+            double dtp = (eye - world).length();
+            OE_NOTICE << "AGL = " << agl << "m; DPT = " << dtp << "m" << std::endl;
         }
 #endif
     }

@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/PatchLayer>
 
 #include <osg/Texture2D>
 
@@ -74,9 +75,12 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
 {
     OE_START_TIMER(fetch_patch_layers);
 
-    for (unsigned i = 0; i<frame.layers().size(); ++i)
+    PatchLayerVector patchLayers;
+    frame.getLayers(patchLayers);
+
+    for (unsigned i = 0; i<patchLayers.size(); ++i)
     {
-        Layer* layer = frame.layers().at(i);
+        PatchLayer* layer = patchLayers.at(i);
 
         if (layer->getRenderType() == Layer::RENDERTYPE_PATCH && key.getLOD() == layer->getPatchLOD())
         {

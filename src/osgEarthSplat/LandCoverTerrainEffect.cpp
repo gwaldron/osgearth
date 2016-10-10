@@ -30,6 +30,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/PatchLayer>
 
 #include <osg/Texture2D>
 #include <osg/BlendFunc>
@@ -359,13 +360,12 @@ LandCoverTerrainEffect::addToMap(MapNode* mapNode)
                             stateset->addUniform(new osg::Uniform("oe_landcover_texArray", _landCoverTexUnit));
 
 
-                            osgEarth::Layer* mapLayer = new osgEarth::Layer();
-                            mapLayer->setName("LandCover " + layer->getName());
-                            mapLayer->setRenderType( Layer::RENDERTYPE_PATCH );
-                            mapLayer->setPatchLOD( layer->getLOD() );
-                            mapLayer->setStateSet( stateset );
-                            mapNode->getMap()->addLayer( mapLayer );
-                            OE_INFO << LC << "Added a LandCover layer to the map, UID = " << mapLayer->getUID() << std::endl;
+                            osgEarth::PatchLayer* patch = new osgEarth::PatchLayer();
+                            patch->setName("LandCover " + layer->getName());
+                            patch->setPatchLOD( layer->getLOD() );
+                            patch->setStateSet( stateset );
+                            mapNode->getMap()->addLayer( patch );
+                            OE_INFO << LC << "Added a LandCover layer to the map, UID = " << patch->getUID() << std::endl;
                         }
                         else
                         {

@@ -519,37 +519,6 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         }
     }
 
-#if 0
-    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-    {
-        ImageLayer* layer = i->get();
-        //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getImageLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
-        mapConf.add( "image", layerConf );
-    }
-
-    for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
-    {
-        ElevationLayer* layer = i->get();
-        //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getElevationLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
-        mapConf.add( "elevation", layerConf );
-    }
-
-    for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
-    {
-        ModelLayer* layer = i->get();
-        Config layerConf = layer->getModelLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
-        mapConf.add( "model", layerConf );
-    }
-#endif
-
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
     for(Extensions::const_iterator i = input->getExtensions().begin(); i != input->getExtensions().end(); ++i)
     {

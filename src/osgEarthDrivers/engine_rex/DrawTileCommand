@@ -21,7 +21,7 @@
 
 #include "TileRenderModel"
 #include "DrawState"
-#include <osgEarth/Layer>
+#include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
 #include <osg/Matrix>
 #include <osg/Geometry>
@@ -65,7 +65,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec2f _morphConstants;
 
         // Custom draw callback to call instead of rendering _geom
-        Layer::DrawCallback* _drawCallback;
+        PatchLayer::DrawCallback* _drawCallback;
 
         // When drawing _geom, whether to render as GL_PATCHES 
         // instead of GL_TRIANGLES (for patch layers)

@@ -619,10 +619,11 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
             {
                 pass = &_renderModel.addPass();
                 pass->_layer = layerModel->getLayer();
+                pass->_patchLayer = dynamic_cast<const PatchLayer*>(layerModel->getLayer());
                 pass->_sourceUID = layerModel->getLayer()->getUID();
                 pass->_valid = true;
 
-                // Patch layers can must mirror another pass's samplers.
+                // Patch layers must mirror another pass's samplers.
                 pass->_surrogatePass = 0;
             }
         }
@@ -637,231 +638,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     }
 }
 
-
-#if 0 // alt version - make sure new passes that appear above get picked up!
-void
-TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
-{
-    // Run through this tile's rendering data and re-inherit textures and matrixes
-    // from the parent. When a TileNode gets new data (via a call to merge), any
-    // children of that tile that are inheriting textures or matrixes need to 
-    // refresh to inherit that new data. In turn, those tile's children then need
-    // to update as well. This method does that.
-
-    // which quadrant is this tile in?
-    unsigned quadrant = getTileKey().getQuadrant();
-
-    // Count the number of inherited samplers so we know when to stop. If none of the
-    // samplers in this tile inherit from the parent, there is no need to continue
-    // down the Tile tree.
-    unsigned changes = 0;
-
-    for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
-    {
-        // For each pass in this tile:
-        RenderingPass& myPass = _renderModel._passes[p];
-
-        // Look up the corresponding pass in the parent tile:
-        const RenderingPass* parentPass = parent->_renderModel.getPass(myPass._sourceUID);
-
-        // If one exists, and it supports inheritance:
-        if (parentPass && parentPass->inheritable())
-        {
-            for (unsigned s = 0; s < myPass._samplers.size(); ++s)
-            {
-                Sampler& mySampler = myPass._samplers[s];
-
-                // The "color parent" gets special treatment. It's not expressly included
-                // in teh Tile Model; rather, is it always derived here.
-                if (s == SamplerBinding::COLOR_PARENT)
-                {
-                    const Sampler& parentColorSampler = parentPass->_samplers[SamplerBinding::COLOR];
-                    osg::Matrixf newMatrix = parentColorSampler._matrix;
-                    newMatrix.preMult(scaleBias[quadrant]);
-
-                    // Did something change?
-                    if (mySampler._texture.get() != parentColorSampler._texture.get() ||
-                        mySampler._matrix != newMatrix)
-                    {
-                        if (parentColorSampler._texture.valid())
-                        {
-                            // set the parent-color texture to the parent's color texture
-                            // and scale/bias the matrix.
-                            mySampler._texture = parentColorSampler._texture.get();
-                            mySampler._matrix = newMatrix;
-                        }
-                        else
-                        {
-                            // parent has no color texture? Then set our parent-color
-                            // equal to our normal color texture.
-                            mySampler._texture = myPass._samplers[SamplerBinding::COLOR]._texture.get();
-                            mySampler._matrix = myPass._samplers[SamplerBinding::COLOR]._matrix;
-                        }
-                        ++changes;
-                    }
-                }
-
-                else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
-                {
-                    const Sampler& parentSampler = parentPass->_samplers[s];
-                    mySampler._texture = parentSampler._texture.get();
-                    mySampler._matrix = parentSampler._matrix;
-                    mySampler._matrix.preMult(scaleBias[quadrant]);
-                    ++changes;
-                }
-            }
-        }
-    }
-
-    if (!_renderModel._passes.empty())
-    {
-        // Locate the elevation sampler and pass its raster data along to use
-        // for intersections, primitive functors, etc.
-        const Sampler& elevation = _renderModel._passes[0]._samplers[SamplerBinding::ELEVATION];
-        if (elevation._texture.valid())
-        {
-            const osg::Image* elevRaster = elevation._texture->getImage(0);
-            osg::Matrixf elevMatrix = elevation._matrix;
-
-            if (elevRaster)
-            {
-                setElevationRaster(elevRaster, elevMatrix);
-            }
-        }
-    }
-
-    if (changes > 0)
-    {
-        dirtyBound(); // only for elev/patch changes maybe?
-        
-        if (_childrenReady)
-        {
-            getSubTile(0)->refreshInheritedData(this, bindings);
-            getSubTile(1)->refreshInheritedData(this, bindings);
-            getSubTile(2)->refreshInheritedData(this, bindings);
-            getSubTile(3)->refreshInheritedData(this, bindings);
-        }
-    }
-    else
-    {
-        //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
-    }
-
-
-
-    RenderingPassList& parentPasses = parent->_renderModel._passes;
-
-    for (unsigned p = 0; p<parentPasses.size(); ++p)
-    {
-        const RenderingPass& parentPass = parentPasses[p];
-
-        if (parentPass.inheritable())
-        {
-            RenderingPass* myPass = _renderModel.getPass(parentPass._sourceUID);
-
-            // Inherit the samplers for this pass.
-            if (myPass)
-            {
-                if (!myPass->usesSurrogateSamplers())
-                {
-                    for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
-                    {
-                        Sampler& mySampler = myPass->_samplers[s];
-                
-                        // the color-parent gets special treatment, since it is not included
-                        // in the TileModel (rather it is always derived here).
-                        if (s == SamplerBinding::COLOR_PARENT)
-                        {
-                            const Sampler& parentSampler = parentPass._samplers[SamplerBinding::COLOR];
-                            osg::Matrixf newMatrix = parentSampler._matrix;
-                            newMatrix.preMult(scaleBias[quadrant]);
-
-                            // Did something change?
-                            if (mySampler._texture.get() != parentSampler._texture.get() ||
-                                mySampler._matrix != newMatrix)
-                            {
-                                if (parentSampler._texture.valid())
-                                {
-                                    // set the parent-color texture to the parent's color texture
-                                    // and scale/bias the matrix.
-                                    mySampler._texture = parentSampler._texture.get();
-                                    mySampler._matrix = newMatrix;
-                                }
-                                else
-                                {
-                                    // parent has no color texture? Then set our parent-color
-                                    // equal to our normal color texture.
-                                    mySampler._texture = myPass->_samplers[SamplerBinding::COLOR]._texture.get();
-                                    mySampler._matrix = myPass->_samplers[SamplerBinding::COLOR]._matrix;
-                                }
-                                ++changes;
-                            }
-                        }
-
-                        // all other samplers just need to inherit from their parent 
-                        // and scale/bias their texture matrix.
-                        else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
-                        {
-                            const Sampler& parentSampler = parentPass._samplers[s];
-                            mySampler._texture = parentSampler._texture.get();
-                            mySampler._matrix = parentSampler._matrix;
-                            mySampler._matrix.preMult(scaleBias[quadrant]);
-                            ++changes;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Pass exists in the parent node, but not in this node, so add it now.
-                myPass = &_renderModel.addPass();
-                *myPass = parentPass;
-
-                for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
-                {
-                    Sampler& sampler = myPass->_samplers[s];
-                    sampler._matrix.preMult(scaleBias[quadrant]);
-                }
-                ++changes;
-            }
-        }
-    }
-
-    if (!_renderModel._passes.empty())
-    {
-        // Locate the elevation sampler and pass its raster data along to use
-        // for intersections, primitive functors, etc.
-        const Sampler& elevation = _renderModel._passes[0]._samplers[SamplerBinding::ELEVATION];
-        if (elevation._texture.valid())
-        {
-            const osg::Image* elevRaster = elevation._texture->getImage(0);
-            osg::Matrixf elevMatrix = elevation._matrix;
-
-            if (elevRaster)
-            {
-                setElevationRaster(elevRaster, elevMatrix);
-            }
-        }
-    }
-
-    if (changes > 0)
-    {
-        dirtyBound(); // only for elev/patch changes maybe?
-        
-        if (_childrenReady)
-        {
-            getSubTile(0)->refreshInheritedData(this, bindings);
-            getSubTile(1)->refreshInheritedData(this, bindings);
-            getSubTile(2)->refreshInheritedData(this, bindings);
-            getSubTile(3)->refreshInheritedData(this, bindings);
-        }
-    }
-    else
-    {
-        //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
-    }
-}
-#else
 void
 TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 {
@@ -988,7 +764,6 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
     }
 }
-#endif
 
 void
 TileNode::load(TerrainCuller* culler)

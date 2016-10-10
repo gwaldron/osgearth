@@ -90,9 +90,9 @@ TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
             tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
         }
 
-        if (pass._layer.valid() && pass._layer->getDrawCallback())
+        if (pass._patchLayer.valid() && pass._patchLayer->getDrawCallback())
         {
-            tile._drawCallback = pass._layer->getDrawCallback();
+            tile._drawCallback = pass._patchLayer->getDrawCallback();
         }
 
         return &tile;

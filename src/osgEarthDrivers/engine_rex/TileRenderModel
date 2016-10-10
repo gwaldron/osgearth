@@ -25,6 +25,7 @@
 #include <osgEarth/Containers> // for AutoArray
 #include <osgEarth/Layer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/PatchLayer>
 #include <osg/Texture>
 #include <osg/Matrix>
 #include <vector>
@@ -56,6 +57,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const Samplers* _surrogateSamplers;
         osg::ref_ptr<const Layer> _layer;
         osg::ref_ptr<const ImageLayer> _imageLayer;
+        osg::ref_ptr<const PatchLayer> _patchLayer;
 
         RenderingPass() :
             _valid(false), _sourceUID(-1), _surrogatePass(-1), _samplers(SamplerBinding::SHARED), _surrogateSamplers(0L) { }
@@ -67,7 +69,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Whether this rendering pass should be inherited from parent to child node. */
         bool inheritable() const {
-            if (_layer.valid() && _layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+            if (_patchLayer.valid())
+            //if (_layer.valid() && _layer->getRenderType() == Layer::RENDERTYPE_PATCH)
                 return false;
             return true;
         }

@@ -553,21 +553,39 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             culler._terrain.sortDrawCommands();
         }
 
+        // The common stateset for the terrain:
         cv->pushStateSet(_terrain->getOrCreateStateSet());
+
+        // Push all the layers to draw on to the cull visitor,
+        // keeping track of render order.
+        LayerDrawable* lastLayer = 0L;
+        unsigned order = 0;
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
         {
             if (!i->get()->_tiles.empty())
-                cv->apply(*i->get());
+            {
+                lastLayer = i->get();
+                lastLayer->_order = order++;
+                cv->apply(*lastLayer);
+            }
         }
 
+        // The last layer to render must clear up the OSG state,
+        // otherwise it will be corrupt and can lead to crashing.
+        if (lastLayer)
+        {
+            lastLayer->_clearOsgState = true;
+        }
+
+        // pop the common terrain state set
         cv->popStateSet();
 
         this->getEngineContext()->endCull( cv );
 
-        // traverse all the other children :)
+        // traverse all the other children (geometry pool, loader/unloader, etc.)
         for (unsigned i = 0; i<getNumChildren(); ++i)
         {
             if (getChild(i) != _terrain.get())

@@ -185,17 +185,44 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct DrawTileCommand
     {
+        // Model matrix assocaited with this tile.
         osg::Matrixd _matrix;
+
+        // ModelView matrix to apply before rendering this tile
         osg::Matrixf _modelViewMatrix;
+
+        // Rendering pass that contains this tile. The pass contains
+        // the set of samplers we need to bind.
         const RenderingPass* _pass;
+
+        // Tile geometry, if present
         osg::Geometry* _geom;
+
+        // Tile key - just for debugging
         TileKey _key;
+
+        // Tile key value to push to uniform just before drawing
         osg::Vec4f _keyValue;
+
+        // Elevation texel sampling coefficients (so we sample elevation
+        // data on center rather than on edge) - We might be able to move
+        // this to the Layer level as long as the elevation texture size
+        // doesn't change
         osg::Vec2f _elevTexelCoeff;
+
+        // Coefficient used for tile vertex morphing
         osg::Vec2f _morphConstants;
+
+        // Custom draw callback to call instead of rendering _geom
         Layer::DrawCallback* _drawCallback;
+
+        // When drawing _geom, whether to render as GL_PATCHES 
+        // instead of GL_TRIANGLES (for patch layers)
         bool _drawPatch;
+
+        // Distance from camera to center of tile
         float _range;
+
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
@@ -236,13 +263,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         LayerDrawable();
 
-        int _order;
+        // The (sorted) list of tiles to render for this layer
         DrawTileCommands  _tiles;
+
+        // Pointer back to the actual Map layer, if there is one
         const Layer* _layer;
+
+        // If _layer is an ImageLayer, this will be set as well, otherwise NULL
         const ImageLayer* _imageLayer;
-        class TerrainRenderData* _terrain;
+
+        // Layer render order, which is pushed into a Uniform at render time.
+        // This value is assigned at cull time by RexTerrainEngineNode.
+        int _order;
+
+        // The last layer to render will have this flag set, which will
+        // prompt the render to dirty the osg::State to prevent corruption.
+        // This flag is set at cull time by RexTerrainEngineNode.
         bool _clearOsgState;
 
+        // Reference the terrain-wide state
         osg::ref_ptr<DrawState> _drawState;
         
 
@@ -254,6 +293,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingSphere computeBound() const { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const { return _drawState->_box; }
     };
+
 
     // Straight list of LayerDrawables.
     typedef std::vector< osg::ref_ptr<LayerDrawable> > LayerDrawableList;

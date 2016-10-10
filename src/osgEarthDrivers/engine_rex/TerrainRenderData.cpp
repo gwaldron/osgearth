@@ -178,9 +178,6 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
             }
         }
     }
-
-    // The final layer needs to clear out the OSG state.
-    layers().back()->_clearOsgState = true;
 }
 
 LayerDrawable*
@@ -203,7 +200,6 @@ TerrainRenderData::addLayer(const Layer* layer)
 LayerDrawable::LayerDrawable() :
 _order(0),
 _layer(0L),
-_terrain(0L),
 _clearOsgState(false)
 {
     setDataVariance(DYNAMIC);
@@ -263,5 +259,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // unbind local buffers when finished.
         ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+
+        ri.getState()->apply();
     }
 }

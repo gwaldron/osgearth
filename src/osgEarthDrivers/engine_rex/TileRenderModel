@@ -20,8 +20,11 @@
 #define OSGEARTH_REX_TILE_RENDER_MODEL 1
 
 #include "Common"
+#include "RenderBindings"
 #include <osgEarth/Common>
 #include <osgEarth/Containers> // for AutoArray
+#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
 #include <osg/Texture>
 #include <osg/Matrix>
 #include <vector>

@@ -23,106 +23,7 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 #undef  LC
-#define LC "[DrawTileCommand] "
-
-
-void
-DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
-{
-    osg::State& state = *ri.getState();
-
-    //OE_INFO << LC << "      TILE: " << _geom << std::endl;
-        
-    // Tile key encoding, if the uniform is required.
-    if (ds._tileKeyUL >= 0 )
-    {
-        ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
-    }
-
-    // Elevation coefficients (can probably be terrain-wide)
-    if (ds._elevTexelCoeffUL >= 0 && !ds._elevTexelCoeff.isSetTo(_elevTexelCoeff))
-    {
-        ds._ext->glUniform2fv(ds._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
-        ds._elevTexelCoeff = _elevTexelCoeff;
-    }
-
-    // Morphing constants for this LOD
-    if (ds._morphConstantsUL >= 0 && !ds._morphConstants.isSetTo(_morphConstants))
-    {
-        ds._ext->glUniform2fv(ds._morphConstantsUL, 1, _morphConstants.ptr());
-        ds._morphConstants = _morphConstants;
-    }
-
-    // MVM for this tile:
-    state.applyModelViewMatrix(_modelViewMatrix);
-    
-    // MVM uniforms for GL3 core:
-    if (state.getUseModelViewAndProjectionUniforms())
-    {
-        state.applyModelViewAndProjectionUniformsIfRequired();
-    }
-
-    // Apply samplers for this tile draw:
-    const Samplers& samplers = _pass->_surrogateSamplers ? *_pass->_surrogateSamplers : _pass->_samplers;
-
-
-    for(unsigned s=0; s<samplers.size(); ++s)
-    {
-        const Sampler& sampler = samplers[s];
-
-        SamplerState& samplerState = ds._samplerState._samplers[s];
-
-        if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
-        {
-            state.setActiveTextureUnit((*ds._bindings)[s].unit());
-            sampler._texture->apply(state);
-            samplerState._texture = sampler._texture.get();
-        }
-
-        if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
-        {
-            ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
-            samplerState._matrix = sampler._matrix;
-        }
-
-        // Need a special uniform for color parents.
-        if (s == SamplerBinding::COLOR_PARENT)
-        {
-            if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
-            {
-                ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
-                ds._parentTextureExists = sampler._texture.valid();
-            }
-        }
-    }
-
-    if (_drawCallback)
-    {
-        _drawCallback->draw(ri, _range);
-    }
-
-    else
-    // If there's a geometry, draw it now:
-    if (_geom)
-    {
-        // Set up the vertex arrays:
-        _geom->drawVertexArraysImplementation(ri);
-
-        // Draw as GL PATCHES?
-        GLenum mode = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
-
-        for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-        {
-            osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
-            osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
-            state.bindElementBufferObject(ebo);
-            if (ebo)
-            {
-                glDrawElements(mode, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
-            }
-        }
-    }
-}
+#define LC "[TerrainRenderData] "
 
 
 void
@@ -185,81 +86,14 @@ TerrainRenderData::addLayer(const Layer* layer)
 {
     UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
-    _layerList.push_back( ld );
+    _layerList.push_back(ld);
     _layerMap[uid] = ld;
     ld->_layer = layer;
     ld->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
-    ld->_order = _layerList.size()-1;
+    ld->_order = _layerList.size() - 1;
     ld->_drawState = _drawState.get();
     if (layer)
         ld->setStateSet(layer->getStateSet());
 
     return ld;
-}
-
-LayerDrawable::LayerDrawable() :
-_order(0),
-_layer(0L),
-_clearOsgState(false)
-{
-    setDataVariance(DYNAMIC);
-    setUseDisplayList(false);
-    setUseVertexBufferObjects(true);
-}
-
-void
-LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
-{    
-    DrawState& ds = *_drawState;
-
-    // Make sure the draw state is up to date:
-    ds.refresh(ri);
-
-    if (ds._layerOrderUL >= 0)
-    {
-        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_order);
-    }
-
-    if (_layer)
-    {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        if (ds._layerOpacityUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_imageLayer->getOpacity());
-        if (ds._layerMinRangeUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_imageLayer->getMinVisibleRange());
-        if (ds._layerMaxRangeUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)_imageLayer->getMaxVisibleRange());
-    }
-    else
-    {
-        if (ds._layerUidUL >= 0)
-            ds._ext->glUniform1i(ds._layerUidUL,      (GLint)-1);
-        if (ds._layerOpacityUL >= 0)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)1.0f);
-        if (ds._layerMinRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)0.0f);
-        if (ds._layerMaxRangeUL >= 0)
-            ds._ext->glUniform1f(ds._layerMaxRangeUL, (GLfloat)FLT_MAX);
-    }
-
-    for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
-    {
-        tile->draw(ri, ds);
-    }
-
-    // If set, dirty all OSG state to prevent any leakage - this is sometimes
-    // necessary when doing custom OpenGL within a Drawable.
-    if (_clearOsgState)
-    {
-        ri.getState()->dirtyAllAttributes();
-        ri.getState()->dirtyAllModes();
-        ri.getState()->dirtyAllVertexArrays();
-        
-        // unbind local buffers when finished.
-        ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-
-        ri.getState()->apply();
-    }
 }

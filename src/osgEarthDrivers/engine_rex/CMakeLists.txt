@@ -24,9 +24,12 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+    DrawState.cpp
+    DrawTileCommand.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
+    LayerDrawable.cpp
     LoadTileData.cpp
     MaskGenerator.cpp
 	SelectionInfo.cpp
@@ -44,10 +47,13 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
+    DrawState
+    DrawTileCommand
     GeometryPool
     Shaders
     RexTerrainEngineNode
     RexTerrainEngineOptions
+    LayerDrawable
     LoadTileData
     MaskGenerator
     RenderBindings

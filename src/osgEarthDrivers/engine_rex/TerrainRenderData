@@ -195,6 +195,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec2f _morphConstants;
         Layer::DrawCallback* _drawCallback;
         bool _drawPatch;
+        float _range;
 
         void draw(osg::RenderInfo& ri, DrawState& env) const;
 
@@ -213,7 +214,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _pass(0L), _geom(0L),
             _elevTexelCoeff(1.0f, 0.0f),
             _drawCallback(0L),
-            _drawPatch(false) { }
+            _drawPatch(false),
+            _range(0.0f) { }
     };
 
     /**

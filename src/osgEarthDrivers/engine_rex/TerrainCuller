@@ -59,6 +59,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
+        
+        float getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const;
+
+    private:
 
         DrawTileCommand* addDrawCommand(const RenderingPass& pass, TileNode*);
 

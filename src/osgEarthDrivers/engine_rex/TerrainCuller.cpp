@@ -41,6 +41,13 @@ TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg:
     _terrain.setup(frame, bindings, defaultStateSet);
 }
 
+float
+TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) const
+{
+    if (withLODScale) return (pos-getViewPointLocal()).length()*getLODScale();
+    else return (pos-getViewPointLocal()).length();
+}
+
 DrawTileCommand*
 TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
 {
@@ -68,14 +75,24 @@ TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
         tile._keyValue = tileNode->getTileKeyValue();
         tile._geom = surface->getDrawable()->_geom.get();
         tile._morphConstants = tileNode->getMorphConstants();
-
         tile._key = tileNode->getTileKey();
+
+        // TODO: find a faster way?
+        osg::Matrix im;
+        im.invert(tile._matrix);
+        osg::Vec3 c = surface->getBound().center() * im;
+        tile._range = getDistanceToViewPoint(c, true);
 
         const osg::Image* elevRaster = tileNode->getElevationRaster();
         if (elevRaster)
         {
             float size = (float)elevRaster->s();
             tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+        }
+
+        if (pass._layer.valid() && pass._layer->getDrawCallback())
+        {
+            tile._drawCallback = pass._layer->getDrawCallback();
         }
 
         return &tile;
@@ -109,14 +126,12 @@ TerrainCuller::apply(osg::Node& node)
             RenderingPass& pass = renderModel._passes[p];
 
             if (pass._layer.valid() &&
-                pass._layer->getRenderType() == Layer::RENDERTYPE_PATCH )
+                pass._layer->getRenderType() == Layer::RENDERTYPE_PATCH)
             {
                 // If this pass uses another pass's samplers, copy them over now.
-                // Pointer?
                 if (pass._surrogatePass >= 0)
                 {
                     pass._surrogateSamplers = &renderModel._passes[pass._surrogatePass]._samplers;
-                    //pass._samplers = renderModel._passes[pass._surrogatePass]._samplers;
                 }
 
                 if (!pushedMatrix)

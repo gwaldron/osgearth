@@ -96,6 +96,12 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
         }
     }
 
+    if (_drawCallback)
+    {
+        _drawCallback->draw(ri, _range);
+    }
+
+    else
     // If there's a geometry, draw it now:
     if (_geom)
     {
@@ -115,12 +121,6 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
                 glDrawElements(mode, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
             }
         }
-    }
-
-    // If there's a draw callback, draw it now:
-    if (_drawCallback)
-    {
-        _drawCallback->draw(ri);
     }
 }
 

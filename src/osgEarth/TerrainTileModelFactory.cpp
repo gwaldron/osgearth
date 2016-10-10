@@ -77,6 +77,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     for (unsigned i = 0; i<frame.layers().size(); ++i)
     {
         Layer* layer = frame.layers().at(i);
+
         if (layer->getRenderType() == Layer::RENDERTYPE_PATCH && key.getLOD() == layer->getPatchLOD())
         {
             TerrainTilePatchLayerModel* layerModel = new TerrainTilePatchLayerModel();

@@ -13,7 +13,7 @@ to extruded buildings.
     </image>
     
     <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
       
     <model name="buildings" driver="feature_geom">

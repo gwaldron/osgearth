@@ -152,11 +152,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
                 _renderModel._passes.push_back(parentPass);
                 RenderingPass& myPass = _renderModel._passes.back();
 
-                if (myPass._surrogateSamplers != 0L)
-                {
-                    int i=0;
-                }
-
                 // Scale/bias each matrix for this key quadrant.
                 for (unsigned s = 0; s < myPass._samplers.size(); ++s)
                 {

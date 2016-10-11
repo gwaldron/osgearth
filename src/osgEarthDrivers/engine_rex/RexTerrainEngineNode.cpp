@@ -162,7 +162,6 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     {
         delete _update_mapf;
     }
-    destroySelectionInfo();
 }
 
 void
@@ -275,7 +274,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     ImageLayerVector imageLayers;
     map->getLayers( imageLayers );
     for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-        addImageLayer( i->get() );
+        addTileLayer( i->get() );
 
     _batchUpdateInProgress = false;
 
@@ -371,19 +370,6 @@ RexTerrainEngineNode::setupRenderBindings()
     colorParent.samplerName() = "oe_layer_texParent";
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
     getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
-}
-
-void RexTerrainEngineNode::destroySelectionInfo()
-{
-    //if (_selectionInfo)
-    //{
-    //    delete _selectionInfo; _selectionInfo = 0;
-    //}
-}
-
-void RexTerrainEngineNode::buildSelectionInfo()
-{
-//    _selectionInfo = new SelectionInfo;
 }
 
 void
@@ -570,6 +556,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         // keeping track of render order.
         LayerDrawable* lastLayer = 0L;
         unsigned order = 0;
+        bool surfaceStateSetPushed = false;
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
@@ -579,6 +566,20 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             {
                 lastLayer = i->get();
                 lastLayer->_order = order++;
+
+                // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
+                if (lastLayer->_layer && lastLayer->_layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                {
+                    if (!surfaceStateSetPushed)
+                        cv->pushStateSet(getSurfaceStateSet());
+                    surfaceStateSetPushed = true;
+                }
+                else if (surfaceStateSetPushed)
+                {
+                    cv->popStateSet();
+                    surfaceStateSetPushed = false;
+                }                    
+
                 cv->apply(*lastLayer);
             }
         }
@@ -588,6 +589,12 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         if (lastLayer)
         {
             lastLayer->_clearOsgState = true;
+        }
+                
+        if (surfaceStateSetPushed)
+        {
+            cv->popStateSet();
+            surfaceStateSetPushed = false;
         }
 
         // pop the common terrain state set
@@ -804,8 +811,8 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
-                if (change.getImageLayer())
-                    addImageLayer( change.getImageLayer() );
+                if (change.getLayer()->getRenderType() == Layer::RENDERTYPE_TILE)
+                    addTileLayer( change.getLayer() );
                 else if (change.getElevationLayer())
                     addElevationLayer(change.getElevationLayer());
                 break;
@@ -828,62 +835,68 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     }
 }
 
-
 void
-RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
+RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 {
-    if ( layerAdded && layerAdded->getEnabled() )
+    if ( tileLayer && tileLayer->getEnabled() )
     {
         // Install the image layer stateset on this layer.
         // Later we will refactor this into an ImageLayerRenderer or something similar.
-        if (layerAdded->getStateSet() == 0L)
-        {
-            layerAdded->setStateSet(getSurfaceStateSet());
-        }
+        //osg::StateSet* stateSet = tileLayer->getOrCreateStateSet();
+        //stateSet->merge(*getSurfaceStateSet());
 
-        // for a shared layer, allocate a shared image unit if necessary.
-        if ( layerAdded->isShared() )
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
+        if (imageLayer)
         {
-            optional<int>& unit = layerAdded->shareImageUnit();
-            if ( !unit.isSet() )
+            // for a shared layer, allocate a shared image unit if necessary.
+            if ( imageLayer->isShared() )
             {
-                int temp;
-                if ( getResources()->reserveTextureImageUnit(temp) )
+                optional<int>& unit = imageLayer->shareImageUnit();
+                if ( !unit.isSet() )
                 {
-                    layerAdded->shareImageUnit() = temp;
-                    OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
+                    int temp;
+                    if ( getResources()->reserveTextureImageUnit(temp) )
+                    {
+                        imageLayer->shareImageUnit() = temp;
+                        OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << imageLayer->getName() << std::endl;
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Insufficient GPU image units to share layer " << imageLayer->getName() << std::endl;
+                    }
                 }
-                else
+
+                // Build a sampler binding for the shared layer.
+                if ( unit.isSet() )
                 {
-                    OE_WARN << LC << "Insufficient GPU image units to share layer " << layerAdded->getName() << std::endl;
+                    // Find the next empty SHARED slot:
+                    unsigned newIndex = SamplerBinding::SHARED;
+                    while (_renderBindings[newIndex].isActive())
+                        ++newIndex;
+
+                    // Put the new binding there:
+                    SamplerBinding& newBinding = _renderBindings[newIndex];
+                    newBinding.usage()       = SamplerBinding::SHARED;
+                    newBinding.sourceUID()   = imageLayer->getUID();
+                    newBinding.unit()        = unit.get();
+                    newBinding.samplerName() = imageLayer->shareTexUniformName().get();
+                    newBinding.matrixName()  = imageLayer->shareTexMatUniformName().get();
+
+                    OE_INFO << LC 
+                        << " .. Sampler=\"" << newBinding.samplerName() << "\", "
+                        << "Matrix=\"" << newBinding.matrixName() << ", "
+                        << "unit=" << newBinding.unit() << "\n";
                 }
             }
-
-            // Build a sampler binding for the shared layer.
-            if ( unit.isSet() )
-            {
-                // Find the next empty SHARED slot:
-                unsigned newIndex = SamplerBinding::SHARED;
-                while (_renderBindings[newIndex].isActive())
-                    ++newIndex;
-
-                // Put the new binding there:
-                SamplerBinding& newBinding = _renderBindings[newIndex];
-                newBinding.usage()     = SamplerBinding::SHARED;
-                newBinding.sourceUID() = layerAdded->getUID();
-                newBinding.unit()      = unit.get();
-                newBinding.samplerName() = layerAdded->shareTexUniformName().get();
-                newBinding.matrixName()  = layerAdded->shareTexMatUniformName().get();
-
-                OE_INFO << LC 
-                    << " .. Sampler=\"" << newBinding.samplerName() << "\", "
-                    << "Matrix=\"" << newBinding.matrixName() << ", "
-                    << "unit=" << newBinding.unit() << "\n";
-            }
         }
+
+        else
+        {
+            // non-image tile layer. Keep track of these..
+        }
+
+        refresh();
     }
-
-    refresh();
 }
 
 

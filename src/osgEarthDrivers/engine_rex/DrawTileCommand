@@ -47,7 +47,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const RenderingPass* _pass;
 
         // Tile geometry, if present
-        osg::Geometry* _geom;
+        osg::ref_ptr<osg::Geometry> _geom;
 
         // Tile key - just for debugging
         TileKey _key;

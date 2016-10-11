@@ -56,26 +56,29 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
         ++i)
     {
         Layer* layer = i->get();
-        if (layer->getRenderType() != Layer::RENDERTYPE_NONE)
+        if (layer->getRenderType() != Layer::RENDERTYPE_NONE && layer->getEnabled())
         {
-            bool render = false;
+            bool render = true;
 
             // If this is an image layer, check the enabled/visible states.
             ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
             if (imageLayer)
             {
-                if (imageLayer->getEnabled() && imageLayer->getVisible())
-                    render = true;
-            }
-            else
-            {
-                // all other types of renderable layers are true for now.
-                render = true;
+                render = imageLayer->getVisible();
             }
 
             if (render)
             {
                 addLayer(layer);
+
+                // If this is a TILE layer but not an ImageLayer, put it in the 
+                // global layers list because it is not represented in the TerrainTileModel.
+                // TODO: do the same for PatchLayers? Does that make sense?
+                if (layer->getRenderType() == Layer::RENDERTYPE_TILE &&
+                    imageLayer == 0L)
+                {
+                    globalLayers().push_back(layer);
+                }
             }
         }
     }

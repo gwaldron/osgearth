@@ -49,13 +49,13 @@ TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) c
 }
 
 DrawTileCommand*
-TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
+TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tileNode)
 {
     SurfaceNode* surface = tileNode->getSurfaceNode();
 
     const RenderBindings&  bindings = _context->getRenderBindings();
 
-    UID uid = pass._sourceUID;
+    //UID uid = pass._sourceUID;
 
     // skip layers that are not visible:
     if (pass._imageLayer.valid() && !pass._imageLayer->getVisible())
@@ -78,9 +78,9 @@ TerrainCuller::addDrawCommand(const RenderingPass& pass, TileNode* tileNode)
         tile._key = tileNode->getTileKey();
 
         // TODO: find a faster way?
-        osg::Matrix im;
-        im.invert(tile._matrix);
-        osg::Vec3 c = surface->getBound().center() * im;
+        //osg::Matrix im;
+        //im.invert(tile._matrix);
+        osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
         tile._range = getDistanceToViewPoint(c, true);
 
         const osg::Image* elevRaster = tileNode->getElevationRaster();
@@ -145,7 +145,7 @@ TerrainCuller::apply(osg::Node& node)
                     pushedMatrix = true;
                 }
 
-                DrawTileCommand* cmd = addDrawCommand(pass, tileNode);
+                DrawTileCommand* cmd = addDrawCommand(pass._sourceUID, pass, tileNode);
                 if (cmd)
                 {
                     cmd->_drawPatch = true;
@@ -175,9 +175,26 @@ TerrainCuller::apply(osg::Node& node)
             {
                 const RenderingPass& pass = renderModel._passes[p];
                 
-                if (pass._sourceUID < 0 || pass._layer->getRenderType() == Layer::RENDERTYPE_COLOR)
+                if (pass._sourceUID < 0 || pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
-                    addDrawCommand(pass, _currentTileNode);
+                    addDrawCommand(pass._sourceUID, pass, _currentTileNode);
+                }
+            }
+
+            // Add a draw command for each "global" layer (overlays, derivatives)
+            if (!renderModel._passes.empty())
+            {
+                if (!_terrain.globalLayers().empty())
+                {
+                    // Use the default pass - later we may provide the option to bind to 
+                    // a specific layer's rendering pass so we bind its COLOR sampler.
+                    const RenderingPass* pass = renderModel.getPass(-1);
+                
+                    for (unsigned t = 0; t < _terrain.globalLayers().size(); ++t)
+                    {
+                        Layer* layer = _terrain.globalLayers().at(t);
+                        addDrawCommand(layer->getUID(), *pass, _currentTileNode);
+                    }
                 }
             }
 

@@ -70,6 +70,10 @@ namespace osgEarth
          */
         virtual Config getConfig() const { return Config(); }
 
+        /**
+         * Whether the layer is enabled.
+         */
+        virtual bool getEnabled() const { return true; }
 
 
 
@@ -99,14 +103,19 @@ namespace osgEarth
         }
 
         /**
-         * How to use this layer when rendering terrain tiles.
+         * How (and if) to use this layer when rendering terrain tiles.
          */
         enum RenderType
         {
-            RENDERTYPE_NONE,     // do not render this layer directly
-            RENDERTYPE_COLOR,    // render this layer as colored terrain tiles
-            RENDERTYPE_PATCH,    // render this layer indirectly with a geometry patch
-            RENDERTYPE_GL        // render this layer with custom OpenGL code
+            // Layer does not require its own terrain rendering pass (model layers, elevation layers)
+            RENDERTYPE_NONE, 
+
+            // Layer requires a terrain rendering pass that draws terrain tile geometry
+            RENDERTYPE_TILE,
+
+            // Layer requires a terrain rendering pass that emits terrian patches or
+            // invokes a custom drawing function
+            RENDERTYPE_PATCH
         };
 
         RenderType getRenderType() const { return _renderType; }

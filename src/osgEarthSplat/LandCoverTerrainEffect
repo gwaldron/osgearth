@@ -25,10 +25,7 @@
 #include "Export"
 #include "Coverage"
 #include "Zone"
-#include "LandCoverTilePatchCallback"
 
-#include <osgEarth/TerrainEffect>
-#include <osg/Uniform>
 #include <osgDB/Options>
 #include <osgEarth/MapNode>
 
@@ -39,11 +36,11 @@ namespace osgEarth { namespace Splat
     /**
      * Effect that renders land cover data (trees, grass, rocks, etc.)
      */
-    class OSGEARTHSPLAT_EXPORT LandCoverTerrainEffect : public TerrainEffect
+    class OSGEARTHSPLAT_EXPORT LandCoverLayerFactory : public osg::Referenced
     {
     public:
         /** constructor */
-        LandCoverTerrainEffect();
+        LandCoverLayerFactory();
 
         /**
          * Sets the OSG DB options to use when performing I/O
@@ -63,19 +60,19 @@ namespace osgEarth { namespace Splat
         void setCoverage(Coverage* coverage) { _coverage = coverage; }
         Coverage* getCoverage() const { return _coverage.get(); }
 
+        /**
+         * Create and install all the Land Cover Layers in the map.
+         */
+        void install(MapNode* mapNode);
 
-        void addToMap(MapNode* mapNode);
-
-
-    public: // TerrainEffect interface
-
-        void onInstall(TerrainEngineNode* engine);
-
-        void onUninstall(TerrainEngineNode* engine);
+        /**
+         * Remove all land cover layers from the map.
+         */
+        void uninstall(MapNode* mapNode);
 
 
     protected:
-        virtual ~LandCoverTerrainEffect() { }
+        virtual ~LandCoverLayerFactory() { }
 
         osg::ref_ptr<const osgDB::Options> _dbo;
 
@@ -83,8 +80,6 @@ namespace osgEarth { namespace Splat
         Zones _zones;
         int _noiseTexUnit;
         int _landCoverTexUnit;
-
-        osg::ref_ptr<LandCoverTilePatchCallback> _tilePatchCallback;
     };
 
 } } // namespace osgEarth::Splat

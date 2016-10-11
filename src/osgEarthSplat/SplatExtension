@@ -81,8 +81,9 @@ namespace osgEarth { namespace Splat
     private:
         osg::ref_ptr<const osgDB::Options>   _dbo;
         osg::ref_ptr<SplatTerrainEffect>     _splatEffect;
-        osg::ref_ptr<LandCoverTerrainEffect> _landCoverEffect;
+        osg::ref_ptr<LandCoverLayerFactory>  _landCoverLayerFactory;
         osg::ref_ptr<ZoneSwitcher>           _zoneSwitcher;
+        int                                  _noiseTexUnit;
     };
 
 } } // namespace osgEarth::Splat

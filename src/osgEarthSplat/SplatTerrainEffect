@@ -30,7 +30,7 @@
 #include "Coverage"
 #include "Zone"
 
-#include <osgEarth/TerrainEffect>
+#include <osgEarth/MapNode>
 #include <osg/Image>
 #include <osg/Uniform>
 #include <osg/Texture2DArray>
@@ -43,7 +43,7 @@ namespace osgEarth { namespace Splat
     /**
      * Effect that applies texture splatting to the terrain.
      */
-    class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public TerrainEffect
+    class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public osg::Referenced
     {
     public:
         /** constructor */
@@ -65,6 +65,10 @@ namespace osgEarth { namespace Splat
          */
         void setZones(const Zones& zones) { _zones = zones; }
         const Zones& getZones() const { return _zones; }
+
+        void install(MapNode* mapNode);
+
+        void uninstall(MapNode* mapNode);
 
 
     public: // TerrainEffect interface

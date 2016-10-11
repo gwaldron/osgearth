@@ -47,8 +47,8 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
     // The "default" layer if there's nothing else to draw.
     // For now we always add it ... later we will look for another color layer
     // to draw instead of this one because otherwise we are doing an unnecessary pass.
-    LayerDrawable* defaultLayer = addLayer(0L);
-    defaultLayer->setStateSet(defaultStateSet);
+    //LayerDrawable* defaultLayer = addLayer(0L);
+    //defaultLayer->setStateSet(defaultStateSet);
 
     // Make a drawable for each rendering pass (i.e. each render-able map layer).
     for(LayerVector::const_iterator i = frame.layers().begin();
@@ -69,15 +69,18 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
 
             if (render)
             {
-                addLayer(layer);
+                addLayerDrawable(layer);
 
-                // If this is a TILE layer but not an ImageLayer, put it in the 
-                // global layers list because it is not represented in the TerrainTileModel.
-                // TODO: do the same for PatchLayers? Does that make sense?
-                if (layer->getRenderType() == Layer::RENDERTYPE_TILE &&
-                    imageLayer == 0L)
+                // Make a list of "global" layers. There are layers whose data is not
+                // represented in the TerrainTileModel, like a splatting layer or a patch
+                // layer. The data for these is dynamic and not based on data fetched.
+                if (imageLayer == 0 && layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
-                    globalLayers().push_back(layer);
+                    tileLayers().push_back(layer);
+                }
+                else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+                {
+                    patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
                 }
             }
         }
@@ -85,7 +88,7 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
 }
 
 LayerDrawable*
-TerrainRenderData::addLayer(const Layer* layer)
+TerrainRenderData::addLayerDrawable(const Layer* layer)
 {
     UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();

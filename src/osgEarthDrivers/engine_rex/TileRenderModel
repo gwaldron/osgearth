@@ -94,16 +94,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     };
 
     /**
-     * Ordered list of rendering passes.
+     * Unordered collection of rendering passes.
      */
-    typedef std::vector<RenderingPass> RenderingPassList;
+    typedef std::vector<RenderingPass> RenderingPassSet;
 
     /**
      * Everything necessary to render a single terrain tile.
      */
     struct TileRenderModel
     {
-        RenderingPassList _passes;
+        RenderingPassSet _passes;
 
         /** Add a new rendering pass to the end of the list. */
         RenderingPass& addPass()

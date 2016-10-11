@@ -46,8 +46,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Optimize for best state sharing (when using geometry pooling) */
         void sortDrawCommands();
 
-        /** Add a layer (in order) */
-        LayerDrawable* addLayer(const Layer*);
+        /** Add a Drawable for a layer. Add these in the order you wish to render them. */
+        LayerDrawable* addLayerDrawable(const Layer*);
 
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }
@@ -59,23 +59,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Draw state shared by all layers during one frame.
         osg::ref_ptr<DrawState> _drawState;
 
-        //struct GlobalLayer {
-        //    RenderingPass _pass;
-        //    Layer* _layer;
-        //    GlobalLayer() : _layer(0L) { }
-        //};
-        //typedef std::vector<GlobalLayer> GlobalLayerVector;
-
         // Layers that are not part of the Tile Model, like overlays or
         // dynamically draw layers... probably need a better nomenclature 
-        LayerVector& globalLayers() { return _globalLayers; }
+        LayerVector& tileLayers() { return _tileLayers; }
+        PatchLayerVector& patchLayers() { return _patchLayers; }
         
     private:
 
         LayerDrawableList     _layerList;
         LayerDrawableMap      _layerMap;
         const RenderBindings* _bindings;
-        LayerVector           _globalLayers;
+        LayerVector           _tileLayers;
+        PatchLayerVector      _patchLayers;
     };
 
 } } } // namespace 

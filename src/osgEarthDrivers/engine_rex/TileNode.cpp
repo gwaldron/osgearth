@@ -180,10 +180,14 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
             }
         }
     }
+
     else
     {
         // If there's no parent, create a default rendering pass with no source.
-        // Otherwise we won't get any tiles at all.
+        // Otherwise we won't get any tiles at all. This will always happen when
+        // creating the top-level tiles, so therefore every tile is guaranteed 
+        // to have this "default" pass that can be referenced by other layers if
+        // need be.
         RenderingPass& defaultPass = _renderModel.addPass();
         defaultPass._sourceUID = -1;
         defaultPass._valid = true;
@@ -547,14 +551,14 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
             }
         }
     }
-    else
-    {
-        // No color layers? We need a rendering pass with a null texture then
-        // to accomadate the other samplers.
-        RenderingPass& pass = _renderModel.addPass();
-        pass._valid = true;
-        OE_INFO << LC << "Added default rendering pass..\n";
-    }
+    //else
+    //{
+    //    // No color layers? We need a rendering pass with a null texture then
+    //    // to accomadate the other samplers.
+    //    RenderingPass& pass = _renderModel.addPass();
+    //    pass._valid = true;
+    //    OE_INFO << LC << "Added default rendering pass..\n";
+    //}
 
     // Elevation:
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
@@ -603,27 +607,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         }
     }
 
-    // patches
-    for (unsigned i = 0; i < model->patchLayers().size(); ++i)
-    {
-        TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
-        if (layerModel->getLayer())
-        {
-            RenderingPass* pass = _renderModel.getPass(layerModel->getLayer()->getUID());
-            if (!pass)
-            {
-                pass = &_renderModel.addPass();
-                pass->_layer = layerModel->getLayer();
-                pass->_patchLayer = dynamic_cast<const PatchLayer*>(layerModel->getLayer());
-                pass->_sourceUID = layerModel->getLayer()->getUID();
-                pass->_valid = true;
-
-                // Patch layers must mirror another pass's samplers.
-                pass->_surrogatePass = 0;
-            }
-        }
-    }
-
     if (_childrenReady)
     {
         getSubTile(0)->refreshInheritedData(this, bindings);
@@ -650,7 +633,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // down the Tile tree.
     unsigned changes = 0;
 
-    RenderingPassList& parentPasses = parent->_renderModel._passes;
+    RenderingPassSet& parentPasses = parent->_renderModel._passes;
 
     for (unsigned p = 0; p<parentPasses.size(); ++p)
     {

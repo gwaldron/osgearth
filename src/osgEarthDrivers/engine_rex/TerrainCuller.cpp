@@ -80,8 +80,13 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         // TODO: find a faster way?
         //osg::Matrix im;
         //im.invert(tile._matrix);
+#if 1
         osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
         tile._range = getDistanceToViewPoint(c, true);
+#else
+        osg::Vec3f eyeWorld = getViewPointLocal() * surface->getMatrix();
+        tile._range = (eyeWorld - surface->getBound().center()).length();
+#endif
 
         const osg::Image* elevRaster = tileNode->getElevationRaster();
         if (elevRaster)
@@ -115,47 +120,45 @@ TerrainCuller::apply(osg::Node& node)
     {
         _currentTileNode = tileNode;
         
-        // todo: check for patch/virtual
-        const RenderBindings&  bindings    = _context->getRenderBindings();
-        TileRenderModel& renderModel = _currentTileNode->renderModel();
-
-        bool pushedMatrix = false;
-
-        for (unsigned p = 0; p < renderModel._passes.size(); ++p)
+        if (!_terrain.patchLayers().empty())
         {
-            RenderingPass& pass = renderModel._passes[p];
+            // todo: check for patch/virtual
+            const RenderBindings&  bindings    = _context->getRenderBindings();
+            TileRenderModel& renderModel = _currentTileNode->renderModel();
 
-            if (pass._layer.valid() &&
-                pass._layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+            bool pushedMatrix = false;
+
+            // Patch layers will use the default (empty) pass for now.
+            // TODO: allow access to other passes.
+            const RenderingPass* defaultPass = renderModel.getPass(-1);
+
+            for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
             {
-                // If this pass uses another pass's samplers, copy them over now.
-                if (pass._surrogatePass >= 0)
+                PatchLayer* layer = i->get();
+                if (layer->getPatchLOD() == _currentTileNode->getTileKey().getLOD())
                 {
-                    pass._surrogateSamplers = &renderModel._passes[pass._surrogatePass]._samplers;
-                }
+                    // Push this tile's matrix if we haven't already done so:
+                    if (!pushedMatrix)
+                    {
+                        SurfaceNode* surface = tileNode->getSurfaceNode();
 
-                if (!pushedMatrix)
-                {
-                    SurfaceNode* surface = tileNode->getSurfaceNode();
+                        // push the surface matrix:
+                        osg::Matrix mvm = *getModelViewMatrix();
+                        surface->computeLocalToWorldMatrix(mvm, this);
+                        pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
+                        pushedMatrix = true;
+                    }
 
-                    // push the surface matrix:
-                    osg::Matrix mvm = *getModelViewMatrix();
-                    surface->computeLocalToWorldMatrix(mvm, this);
-                    pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
-                    pushedMatrix = true;
-                }
-
-                DrawTileCommand* cmd = addDrawCommand(pass._sourceUID, pass, tileNode);
-                if (cmd)
-                {
+                    // Add the draw command:
+                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), *defaultPass, tileNode);
                     cmd->_drawPatch = true;
                 }
             }
-        }
 
-        if (pushedMatrix)
-        {
-            popModelViewMatrix();
+            if (pushedMatrix)
+            {
+                popModelViewMatrix();
+            }
         }
     }
 
@@ -164,38 +167,37 @@ TerrainCuller::apply(osg::Node& node)
         SurfaceNode* surface = dynamic_cast<SurfaceNode*>(&node);
         if (surface)
         {            
-            const TileRenderModel& renderModel = _currentTileNode->renderModel();
+            TileRenderModel& renderModel = _currentTileNode->renderModel();
 
             // push the surface matrix:
             osg::Matrix mvm = *getModelViewMatrix();
             surface->computeLocalToWorldMatrix(mvm, this);
             pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
 
+            unsigned count = 0;
+            
+            // First go through any legit rendering pass data in the Tile and
+            // and add a DrawCommand for each.
             for (unsigned p = 0; p < renderModel._passes.size(); ++p)
             {
                 const RenderingPass& pass = renderModel._passes[p];
                 
-                if (pass._sourceUID < 0 || pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
                     addDrawCommand(pass._sourceUID, pass, _currentTileNode);
+                    ++count;
                 }
             }
 
-            // Add a draw command for each "global" layer (overlays, derivatives)
-            if (!renderModel._passes.empty())
+            // Next, add a DrawCommand for each "global" tile layer (i.e. layers that are
+            // not represented in the TerrainTileModel for whatever reason).
+            // These use the "default" rendering pass samplers (UID -1) for rendering.
+            // (TODO: make this configuration, so one of these layers can use a specific
+            // color layer's samplers)
+            for (LayerVector::const_iterator i = _terrain.tileLayers().begin(); i != _terrain.tileLayers().end(); ++i)
             {
-                if (!_terrain.globalLayers().empty())
-                {
-                    // Use the default pass - later we may provide the option to bind to 
-                    // a specific layer's rendering pass so we bind its COLOR sampler.
-                    const RenderingPass* pass = renderModel.getPass(-1);
-                
-                    for (unsigned t = 0; t < _terrain.globalLayers().size(); ++t)
-                    {
-                        Layer* layer = _terrain.globalLayers().at(t);
-                        addDrawCommand(layer->getUID(), *pass, _currentTileNode);
-                    }
-                }
+                Layer* layer = i->get();
+                addDrawCommand(layer->getUID(), *renderModel.getPass(-1), _currentTileNode);
             }
 
             popModelViewMatrix();

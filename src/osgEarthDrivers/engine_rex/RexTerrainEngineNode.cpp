@@ -580,6 +580,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                     surfaceStateSetPushed = false;
                 }                    
 
+                //OE_INFO << "Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
+
                 cv->apply(*lastLayer);
             }
         }

@@ -26,7 +26,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
-#include <osgEarthSplat/LandCoverTerrainEffect>
+#include <osgEarthSplat/LandCoverLayerFactory>
 #include <osgEarthSplat/SplatExtension>
 
 #define LC "[viewer] "

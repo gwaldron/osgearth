@@ -19,7 +19,7 @@
 #include "SplatExtension"
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
-#include "SplatTerrainEffect"
+#include "SplatLayerFactory"
 #include "NoiseTextureFactory"
 
 #include <osgEarth/MapNode>
@@ -122,11 +122,11 @@ SplatExtension::connect(MapNode* mapNode)
     if ( enableSurfaceEffect )
     {
         OE_INFO << LC << "Enabling the surface splatting effect\n";
-        _splatEffect = new SplatTerrainEffect();
-        _splatEffect->setDBOptions( _dbo.get() );
-        _splatEffect->setZones( myZones );
-        _splatEffect->setCoverage( myCoverage.get() );
-        _splatEffect->install(mapNode);
+        _splatLayerFactory = new SplatLayerFactory();
+        _splatLayerFactory->setDBOptions( _dbo.get() );
+        _splatLayerFactory->setZones( myZones );
+        _splatLayerFactory->setCoverage( myCoverage.get() );
+        _splatLayerFactory->install(mapNode);
     }
 
     if ( enableLandCoverEffect )
@@ -152,10 +152,10 @@ SplatExtension::disconnect(MapNode* mapNode)
 {
     if ( mapNode )
     {
-        if ( _splatEffect.valid() )
+        if ( _splatLayerFactory.valid() )
         {
-            _splatEffect->uninstall(mapNode);
-            _splatEffect = 0L;
+            _splatLayerFactory->uninstall(mapNode);
+            _splatLayerFactory = 0L;
         }
 
         if ( _landCoverLayerFactory.valid() )

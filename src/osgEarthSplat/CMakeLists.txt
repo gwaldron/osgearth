@@ -36,13 +36,13 @@ set(TARGET_IN
 set(TARGET_SRC
     Coverage.cpp
     LandCover.cpp
-    LandCoverTerrainEffect.cpp
+    LandCoverLayerFactory.cpp
     LandCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
     NoiseTextureFactory.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
-	SplatTerrainEffect.cpp
+	SplatLayerFactory.cpp
 	SplatCoverageLegend.cpp
     Surface.cpp
     Zone.cpp
@@ -52,7 +52,7 @@ set(LIB_PUBLIC_HEADERS
     Coverage
 	Export
     LandCover
-    LandCoverTerrainEffect
+    LandCoverLayerFactory
     LandCoverTilePatchCallback
     LandUseTileSource
     NoiseTextureFactory
@@ -61,7 +61,7 @@ set(LIB_PUBLIC_HEADERS
 	SplatExtension
 	SplatOptions
     SplatShaders
-	SplatTerrainEffect
+	SplatLayerFactory
     Surface
     Zone)
 	

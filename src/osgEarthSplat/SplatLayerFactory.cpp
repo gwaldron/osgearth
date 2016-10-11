@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "SplatTerrainEffect"
+#include "SplatLayerFactory"
 #include "SplatOptions"
 #include "NoiseTextureFactory"
 
@@ -49,7 +49,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-SplatTerrainEffect::SplatTerrainEffect() :
+SplatLayerFactory::SplatLayerFactory() :
 _renderOrder ( -1.0f ),
 _editMode    ( false ),
 _gpuNoise    ( false ),
@@ -68,13 +68,13 @@ _noiseTexUnit(-1)
 }
 
 void
-SplatTerrainEffect::setDBOptions(const osgDB::Options* dbo)
+SplatLayerFactory::setDBOptions(const osgDB::Options* dbo)
 {
     _dbo = dbo;
 }
 
 void
-SplatTerrainEffect::install(MapNode* mapNode)
+SplatLayerFactory::install(MapNode* mapNode)
 {
     if (!mapNode) return;
 
@@ -220,7 +220,7 @@ SplatTerrainEffect::install(MapNode* mapNode)
 }
 
 void
-SplatTerrainEffect::uninstall(MapNode* mapNode)
+SplatLayerFactory::uninstall(MapNode* mapNode)
 {
     if ( mapNode )
     {

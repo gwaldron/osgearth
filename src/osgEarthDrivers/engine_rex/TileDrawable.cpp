@@ -51,26 +51,6 @@ TileDrawable::~TileDrawable()
     delete [] _mesh;
 }
 
-#if 0
-void
-TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
-{
-    if  (!_geom.valid() || _geom->getNumPrimitiveSets() < 1 )
-        return;
-
-    osg::State& state = *renderInfo.getState(); 
-    
-    const osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(0));
-    osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
-    state.bindElementBufferObject(ebo);
-    if (ebo)
-        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
-    else
-        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, &de->front());
-}
-#endif
-
-
 void
 TileDrawable::setElevationRaster(const osg::Image*   image,
                                  const osg::Matrixf& scaleBias)
@@ -84,7 +64,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
         OE_WARN << "("<<_key.str()<<") precision error\n";
     }
     
-    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+    const osg::Vec3Array& verts = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
 
     if ( _elevationRaster.valid() )
     {
@@ -192,9 +172,7 @@ TileDrawable::computeBoundingBox() const
 {
     osg::BoundingBox box;
 
-    unsigned numVerts = _geom->getVertexArray()->getNumElements();
-
-    for(unsigned i=0; i<numVerts; ++i)
+    for(unsigned i=0; i<_tileSize*_tileSize; ++i)
     {
         box.expandBy(_mesh[i]);
     }

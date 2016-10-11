@@ -106,18 +106,22 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
         // Set up the vertex arrays:
         _geom->drawVertexArraysImplementation(ri);
 
-        // Draw as GL PATCHES?
-        GLenum mode = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
-
-        for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
+        if (_drawPatch)
         {
-            osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
-            osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
-            state.bindElementBufferObject(ebo);
-            if (ebo)
+            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
             {
-                glDrawElements(mode, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
+                osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
+                osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
+                state.bindElementBufferObject(ebo);
+                if (ebo)
+                    glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
             }
+        }
+
+        else
+        {
+            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
+                _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
         }
     }
 }

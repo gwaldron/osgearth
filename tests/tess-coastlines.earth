@@ -17,7 +17,7 @@ Press 'w' for wireframe mode to see the tessellation!
 <map name="Coastlines" type="geocentric">
     
     <options>         
-        <terrain driver="mp" first_lod="1" skirt_ratio="0" tile_size="5" gpu_tessellation="true"/>
+        <terrain driver="rex" first_lod="1" skirt_ratio="0" tile_size="5" gpu_tessellation="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">

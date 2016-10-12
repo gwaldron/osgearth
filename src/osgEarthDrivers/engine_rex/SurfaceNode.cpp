@@ -259,6 +259,7 @@ SurfaceNode::computeBound() const
     osg::BoundingBox box = _drawable->getBoundingBox();
     for (unsigned i=0; i<8; ++i)
         bs.expandBy(box.corner(i)*l2w);
+
     return bs;
 }
 

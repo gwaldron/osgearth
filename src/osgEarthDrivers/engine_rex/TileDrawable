@@ -20,15 +20,44 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_DRAWABLE 1
 
 #include "Common"
+#include "TileRenderModel"
 #include <osg/Geometry>
 #include <osg/Image>
 #include <osg/Matrixf>
 #include <osgEarth/TileKey>
+#include <osgEarth/MapFrame>
 
 using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    struct ModifyBoundingBoxCallback : public osg::Referenced
+    {
+        ModifyBoundingBoxCallback(const MapFrame& frame) : _frame(frame) { }
+
+        mutable Threading::Mutex _mutex;
+        mutable MapFrame _frame;
+
+        void operator()(const TileKey& key, osg::BoundingBox& bbox) const
+        {
+            if (_frame.needsSync())
+            {
+                Threading::ScopedMutexLock lock(_mutex);
+                _frame.sync();
+            }
+
+            for (LayerVector::const_iterator layer = _frame.layers().begin();
+                layer != _frame.layers().end();
+                ++layer)
+            {
+                if (layer->valid())
+                {
+                    layer->get()->modifyTileBoundingBox(key, bbox);
+                }
+            }
+        }
+    };
+
     /**
      * TileDrawable is an osg::Drawable that represents an individual terrain tile
      * for the purposes of scene graph operations (like intersections, bounds
@@ -58,6 +87,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
         osg::Vec3f* _mesh;
 
+        ModifyBoundingBoxCallback* _bboxCB;
+
     public:
         
         // construct a new TileDrawable that fronts an osg::Geometry
@@ -78,6 +109,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const osg::Matrixf& getElevationMatrix() const {
             return _elevationScaleBias;
         }
+
+        // Set the render model so we can properly calculate bounding boxes
+        void setModifyBBoxCallback(ModifyBoundingBoxCallback* bboxCB) { _bboxCB = bboxCB; }
 
     public: // osg::Drawable overrides
 

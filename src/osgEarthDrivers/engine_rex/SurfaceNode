@@ -23,6 +23,7 @@
 #include "GeometryPool"
 #include "RenderBindings"
 #include "TileDrawable"
+#include "TileRenderModel"
 
 #include <osgEarth/MapInfo>
 #include <osgEarth/Horizon>
@@ -97,9 +98,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         virtual ~SurfaceNode() { }
 
-        TileKey                    _tileKey;
-        osg::BoundingBox           _bbox;
-        osg::ref_ptr<TileDrawable> _drawable;
+        TileKey                     _tileKey;
+        osg::ref_ptr<TileDrawable>  _drawable;
         osg::ref_ptr<osg::Group>    _debugGeode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
@@ -116,8 +116,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         typedef VectorPoints (ChildrenCorners) [4];
         ChildrenCorners _childrenCorners;
-
-        //osg::ref_ptr<osg::RefMatrix> _matrix;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

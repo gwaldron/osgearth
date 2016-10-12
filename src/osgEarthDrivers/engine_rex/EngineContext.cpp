@@ -41,7 +41,7 @@ EngineContext::EngineContext(const Map*                     map,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
                              const SelectionInfo&           selectionInfo,
-                             TilePatchCallbacks&            tilePatchCallbacks) :
+                             ModifyBoundingBoxCallback*     bboxCB) :
 _frame         ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
@@ -51,7 +51,7 @@ _liveTiles     ( liveTiles ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
-_tilePatchCallbacks( tilePatchCallbacks ),
+_bboxCB        ( bboxCB ),
 _tick(0),
 _tilesLastCull(0)
 {
@@ -197,18 +197,4 @@ bool
 EngineContext::maxLiveTilesExceeded() const
 {
     return _liveTiles->size() > _options.expirationThreshold().get();
-}
-
-void
-EngineContext::invokeTilePatchCallbacks(osgUtil::CullVisitor* cv,
-                                        const TileKey&        tileKey,
-                                        osg::StateSet*        tileStateSet,
-                                        osg::Node*            tilePatch)
-{
-    for(TilePatchCallbacks::iterator i = _tilePatchCallbacks.begin();
-        i != _tilePatchCallbacks.end();
-        ++i)
-    {
-        i->get()->cull(cv, tileKey, tileStateSet, tilePatch);
-    }
 }

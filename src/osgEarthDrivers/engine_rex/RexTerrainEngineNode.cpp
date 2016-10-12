@@ -188,6 +188,9 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // (depends on the viewer's threading mode).
     _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
+    // A callback for overriding bounding boxes for tiles
+    _modifyBBoxCallback = new ModifyBoundingBoxCallback(*_update_mapf);
+
     // merge in the custom options:
     _terrainOptions.merge( myOptions );
 
@@ -636,7 +639,7 @@ RexTerrainEngineNode::getEngineContext()
             _renderBindings,
             _terrainOptions,
             _selectionInfo,
-            _tilePatchCallbacks);
+            _modifyBBoxCallback.get());
     }
 
     return context.get();

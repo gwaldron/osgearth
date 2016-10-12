@@ -5,7 +5,7 @@
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION)
 
 
 // stage
@@ -51,7 +51,7 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
     // assume with no morphing)
 	vec4 wouldBePosition = position;
 
-#ifdef OE_TERRAIN_MORPH_GEOMETRY
+#ifdef OE_TERRAIN_RENDER_ELEVATION
         float elev = oe_terrain_getElevation( oe_layer_tilec.st );
 		wouldBePosition.xyz += up*elev;
 #endif

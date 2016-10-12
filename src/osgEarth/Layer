@@ -23,6 +23,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Status>
+#include <osgEarth/TileKey>
+#include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osg/RenderInfo>
 #include <osgDB/Options>
@@ -121,6 +123,8 @@ namespace osgEarth
         RenderType getRenderType() const { return _renderType; }
 
         void setRenderType(RenderType value) { _renderType = value; }
+
+        virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
     private:
         UID _uid;

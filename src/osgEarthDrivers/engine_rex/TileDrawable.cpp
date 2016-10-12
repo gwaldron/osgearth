@@ -110,7 +110,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
         }
     }
 
-    dirtyBound();
+    dirtyBound();    
 }
 
 // Functor supplies triangles to things like IntersectionVisitor, ComputeBoundsVisitor, etc.
@@ -175,6 +175,11 @@ TileDrawable::computeBoundingBox() const
     for(unsigned i=0; i<_tileSize*_tileSize; ++i)
     {
         box.expandBy(_mesh[i]);
+    }
+
+    if (_bboxCB)
+    {
+        (*_bboxCB)(_key, box);
     }
 
     return box;

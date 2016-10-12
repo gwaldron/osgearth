@@ -115,6 +115,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         geom.get(),
         context->getOptions().tileSize().get() );
 
+    // Give the tile Drawable access to the render model so it can properly
+    // calculate its bounding box and sphere.
+    surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
+
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
         key,
@@ -210,7 +214,7 @@ TileNode::computeBound() const
     if (_surface.valid())
     {
         bs = _surface->getBound();
-        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
+        const osg::BoundingBox bbox = _surface->getAlignedBoundingBox();
         _tileKeyValue.a() = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
     }    
     return bs;

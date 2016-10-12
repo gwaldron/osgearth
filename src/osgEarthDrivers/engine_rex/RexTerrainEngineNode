@@ -36,6 +36,7 @@
 #include "Unloader"
 #include "SelectionInfo"
 #include "SurfaceNode"
+#include "TileDrawable"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -189,6 +190,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SelectionInfo _selectionInfo;
 
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+
+        osg::ref_ptr<ModifyBoundingBoxCallback> _modifyBBoxCallback;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

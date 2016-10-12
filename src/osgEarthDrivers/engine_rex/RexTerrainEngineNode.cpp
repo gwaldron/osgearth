@@ -1018,11 +1018,10 @@ RexTerrainEngineNode::updateState()
             
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
 
-            bool useBlending = _terrainOptions.enableBlending().get();
-            package.define("OE_REX_GL_BLENDING", useBlending);
-
-            bool morphImagery = _terrainOptions.morphImagery().get();
-            package.define("OE_REX_MORPH_IMAGERY", morphImagery);
+            if (_terrainOptions.enableBlending() == true)
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_BLEND_IMAGERY");
+            }
 
             // Funtions that affect only the terrain surface:
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
@@ -1032,19 +1031,34 @@ RexTerrainEngineNode::updateState()
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
             package.load(surfaceVP, package.ENGINE_FRAG);
 
+            // Elevation?
+            if (this->elevationTexturesRequired())
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_RENDER_ELEVATION");
+            }
+
             // Normal mapping shaders:
             if ( this->normalTexturesRequired() )
             {
                 package.load(surfaceVP, package.NORMAL_MAP_VERT);
                 package.load(surfaceVP, package.NORMAL_MAP_FRAG);
+                surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
             }
 
             // Morphing?
             if (_terrainOptions.morphTerrain() == true ||
                 _terrainOptions.morphImagery() == true)
             {
-                package.define("OE_REX_VERTEX_MORPHING", (_terrainOptions.morphTerrain() == true));
                 package.load(surfaceVP, package.MORPHING_VERT);
+
+                if (_terrainOptions.morphImagery() == true)
+                {
+                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_IMAGERY");
+                }
+                if (_terrainOptions.morphTerrain() == true)
+                {
+                    surfaceStateSet->setDefine("OE_TERRAIN_MORPH_GEOMETRY");
+                }
             }
 
             // assemble color filter code snippets.
@@ -1127,9 +1141,6 @@ RexTerrainEngineNode::updateState()
                     terrainStateSet->setTextureAttribute(b.unit(), tex.get());
                 }
             }
-
-            //TODO: reevaluate these, since they may not persist when using direct
-            // glUniform* calls in LayerDrawable etc.
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

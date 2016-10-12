@@ -4,6 +4,10 @@
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.2
 
+#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
+
+#ifdef OE_TERRAIN_RENDER_NORMAL_MAP
+
 // import terrain SDK
 vec4 oe_terrain_getNormalAndCurvature(in vec2);
 
@@ -34,3 +38,7 @@ void oe_normalMapFragment(inout vec4 color)
     // visualize normals:
     //color.rgb = encodedNormal.xyz;
 }
+
+#else
+void oe_normalMapFragment(inout vec4 color) { }
+#endif

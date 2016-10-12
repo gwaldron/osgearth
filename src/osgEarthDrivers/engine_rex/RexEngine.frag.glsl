@@ -4,8 +4,8 @@
 #pragma vp_entryPoint oe_rexEngine_frag
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
-#pragma vp_define     OE_REX_GL_BLENDING
-#pragma vp_define     OE_REX_MORPH_IMAGERY
+
+#pragma import_defines(OE_TERRAIN_MORPH_IMAGERY, OE_TERRAIN_BLEND_IMAGERY)
 
 uniform bool      oe_isPickCamera;
 uniform sampler2D oe_layer_tex;
@@ -13,7 +13,7 @@ uniform int       oe_layer_uid;
 uniform int       oe_layer_order;
 uniform float     oe_layer_opacity;
 
-#ifdef OE_REX_MORPH_IMAGERY
+#ifdef OE_TERRAIN_MORPH_IMAGERY
 uniform sampler2D oe_layer_texParent;
 uniform float oe_layer_texParentExists;
 in vec4 oe_layer_texcParent;
@@ -30,7 +30,7 @@ void oe_rexEngine_frag(inout vec4 color)
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
 	vec4 texelSelf = texture(oe_layer_tex, oe_layer_texc.st);
 
-#ifdef OE_REX_MORPH_IMAGERY
+#ifdef OE_TERRAIN_MORPH_IMAGERY
 
     // sample the parent texture:
 	vec4 texelParent = texture(oe_layer_texParent, oe_layer_texcParent.st);
@@ -57,7 +57,7 @@ void oe_rexEngine_frag(inout vec4 color)
 
     float firstLayer = (applyImagery == 1.0 && oe_layer_order == 0) ? 1.0 : 0.0;
 
-#ifdef OE_REX_GL_BLENDING
+#ifdef OE_TERRAIN_BLEND_IMAGERY
     
     // Blend RGB with the incoming color:
     //color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);

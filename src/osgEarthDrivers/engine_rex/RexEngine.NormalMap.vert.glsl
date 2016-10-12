@@ -4,6 +4,10 @@
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
+#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
+
+#ifdef OE_TERRAIN_RENDER_NORMAL_MAP
+
 uniform mat4 oe_tile_normalTexMatrix;
 
 // stage globals
@@ -20,3 +24,7 @@ void oe_normalMapVertex(inout vec4 unused)
     // send the bi-normal to the fragment shader
     oe_normalMapBinormal = gl_NormalMatrix * vec3(0,1,0);
 }
+
+#else
+void oe_normalMapVertex(inout vec4 unused) { }
+#endif

@@ -87,6 +87,13 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 
             if (_packager->getApplyAlphaMask())
             {
+                // Convert the image to RGBA if necessary
+                if (!ImageUtils::hasAlphaChannel(geoImage.getImage()))
+                {
+                    osg::ref_ptr< osg::Image > rgba = ImageUtils::convertToRGBA8(geoImage.getImage());
+                    geoImage = GeoImage(rgba.get(), geoImage.getExtent());
+                }
+
                 // mask out areas not included in the request:
                 for(std::vector<GeoExtent>::const_iterator g = tv.getExtents().begin();
                     g != tv.getExtents().end();

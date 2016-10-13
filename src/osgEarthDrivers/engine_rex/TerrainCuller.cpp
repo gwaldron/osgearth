@@ -95,11 +95,6 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
             tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
         }
 
-        if (pass._patchLayer.valid() && pass._patchLayer->getDrawCallback())
-        {
-            tile._drawCallback = pass._patchLayer->getDrawCallback();
-        }
-
         return &tile;
     }
     else
@@ -152,6 +147,7 @@ TerrainCuller::apply(osg::Node& node)
                     // Add the draw command:
                     DrawTileCommand* cmd = addDrawCommand(layer->getUID(), *defaultPass, tileNode);
                     cmd->_drawPatch = true;
+                    cmd->_drawCallback = layer->getDrawCallback();
                 }
             }
 

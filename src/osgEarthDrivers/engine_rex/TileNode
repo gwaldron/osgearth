@@ -76,7 +76,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void removeSubTiles();
 
         /** Notifies this tile that another tile has come into existence. */
-        void notifyOfArrival(TileNode* that) { } // nyi - todo
+        void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
@@ -139,7 +139,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TileRenderModel                    _renderModel;
 
+        osg::observer_ptr<TileNode> _eastNeighbor;
+        osg::observer_ptr<TileNode> _southNeighbor;
+        bool _stitchNormalMap;
+
     private:
+
+        void updateNormalMap();
 
         void createChildren(EngineContext* context);
 

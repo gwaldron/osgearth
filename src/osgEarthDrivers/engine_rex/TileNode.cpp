@@ -70,7 +70,8 @@ _minExpiryTime( 0.0 ),
 _minExpiryFrames( 0 ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
-_count(0)
+_count(0),
+_stitchNormalMap(false)
 {
     //nop
 }
@@ -82,6 +83,9 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         return;
 
     _key = key;
+
+    // whether the stitch together normal maps for adjacent tiles.
+    _stitchNormalMap = context->_options.normalizeEdges() == true;
 
     // Encode the tile key in a uniform. Note! The X and Y components are presented
     // modulo 2^16 form so they don't overrun single-precision space.
@@ -585,11 +589,15 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     if (normals.isActive() && model->normalModel().valid() && model->normalModel()->getTexture())
     {
         osg::Texture* tex = model->normalModel()->getTexture();
+        // keep the normal map around because we might update it later in "ping"
+        tex->setUnRefImageDataAfterApply(false);
         for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
         {
             _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._texture = tex;
             _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
         }
+
+        updateNormalMap();
     }
 
     // Shared Layers:
@@ -817,4 +825,103 @@ TileNode::removeSubTiles()
 {
     _childrenReady = false;
     this->removeChildren(0, this->getNumChildren());
+}
+
+
+void
+TileNode::notifyOfArrival(TileNode* that)
+{
+    if (_key.createNeighborKey(1, 0) == that->getTileKey())
+        _eastNeighbor = that;
+
+    if (_key.createNeighborKey(0, 1) == that->getTileKey())
+        _southNeighbor = that;
+
+    updateNormalMap();
+}
+
+void
+TileNode::updateNormalMap()
+{
+    if ( !_stitchNormalMap )
+        return;
+
+    if (_renderModel._passes.empty())
+        return;
+
+    RenderingPass& thisPass = _renderModel._passes[0];
+    Sampler& thisNormalMap = thisPass._samplers[SamplerBinding::NORMAL];
+    if (!thisNormalMap._texture.valid() || !thisNormalMap._matrix.isIdentity() || !thisNormalMap._texture->getImage(0))
+        return;
+
+    if (!_eastNeighbor.valid() || !_southNeighbor.valid())
+        return;
+
+    osg::ref_ptr<TileNode> east;
+    if (_eastNeighbor.lock(east))
+    {
+        if (east->_renderModel._passes.empty())
+            return;
+
+        const RenderingPass& thatPass = east->_renderModel._passes[0];
+        const Sampler& thatNormalMap = thatPass._samplers[SamplerBinding::NORMAL];
+        if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
+            return;
+
+        osg::Image* thisImage = thisNormalMap._texture->getImage(0);
+        osg::Image* thatImage = thatNormalMap._texture->getImage(0);
+
+        int width = thisImage->s();
+        int height = thisImage->t();
+        if ( width != thatImage->s() || height != thatImage->t() )
+            return;
+
+        // Just copy the neighbor's edge normals over to our texture.
+        // Averaging them would be more accurate, but then we'd have to
+        // re-generate each texture multiple times instead of just once.
+        // Besides, there's almost no visual difference anyway.
+        ImageUtils::PixelReader readThat(thatImage);
+        ImageUtils::PixelWriter writeThis(thisImage);
+        
+        for (int t=0; t<height; ++t)
+        {
+            writeThis(readThat(0, t), width-1, t);
+        }
+
+        thisImage->dirty();
+    }
+
+    osg::ref_ptr<TileNode> south;
+    if (_southNeighbor.lock(south))
+    {
+        if (south->_renderModel._passes.empty())
+            return;
+
+        const RenderingPass& thatPass = south->_renderModel._passes[0];
+        const Sampler& thatNormalMap = thatPass._samplers[SamplerBinding::NORMAL];
+        if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
+            return;
+
+        osg::Image* thisImage = thisNormalMap._texture->getImage(0);
+        osg::Image* thatImage = thatNormalMap._texture->getImage(0);
+
+        int width = thisImage->s();
+        int height = thisImage->t();
+        if ( width != thatImage->s() || height != thatImage->t() )
+            return;
+
+        // Just copy the neighbor's edge normals over to our texture.
+        // Averaging them would be more accurate, but then we'd have to
+        // re-generate each texture multiple times instead of just once.
+        // Besides, there's almost no visual difference anyway.
+        ImageUtils::PixelReader readThat(thatImage);
+        ImageUtils::PixelWriter writeThis(thisImage);
+
+        for (int s=0; s<width; ++s)
+            writeThis(readThat(s, height-1), s, 0);
+
+        thisImage->dirty();
+    }
+
+    OE_INFO << LC << _key.str() << " : updated normal map.\n";
 }

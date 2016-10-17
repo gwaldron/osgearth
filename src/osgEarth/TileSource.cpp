@@ -218,8 +218,6 @@ _status ( Status::Error("Not initialized") ),
 _mode   ( 0 ),
 _openCalled( false )
 {
-    this->setThreadSafeRefUnref( true );
-
     // Initialize the l2 cache size to the options.
     int l2CacheSize = *options.L2CacheSize();
 

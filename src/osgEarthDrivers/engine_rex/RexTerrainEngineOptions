@@ -42,7 +42,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _progressive            ( false ),
             _highResolutionFirst    ( true ),
             _normalMaps             ( true ),
-            _normalizeEdges         ( true ),
+            _normalizeEdges         ( false ),
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
             _mergesPerFrame         ( 20 ),

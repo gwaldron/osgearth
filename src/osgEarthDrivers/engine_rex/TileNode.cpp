@@ -923,5 +923,5 @@ TileNode::updateNormalMap()
         thisImage->dirty();
     }
 
-    OE_INFO << LC << _key.str() << " : updated normal map.\n";
+    //OE_INFO << LC << _key.str() << " : updated normal map.\n";
 }

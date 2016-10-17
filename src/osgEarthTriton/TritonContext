@@ -70,6 +70,8 @@ namespace osgEarth { namespace Triton
 
         int getHeightMapSize() const;
 
+        const std::string& getMaskLayerName() const;
+
     protected:
 
         virtual ~TritonContext();

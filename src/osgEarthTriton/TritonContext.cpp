@@ -84,6 +84,12 @@ TritonContext::getHeightMapSize() const
     return osg::clampBetween(_options.heightMapSize().get(), 64, 2048);
 }
 
+const std::string&
+TritonContext::getMaskLayerName() const
+{
+    return _options.maskLayer().get();
+}
+
 void
 TritonContext::initialize(osg::RenderInfo& renderInfo)
 {

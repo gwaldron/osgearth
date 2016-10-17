@@ -262,14 +262,25 @@ static const size_t NUM_CONTEXTS = 64;
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
+        "#pragma import_defines(OE_TRITON_MASK_MATRIX);\n"
+
         "// terrain SDK:\n"
         "float oe_terrain_getElevation(); \n"
 
-        "varying float oe_triton_elev;\n"
+        "out float oe_triton_elev;\n"
+        
+        "#ifdef OE_TRITON_MASK_MATRIX\n"
+        "out vec2 maskCoords;\n"
+        "uniform mat4 OE_TRITON_MASK_MATRIX;\n"
+        "vec4 oe_layer_tilec;\n"
+        "#endif\n"
 
-        "void setupContour(inout vec4 VertexModel) \n"
+        "void oe_triton_setupHeightMap(inout vec4 VertexModel) \n"
         "{ \n"
         "    oe_triton_elev = oe_terrain_getElevation(); \n"
+        "#ifdef OE_TRITON_MASK_MATRIX\n"
+        "    maskCoords = (OE_TRITON_MASK_MATRIX * oe_layer_tilec).st;\n"
+        "#endif\n"
         "} \n";
 
     // The fragment shader simply takes the texture index that we generated
@@ -281,15 +292,29 @@ static const size_t NUM_CONTEXTS = 64;
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "varying float oe_triton_elev;\n"
+        "#pragma import_defines(OE_TRITON_MASK_SAMPLER);\n"
 
-        "void colorContour( inout vec4 color ) \n"
+        "in float oe_triton_elev;\n"
+
+        "#ifdef OE_TRITON_MASK_SAMPLER\n"
+        "in vec2 maskCoords;\n"
+        "uniform sampler2D OE_TRITON_MASK_SAMPLER;\n"
+        "uniform float DD;\n"
+        "#endif\n"
+
+        "void oe_triton_drawHeightMap( inout vec4 color ) \n"
         "{ \n"
 #ifdef DEBUG_HEIGHTMAP
           // Map to black = -500m, white = +500m
           "   float nHeight = clamp(oe_triton_elev / 1000.0 + 0.5, 0.0, 1.0);\n"
 #else
           "   float nHeight = oe_triton_elev;\n"
+
+          "#ifdef OE_TRITON_MASK_SAMPLER\n"
+          "    float mask = texture(OE_TRITON_MASK_SAMPLER, maskCoords).a;\n"
+          "    nHeight *= mask; \n"
+          "#endif\n"
+
 #endif
         "    gl_FragColor = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";
@@ -700,8 +725,26 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     // terrain engine automatically generates at the specified location.
     osg::StateSet* stateSet = _heightCamera->getOrCreateStateSet();
     osgEarth::VirtualProgram* heightProgram = osgEarth::VirtualProgram::getOrCreate(stateSet);
-    heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
-    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    heightProgram->setFunction( "oe_triton_setupHeightMap", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
+    heightProgram->setFunction( "oe_triton_drawHeightMap", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+
+    // If we're using a mask layer, enable that in the shader:
+    if (!_TRITON->getMaskLayerName().empty())
+    {
+        const ImageLayer* maskLayer = _mapNode->getMap()->getImageLayerByName(_TRITON->getMaskLayerName());
+        if (maskLayer)
+        {
+            stateSet->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());
+            stateSet->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
+            OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->shareTexUniformName().get() << ", matrix=" << maskLayer->shareTexMatUniformName().get() << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC << "Mask Layer \"" << _TRITON->getMaskLayerName() << "\" not found in Map!\n";
+        }
+
+    }
+
 
     _heightCamera->addChild( mapNode->getTerrainEngine() );
     _terrainChangedCallback = new OceanTerrainChangedCallback(this);

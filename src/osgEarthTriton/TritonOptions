@@ -66,7 +66,11 @@ namespace osgEarth { namespace Triton
         optional<int>& renderBinNumber() { return _renderBinNumber; }
         const optional<int>& renderBinNumber() const { return _renderBinNumber; }
 
-        /** Name of optional mask layer */
+        /** Name of optional land mask layer. A land mask layer is an image layer
+          * in the Map that has the alpha channel set to 1 over land and 0 over ocean.
+          * This is used in addition to the height map to prevent drawing the ocean
+          * over land areas.
+          */
         optional<std::string>& maskLayer() { return _maskLayerName; }
         const optional<std::string>& maskLayer() const { return _maskLayerName; }
 

@@ -105,6 +105,7 @@ namespace osgEarth { namespace Util
         {
             osg::ref_ptr<osg::StateSet> _stateset;
             osg::ref_ptr<osg::Uniform> _resolutionUniform;
+            osg::ref_ptr<osg::StateSet> _labelStateset;
             std::vector< osg::ref_ptr< LabelNode > > _labelPool;
             float _resolution;
             osg::Matrixd _lastViewMatrix;     

@@ -6,19 +6,16 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 -->
 <map name="TFS" type="geocentric" version="2">
 
- 
- 
+
+
 
     <model name="osm" driver="feature_geom">
-
-   
-       <features name="osm" driver="tfs">
-            <url>http://readymap.org/osm/osm/osm/</url>
-            <invert_y>true</invert_y>
+        <features name="osm" driver="tfs">
+            <url>http://readymap.org/osm/</url>
             <min_level>14</min_level>
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>
-            <format>pbf</format>            
+            <format>pbf</format>
         </features>
 
         <instancing>true</instancing>
@@ -26,7 +23,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <feature_indexing enabled="false"></feature_indexing>
 
         <styles>
-            
+
             <library name="us_resources">
                 <url>../data/resources/textures_us/catalog.xml</url>
             </library>
@@ -38,7 +35,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                      icon-declutter: true;
                      text-content:  getName();
                      altitude-clamping:       terrain;
-                }     
+                }
 
                 school {
                      icon: "../data/school.png";
@@ -46,7 +43,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                      icon-declutter: true;
                      text-content:  getName();
                      altitude-clamping:       terrain;
-                }     
+                }
 
                 bank {
                      icon: "../data/bank.png";
@@ -63,7 +60,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                    model-scale:         2.5;
                    model-random-seed:   1;
                    altitude-clamping:       terrain;
-                }            
+                }
 
                 grass {
                    model:               "../data/tree.ive";
@@ -86,7 +83,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                   extrusion-wall-style:  building-wall;
                   extrusion-roof-style:  building-rooftop;
                   altitude-clamping:     terrain;
-                }            
+                }
 
                 building-wall {
                   skin-library:     us_resources;
@@ -105,7 +102,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </style>
 
             <selector name="default" style_expr="selectStyle()"/>
-            
+
             <script language="javascript">
               <![CDATA[
 
@@ -120,7 +117,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                              landuse == "meadow"
                             ) {
                                 return "forest";
-                            }                                            
+                            }
                         else if (landuse == "reservoir") {
                             return "water";
                         }
@@ -152,7 +149,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                             return "bank";
                         }
                     }
-                    return null;                    
+                    return null;
                 }
 
                 function getName() {
@@ -161,8 +158,8 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                     }
                     return "";
                 }
-                
-                function getBuildingHeight() {                    
+
+                function getBuildingHeight() {
 					if ("height" in feature.properties) {
 						var h = feature.properties["height"].replace('m','');
 						return Math.max(h, 4.0);
@@ -180,8 +177,8 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 
         </styles>
     </model>
- 
- 
+
+
 
     <image name="esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
@@ -189,47 +186,44 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     </image>
 
     <image name="osm_roads" driver="agglite" min_level="14">
-      
+
        <max_data_level>14</max_data_level>
-       
+
        <profile>spherical-mercator</profile>
-        
-        <features name="roads" driver="tfs">
-            <url>http://readymap.org/osm/osm/osm/</url>
-            <invert_y>true</invert_y>
+
+        <features name="osm" driver="tfs">
+            <url>http://readymap.org/osm/</url>
             <min_level>14</min_level>
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>
-            <format>pbf</format>            
+            <format>pbf</format>
 
-            <filters>
-                <script language="javascript">
-                    <![CDATA[
-                    function filter() {
-                        if ("highway" in feature.properties) {
-                            return true;             
-                        }
-                        return false;
-                    }
+                <filters>
+                  <script language="javascript">
+                      <![CDATA[
+                      function filter() {
+                          if ("highway" in feature.properties) {
+                              return true;
+                          }
+                          return false;
+                      }
 
-                    filter();                    
+                      filter();
 
-                    ]]>
-                </script>
-            </filters>
-        </features>
-
-
+                      ]]>
+                  </script>
+                </filters>
+            </features>
         <styles>
             <style type="text/css">
                 roads {
                   stroke: #656363;
                   stroke-width: 15m;
                   stroke-linecap: square;
-                }           
+                }
             </style>
         </styles>
-        
+
         <cache_policy usage="none"/>
     </image>
 
@@ -237,6 +231,6 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-    
+
     <xi:include href="viewpoints.xml"/>
 </map>

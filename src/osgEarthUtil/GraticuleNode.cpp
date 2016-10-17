@@ -21,6 +21,7 @@
 */
 #include "GraticuleNode"
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -58,6 +59,17 @@ namespace
                 traverse(node, nv);
         }
     };
+
+    const char* textFadeFS =
+        "#version 330\n"
+        "uniform mat4 osg_ViewMatrixInverse;\n"
+        "void oe_graticule_text_frag(inout vec4 color) { \n"
+        "    const float maxHAE = 4000.0;\n"
+        "    vec3 eye = osg_ViewMatrixInverse[3].xyz;\n"
+        "    float hae = length(eye) - 6378137.0;\n"
+        "    float alpha = clamp(hae/maxHAE, 0.0, 1.0); \n"
+        "    color.a *= alpha;\n"
+        "}\n";
 }
 
 
@@ -300,6 +312,10 @@ GraticuleNode::getCameraData(osg::Camera* cam)
         cdata._lat = 0.0;
         cdata._lon = 0.0;
         initLabelPool(cdata);
+
+        cdata._labelStateset = new osg::StateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(cdata._labelStateset.get());
+        vp->setFunction("oe_graticule_text_frag", textFadeFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
     }
 
     return cdata;
@@ -395,12 +411,16 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         }
 
         // traverse the label pool for this camera.
+        cv->pushStateSet(cdata._labelStateset.get());
+
         for(std::vector< osg::ref_ptr< LabelNode > >::iterator i = cdata._labelPool.begin();
             i != cdata._labelPool.end();
             ++i)
         {
             i->get()->accept(nv);
         }
+
+        cv->popStateSet();
     }
 
     osg::Group::traverse(nv);

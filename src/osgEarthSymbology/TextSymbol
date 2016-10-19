@@ -136,10 +136,6 @@ namespace osgEarth { namespace Symbology
         optional<Layout>& layout() { return _layout; }
         const optional<Layout>& layout() const { return _layout; }
 
-        /** Whether to remove duplicates when drawing multiple labels. */
-        optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
-        const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
-
         /** Whether to enable decluttering on the text, if applicable */
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
@@ -175,7 +171,6 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression> _size;
         optional<StringExpression>  _content;
         optional<NumericExpression> _priority;
-        optional<bool>              _removeDuplicateLabels;
         optional<osg::Vec2s>        _pixelOffset;
         optional<NumericExpression> _onScreenRotation;
         optional<NumericExpression> _geographicCourse;

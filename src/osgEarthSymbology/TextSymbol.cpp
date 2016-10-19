@@ -38,7 +38,6 @@ _font(rhs._font),
 _size(rhs._size),
 _content(rhs._content),
 _priority(rhs._priority),
-_removeDuplicateLabels(rhs._removeDuplicateLabels),
 _pixelOffset(rhs._pixelOffset),
 _onScreenRotation(rhs._onScreenRotation),
 _geographicCourse(rhs._geographicCourse),
@@ -60,7 +59,6 @@ _haloOffset           ( 0.0625f ),
 _haloBackdropType     ( osgText::Text::OUTLINE ),
 _haloImplementation   ( osgText::Text::DELAYED_DEPTH_WRITES ),
 _size                 ( 16.0f ),
-_removeDuplicateLabels( false ),
 _alignment            ( ALIGN_BASE_LINE ),
 _layout               ( LAYOUT_LEFT_TO_RIGHT ),
 _provider             ( "annotation" ),
@@ -101,7 +99,6 @@ TextSymbol::getConfig() const
     conf.addObjIfSet( "size", _size );
     conf.addObjIfSet( "content", _content );
     conf.addObjIfSet( "priority", _priority );
-    conf.addIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
 
     conf.addIfSet( "encoding", "ascii", _encoding, ENCODING_ASCII );
     conf.addIfSet( "encoding", "utf8",  _encoding, ENCODING_UTF8 );
@@ -171,7 +168,6 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "size", _size );
     conf.getObjIfSet( "content", _content );
     conf.getObjIfSet( "priority", _priority );
-    conf.getIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
 
     conf.getIfSet( "encoding", "ascii", _encoding, ENCODING_ASCII );
     conf.getIfSet( "encoding", "utf8",  _encoding, ENCODING_UTF8 );
@@ -271,12 +267,6 @@ TextSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<TextSymbol>()->haloImplementation() = osgText::Text::STENCIL_BUFFER;
         else if ( match(c.value(), "delayed-depth-writes") )
             style.getOrCreate<TextSymbol>()->haloImplementation() = osgText::Text::DELAYED_DEPTH_WRITES;
-    }
-    else if ( match(c.key(), "text-remove-duplicate-labels") ) {
-        if ( c.value() == "true" )
-            style.getOrCreate<TextSymbol>()->removeDuplicateLabels() = true;
-        else if (c.value() == "false")
-            style.getOrCreate<TextSymbol>()->removeDuplicateLabels() = false;
     }
     else if ( match(c.key(), "text-align") ) {
         if      ( match(c.value(), "left-top") )

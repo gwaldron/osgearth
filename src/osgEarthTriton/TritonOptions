@@ -66,6 +66,13 @@ namespace osgEarth { namespace Triton
         optional<int>& renderBinNumber() { return _renderBinNumber; }
         const optional<int>& renderBinNumber() const { return _renderBinNumber; }
 
+        /** Name of optional land mask layer. A land mask layer is an image layer
+          * in the Map that has the alpha channel set to 1 over land and 0 over ocean.
+          * This is used in addition to the height map to prevent drawing the ocean
+          * over land areas.
+          */
+        optional<std::string>& maskLayer() { return _maskLayerName; }
+        const optional<std::string>& maskLayer() const { return _maskLayerName; }
 
     public:
         osgEarth::Config getConfig() const {
@@ -75,7 +82,8 @@ namespace osgEarth { namespace Triton
             conf.addIfSet("resource_path", _resourcePath);
             conf.addIfSet("use_height_map", _useHeightMap);
             conf.addIfSet("height_map_size", _heightMapSize);
-            conf.addIfSet("render_bin_number",   _renderBinNumber);
+            conf.addIfSet("render_bin_number", _renderBinNumber);
+            conf.addIfSet("mask_layer", _maskLayerName);
             return conf;
         }
 
@@ -92,7 +100,8 @@ namespace osgEarth { namespace Triton
             conf.getIfSet("resource_path", _resourcePath);
             conf.getIfSet("use_height_map", _useHeightMap);
             conf.getIfSet("height_map_size", _heightMapSize);
-            conf.getIfSet("render_bin_number",   _renderBinNumber);
+            conf.getIfSet("render_bin_number", _renderBinNumber);
+            conf.getIfSet("mask_layer", _maskLayerName);
         }
 
     private:
@@ -102,6 +111,7 @@ namespace osgEarth { namespace Triton
         osgEarth::optional<bool>        _useHeightMap;
         osgEarth::optional<int>         _heightMapSize;
         osgEarth::optional<int>         _renderBinNumber;
+        osgEarth::optional<std::string> _maskLayerName;
     };
 
 } } // namespace osgEarth::Triton

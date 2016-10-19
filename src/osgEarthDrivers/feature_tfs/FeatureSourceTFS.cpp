@@ -371,8 +371,7 @@ public:
 
 private:
     const TFSFeatureOptions         _options;    
-    FeatureSchema                   _schema;
-    osg::ref_ptr<CacheBin>          _cacheBin;
+    FeatureSchema                   _schema;    
     osg::ref_ptr<osgDB::Options>    _readOptions;    
     TFSLayer                        _layer;
     bool                            _layerValid;

@@ -158,6 +158,20 @@ void
 ElevationLayer::init()
 {
     TerrainLayer::init();
+
+    // elevation layers do not render directly; rather, a composite of elevation data
+    // feeds the terrain engine to permute the mesh.
+    setRenderType(RENDERTYPE_NONE);
+}
+
+Config
+ElevationLayer::getConfig() const
+{
+    Config layerConf = getElevationLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    layerConf.key() = "elevation";
+    return layerConf;
 }
 
 void

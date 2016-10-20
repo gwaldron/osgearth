@@ -33,14 +33,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileNodeRegistry; // for UnloaderGroup
 
 
-    /** Pure interface class for a tile unloader. */
+    /**
+     * Pure interface class for a tile unloader. The Tile Unloader is 
+     * responsible for removing unused tiles from the scene graph and
+     * releasing any GL resources associated with them.
+     */
     class Unloader
     {
     public:
         virtual void unloadChildren(const std::vector<TileKey>& keys) =0;
     };
 
-    /** Group-based tile unloader. */
+    /**
+     * Group-based tile unloader.
+     */
     class UnloaderGroup : public osg::Group, public Unloader
     {
     public:

@@ -136,6 +136,10 @@ namespace osgEarth
             return _runtimeOptions.offset() == true;
         }
 
+    public: // Layer
+
+        virtual Config getConfig() const;
+
     protected:
         
         // creates a geoHF directly from the tile source

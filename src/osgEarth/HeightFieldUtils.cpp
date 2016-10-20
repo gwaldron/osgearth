@@ -654,9 +654,9 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             n.normalize();
 
             // calculate and encode curvature (2nd derivative of elevation)
-            float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
-            float D = (0.5*(west.z()+east.z()) - centerHeight) * L2inv;
-            float E = (0.5*(south.z()+north.z()) - centerHeight) * L2inv;
+            //float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
+            float D = (0.5*(west.z()+east.z()) - centerHeight) / (sIntervalMeters*sIntervalMeters); //* L2inv;
+            float E = (0.5*(south.z()+north.z()) - centerHeight) / (tIntervalMeters*tIntervalMeters); //* L2inv;
             float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
 
             // encode for RGBA [0..1]

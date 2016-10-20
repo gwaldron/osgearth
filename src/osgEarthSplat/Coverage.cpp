@@ -68,7 +68,7 @@ Coverage::configure(const ConfigOptions& conf, const Map* map, const osgDB::Opti
     }
 
     // Find the classification layer in the map:
-    _layer = map->getImageLayerByName( in.layer().get() );
+    _layer = map->getLayerByName<ImageLayer>( in.layer().get() );
     if ( !_layer.valid() )
     {
         OE_WARN << LC << "Layer \"" << in.layer().get() << "\" not found in the map\n";

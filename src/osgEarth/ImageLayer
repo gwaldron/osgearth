@@ -341,6 +341,10 @@ namespace osgEarth
 
         //CacheBin* getCacheBin( const Profile* profile );
 
+    public: // Layer
+
+        virtual Config getConfig() const;
+
     protected:
 
         // Creates an image that's in the same profile as the provided key.

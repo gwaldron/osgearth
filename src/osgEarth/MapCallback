@@ -27,6 +27,7 @@
 namespace osgEarth
 {
     class MapInfo;
+    class Layer;
     class ImageLayer;
     class ElevationLayer;
     class ModelLayer;
@@ -45,6 +46,10 @@ namespace osgEarth
         virtual void onEndUpdate() { }
 
         virtual void onMapModelChanged( const MapModelChange& change );
+
+        virtual void onLayerAdded(Layer* layer, unsigned index);
+        virtual void onLayerRemoved(Layer* layer, unsigned index);
+        virtual void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
 
         virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
         virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }

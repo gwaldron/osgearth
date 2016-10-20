@@ -446,7 +446,11 @@ TileModelFactory::createTileModel(const TileKey&           key,
     // Fetch the image data and make color layers.
     unsigned index = 0;
     unsigned order = 0;
-    for( ImageLayerVector::const_iterator i = frame.imageLayers().begin(); i != frame.imageLayers().end(); ++i )
+
+    ImageLayerVector imageLayers;
+    frame.getLayers(imageLayers);
+
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
     {
         ImageLayer* layer = i->get();
 

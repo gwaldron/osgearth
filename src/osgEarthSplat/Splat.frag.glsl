@@ -6,7 +6,6 @@
 
 #pragma vp_entryPoint oe_splat_complex
 #pragma vp_location   fragment_coloring
-#pragma vp_order      0.4
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.
@@ -33,7 +32,7 @@ in vec2 oe_splat_covtc;                     // coverage texture coords
 in float oe_splat_range;                    // distance from camera to vertex
 flat in float oe_splat_coverageTexSize;     // size of coverage texture
 
-// from SplatTerrainEffect:
+// from SplatLayerFactory:
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
 uniform int oe_splat_scaleOffsetInt;

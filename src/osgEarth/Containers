@@ -890,6 +890,54 @@ namespace osgEarth
         std::set<osg::observer_ptr<T> >      _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
+    
+
+    // borrowed from osg::buffered_object. Auto-resizing array.
+    template<class T>
+    class AutoArray
+    {
+    public:
+        inline AutoArray() { }
+
+        inline AutoArray(unsigned int size) : _array(size) { }
+
+        AutoArray& operator = (const AutoArray& rhs)
+        {
+            _array = rhs._array;
+            return *this;
+        }
+
+        inline void setAllElementsTo(const T& t) { std::fill(_array.begin(), _array.end(), t); }
+        inline void clear() { _array.clear(); }
+        inline bool empty() const { return _array.empty(); }
+        inline unsigned int size() const { return _array.size(); }
+        inline void resize(unsigned int newSize) { _array.resize(newSize); }
+
+        inline T& operator[] (unsigned int pos)
+        {
+            if (_array.size() <= pos)
+                _array.resize(pos + 1);
+
+            return _array[pos];
+        }
+
+        inline const T& operator[] (unsigned int pos) const
+        {
+            // automatically resize array.
+            if (_array.size() <= pos)
+                _array.resize(pos + 1);
+
+            return _array[pos];
+        }
+
+        inline T& back() { return _array[size()-1]; }
+        inline const T& back() const { return _array[size()-1]; }
+
+    protected:
+
+        mutable std::vector<T> _array;
+    };
+
 }
 
 #endif // OSGEARTH_CONTAINERS_H

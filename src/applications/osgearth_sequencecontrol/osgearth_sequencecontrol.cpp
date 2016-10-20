@@ -78,7 +78,7 @@ main(int argc, char** argv)
     // find the first layer with sequence control.
     bool found = false;
     osgEarth::ImageLayerVector layers;
-    mapNode->getMap()->getImageLayers( layers );
+    mapNode->getMap()->getLayers( layers );
     for( osgEarth::ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
     {
         // get the sequence control interface for the layer, if there is one.

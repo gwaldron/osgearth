@@ -1,0 +1,74 @@
+<?xml version="1.0" ?>
+<viewpoints>
+    <viewpoint>
+        <heading>0.0</heading>
+        <height>4465.397310772911</height>
+        <lat>37.55814749233749</lat>
+        <long>-122.334535784141</long>
+        <name>San Francisco, California</name>
+        <pitch>-90</pitch>
+        <range>78142.53643278375</range>
+    </viewpoint>
+    <viewpoint>
+        <heading>0.0</heading>
+        <height>2462.60273069609</height>
+        <lat>46.82181702111031</lat>
+        <long>-121.7814936386096</long>
+        <name>Mt Rainier, Washington</name>
+        <pitch>-90</pitch>
+        <range>23926.75258864516</range>
+    </viewpoint>
+    <viewpoint>
+        <heading>0.0</heading>
+        <height>6334.845537136309</height>
+        <lat>27.94213038800919</lat>
+        <long>86.9936567556778</long>
+        <name>Nepal</name>
+        <pitch>-90</pitch>
+        <range>13611.24948464565</range>
+    </viewpoint>
+    <viewpoint>
+        <heading>-1.429462844200832</heading>
+        <heading>0.0</heading>
+        <lat>45.95106319557</lat>
+        <long>7.642741711675961</long>
+        <name>The Matterhorn</name>
+        <pitch>-90</pitch>
+        <range>26690.10606054494</range>
+    </viewpoint>
+    <viewpoint>
+        <name>Hallstatt, Austria</name>
+        <heading>0.0</heading>
+        <pitch>-90</pitch>
+        <range>14786m</range>
+        <long>13.65444893405288</long>
+        <lat>47.56470451831095</lat>
+        <height>502.9998890347779</height>
+    </viewpoint>
+    <viewpoint>
+        <name>Anchorage, Alaska</name>
+        <heading>0.0</heading>
+        <pitch>-90</pitch>
+        <range>21030.5m</range>
+        <long>-149.9001345817515</long>
+        <lat>61.16407743963008</lat>
+        <height>30.04646527767181</height>
+    </viewpoint>
+    <viewpoint name="Mountainside">
+        <heading>0.0</heading>
+        <pitch>-90</pitch>
+        <range>2852.25m</range>
+        <long>-121.7712665799263</long>
+        <lat>46.79220713459502</lat>
+        <height>1636.236482798122</height>
+    </viewpoint>
+    <viewpoint name="Chicago">
+        <heading>0.0</heading>
+        <pitch>-90</pitch>
+        <range>2290.68m</range>
+        <long>-87.63760536472377</long>
+        <lat>41.88440204687279</lat>
+        <height>186.9731654571369</height>
+        <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+    </viewpoint>
+</viewpoints>

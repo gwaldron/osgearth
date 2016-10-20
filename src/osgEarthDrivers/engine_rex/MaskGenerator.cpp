@@ -36,7 +36,8 @@ using namespace osgEarth::Symbology;
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame) :
 _key( key ), _tileSize(tileSize)
 {
-    const osgEarth::MaskLayerVector maskLayers = mapFrame.terrainMaskLayers();
+    MaskLayerVector maskLayers;
+    mapFrame.getLayers(maskLayers);
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
         it != maskLayers.end(); 
         ++it)

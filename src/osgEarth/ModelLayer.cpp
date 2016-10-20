@@ -205,6 +205,16 @@ ModelLayer::~ModelLayer()
     //nop
 }
 
+Config
+ModelLayer::getConfig() const
+{
+    Config layerConf = getModelLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getModelLayerOptions().driver()->getDriver());
+    layerConf.key() = "model";
+    return layerConf;
+}
+
 void
 ModelLayer::copyOptions()
 {

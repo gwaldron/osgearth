@@ -205,13 +205,16 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn( output, statement, newStatement );
     }
 
-    // Finally, process any replacements.
+    // Process any replacements.
     for(ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
         i != package._replaces.end();
         ++i)
     {
         osgEarth::replaceIn( output, i->first, i->second );
     }
+
+    // Lastly, remove any CRs
+    osgEarth::replaceIn(output, "\r", "");
 
     return output;
 }
@@ -259,6 +262,9 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn(output, "%EOL%",   "\n");
         osgEarth::replaceIn(output, "%QUOTE%", "\"");
     }
+
+    // Lastly, remove any CRs
+    osgEarth::replaceIn(output, "\r", "");
 
     return output;
 }

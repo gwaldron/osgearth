@@ -23,7 +23,7 @@
 
 using namespace osgEarth;
 
-#define LC "[TextureCompositor] "
+#define LC "[TextureResources] "
 
 
 TextureCompositor::TextureCompositor()

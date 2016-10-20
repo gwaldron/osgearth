@@ -96,8 +96,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             ProgressCallback* progress);
 
     protected:
-        const MaskLayerVector&                    _maskLayers;
-        const ModelLayerVector&                   _modelLayers;
+        MaskLayerVector                           _maskLayers;
+        ModelLayerVector                          _modelLayers;
         int                                       _textureImageUnit;
         bool                                      _optimizeTriOrientation;
         const MPTerrainEngineOptions&             _options;

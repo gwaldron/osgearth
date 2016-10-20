@@ -83,8 +83,10 @@ ElevationQuery::gatherPatchLayers()
 {
     // cache a vector of terrain patch models.
     _patchLayers.clear();
-    for(ModelLayerVector::const_iterator i = _mapf.modelLayers().begin();
-        i != _mapf.modelLayers().end();
+    ModelLayerVector modelLayers;
+    _mapf.getLayers(modelLayers);
+    for(ModelLayerVector::const_iterator i = modelLayers.begin();
+        i != modelLayers.end();
         ++i)
     {
         if ( i->get()->isTerrainPatch() )

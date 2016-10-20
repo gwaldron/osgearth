@@ -465,12 +465,12 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     _batchUpdateInProgress = true;
 
     ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
+    map->getLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
         addElevationLayer( i->get() );
 
     ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    map->getLayers( imageLayers );
     for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         addImageLayer( i->get() );
 
@@ -729,10 +729,16 @@ MPTerrainEngineNode::getKeyNodeFactory()
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+        MaskLayerVector maskLayers;
+        _update_mapf->getLayers(maskLayers);
+
+        ModelLayerVector modelLayers;
+        _update_mapf->getLayers(modelLayers);
+
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
+            maskLayers,
+            modelLayers,
             _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
@@ -837,9 +843,15 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+    MaskLayerVector maskLayers;
+    _update_mapf->getLayers(maskLayers);
+
+    ModelLayerVector modelLayers;
+    _update_mapf->getLayers(modelLayers);
+
     osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-        _update_mapf->terrainMaskLayers(),
-        _update_mapf->modelLayers(),
+        maskLayers,
+        modelLayers,
         _primaryUnit,
         optimizeTriangleOrientation,
         _terrainOptions );
@@ -881,30 +893,31 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             // then apply the actual change:
             switch( change.getAction() )
             {
-            case MapModelChange::ADD_IMAGE_LAYER:
-                addImageLayer( change.getImageLayer() );
+            case MapModelChange::ADD_LAYER:
+                if (change.getImageLayer())
+                    addImageLayer(change.getImageLayer());
+                else if (change.getElevationLayer())
+                    addElevationLayer(change.getElevationLayer());
                 break;
-            case MapModelChange::REMOVE_IMAGE_LAYER:
-                removeImageLayer( change.getImageLayer() );
+
+            case MapModelChange::REMOVE_LAYER:
+                if (change.getImageLayer())
+                    removeImageLayer(change.getImageLayer());
+                else if (change.getElevationLayer())
+                    removeElevationLayer(change.getElevationLayer());
                 break;
-            case MapModelChange::ADD_ELEVATION_LAYER:
-                addElevationLayer( change.getElevationLayer() );
+
+            case MapModelChange::MOVE_LAYER:
+                if (change.getImageLayer())
+                    moveImageLayer(change.getFirstIndex(), change.getSecondIndex());
+                else if (change.getElevationLayer())
+                    moveElevationLayer(change.getFirstIndex(), change.getSecondIndex());
                 break;
-            case MapModelChange::REMOVE_ELEVATION_LAYER:
-                removeElevationLayer( change.getElevationLayer() );
-                break;
-            case MapModelChange::MOVE_IMAGE_LAYER:
-                moveImageLayer( change.getFirstIndex(), change.getSecondIndex() );
-                break;
-            case MapModelChange::MOVE_ELEVATION_LAYER:
-                moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
-                break;
+
             case MapModelChange::TOGGLE_ELEVATION_LAYER:
                 toggleElevationLayer( change.getElevationLayer() );
                 break;
-            case MapModelChange::ADD_MODEL_LAYER:
-            case MapModelChange::REMOVE_MODEL_LAYER:
-            case MapModelChange::MOVE_MODEL_LAYER:
+
             default: 
                 break;
             }
@@ -1094,11 +1107,14 @@ MPTerrainEngineNode::updateState()
                     const char* I = "    ";
 
                     // second, install the per-layer color filter functions AND shared layer bindings.
+                    ImageLayerVector imageLayers;
+                    _update_mapf->getLayers(imageLayers);
+
                     bool ifStarted = false;
-                    int numImageLayers = _update_mapf->imageLayers().size();
+                    int numImageLayers = imageLayers.size();
                     for( int i=0; i<numImageLayers; ++i )
                     {
-                        ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                        ImageLayer* layer = imageLayers[i].get();
                         if ( layer->getEnabled() )
                         {
                             // install Color Filter function calls:
@@ -1195,10 +1211,13 @@ MPTerrainEngineNode::updateState()
             // assign the uniforms for each shared layer.
             if ( _update_mapf )
             {
-                int numImageLayers = _update_mapf->imageLayers().size();
+                ImageLayerVector imageLayers;
+                _update_mapf->getLayers(imageLayers);
+
+                int numImageLayers = imageLayers.size();
                 for( int i=0; i<numImageLayers; ++i )
                 {
-                    ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                    ImageLayer* layer = imageLayers[i].get();
                     if ( layer->getEnabled() && layer->isShared() )
                     {
                         terrainStateSet->addUniform( new osg::Uniform(

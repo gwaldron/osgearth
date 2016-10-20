@@ -40,10 +40,11 @@ _mapInfo             ( rhs._mapInfo ),
 _parts               ( rhs._parts ),
 _highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
-_imageLayers         ( rhs._imageLayers ),
-_elevationLayers     ( rhs._elevationLayers ),
-_modelLayers         ( rhs._modelLayers ),
-_maskLayers          ( rhs._maskLayers )
+_layers              ( rhs._layers )
+//_imageLayers         ( rhs._imageLayers ),
+//_elevationLayers     ( rhs._elevationLayers ),
+//_modelLayers         ( rhs._modelLayers ),
+//_maskLayers          ( rhs._maskLayers )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -77,10 +78,11 @@ MapFrame::isValid() const
 void
 MapFrame::setMap(const Map* map)
 {
-    _imageLayers.clear();
-    _elevationLayers.clear();
-    _modelLayers.clear();
-    _maskLayers.clear();
+    _layers.clear();
+    //_imageLayers.clear();
+    //_elevationLayers.clear();
+    //_modelLayers.clear();
+    //_maskLayers.clear();
 
     _map = map;
     if ( map )
@@ -102,6 +104,7 @@ bool
 MapFrame::sync()
 {
     bool changed = false;
+    _elevationLayers.clear();
 
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
@@ -114,11 +117,20 @@ MapFrame::sync()
     }
     else
     {
-        _imageLayers.clear();
-        _elevationLayers.clear();
-        _modelLayers.clear();
-        _maskLayers.clear();
+        _layers.clear();
+        //_imageLayers.clear();
+        //_elevationLayers.clear();
+        //_modelLayers.clear();
+        //_maskLayers.clear();
     }
+
+    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
+        ElevationLayer* e = dynamic_cast<ElevationLayer*>(i->get());
+        if (e)
+            _elevationLayers.push_back(e);
+    }
+    
 
     return changed;
 }
@@ -152,23 +164,36 @@ MapFrame::refreshComputedValues()
     // cache the min LOD based on all image/elev layers
     _highestMinLevel = 0;
 
-    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); 
-        i != _imageLayers.end();
-        ++i)
+    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
-        const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
-        if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
-            _highestMinLevel = minLevel.value();
+        TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(i->get());
+        if (terrainLayer)
+        {
+            const optional<unsigned>& minLevel = terrainLayer->getTerrainLayerRuntimeOptions().minLevel();
+            if (minLevel.isSet() && minLevel.value() > _highestMinLevel)
+            {
+                _highestMinLevel = minLevel.value();
+            }
+        }
     }
 
-    for(ElevationLayerVector::const_iterator i = _elevationLayers.begin(); 
-        i != _elevationLayers.end();
-        ++i)
-    {
-        const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
-        if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
-            _highestMinLevel = minLevel.value();
-    }
+    //for(ImageLayerVector::const_iterator i = _imageLayers.begin(); 
+    //    i != _imageLayers.end();
+    //    ++i)
+    //{
+    //    const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
+    //    if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
+    //        _highestMinLevel = minLevel.value();
+    //}
+
+    //for(ElevationLayerVector::const_iterator i = _elevationLayers.begin(); 
+    //    i != _elevationLayers.end();
+    //    ++i)
+    //{
+    //    const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
+    //    if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
+    //        _highestMinLevel = minLevel.value();
+    //}
 }
 
 bool
@@ -195,48 +220,47 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
 }
 
 
-int
-MapFrame::indexOf( ImageLayer* layer ) const
-{
-    ImageLayerVector::const_iterator i = std::find( _imageLayers.begin(), _imageLayers.end(), layer );
-    return i != _imageLayers.end() ? i - _imageLayers.begin() : -1;
-}
+//int
+//MapFrame::indexOf( ImageLayer* layer ) const
+//{
+//    ImageLayerVector::const_iterator i = std::find( _imageLayers.begin(), _imageLayers.end(), layer );
+//    return i != _imageLayers.end() ? i - _imageLayers.begin() : -1;
+//}
+//
+//
+//int
+//MapFrame::indexOf( ElevationLayer* layer ) const
+//{
+//    ElevationLayerVector::const_iterator i = std::find( _elevationLayers.begin(), _elevationLayers.end(), layer );
+//    return i != _elevationLayers.end() ? i - _elevationLayers.begin() : -1;
+//}
+//
+//
+//int
+//MapFrame::indexOf( ModelLayer* layer ) const
+//{
+//    ModelLayerVector::const_iterator i = std::find( _modelLayers.begin(), _modelLayers.end(), layer );
+//    return i != _modelLayers.end() ? i - _modelLayers.begin() : -1;
+//}
 
-
-int
-MapFrame::indexOf( ElevationLayer* layer ) const
-{
-    ElevationLayerVector::const_iterator i = std::find( _elevationLayers.begin(), _elevationLayers.end(), layer );
-    return i != _elevationLayers.end() ? i - _elevationLayers.begin() : -1;
-}
-
-
-int
-MapFrame::indexOf( ModelLayer* layer ) const
-{
-    ModelLayerVector::const_iterator i = std::find( _modelLayers.begin(), _modelLayers.end(), layer );
-    return i != _modelLayers.end() ? i - _modelLayers.begin() : -1;
-}
-
-
-ImageLayer*
-MapFrame::getImageLayerByUID( UID uid ) const
-{
-    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
-        if ( i->get()->getUID() == uid )
-            return i->get();
-    return 0L;
-}
-
-
-ImageLayer*
-MapFrame::getImageLayerByName( const std::string& name ) const
-{
-    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
-        if ( i->get()->getName() == name )
-            return i->get();
-    return 0L;
-}
+//ImageLayer*
+//MapFrame::getImageLayerByUID( UID uid ) const
+//{
+//    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+//        if ( i->get()->getUID() == uid )
+//            return i->get();
+//    return 0L;
+//}
+//
+//
+//ImageLayer*
+//MapFrame::getImageLayerByName( const std::string& name ) const
+//{
+//    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+//        if ( i->get()->getName() == name )
+//            return i->get();
+//    return 0L;
+//}
 
 
 bool
@@ -246,70 +270,39 @@ MapFrame::isCached( const TileKey& key ) const
     if ( _map.valid() && _map->getCache() == 0L )
         return false;
 
-    //Check to see if the tile will load fast
-    // Check the imagery layers
-    for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
-    {   
-        const ImageLayer* layer = i->get();
-
-        if (!layer->getEnabled())
-            continue;
-
-        // If we're cache only we should be fast
-        if (layer->getCacheSettings()->cachePolicy()->isCacheOnly())
-            continue;
-
-        // no-cache? always slow
-        if (layer->getCacheSettings()->cachePolicy()->isCacheDisabled())
-            return false;
-
-        // No tile source? skip it
-        osg::ref_ptr< TileSource > source = layer->getTileSource();
-        if (!source.valid())
-            continue;
-
-        //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key ) )
-            continue;
-
-        //If no data is available on this tile, we'll be fast
-        if ( !source->hasData( key ) )
-            continue;
-
-        if ( !layer->isCached(key) )
-            return false;
-    }
-
-    for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
+    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
-        const ElevationLayer* layer = i->get();
+        TerrainLayer* layer = dynamic_cast<TerrainLayer*>(i->get());
+        if (layer)
+        {
+            if (!layer->getEnabled())
+                continue;
 
-        if (!layer->getEnabled())
-            continue;
+            // If we're cache only we should be fast
+            if (layer->getCacheSettings()->cachePolicy()->isCacheOnly())
+                continue;
 
-        //If we're cache only we should be fast
-        if (layer->getCacheSettings()->cachePolicy()->isCacheOnly())
-            continue;
+            // no-cache? always slow
+            if (layer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+                return false;
 
-        // no-cache? always high-latency.
-        if (layer->getCacheSettings()->cachePolicy()->isCacheDisabled())
-            return false;
+            // No tile source? skip it
+            osg::ref_ptr< TileSource > source = layer->getTileSource();
+            if (!source.valid())
+                continue;
 
-        osg::ref_ptr< TileSource > source = layer->getTileSource();
-        if (!source.valid())
-            continue;
+            //If the tile is blacklisted, it should also be fast.
+            if (source->getBlacklist()->contains(key))
+                continue;
 
-        //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key ) )
-            continue;
+            //If no data is available on this tile, we'll be fast
+            if (!source->hasData(key))
+                continue;
 
-        if ( !source->hasData( key ) )
-            continue;
-
-        if ( !i->get()->isCached( key ) )
-            return false;
+            if (!layer->isCached(key))
+                return false;
+        }
     }
-
     return true;
 }
 

@@ -26,6 +26,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarthUtil/SimplexNoise>
 #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
+#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 
 #include <osg/CullFace>
 #include <osg/Depth>
@@ -37,6 +38,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::SimpleOcean;
 using namespace osgEarth::Drivers::MPTerrainEngine;
+using namespace osgEarth::Drivers::RexTerrainEngine;
 
 namespace
 {
@@ -122,18 +124,22 @@ SimpleOceanNode::rebuild()
         if ( mno.enableLighting().isSet() )
             mno.enableLighting() = *mno.enableLighting();
 
-        MPTerrainEngineOptions mpoptions;
-        mpoptions.heightFieldSkirtRatio() = 0.0;      // don't want to see skirts
-        mpoptions.minLOD() = maxLOD().get(); // weird, I know
+        //MPTerrainEngineOptions terrainoptions;
+        //terrainoptions.heightFieldSkirtRatio() = 0.0;      // don't want to see skirts
+        //terrainoptions.minLOD() = maxLOD().get(); // weird, I know
+
+        RexTerrainEngineOptions terrainoptions;
 
         // so we can the surface from underwater:
-        mpoptions.clusterCulling() = false;       // want to see underwater
+        //terrainoptions.clusterCulling() = false;       // want to see underwater
 
-        mpoptions.enableBlending() = true;        // gotsta blend with the main node
+        terrainoptions.enableBlending() = true;        // gotsta blend with the main node
 
-        mpoptions.color() = baseColor().get();
+        terrainoptions.color() = baseColor().get();
 
-        mno.setTerrainOptions( mpoptions );
+        terrainoptions.tileSize() = 5;
+
+        mno.setTerrainOptions( terrainoptions );
 
         // make the ocean's map node:
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );

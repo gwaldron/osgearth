@@ -57,16 +57,9 @@ namespace
 
             if ( _terrain.lock(terrain) && _node.lock(node) )
             {
-                if ( node->getNumParents() > 0 )
-                {
-                    //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
-                    terrain->fireTileAdded( _key, node.get() );
-                    this->setKeep( false );
-                }
-                else
-                {
-                    //OE_NOTICE << LC << "Deferring onTileAdded for " << _key.str() << std::endl;
-                }
+                //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
+                terrain->fireTileAdded( _key, node.get() );
+                this->setKeep( false );
             }
             else
             {

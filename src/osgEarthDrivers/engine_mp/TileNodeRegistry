@@ -27,6 +27,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Terrain>
 #include <OpenThreads/Atomic>
 #include <map>
 #include <set>
@@ -57,7 +58,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         };
 
     public:
-        TileNodeRegistry( const std::string& name );
+        TileNodeRegistry(const std::string& name, Terrain* terrainIF);
 
         /* Enabled revisioning on TileNodes, to support incremental update. */
         void setRevisioningEnabled(bool value);
@@ -127,6 +128,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileNodeMap                       _tiles;
         OpenThreads::Atomic               _frameNumber;
         mutable Threading::Mutex          _tilesMutex;
+        osg::observer_ptr<Terrain>        _terrain;
 
         typedef std::set<TileKey> TileKeySet;
         typedef std::map<TileKey, TileKeySet> Notifications;

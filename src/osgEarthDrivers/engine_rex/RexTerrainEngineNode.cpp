@@ -403,30 +403,15 @@ RexTerrainEngineNode::dirtyTerrain()
         setupRenderBindings();
     }
 
-#if 0
     // Calculate the LOD morphing parameters:
-    double averageRadius = 0.5*(
-        _update_mapf->getMapInfo().getSRS()->getEllipsoid()->getRadiusEquator() +
-        _update_mapf->getMapInfo().getSRS()->getEllipsoid()->getRadiusPolar());
-
-    double farLOD = 
-        _terrainOptions.minTileRangeFactor().get() *
-        3.214 * averageRadius;
+    const unsigned maxLOD = 19u;
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
-        std::min( _terrainOptions.maxLOD().get(), 20u ), //19u ),
-        _terrainOptions.tileSize().get(),
-        farLOD );
-#else
-    // Calculate the LOD morphing parameters:
-    _selectionInfo.initialize(
-        0u, // always zero, not the terrain options firstLOD
-        std::min( _terrainOptions.maxLOD().get(), 20u ), //19u ),
+        std::min( _terrainOptions.maxLOD().get(), maxLOD ),
         _terrainOptions.tileSize().get(),
         _update_mapf->getMapInfo().getProfile(),        
         _terrainOptions.minTileRangeFactor().get() );
-#endif
 
     // clear out the tile registry:
     if ( _liveTiles.valid() )
@@ -615,7 +600,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    else
+    //else
     {
         TerrainEngineNode::traverse( nv );
     }

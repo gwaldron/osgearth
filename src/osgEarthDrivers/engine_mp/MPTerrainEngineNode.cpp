@@ -419,7 +419,7 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
-    _liveTiles = new TileNodeRegistry("live");
+    _liveTiles = new TileNodeRegistry("live", this->getTerrain());
     _liveTiles->setRevisioningEnabled( _terrainOptions.incrementalUpdate() == true );
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 

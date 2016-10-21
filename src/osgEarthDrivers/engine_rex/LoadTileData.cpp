@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "LoadTileData"
+#include "SurfaceNode"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Terrain>
 #include <osg/NodeVisitor>
@@ -71,7 +72,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
             tilenode->setDirty( false );
 
             // Notify listeners that we've added a tile.
-            _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode );
+            _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode->getSurfaceNode() );
 
             OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
 

@@ -5,6 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
+#pragma import_defines(OE_LIGHTING)
+
 // Atmospheric Scattering and Sun Shaders
 // Adapted from code that is Copyright (c) 2004 Sean ONeil
 
@@ -139,7 +141,11 @@ void atmos_SkyFromAtmosphere(void)
 } 
 
 void atmos_vertex_main(inout vec4 VertexVIEW) 
-{ 
+{
+#ifndef OE_LIGHTING
+    return;
+#endif
+
     // Get camera position and height 
     vVec = osg_ViewMatrixInverse[3].xyz; 
     atmos_fCameraHeight = length(vVec); 

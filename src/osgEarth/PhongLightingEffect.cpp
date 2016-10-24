@@ -27,6 +27,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/Lighting>
 
 // GL_LIGHTING is not always defined on GLES so define it.
 #ifndef GL_LIGHTING
@@ -50,21 +51,22 @@ PhongLightingEffect::PhongLightingEffect(osg::StateSet* stateset)
 void
 PhongLightingEffect::init()
 {
-    _supported = Registry::capabilities().supportsGLSL();
-    if ( _supported )
-    {
-        _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
-    }
+    // Replaced with setDefine
+    //_supported = Registry::capabilities().supportsGLSL();
+    //if ( _supported )
+    //{
+    //    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
+    //}
 }
 
-void
-PhongLightingEffect::setCreateLightingUniform(bool value)
-{
-    if ( !value )
-    {        
-        _lightingUniform = 0L;
-    }
-}
+//void
+//PhongLightingEffect::setCreateLightingUniform(bool value)
+//{
+//    if ( !value )
+//    {        
+//        _lightingUniform = 0L;
+//    }
+//}
 
 PhongLightingEffect::~PhongLightingEffect()
 {
@@ -84,8 +86,10 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         shaders.load(vp, shaders.PhongLightingVertex);
         shaders.load(vp, shaders.PhongLightingFragment);
 
-        if ( _lightingUniform.valid() )
-            stateset->addUniform( _lightingUniform.get() );
+        stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
+
+        //if ( _lightingUniform.valid() )
+        //    stateset->addUniform( _lightingUniform.get() );
     }
 }
 
@@ -113,8 +117,10 @@ PhongLightingEffect::detach(osg::StateSet* stateset)
 {
     if ( stateset && _supported )
     {
-        if ( _lightingUniform.valid() )
-            stateset->removeUniform( _lightingUniform.get() );
+        //if ( _lightingUniform.valid() )
+        //    stateset->removeUniform( _lightingUniform.get() );
+
+        stateset->removeDefine(OE_LIGHTING_DEFINE);
 
         VirtualProgram* vp = VirtualProgram::get( stateset );
         if ( vp )

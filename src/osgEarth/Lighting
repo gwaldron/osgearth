@@ -31,6 +31,9 @@
 #include <osg/Material>
 #include <set>
 
+// Use this with StateSet::setDefine to toggle lighting in osgEarth lighting shaders.
+#define OE_LIGHTING_DEFINE "OE_LIGHTING"
+
 namespace osgEarth
 {
     /**

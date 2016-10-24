@@ -4,7 +4,9 @@
 #pragma vp_entryPoint oe_phong_fragment
 #pragma vp_location   fragment_lighting
 
-uniform bool oe_mode_GL_LIGHTING; 
+#pragma import_defines(OE_LIGHTING)
+
+//uniform bool oe_mode_GL_LIGHTING; 
 
 in vec3 oe_phong_vertexView3; 
 
@@ -50,8 +52,11 @@ uniform osg_MaterialParameters osg_FrontMaterial;
 
 void oe_phong_fragment(inout vec4 color) 
 {         
-    if ( oe_mode_GL_LIGHTING == false )
-        return; 
+#ifndef OE_LIGHTING
+    return;
+#endif
+    //if ( oe_mode_GL_LIGHTING == false )
+    //    return; 
 
     // See:
     // https://en.wikipedia.org/wiki/Phong_reflection_model

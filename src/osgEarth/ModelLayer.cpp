@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/Lighting>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -465,8 +466,9 @@ ModelLayer::setLightingEnabledNoLock(bool value)
 
             if ( Registry::capabilities().supportsGLSL() )
             {
-                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
-                    GL_LIGHTING, value ) );
+                stateset->setDefine(OE_LIGHTING_DEFINE, value);
+                //stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                //    GL_LIGHTING, value ) );
             }
         }
     }

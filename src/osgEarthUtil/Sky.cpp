@@ -26,6 +26,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
+#include <osgEarth/Lighting>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -103,10 +104,14 @@ void
 SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
 {
     _lightingValue = value;
-    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
-        GL_LIGHTING, value );
+    //_lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
+    //    GL_LIGHTING, value );
+    //this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
 
-    this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
+    if (value & osg::StateAttribute::INHERIT)
+        this->getOrCreateStateSet()->removeDefine(OE_LIGHTING_DEFINE);
+    else
+        this->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, value);
 }
 
 void

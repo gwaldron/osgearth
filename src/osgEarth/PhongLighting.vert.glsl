@@ -4,10 +4,16 @@
 #pragma vp_entryPoint oe_phong_vertex
 #pragma vp_location   vertex_view
 
+#pragma import_defines(OE_LIGHTING)
+
 
 out vec3 oe_phong_vertexView3;
 
 void oe_phong_vertex(inout vec4 VertexVIEW)
 {
+#ifndef OE_LIGHTING
+    return;
+#endif
+
     oe_phong_vertexView3 = VertexVIEW.xyz / VertexVIEW.w;
 }

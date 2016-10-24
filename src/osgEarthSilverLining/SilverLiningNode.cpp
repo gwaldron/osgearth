@@ -58,7 +58,7 @@ _callback(callback)
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
     _lighting = new PhongLightingEffect();
-    _lighting->setCreateLightingUniform( false );
+    //_lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
     // need update traversal.

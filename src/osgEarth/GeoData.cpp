@@ -2154,9 +2154,9 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, un
     double xstep = div / (double)(width-1);
     double ystep = div / (double)(height-1);
     
-    for( x = x0, col = 0; col < width; x += xstep, col++ )
+    for( x = x0, col = 0; col < (int)width; x += xstep, col++ )
     {
-        for( y = y0, row = 0; row < height; y += ystep, row++ )
+        for( y = y0, row = 0; row < (int)height; y += ystep, row++ )
         {
             float height = HeightFieldUtils::getHeightAtNormalizedLocation(
                 _heightField.get(), x, y, interpolation );

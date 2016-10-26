@@ -22,6 +22,7 @@
 
 #include <osgEarth/Layer>
 #include <osg/RenderInfo>
+#include <osg/Texture>
 
 namespace osgEarth
 {
@@ -32,12 +33,22 @@ namespace osgEarth
     class OSGEARTH_EXPORT PatchLayer : public Layer
     {
     public:
+        struct DrawInfo {
+            const TileKey* key;
+            float         range;
+            osg::Texture* colorTexture;
+            osg::Texture* elevationTexture;
+            osg::Texture* materialTexture;
+            osg::Texture* normalTexture;
+            DrawInfo() : range(0.0f), colorTexture(0), elevationTexture(0), materialTexture(0), normalTexture(0) { }
+        };
+
         /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
         struct DrawCallback : public osg::Referenced
         {
-            virtual void draw(osg::RenderInfo& ri, float range) =0;
+            virtual void draw(osg::RenderInfo& ri, const DrawInfo& di) =0;
         };
 
 

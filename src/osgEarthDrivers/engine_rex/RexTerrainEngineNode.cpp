@@ -404,7 +404,7 @@ RexTerrainEngineNode::dirtyTerrain()
     }
 
     // Calculate the LOD morphing parameters:
-    const unsigned maxLOD = 19u;
+    unsigned maxLOD = _terrainOptions.maxLOD().getOrUse(19u);
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
@@ -511,6 +511,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
+        //todo: usused?
         VisitorData::store(nv, ENGINE_CONTEXT_TAG, this->getEngineContext());
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
@@ -721,7 +722,7 @@ RexTerrainEngineNode::createTile( const TileKey& key )
 
     // ALWAYS use 257x257 b/c that is what rex always uses.
     osg::ref_ptr< osg::HeightField > out_hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(), 257, 257, true );
+            key.getExtent(), 257, 257, 0u, true );
 
     sampleKey = key;
 
@@ -750,7 +751,7 @@ RexTerrainEngineNode::createTile( const TileKey& key )
     if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
-        out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257);
+        out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 257, 257, 0u);
         sampleKey = key;
     }
 #endif

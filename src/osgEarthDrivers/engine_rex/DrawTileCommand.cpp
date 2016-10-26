@@ -96,7 +96,14 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
 
     if (_drawCallback)
     {
-        _drawCallback->draw(ri, _range);
+        PatchLayer::DrawInfo di;
+        di.colorTexture = samplers[SamplerBinding::COLOR]._texture.get();
+        di.elevationTexture = samplers[SamplerBinding::ELEVATION]._texture.get();
+        di.materialTexture = samplers[SamplerBinding::MATERIAL]._texture.get();
+        di.normalTexture = samplers[SamplerBinding::NORMAL]._texture.get();
+        di.key = &_key;
+        di.range = _range;
+        _drawCallback->draw(ri, di);
     }
 
     else

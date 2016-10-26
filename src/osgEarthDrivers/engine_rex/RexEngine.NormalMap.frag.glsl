@@ -6,8 +6,6 @@
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
 
-#ifdef OE_TERRAIN_RENDER_NORMAL_MAP
-
 // import terrain SDK
 vec4 oe_terrain_getNormalAndCurvature(in vec2);
 
@@ -20,6 +18,10 @@ in vec3 oe_normalMapBinormal;
 
 void oe_normalMapFragment(inout vec4 color)
 {
+#ifndef OE_TERRAIN_RENDER_NORMAL_MAP
+    return;
+#endif
+
     vec4 encodedNormal = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
     vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
 
@@ -38,7 +40,3 @@ void oe_normalMapFragment(inout vec4 color)
     // visualize normals:
     //color.rgb = encodedNormal.xyz;
 }
-
-#else
-void oe_normalMapFragment(inout vec4 color) { }
-#endif

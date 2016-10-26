@@ -807,7 +807,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     int tileSize = _terrainOptions.tileSize().get();    
-    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
+    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize, 0u );
 
     TileKey sampleKey = key;
     bool populated = false;
@@ -832,7 +832,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     {
         // We have no heightfield so just create a reference heightfield.
         int tileSize = _terrainOptions.tileSize().get();
-        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
+        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize, 0u );
         sampleKey = key;
     }
 

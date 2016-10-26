@@ -27,6 +27,8 @@ float oe_terrain_getElevation(in vec2 uv);
 
 out float oe_layer_rangeOpacity;
 
+float oe_terrain_getElevation(in vec2 uv);
+
 // Vertex Markers:
 #define MASK_MARKER_DISCARD  0.0
 #define MASK_MARKER_NORMAL   1.0

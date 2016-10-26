@@ -279,8 +279,19 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     if ( !out_hf.valid() )
     {
         // This sets the elevation tile size; query size for all tiles.
+
+#if 0
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(), 257, 257, true );
+#else
+
+        out_hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(),
+            257, 257, 1u, true);
+
+#endif
+
+
     }
 
     bool populated = frame.populateHeightField(

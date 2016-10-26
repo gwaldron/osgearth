@@ -78,6 +78,7 @@ osgEarth Sample - Annotations
                 stroke-width:       2px;
                 altitude-clamping:  terrain-scene;
                 altitude-binding:   vertex;
+                render-depth-offset-auto: true;
             </style>
         </circle>
         <label text="scene-clamped circle" lat="22.074" long="-159.606"/>

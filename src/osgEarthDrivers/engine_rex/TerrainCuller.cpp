@@ -77,9 +77,6 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         tile._morphConstants = tileNode->getMorphConstants();
         tile._key = tileNode->getTileKey();
 
-        // TODO: find a faster way?
-        //osg::Matrix im;
-        //im.invert(tile._matrix);
 #if 1
         osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
         tile._range = getDistanceToViewPoint(c, true);
@@ -91,8 +88,20 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         const osg::Image* elevRaster = tileNode->getElevationRaster();
         if (elevRaster)
         {
+            //float size = (float)elevRaster->s();
+            //tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+
+            // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+            // instead of on edge (as we do with color, etc.)
+            //
+            // This starts out as:
+            //   scale = (size-1)/size : this shrinks the sample area by one texel since we're sampling on center
+            //   bias = 0.5/size : this shifts the sample area over 1/2 texel to the center.
+            //
+            // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
+            // remove the border, and shift an extra texel over as well. Giving us this:
             float size = (float)elevRaster->s();
-            tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
+            tile._elevTexelCoeff.set((size - 3.0) / size, 1.5 / size);
         }
 
         return &tile;

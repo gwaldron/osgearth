@@ -405,7 +405,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
     {
         // empty HF must be at least 2x2 for normal texture gen to work
         hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(), EMPTY_NORMAL_MAP_SIZE, EMPTY_NORMAL_MAP_SIZE, true );
+            key.getExtent(), EMPTY_NORMAL_MAP_SIZE, EMPTY_NORMAL_MAP_SIZE, 0u, true );
 
         model->_normalData = TileModel::NormalData(
             hf,
@@ -499,7 +499,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     // as fallback data of course)
     if ( !model->_elevationData.getHeightField() )
     {
-        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15, 0u );
         model->_elevationData = TileModel::ElevationData(
             hf,
             GeoLocator::createForKey(key, frame.getMapInfo()),

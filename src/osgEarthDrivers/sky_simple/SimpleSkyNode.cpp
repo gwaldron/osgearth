@@ -261,8 +261,10 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         stateset->addUniform( _lightPosUniform.get() );
 
         // default GL_LIGHTING uniform setting
-        stateset->addUniform(
-            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
+        //stateset->addUniform(
+        //    Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
+
+        stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
 
         // make the uniforms and the terrain lighting shaders.
         makeSceneLighting();
@@ -452,7 +454,7 @@ SimpleSkyNode::makeSceneLighting()
     else
     {
         _phong = new PhongLightingEffect();
-        _phong->setCreateLightingUniform( false );
+        //_phong->setCreateLightingUniform( false );
         _phong->attach( stateset );
         OE_INFO << LC << "Using Phong lighting\n";
     }

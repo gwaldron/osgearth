@@ -1,0 +1,78 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_TERRAIN_DRAWABLE_H
+#define OSGEARTH_REX_TERRAIN_DRAWABLE_H 1
+
+#include "RenderBindings"
+#include "DrawState"
+#include "LayerDrawable"
+
+#include <osgEarth/MapFrame>
+#include <osg/StateSet>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * Main data structure assembled by the TerrainCuller that contains
+     * everything necessary to render one frame of the terrain.
+     */
+    class TerrainRenderData
+    {
+    public:
+        TerrainRenderData() :
+            _bindings(0L) { }
+
+        /** Set up the map layers before culling the terrain */
+        void setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultSS);
+
+        /** Optimize for best state sharing (when using geometry pooling) */
+        void sortDrawCommands();
+
+        /** Add a Drawable for a layer. Add these in the order you wish to render them. */
+        LayerDrawable* addLayerDrawable(const Layer*);
+
+        /** Layers to draw */
+        LayerDrawableList& layers() { return _layerList; }
+        const LayerDrawableList& layers() const { return _layerList; }
+
+        /** Look up a LayerDrawable by its source layer UID. */
+        osg::ref_ptr<LayerDrawable>& layer(UID uid) { return _layerMap[uid]; }
+
+        // Draw state shared by all layers during one frame.
+        osg::ref_ptr<DrawState> _drawState;
+
+        // Layers that are not part of the Tile Model, like overlays or
+        // dynamically draw layers... probably need a better nomenclature 
+        LayerVector& tileLayers() { return _tileLayers; }
+        PatchLayerVector& patchLayers() { return _patchLayers; }
+        
+    private:
+
+        LayerDrawableList     _layerList;
+        LayerDrawableMap      _layerMap;
+        const RenderBindings* _bindings;
+        LayerVector           _tileLayers;
+        PatchLayerVector      _patchLayers;
+    };
+
+} } } // namespace 
+
+#endif // OSGEARTH_REX_TERRAIN_DRAWABLE_H

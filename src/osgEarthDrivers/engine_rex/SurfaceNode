@@ -23,6 +23,7 @@
 #include "GeometryPool"
 #include "RenderBindings"
 #include "TileDrawable"
+#include "TileRenderModel"
 
 #include <osgEarth/MapInfo>
 #include <osgEarth/Horizon>
@@ -53,7 +54,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
 
     /**
-     * SurfaceNode holds the geometry of the terrain surface.
+     * SurfaceNode holds the geometry and transform information
+     * for one terrain tile surface.
      */
     class SurfaceNode : public osg::MatrixTransform
     {
@@ -72,8 +74,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         TileDrawable* getDrawable() const { return _drawable.get(); }
 
-        inline bool isVisible(osgUtil::CullVisitor* cv) const {
-            return _horizonCuller.isVisible(cv->getViewPointLocal());
+        inline bool isVisibleFrom(const osg::Vec3& viewpoint) const {
+            return _horizonCuller.isVisible(viewpoint);
         }
         
         // A box can have 4 children. 
@@ -91,15 +93,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setDebugText(const std::string& strText);
 
+        osg::BoundingSphere computeBound() const;
+
     protected:
         virtual ~SurfaceNode() { }
 
-        TileKey                    _tileKey;
-        osg::BoundingBox           _bbox;
-        osg::ref_ptr<TileDrawable> _drawable;
-        osg::ref_ptr<osg::Geode>   _surfaceGeode;
-
-        osg::ref_ptr<osg::Geode>    _debugGeode;
+        TileKey                     _tileKey;
+        osg::ref_ptr<TileDrawable>  _drawable;
+        osg::ref_ptr<osg::Group>    _debugGeode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
         
@@ -115,8 +116,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         typedef VectorPoints (ChildrenCorners) [4];
         ChildrenCorners _childrenCorners;
-
-        //osg::ref_ptr<osg::RefMatrix> _matrix;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -552,17 +552,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
     }
 
-    // Install a contour map effect.
-    if (args.read("--contourmap"))
-    {
-        mapNode->addExtension(Extension::create("contourmap", ConfigOptions()));
-
-        // with the cmdline switch, hids all the image layer so we can see the contour map.
-        for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
-            mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
-        }
-    }
-
     // Generic named value uniform with min/max.
     VBox* uniformBox = 0L;
     while( args.find( "--uniform" ) >= 0 )

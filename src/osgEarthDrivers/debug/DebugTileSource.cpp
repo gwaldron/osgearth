@@ -109,18 +109,28 @@ public:
         {
             buf << key.str();
         }        
+
+        double r = key.getExtent().getBoundingGeoCircle().getRadius();
+        buf << "\nr = " << (int)r << "m";
         
         std::string text;
         text = buf.str();
 
         unsigned x = 10, y = 10;
 
-        osgText::FontResolution resolution(32, 32);
+        int res = 32;
+        osgText::FontResolution resolution(res, res);
         for( unsigned i=0; i<text.length(); ++i )
         {
-            osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
-            copySubImageAndColorize( glyph, image, x, y, _color );
-            x += glyph->s() + 1;
+            if (text.at(i) == '\n') {
+                y += res + 10;
+                x = 10;
+            }
+            else {            
+                osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
+                copySubImageAndColorize( glyph, image, x, y, _color );
+                x += glyph->s() + 1;
+            }
         }
 
         return image;

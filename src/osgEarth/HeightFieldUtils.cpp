@@ -425,13 +425,20 @@ osg::HeightField*
 HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
                                              unsigned         numCols,
                                              unsigned         numRows,
+                                             unsigned         border,
                                              bool             expressAsHAE)
 {
     osg::HeightField* hf = new osg::HeightField();
-    hf->allocate( numCols, numRows );
-    hf->setOrigin( osg::Vec3d( ex.xMin(), ex.yMin(), 0.0 ) );
-    hf->setXInterval( (ex.xMax() - ex.xMin())/(double)(numCols-1) );
-    hf->setYInterval( (ex.yMax() - ex.yMin())/(double)(numRows-1) );
+
+    hf->allocate( numCols + 2*border, numRows + 2*border );
+
+    hf->setXInterval( ex.width() / (double)(numCols-1) );
+    hf->setYInterval( ex.height() / (double)(numRows-1) );
+
+    hf->setOrigin(osg::Vec3d(
+        ex.xMin() - hf->getXInterval()*(double)border,
+        ex.yMin() - hf->getYInterval()*(double)border,
+        0.0 ) );
 
     const VerticalDatum* vdatum = ex.isValid() ? ex.getSRS()->getVerticalDatum() : 0L;
 
@@ -444,12 +451,15 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
         double lonInterval = geodeticExtent.width() / (double)(numCols-1);
         double latInterval = geodeticExtent.height() / (double)(numRows-1);
 
-        for( unsigned r=0; r<numRows; ++r )
+        double latStart = latMin - latInterval*(double)border;
+        double lonStart = lonMin - lonInterval*(double)border;
+
+        for( unsigned r=0; r<hf->getNumRows(); ++r )
         {            
-            double lat = latMin + latInterval*(double)r;
-            for( unsigned c=0; c<numCols; ++c )
+            double lat = latStart + latInterval*(double)r;
+            for( unsigned c=0; c<hf->getNumColumns(); ++c )
             {
-                double lon = lonMin + lonInterval*(double)c;
+                double lon = lonStart + lonInterval*(double)c;
                 double offset = vdatum->msl2hae(lat, lon, 0.0);
                 hf->setHeight( c, r, offset );
             }
@@ -457,11 +467,12 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
     }
     else
     {
-        hf->getFloatArray()->assign(numCols*numRows, 0.0f);
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), 0.0f);
     }
 
-    hf->setBorderWidth( 0 );
-    return hf;    
+    hf->setBorderWidth( border );
+
+    return hf;
 }
 
 void
@@ -654,9 +665,9 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             n.normalize();
 
             // calculate and encode curvature (2nd derivative of elevation)
-            float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
-            float D = (0.5*(west.z()+east.z()) - centerHeight) * L2inv;
-            float E = (0.5*(south.z()+north.z()) - centerHeight) * L2inv;
+            //float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
+            float D = (0.5*(west.z()+east.z()) - centerHeight) / (sIntervalMeters*sIntervalMeters); //* L2inv;
+            float E = (0.5*(south.z()+north.z()) - centerHeight) / (tIntervalMeters*tIntervalMeters); //* L2inv;
             float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
 
             // encode for RGBA [0..1]

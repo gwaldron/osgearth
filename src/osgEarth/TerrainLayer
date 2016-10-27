@@ -214,7 +214,7 @@ namespace osgEarth
 
         virtual ~TerrainLayer();
 
-    public:
+    public: // Layer
 
         /** Opens the layer and initializes the data source. */
         const Status& open();
@@ -223,23 +223,10 @@ namespace osgEarth
         const Status& getStatus() const { return _status; }
 
         /**
-         * The options data connected to this layer.
-         */
-        const TerrainLayerOptions& getInitialOptions() const { return _initOptions; }
-
-        const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return *_runtimeOptions; }
-
-        /**
          * Whether to use this layer. Note, a layer is enabled/disabled once and its
          * status cannot be changed.
          */
-        bool getEnabled() const { return *_runtimeOptions->enabled(); }
-
-        /**
-         * Whether to draw (or otherwise use) this layer.
-         */
-        void setVisible( bool value );
-        bool getVisible() const { return getEnabled() && *_runtimeOptions->visible(); }
+        bool getEnabled() const { return *_runtimeOptions->enabled(); }        
 
         /**
          * Gets the readable name of the map layer.
@@ -250,6 +237,21 @@ namespace osgEarth
 		 * Sets the readable name of the map layer
 		 */
 		void setName( const std::string& name ) { _runtimeOptions->name() = name; }
+
+    public:
+
+        /**
+         * The options data connected to this layer.
+         */
+        const TerrainLayerOptions& getInitialOptions() const { return _initOptions; }
+
+        const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return *_runtimeOptions; }
+
+        /**
+         * Whether to draw (or otherwise use) this layer.
+         */
+        void setVisible( bool value );
+        bool getVisible() const { return getEnabled() && *_runtimeOptions->visible(); }
 
         /**
          * Gets the profile of this MapLayer

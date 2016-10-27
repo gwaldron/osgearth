@@ -95,7 +95,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         // MSL=0 reference heightfield instead.
         if ( !out_hf.valid() )
         {
-            out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), _tileSize, _tileSize );
+            out_hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), _tileSize, _tileSize, 0u );
         }
 
         // Next, populate it with data from the Map. The map will overwrite our starting

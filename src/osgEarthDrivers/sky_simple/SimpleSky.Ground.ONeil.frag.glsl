@@ -5,6 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.8
 
+#pragma import_defines(OE_LIGHTING)
+
 uniform bool oe_mode_GL_LIGHTING; 
 uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
 uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
@@ -58,8 +60,11 @@ uniform osg_MaterialParameters osg_FrontMaterial;
 
 void atmos_fragment_main(inout vec4 color) 
 { 
-    if ( oe_mode_GL_LIGHTING == false )
-        return; 
+#ifndef OE_LIGHTING
+    return;
+#endif
+    //if ( oe_mode_GL_LIGHTING == false )
+    //    return; 
 
     // See:
     // https://en.wikipedia.org/wiki/Phong_reflection_model

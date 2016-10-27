@@ -226,9 +226,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     else
                     {   
                         // notify the Terrain interface of a new tile
-                        osg::Timer_t start = osg::Timer::instance()->tick();
-                        engineNode->getTerrain()->notifyTileAdded(key, node.get());
-                        osg::Timer_t end = osg::Timer::instance()->tick();
+                        // moved this to TileNodeRegistry::add
+                        //osg::Timer_t start = osg::Timer::instance()->tick();
+                        //engineNode->getTerrain()->notifyTileAdded(key, node.get());
+                        //osg::Timer_t end = osg::Timer::instance()->tick();
                     }
                     
                     return ReadResult( node.get(), ReadResult::FILE_LOADED );

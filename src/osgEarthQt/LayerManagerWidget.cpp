@@ -749,21 +749,21 @@ void LayerManagerWidget::refresh()
   if (_type == IMAGE_LAYERS)
   {
     osgEarth::ImageLayerVector layers;
-    _map->getImageLayers(layers);
+    _map->getLayers(layers);
     for (osgEarth::ImageLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
       addImageLayerItem(*it);
   }
   else if (_type == MODEL_LAYERS)
   {
     osgEarth::ModelLayerVector layers;
-    _map->getModelLayers(layers);
+    _map->getLayers(layers);
     for (osgEarth::ModelLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
       addModelLayerItem(*it);
   }
   else if (_type == ELEVATION_LAYERS)
   {
     osgEarth::ElevationLayerVector layers;
-    _map->getElevationLayers(layers);
+    _map->getLayers(layers);
     for (osgEarth::ElevationLayerVector::const_iterator it = layers.begin(); it != layers.end(); ++it)
       addElevationLayerItem(*it);
   }

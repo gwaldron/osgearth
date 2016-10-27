@@ -158,6 +158,20 @@ void
 ElevationLayer::init()
 {
     TerrainLayer::init();
+
+    // elevation layers do not render directly; rather, a composite of elevation data
+    // feeds the terrain engine to permute the mesh.
+    setRenderType(RENDERTYPE_NONE);
+}
+
+Config
+ElevationLayer::getConfig() const
+{
+    Config layerConf = getElevationLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    layerConf.key() = "elevation";
+    return layerConf;
 }
 
 void
@@ -680,13 +694,42 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     double   ymin       = key.getExtent().yMin();
     double   dx         = key.getExtent().width() / (double)(numColumns-1);
     double   dy         = key.getExtent().height() / (double)(numRows-1);
+
+    // If the incoming heightfield requests a positive border width, 
+    // we need to adjust the extents so that we request data outside the
+    // extent of the tile key:
+    unsigned border = hf->getBorderWidth();
+    if (border > 0u)
+    {
+        dx = key.getExtent().width() / (double)(numColumns - (border*2+1));
+        dy = key.getExtent().height() / (double)(numRows - (border*2+1));
+        xmin -= dx * (double)border;
+        ymin -= dy * (double)border;
+    }
     
     // We will load the actual heightfields on demand. We might not need them all.
+#if 0
     GeoHeightFieldVector heightFields(contenders.size());
     GeoHeightFieldVector offsetFields(offsets.size());
     std::vector<bool>    heightFallback(contenders.size(), false);
     std::vector<bool>    heightFailed(contenders.size(), false);
     std::vector<bool>    offsetFailed(offsets.size(), false);
+#else
+    GeoHeightFieldVector heightFields[9];
+    GeoHeightFieldVector offsetFields[9]; //(offsets.size());
+    std::vector<bool>    heightFallback[9]; //(contenders.size(), false);
+    std::vector<bool>    heightFailed[9]; //(contenders.size(), false);
+    std::vector<bool>    offsetFailed[9]; //(offsets.size(), false);
+
+    for (int n = 0; n < 9; ++n)
+    {
+        heightFields[n].resize(contenders.size());
+        offsetFields[n].resize(offsets.size());
+        heightFallback[n].assign(9, false);
+        heightFailed[n].assign(9, false);
+        offsetFailed[n].assign(9, false);
+    }
+#endif
 
     // The maximum number of heightfields to keep in this local cache
     unsigned int maxHeightFields = 50;
@@ -712,13 +755,28 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
             for(int i=0; i<contenders.size() && !resolved; ++i)
             {
-                if ( heightFailed[i] )
+                ElevationLayer* layer = contenders[i].first.get();                
+                TileKey contenderKey = contenders[i].second;
+
+                // If there is a border, the edge points may not fall within the key extents 
+                // and we may need to fetch a neighboring key.
+
+                int n = 4; // index 4 is the center/default tile
+
+                if (border > 0u && !contenderKey.getExtent().contains(x, y))
+                {
+                    int dTx = x < contenderKey.getExtent().xMin() ? -1 : x > contenderKey.getExtent().xMax() ? +1 : 0;
+                    int dTy = y < contenderKey.getExtent().yMin() ? +1 : y > contenderKey.getExtent().yMax() ? -1 : 0;
+                    contenderKey = contenderKey.createNeighborKey(dTx, dTy);
+                    n = (dTy+1)*3 + (dTx+1);
+                }
+
+                if ( heightFailed[n][i] )
                     continue;
 
-                ElevationLayer* layer = contenders[i].first.get();
+                TileKey actualKey = contenderKey;
 
-                GeoHeightField& layerHF = heightFields[i];
-                TileKey actualKey = contenders[i].second;
+                GeoHeightField& layerHF = heightFields[n][i];
 
                 if (!layerHF.valid())
                 {
@@ -736,19 +794,19 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     // Mark this layer as fallback if necessary.
                     if (layerHF.valid())
                     {
-                        heightFallback[i] = actualKey != contenders[i].second;
+                        heightFallback[n][i] = (actualKey != contenderKey); // actualKey != contenders[i].second;
                         numHeightFieldsInCache++;
                     }
                     else
                     {
-                        heightFailed[i] = true;
+                        heightFailed[n][i] = true;
                         continue;
                     }
                 }
 
                 if (layerHF.valid())
                 {
-                    bool isFallback = heightFallback[i];
+                    bool isFallback = heightFallback[n][i];
 
                     // We only have real data if this is not a fallback heightfield.
                     if (!isFallback)
@@ -776,10 +834,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if (numHeightFieldsInCache >= maxHeightFields)
                 {
                     //OE_NOTICE << "Clearing cache" << std::endl;
-                    for (unsigned int k = 0; k < heightFields.size(); k++)
+                    for (unsigned int j = 0; j < 9; ++j)
                     {
-                        heightFields[k] = GeoHeightField::INVALID;
-                        heightFallback[k] = false;
+                        for (unsigned int k = 0; k < heightFields[j].size(); k++)
+                        {
+                            heightFields[j][k] = GeoHeightField::INVALID;
+                            heightFallback[j][k] = false;
+                        }
                     }
                     numHeightFieldsInCache = 0;
                 }
@@ -787,18 +848,33 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
             for(int i=offsets.size()-1; i>=0; --i)
             {
-                if ( offsetFailed[i] )
+                TileKey contenderKey = offsets[i].second;
+
+                // If there is a border, the edge points may not fall within the key extents 
+                // and we may need to fetch a neighboring key.
+
+                int n = 4; // index 4 is the center/default tile
+
+                if (border > 0u && !contenderKey.getExtent().contains(x, y))
+                {
+                    int dTx = x < contenderKey.getExtent().xMin() ? -1 : x > contenderKey.getExtent().xMax() ? +1 : 0;
+                    int dTy = y < contenderKey.getExtent().yMin() ? +1 : x > contenderKey.getExtent().yMax() ? -1 : 0;
+                    contenderKey = contenderKey.createNeighborKey(dTx, dTy);
+                    n = (dTy+1)*3 + (dTx+1);
+                }
+                
+                if ( offsetFailed[n][i] == true )
                     continue;
 
-                GeoHeightField& layerHF = offsetFields[i];
+                GeoHeightField& layerHF = offsetFields[n][i];
                 if ( !layerHF.valid() )
                 {
                     ElevationLayer* offset = offsets[i].first.get();
 
-                    layerHF = offset->createHeightField(offsets[i].second, progress);
+                    layerHF = offset->createHeightField(contenderKey, progress);
                     if ( !layerHF.valid() )
                     {
-                        offsetFailed[i] = true;
+                        offsetFailed[n][i] = true;
                         continue;
                     }
                 }

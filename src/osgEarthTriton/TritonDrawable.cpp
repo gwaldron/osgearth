@@ -731,7 +731,7 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     // If we're using a mask layer, enable that in the shader:
     if (!_TRITON->getMaskLayerName().empty())
     {
-        const ImageLayer* maskLayer = _mapNode->getMap()->getImageLayerByName(_TRITON->getMaskLayerName());
+        const ImageLayer* maskLayer = _mapNode->getMap()->getLayerByName<ImageLayer>(_TRITON->getMaskLayerName());
         if (maskLayer)
         {
             stateSet->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());

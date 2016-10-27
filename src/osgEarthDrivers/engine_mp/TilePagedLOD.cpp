@@ -190,6 +190,8 @@ TilePagedLOD::addChild(osg::Node* node)
             return true;
         }
 
+        bool value = osg::PagedLOD::addChild( node );
+
         // If it's a TileNode, this is the simple first addition of the 
         // static TileNode child (not from the pager).
         TileNode* tilenode = dynamic_cast<TileNode*>( node );
@@ -198,7 +200,7 @@ TilePagedLOD::addChild(osg::Node* node)
             _live->add( tilenode );
         }
 
-        return osg::PagedLOD::addChild( node );
+        return value;
     }
 
     return false;

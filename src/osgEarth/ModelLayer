@@ -201,6 +201,7 @@ namespace osgEarth
         /** 
          * Gets the name of this model layer
          */
+        void setName(const std::string& name) { _runtimeOptions.name() = name; }
         const std::string& getName() const { return _runtimeOptions.name().get(); }
 
         /**
@@ -294,6 +295,10 @@ namespace osgEarth
          */
         void setOpacity( float opacity );
         float getOpacity() const;
+
+    public: // Layer
+
+        virtual Config getConfig() const;
 
     public:
 

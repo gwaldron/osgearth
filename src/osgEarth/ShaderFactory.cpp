@@ -1044,20 +1044,20 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
 }
 
 
-osg::Uniform*
-ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
-                                      osg::StateAttribute::GLModeValue value) const
-{
-    osg::Uniform* u = 0L;
-
-    if ( mode == GL_LIGHTING )
-    {
-        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
-        u->set( (value & osg::StateAttribute::ON) != 0 );
-    }
-
-    return u;
-}
+//osg::Uniform*
+//ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
+//                                      osg::StateAttribute::GLModeValue value) const
+//{
+//    osg::Uniform* u = 0L;
+//
+//    if ( mode == GL_LIGHTING )
+//    {
+//        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+//        u->set( (value & osg::StateAttribute::ON) != 0 );
+//    }
+//
+//    return u;
+//}
 
 std::string
 ShaderFactory::getRangeUniformName() const

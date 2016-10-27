@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/PatchLayer>
 
 #include <osg/Texture2D>
 
@@ -65,17 +66,20 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 }
 
 void
-TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
-                                        const MapFrame&              frame,
-                                        const TileKey&               key,
-                                        ProgressCallback*            progress)
+TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
+                                        const MapFrame&   frame,
+                                        const TileKey&    key,
+                                        ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
 
     int order = 0;
 
-    for(ImageLayerVector::const_iterator i = frame.imageLayers().begin();
-        i != frame.imageLayers().end();
+    ImageLayerVector imageLayers;
+    frame.getLayers(imageLayers);
+
+    for(ImageLayerVector::const_iterator i = imageLayers.begin();
+        i != imageLayers.end();
         ++i, ++order )
     {
         ImageLayer* layer = i->get();
@@ -275,8 +279,19 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     if ( !out_hf.valid() )
     {
         // This sets the elevation tile size; query size for all tiles.
+
+#if 0
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(), 257, 257, true );
+#else
+
+        out_hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(),
+            257, 257, 1u, true);
+
+#endif
+
+
     }
 
     bool populated = frame.populateHeightField(

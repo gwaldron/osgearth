@@ -133,7 +133,11 @@ TerrainEngineNode::~TerrainEngineNode()
     if (_map.valid())
     {
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        
+        ImageLayerVector imageLayers;
+        mapf.getLayers(imageLayers);
+
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
             i->get()->removeCallback( _imageLayerController.get() );
         }
@@ -240,7 +244,10 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
 
         // register the layer Controller it with all pre-existing image layers:
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        ImageLayerVector imageLayers;
+        mapf.getLayers(imageLayers);
+
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );
         }
@@ -289,11 +296,13 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
     if ( _initStage == INIT_POSTINIT_COMPLETE )
     {
-        if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+        if (change.getAction() == MapModelChange::ADD_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->addCallback( _imageLayerController.get() );
         }
-        else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
+        else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->removeCallback( _imageLayerController.get() );
         }

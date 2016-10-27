@@ -31,6 +31,17 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 /// JB:  Disabled to fix issues with ATI.
 //#define SHARE_TEX_COORDS 1
 
+//struct DebugGeometry : public osg::Geometry {
+//    void compileGLObjects(osg::RenderInfo& renderInfo) const {
+//        OE_WARN << "Compiling GL Objects: " << this << std::endl;
+//        osg::Geometry::compileGLObjects(renderInfo);
+//    }
+//    void releaseGLObjects(osg::State* state) const {
+//        OE_WARN << "Releasing GL Objects: " << this << std::endl;
+//        osg::Geometry::releaseGLObjects(state);
+//    }
+//};
+
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
 _options ( options ),
@@ -182,6 +193,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt    = getNumSkirtElements();
     
+    // TODO: reconsider this ... 
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
     // Pre-allocate enough space for all triangles.
@@ -208,6 +220,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     normals->reserve( numVerts );
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
+
+#if 0
+    // colors
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    colors->push_back(osg::Vec4f(1,1,1,1));
+    geom->setColorArray(colors);
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+#endif
 
     osg::Vec3Array* neighbors = 0L;
     if ( _options.morphTerrain() == true )
@@ -403,6 +423,8 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
                 {
                     keys.push_back(i->first);
                     objects.push_back(i->second.get());
+                    
+                    //OE_INFO << "Releasing: " << i->second.get() << std::endl;
                 }
             }
             for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)

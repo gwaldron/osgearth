@@ -292,8 +292,10 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->addUniform(
-            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
+        _terrainEngineContainer->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
+
+        //_terrainEngineContainer->getOrCreateStateSet()->addUniform(
+        //    Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
 
         _terrainEngineContainer->getOrCreateStateSet()->setMode(
             GL_LIGHTING,
@@ -358,7 +360,7 @@ MapNode::init()
 
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
-    _map->getModelLayers( modelLayers );
+    _map->getLayers( modelLayers );
     int modelLayerIndex = 0;
     for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
     {
@@ -373,9 +375,11 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
-            GL_LIGHTING,
-            _mapNodeOptions.enableLighting().value() ? 1 : 0));
+        stateset->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
+
+        //stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
+        //    GL_LIGHTING,
+        //    _mapNodeOptions.enableLighting().value() ? 1 : 0));
 
         stateset->setMode(
             GL_LIGHTING,
@@ -432,7 +436,7 @@ MapNode::~MapNode()
     _map->removeMapCallback( _mapCallback.get() );
 
     ModelLayerVector modelLayers;
-    _map->getModelLayers( modelLayers );
+    _map->getLayers( modelLayers );
     //Remove our model callback from any of the model layers in the map
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
@@ -774,25 +778,32 @@ MapNode::openMapLayers()
 {
     MapFrame frame(_map.get());
 
-    for (unsigned i = 0; i < frame.imageLayers().size(); ++i)
+    for (LayerVector::const_iterator i = frame.layers().begin();
+        i != frame.layers().end();
+        ++i)
     {
-        tryOpenLayer(frame.getImageLayerAt(i));
+        tryOpenLayer(i->get());
     }
 
-    for (unsigned i = 0; i < frame.elevationLayers().size(); ++i)
-    {
-        tryOpenLayer(frame.getElevationLayerAt(i));
-    }
+    //for (unsigned i = 0; i < frame.imageLayers().size(); ++i)
+    //{
+    //    tryOpenLayer(frame.getImageLayerAt(i));
+    //}
 
-    for (unsigned i = 0; i < frame.modelLayers().size(); ++i)
-    {
-        tryOpenLayer(frame.getModelLayerAt(i));
-    }
+    //for (unsigned i = 0; i < frame.elevationLayers().size(); ++i)
+    //{
+    //    tryOpenLayer(frame.getElevationLayerAt(i));
+    //}
 
-    for (unsigned i = 0; i < frame.terrainMaskLayers().size(); ++i)
-    {
-        tryOpenLayer(frame.terrainMaskLayers().at(i).get());
-    }
+    //for (unsigned i = 0; i < frame.modelLayers().size(); ++i)
+    //{
+    //    tryOpenLayer(frame.getModelLayerAt(i));
+    //}
+
+    //for (unsigned i = 0; i < frame.terrainMaskLayers().size(); ++i)
+    //{
+    //    tryOpenLayer(frame.terrainMaskLayers().at(i).get());
+    //}
 }
 
 void

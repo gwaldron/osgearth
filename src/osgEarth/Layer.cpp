@@ -24,4 +24,6 @@ using namespace osgEarth;
 Layer::Layer()
 {
     _uid = Registry::instance()->createUID();
+    _renderType = RENDERTYPE_NONE;
+    _status = Status::OK();
 }

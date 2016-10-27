@@ -63,22 +63,19 @@ MapInspectorUI::reinit(MapNode* mapNode)
         
         Map* map = mapNode->getMap();
 
-        for(int i=0; i<map->getNumElevationLayers(); ++i)
+        for (unsigned i = 0; i < map->getNumLayers(); ++i)
         {
-            ElevationLayer* layer = map->getElevationLayerAt(i);
-            addTerrainLayer( layer, mapNode );
-        }
+            TerrainLayer* terrainLayer = map->getLayerAt<TerrainLayer>(i);
+            if (terrainLayer)
+            {
+                addTerrainLayer(terrainLayer, mapNode);
+            }
 
-        for(int i=0; i<map->getNumImageLayers(); ++i)
-        {
-            ImageLayer* layer = map->getImageLayerAt(i);
-            addTerrainLayer( layer, mapNode );
-        }
-
-        for(int i=0; i<map->getNumModelLayers(); ++i)
-        {
-            ModelLayer* layer = map->getModelLayerAt(i);
-            addModelLayer( layer, mapNode );
+            ModelLayer* modelLayer = map->getLayerAt<ModelLayer>(i);
+            if (modelLayer)
+            {
+                addModelLayer(modelLayer, mapNode);
+            }
         }
     }
     else

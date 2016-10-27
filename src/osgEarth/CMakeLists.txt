@@ -133,6 +133,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectIndex
     OverlayDecorator
     OverlayNode
+    PatchLayer
     PhongLightingEffect
     Picker
     IntersectionPicker
@@ -294,6 +295,7 @@ set(TARGET_SRC
     ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+    PatchLayer.cpp
     PhongLightingEffect.cpp
     IntersectionPicker.cpp
     PrimitiveIntersector.cpp

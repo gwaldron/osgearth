@@ -24,6 +24,7 @@
 #include "RenderBindings"
 #include "TileNode"
 #include "EngineContext"
+#include "TileRenderModel"
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {    
@@ -41,9 +42,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void apply(const osg::FrameStamp*);
 
     protected:
-        osg::observer_ptr<TileNode>    _tilenode;
-        EngineContext*              _context;
-        osg::ref_ptr<TerrainTileModel> _model;
+        osg::observer_ptr<TileNode> _tilenode;
+        EngineContext* _context;
+        osg::ref_ptr<TerrainTileModel> _dataModel;
+        TileRenderModel _renderModel;
+
+        virtual ~LoadTileData() { }
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

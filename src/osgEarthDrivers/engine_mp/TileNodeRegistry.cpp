@@ -32,10 +32,11 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-TileNodeRegistry::TileNodeRegistry(const std::string& name) :
+TileNodeRegistry::TileNodeRegistry(const std::string& name, Terrain* terrain) :
 _name              ( name ),
 _revisioningEnabled( false ),
-_frameNumber       ( 0u )
+_frameNumber       ( 0u ),
+_terrain( terrain )
 {
     //nop
 }
@@ -102,6 +103,12 @@ TileNodeRegistry::add( TileNode* tile )
 {
     if ( tile )
     {
+        osg::ref_ptr<Terrain> terrain;
+        if (_terrain.lock(terrain))
+        {
+            terrain->notifyTileAdded(tile->getKey(), tile);
+        }
+
         Threading::ScopedMutexLock exclusive( _tilesMutex );
         _tiles[ tile->getKey() ] = tile;
         if ( _revisioningEnabled )

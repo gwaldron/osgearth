@@ -139,7 +139,7 @@ void atmos_SkyFromAtmosphere(void)
 } 
 
 void atmos_vertex_main(inout vec4 VertexVIEW) 
-{ 
+{
     // Get camera position and height 
     vVec = osg_ViewMatrixInverse[3].xyz; 
     atmos_fCameraHeight = length(vVec); 

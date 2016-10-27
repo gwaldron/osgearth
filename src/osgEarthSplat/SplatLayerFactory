@@ -19,8 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
-#define OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+#ifndef OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
+#define OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
@@ -30,7 +30,7 @@
 #include "Coverage"
 #include "Zone"
 
-#include <osgEarth/TerrainEffect>
+#include <osgEarth/MapNode>
 #include <osg/Image>
 #include <osg/Uniform>
 #include <osg/Texture2DArray>
@@ -43,11 +43,11 @@ namespace osgEarth { namespace Splat
     /**
      * Effect that applies texture splatting to the terrain.
      */
-    class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public TerrainEffect
+    class OSGEARTHSPLAT_EXPORT SplatLayerFactory : public osg::Referenced
     {
     public:
         /** constructor */
-        SplatTerrainEffect();
+        SplatLayerFactory();
 
         /**
          * Sets the OSG DB options to use when performing I/O
@@ -66,6 +66,10 @@ namespace osgEarth { namespace Splat
         void setZones(const Zones& zones) { _zones = zones; }
         const Zones& getZones() const { return _zones; }
 
+        void install(MapNode* mapNode);
+
+        void uninstall(MapNode* mapNode);
+
 
     public: // TerrainEffect interface
 
@@ -75,7 +79,7 @@ namespace osgEarth { namespace Splat
 
 
     protected:
-        virtual ~SplatTerrainEffect() { }
+        virtual ~SplatLayerFactory() { }
 
         // index-aligned with the surface biome region vector:
         SplatTextureDefVector               _textureDefs;
@@ -108,4 +112,4 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+#endif // OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H

@@ -363,7 +363,6 @@ Map::insertLayer(Layer* layer, unsigned index)
         }
 
         int newRevision;
-        unsigned index = -1; 
 
         // Add the layer to our stack.
         {

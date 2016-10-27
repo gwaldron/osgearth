@@ -57,6 +57,17 @@ LandCoverLayerFactory::setDBOptions(const osgDB::Options* dbo)
     _dbo = dbo;
 }
 
+namespace
+{
+    struct AcceptLOD : public PatchLayer::AcceptCallback {
+        unsigned _lod;
+        AcceptLOD(unsigned lod) { _lod = lod; }
+        bool accept(const TileKey& key) const {
+            return key.getLOD() == _lod;
+        }
+    };
+}
+
 void
 LandCoverLayerFactory::install(MapNode* mapNode)
 {    
@@ -179,7 +190,7 @@ LandCoverLayerFactory::install(MapNode* mapNode)
 
                             osgEarth::PatchLayer* patch = new osgEarth::PatchLayer();
                             patch->setName("Land Cover - " + layer->getName());
-                            patch->setPatchLOD( layer->getLOD() );
+                            patch->setAcceptCallback( new AcceptLOD(layer->getLOD()) );
                             patch->setStateSet( stateset );
                             mapNode->getMap()->addLayer( patch );
                             OE_INFO << LC << "Added a LandCover layer to the map, UID = " << patch->getUID() << std::endl;

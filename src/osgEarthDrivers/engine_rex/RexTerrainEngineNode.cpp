@@ -554,11 +554,13 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             if (!i->get()->_tiles.empty())
             {
                 lastLayer = i->get();
-                lastLayer->_order = order++;
+                lastLayer->_order = -1;
 
                 // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
                 if (lastLayer->_layer && lastLayer->_layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
+                    lastLayer->_order = order++;
+
                     if (!surfaceStateSetPushed)
                         cv->pushStateSet(getSurfaceStateSet());
                     surfaceStateSetPushed = true;

@@ -203,6 +203,15 @@ namespace osgEarth
         static osg::Image* convertToNormalMap(
             const HeightFieldNeighborhood& hood,
             const SpatialReference*        hoodSRS);
+        
+        /**
+         * Reads elevation data from one image and writes a normal/curvature map
+         * for it to another image of the same size
+         */
+        static void createNormalMap(
+            const osg::Image* elevation,
+            osg::Image*       normalMap,
+            const GeoExtent&  extent);
 
 
         /**

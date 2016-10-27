@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
@@ -104,6 +105,9 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
         di.key = &_key;
         di.range = _range;
         _drawCallback->draw(ri, di);
+
+        // evaluate this.
+        ds._samplerState.clear();
     }
 
     else
@@ -130,5 +134,5 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
             for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
                 _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
         }
-    }
+    }    
 }

@@ -73,3 +73,10 @@ DrawState::refresh(osg::RenderInfo& ri)
 
     _pcp = pcp;
 }
+
+void
+DrawState::clear()
+{
+    _samplerState.clear();
+    _pcp = 0L;
+}

@@ -129,6 +129,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Ensures that the Uniform Locations in the DrawState correspond to
         // the currently applied program object.
         void refresh(osg::RenderInfo& ri);
+
+        // Clears all saved state.
+        void clear();
     };
 
 } } } // namespace 

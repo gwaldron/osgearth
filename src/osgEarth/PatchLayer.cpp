@@ -24,5 +24,4 @@ PatchLayer::PatchLayer() :
 Layer()
 {
     setRenderType(RENDERTYPE_PATCH);
-    setPatchLOD(15u);
 }

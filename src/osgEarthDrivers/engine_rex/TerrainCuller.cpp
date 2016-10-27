@@ -135,11 +135,12 @@ TerrainCuller::apply(osg::Node& node)
             // Patch layers will use the default (empty) pass for now.
             // TODO: allow access to other passes.
             const RenderingPass* defaultPass = renderModel.getPass(-1);
-
+            
             for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
             {
                 PatchLayer* layer = i->get();
-                if (layer->getPatchLOD() == _currentTileNode->getTileKey().getLOD())
+                if (layer->getAcceptCallback() == 0L ||
+                    layer->getAcceptCallback()->accept(_currentTileNode->getTileKey()))
                 {
                     // Push this tile's matrix if we haven't already done so:
                     if (!pushedMatrix)

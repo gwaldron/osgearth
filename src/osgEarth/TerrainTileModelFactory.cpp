@@ -225,11 +225,11 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         frame.getMapOptions().elevationInterpolation().get();
 
     // Can only generate the normal map if the center heightfield was built:
-    osg::Image* image = HeightFieldUtils::convertToNormalMap(
+    osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
         model->heightFields(),
         key.getProfile()->getSRS() );
 
-    if ( image )
+    if (image.valid())
     {
         TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
         layerModel->setName( "oe_normal_map" );
@@ -287,7 +287,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(),
-            257, 257, 1u, true);
+            257, 257,           // base tile size for elevation data
+            1u,                 // 1 sample border around the data makes it 259x259
+            true);              // initialize to HAE (0.0) heights
 
 #endif
 

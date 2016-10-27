@@ -23,6 +23,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 
+#include <algorithm>
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace std;
@@ -219,6 +221,20 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
         {
             string crs = static_cast<XmlElement*>( srsitr->get() )->getText();
             layer->getSpatialReferences().push_back(crs);
+        }
+
+        if (parentLayer)
+        {
+            // Also add in any SRS that is defined in the parent layer.  Some servers, like GeoExpress from LizardTech will publish top level SRS's that also apply to the child layers
+            for (WMSLayer::SRSList::iterator itr = parentLayer->getSpatialReferences().begin(); itr != parentLayer->getSpatialReferences().end(); itr++)
+            {
+                std::string parentSRS = *itr;
+                // Only add the SRS if it's not already present in the SRS list.
+                if ( std::find(layer->getSpatialReferences().begin(), layer->getSpatialReferences().end(), parentSRS) == layer->getSpatialReferences().end() )
+                {
+                    layer->getSpatialReferences().push_back( parentSRS );
+                }
+            }
         }
 
         osg::ref_ptr<XmlElement> e_bb = e_layer->getSubElement( ELEM_LATLONBOUNDINGBOX );

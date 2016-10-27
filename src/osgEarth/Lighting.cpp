@@ -143,7 +143,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 
         ss->addUniform(new osg::Uniform((prefix + "spotExponent").c_str(), light->getSpotExponent()));
         ss->addUniform(new osg::Uniform((prefix + "spotCutoff").c_str(), light->getSpotCutoff()));
-        ss->addUniform(new osg::Uniform((prefix + "spotCosCutoff").c_str(), cos(light->getSpotCutoff())));
+        ss->addUniform(new osg::Uniform((prefix + "spotCosCutoff").c_str(), cosf(light->getSpotCutoff())));
         ss->addUniform(new osg::Uniform((prefix + "constantAttenuation").c_str(), light->getConstantAttenuation()));
         ss->addUniform(new osg::Uniform((prefix + "linearAttenuation").c_str(), light->getLinearAttenuation()));
         ss->addUniform(new osg::Uniform((prefix + "quadraticAttenuation").c_str(), light->getQuadraticAttenuation()));

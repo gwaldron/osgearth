@@ -23,6 +23,20 @@ vec4 oe_layer_tilec;
 /**
  * Sample the elevation data at a UV tile coordinate.
  */
+float oe_terrain_getElevationUnscaled(in vec2 uv)
+{
+    // Texel-level scale and bias allow us to sample the elevation texture
+    // on texel center instead of edge.
+    vec2 elevc = uv
+        * oe_tile_elevTexelCoeff.x     // scale
+        + oe_tile_elevTexelCoeff.y;
+
+    return texture(oe_tile_elevationTex, elevc).r;
+}
+
+/**
+ * Sample the elevation data at a UV tile coordinate.
+ */
 float oe_terrain_getElevation(in vec2 uv)
 {
     // Texel-level scale and bias allow us to sample the elevation texture

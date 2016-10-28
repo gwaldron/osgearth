@@ -26,6 +26,7 @@
 #include "TileRenderModel"
 
 #include <osgEarth/TerrainTileModel>
+#include <osgEarth/TerrainTileNode>
 
 #include <OpenThreads/Atomic>
 #include <vector>
@@ -49,13 +50,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * one SurfaceNode that renders the actual tile content under a MatrixTransform;
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
-    class TileNode : public osg::Group
+    class TileNode : public osg::Group,
+                     public osgEarth::TerrainTileNode
     {
     public:
         TileNode();
 
         /** TileKey of the key representing the data in this node. */
-        const TileKey& getTileKey() const { return _key; }
+        const TileKey& getKey() const { return _key; }
 
         /** Sets the map revision that this tile should be using. */
         void setMapRevision(Revision rev) { } // nyi - check for need

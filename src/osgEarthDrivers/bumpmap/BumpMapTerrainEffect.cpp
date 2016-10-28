@@ -26,7 +26,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TerrainTileNode>
 
 #include "BumpMapShaders"
 

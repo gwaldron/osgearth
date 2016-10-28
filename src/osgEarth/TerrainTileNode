@@ -33,17 +33,13 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class /*header-only*/ TerrainTileNode
+    class OSGEARTH_EXPORT TerrainTileNode
     {
-    public:
-        const TerrainTileModel* getModel() const { return _model.get(); }
-
-        const TileKey& getKey() const { return _model->getKey(); }
+    public:    
+        virtual const TileKey& getKey() const = 0;
 
     protected:
         virtual ~TerrainTileNode() { }
-
-        osg::ref_ptr<TerrainTileModel> _model;
     };
 };
 

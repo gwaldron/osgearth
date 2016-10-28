@@ -141,7 +141,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // and scale/biasing the matrices.
     if (parent)
     {
-        unsigned quadrant = getTileKey().getQuadrant();
+        unsigned quadrant = getKey().getQuadrant();
 
         const RenderBindings& bindings = context->getRenderBindings();
 
@@ -524,7 +524,7 @@ TileNode::createChildren(EngineContext* context)
         }
 
         // Build the surface geometry:
-        node->create( getTileKey().createChildKey(quadrant), this, context );
+        node->create( getKey().createChildKey(quadrant), this, context );
 
         // Add to the scene graph.
         addChild( node );
@@ -638,7 +638,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // to update as well. This method does that.
 
     // which quadrant is this tile in?
-    unsigned quadrant = getTileKey().getQuadrant();
+    unsigned quadrant = getKey().getQuadrant();
 
     // Count the number of inherited samplers so we know when to stop. If none of the
     // samplers in this tile inherit from the parent, there is no need to continue
@@ -777,7 +777,7 @@ TileNode::load(TerrainCuller* culler)
     // Construct the load PRIORITY: 0=lowest, 1=highest.
     
     const SelectionInfo& si = context->getSelectionInfo();
-    int lod     = getTileKey().getLOD();
+    int lod     = getKey().getLOD();
     int numLods = si.numLods();
     
     // LOD priority is in the range [0..numLods]
@@ -831,10 +831,10 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
-    if (_key.createNeighborKey(1, 0) == that->getTileKey())
+    if (_key.createNeighborKey(1, 0) == that->getKey())
         _eastNeighbor = that;
 
-    if (_key.createNeighborKey(0, 1) == that->getTileKey())
+    if (_key.createNeighborKey(0, 1) == that->getKey())
         _southNeighbor = that;
 
     updateNormalMap();

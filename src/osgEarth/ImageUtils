@@ -324,6 +324,15 @@ namespace osgEarth
             const Bounds&     referenceBounds);
 
         /**
+         * Bicubic upsampling in a quadrant. Target image is already allocated.
+         */
+        static bool bicubicUpsample(
+            const osg::Image* source,
+            osg::Image* target,
+            unsigned quadrant,
+            unsigned stride);
+
+        /**
          * 
          */
         static osg::Image* upSampleNN(const osg::Image* src, int quadrant);

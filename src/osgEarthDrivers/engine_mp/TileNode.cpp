@@ -311,3 +311,34 @@ void TileNode::setMinimumExpiryFrames(unsigned int minExpiryFrames)
     }
 }
 
+
+void TileNode::loadChildren()
+{
+    OE_NOTICE << "MP TileNode::loadChildren " << _key.str() << std::endl;
+    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
+    if (parent)
+    {
+        OE_NOTICE << " Num children " << parent->getNumChildren() << " num filenames " << parent->getNumFileNames() << std::endl;
+
+        if (parent->getNumChildren() < parent->getNumFileNames())
+        {
+            for (unsigned int i = 0; i < parent->getNumFileNames(); i++)
+            {
+                std::string filename = parent->getFileName(i);
+                OE_NOTICE << "Filename " << i << "=" << filename << std::endl;
+
+                if (!filename.empty() && i >= parent->getNumChildren())
+                {
+                    osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
+                    if (!node.valid())
+                    {
+                        break;
+                    }
+                    OE_NOTICE << "Loaded " << filename << " for key " << _key.str() << std::endl;
+                    parent->addChild(node.get());
+                }
+            }
+        }
+    }
+}
+

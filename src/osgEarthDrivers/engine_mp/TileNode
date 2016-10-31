@@ -115,8 +115,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         virtual unsigned int getMinimumExpiryFrames() const;
         virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames);
 
-        // TODO:  
-        virtual void loadChildren() {OE_NOTICE << "nyi" << std::endl;};
+        virtual void loadChildren();
 
 
     public: // OVERRIDES

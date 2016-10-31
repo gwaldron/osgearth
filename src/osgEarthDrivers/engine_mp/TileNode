@@ -107,6 +107,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         TileNode* getTileNode() { return this; }
 
+    public:  // TerrainTileNode        
+        
+        virtual double getMinimumExpiryTime() const;
+        virtual void setMinimumExpiryTime(double minExpiryTime);
+        
+        virtual unsigned int getMinimumExpiryFrames() const;
+        virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames);
+
+        // TODO:  
+        virtual void loadChildren() {OE_NOTICE << "nyi" << std::endl;};
+
 
     public: // OVERRIDES
 

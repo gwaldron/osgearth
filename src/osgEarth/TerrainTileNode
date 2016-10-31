@@ -45,6 +45,9 @@ namespace osgEarth
         virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames) = 0;
 
 
+        virtual void loadChildren() = 0;
+
+
     protected:
         virtual ~TerrainTileNode() { }
     };

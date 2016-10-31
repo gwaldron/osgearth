@@ -21,6 +21,8 @@
 */
 #include "TileNode"
 
+#include "TilePagedLOD"
+
 #include <osg/ClusterCullingCallback>
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -270,3 +272,42 @@ TileNode::notifyOfArrival(TileNode* that)
         thisImage->dirty();
     }
 }
+
+double TileNode::getMinimumExpiryTime() const
+{
+    const TilePagedLOD* parent = dynamic_cast<const TilePagedLOD*>(getParent(0));
+    if (parent)
+    {     
+        return parent->getMinimumExpiryTime(1);
+    }
+    return 0.0;
+}
+
+void TileNode::setMinimumExpiryTime(double minExpiryTime)
+{
+    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
+    if (parent)
+    {        
+        return parent->setMinimumExpiryTime(1, minExpiryTime);
+    }
+}
+
+unsigned int TileNode::getMinimumExpiryFrames() const
+{
+    const TilePagedLOD* parent = dynamic_cast<const TilePagedLOD*>(getParent(0));
+    if (parent)
+    {        
+        return parent->getMinimumExpiryFrames(1);
+    }
+    return 0.0;
+}
+
+void TileNode::setMinimumExpiryFrames(unsigned int minExpiryFrames)
+{
+    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
+    if (parent)
+    {        
+        return parent->setMinimumExpiryFrames(1, minExpiryFrames);
+    }
+}
+

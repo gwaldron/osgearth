@@ -95,11 +95,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
-        double getMinimumExpiryTime() const { return _minExpiryTime; }
-        void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
+        virtual double getMinimumExpiryTime() const { return _minExpiryTime; }
+        virtual void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
         
-        unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
-        void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+        virtual unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
+        virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+
+        virtual void loadChildren();
         
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
@@ -127,6 +129,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<SurfaceNode>          _patch;
         osg::ref_ptr<Loader::Request>      _loadRequest;
         osg::ref_ptr<Loader::Request>      _expireRequest;
+        osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;

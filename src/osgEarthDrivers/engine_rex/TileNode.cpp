@@ -82,6 +82,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!context)
         return;
 
+    _context = context;
+
     _key = key;
 
     // whether the stitch together normal maps for adjacent tiles.
@@ -626,6 +628,32 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         getSubTile(2)->refreshInheritedData(this, bindings);
         getSubTile(3)->refreshInheritedData(this, bindings);
     }
+}
+
+void TileNode::loadChildren()
+{
+    _mutex.lock();
+
+    if ( !_childrenReady )
+    {        
+        // Create the children
+        createChildren( _context );        
+        _childrenReady = true;        
+        int numChildren = getNumChildren();
+        if ( numChildren > 0 )
+        {
+            for(int i=0; i<numChildren; ++i)
+            {
+                TileNode* child = getSubTile(i);
+                if (child)
+                {
+                    // Load the children's data.
+                    child->loadSync(_context);
+                }
+            }
+        }
+    }
+    _mutex.unlock();    
 }
 
 void

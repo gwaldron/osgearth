@@ -34,6 +34,7 @@
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
+#include <osgEarth/TerrainTileNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -102,6 +103,31 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
     positioner->setUpdateCallback( new osg::AnimationPathCallback(animationPath, 0.0, 1.0));
     return positioner;
 }
+
+class TerrainTileNodeVisitor : public osg::NodeVisitor
+{
+public:
+    TerrainTileNodeVisitor():
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+      {
+      }
+
+      void apply(osg::Node& node)
+      {
+          TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
+          if (tile)
+          {
+              //OSG_NOTICE << tile->getKey().str() << std::endl;
+              tile->setMinimumExpiryTime(DBL_MAX);
+              if (tile->getKey().getLevelOfDetail() < 3)
+              {
+                  OE_NOTICE << "Loading children for " << tile->getKey().str() << std::endl;
+                  tile->loadChildren();
+              }
+          }
+          traverse(node);
+      }
+};
 
 int
 main(int argc, char** argv)
@@ -229,5 +255,12 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-    return viewer.run();
+    TerrainTileNodeVisitor v;
+    root->accept(v);
+
+    while (!viewer.done())
+    {        
+        viewer.frame();
+    }
+    return 0;
 }

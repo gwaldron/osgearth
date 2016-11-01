@@ -117,10 +117,11 @@ public:
       {
           TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
           if (tile && tile->getKey().valid())
-          {
-              tile->setMinimumExpirationTime(DBL_MAX);
+          {              
               if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
               {
+                  // Set this tile to not expire.
+                  tile->setMinimumExpirationTime(DBL_MAX);
                   OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
                   tile->loadChildren();
               }

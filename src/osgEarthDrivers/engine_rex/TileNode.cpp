@@ -582,7 +582,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         }
 
         setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
-    }    
+    } 
 
     // Normals:
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];

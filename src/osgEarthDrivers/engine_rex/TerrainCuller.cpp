@@ -38,7 +38,8 @@ _currentTileNode(0L)
 void
 TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
 {
-    _terrain.setup(frame, bindings, defaultStateSet);
+    unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
+    _terrain.setup(frame, bindings, defaultStateSet, frameNum);
 }
 
 float

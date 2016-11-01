@@ -34,13 +34,14 @@ namespace osgEarth
     {
     public:
         struct DrawInfo {
+            unsigned       frameNumber;
             const TileKey* key;
             float          range;
             osg::Texture*  colorTexture;
             osg::Texture*  elevationTexture;
-            osg::Texture*  materialTexture;
             osg::Texture*  normalTexture;
-            DrawInfo() : range(0.0f), colorTexture(0), elevationTexture(0), materialTexture(0), normalTexture(0) { }
+            osg::Texture*  coverageTexture;
+            DrawInfo() : frameNumber(0u), range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0) { }
         };
 
         /**

@@ -28,14 +28,12 @@ void oe_normalMapFragment(inout vec4 color)
     vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
     vp_Normal = normalize( mat3(tangent, oe_normalMapBinormal, oe_UpVectorView) * normal );
 
-    // visualize curvature gradient:
-    //color.rgb = vec3(0,0,0);
-    //color.r = (encodedNormal.a+1.0)/2.0;
-    //color.b = 1.0-color.r;
-
     // visualize curvature quantized:
-    //if(encodedNormal.a >= 0.4) color.r = 1.0;
-    //if(encodedNormal.a <= -0.4) color.b = 1.0;
+    //color.rgba = vec4(0.0,0,1);
+    //float curvature = 2.0*encodedNormal.w - 1.0;
+    //if (curvature > 0.0) color.r = curvature;
+    //if (curvature < 0.0) color.b = -curvature;
+    //color.a = 1.0;
     
     // visualize normals:
     //color.rgb = encodedNormal.xyz;

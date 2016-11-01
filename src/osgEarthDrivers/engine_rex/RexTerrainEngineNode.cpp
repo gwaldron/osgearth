@@ -361,7 +361,7 @@ RexTerrainEngineNode::setupRenderBindings()
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
     getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
-    
+   
     SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
@@ -547,6 +547,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
 
+//        OE_INFO << "CULL:\n";
+
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
@@ -571,7 +573,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                     surfaceStateSetPushed = false;
                 }                    
 
-                //OE_INFO << "Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
+//                OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
 
                 cv->apply(*lastLayer);
             }

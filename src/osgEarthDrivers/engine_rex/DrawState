@@ -79,6 +79,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct DrawState : public osg::Referenced
     {
+        unsigned _frame;
+
         bool _stateInitialized;
 
         // uniform locations
@@ -109,6 +111,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingBox    _box;
 
         DrawState() :
+            _frame(0u),
             _stateInitialized(false),
             _tileKeyUL(-1),
             _parentTextureExistsUL(-1),

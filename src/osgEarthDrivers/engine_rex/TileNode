@@ -95,11 +95,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
-        virtual double getMinimumExpiryTime() const { return _minExpiryTime; }
-        virtual void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
+        virtual double getMinimumExpirationTime() const { return _minExpiryTime; }
+        virtual void setMinimumExpirationTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
         
-        virtual unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
-        virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+        virtual unsigned int getMinimumExpirationFrames() const { return _minExpiryFrames; }
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
 
         virtual void loadChildren();
         

@@ -49,6 +49,10 @@ _lastTraversalFrame( 0 ),
 _dirty             ( false ),
 _outOfDate         ( false )
 {
+    if (!key.valid())
+    {
+        OE_NOTICE << "TileNode constructor not valid...." << std::endl;
+    }
     this->setName( key.str() );
     this->setMatrix( matrix );
 
@@ -272,73 +276,3 @@ TileNode::notifyOfArrival(TileNode* that)
         thisImage->dirty();
     }
 }
-
-double TileNode::getMinimumExpiryTime() const
-{
-    const TilePagedLOD* parent = dynamic_cast<const TilePagedLOD*>(getParent(0));
-    if (parent)
-    {     
-        return parent->getMinimumExpiryTime(1);
-    }
-    return 0.0;
-}
-
-void TileNode::setMinimumExpiryTime(double minExpiryTime)
-{
-    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
-    if (parent)
-    {        
-        return parent->setMinimumExpiryTime(1, minExpiryTime);
-    }
-}
-
-unsigned int TileNode::getMinimumExpiryFrames() const
-{
-    const TilePagedLOD* parent = dynamic_cast<const TilePagedLOD*>(getParent(0));
-    if (parent)
-    {        
-        return parent->getMinimumExpiryFrames(1);
-    }
-    return 0.0;
-}
-
-void TileNode::setMinimumExpiryFrames(unsigned int minExpiryFrames)
-{
-    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
-    if (parent)
-    {        
-        return parent->setMinimumExpiryFrames(1, minExpiryFrames);
-    }
-}
-
-
-void TileNode::loadChildren()
-{
-    OE_NOTICE << "MP TileNode::loadChildren " << _key.str() << std::endl;
-    TilePagedLOD* parent = dynamic_cast<TilePagedLOD*>(getParent(0));
-    if (parent)
-    {
-        OE_NOTICE << " Num children " << parent->getNumChildren() << " num filenames " << parent->getNumFileNames() << std::endl;
-
-        if (parent->getNumChildren() < parent->getNumFileNames())
-        {
-            for (unsigned int i = 0; i < parent->getNumFileNames(); i++)
-            {
-                std::string filename = parent->getFileName(i);
-                OE_NOTICE << "Filename " << i << "=" << filename << std::endl;
-
-                if (!filename.empty() && i >= parent->getNumChildren())
-                {
-                    osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
-                    if (!node.valid())
-                    {
-                        break;
-                    }
-                    OE_NOTICE << "Loaded " << filename << " for key " << _key.str() << std::endl;
-                    parent->addChild(node.get());
-                }
-            }
-        }
-    }
-}
-

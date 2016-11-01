@@ -37,7 +37,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
      * TilePagedLOD is an extension to osg::PagedLOD that supports the tile
      * registry and does LTP bbox culling on subtiles.
      */
-    class TilePagedLOD : public osg::PagedLOD
+    class TilePagedLOD : public osg::PagedLOD,
+                         public osgEarth::TerrainTileNode
     {
     public:
         TilePagedLOD(
@@ -57,6 +58,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** The tilenode in this group */
         TileNode* getTileNode();
+        const TileNode* getTileNode() const;
         void setTileNode(TileNode* tilenode);
 
         osgDB::Options* getOrCreateDBOptions();
@@ -76,6 +78,19 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** override to manage the tile node registries. */
         bool removeExpiredChildren(double expiryTime, unsigned expiryFrame, osg::NodeList& removedChildren);
+
+    public:  // TerrainTileNode        
+        
+        virtual double getMinimumExpirationTime() const;
+        virtual void setMinimumExpirationTime(double minExpiryTime);
+        
+        virtual unsigned int getMinimumExpirationFrames() const;
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames);
+
+        virtual void loadChildren();
+
+        const TileKey& getKey() const;
+
 
     protected:
         virtual ~TilePagedLOD();

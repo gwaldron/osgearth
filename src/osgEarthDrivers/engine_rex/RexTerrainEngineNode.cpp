@@ -436,11 +436,11 @@ RexTerrainEngineNode::dirtyTerrain()
         TileNode* tileNode = new TileNode();
         if (context->getOptions().minExpiryFrames().isSet())
         {
-            tileNode->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+            tileNode->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
         }
         if (context->getOptions().minExpiryTime().isSet())
         {         
-            tileNode->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+            tileNode->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
         }
                 
         // Next, build the surface geometry for the node.
@@ -618,7 +618,6 @@ RexTerrainEngineNode::getEngineContext()
         // Double check.
         if (!_engineContext.valid())
         {
-            OE_NOTICE << "creating engine context" << std::endl;
             // initialize a key node factory.
             _engineContext = new EngineContext(
                 getMap(),

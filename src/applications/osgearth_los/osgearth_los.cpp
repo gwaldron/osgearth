@@ -104,30 +104,33 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
     return positioner;
 }
 
-class TerrainTileNodeVisitor : public osg::NodeVisitor
+class CacheExtentNodeVisitor : public osg::NodeVisitor
 {
 public:
-    TerrainTileNodeVisitor():
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+    CacheExtentNodeVisitor(GeoExtent& extent):
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+          _extent(extent)
       {
       }
 
       void apply(osg::Node& node)
       {
           TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
-          if (tile)
+          if (tile && tile->getKey().valid())
           {
-              //OSG_NOTICE << tile->getKey().str() << std::endl;
-              tile->setMinimumExpiryTime(DBL_MAX);
-              if (tile->getKey().getLevelOfDetail() < 3)
+              tile->setMinimumExpirationTime(DBL_MAX);
+              if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
               {
-                  OE_NOTICE << "Loading children for " << tile->getKey().str() << std::endl;
+                  OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
                   tile->loadChildren();
               }
-          }
+          }          
           traverse(node);
       }
+
+      GeoExtent _extent;
 };
+
 
 int
 main(int argc, char** argv)
@@ -255,7 +258,15 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
+    /*
     TerrainTileNodeVisitor v;
+    root->accept(v);
+    */
+
+    GeoPoint center(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE);
+
+    CacheExtentNodeVisitor v(GeoExtent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5));
+
     root->accept(v);
 
     while (!viewer.done())

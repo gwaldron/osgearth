@@ -38,11 +38,11 @@ namespace osgEarth
     public:    
         virtual const TileKey& getKey() const = 0;
 
-        virtual double getMinimumExpiryTime() const = 0;
-        virtual void setMinimumExpiryTime(double minExpiryTime) = 0;
+        virtual double getMinimumExpirationTime() const = 0;
+        virtual void setMinimumExpirationTime(double minExpiryTime) = 0;
         
-        virtual unsigned int getMinimumExpiryFrames() const = 0;
-        virtual void setMinimumExpiryFrames(unsigned int minExpiryFrames) = 0;
+        virtual unsigned int getMinimumExpirationFrames() const = 0;
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) = 0;
 
 
         virtual void loadChildren() = 0;

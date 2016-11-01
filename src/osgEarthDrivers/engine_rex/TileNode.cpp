@@ -518,11 +518,11 @@ TileNode::createChildren(EngineContext* context)
         TileNode* node = new TileNode();
         if (context->getOptions().minExpiryFrames().isSet())
         {
-            node->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+            node->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
         }
         if (context->getOptions().minExpiryTime().isSet())
         {         
-            node->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+            node->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
         }
 
         // Build the surface geometry:

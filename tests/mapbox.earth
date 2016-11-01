@@ -15,7 +15,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
     </image>
 
 
-    <elevation name="mapbox_terrain" driver="xyz">
+    <elevation name="mapbox_terrain" driver="xyz" max_data_level="14">
         <url>http://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng
 </url>
         <profile>spherical-mercator</profile>

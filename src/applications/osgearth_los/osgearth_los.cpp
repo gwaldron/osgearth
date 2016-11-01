@@ -266,7 +266,8 @@ main(int argc, char** argv)
 
     GeoPoint center(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE);
 
-    CacheExtentNodeVisitor v(GeoExtent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5));
+    GeoExtent extent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5);
+    CacheExtentNodeVisitor v(extent);
 
     root->accept(v);
 

@@ -600,6 +600,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         updateNormalMap();
     }
 
+    // Patch Layers
+    for (unsigned i = 0; i < model->patchLayers().size(); ++i)
+    {
+        TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
+    }
+
     // Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {

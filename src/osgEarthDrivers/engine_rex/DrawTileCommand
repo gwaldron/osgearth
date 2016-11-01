@@ -75,7 +75,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         float _range;
 
 
-        void draw(osg::RenderInfo& ri, DrawState& env) const;
+        void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
         // Less than operator will ensure that tiles are sorted high-to-low LOD
         // (to minimize Z overdraw) and then grouped by shared geometry

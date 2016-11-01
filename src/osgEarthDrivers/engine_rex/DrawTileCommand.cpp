@@ -25,7 +25,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 void
-DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
+DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const
 {
     osg::State& state = *ri.getState();
 
@@ -96,15 +96,14 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
 
     if (_drawCallback)
     {
-        PatchLayer::DrawInfo di;
-        di.frameNumber = ds._frame;
-        di.colorTexture = samplers[SamplerBinding::COLOR]._texture.get();
-        di.elevationTexture = samplers[SamplerBinding::ELEVATION]._texture.get();
-        di.normalTexture = samplers[SamplerBinding::NORMAL]._texture.get();
-        di.coverageTexture = samplers[SamplerBinding::COVERAGE]._texture.get();
-        di.key = &_key;
-        di.range = _range;
-        _drawCallback->draw(ri, di);
+        PatchLayer::DrawContext dc;
+        dc.colorTexture = samplers[SamplerBinding::COLOR]._texture.get();
+        dc.elevationTexture = samplers[SamplerBinding::ELEVATION]._texture.get();
+        dc.normalTexture = samplers[SamplerBinding::NORMAL]._texture.get();
+        dc.coverageTexture = samplers[SamplerBinding::COVERAGE]._texture.get();
+        dc.key = &_key;
+        dc.range = _range;
+        _drawCallback->draw(ri, dc, layerData);
 
         // evaluate this.
         ds._samplerState.clear();

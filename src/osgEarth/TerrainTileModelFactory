@@ -74,6 +74,12 @@ namespace osgEarth
             const TileKey&               key,
             ProgressCallback*            progress);
 
+        virtual void addPatchLayers(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
     protected:
 
         /** Find a heightfield in the cache, or fetch it from the source. */

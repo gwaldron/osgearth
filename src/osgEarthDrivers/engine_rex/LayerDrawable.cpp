@@ -72,7 +72,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, ds);
+        tile->draw(ri, ds, 0L);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes

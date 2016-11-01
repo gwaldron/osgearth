@@ -188,7 +188,7 @@ osg::Image* ImageToHeightFieldConverter::convert16(const osg::HeightField* hf ) 
   return image;
 }
 
-osg::Image* ImageToHeightFieldConverter::convertToR16F(const osg::HeightField* hf) const
+osg::Image* ImageToHeightFieldConverter::convertToR32F(const osg::HeightField* hf) const
 {
     if ( !hf ) {
     return NULL;
@@ -196,7 +196,7 @@ osg::Image* ImageToHeightFieldConverter::convertToR16F(const osg::HeightField* h
 
   osg::Image* image = new osg::Image();
   image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT); //GL_LUMINANCE, GL_SHORT);
-  image->setInternalTextureFormat(GL_R16F);
+  image->setInternalTextureFormat(GL_R32F);
 
   const osg::FloatArray* floats = hf->getFloatArray();
 

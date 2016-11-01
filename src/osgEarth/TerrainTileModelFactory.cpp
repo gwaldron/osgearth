@@ -49,7 +49,9 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    addImageLayers( model.get(), frame, key, progress );
+    addImageLayers(model.get(), frame, key, progress);
+
+    addPatchLayers(model.get(), frame, key, progress);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
@@ -159,6 +161,43 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
 
 
 void
+TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
+                                        const MapFrame&   frame,
+                                        const TileKey&    key,
+                                        ProgressCallback* progress)
+{
+    OE_START_TIMER(fetch_patch_layers);
+
+    PatchLayerVector patchLayers;
+    frame.getLayers(patchLayers);
+
+    for(PatchLayerVector::const_iterator i = patchLayers.begin();
+        i != patchLayers.end();
+        ++i )
+    {
+        PatchLayer* layer = i->get();
+
+        if (layer->getEnabled() &&
+            (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->accept(key))) //&& layer->isKeyInRange(key) )
+        {
+            PatchLayer::TileData* tileData = layer->createTileData(key);
+            if (tileData)
+            {
+                TerrainTilePatchLayerModel* patchModel = new TerrainTilePatchLayerModel();
+                patchModel->setPatchLayer(layer);
+                patchModel->setTileData(tileData);
+
+                model->patchLayers().push_back(patchModel);
+            }
+        }
+    }
+
+    if (progress)
+        progress->stats()["fetch_patches_time"] += OE_STOP_TIMER(fetch_patch_layers);
+}
+
+
+void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
@@ -199,7 +238,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
         //osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
-        osg::Image* image = conv.convertToR16F(mainHF.get());
+        osg::Image* image = conv.convertToR32F(mainHF.get());
 
         if ( image )
         {
@@ -391,7 +430,7 @@ osg::Texture*
 TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
-    tex->setInternalFormat(GL_R16F);
+    tex->setInternalFormat(GL_R32F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
     tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );

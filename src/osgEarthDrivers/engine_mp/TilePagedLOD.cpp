@@ -161,6 +161,12 @@ TilePagedLOD::getTileNode()
     return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
 }
 
+const TileNode*
+TilePagedLOD::getTileNode() const
+{
+    return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
+}
+
 void
 TilePagedLOD::setTileNode(TileNode* tilenode)
 {
@@ -439,3 +445,60 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
     }
     return false;
 }
+
+const TileKey& TilePagedLOD::getKey() const
+{
+    if (!getTileNode())
+    {
+        return TileKey::INVALID;
+    }
+    return getTileNode()->getKey();
+}
+
+double TilePagedLOD::getMinimumExpirationTime() const
+{
+    return PagedLOD::getMinimumExpiryTime(1);    
+}
+
+void TilePagedLOD::setMinimumExpirationTime(double minExpiryTime)
+{
+    PagedLOD::setMinimumExpiryTime(1, minExpiryTime);
+}
+
+unsigned int TilePagedLOD::getMinimumExpirationFrames() const
+{
+    return PagedLOD::getMinimumExpiryFrames(1);    
+}
+
+void TilePagedLOD::setMinimumExpirationFrames(unsigned int minExpiryFrames)
+{
+    PagedLOD::setMinimumExpiryFrames(1, minExpiryFrames);
+}
+
+
+void TilePagedLOD::loadChildren()
+{
+    TileKey key = getKey();
+
+    // Load all filenames that aren't currently loaded in the PagedLOD
+
+    if (getNumChildren() < getNumFileNames())
+    {
+        for (unsigned int i = 0; i < getNumFileNames(); i++)
+        {
+            std::string filename = getFileName(i);    
+            if (!filename.empty() && i >= getNumChildren())
+            {
+                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
+                if (!node.valid())
+                {
+                    break;
+                }
+                addChild(node.get());
+            }
+        }
+    }
+}
+
+
+

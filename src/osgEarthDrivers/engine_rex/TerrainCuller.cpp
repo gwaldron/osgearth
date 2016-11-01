@@ -76,7 +76,7 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         tile._keyValue = tileNode->getTileKeyValue();
         tile._geom = surface->getDrawable()->_geom.get();
         tile._morphConstants = tileNode->getMorphConstants();
-        tile._key = tileNode->getTileKey();
+        tile._key = tileNode->getKey();
 
 #if 1
         osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
@@ -141,7 +141,7 @@ TerrainCuller::apply(osg::Node& node)
             {
                 PatchLayer* layer = i->get();
                 if (layer->getAcceptCallback() == 0L ||
-                    layer->getAcceptCallback()->accept(_currentTileNode->getTileKey()))
+                    layer->getAcceptCallback()->accept(_currentTileNode->getKey()))
                 {
                     // Push this tile's matrix if we haven't already done so:
                     if (!pushedMatrix)

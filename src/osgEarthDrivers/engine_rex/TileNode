@@ -26,6 +26,7 @@
 #include "TileRenderModel"
 
 #include <osgEarth/TerrainTileModel>
+#include <osgEarth/TerrainTileNode>
 
 #include <OpenThreads/Atomic>
 #include <vector>
@@ -49,13 +50,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      * one SurfaceNode that renders the actual tile content under a MatrixTransform;
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
-    class TileNode : public osg::Group
+    class TileNode : public osg::Group,
+                     public osgEarth::TerrainTileNode
     {
     public:
         TileNode();
 
         /** TileKey of the key representing the data in this node. */
-        const TileKey& getTileKey() const { return _key; }
+        const TileKey& getKey() const { return _key; }
 
         /** Sets the map revision that this tile should be using. */
         void setMapRevision(Revision rev) { } // nyi - check for need
@@ -93,11 +95,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
-        double getMinimumExpiryTime() const { return _minExpiryTime; }
-        void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
+        virtual double getMinimumExpirationTime() const { return _minExpiryTime; }
+        virtual void setMinimumExpirationTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
         
-        unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
-        void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+        virtual unsigned int getMinimumExpirationFrames() const { return _minExpiryFrames; }
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+
+        virtual void loadChildren();
         
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
@@ -125,6 +129,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<SurfaceNode>          _patch;
         osg::ref_ptr<Loader::Request>      _loadRequest;
         osg::ref_ptr<Loader::Request>      _expireRequest;
+        osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;

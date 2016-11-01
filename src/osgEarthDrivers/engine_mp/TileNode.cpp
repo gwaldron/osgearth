@@ -21,6 +21,8 @@
 */
 #include "TileNode"
 
+#include "TilePagedLOD"
+
 #include <osg/ClusterCullingCallback>
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -47,6 +49,10 @@ _lastTraversalFrame( 0 ),
 _dirty             ( false ),
 _outOfDate         ( false )
 {
+    if (!key.valid())
+    {
+        OE_NOTICE << "TileNode constructor not valid...." << std::endl;
+    }
     this->setName( key.str() );
     this->setMatrix( matrix );
 

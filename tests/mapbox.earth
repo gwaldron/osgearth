@@ -1,0 +1,28 @@
+<!--
+Demo of MapBox's satellite and terrain layers.
+
+Please change your API key to your own MapBox account, this key is for demo purposes only.
+-->
+
+<map name="MapBox" type="geocentric" version="2">
+
+
+<image name="mapbox_satellite" driver="xyz">
+        <url>http://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.jpg?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng
+</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+    </image>
+
+
+    <elevation name="mapbox_terrain" driver="xyz" max_data_level="14">
+        <url>http://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng
+</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <elevation_encoding>mapbox</elevation_encoding>
+    </elevation>
+
+    <xi:include href="viewpoints.xml"/>
+
+</map>

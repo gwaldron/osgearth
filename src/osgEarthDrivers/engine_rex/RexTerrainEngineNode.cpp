@@ -436,11 +436,11 @@ RexTerrainEngineNode::dirtyTerrain()
         TileNode* tileNode = new TileNode();
         if (context->getOptions().minExpiryFrames().isSet())
         {
-            tileNode->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+            tileNode->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
         }
         if (context->getOptions().minExpiryTime().isSet())
         {         
-            tileNode->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+            tileNode->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
         }
                 
         // Next, build the surface geometry for the node.
@@ -615,24 +615,28 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 EngineContext*
 RexTerrainEngineNode::getEngineContext()
 {
-    osg::ref_ptr<EngineContext>& context = _perThreadTileGroupFactories.get(); // thread-safe get
-    if ( !context.valid() )
+    if ( !_engineContext.valid() )
     {
-        // initialize a key node factory.
-        context = new EngineContext(
-            getMap(),
-            this, // engine
-            _geometryPool.get(),
-            _loader.get(),
-            _unloader.get(),
-            _liveTiles.get(),
-            _renderBindings,
-            _terrainOptions,
-            _selectionInfo,
-            _modifyBBoxCallback.get());
-    }
+        Threading::ScopedMutexLock lock( _engineContextMutex );
 
-    return context.get();
+        // Double check.
+        if (!_engineContext.valid())
+        {
+            // initialize a key node factory.
+            _engineContext = new EngineContext(
+                getMap(),
+                this, // engine
+                _geometryPool.get(),
+                _loader.get(),
+                _unloader.get(),
+                _liveTiles.get(),
+                _renderBindings,
+                _terrainOptions,
+                _selectionInfo,
+                _modifyBBoxCallback.get());
+        }
+    }
+    return _engineContext.get();
 }
 
 unsigned int

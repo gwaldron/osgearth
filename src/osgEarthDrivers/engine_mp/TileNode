@@ -33,8 +33,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
      * a TileModel (and corresponds to one TileKey). The matrixtransform
      * localizes the TileNode within the terrain.
      */
-    class TileNode : public osg::MatrixTransform,
-                     public osgEarth::TerrainTileNode
+    class TileNode : public osg::MatrixTransform                     
     {
     public: // osgEarth::TerrainTileNode
         
@@ -105,8 +104,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public: // TileNodeContainer
 
-        TileNode* getTileNode() { return this; }
-
+        TileNode* getTileNode() { return this; }    
 
     public: // OVERRIDES
 

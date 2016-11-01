@@ -82,6 +82,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!context)
         return;
 
+    _context = context;
+
     _key = key;
 
     // whether the stitch together normal maps for adjacent tiles.
@@ -141,7 +143,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // and scale/biasing the matrices.
     if (parent)
     {
-        unsigned quadrant = getTileKey().getQuadrant();
+        unsigned quadrant = getKey().getQuadrant();
 
         const RenderBindings& bindings = context->getRenderBindings();
 
@@ -516,15 +518,15 @@ TileNode::createChildren(EngineContext* context)
         TileNode* node = new TileNode();
         if (context->getOptions().minExpiryFrames().isSet())
         {
-            node->setMinimumExpiryFrames( *context->getOptions().minExpiryFrames() );
+            node->setMinimumExpirationFrames( *context->getOptions().minExpiryFrames() );
         }
         if (context->getOptions().minExpiryTime().isSet())
         {         
-            node->setMinimumExpiryTime( *context->getOptions().minExpiryTime() );
+            node->setMinimumExpirationTime( *context->getOptions().minExpiryTime() );
         }
 
         // Build the surface geometry:
-        node->create( getTileKey().createChildKey(quadrant), this, context );
+        node->create( getKey().createChildKey(quadrant), this, context );
 
         // Add to the scene graph.
         addChild( node );
@@ -634,6 +636,32 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     }
 }
 
+void TileNode::loadChildren()
+{
+    _mutex.lock();
+
+    if ( !_childrenReady )
+    {        
+        // Create the children
+        createChildren( _context );        
+        _childrenReady = true;        
+        int numChildren = getNumChildren();
+        if ( numChildren > 0 )
+        {
+            for(int i=0; i<numChildren; ++i)
+            {
+                TileNode* child = getSubTile(i);
+                if (child)
+                {
+                    // Load the children's data.
+                    child->loadSync(_context);
+                }
+            }
+        }
+    }
+    _mutex.unlock();    
+}
+
 void
 TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 {
@@ -644,7 +672,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // to update as well. This method does that.
 
     // which quadrant is this tile in?
-    unsigned quadrant = getTileKey().getQuadrant();
+    unsigned quadrant = getKey().getQuadrant();
 
     // Count the number of inherited samplers so we know when to stop. If none of the
     // samplers in this tile inherit from the parent, there is no need to continue
@@ -783,7 +811,7 @@ TileNode::load(TerrainCuller* culler)
     // Construct the load PRIORITY: 0=lowest, 1=highest.
     
     const SelectionInfo& si = context->getSelectionInfo();
-    int lod     = getTileKey().getLOD();
+    int lod     = getKey().getLOD();
     int numLods = si.numLods();
     
     // LOD priority is in the range [0..numLods]
@@ -837,10 +865,10 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
-    if (_key.createNeighborKey(1, 0) == that->getTileKey())
+    if (_key.createNeighborKey(1, 0) == that->getKey())
         _eastNeighbor = that;
 
-    if (_key.createNeighborKey(0, 1) == that->getTileKey())
+    if (_key.createNeighborKey(0, 1) == that->getKey())
         _southNeighbor = that;
 
     updateNormalMap();

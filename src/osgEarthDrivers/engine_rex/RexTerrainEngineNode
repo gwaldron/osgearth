@@ -169,8 +169,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<ResourceReleaser> _releaser;
 
-        PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;
+        //PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;        
         EngineContext* getEngineContext();
+        osg::ref_ptr< EngineContext > _engineContext;
+        OpenThreads::Mutex _engineContextMutex;
 
         osg::Timer _timer;
         unsigned   _tileCount;

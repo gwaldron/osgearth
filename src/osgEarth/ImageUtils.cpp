@@ -1566,6 +1566,27 @@ namespace
     };
 
     template<typename T>
+    struct ColorReader<GL_RED, T>
+    {
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        {
+            const T* ptr = (const T*)ia->data(s, t, r, m);
+            float l = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            return osg::Vec4(l, l, l, 1.0f);
+        }
+    };
+
+    template<typename T>
+    struct ColorWriter<GL_RED, T>
+    {
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
+        {
+            T* ptr = (T*)iw->data(s, t, r, m);
+            (*ptr) = (T)(c.r() / GLTypeTraits<T>::scale(iw->_normalized));
+        }
+    };
+
+    template<typename T>
     struct ColorReader<GL_ALPHA, T>
     {
         static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
@@ -1874,7 +1895,10 @@ namespace
             break;
         case GL_LUMINANCE:
             return chooseReader<GL_LUMINANCE>(dataType);
-            break;        
+            break;   
+        case GL_RED:
+            return chooseReader<GL_RED>(dataType);
+            break;       
         case GL_ALPHA:
             return chooseReader<GL_ALPHA>(dataType);
             break;        
@@ -2006,7 +2030,10 @@ namespace
             break;
         case GL_LUMINANCE:
             return chooseWriter<GL_LUMINANCE>(dataType);
-            break;        
+            break;      
+        case GL_RED:
+            return chooseWriter<GL_RED>(dataType);
+            break;         
         case GL_ALPHA:
             return chooseWriter<GL_ALPHA>(dataType);
             break;        

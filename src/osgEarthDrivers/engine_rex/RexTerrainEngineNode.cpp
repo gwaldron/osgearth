@@ -361,7 +361,7 @@ RexTerrainEngineNode::setupRenderBindings()
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
     getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
-    
+   
     SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
@@ -547,6 +547,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
 
+//        OE_INFO << "CULL:\n";
+
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
@@ -554,11 +556,13 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             if (!i->get()->_tiles.empty())
             {
                 lastLayer = i->get();
-                lastLayer->_order = order++;
+                lastLayer->_order = -1;
 
                 // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
                 if (lastLayer->_layer && lastLayer->_layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
+                    lastLayer->_order = order++;
+
                     if (!surfaceStateSetPushed)
                         cv->pushStateSet(getSurfaceStateSet());
                     surfaceStateSetPushed = true;
@@ -569,7 +573,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                     surfaceStateSetPushed = false;
                 }                    
 
-                //OE_INFO << "Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
+//                OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
 
                 cv->apply(*lastLayer);
             }

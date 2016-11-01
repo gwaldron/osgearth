@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2016 Pelican Mapping
@@ -679,6 +680,66 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
     }
 
     return image;
+}
+
+void
+HeightFieldUtils::createNormalMap(const osg::Image* elevation,
+                                  osg::Image* normalMap,
+                                  const GeoExtent& extent)
+{   
+    ImageUtils::PixelReader readElevation(elevation);
+    ImageUtils::PixelWriter writeNormal(normalMap);
+
+    int sMax = (int)elevation->s()-1;
+    int tMax = (int)elevation->t()-1;
+    
+    double xcells = (double)(sMax);
+    double ycells = (double)(tMax);
+    double xres = 1.0/xcells;
+    double yres = 1.0/ycells;
+    
+    // north-south interval in meters:
+    double xInterval = extent.width() / (double)(sMax);
+    double yInterval = extent.height() / (double)(tMax);
+
+    const SpatialReference* srs = extent.getSRS();
+    double mPerDegAtEquator = (srs->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+    double dy = srs->isGeographic() ? yInterval * mPerDegAtEquator : yInterval;
+
+    for (int t = 0; t<(int)elevation->t(); ++t)
+    {
+        double lat = extent.yMin() + yInterval*(double)t;
+        double dx = srs->isGeographic() ? xInterval * mPerDegAtEquator * cos(osg::DegreesToRadians(lat)) : xInterval;
+
+        for(int s=0; s<(int)elevation->s(); ++s)
+        {
+            float h = readElevation(s, t).r();
+
+            osg::Vec3f west ( s > 0 ? -dx : 0, 0, h );
+            osg::Vec3f east ( s < sMax ?  dx : 0, 0, h );
+            osg::Vec3f south( 0, t > 0 ? -dy : 0, h );
+            osg::Vec3f north( 0, t < tMax ? dy : 0, h );
+
+            west.z() = readElevation(std::max(0, s - 1), t).r();
+            east.z() = readElevation(std::min(sMax, s + 1), t).r();
+            south.z() = readElevation(s, std::max(0, t - 1)).r();
+            north.z() = readElevation(s, std::min(tMax, t + 1)).r();
+
+            osg::Vec3f n = (east-west) ^ (north-south);
+            n.normalize();
+
+            // calculate and encode curvature (2nd derivative of elevation)
+            float D = (0.5*(west.z()+east.z()) - h) / (dx*dx);
+            float E = (0.5*(south.z()+north.z()) - h) / (dy*dy);
+            float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
+
+            // encode for RGBA [0..1]
+            osg::Vec4f NC( n.x(), n.y(), n.z(), curvature );
+            NC = (NC + osg::Vec4f(1.0,1.0,1.0,1.0))*0.5;
+
+            writeNormal(NC, s, t);
+        }
+    }
 }
 
 /******************************************************************************************/

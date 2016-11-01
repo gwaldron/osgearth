@@ -34,13 +34,14 @@ namespace osgEarth
     {
     public:
         struct DrawInfo {
+            unsigned       frameNumber;
             const TileKey* key;
-            float         range;
-            osg::Texture* colorTexture;
-            osg::Texture* elevationTexture;
-            osg::Texture* materialTexture;
-            osg::Texture* normalTexture;
-            DrawInfo() : range(0.0f), colorTexture(0), elevationTexture(0), materialTexture(0), normalTexture(0) { }
+            float          range;
+            osg::Texture*  colorTexture;
+            osg::Texture*  elevationTexture;
+            osg::Texture*  normalTexture;
+            osg::Texture*  coverageTexture;
+            DrawInfo() : frameNumber(0u), range(0.0f), colorTexture(0), elevationTexture(0), normalTexture(0), coverageTexture(0) { }
         };
 
         /**
@@ -49,6 +50,15 @@ namespace osgEarth
         struct DrawCallback : public osg::Referenced
         {
             virtual void draw(osg::RenderInfo& ri, const DrawInfo& di) =0;
+        };
+
+        /**
+         * Callback that the terrain engine will call to decide whether to 
+         * render a tile in this layer.
+         */
+        struct AcceptCallback : public osg::Referenced
+        {
+            virtual bool accept(const TileKey& key) const =0;
         };
 
 
@@ -67,12 +77,12 @@ namespace osgEarth
         /**
          * Terrain LOD at which to render tiles in this patch layer
          */
-        void setPatchLOD(unsigned lod) { _patchLOD = lod; }
-        unsigned getPatchLOD() const { return _patchLOD; }
+        void setAcceptCallback(AcceptCallback* value) { _acceptCallback = value; }
+        AcceptCallback* getAcceptCallback() const { return _acceptCallback.get(); }
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;
-        unsigned _patchLOD;
+        osg::ref_ptr<AcceptCallback> _acceptCallback;
     };
 
     typedef std::vector< osg::ref_ptr<PatchLayer> > PatchLayerVector;

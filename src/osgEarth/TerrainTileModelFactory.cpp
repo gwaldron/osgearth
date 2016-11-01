@@ -198,7 +198,8 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
-        osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
+        //osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
+        osg::Image* image = conv.convertToR16F(mainHF.get());
 
         if ( image )
         {
@@ -225,11 +226,11 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         frame.getMapOptions().elevationInterpolation().get();
 
     // Can only generate the normal map if the center heightfield was built:
-    osg::Image* image = HeightFieldUtils::convertToNormalMap(
+    osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
         model->heightFields(),
         key.getProfile()->getSRS() );
 
-    if ( image )
+    if (image.valid())
     {
         TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
         layerModel->setName( "oe_normal_map" );
@@ -287,7 +288,9 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(),
-            257, 257, 1u, true);
+            257, 257,           // base tile size for elevation data
+            1u,                 // 1 sample border around the data makes it 259x259
+            true);              // initialize to HAE (0.0) heights
 
 #endif
 
@@ -388,8 +391,7 @@ osg::Texture*
 TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
-    tex->setInternalFormat(GL_LUMINANCE32F_ARB);
-    tex->setSourceFormat(GL_LUMINANCE);
+    tex->setInternalFormat(GL_R16F);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
     tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );

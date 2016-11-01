@@ -97,13 +97,17 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
     if (_drawCallback)
     {
         PatchLayer::DrawInfo di;
+        di.frameNumber = ds._frame;
         di.colorTexture = samplers[SamplerBinding::COLOR]._texture.get();
         di.elevationTexture = samplers[SamplerBinding::ELEVATION]._texture.get();
-        di.materialTexture = samplers[SamplerBinding::MATERIAL]._texture.get();
         di.normalTexture = samplers[SamplerBinding::NORMAL]._texture.get();
+        di.coverageTexture = samplers[SamplerBinding::COVERAGE]._texture.get();
         di.key = &_key;
         di.range = _range;
         _drawCallback->draw(ri, di);
+
+        // evaluate this.
+        ds._samplerState.clear();
     }
 
     else
@@ -130,5 +134,5 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds) const
             for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
                 _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
         }
-    }
+    }    
 }

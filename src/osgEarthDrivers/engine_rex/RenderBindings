@@ -42,7 +42,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             COLOR_PARENT  = 1,
             ELEVATION     = 2,
             NORMAL        = 3,
-            MATERIAL      = 4,
+            COVERAGE      = 4,
             SHARED        = 5   // non-core shared layers start at this index
         };
 

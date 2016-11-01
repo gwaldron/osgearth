@@ -36,19 +36,14 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
+TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet, unsigned frameNum)
 {
     _bindings = &bindings;
 
     // Create a new State object to track sampler and uniform settings
     _drawState = new DrawState();
+    _drawState->_frame = frameNum;
     _drawState->_bindings = &bindings;
-
-    // The "default" layer if there's nothing else to draw.
-    // For now we always add it ... later we will look for another color layer
-    // to draw instead of this one because otherwise we are doing an unnecessary pass.
-    //LayerDrawable* defaultLayer = addLayer(0L);
-    //defaultLayer->setStateSet(defaultStateSet);
 
     // Make a drawable for each rendering pass (i.e. each render-able map layer).
     for(LayerVector::const_iterator i = frame.layers().begin();

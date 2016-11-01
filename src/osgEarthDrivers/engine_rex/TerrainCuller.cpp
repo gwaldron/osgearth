@@ -38,7 +38,8 @@ _currentTileNode(0L)
 void
 TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
 {
-    _terrain.setup(frame, bindings, defaultStateSet);
+    unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
+    _terrain.setup(frame, bindings, defaultStateSet, frameNum);
 }
 
 float
@@ -135,11 +136,12 @@ TerrainCuller::apply(osg::Node& node)
             // Patch layers will use the default (empty) pass for now.
             // TODO: allow access to other passes.
             const RenderingPass* defaultPass = renderModel.getPass(-1);
-
+            
             for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
             {
                 PatchLayer* layer = i->get();
-                if (layer->getPatchLOD() == _currentTileNode->getKey().getLOD())
+                if (layer->getAcceptCallback() == 0L ||
+                    layer->getAcceptCallback()->accept(_currentTileNode->getKey()))
                 {
                     // Push this tile's matrix if we haven't already done so:
                     if (!pushedMatrix)

@@ -511,9 +511,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
-        //todo: usused?
-        VisitorData::store(nv, ENGINE_CONTEXT_TAG, this->getEngineContext());
-
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
         this->getEngineContext()->startCull( cv );

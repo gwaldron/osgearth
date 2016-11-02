@@ -606,9 +606,14 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     // Put GL back in a state that won't confuse the OSG state tracking:
     state->dirtyAllVertexArrays();
     state->dirtyAllAttributes();
+    state->dirtyAllModes();
     //osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
     //api->glUseProgram((GLuint)0);
     //state->setLastAppliedProgramObject( 0L );
+
+    // Keep an eye on this.
+    // I had to remove something similar in another module (Rex engine) because it was causing
+    // positional attributes (like clip planes) to re-apply with an incorrect MVM. -gw
     state->apply();
 }
 

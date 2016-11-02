@@ -87,6 +87,9 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 
-        ri.getState()->apply();
+        // gw: no need to do this, in fact it will cause positional attributes
+        // (light clip planes and lights) to immediately be reapplied under the
+        // current MVM, which will by definition be wrong!)
+        //ri.getState()->apply();
     }
 }

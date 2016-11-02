@@ -542,7 +542,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "attribute vec3 oe_polyline_center; \n"
+        "in vec3 oe_polyline_center; \n"
         "uniform float oe_polyline_scale;  \n"
         "uniform float oe_polyline_min_pixels; \n"
         "uniform vec4 oe_PixelSizeVector; \n"

@@ -126,7 +126,7 @@ createFramebufferPass(App& app)
     osg::StateSet* stateset = quad->getOrCreateStateSet();
 
     static const char* vertSource =
-        "varying vec4 texcoord;\n"
+        "out vec4 texcoord;\n"
         "void effect_vert(inout vec4 vertexView)\n"
         "{\n"
         "    texcoord = gl_MultiTexCoord0; \n"
@@ -139,7 +139,7 @@ createFramebufferPass(App& app)
         "uniform sampler2DRect gcolor;\n"
         "uniform sampler2DRect gnormal;\n"
         "uniform sampler2DRect gdepth;\n"
-        "varying vec4 texcoord;\n"
+        "in vec4 texcoord;\n"
 
         "void effect_frag(inout vec4 color)\n"
         "{\n"

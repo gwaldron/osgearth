@@ -1,11 +1,11 @@
-#version 110
+#version 330
 
 #pragma vp_entryPoint oe_logDepth_frag
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.99
 
 uniform float oe_logDepth_FC;
-varying float oe_logDepth_clipz;
+in float oe_logDepth_clipz;
 
 void oe_logDepth_frag(inout vec4 color)
 {

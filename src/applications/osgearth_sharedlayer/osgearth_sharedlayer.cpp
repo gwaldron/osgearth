@@ -86,7 +86,7 @@ public:
         // Make a vertex shader that will access the texture coordinates
         // for our shared layer.
         std::string vs = Stringify()
-            << "varying vec4 mask_layer_texc; \n"
+            << "out vec4 mask_layer_texc; \n"
             << "void my_filter_vertex(inout vec4 VertexMODEL) \n"
             << "{ \n"
             << "    mask_layer_texc = gl_MultiTexCoord" << unit << "; \n"
@@ -97,7 +97,7 @@ public:
         // the shared "mask" layer exceed a certain alpha value.
         std::string fs =
             "uniform sampler2D mask_layer_tex; \n"
-            "varying vec4 mask_layer_texc; \n"
+            "in vec4 mask_layer_texc; \n"
             "void my_color_filter(inout vec4 color) \n"
             "{ \n"
             "    vec4 mask_texel = texture(mask_layer_tex, mask_layer_texc.st); \n"

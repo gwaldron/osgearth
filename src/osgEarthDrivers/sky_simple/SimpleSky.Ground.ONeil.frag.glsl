@@ -11,12 +11,12 @@ uniform bool oe_mode_GL_LIGHTING;
 uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
 uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
 
-varying vec3 atmos_lightDir;    // light direction (view coords)
-varying vec3 atmos_color;       // atmospheric lighting color
-varying vec3 atmos_atten;       // atmospheric lighting attentuation factor
-varying vec3 atmos_up;          // earth up vector at fragment (in view coords)
-varying float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
-varying vec3 atmos_vert; 
+in vec3 atmos_lightDir;    // light direction (view coords)
+in vec3 atmos_color;       // atmospheric lighting color
+in vec3 atmos_atten;       // atmospheric lighting attentuation factor
+in vec3 atmos_up;          // earth up vector at fragment (in view coords)
+in float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
+in vec3 atmos_vert; 
         
 vec3 vp_Normal;          // surface normal (from osgEarth)
 

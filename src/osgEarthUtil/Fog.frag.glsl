@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      1.1
 
-varying float oe_fogFactor;
+in float oe_fogFactor;
 
 void oe_fog_frag(inout vec4 color)
 {        

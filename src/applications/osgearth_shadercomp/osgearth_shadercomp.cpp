@@ -94,7 +94,7 @@ namespace TEST_1
 {
     char s_hazeVertShader[] =
         "#version " GLSL_VERSION_STR "\n"
-        "varying vec3 v_pos; \n"
+        "out vec3 v_pos; \n"
         "void setup_haze(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    v_pos = vec3(VertexVIEW); \n"
@@ -102,7 +102,7 @@ namespace TEST_1
 
     char s_hazeFragShader[] =
         "#version " GLSL_VERSION_STR "\n"
-        "varying vec3 v_pos; \n"
+        "in vec3 v_pos; \n"
         "void apply_haze(inout vec4 color) \n"
         "{ \n"
         "    float dist = clamp( length(v_pos)/1e7, 0.0, 0.75 ); \n"

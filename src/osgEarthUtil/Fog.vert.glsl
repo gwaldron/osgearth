@@ -6,7 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform int oe_fog_algo;
 
-varying float oe_fogFactor;
+out float oe_fogFactor;
 
 void oe_fog_vertex(inout vec4 vertexVIEW)
 {

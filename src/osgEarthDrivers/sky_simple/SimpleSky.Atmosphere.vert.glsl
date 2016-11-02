@@ -25,9 +25,9 @@ uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth
 uniform int atmos_nSamples; 	
 uniform float atmos_fSamples; 				
 
-varying vec3 atmos_v3Direction; 
-varying vec3 atmos_mieColor; 
-varying vec3 atmos_rayleighColor; 
+out vec3 atmos_v3Direction; 
+out vec3 atmos_mieColor; 
+out vec3 atmos_rayleighColor; 
 
 vec3 vVec; 
 float atmos_fCameraHeight;    // The camera's current height 		

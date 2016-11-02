@@ -60,7 +60,7 @@ namespace
         "uniform float oe_fadeeffect_attenDist; \n"
         "uniform float osg_FrameTime; \n"
 
-        "varying float oe_fadeeffect_opacity; \n"
+        "out float oe_fadeeffect_opacity; \n"
 
         "void oe_vertFadeEffect(inout vec4 VertexView) \n"
         "{ \n"
@@ -73,7 +73,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "varying float oe_fadeeffect_opacity; \n"
+        "in float oe_fadeeffect_opacity; \n"
 
         "void oe_fragFadeEffect( inout vec4 color ) \n"
         "{ \n"
@@ -165,7 +165,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "varying float oe_FadeLOD_opacity; \n"
+        "in float oe_FadeLOD_opacity; \n"
         "void oe_fragFadeLOD( inout vec4 color ) \n"
         "{ \n"
         "    color.a *= oe_FadeLOD_opacity; \n"

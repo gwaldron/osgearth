@@ -978,7 +978,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform mat4 osg_ViewMatrix; \n"
-        "varying float oe_horizon_alpha; \n"
+        "out float oe_horizon_alpha; \n"
         "void oe_horizon_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    const float scale     = 0.001; \n"                 // scale factor keeps dots&crosses in SP range
@@ -1002,7 +1002,7 @@ namespace
     const char* horizon_fs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying float oe_horizon_alpha; \n"
+        "in float oe_horizon_alpha; \n"
         "void oe_horizon_fragment(inout vec4 color) \n"
         "{ \n"
         "    color.a *= oe_horizon_alpha; \n"

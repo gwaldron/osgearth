@@ -7,10 +7,10 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-varying vec4 oe_layer_tilec;
+out vec4 oe_layer_tilec;
+out float oe_contour_lookup;
 uniform float oe_contour_min;
 uniform float oe_contour_range;
-varying float oe_contour_lookup;
 
 float oe_terrain_getElevation(in vec2 uv);
 

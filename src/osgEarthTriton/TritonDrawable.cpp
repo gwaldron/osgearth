@@ -275,7 +275,7 @@ static const size_t NUM_CONTEXTS = 64;
         "vec4 oe_layer_tilec;\n"
         "#endif\n"
 
-        "void oe_triton_setupHeightMap(inout vec4 VertexModel) \n"
+        "void oe_triton_setupHeightMap(inout vec4 unused) \n"
         "{ \n"
         "    oe_triton_elev = oe_terrain_getElevation(); \n"
         "#ifdef OE_TRITON_MASK_MATRIX\n"
@@ -302,7 +302,9 @@ static const size_t NUM_CONTEXTS = 64;
         "uniform float DD;\n"
         "#endif\n"
 
-        "void oe_triton_drawHeightMap( inout vec4 color ) \n"
+        "out vec4 out_height; \n"
+
+        "void oe_triton_drawHeightMap(inout vec4 unused) \n"
         "{ \n"
 #ifdef DEBUG_HEIGHTMAP
           // Map to black = -500m, white = +500m
@@ -316,7 +318,7 @@ static const size_t NUM_CONTEXTS = 64;
           "#endif\n"
 
 #endif
-        "    gl_FragColor = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
+        "    out_height = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";
 }
 

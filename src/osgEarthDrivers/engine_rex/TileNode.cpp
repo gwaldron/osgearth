@@ -557,6 +557,11 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->_imageLayer = layer->getImageLayer();
                     pass->_sourceUID = layer->getImageLayer()->getUID();
                     pass->_valid = true;
+
+                    // This is a new pass that just showed up at this LOD
+                    // Since it just arrived at this LOD, make the parent the same as the color.
+                    pass->_samplers[SamplerBinding::COLOR_PARENT]._texture = layer->getTexture();
+                    pass->_samplers[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
@@ -620,7 +625,6 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         if (layerModel->getTexture())
         {
             osg::Texture* tex = layerModel->getTexture();
-
             for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
             {
                 _renderModel._passes[p]._samplers[bindingIndex]._texture = tex;
@@ -636,6 +640,27 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         getSubTile(2)->refreshInheritedData(this, bindings);
         getSubTile(3)->refreshInheritedData(this, bindings);
     }
+
+    copyCommonSamplers();
+
+#if 0
+    // VALIDATION STEP
+    for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
+    {
+        const RenderingPass& pass = _renderModel._passes[p];
+        for (unsigned s = SamplerBinding::ELEVATION; s < pass._samplers.size(); ++s)
+        {
+            for (unsigned k = 0; k < _renderModel._passes.size(); ++k)
+            {
+                const RenderingPass& kpass = _renderModel._passes[k];
+                if (pass._samplers[s]._texture.get() != kpass._samplers[s]._texture.get())
+                    OE_WARN << "ERROR: Pass[" << p << "] and Pass[" << k << "] have mismatched texture in sampler[" << s << "]\n";
+                if (pass._samplers[s]._matrix != kpass._samplers[s]._matrix)
+                    OE_WARN << "ERROR: Pass[" << p << "] and Pass[" << k << "] have mismatched matrix in sampler[" << s << "]\n";
+            }
+        }
+    }
+#endif
 }
 
 void TileNode::loadChildren()
@@ -756,26 +781,11 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         }
     }
 
-    if (!_renderModel._passes.empty())
-    {
-        // Locate the elevation sampler and pass its raster data along to use
-        // for intersections, primitive functors, etc.
-        const Sampler& elevation = _renderModel._passes[0]._samplers[SamplerBinding::ELEVATION];
-        if (elevation._texture.valid())
-        {
-            const osg::Image* elevRaster = elevation._texture->getImage(0);
-            osg::Matrixf elevMatrix = elevation._matrix;
-
-            if (elevRaster)
-            {
-                setElevationRaster(elevRaster, elevMatrix);
-            }
-        }
-    }
-
     if (changes > 0)
     {
         dirtyBound(); // only for elev/patch changes maybe?
+
+        copyCommonSamplers();
         
         if (_childrenReady)
         {
@@ -788,6 +798,25 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     else
     {
         //OE_INFO << LC << _key.str() << ": refreshInheritedData, stopped short.\n";
+    }
+}
+
+void
+TileNode::copyCommonSamplers()
+{
+    const RenderingPass* firstPass = !_renderModel._passes.empty() ? &_renderModel._passes[0] : 0L;
+    if (firstPass)
+    {
+        // Share all "common" samplers, i.e. samplers that are the same across 
+        // all rendering passes. This is everything except COLOR and COLOR_PARENT.
+        for (unsigned p = 1; p < _renderModel._passes.size(); ++p)
+        {
+            RenderingPass& pass = _renderModel._passes[p];
+            for (unsigned s = SamplerBinding::COLOR_PARENT + 1; s < pass._samplers.size(); ++s)
+            {
+                pass._samplers[s] = firstPass->_samplers[s];
+            }
+        }
     }
 }
 

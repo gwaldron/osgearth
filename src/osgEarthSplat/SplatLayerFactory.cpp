@@ -214,7 +214,8 @@ SplatLayerFactory::install(MapNode* mapNode)
             layer->setRenderType(osgEarth::Layer::RENDERTYPE_TILE);
             layer->setStateSet(stateset);
             
-            mapNode->getMap()->addLayer(layer);
+            //mapNode->getMap()->addLayer(layer);
+            mapNode->getMap()->insertLayer(layer, 0);
         }
     }
 }

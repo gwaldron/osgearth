@@ -43,9 +43,11 @@ namespace osgEarth
      * container for all Layer objects (that contain the actual data) and
      * the rendering options.
      */
-    class OSGEARTH_EXPORT Map : public osg::Referenced
+    class OSGEARTH_EXPORT Map : public osg::Object
     {
     public:
+        META_Object(osgEarth, Map);
+
         /** Construct a new, empty map. */
         Map();
 
@@ -311,12 +313,12 @@ namespace osgEarth
         /**
          * Sets the readable name of this map.
          */
-        void setName( const std::string& name );
+        void setMapName( const std::string& name );
 
         /** 
          * Gets the readable name of this map.
          */
-        const std::string& getName() const { return _name; }
+        const std::string& getMapName() const { return _name; }
               
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.
@@ -377,6 +379,8 @@ namespace osgEarth
 
         virtual ~Map();
 
+        Map(const Map& rhs, const osg::CopyOp& copy) { }
+
     private:
 
         UID _uid;
@@ -391,7 +395,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
-        osg::ref_ptr<ElevationPool> _elevationPool;
+        //osg::ref_ptr<ElevationPool> _elevationPool;
+        ElevationPool* _elevationPool;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

@@ -51,14 +51,14 @@ Map::ElevationLayerCB::onVisibleChanged(TerrainLayer* layer)
 //------------------------------------------------------------------------
 
 Map::Map() :
-osg::Referenced(true),
+osg::Object(),
 _dataModelRevision(0)
 {
     ctor();
 }
 
 Map::Map( const MapOptions& options ) :
-osg::Referenced      ( true ),
+osg::Object(),
 _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
@@ -69,6 +69,9 @@ _dataModelRevision   ( 0 )
 void
 Map::ctor()
 {
+    // Set the object name.
+    osg::Object::setName("osgEarth.Map");
+
     // Generate a UID.
     _uid = Registry::instance()->createUID();
 
@@ -113,6 +116,9 @@ Map::ctor()
     // we do our own caching
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
+    // encode this map in the read options.
+    _readOptions->getOrCreateUserDataContainer()->addUserObject(this);
+
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
     _elevationLayerCB = new ElevationLayerCB(this);
@@ -124,13 +130,16 @@ Map::ctor()
 
 Map::~Map()
 {
+    if (_elevationPool)
+        delete _elevationPool;
+
     OE_DEBUG << "~Map" << std::endl;
 }
 
 ElevationPool*
 Map::getElevationPool() const
 {
-    return _elevationPool.get();
+    return _elevationPool; //.get();
 }
 
 void
@@ -169,11 +178,6 @@ void
 Map::setGlobalOptions( const osgDB::Options* options )
 {
     _globalOptions = options;
-}
-
-void
-Map::setName( const std::string& name ) {
-    _name = name;
 }
 
 Revision

@@ -124,8 +124,8 @@ namespace
             return false;
         if (hf->getHeightList().size() != hf->getNumColumns() * hf->getNumRows())
             return false;
-        if (hf->getXInterval() < 1e-5 || hf->getYInterval() < 1e-5)
-            return false;
+        //if (hf->getXInterval() < 1e-5 || hf->getYInterval() < 1e-5)
+        //    return false;
         
         return true;
     }    

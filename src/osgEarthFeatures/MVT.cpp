@@ -309,11 +309,12 @@ bool
     }
 
     // Decompress the tile
+    std::string original((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    in.seekg (0, std::ios::beg);
     std::string value;
-    if ( !compressor->decompress(in, value) )
+    if (!compressor->decompress(in, value))
     {
-        OE_WARN << "Decompression failed" << std::endl;
-        return false;
+        value = original;
     }
 
 

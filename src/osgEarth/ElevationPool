@@ -46,7 +46,7 @@ namespace osgEarth
      * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
      * float z = envelope->getElevation(point);
      */
-    class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
+    class OSGEARTH_EXPORT ElevationPool // : public osg::Referenced
     {
     public:
         /** ctor */
@@ -54,6 +54,17 @@ namespace osgEarth
 
         /** Sets the map from which to read elevation data. */
         void setMap(const Map* map);
+
+        /**
+         * Sets a vector of ElevationLayers from which to read elevation data.
+         * Omit this is you just want to use all the elevation layes in the Map
+         * that you set with setMap().
+         */
+        void setElevationLayers(const ElevationLayerVector& layers);
+
+        /** Sets the dimension of heightfield tiles to read from the map */
+        void setTileSize(unsigned size);
+        unsigned getTileSize() const { return _tileSize; }
 
         /** Creates a query envelope to use for elevation queries in a certain area. */
         ElevationEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
@@ -64,7 +75,9 @@ namespace osgEarth
 
     protected:
 
-        MapFrame _frame;
+        osg::observer_ptr<const Map> _map;
+
+        ElevationLayerVector _layers;
 
         enum Status
         {
@@ -122,6 +135,9 @@ namespace osgEarth
         unsigned _entries;
         unsigned _maxEntries;
 
+        // dimension of sampling heightfield
+        unsigned _tileSize;
+
         // QuerySet is a collection of Tiles, sorted from high to low resolution,
         // that a ElevationEnvelope uses for a terrain sampling opteration.
         typedef std::set<osg::ref_ptr<Tile>, TileSortHiResToLoRes> QuerySet;
@@ -129,19 +145,22 @@ namespace osgEarth
     protected:
 
         /** dtor - prevent stack allocation */
-        virtual ~ElevationPool() { }
+        //virtual ~ElevationPool() { }
 
         // safely popluate the tile; called when Tile._status = IN_PROGRESS
-        bool fetchTileFromMap(const TileKey& key, Tile* tile);
+        bool fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile);
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool getTile(const TileKey& key, osg::ref_ptr<Tile>& output);
+        bool getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& output);
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool tryTile(const TileKey& key, osg::ref_ptr<Tile>& output);
+        bool tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& output);
 
         // safely remove the oldest item on the MRU
         void popMRU();
+
+        // clears and resets the pool.
+        void clear();
 
         friend class ElevationEnvelope;
     };
@@ -201,9 +220,9 @@ namespace osgEarth
 
         ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
-        const Profile* _mapProfile;
         unsigned _lod;
-        osg::ref_ptr<ElevationPool> _clamper;
+        ElevationPool* _pool;
+        MapFrame _frame;
         friend class ElevationPool;
 
     private:

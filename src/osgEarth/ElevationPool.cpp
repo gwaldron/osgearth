@@ -26,7 +26,8 @@ using namespace osgEarth;
 
 ElevationPool::ElevationPool() :
 _entries(0u),
-_maxEntries( 128u )
+_maxEntries( 128u ),
+_tileSize(33u)
 {
     //nop
 }
@@ -35,22 +36,39 @@ void
 ElevationPool::setMap(const Map* map)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
-    _frame.setMap( map );
+    _map = map;
+    _tiles.clear();
+    _mru.clear();
+    _entries = 0u;
+}
+
+void
+ElevationPool::setElevationLayers(const ElevationLayerVector& layers)
+{
+    Threading::ScopedMutexLock lock(_tilesMutex);
+    _layers = layers;
+    _tiles.clear();
+    _mru.clear();
+    _entries = 0u;
+}
+
+void
+ElevationPool::setTileSize(unsigned value)
+{
+    Threading::ScopedMutexLock lock(_tilesMutex);
+    _tileSize = value;
     _tiles.clear();
     _mru.clear();
     _entries = 0u;
 }
 
 bool
-ElevationPool::fetchTileFromMap(const TileKey& key, Tile* tile)
+ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
 {
-    // TODO: parameterize me
-    const int tileSize = 33;
-
     tile->_loadTime = osg::Timer::instance()->tick();
 
     osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
-    hf->allocate( tileSize, tileSize );
+    hf->allocate( _tileSize, _tileSize );
 
     // Initialize the heightfield to nodata
     hf->getFloatArray()->assign( hf->getFloatArray()->size(), NO_DATA_VALUE );
@@ -58,7 +76,17 @@ ElevationPool::fetchTileFromMap(const TileKey& key, Tile* tile)
     TileKey keyToUse = key;
     while( !tile->_hf.valid() && keyToUse.valid() )
     {
-        if (_frame.populateHeightField(hf, keyToUse, false /*heightsAsHAE*/, 0L))
+        bool ok;
+        if (_layers.empty())
+        {
+            ok = frame.populateHeightField(hf, keyToUse, false /*heightsAsHAE*/, 0L);
+        }
+        else
+        {
+            ok = _layers.populateHeightField(hf, keyToUse, 0L, INTERP_BILINEAR, 0L);
+        }
+
+        if (ok)
         {
             tile->_hf = GeoHeightField( hf.get(), keyToUse.getExtent() );
             tile->_bounds = keyToUse.getExtent().bounds();
@@ -93,7 +121,7 @@ ElevationPool::popMRU()
 }
 
 bool
-ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
+ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& out)
 {
     // first see whether the tile is available
     _tilesMutex.lock();
@@ -132,7 +160,7 @@ ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
         tile->_status.exchange(STATUS_IN_PROGRESS);
         _tilesMutex.unlock();
 
-        bool ok = fetchTileFromMap(key, tile.get());
+        bool ok = fetchTileFromMap(key, frame, tile.get());
         tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
         
         out = ok ? tile.get() : 0L;
@@ -178,14 +206,24 @@ ElevationPool::tryTile(const TileKey& key, osg::ref_ptr<Tile>& out)
     }
 }
 
+void
+ElevationPool::clear()
+{
+    _tilesMutex.lock();
+    _tiles.clear();
+    _mru.clear();
+    _entries = 0u;
+    _tilesMutex.unlock();
+}
+
 bool
-ElevationPool::getTile(const TileKey& key, osg::ref_ptr<ElevationPool::Tile>& output)
+ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<ElevationPool::Tile>& output)
 {
     // Synchronize the MapFrame to its Map; if there's an update,
     // clear out the internal cache and MRU.
-    if ( _frame.needsSync() )
+    if ( frame.needsSync() )
     {
-        if (_frame.sync())
+        if (frame.sync())
         {
             _tilesMutex.lock();
             _tiles.clear();
@@ -199,7 +237,7 @@ ElevationPool::getTile(const TileKey& key, osg::ref_ptr<ElevationPool::Tile>& ou
 
     const double timeout = 30.0;
     osg::ref_ptr<Tile> tile;
-    while( tryTile(key, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
+    while( tryTile(key, frame, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
     {
         // condition: another thread is working on fetching the tile from the map,
         // so wait and try again later. Do this until we succeed or time out.
@@ -233,9 +271,9 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
     ElevationEnvelope* e = new ElevationEnvelope();
     e->_inputSRS = srs;
-    e->_mapProfile = _frame.getProfile();
+    e->_frame.setMap(_map.get());
     e->_lod = lod;
-    e->_clamper = this;
+    e->_pool = this;
     return e;
 }
 
@@ -250,7 +288,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 
     GeoPoint p(_inputSRS, x, y, 0.0f, ALTMODE_ABSOLUTE);
 
-    if (p.transformInPlace(_mapProfile->getSRS()))
+    if (p.transformInPlace(_frame.getProfile()->getSRS()))
     {
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
@@ -277,9 +315,9 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         // for the tile so we can add it to the query set.
         if (!foundTile)
         {
-            TileKey key = _mapProfile->createTileKey(p.x(), p.y(), _lod);
+            TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            if (_clamper->getTile(key, tile))
+            if (_pool->getTile(key, _frame, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());

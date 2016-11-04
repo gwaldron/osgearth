@@ -121,6 +121,7 @@ _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
 _requireParentTextures   ( false ),
+_elevationBorderRequired ( false ),
 _redrawRequired          ( true )
 {
     // register for event traversals so we can properly reset the dirtyCount

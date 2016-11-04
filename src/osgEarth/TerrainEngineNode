@@ -223,6 +223,7 @@ namespace osgEarth
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
+        bool elevationBorderRequired() const { return _elevationBorderRequired; }
             
 
     public: // Runtime properties
@@ -276,6 +277,7 @@ namespace osgEarth
         bool _requireElevationTextures;
         bool _requireNormalTextures;
         bool _requireParentTextures;
+        bool _elevationBorderRequired;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.

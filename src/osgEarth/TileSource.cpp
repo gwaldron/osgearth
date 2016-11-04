@@ -381,7 +381,9 @@ TileSource::createHeightField(const TileKey&        key,
     {
         ReadResult r = _memCache->getOrCreateDefaultBin()->readObject(key.str(), 0L);
         if ( r.succeeded() )
+        {
             return r.release<osg::HeightField>();
+        }
     }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );

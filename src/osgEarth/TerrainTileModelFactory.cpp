@@ -55,7 +55,9 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
-        addElevation( model.get(), frame, key, progress );
+        unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
+
+        addElevation( model.get(), frame, key, border, progress );
     }
 
     if ( requirements == 0L || requirements->normalTexturesRequired() )
@@ -201,6 +203,7 @@ void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
+                                      unsigned                     border,
                                       ProgressCallback*            progress)
 {    
     // make an elevation layer.
@@ -214,7 +217,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
 
-    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, mainHF, progress) && mainHF.valid())
+    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, progress) && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );
@@ -289,6 +292,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
                                                 ElevationInterpolation          interpolation,
+                                                unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
                                                 ProgressCallback*               progress)
 {
@@ -318,22 +322,11 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
     if ( !out_hf.valid() )
     {
-        // This sets the elevation tile size; query size for all tiles.
-
-#if 0
-        out_hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(), 257, 257, true );
-#else
-
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(),
             257, 257,           // base tile size for elevation data
-            1u,                 // 1 sample border around the data makes it 259x259
+            border,             // 1 sample border around the data makes it 259x259
             true);              // initialize to HAE (0.0) heights
-
-#endif
-
-
     }
 
     bool populated = frame.populateHeightField(

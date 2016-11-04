@@ -115,7 +115,7 @@ namespace osgEarth { namespace Splat
 
         osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress);
 
-        CachePolicy getCachePolicyHint() const;
+        //CachePolicy getCachePolicyHint() const;
 
     protected:
         virtual ~RoadHFTileSource() { }

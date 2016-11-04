@@ -1,0 +1,89 @@
+<map>
+
+    <options>
+        <terrain driver="rex" progressive="false"/>
+    </options>
+    
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>  
+            
+    <elevation name="roadhf" driver="roadhf" min_level="13" max_level="13">
+    
+        <cache_policy max_age="30" comment="5 minutes"/>
+        
+        <base_layer>readymap_elevation</base_layer>
+        
+        <features name="roads" driver="ogr">
+            <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+               
+        <inner_width>20</inner_width>
+        
+        <outer_width>200</outer_width>  
+
+    </elevation>
+    
+    <image name="readymap_imagery" driver="tms" opacity="0.5" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <image name="Debug" driver="debug" enabled="false"/>
+    
+    <image name="roads overlay" driver="agglite" min_level="9" max_data_level="16"> 
+
+        <features name="roads" driver="ogr">
+            <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #42200;
+                   stroke-width: 20m;
+                }                    
+            </style>
+        </styles>        
+    </image>
+
+    <bumpmap>
+        <image>../data/rock_hard.jpg</image>
+        <octaves>8</octaves>
+        <intensity>2.2</intensity>
+    </bumpmap>
+     
+    <!--
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        <cache_policy usage="none"/>
+        <images>
+            <image name="ESA" driver="gdal" coverage="true">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <warp>0.01</warp>
+            </image>
+        </images>
+    </image>
+   
+    <splat>        
+        <coverage>
+            <layer> CLASSMAP </layer>
+            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+        </coverage>
+        
+        <zones>
+            <zone name="default" doc="Default Climate Zone">            
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>                
+        </zones>
+        
+    </splat>
+    -->
+    
+    <xi:include href="viewpoints.xml"/>
+    
+</map>

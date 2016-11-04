@@ -32,57 +32,17 @@ using namespace osgEarth::Symbology;
 #define LC "[RoadHFTileSource] "
 
 
-#define USE_BASE_LAYER
-
 namespace
 {
-    Geometry* cubic(const Geometry* in, double size)
+    double inline smoothstep(double a, double b, double t)
     {
-        Geometry* out = new LineString();
-        //out->push_back(in->front());
-        for (Geometry::const_iterator i = in->begin(); i != in->end()-1; ++i)
-        {
-            const osg::Vec3d& p0 = i == in->begin() ? *i : *(i-1);
-            const osg::Vec3d& p1 = *(i);
-            const osg::Vec3d& p2 = *(i+1);
-            const osg::Vec3d& p3 = (i+2 == in->end())? *(i+1) : *(i+2);
-
-            double len = (p2 - p1).length();
-            int segs = ceil(len/size);
-            if (segs>1)
-            {
-            //    OE_INFO << "segs = " << segs << "\n";
-                for (int k = 0; k < segs; ++k)
-                {
-                    double t = (double)k / (double)segs;
-                    osg::Vec3d a0 = p3-p2-p0+p1;
-                    osg::Vec3d a1 = p0-p1-a0;
-                    osg::Vec3d a2 = p2-p0;
-                    osg::Vec3d a3 = p1;
-                    osg::Vec3d p = (a0*t*t*t + a1*t*t + a2*t + a3);
-                    out->push_back(p);
-                }
-            }
-            else
-            {
-                out->push_back(p1);
-            }
-        }
-        out->push_back(in->back());
-        return out;
+        // smoothsetp (approximates cosine):
+        double mu = t*t*(3.0-2.0*t);
+        return a*(1.0-mu) + b*mu;
     }
 
-    double inline mix(double a, double b, double t)
+    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerRadius, double outerRadius, ElevationEnvelope* envelope)
     {
-        return a*(1.0-t) + b*t;
-    }
-
-    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerWidth, double outerWidth, ElevationEnvelope* envelope)
-    {
-        bool debug = key.str() == "13/3117/2210";
-        if (debug)
-            int k=0;
-
         bool wroteChanges = false;
 
         const GeoExtent& ex = key.getExtent();
@@ -92,6 +52,8 @@ namespace
 
         osg::Vec3d P, PROJ, bestA, bestB;
         double bestT;
+
+        double outerRadius2 = outerRadius*outerRadius;
 
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
         {
@@ -103,73 +65,86 @@ namespace
 
                 double shortestD2 = DBL_MAX;
 
-                for (int i = 0; i < geom->size()-1; ++i)
+                ConstGeometryIterator giter(geom, false);
+                while (giter.hasMore())
                 {
-                    const osg::Vec3d& A = geom->at(i);
-                    const osg::Vec3d& B = geom->at(i+1);
-                    
-                    osg::Vec3d AB = B - A;
-
-                    double t;  // parameter [0..1] on segment
-                    double D2; // shortest distance from point to segment, squared
-                    double L2 = AB.length2();
-                    osg::Vec3d AP = P - A;
-
-                    if (L2 == 0.0)
-                    {
-                        // trivial case: segment is zero-length
-                        t = 0.0;
-                        D2 = AP.length2();
-                        PROJ = A;
-                    }
-                    else
-                    {
-                        // calculate parameter and project our point on to the segment
-                        t = osg::clampBetween((AP * AB)/L2, 0.0, 1.0);
-                        PROJ = A + AB*t;
-                        D2 = (P - PROJ).length2();
-                    }
-
-                    if (D2 < shortestD2)
-                    {
-                        shortestD2 = D2;
-                        bestA = A;
-                        bestB = B;
-                        bestT = t;
-                    }
-                }
+                    const Geometry* part = giter.next();
                 
-                if (true) //shortestD != DBL_MAX) //<= ex.width() && shortestD <= ex.height()) //outerWidth || bestT > 0.0 || bestT < 1.0)
-                {
-                    double shortestD = sqrt(shortestD2);
-
-                    double blend = osg::clampBetween(
-                        (shortestD - innerWidth) / (outerWidth - innerWidth),
-                        0.0, 1.0);
-
-                    if (blend < 1.0) // try "true", it's smooth but some segments get lost... there's prob an error below.
+                    for (int i = 0; i < part->size()-1; ++i)
                     {
+                        const osg::Vec3d& A = part->at(i);
+                        const osg::Vec3d& B = part->at(i+1);
+                    
+                        osg::Vec3d AB = B - A;
+
+                        double t;  // parameter [0..1] on segment
+                        double D2; // shortest distance from point to segment, squared
+                        double L2 = AB.length2();
+                        osg::Vec3d AP = P - A;
+
+                        if (L2 == 0.0)
+                        {
+                            // trivial case: segment is zero-length
+                            t = 0.0;
+                            D2 = AP.length2();
+                        }
+                        else
+                        {
+                            // calculate parameter and project our point on to the segment
+                            t = osg::clampBetween((AP * AB)/L2, 0.0, 1.0);
+                            PROJ.set( A + AB*t );
+                            D2 = (P - PROJ).length2();
+                        }
+
+                        if (D2 < shortestD2)
+                        {
+                            shortestD2 = D2;
+                            bestA = A;
+                            bestB = B;
+                            bestT = t;
+                        }
+                    }
+                
+                    if (shortestD2 <= outerRadius2)
+                    {
+                        double shortestD = sqrt(shortestD2);
+
+                        // Blend factor. 0 = distance is less than or equal to the inner radius;
+                        //               1 = distance is greater than or equal to the outer radius.
+                        double blend = osg::clampBetween(
+                            (shortestD - innerRadius) / (outerRadius - innerRadius),
+                            0.0, 1.0);
+                    
+                        float elevP = envelope->getElevation(P.x(), P.y());
+
                         float elevPROJ;
 
                         if (bestT == 0.0)
                         {
                             elevPROJ = envelope->getElevation(bestA.x(), bestA.y());
+                            if (elevPROJ == NO_DATA_VALUE)
+                                elevPROJ = elevP;
                         }
                         else if (bestT == 1.0)
                         {
                             elevPROJ = envelope->getElevation(bestB.x(), bestB.y());
+                            if (elevPROJ == NO_DATA_VALUE)
+                                elevPROJ = elevP;
                         }
                         else
                         {
-                            elevPROJ = mix(
-                                envelope->getElevation(bestA.x(), bestA.y()),
-                                envelope->getElevation(bestB.x(), bestB.y()),
-                                bestT );
+                            float elevA = envelope->getElevation(bestA.x(), bestA.y());
+                            if (elevA == NO_DATA_VALUE)
+                                elevA = elevP;
+
+                            float elevB = envelope->getElevation(bestB.x(), bestB.y());
+                            if (elevB == NO_DATA_VALUE)
+                                elevB = elevP;
+
+                            elevPROJ = smoothstep(elevA, elevB, bestT);
                         }
-                    
-                        float elevP = envelope->getElevation(P.x(), P.y());
-                    
-                        float h = mix(elevPROJ, elevP, blend);
+
+                        float h = smoothstep(elevPROJ, elevP, blend);
 
                         hf->setHeight(col, row, h);
 
@@ -192,8 +167,8 @@ RoadHFOptions(options)
 {
     setName("RoadHF");
 
-    // We want full-size elevation tiles in the sampling pool.
-    _pool.setTileSize(129u); //33u);
+    // Experiment with this and see what will work.
+    _pool.setTileSize(65u); //33u); //257u); //129u); //33u);
 }
 
 Status
@@ -207,8 +182,6 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
         profile = Registry::instance()->getGlobalGeodeticProfile();
         setProfile( profile );
     }
-
-#ifdef USE_BASE_LAYER
 
     if (!elevationBaseLayer().isSet())
     {
@@ -243,20 +216,6 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
     layers.push_back(_elevationLayer.get());
     _pool.setElevationLayers(layers);
 
-#else
-    // load up the source elevation layer:
-    if (!elevationLayerOptions().isSet())
-        return Status::Error(Status::ConfigurationError, "Missing required elevation layer");
-
-    ElevationLayerOptions elo;
-    elo.driver() = elevationLayerOptions().get();
-    _elevationLayer = new ElevationLayer(elo);
-    _elevationLayer->setReadOptions(readOptions);
-    const Status& elStatus = _elevationLayer->open();
-    if (elStatus.isError())
-        return elStatus;
-#endif
-
     // load up the feature source for flattening vectors
     if (featureSourceOptions().isSet())
     {
@@ -268,12 +227,6 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
 
     // ready!
     return Status::OK();
-}
-
-CachePolicy
-RoadHFTileSource::getCachePolicyHint() const
-{
-    return CachePolicy::NO_CACHE;
 }
 
 
@@ -288,30 +241,48 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
 
     const GeoExtent& ex = key.getExtent();
 
-    double inner = innerWidth().get() * 0.5;
-    double outer = outerWidth().get() * 0.5;
+    // all points <= innerRadius from the centerline are flattened
+    double innerRadius = innerWidth().get() * 0.5;
 
+    // all points > innerRadius and <= outerRadius and smoothstep blended
+    double outerRadius = outerWidth().get() * 0.5;
+
+    // adjust those values based on latitude in a geographic map
     if (ex.getSRS()->isGeographic())
     {
         double latMid = fabs(ex.yMin() + ex.height()*0.5);
         double metersPerDegAtEquator = (ex.getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
         double metersPerDegree = metersPerDegAtEquator * cos(osg::DegreesToRadians(latMid));
-        inner = inner / metersPerDegree;
-        outer = outer / metersPerDegree;
+        innerRadius = innerRadius / metersPerDegree;
+        outerRadius = outerRadius / metersPerDegree;
     }
 
     Bounds bounds;
     osg::ref_ptr<FeatureCursor> cursor;
-    if (_featureSource.valid() && key.getLOD() == 13)
+    if (_featureSource.valid())
     {
-        //OE_INFO << LC << "Query.\n";
         Query query;
-        bounds = ex.bounds();
-        bounds.expandBy(bounds.xMin() - outer, bounds.yMin() - outer, 0);
-        bounds.expandBy(bounds.xMax() + outer, bounds.yMax() + outer, 0);
-        bounds.transform(ex.getSRS(), _featureSource->getFeatureProfile()->getSRS());
-        query.bounds() = bounds;
-        //query.tileKey() = key;
+
+        if (_featureSource->getFeatureProfile()->getTiled())
+        {
+            // A Tiled source should contain a natural buffer, that is, 
+            // the features should extend some distance outside the tile
+            // key extents. (At least outerWidth meters).
+            query.tileKey() = key;
+        }
+        else
+        {
+            // Query a bounding box that's a bit larger than the key so that lines
+            // extending outside the box (or close to the box) will still affect
+            // the flattening algorithm
+            bounds = ex.bounds();
+            bounds.expandBy(bounds.xMin() - outerRadius, bounds.yMin() - outerRadius, 0);
+            bounds.expandBy(bounds.xMax() + outerRadius, bounds.yMax() + outerRadius, 0);
+            bounds.transform(ex.getSRS(), _featureSource->getFeatureProfile()->getSRS());
+            query.bounds() = bounds;
+        }
+
+        // Query the source.
         cursor = _featureSource->createFeatureCursor(query);
         if (cursor.valid() && !cursor->hasMore())
             cursor = 0L;
@@ -326,52 +297,31 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
             0u,                 // 1 sample border around the data makes it 259x259
             true);              // initialize to HAE (0.0) heights
 
-        
+        // Initialize to NO DATA.
         hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
 
-#ifdef USE_BASE_LAYER
+        // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool.createEnvelope(ex.getSRS(), key.getLOD());
-#else
-        // Fetch the base elevation data, falling back if necessary        
-        ElevationLayerVector elevationLayers;
-        elevationLayers.push_back(_elevationLayer.get());
-        bool realData = elevationLayers.populateHeightField(hf.get(), key, 0L, INTERP_BILINEAR, progress);
-#endif
 
+        MultiGeometry geoms;
         int count = 0;
         while (cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();
 
-            //if (feature->getString("mvt_layer") != "road")
-            //    continue;
-
             // xform to the key's coordinate system
-            // TODO: revisit this
             if (!key.getExtent().getSRS()->isHorizEquivalentTo(feature->getSRS()))
                 feature->transform(key.getExtent().getSRS());
 
-            ConstGeometryIterator geomIter(feature->getGeometry(), false);
-            while (geomIter.hasMore())
-            {
-                const Geometry* geom = geomIter.next();
-                if (integrate(key, hf, geom, inner, outer, envelope))
-                    ++count;
-            }
+            geoms.getComponents().push_back(feature->getGeometry());
         }
 
-        //if (debug) OE_INFO << "key = " << key.str() << ", segments = " << count << std::endl;
-
-        return count > 0 ? hf.release() : 0L;
-        //return realData ? hf.release() : 0L;
+        if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope))
+        {
+            // If integrate made any changes, return the new heightfield
+            return hf.release();
+        }
     }
 
-    else
-    {
-        //OE_INFO << LC << "Calling EL::createHeightField for " << key.str() << std::endl;
-        //return _elevationLayer->createHeightField(key, progress).takeHeightField();
-        return 0L;
-    }
-
-    //return realData ? hf.release() : 0L;
+    return 0L;
 }

@@ -87,11 +87,14 @@ LoadTileData::invoke()
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
-        osg::ref_ptr<ProgressCallback> progress; // = new ProgressCallback();
+        osg::ref_ptr<ProgressCallback> progress;
+
+        MapFrame frame;
+        _context->createMapFrame(frame);
 
         // Assemble all the components necessary to display this tile
         _model = _context->getEngine()->createTileModel(
-            _context->getMapFrame(),
+            frame,
             tilenode->getTileKey(),
             progress ); // progress
 
@@ -229,7 +232,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         {
             const RenderBindings& bindings      = _context->getRenderBindings();
             const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
-            const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
+            const MapInfo&        mapInfo       = _context->getMapInfo();
 
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 

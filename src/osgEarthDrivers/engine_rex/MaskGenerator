@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class MaskGenerator : public osg::Referenced
     {
     public:
-        MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame);
+        MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map);
 
 
         bool hasMasks() const
@@ -88,7 +88,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::DrawElementsUInt* createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* verts, osg::Vec3Array* texCoords,  osg::Vec3Array* normals, osg::Vec3Array* neighbors);
 
     protected:
-        void setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* boundary);
+        void setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary);
 
     protected:
         const TileKey    _key;

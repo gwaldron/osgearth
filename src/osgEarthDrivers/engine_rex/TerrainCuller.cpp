@@ -89,6 +89,7 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         const osg::Image* elevRaster = tileNode->getElevationRaster();
         if (elevRaster)
         {
+            float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
             //float size = (float)elevRaster->s();
             //tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
 
@@ -102,7 +103,7 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
             // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
             // remove the border, and shift an extra texel over as well. Giving us this:
             float size = (float)elevRaster->s();
-            tile._elevTexelCoeff.set((size - 3.0) / size, 1.5 / size);
+            tile._elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
         }
 
         return &tile;

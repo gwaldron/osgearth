@@ -33,11 +33,12 @@ using namespace osgEarth::Symbology;
 #define MATCH_TOLERANCE 0.000001
 
 
-MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame) :
+MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
 _key( key ), _tileSize(tileSize)
 {
+    MapFrame frame(map);
     MaskLayerVector maskLayers;
-    mapFrame.getLayers(maskLayers);
+    frame.getLayers(maskLayers);
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
         it != maskLayers.end(); 
         ++it)
@@ -45,15 +46,15 @@ _key( key ), _tileSize(tileSize)
         MaskLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            setupMaskRecord( mapFrame, layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            setupMaskRecord(frame.getMapInfo(), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
         }
     }
 }
 
 void
-MaskGenerator::setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* boundary)
+MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary)
 {
-    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapFrame.getMapInfo());
+    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
     if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
         geoLocator = geoLocator->getGeographicFromGeocentric();
 

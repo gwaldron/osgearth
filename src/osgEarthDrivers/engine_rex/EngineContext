@@ -71,7 +71,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         GeometryPool* getGeometryPool() const { return _geometryPool; }
 
-        const MapFrame& getMapFrame();
+        //const MapFrame& getMapFrame();
+        const Map* getMap() const { return _map.get(); }
 
         TerrainEngineNode* getEngine() const { return _terrainEngine; }
 
@@ -97,13 +98,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB; }
 
+        bool getUseTextureBorder() const { return false; }
+
     protected:
 
         virtual ~EngineContext() { }
 
     public:
 
-        MapFrame                              _frame;
+        osg::ref_ptr<const Map>               _map;
+        //MapFrame                              _frame;
         osg::ref_ptr<TileNodeRegistry>        _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;

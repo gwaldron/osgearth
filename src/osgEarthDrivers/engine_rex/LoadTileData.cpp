@@ -43,9 +43,11 @@ LoadTileData::invoke()
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
+        MapFrame localFrame(_context->getMap());
+
         // Assemble all the components necessary to display this tile
         _dataModel = _context->getEngine()->createTileModel(
-            _context->getMapFrame(),
+            localFrame,
             tilenode->getKey(),
             0L ); // progress
     }
@@ -63,7 +65,6 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         {
             const RenderBindings& bindings      = _context->getRenderBindings();
             const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
-            const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
 
             // Merge the new data into the tile.
             tilenode->merge(_dataModel.get(), bindings);

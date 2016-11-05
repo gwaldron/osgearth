@@ -23,6 +23,8 @@
 #include <osgEarthSymbology/Query>
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
+#include <osgEarthUtil/SimplexNoise>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -33,7 +35,39 @@ using namespace osgEarth::Symbology;
 
 
 namespace
-{
+{    
+    void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
+    {
+
+        double dL = (double)((int)key.getLOD() - baseLOD);
+        double factor = pow(2.0, dL); //exp2(dL);
+        double invFactor = 1.0/factor;
+
+        u *= invFactor;
+        v *= invFactor;
+
+        if (factor >= 1.0)
+        {
+            unsigned nx, ny;
+            key.getProfile()->getNumTiles(key.getLOD(), nx, ny);
+
+            double tx = (double)key.getTileX();
+            double ty = (double)ny - (double)key.getTileY() - 1.0;
+
+            double ax = floor(tx * invFactor);
+            double ay = floor(ty * invFactor);
+            
+            double bx = ax * factor;
+            double by = ay * factor;
+            
+            double cx = bx + factor;
+            double cy = by + factor;
+
+            u += (tx - bx) / (cx - bx);
+            v += (ty - by) / (cy - by);
+        }
+    }
+
     double inline smoothstep(double a, double b, double t)
     {
         // smoothsetp (approximates cosine):
@@ -41,7 +75,7 @@ namespace
         return a*(1.0-mu) + b*mu;
     }
 
-    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerRadius, double outerRadius, ElevationEnvelope* envelope)
+    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerRadius, double outerRadius, ElevationEnvelope* envelope, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -61,6 +95,10 @@ namespace
 
             for (unsigned row = 0; row < hf->getNumRows(); ++row)
             {
+                // check for cancelation periodically
+                //if (progress && progress->isCanceled())
+                //    return false;
+
                 P.y() = ex.yMin() + (double)row * row_interval;
 
                 double shortestD2 = DBL_MAX;
@@ -221,6 +259,8 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
     {
         _featureSource = FeatureSourceFactory::create(featureSourceOptions().get());
         const Status& fsStatus = _featureSource->open(_readOptions.get());
+        
+        // if the feature source won't open, bail out.
         if (fsStatus.isError())
             return fsStatus;
     }
@@ -238,6 +278,8 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
         OE_WARN << LC << "No elevation layer.\n";
         return 0L;
     }
+
+    OE_START_TIMER(create);
 
     const GeoExtent& ex = key.getExtent();
 
@@ -290,7 +332,6 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
 
     if (cursor.valid() && cursor->hasMore())
     {
-        //OE_INFO << LC << "Cursor.\n";
         osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
             ex,
             257, 257,           // base tile size for elevation data
@@ -303,6 +344,7 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool.createEnvelope(ex.getSRS(), key.getLOD());
 
+
         MultiGeometry geoms;
         int count = 0;
         while (cursor->hasMore())
@@ -314,11 +356,21 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
                 feature->transform(key.getExtent().getSRS());
 
             geoms.getComponents().push_back(feature->getGeometry());
+
+            //if (progress && progress->isCanceled())
+            //    break;
         }
 
-        if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope))
+
+
+        if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope, progress) || (progress && progress->isCanceled()))
         {
-            // If integrate made any changes, return the new heightfield
+            //double t_create = OE_GET_TIMER(create);
+            //OE_INFO << LC << key.str() << " : t=" << t_create << "s\n";
+
+            // If integrate made any changes, return the new heightfield.
+            // (Or if the operation was canceled...return it anyway and it 
+            // will be discarded).
             return hf.release();
         }
     }

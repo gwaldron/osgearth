@@ -25,6 +25,7 @@
 #include "TileNode"
 #include "EngineContext"
 #include "TileRenderModel"
+#include <osgEarth/Progress>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {    
@@ -40,6 +41,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Applies the fetched data to the tile node (scene-graph safe) */
         void apply(const osg::FrameStamp*);
+
+    public: // ProgressCallback
+
+        bool isCanceled();
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;

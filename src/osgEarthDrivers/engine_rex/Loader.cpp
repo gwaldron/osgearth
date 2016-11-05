@@ -177,12 +177,26 @@ PagerLoader::PagerLoader(TerrainEngine* engine) :
 _engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 ),
-_frameNumber   ( 0 )
+_frameNumber   ( 0 ),
+_numLODs       ( 20u )
 {
     _myNodePath.push_back( this );
 
     _dboptions = new osgDB::Options();
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
+
+    // initialize the LOD priority scales and offsets
+    for (unsigned i = 0; i < 64; ++i)
+    {
+        _priorityScales[i] = 1.0f;
+        _priorityOffsets[i] = 0.0f;
+    }
+}
+
+void
+PagerLoader::setNumLODs(unsigned lods)
+{
+    _numLODs = std::max(lods, 1u);
 }
 
 void
@@ -190,6 +204,20 @@ PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = std::max(value, 0);
     this->setNumChildrenRequiringUpdateTraversal( 1 );
+}
+
+void
+PagerLoader::setLODPriorityScale(unsigned lod, float priorityScale)
+{
+    if (lod < 64)
+        _priorityScales[lod] = priorityScale;
+}
+
+void
+PagerLoader::setLODPriorityOffset(unsigned lod, float offset)
+{
+    if (lod < 64)
+        _priorityOffsets[lod] = offset;
 }
 
 bool
@@ -218,8 +246,10 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             // remember the last tick at which this request was submitted
             request->_lastTick = osg::Timer::instance()->tick();
 
-            // update the priority
-            request->_priority = priority;
+            // update the priority, scale and bias it, and then normalize it to [0..1] range.
+            unsigned lod = request->getTileKey().getLOD();
+            float p = priority * _priorityScales[lod] + _priorityOffsets[lod];            
+            request->_priority = p / (float)(_numLODs+1);
 
             // timestamp it
             request->setFrameNumber( fn );
@@ -234,16 +264,11 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 
         char filename[64];
         sprintf(filename, "%u.%u.osgearth_rex_loader", request->_uid, _engineUID);
-        //std::string filename = Stringify() << request->_uid << "." << _engineUID << ".osgearth_rex_loader";
-
-        // scale from LOD to 0..1 range, more or less
-        // TODO: need to balance this with normal PagedLOD priority setup
-        //float scaledPriority = priority / 20.0f;
 
         nv.getDatabaseRequestHandler()->requestNodeFile(
             filename,
             _myNodePath,
-            priority,
+            request->_priority,
             nv.getFrameStamp(),
             request->_internalHandle,
             _dboptions.get() );

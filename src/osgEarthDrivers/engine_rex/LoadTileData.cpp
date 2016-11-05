@@ -35,6 +35,15 @@ _context(context)
     //nop
 }
 
+namespace
+{
+    struct MyProgress : public ProgressCallback {
+        LoadTileData* _req;
+        MyProgress(LoadTileData* req) : _req(req) {}
+        bool isCanceled() { return _req->isIdle(); }
+    };
+}
+
 
 // invoke runs in the background pager thread.
 void
@@ -45,12 +54,20 @@ LoadTileData::invoke()
     {
         MapFrame localFrame(_context->getMap());
 
+        osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
+
         // Assemble all the components necessary to display this tile
         _dataModel = _context->getEngine()->createTileModel(
             localFrame,
             tilenode->getKey(),
-            0L ); // progress
+            progress.get() ); // progress
     }
+}
+
+bool
+LoadTileData::isCanceled()
+{
+    return isIdle();
 }
 
 

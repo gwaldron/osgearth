@@ -1,7 +1,12 @@
 <map>
 
     <options>
-        <terrain driver="rex" progressive="false"/>
+        <terrain driver="rex" progressive="false">
+            <lods>
+                <lod lod="13" priority_offset="7"/>
+                <lod lod="16" priority_offset="3"/>
+            </lods>
+        </terrain>
     </options>
     
     <elevation name="readymap_elevation" driver="tms">
@@ -10,7 +15,7 @@
             
     <elevation name="roadhf" driver="roadhf" min_level="13" max_level="13">
     
-        <cache_policy max_age="30" comment="5 minutes"/>
+        <cache_policy usage="none"/>
         
         <base_layer>readymap_elevation</base_layer>
         

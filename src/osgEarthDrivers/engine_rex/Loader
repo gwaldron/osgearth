@@ -171,10 +171,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class PagerLoader : public LoaderGroup
     {
     public:
-        PagerLoader(TerrainEngine* engine); //UID engineUID);
+        PagerLoader(TerrainEngine* engine);
+
+        /** Tell the loader the maximum LOD so it can properly scale the priorities. */
+        void setNumLODs(unsigned num);
 
         /** Sets the maximum number of requests to merge per frame. 0=infinity */
         void setMergesPerFrame(int);
+
+        /** Sets a priority offset for an LOD. The units are LODs. For example, setting the
+            offset for LOD 10 to +3 will give it the priority of an LOD 13 request. */
+        void setLODPriorityOffset(unsigned lod, float offset);
+
+        /** Set the priority scale for an LOD. */
+        void setLODPriorityScale(unsigned lod, float scale);
 
     public: // Loader
 
@@ -223,6 +233,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
         unsigned         _frameNumber;
+        unsigned         _numLODs;
+        float            _priorityScales[64];
+        float            _priorityOffsets[64];
 
         osg::ref_ptr<osgDB::Options> _dboptions;
         mutable Threading::Mutex     _requestsMutex;

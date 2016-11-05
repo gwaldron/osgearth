@@ -43,6 +43,8 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
+#define DEFAULT_MAX_LOD 19u
+
 //------------------------------------------------------------------------
 
 namespace
@@ -245,7 +247,15 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
+    loader->setNumLODs(_terrainOptions.maxLOD().getOrUse(DEFAULT_MAX_LOD));
     loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
+    for (std::vector<RexTerrainEngineOptions::LODOptions>::const_iterator i = _terrainOptions.lods().begin(); i != _terrainOptions.lods().end(); ++i) {
+        if (i->_lod.isSet()) {
+            loader->setLODPriorityScale(i->_lod.get(), i->_priorityScale.getOrUse(1.0f));
+            loader->setLODPriorityOffset(i->_lod.get(), i->_priorityOffset.getOrUse(0.0f));
+        }
+    }
+
     _loader = loader;
     this->addChild( _loader.get() );
 
@@ -404,7 +414,7 @@ RexTerrainEngineNode::dirtyTerrain()
     }
 
     // Calculate the LOD morphing parameters:
-    unsigned maxLOD = _terrainOptions.maxLOD().getOrUse(19u);
+    unsigned maxLOD = _terrainOptions.maxLOD().getOrUse(DEFAULT_MAX_LOD);
 
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD

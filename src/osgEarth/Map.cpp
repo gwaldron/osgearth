@@ -81,7 +81,7 @@ Map::ctor()
         !Registry::instance()->defaultCachePolicy().isSet())
     {
         Registry::instance()->setDefaultCachePolicy( _mapOptions.cachePolicy().get() );
-        OE_INFO << LC 
+        OE_INFO << LC
             << "Setting default cache policy from map ("
             << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
     }
@@ -152,7 +152,7 @@ Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
         newRevision = ++_dataModelRevision;
     }
 
-    // a separate block b/c we don't need the mutex   
+    // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
         i->get()->onMapModelChanged( MapModelChange(
@@ -163,7 +163,7 @@ Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
 bool
 Map::isGeocentric() const
 {
-    return 
+    return
         _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC ||
         _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
 }
@@ -178,6 +178,11 @@ void
 Map::setGlobalOptions( const osgDB::Options* options )
 {
     _globalOptions = options;
+}
+
+void
+Map::setMapName( const std::string& name ) {
+    _name = name;
 }
 
 Revision
@@ -210,14 +215,14 @@ Map::setCache(Cache* cache)
         cacheSettings->setCache(cache);
 }
 
-void 
+void
 Map::addMapCallback( MapCallback* cb ) const
 {
     if ( cb )
         const_cast<Map*>(this)->_mapCallbacks.push_back( cb );
 }
 
-void 
+void
 Map::removeMapCallback( MapCallback* cb )
 {
     MapCallbackList::iterator i = std::find( _mapCallbacks.begin(), _mapCallbacks.end(), cb);
@@ -242,7 +247,7 @@ void
 Map::endUpdate()
 {
     MapModelChange msg( MapModelChange::END_BATCH_UPDATE, _dataModelRevision );
- 
+
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
         i->get()->onMapModelChanged( msg );
@@ -298,7 +303,7 @@ Map::addLayer(Layer* layer)
         }
 
         int newRevision;
-        unsigned index = -1; 
+        unsigned index = -1;
 
         // Add the layer to our stack.
         {
@@ -309,7 +314,7 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
-        // a separate block b/c we don't need the mutex   
+        // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged(MapModelChange(
@@ -380,7 +385,7 @@ Map::insertLayer(Layer* layer, unsigned index)
             newRevision = ++_dataModelRevision;
         }
 
-        // a separate block b/c we don't need the mutex   
+        // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             //i->get()->onMapModelChanged( MapModelChange(
@@ -392,7 +397,7 @@ Map::insertLayer(Layer* layer, unsigned index)
     }
 }
 
-void 
+void
 Map::removeLayer(Layer* layer)
 {
     osgEarth::Registry::instance()->clearBlacklist();
@@ -565,8 +570,8 @@ Map::clear()
         // calculate a new revision.
         newRevision = ++_dataModelRevision;
     }
-    
-    // a separate block b/c we don't need the mutex   
+
+    // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
         for(LayerVector::iterator layer = layersRemoved.begin();
@@ -615,7 +620,7 @@ Map::calculateProfile()
                 }
                 else
                 {
-                    OE_WARN << LC 
+                    OE_WARN << LC
                         << "Map is geocentric, but the configured profile SRS ("
                         << userProfile->getSRS()->getName() << ") is not geographic; "
                         << "it will be ignored."
@@ -633,7 +638,7 @@ Map::calculateProfile()
                 }
                 else
                 {
-                    OE_WARN << LC 
+                    OE_WARN << LC
                         << "Map is geocentric cube, but the configured profile SRS ("
                         << userProfile->getSRS()->getName() << ") is not geocentric cube; "
                         << "it will be ignored."
@@ -651,7 +656,7 @@ Map::calculateProfile()
                 }
                 else
                 {
-                    OE_WARN << LC 
+                    OE_WARN << LC
                         << "Map is projected, but the configured profile SRS ("
                         << userProfile->getSRS()->getName() << ") is not projected; "
                         << "it will be ignored."
@@ -689,7 +694,7 @@ Map::calculateProfile()
         }
         else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && _profile.valid() && _profile->getSRS()->isGeographic() )
         {
-            OE_INFO << LC << "Projected map with geographic SRS; activating EQC profile" << std::endl;            
+            OE_INFO << LC << "Projected map with geographic SRS; activating EQC profile" << std::endl;
             unsigned u, v;
             _profile->getNumTiles(0, u, v);
             const osgEarth::SpatialReference* eqc = _profile->getSRS()->createEquirectangularSRS();
@@ -775,8 +780,8 @@ Map::sync( MapFrame& frame ) const
         // sync the revision numbers.
         frame._initialized = true;
         frame._mapDataModelRevision = _dataModelRevision;
-            
+
         result = true;
-    }    
+    }
     return result;
 }

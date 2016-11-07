@@ -207,7 +207,7 @@ namespace osgEarth
          * Removes all records in the cache (if possible). This could take
          * some time to complete.
          */
-        virtual bool clear() { return false; }
+        virtual bool clear();
 
     protected:
         bool                   _ok;

@@ -88,43 +88,29 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->isKeyInRange(key) )
+        if ( layer->getEnabled() && layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()) )
         {
-            // This will only go true if we are requesting a ROOT TILE but we have to
-            // fall back on lower resolution data to create it.
-            bool isFallback = false;
+            osg::Texture* tex = 0L;
 
-            GeoImage geoImage;
-
-            const Profile* layerProfile = layer->getProfile();
-            
-            // If this is a ROOT tile, we will try to fall back on lower-resolution
-            // data if we can't find something at the optimal LOD.
-            bool isRootKey =
-                (key.getLOD() == 0) || // should never be
-                (key.getLOD()-1 == _options.firstLOD().get() );
-
-            TileSource* tileSource = layer->getTileSource();
-
-            // Only try to get data from the source if it actually intersects the key extent
-            bool hasDataInExtent = true;
-            if ( tileSource && layerProfile )
+            if (layer->createTextureSupported())
             {
-                GeoExtent ext = key.getExtent();
-                if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS() ))
+                tex = layer->createTexture( key, progress );
+            }
+
+            else
+            {
+                GeoImage geoImage = layer->createImage( key, progress );
+           
+                if ( geoImage.valid() )
                 {
-                    ext = layerProfile->clampAndTransformExtent( ext );
+                    if ( layer->isCoverage() )
+                        tex = createCoverageTexture(geoImage.getImage(), layer);
+                    else
+                        tex = createImageTexture(geoImage.getImage(), layer);
                 }
-                hasDataInExtent = tileSource->hasDataInExtent( ext );
             }
-            
-            // fetch the image from the layer if it's available:
-            if ( hasDataInExtent && layer->isKeyInRange(key) )
-            {
-                geoImage = layer->createImage( key, progress );
-            }
-            
-            if ( geoImage.valid() )
+
+            if (tex)
             {
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
                 layerModel->setImageLayer( layer );
@@ -135,15 +121,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                 // inserted in the correct position according to the map model.
                 layerModel->setOrder( order );
 
-                // made an image. Store as a texture with an identity matrix.
-                osg::Texture* texture;
-                if ( layer->isCoverage() )
-                    texture = createCoverageTexture(geoImage.getImage(), layer);
-                else
-                    texture = createImageTexture(geoImage.getImage(), layer);
-
-                layerModel->setTexture( texture );
-
+                layerModel->setTexture( tex );
 
                 if ( layer->isShared() )
                     model->sharedLayers().push_back( layerModel );

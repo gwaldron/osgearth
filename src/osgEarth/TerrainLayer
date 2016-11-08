@@ -217,7 +217,7 @@ namespace osgEarth
     public: // Layer
 
         /** Opens the layer and initializes the data source. */
-        const Status& open();
+        virtual const Status& open();
 
         /** Gets the status of this layer, which will be unset if open() has not been called. */
         const Status& getStatus() const { return _status; }
@@ -273,6 +273,11 @@ namespace osgEarth
          * Whether the layer represents dynamic data, i.e. tile data that can change.
          */
         bool isDynamic() const;
+
+        /**
+         * Whether the layer possibly has data int he provided extent.
+         */
+        virtual bool mayHaveDataInExtent(const GeoExtent& e) const;
 
         /**
          * Whether the given key falls within the range limits set in the options;

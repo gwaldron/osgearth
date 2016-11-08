@@ -817,6 +817,27 @@ TerrainLayer::applyProfileOverrides()
 }
 
 bool
+TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
+{
+    bool mayHaveDataInExtent = true;
+
+    if (getTileSource() && getProfile())
+    {
+        if (getProfile()->getSRS()->isEquivalentTo(ex.getSRS()))
+        {
+            GeoExtent ex_xform = getProfile()->clampAndTransformExtent(ex);
+            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex_xform);
+        }
+        else
+        {
+            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex);
+        }
+    }
+
+    return mayHaveDataInExtent;
+}
+
+bool
 TerrainLayer::isKeyInRange(const TileKey& key) const
 {    
     if ( !key.valid() )

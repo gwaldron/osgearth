@@ -36,15 +36,13 @@ namespace osgEarth { namespace Util
     /**
      * Configuration options for the geodetic graticule.
      */
-    class OSGEARTHUTIL_EXPORT UTMGraticuleOptions : public ConfigOptions
+    class /*header only*/ UTMGraticuleOptions : public ConfigOptions
     {
     public:
-        UTMGraticuleOptions( const Config& conf =Config() );
-
-        /** dtor */
-        virtual ~UTMGraticuleOptions() { }
-
-
+        UTMGraticuleOptions(const Config& conf = Config()) {
+            mergeConfig(_conf);
+        }
+        
     public:
 
         /** Default style for grid lines and text */
@@ -56,52 +54,77 @@ namespace osgEarth { namespace Util
         const optional<float>& textScale() const { return _textScale; }
 
     public:
-        Config getConfig() const;
+        Config getConfig() const {
+            Config conf = newConfig();
+            //todo
+            return conf;
+        }
 
     protected:
-        optional<Style>    _primaryStyle;
-        optional<float>    _textScale;
+        optional<Style> _primaryStyle;
+        optional<float> _textScale;
 
-        void mergeConfig( const Config& conf );
+        void mergeConfig(const Config& conf) {
+            //todo
+        }
+    };
+
+
+    /**
+     * UTM data (used by the UTM Graticule and the MGRS Graticule).
+     */
+    class OSGEARTHUTIL_EXPORT UTMData
+    {
+    public:
+        typedef std::map<std::string, GeoExtent> SectorTable;
+
+    public:
+        UTMData() { }
+
+        void rebuild(const Profile* profile);
+
+        osg::Group* buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map);
+
+        SectorTable& sectorTable() { return _gzd; }
+        const SectorTable& sectorTable() const { return _gzd; }
+
+    private:
+        SectorTable _gzd;
     };
 
 
     /**
      * Implements a UTM map graticule. 
-     * 
-     * NOTE: So far, this only works for geocentric maps.
-     * TODO: Add projected support; add text label support
+     * This only works for geocentric maps.
      */
-    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group, public MapNodeObserver
+    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group,
+                                             public MapNodeObserver,
+                                             public UTMGraticuleOptions
     {
     public:
 
         /**
-         * Constructs a new graticule for use with the specified map. The graticule
-         * is created with several default levels. If you call addLevel(), the 
-         * default levels are deleted.
+         * Constructs a new graticule for use with the specified map.
          *
-         * @param map
+         * @param mapnode
          *      Map with which you will use this graticule
          * @param options
          *      Optional "options" that configure the graticule. Defaults will be used
          *      if you don't specify this.
          */
-        UTMGraticule( MapNode* mapNode );
         UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options);
+
+        /**
+         * Constructs a new graticule for use with the specified map,
+         * using default options.
+         *
+         * @param mapnode
+         *      Map with which you will use this graticule
+         */
+        UTMGraticule( MapNode* mapNode );
 
         /** dtor */
         virtual ~UTMGraticule() { }
-
-        /** 
-         * Applies a new set of options. The graticule will be rebuilt if necessary.
-         */
-        void setOptions( const UTMGraticuleOptions& options );
-
-        /**
-         * Gets the options with which the graticule was built.
-         */
-        const UTMGraticuleOptions& getOptions() const { return _options.value(); }
 
         /**
          * Sets the clip plane to use. If you don't set one, the object will
@@ -121,34 +144,18 @@ namespace osgEarth { namespace Util
         virtual MapNode* getMapNode() { return _mapNode.get(); }
 
 
-    protected:
+    private:
         osg::ref_ptr<const Profile>        _profile;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
 
-        unsigned int               _id;
         osg::observer_ptr<MapNode> _mapNode;
         osg::Group*                _root;
 
-        optional<UTMGraticuleOptions> _options;
-
-        typedef std::map<std::string, GeoExtent> SectorTable;
-        SectorTable _gzd;
-
         osg::ref_ptr<osg::ClipPlane> _clipPlane;
 
-    protected:
-        unsigned int getID() const { return _id; }
-        void init();
+        void ctor();
         void rebuild();
-        osg::Node* buildGZDTile( const std::string& name, const GeoExtent& extent );
-
-        virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd ) {
-            return node; }
-
-    public:
-        static Threading::Mutex s_graticuleMutex;
-        typedef std::map<unsigned, osg::ref_ptr<UTMGraticule> > UTMGraticuleRegistry;
-        static UTMGraticuleRegistry s_graticuleRegistry;
+        UTMData _utmData;
     };
 
 } } // namespace osgEarth::Util

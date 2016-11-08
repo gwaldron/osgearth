@@ -56,7 +56,7 @@ namespace osgEarth { namespace Util
     public:
         Config getConfig() const {
             Config conf = newConfig();
-            //todo
+            conf.key() = "graticule_utm";
             return conf;
         }
 

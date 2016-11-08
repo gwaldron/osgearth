@@ -20,6 +20,7 @@
 #define OSGEARTHUTIL_MGRS_GRATICLE
 
 #include <osgEarthUtil/UTMGraticule>
+#include <osgEarth/Extension>
 
 namespace osgEarth { namespace Util
 {
@@ -32,36 +33,39 @@ namespace osgEarth { namespace Util
     class MGRSGraticuleOptions : public ConfigOptions
     {
     public:
-        MGRSGraticuleOptions(const Config& conf = Config()) : ConfigOptions(conf) {
+        MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf) {
             mergeConfig(_conf);
         }
 
         /** dtor */
         virtual ~MGRSGraticuleOptions() { }
 
-        /** Style for top level grid zones */
-        optional<Style>& primaryStyle() { return _primaryStyle; }
-        const optional<Style>& primaryStyle() const { return _primaryStyle; }
+        /** Style for grid zone designator geometry and text */
+        optional<Style>& gzdStyle() { return _gzdStyle; }
+        const optional<Style>& gzdStyle() const { return _gzdStyle; }
 
-        /** Symbology for SQID lines and text */
-        optional<Style>& secondaryStyle() { return _secondaryStyle; }
-        const optional<Style>& secondaryStyle() const { return _secondaryStyle; }
+        /** Symbology for SQID geometry and text */
+        optional<Style>& sqidStyle() { return _sqidStyle; }
+        const optional<Style>& sqidStyle() const { return _sqidStyle; }
 
     public:
         Config getConfig() const {
             Config conf = newConfig();
-            conf.key() = "mgrs_graticule";
+            conf.key() = "graticule_mgrs";
+            conf.addObjIfSet("gzd_style", _gzdStyle);
+            conf.addObjIfSet("sqid_style", _sqidStyle);
             return conf;
         }
 
     protected:
 
         void mergeConfig(const Config& conf) {
-            //todo
+            conf.getObjIfSet("gzd_style", _gzdStyle);
+            conf.getObjIfSet("sqid_style", _sqidStyle);
         }
 
-        optional<Style> _primaryStyle;
-        optional<Style> _secondaryStyle;
+        optional<Style> _gzdStyle;
+        optional<Style> _sqidStyle;
     };
 
 
@@ -117,10 +121,10 @@ namespace osgEarth { namespace Util
 
 
     private:
+        
+        osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
 
         osg::Node* buildSQIDTiles( const std::string& gzd );
-
-        osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
         
         GeoExtent getExtent( const std::string& gzd, const std::string& sqid );
 
@@ -147,6 +151,54 @@ namespace osgEarth { namespace Util
         osg::Group* _root;
 
         UTMData _utmData;
+    };
+
+    
+    /**
+     * Extension that lets you load and configure an MGRS Graticuler from an earth file.
+     * Usage:
+     *    <mgrs_graticule>
+     *       ...
+     *    </mgrs_graticule>
+     */
+    class MGRSGraticuleExtension : public Extension,
+                                   public ExtensionInterface<MapNode>,
+                                   public MGRSGraticuleOptions
+    {
+    public:
+        META_Object(osgearth_mgrs_graticule, MGRSGraticuleExtension);
+
+        // CTORs
+        MGRSGraticuleExtension() { }
+        MGRSGraticuleExtension(const MGRSGraticuleOptions& options) : MGRSGraticuleOptions(options) { }
+
+        // DTOR
+        virtual ~MGRSGraticuleExtension() { }
+
+
+    public: // Extension
+
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
+
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode* mapNode) {
+            _layer = new ModelLayer("MGRS Graticule", new MGRSGraticule(mapNode, *this));
+            mapNode->getMap()->addLayer(_layer.get());
+            return true;
+        }
+
+        bool disconnect(MapNode* mapNode) {
+            mapNode->onModelLayerRemoved(_layer.get());
+            return true;
+        }
+
+
+    protected: // Object
+        MGRSGraticuleExtension(const MGRSGraticuleExtension& rhs, const osg::CopyOp& op) { }
+
+        osg::ref_ptr<ModelLayer> _layer;
     };
 
 } } // namespace osgEarth::Util

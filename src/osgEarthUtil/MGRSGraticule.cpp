@@ -161,7 +161,7 @@ MGRSGraticule::rebuild()
     // now build the lateral tiles for the GZD level.
     for( UTMData::SectorTable::iterator i = _utmData.sectorTable().begin(); i != _utmData.sectorTable().end(); ++i )
     {
-        osg::Group* group = _utmData.buildGZDTile(i->first, i->second, primaryStyle().get(), _featureProfile.get(), getMapNode()->getMap());
+        osg::Group* group = _utmData.buildGZDTile(i->first, i->second, gzdStyle().get(), _featureProfile.get(), getMapNode()->getMap());
         if ( group )
         { 
             group = buildGZDChildren(group, i->first);
@@ -176,26 +176,26 @@ MGRSGraticule::rebuild()
 void
 MGRSGraticule::applyDefaultStyles()
 {
-    if (!primaryStyle().isSet())
+    if (!gzdStyle().isSet())
     {
-        LineSymbol* line = primaryStyle()->getOrCreate<LineSymbol>();
+        LineSymbol* line = gzdStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
         line->stroke()->width() = 1.0;
         line->tessellation() = 20;
 
-        TextSymbol* text = primaryStyle()->getOrCreate<TextSymbol>();
+        TextSymbol* text = gzdStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
 
-    if (!secondaryStyle().isSet())
+    if (!sqidStyle().isSet())
     {
-        LineSymbol* line = secondaryStyle()->getOrCreate<LineSymbol>();
+        LineSymbol* line = sqidStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color(Color::White, 0.5f);
         line->stroke()->stipplePattern() = 0x1111;
 
-        TextSymbol* text = secondaryStyle()->getOrCreate<TextSymbol>();
+        TextSymbol* text = sqidStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.1f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
@@ -234,9 +234,9 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     char letter;
     sscanf( gzd.c_str(), "%u%c", &zone, &letter );
     
-    const TextSymbol* textSymFromOptions = secondaryStyle()->get<TextSymbol>();
+    const TextSymbol* textSymFromOptions = sqidStyle()->get<TextSymbol>();
     if ( !textSymFromOptions )
-        textSymFromOptions = primaryStyle()->get<TextSymbol>();
+        textSymFromOptions = sqidStyle()->get<TextSymbol>();
 
     // copy it since we intend to alter it
     osg::ref_ptr<TextSymbol> textSym = 
@@ -636,7 +636,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     osg::Group* group = new osg::Group();
 
     Style lineStyle;
-    lineStyle.add( secondaryStyle()->get<LineSymbol>() );
+    lineStyle.add( sqidStyle()->get<LineSymbol>() );
 
     GeometryCompiler compiler;
     osg::ref_ptr<Session> session = new Session( getMapNode()->getMap() );
@@ -657,7 +657,6 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 
     return group;
 }
-
 
 //---------------------------------------------------------------------------
 
@@ -716,7 +715,11 @@ namespace osgEarth { namespace Util
             return result ? ReadResult(result) : ReadResult::ERROR_IN_READING_FILE;
         }
     };
-    REGISTER_OSGPLUGIN(MGRS_GRATICULE_EXTENSION, MGRSGraticuleFactory)
+    REGISTER_OSGPLUGIN(MGRS_GRATICULE_EXTENSION, MGRSGraticuleFactory);
+
+
+    REGISTER_OSGEARTH_EXTENSION(osgearth_mgrs_graticule, MGRSGraticuleExtension);
+
 
 } } // namespace osgEarth::Util
 

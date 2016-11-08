@@ -1,0 +1,26 @@
+<!--
+osgEarth Sample - Graticule Extension.
+
+-->
+<map name="Graticule demo" type="geocentric">
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <!-- UTM Graticule Extension -->
+    <utm_graticule>
+        <gzd_style>
+            stroke: #ff7f7f5f;
+            stroke-width: 2px;
+            text-color: #ffffff5f;
+            text-size: 10;
+            text-align: center_center;
+        </gzd_style>
+    </utm_graticule>
+    
+</map>

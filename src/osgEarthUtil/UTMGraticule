@@ -39,15 +39,15 @@ namespace osgEarth { namespace Util
     class /*header only*/ UTMGraticuleOptions : public ConfigOptions
     {
     public:
-        UTMGraticuleOptions(const Config& conf = Config()) {
+        UTMGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf) {
             mergeConfig(_conf);
         }
         
     public:
 
-        /** Default style for grid lines and text */
-        optional<Style>& primaryStyle() { return _primaryStyle; }
-        const optional<Style>& primaryStyle() const { return _primaryStyle; }
+        /** Style for grid zone designator geometry and text */
+        optional<Style>& gzdStyle() { return _gzdStyle; }
+        const optional<Style>& gzdStyle() const { return _gzdStyle; }
 
         /** Text scale factor (default = 1) */
         optional<float>& textScale() { return _textScale; }
@@ -56,16 +56,19 @@ namespace osgEarth { namespace Util
     public:
         Config getConfig() const {
             Config conf = newConfig();
-            conf.key() = "graticule_utm";
+            conf.key() = "utm_graticule";
+            conf.addObjIfSet("gzd_style", _gzdStyle);
+            conf.addIfSet("text_scale", _textScale);
             return conf;
         }
 
     protected:
-        optional<Style> _primaryStyle;
+        optional<Style> _gzdStyle;
         optional<float> _textScale;
 
         void mergeConfig(const Config& conf) {
-            //todo
+            conf.getObjIfSet("gzd_style", _gzdStyle);
+            conf.getIfSet("text_scale", _textScale);
         }
     };
 
@@ -156,6 +159,54 @@ namespace osgEarth { namespace Util
         void ctor();
         void rebuild();
         UTMData _utmData;
+    };
+
+    
+    /**
+     * Extension that lets you load and configure an UTM Graticuler from an earth file.
+     * Usage:
+     *    <mgrs_graticule>
+     *       ...
+     *    </mgrs_graticule>
+     */
+    class UTMGraticuleExtension : public Extension,
+                                  public ExtensionInterface<MapNode>,
+                                  public UTMGraticuleOptions
+    {
+    public:
+        META_Object(osgearth_utm_graticule, UTMGraticuleExtension);
+
+        // CTORs
+        UTMGraticuleExtension() { }
+        UTMGraticuleExtension(const UTMGraticuleOptions& options) : UTMGraticuleOptions(options) { }
+
+        // DTOR
+        virtual ~UTMGraticuleExtension() { }
+
+
+    public: // Extension
+
+        virtual const ConfigOptions& getConfigOptions() const { return *this; }
+
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode* mapNode) {
+            _layer = new ModelLayer("UTM Graticule", new UTMGraticule(mapNode, *this));
+            mapNode->getMap()->addLayer(_layer.get());
+            return true;
+        }
+
+        bool disconnect(MapNode* mapNode) {
+            mapNode->onModelLayerRemoved(_layer.get());
+            return true;
+        }
+
+
+    protected: // Object
+        UTMGraticuleExtension(const UTMGraticuleExtension& rhs, const osg::CopyOp& op) { }
+
+        osg::ref_ptr<ModelLayer> _layer;
     };
 
 } } // namespace osgEarth::Util

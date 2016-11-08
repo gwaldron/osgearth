@@ -43,6 +43,9 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+
+REGISTER_OSGEARTH_EXTENSION(osgearth_utm_graticule, UTMGraticuleExtension);
+
 //---------------------------------------------------------------------------
 
 void
@@ -269,16 +272,16 @@ UTMGraticule::rebuild()
     set->setMode( GL_BLEND, 1 );
 
     // set up default options if the caller did not supply them
-    if ( !primaryStyle().isSet() )
+    if ( !gzdStyle().isSet() )
     {
-        primaryStyle() = Style();
+        gzdStyle() = Style();
 
-        LineSymbol* line = primaryStyle()->getOrCreate<LineSymbol>();
+        LineSymbol* line = gzdStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
         line->stroke()->width() = 1.0;
         line->tessellation() = 20;
 
-        TextSymbol* text = primaryStyle()->getOrCreate<TextSymbol>();
+        TextSymbol* text = gzdStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
@@ -311,7 +314,7 @@ UTMGraticule::rebuild()
     // now build the lateral tiles for the GZD level.
     for( UTMData::SectorTable::iterator i = _utmData.sectorTable().begin(); i != _utmData.sectorTable().end(); ++i )
     {
-        osg::Node* tile = _utmData.buildGZDTile(i->first, i->second, primaryStyle().get(), _featureProfile.get(), getMapNode()->getMap());
+        osg::Node* tile = _utmData.buildGZDTile(i->first, i->second, gzdStyle().get(), _featureProfile.get(), getMapNode()->getMap());
         if ( tile )
             _root->addChild( tile );
     }

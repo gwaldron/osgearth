@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,42 +32,56 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
 {
     switch( change.getAction() )
     {
-    case MapModelChange::ADD_ELEVATION_LAYER: 
-        onElevationLayerAdded( change.getElevationLayer(), change.getFirstIndex() );
+    case MapModelChange::ADD_LAYER: 
+        onLayerAdded(change.getLayer(), change.getFirstIndex());
         break;
-    case MapModelChange::ADD_IMAGE_LAYER:
-        onImageLayerAdded( change.getImageLayer(), change.getFirstIndex() ); 
+
+    case MapModelChange::REMOVE_LAYER:
+        onLayerRemoved(change.getLayer(), change.getFirstIndex());
         break;
-    case MapModelChange::ADD_MASK_LAYER:
-        onMaskLayerAdded( change.getMaskLayer() );
+
+    case MapModelChange::MOVE_LAYER:
+        onLayerMoved(change.getLayer(), change.getFirstIndex(), change.getSecondIndex());
         break;
-    case MapModelChange::ADD_MODEL_LAYER:
-        onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); 
-        break;
-    case MapModelChange::REMOVE_ELEVATION_LAYER:
-        onElevationLayerRemoved( change.getElevationLayer(), change.getFirstIndex() ); 
-        break;
-    case MapModelChange::REMOVE_IMAGE_LAYER:
-        onImageLayerRemoved( change.getImageLayer(), change.getFirstIndex() );
-        break;
-    case MapModelChange::REMOVE_MASK_LAYER:
-        onMaskLayerRemoved( change.getMaskLayer() ); 
-        break;
-    case MapModelChange::REMOVE_MODEL_LAYER:
-        onModelLayerRemoved( change.getModelLayer() ); 
-        break;
-    case MapModelChange::MOVE_ELEVATION_LAYER:
-        onElevationLayerMoved( change.getElevationLayer(), change.getFirstIndex(), change.getSecondIndex() ); 
-        break;
-    case MapModelChange::MOVE_IMAGE_LAYER:
-        onImageLayerMoved( change.getImageLayer(), change.getFirstIndex(), change.getSecondIndex() ); 
-        break;
-    case MapModelChange::MOVE_MODEL_LAYER:
-        onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); 
-        break;
-    case MapModelChange::UNSPECIFIED: 
-        break;
+
     default: 
         break;
     }
+}
+
+void
+MapCallback::onLayerAdded(Layer* layer, unsigned index)
+{
+    if (dynamic_cast<ImageLayer*>(layer))
+        onImageLayerAdded(static_cast<ImageLayer*>(layer), index);
+    else if (dynamic_cast<ElevationLayer*>(layer))
+        onElevationLayerAdded(static_cast<ElevationLayer*>(layer), index);
+    else if (dynamic_cast<ModelLayer*>(layer))
+        onModelLayerAdded(static_cast<ModelLayer*>(layer), index);
+    else if (dynamic_cast<MaskLayer*>(layer))
+        onMaskLayerAdded(static_cast<MaskLayer*>(layer));
+}
+
+void 
+MapCallback::onLayerRemoved(Layer* layer, unsigned index)
+{
+    if (dynamic_cast<ImageLayer*>(layer))
+        onImageLayerRemoved(static_cast<ImageLayer*>(layer), index);
+    else if (dynamic_cast<ElevationLayer*>(layer))
+        onElevationLayerRemoved(static_cast<ElevationLayer*>(layer), index);
+    else if (dynamic_cast<ModelLayer*>(layer))
+        onModelLayerRemoved(static_cast<ModelLayer*>(layer));
+    else if (dynamic_cast<MaskLayer*>(layer))
+        onMaskLayerRemoved(static_cast<MaskLayer*>(layer));
+}
+
+void
+MapCallback::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
+{
+    if (dynamic_cast<ImageLayer*>(layer))
+        onImageLayerMoved(static_cast<ImageLayer*>(layer), oldIndex, newIndex);
+    else if (dynamic_cast<ElevationLayer*>(layer))
+        onElevationLayerMoved(static_cast<ElevationLayer*>(layer), oldIndex, newIndex);
+    else if (dynamic_cast<ModelLayer*>(layer))
+        onModelLayerMoved(static_cast<ModelLayer*>(layer), oldIndex, newIndex);
 }

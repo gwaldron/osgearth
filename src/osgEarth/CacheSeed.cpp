@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -82,31 +82,21 @@ bool CacheTileHandler::hasData( const TileKey& key ) const
 
 std::string CacheTileHandler::getProcessString() const
 {
+    std::stringstream buf;
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
 
-    std::stringstream buf;
-    buf << "osgearth_cache --seed ";
-    if (imageLayer)
-    {        
-        for (int i = 0; i < _map->getNumImageLayers(); i++)
-        {
-            if (imageLayer == _map->getImageLayerAt(i))
-            {
-                buf << " --image " << i << " ";
-                break;
-            }
-        }
-    }
-    else if (elevationLayer)
+    unsigned index = _map->getIndexOfLayer(_layer.get());
+    if (index < _map->getNumLayers())
     {
-        for (int i = 0; i < _map->getNumElevationLayers(); i++)
+        buf << "osgearth_cache --seed ";
+        if (imageLayer)
         {
-            if (elevationLayer == _map->getElevationLayerAt(i))
-            {
-                buf << " --elevation " << i << " ";
-                break;
-            }
+            buf << " --image " << index << " ";
+        }
+        else if (elevationLayer)
+        {
+            buf << " --elevation " << index << " ";
         }
     }
     return buf.str();

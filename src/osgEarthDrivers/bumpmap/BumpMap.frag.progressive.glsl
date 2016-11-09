@@ -42,7 +42,7 @@ void oe_bumpmap_fragment(inout vec4 color)
         float fadeIn = 1.0;
         if ( range <= limit && limit < oe_bumpmap_maxRange )
             fadeIn = clamp((lastRange-limit)/(lastRange-range), 0.0, 1.0);
-        bump += (texture2D(oe_bumpmap_tex, oe_bumpmap_coords*scale).xyz*2.0-1.0)*amplitude*fadeIn;
+        bump += (texture(oe_bumpmap_tex, oe_bumpmap_coords*scale).xyz*2.0-1.0)*amplitude*fadeIn;
         if ( range <= limit )
             break;
         lastRange = range;

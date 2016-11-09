@@ -176,7 +176,7 @@ public:
         this->supportsExtension("osgearth_featurefilter_intersect", className() );
     }
     
-    const char* className()
+    const char* className() const
     {
         return "IntersectFeatureFilterPlugin";
     }

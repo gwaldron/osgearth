@@ -119,14 +119,14 @@ into various locations in the shader pipeline.
 For example, let's use user functions to create a simple "haze" effect::
 
     // haze_vertex:
-    varying vec3 v_pos;
+    out vec3 v_pos;
     void setup_haze(inout vec4 vertexView)
     {
         v_pos = vertexView.xyz;
     }
     
     // haze_fragment:
-    varying vec3 v_pos;
+    in vec3 v_pos;
     void apply_haze(inout vec4 color)
     {
         float dist = clamp( length(v_pos)/10000000.0, 0, 0.75 );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -239,5 +239,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
 const FeatureSourceOptions&
 FeatureSourceDriver::getFeatureSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const
 {
-    return *static_cast<const FeatureSourceOptions*>( rwopt->getPluginData( FEATURE_SOURCE_OPTIONS_TAG ) );
+    static FeatureSourceOptions s_default;
+    const void* data = rwopt->getPluginData(FEATURE_SOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const FeatureSourceOptions*>(data) : s_default;
 }

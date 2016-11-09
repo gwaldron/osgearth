@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -137,6 +137,9 @@ void ExportDialog::updateEstimate()
         est.addExtent(GeoExtent(_mapNode->getMapSRS(), _bounds));
     }    
 
+    TerrainLayerVector terrainLayers;
+    _mapNode->getMap()->getLayers(terrainLayers);
+
     int maxLevel = 10;
     if (maxLevelEnabled())
     {
@@ -146,9 +149,9 @@ void ExportDialog::updateEstimate()
     {
         // Determine the max level from the layers
         maxLevel = 0;
-        for (unsigned int i = 0; i < _mapNode->getMap()->getNumImageLayers(); i++)
+        for (unsigned int i = 0; i < terrainLayers.size(); i++)
         {
-            osgEarth::ImageLayer* layer = _mapNode->getMap()->getImageLayerAt(i);
+            osgEarth::TerrainLayer* layer = terrainLayers.at(i);
             if (layer)
             {
                 osgEarth::TileSource* ts = layer->getTileSource();
@@ -165,24 +168,24 @@ void ExportDialog::updateEstimate()
             }
         }
 
-        for (unsigned int i = 0; i < _mapNode->getMap()->getNumElevationLayers(); i++)
-        {
-            osgEarth::ElevationLayer* layer = _mapNode->getMap()->getElevationLayerAt(i);
-            if (layer)
-            {
-                osgEarth::TileSource* ts = layer->getTileSource();
-                if (ts)
-                {
-                    for (DataExtentList::iterator itr = ts->getDataExtents().begin(); itr != ts->getDataExtents().end(); itr++)
-                    {
-                        if (itr->maxLevel().isSet() && itr->maxLevel().value() > maxLevel)
-                        {
-                            maxLevel = itr->maxLevel().value();
-                        }
-                    }
-                }
-            }
-        }
+        //for (unsigned int i = 0; i < _mapNode->getMap()->getNumElevationLayers(); i++)
+        //{
+        //    osgEarth::ElevationLayer* layer = _mapNode->getMap()->getElevationLayerAt(i);
+        //    if (layer)
+        //    {
+        //        osgEarth::TileSource* ts = layer->getTileSource();
+        //        if (ts)
+        //        {
+        //            for (DataExtentList::iterator itr = ts->getDataExtents().begin(); itr != ts->getDataExtents().end(); itr++)
+        //            {
+        //                if (itr->maxLevel().isSet() && itr->maxLevel().value() > maxLevel)
+        //                {
+        //                    maxLevel = itr->maxLevel().value();
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     est.setMaxLevel(maxLevel);    
@@ -197,7 +200,7 @@ void ExportDialog::updateEstimate()
     }
 
     // Adjust everything by the # of layers
-    unsigned int numLayers = _mapNode->getMap()->getNumImageLayers() + _mapNode->getMap()->getNumElevationLayers();
+    unsigned int numLayers = terrainLayers.size(); //_mapNode->getMap()->getNumImageLayers() + _mapNode->getMap()->getNumElevationLayers();
     totalSeconds *= (double)numLayers;
     unsigned int numTiles = est.getNumTiles() * numLayers;
     double sizeMB = est.getSizeInMB() * (double)numLayers;

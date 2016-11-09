@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RocksDBCache
             supportsExtension( "osgearth_cache_rocksdb", "rocksdb cache for osgEarth" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "rocksdb cache for osgEarth";
         }

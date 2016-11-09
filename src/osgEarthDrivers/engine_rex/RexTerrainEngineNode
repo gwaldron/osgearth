@@ -25,6 +25,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/ResourceReleaser>
 
 #include "RexTerrainEngineOptions"
 #include "EngineContext"
@@ -34,16 +35,23 @@
 #include "Loader"
 #include "Unloader"
 #include "SelectionInfo"
+#include "SurfaceNode"
+#include "TileDrawable"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
 #include <osg/Uniform>
 #include <osg/Timer>
 
+#include <list>
+#include <map>
+#include <vector>
+
 using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+
     class SelectionInfo;
 
     class RexTerrainEngineNode : public TerrainEngineNode
@@ -122,8 +130,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
 
-        void addImageLayer( ImageLayer* layer );
         void addElevationLayer( ElevationLayer* layer );
+        void addTileLayer( Layer* layer );
 
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
@@ -159,10 +167,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
-        osg::ref_ptr<TileNodeRegistry> _deadTiles;      // tiles that used to be in the scene graph.
+        osg::ref_ptr<ResourceReleaser> _releaser;
 
-        PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;
+        //PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;        
         EngineContext* getEngineContext();
+        osg::ref_ptr< EngineContext > _engineContext;
+        OpenThreads::Mutex _engineContextMutex;
 
         osg::Timer _timer;
         unsigned   _tileCount;
@@ -177,15 +187,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
 
-        bool _quickReleaseInstalled;
-
         RexTerrainEngineNode( const RexTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 
         SelectionInfo _selectionInfo;
-        void buildSelectionInfo(void);
-        void destroySelectionInfo(void);
 
-        osg::ref_ptr<osg::StateSet> _surfaceSS;
+        osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+
+        osg::ref_ptr<ModifyBoundingBoxCallback> _modifyBBoxCallback;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

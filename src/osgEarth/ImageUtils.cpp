@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -378,6 +378,211 @@ ImageUtils::flattenImage(osg::Image*                             input,
         output.push_back(layer);
     }
 
+    return true;
+}
+
+bool
+ImageUtils::bicubicUpsample(const osg::Image* source,
+                            osg::Image* target,
+                            unsigned quadrant,
+                            unsigned stride)
+{
+    const int border = 1; // don't change this.
+
+    int width = ((source->s() - 2*border)/2)+1 + 2*border;
+    int height = ((source->t() - 2*border)/2)+1 + 2*border;
+
+    int s_off = quadrant == 0 || quadrant == 2 ? 0 : source->s()-width;
+    int t_off = quadrant == 2 || quadrant == 3 ? 0 : source->t()-height;
+
+    ImageUtils::PixelReader readSource(source);
+    ImageUtils::PixelWriter writeTarget(target);
+    ImageUtils::PixelReader readTarget(target);
+
+    // copy the main box, which is all odd-numbered cells when there is a border size = 1.
+    for (int t = 1; t<height-1; ++t)
+    {
+        for (int s = 1; s<width-1; ++s)
+        {
+            osg::Vec4 value = readSource(s_off+s, t_off+t);
+            writeTarget(value, (s-1)*2+1, (t-1)*2+1);
+        }
+    }
+
+    // copy the corner border cells.
+    writeTarget(readSource(s_off, t_off), 0, 0); // upper left.
+    writeTarget(readSource(s_off + width - 1, t_off), target->s()-1, 0);
+    writeTarget(readSource(s_off, t_off + height - 1), 0, target->t()-1);
+    writeTarget(readSource(s_off + width - 1, t_off + height - 1), target->s() - 1, target->t() - 1);
+
+    // copy the border intermediate cells.
+    for (int s=1; s<width-1; ++s) // top/bottom:
+    {
+        writeTarget(readSource(s_off+s, t_off), (s-1)*2+1, 0);
+        writeTarget(readSource(s_off+s, t_off + height - 1), (s-1)*2+1, target->t()-1);
+    }
+    for (int t = 1; t < height-1; ++t) // left/right:
+    {
+        writeTarget(readSource(s_off, t_off+t), 0, (t-1)*2+1);
+        writeTarget(readSource(s_off + width - 1, t_off + t), target->s()-1, (t-1)*2+1);
+    }
+
+    // now interpolate the missing columns, including the border cells.
+    for (int s = 2; s<target->s()-2; s += 2)
+    {
+        for (int t = 0; t < target->t(); )
+        {
+            int offset = (s-1) % stride; // the minus1 accounts for the border
+            int s0 = std::max(s - offset, 0);
+            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            double mu = (double)offset / (double)(s1-s0);
+            osg::Vec4 p1 = readTarget(s0, t);
+            osg::Vec4 p2 = readTarget(s1, t);
+            double mu2 = (1.0 - cos(mu*osg::PI))*0.5;
+            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
+            writeTarget(v, s, t);
+
+            if (t == 0 || t == target->t()-2) t+=1; else t+=2;
+        }
+    }
+
+    // next interpolate the odd numbered rows
+    for (int s = 0; s < target->s();)
+    {
+        for (int t = 2; t<target->t()-2; t += 2)
+        {
+            int offset = (t-1) % stride; // the minus1 accounts for the border
+            int t0 = std::max(t - offset, 0);
+            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            double mu = (double)offset / double(t1-t0);
+
+            osg::Vec4 p1 = readTarget(s, t0);
+            osg::Vec4 p2 = readTarget(s, t1);
+            double mu2 = (1.0 - cos(mu*osg::PI))*0.5;
+            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
+            writeTarget(v, s, t);
+        }
+
+        if (s == 0 || s == target->s()-2) s+=1; else s+=2;
+    }
+
+    // then interpolate the centers
+    for (int s = 2; s<target->s()-2; s += 2)
+    {
+        for (int t = 2; t<target->t()-2; t += 2)
+        {
+            int s_offset = (s-1) % stride;
+            int s0 = std::max(s - s_offset, 0);
+            int s1 = std::min(s0 + (int)stride, target->s()-1);
+
+            int t_offset = (t-1) % stride;
+            int t0 = std::max(t - t_offset, 0);
+            int t1 = std::min(t0 + (int)stride, target->t()-1);
+
+            double mu, mu2;
+
+            osg::Vec4 p1 = readTarget(s0, t);
+            osg::Vec4 p2 = readTarget(s1, t);
+            mu = (double)s_offset / (double)(s1-s0);
+            mu2 = (1.0 - cos(mu*osg::PI))*0.5;
+            osg::Vec4 v1 = (p1*(1.0-mu2)) + (p2*mu2);
+            
+            osg::Vec4 p3 = readTarget(s, t0);
+            osg::Vec4 p4 = readTarget(s, t1);
+            mu = (double)t_offset / (double)(t1-t0);
+            mu2 = (1.0 - cos(mu*osg::PI))*0.5;
+            osg::Vec4 v2 = (p3*(1.0-mu2)) + (p4*mu2);
+
+            osg::Vec4 v = (v1+v2)*0.5;
+
+            writeTarget(v, s, t);
+        }
+    }
+
+
+#if 0
+    // first copy and expand the source quadrant by copying every
+    // even-numbered pixel.
+    for (int s=0; s<=source->s()/2; ++s)
+    {
+        for (int t=0; t<=source->t()/2; ++t)
+        {
+            osg::Vec4 value = readSource(s_off+s, t_off+t);
+            unsigned out_s = s*2, out_t = t*2;
+            writeTarget(value, s*2, t*2);
+        }
+    }
+
+    // next interpolate the odd numbered columns, based on the stride.
+    for (int s = 1; s<target->s()-1; s += 2)
+    {
+        for (int t = 0; t < target->t(); t += 2)
+        {
+            int offset = s % stride;
+            int s0 = std::max(s - offset, 0);
+            int s1 = std::min(s0 + (int)stride, target->s()-1);
+            float mu = (float)offset / (float)(s1-s0);
+
+            osg::Vec4 p1 = readTarget(s0, t);
+            osg::Vec4 p2 = readTarget(s1, t);
+            float mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
+            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
+            writeTarget(v, s, t);
+        }
+    }
+
+    // next interpolate the odd numbered rows
+    for (int s = 0; s < target->s(); s += 2)
+    {
+        for (int t = 1; t<target->t()-1; t += 2)
+        {
+            int offset = t % stride;
+            int t0 = std::max(t - offset, 0);
+            int t1 = std::min(t0 + (int)stride, target->t()-1);
+            float mu = (float)offset / float(t1-t0);
+
+            osg::Vec4 p1 = readTarget(s, t0);
+            osg::Vec4 p2 = readTarget(s, t1);
+            float mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
+            osg::Vec4 v = (p1*(1.0-mu2)) + (p2*mu2);
+            writeTarget(v, s, t);
+        }
+    }
+
+    // then interpolate the centers
+    for (int s = 1; s<target->s()-1; s += 2)
+    {
+        for (int t = 1; t<target->t()-1; t += 2)
+        {
+            int s_offset = s % stride;
+            int s0 = std::max(s - s_offset, 0);
+            int s1 = std::min(s0 + (int)stride, target->s()-1);
+
+            int t_offset = t % stride;
+            int t0 = std::max(t - t_offset, 0);
+            int t1 = std::min(t0 + (int)stride, target->t()-1);
+
+            float mu, mu2;
+
+            osg::Vec4 p1 = readTarget(s0, t);
+            osg::Vec4 p2 = readTarget(s1, t);
+            mu = (float)s_offset / (float)(s1-s0);
+            mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
+            osg::Vec4 v1 = (p1*(1.0-mu2)) + (p2*mu2);
+            
+            osg::Vec4 p3 = readTarget(s, t0);
+            osg::Vec4 p4 = readTarget(s, t1);
+            mu = (float)t_offset / (float)(t1-t0);
+            mu2 = (1.0 - cosf(mu*osg::PI))*0.5;
+            osg::Vec4 v2 = (p3*(1.0-mu2)) + (p4*mu2);
+
+            osg::Vec4 v = (v1+v2)*0.5;
+
+            writeTarget(v, s, t);
+        }
+    }
+#endif
+    
     return true;
 }
 
@@ -1361,6 +1566,27 @@ namespace
     };
 
     template<typename T>
+    struct ColorReader<GL_RED, T>
+    {
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
+        {
+            const T* ptr = (const T*)ia->data(s, t, r, m);
+            float l = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            return osg::Vec4(l, l, l, 1.0f);
+        }
+    };
+
+    template<typename T>
+    struct ColorWriter<GL_RED, T>
+    {
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
+        {
+            T* ptr = (T*)iw->data(s, t, r, m);
+            (*ptr) = (T)(c.r() / GLTypeTraits<T>::scale(iw->_normalized));
+        }
+    };
+
+    template<typename T>
     struct ColorReader<GL_ALPHA, T>
     {
         static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
@@ -1669,7 +1895,10 @@ namespace
             break;
         case GL_LUMINANCE:
             return chooseReader<GL_LUMINANCE>(dataType);
-            break;        
+            break;   
+        case GL_RED:
+            return chooseReader<GL_RED>(dataType);
+            break;       
         case GL_ALPHA:
             return chooseReader<GL_ALPHA>(dataType);
             break;        
@@ -1801,7 +2030,10 @@ namespace
             break;
         case GL_LUMINANCE:
             return chooseWriter<GL_LUMINANCE>(dataType);
-            break;        
+            break;      
+        case GL_RED:
+            return chooseWriter<GL_RED>(dataType);
+            break;         
         case GL_ALPHA:
             return chooseWriter<GL_ALPHA>(dataType);
             break;        

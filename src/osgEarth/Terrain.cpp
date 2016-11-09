@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -57,16 +57,9 @@ namespace
 
             if ( _terrain.lock(terrain) && _node.lock(node) )
             {
-                if ( node->getNumParents() > 0 )
-                {
-                    //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
-                    terrain->fireTileAdded( _key, node.get() );
-                    this->setKeep( false );
-                }
-                else
-                {
-                    //OE_NOTICE << LC << "Deferring onTileAdded for " << _key.str() << std::endl;
-                }
+                //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
+                terrain->fireTileAdded( _key, node.get() );
+                this->setKeep( false );
             }
             else
             {
@@ -109,6 +102,18 @@ Terrain::getHeight(osg::Node*              patch,
     // trivially reject a point that lies outside the terrain:
     if ( !getProfile()->getExtent().contains(x, y) )
         return 0L;
+
+    if (srs && srs->isGeographic())
+    {
+        // perturb polar latitudes slightly to prevent intersection anomaly at the poles
+        if (getSRS()->isGeographic())
+        {
+            if (osg::equivalent(y, 90.0))
+                y -= 1e-7;
+            else if (osg::equivalent(y, -90))
+                y += 1e-7;
+        }
+    }
 
     const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );

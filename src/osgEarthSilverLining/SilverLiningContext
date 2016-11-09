@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 namespace SilverLining {
     class Atmosphere;
     class CloudLayer;
+    class MillisecondTimer;
 }
 namespace osgEarth {
     class SpatialReference;
@@ -42,7 +43,7 @@ namespace osgEarth { namespace SilverLining
     {
     public:
         SilverLiningContext(const SilverLiningOptions& options);
-        
+
         /** Sets the light source that will represent the sun */
         void setLight(osg::Light* light);
 
@@ -115,6 +116,8 @@ namespace osgEarth { namespace SilverLining
         osg::ref_ptr<Callback> _callback;
 
         Atmosphere* _atmosphereWrapper;
+
+        ::SilverLining::MillisecondTimer* _msTimer;
     };
 
 } } // namespace osgEarth::SilverLining

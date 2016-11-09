@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,6 +49,7 @@ _lastAltitude(DBL_MAX)
     _SL->setLight( light);
     _SL->setSRS  ( mapSRS );
     _SL->setCallback( callback );
+    _SL->setMinimumAmbient( node->getMinimumAmbient() );
 
     // Geode to hold each of the SL drawables:
     _geode = new osg::Geode();
@@ -74,7 +75,7 @@ _lastAltitude(DBL_MAX)
 
 SilverLiningContextNode::~SilverLiningContextNode()
 {
-    
+
 }
 
 void
@@ -128,7 +129,7 @@ SilverLiningContextNode::traverse(osg::NodeVisitor& nv)
 #ifndef SL_USE_CULL_MASK
 				//Check if this is the target camera for this context
 				if(getTargetCamera() == camera)
-#endif	
+#endif
      			{
 
 					// TODO: make this multi-camera safe

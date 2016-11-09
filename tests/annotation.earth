@@ -78,6 +78,7 @@ osgEarth Sample - Annotations
                 stroke-width:       2px;
                 altitude-clamping:  terrain-scene;
                 altitude-binding:   vertex;
+                render-depth-offset-auto: true;
             </style>
         </circle>
         <label text="scene-clamped circle" lat="22.074" long="-159.606"/>
@@ -197,9 +198,9 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:              #ffff00;
                 stroke-width:        3;
-                stroke-tessellation-size: 10km;
+                stroke-tessellation-size: 1km;
                 altitude-clamping:   terrain;
-                altitude-technique:  scene;
+                altitude-technique:  gpu;
                 render-lighting:     false;
             </style>
         </feature>

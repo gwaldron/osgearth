@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -260,7 +260,7 @@ namespace
                 _i0 < rhs._i0 ? true :
                 _i0 > rhs._i0 ? false :
                 _i1 < rhs._i1 ? true :
-                _i1 > rhs._i1 ? false :
+                //_i1 > rhs._i1 ? false : // redundant :)
                 false;
         }
         bool operator == (const Edge& rhs) const { return _i0==rhs._i0 && _i1==rhs._i1; }
@@ -296,11 +296,16 @@ namespace
 
                 numElementsInCurrentEBO = 0;
             }
-            ebo->push_back( static_cast<VTYPE>( i->_i0 ) );
-            ebo->push_back( static_cast<VTYPE>( i->_i1 ) );
-            ebo->push_back( static_cast<VTYPE>( i->_i2 ) );
 
-            numElementsInCurrentEBO += 3;
+            if (ebo)
+            {
+                ebo->push_back( static_cast<VTYPE>( i->_i0 ) );
+                ebo->push_back( static_cast<VTYPE>( i->_i1 ) );
+                ebo->push_back( static_cast<VTYPE>( i->_i2 ) );
+
+                numElementsInCurrentEBO += 3;
+            }
+
             ++totalTrisWritten;
         }
 
@@ -476,10 +481,15 @@ namespace
 
                 numElementsInCurrentEBO = 0;
             }
-            ebo->push_back( static_cast<VTYPE>( i->_i0 ) );
-            ebo->push_back( static_cast<VTYPE>( i->_i1 ) );
 
-            numElementsInCurrentEBO += 3;
+            if (ebo)
+            {
+                ebo->push_back( static_cast<VTYPE>( i->_i0 ) );
+                ebo->push_back( static_cast<VTYPE>( i->_i1 ) );
+
+                numElementsInCurrentEBO += 3;
+            }
+
             ++totalLinesWritten;
         }
 

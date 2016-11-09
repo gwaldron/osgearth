@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -117,10 +117,7 @@ public:
                 fp->geoInterp() = _options.geoInterp().get();
         }
 
-        if (fp)
-            setFeatureProfile(fp);
-        else
-            return Status::Error(Status::ResourceUnavailable, "Failed to establish a feature profile");
+        setFeatureProfile(fp);
 
         return Status::OK();
     }
@@ -374,8 +371,7 @@ public:
 
 private:
     const TFSFeatureOptions         _options;    
-    FeatureSchema                   _schema;
-    osg::ref_ptr<CacheBin>          _cacheBin;
+    FeatureSchema                   _schema;    
     osg::ref_ptr<osgDB::Options>    _readOptions;    
     TFSLayer                        _layer;
     bool                            _layerValid;
@@ -390,7 +386,7 @@ public:
         supportsExtension( "osgearth_feature_tfs", "TFS feature driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "TFS Feature Reader";
     }

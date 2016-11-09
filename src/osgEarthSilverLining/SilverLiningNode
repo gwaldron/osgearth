@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -47,7 +47,7 @@ namespace osgEarth { namespace SilverLining
     public: // SkyNode
 
         /** The (sun) light that this node controls */
-        osg::Light* getSunLight() { return _light.get(); }
+        osg::Light* getSunLight() const { return _light.get(); }
 
         /** Attach to a view so that this node controls its light. */
         void attach(osg::View* view, int lightNum);
@@ -82,6 +82,7 @@ namespace osgEarth { namespace SilverLining
 
         typedef std::map<osg::Camera*, osg::ref_ptr<osg::Node> > CameraContextMap;
         CameraContextMap _contexts;
+        osg::NodeList _contextList;
 
         typedef std::set<osg::ref_ptr<osg::Camera> > CameraSet;
         CameraSet _camerasToAdd;

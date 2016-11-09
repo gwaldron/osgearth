@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -98,6 +98,10 @@ namespace osgEarth
         /**
          * Constructs a new elevation layer with the specified layer options and with a custom
          * TileSource instance created by the user.
+         *
+         * Note: the ElevationLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ElevationLayerOptions will not be used.
          */
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
 
@@ -131,6 +135,10 @@ namespace osgEarth
         bool isOffset() const {
             return _runtimeOptions.offset() == true;
         }
+
+    public: // Layer
+
+        virtual Config getConfig() const;
 
     protected:
         

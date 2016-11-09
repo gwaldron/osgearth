@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -302,6 +302,9 @@ ImageLayer::init()
 {
     TerrainLayer::init();
 
+    // image layers render as a terrain texture.
+    setRenderType(RENDERTYPE_TILE);
+
     // Set the tile size to 256 if it's not explicitly set.
     if (!_runtimeOptions.driver()->tileSize().isSet())
     {
@@ -319,6 +322,16 @@ ImageLayer::init()
         _shareTexMatUniformName = _runtimeOptions.shareTexMatUniformName().get();
     else
         _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
+}
+
+Config
+ImageLayer::getConfig() const
+{    
+    Config layerConf = getImageLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    layerConf.key() = "image";
+    return layerConf;
 }
 
 void

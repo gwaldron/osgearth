@@ -31,7 +31,7 @@ and then use that image tile in a normal image layer.
 osgEarth has one rasterizing feature driver: the ``agglite`` driver. Here's an example
 that renders an ESRI Shapefile as a rasterized image layer::
 
-    <model name="my layer" driver="agglite">
+    <image name="my layer" driver="agglite">
         <features name="states" driver="ogr">
             <url>states.shp</url>
         </features>
@@ -43,7 +43,7 @@ that renders an ESRI Shapefile as a rasterized image layer::
                 }
             </style>
         </styles>
-    </model>
+    </image>
 
 Tessellation
 ~~~~~~~~~~~~

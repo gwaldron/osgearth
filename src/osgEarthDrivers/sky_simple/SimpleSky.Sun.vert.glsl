@@ -1,7 +1,7 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-varying vec3 atmos_v3Direction; 
+out vec3 atmos_v3Direction; 
 
 void main() 
 { 

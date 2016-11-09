@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -82,9 +82,9 @@ namespace osgEarth
          * Gets a uniform corresponding to the given mode and value. These uniforms are 
          * named in the form "oe_mode_MODE" (e.g., "oe_mode_GL_LIGHTING").
          */
-        virtual osg::Uniform* createUniformForGLMode(
-            osg::StateAttribute::GLMode      mode,
-            osg::StateAttribute::GLModeValue value ) const;
+        //virtual osg::Uniform* createUniformForGLMode(
+        //    osg::StateAttribute::GLMode      mode,
+        //    osg::StateAttribute::GLModeValue value ) const;
 
         /**
          * The name of the range uniform created by createRangeUniform().

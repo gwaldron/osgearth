@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -71,7 +71,7 @@ usage( const std::string& msg = "" )
         << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
         << "            [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
         << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
-        << "            [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
+        << "            [--concurrency]                 ; The number of threads or processes to use if --mp or --mt are provided." << std::endl
         << "            [--alpha-mask]                  ; Mask out imagery that isn't in the provided extents." << std::endl
         << std::endl
         << "            [--verbose]                     ; Displays progress of the operation" << std::endl;
@@ -347,7 +347,7 @@ makeTMS( osg::ArgumentParser& args )
     // Package an individual image layer
     if (imageLayerIndex >= 0)
     {        
-        ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
+        ImageLayer* layer = map->getLayerAt<ImageLayer>(imageLayerIndex);
         if (layer)
         {
             packager.run(layer, map);
@@ -365,7 +365,7 @@ makeTMS( osg::ArgumentParser& args )
     // Package an individual elevation layer
     else if (elevationLayerIndex >= 0)
     {        
-        ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
+        ElevationLayer* layer = map->getLayerAt<ElevationLayer>(elevationLayerIndex);
         if (layer)
         {
             packager.run(layer, map);
@@ -381,11 +381,14 @@ makeTMS( osg::ArgumentParser& args )
         }
     }
     else
-    {        
+    {
+        ImageLayerVector imageLayers;
+        map->getLayers(imageLayers);
+
         // Package all the ImageLayer's
-        for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+        for (unsigned int i = 0; i < imageLayers.size(); i++)
         {            
-            ImageLayer* layer = map->getImageLayerAt(i);        
+            ImageLayer* layer = imageLayers.at(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
             packager.run(layer, map);
@@ -420,9 +423,12 @@ makeTMS( osg::ArgumentParser& args )
         }    
 
         // Package all the ElevationLayer's
-        for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+        ElevationLayerVector elevationLayers;
+        map->getLayers(elevationLayers);
+
+        for (unsigned int i = 0; i < elevationLayers.size(); i++)
         {            
-            ElevationLayer* layer = map->getElevationLayerAt(i);        
+            ElevationLayer* layer = elevationLayers.at(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
             packager.run(layer, map);

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -59,17 +59,17 @@ void DataManager::initialize()
   if (_map)
   {
     osgEarth::ElevationLayerVector elevLayers;
-    _map->getElevationLayers(elevLayers);
+    _map->getLayers(elevLayers);
     for (osgEarth::ElevationLayerVector::const_iterator it = elevLayers.begin(); it != elevLayers.end(); ++it)
       (*it)->addCallback(_elevationCallback);
 
     osgEarth::ImageLayerVector imageLayers;
-    _map->getImageLayers(imageLayers);
+    _map->getLayers(imageLayers);
     for (osgEarth::ImageLayerVector::const_iterator it = imageLayers.begin(); it != imageLayers.end(); ++it)
       (*it)->addCallback(_imageCallback);
 
     osgEarth::ModelLayerVector modelLayers;
-    _map->getModelLayers(modelLayers);
+    _map->getLayers(modelLayers);
     for (osgEarth::ModelLayerVector::const_iterator it = modelLayers.begin(); it != modelLayers.end(); ++it)
       (*it)->addCallback(_modelCallback);
 
@@ -253,19 +253,26 @@ void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
 {
   switch( change.getAction() )
   {
-  case MapModelChange::ADD_ELEVATION_LAYER: 
-    change.getElevationLayer()->addCallback(_elevationCallback); break;
-  case MapModelChange::ADD_IMAGE_LAYER:
-    change.getImageLayer()->addCallback(_imageCallback); break;
-  case MapModelChange::ADD_MODEL_LAYER:
-		change.getModelLayer()->addCallback(_modelCallback); break;
-  case MapModelChange::REMOVE_ELEVATION_LAYER:
-    change.getElevationLayer()->removeCallback(_elevationCallback); break;
-  case MapModelChange::REMOVE_IMAGE_LAYER:
-    change.getImageLayer()->removeCallback(_imageCallback); break;
-  case MapModelChange::REMOVE_MODEL_LAYER:
-    change.getModelLayer()->removeCallback(_modelCallback); break;
-  default: break;
+  case MapModelChange::ADD_LAYER: 
+      if (change.getElevationLayer())
+        change.getElevationLayer()->addCallback(_elevationCallback);
+      else if (change.getImageLayer())
+        change.getImageLayer()->addCallback(_imageCallback);
+      else if (change.getModelLayer())
+          change.getModelLayer()->addCallback(_modelCallback);
+      break;
+
+  case MapModelChange::REMOVE_LAYER:
+      if (change.getElevationLayer())
+        change.getElevationLayer()->removeCallback(_elevationCallback);
+      else if (change.getImageLayer())
+        change.getImageLayer()->removeCallback(_imageCallback);
+      else if (change.getModelLayer())
+          change.getModelLayer()->removeCallback(_modelCallback);
+      break;
+
+  default:
+      break;
   }
 
   onMapChanged();

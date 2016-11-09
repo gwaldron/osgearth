@@ -95,7 +95,7 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--mt``                            | Use multithreading to process the tiles.                           |
 +-------------------------------------+--------------------------------------------------------------------+
-| ``--concurrency``                   | The number of threads or proceses to use if --mp or --mt           |
+| ``--concurrency``                   | The number of threads or processes to use if --mp or --mt          |
 |                                     | are provided                                                       | 
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--min-level level``               | Lowest LOD level to seed (default=0)                               |
@@ -160,7 +160,7 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 +------------------------------------+--------------------------------------------------------------------+
 | ``--mt``                           | Use multithreading to process the tiles.                           |
 +------------------------------------+--------------------------------------------------------------------+
-| ``--concurrency``                  | The number of threads or proceses to use if --mp or --mt           |
+| ``--concurrency``                  | The number of threads or processes to use if --mp or --mt          |
 |                                    | are provided                                                       | 
 +------------------------------------+--------------------------------------------------------------------+
 | ``--alpha-mask``                   | Mask out imagery that isn't in the provided extents.               |

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -343,8 +343,6 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         _query( s_mapNode->getMap() )
     {
         _map = s_mapNode->getMap();
-        _query.setMaxTilesToCache(10);
-        _query.setFallBackOnNoData( false );
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -364,16 +362,20 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             mapPoint.z() = 0;
 
             // do an elevation query:
-            double query_resolution = 0; // max.
-            double out_hamsl        = 0.0;
+            double query_resolution = 0.0;  // max.
             double out_resolution   = 0.0;
+            float  out_hamsl        = 0.0f;
 
-            bool ok = _query.getElevation( 
+            out_hamsl = _query.getElevation( 
                 mapPoint,
-                out_hamsl,
                 query_resolution, 
                 &out_resolution );
-            mapPoint.z() = out_hamsl;
+
+            if (out_hamsl != NO_DATA_VALUE)
+            {
+                mapPoint.z() = out_hamsl;
+            }
+
             _mapPoint = mapPoint;
 
             

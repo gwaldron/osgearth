@@ -28,6 +28,8 @@
 
 namespace osgEarth
 {
+    using namespace osg; // b/c of a temporary bug in META_Shape
+
     class OSGEARTH_EXPORT QuadTree : public osg::Shape
     {
         public:
@@ -36,7 +38,7 @@ namespace osgEarth
 
             QuadTree(const QuadTree& rhs, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
-            META_Shape(osg, QuadTree)
+            META_Shape(osgEarth, QuadTree);
 
             struct OSGEARTH_EXPORT BuildOptions
             {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -46,11 +46,12 @@ namespace
     struct ExpirationCollector : public osg::NodeVisitor
     {
         TileNodeRegistry* _live;
-        TileNodeRegistry* _dead;
+        ResourceReleaser* _releaser;
         unsigned          _count;
+        ResourceReleaser::ObjectList _toRelease;
 
-        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : _live(live), _dead(dead), _count(0)
+        ExpirationCollector(TileNodeRegistry* live)
+            : _live(live), _count(0)
         {
             // set up to traverse the entire subgraph, ignoring node masks.
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -62,7 +63,9 @@ namespace
             TileNode* tn = dynamic_cast<TileNode*>( &node );
             if ( tn && _live )
             {
-                _live->move( tn, _dead );
+                _toRelease.push_back( tn );
+                _live->remove( tn );
+                //_live->move( tn, _dead );
                 _count++;
                 //OE_NOTICE << "Expired " << tn->getKey().str() << std::endl;
             }
@@ -105,11 +108,11 @@ TilePagedLOD::MyProgressCallback::update(unsigned frame)
 
 TilePagedLOD::TilePagedLOD(const UID&        engineUID,
                            TileNodeRegistry* live,
-                           TileNodeRegistry* dead) :
+                           ResourceReleaser* releaser) :
 osg::PagedLOD(),
 _engineUID( engineUID ),
 _live     ( live ),
-_dead     ( dead ),
+_releaser ( releaser ),
 _debug    ( false )
 {
     if ( live )
@@ -128,8 +131,9 @@ TilePagedLOD::~TilePagedLOD()
     // need this here b/c it's possible for addChild() to get called from
     // a pager dispatch even after the PLOD in question has been "expired"
     // so we still need to process the live/dead list.
-    ExpirationCollector collector( _live.get(), _dead.get() );
+    ExpirationCollector collector( _live.get() );
     this->accept( collector );
+    _releaser->push( collector._toRelease );
 }
 
 osgDB::Options*
@@ -153,6 +157,12 @@ TilePagedLOD::setChildBoundingBoxAndMatrix(int                     childNum,
 
 TileNode*
 TilePagedLOD::getTileNode()
+{
+    return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
+}
+
+const TileNode*
+TilePagedLOD::getTileNode() const
 {
     return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
 }
@@ -186,20 +196,17 @@ TilePagedLOD::addChild(osg::Node* node)
             return true;
         }
 
+        bool value = osg::PagedLOD::addChild( node );
+
         // If it's a TileNode, this is the simple first addition of the 
         // static TileNode child (not from the pager).
         TileNode* tilenode = dynamic_cast<TileNode*>( node );
         if ( tilenode && _live.get() )
         {
             _live->add( tilenode );
-
-            // Listen for out east and south neighbors.
-            const TileKey& key = tilenode->getKey();
-            _live->listenFor( key.createNeighborKey(1, 0), tilenode );
-            _live->listenFor( key.createNeighborKey(0, 1), tilenode );
         }
 
-        return osg::PagedLOD::addChild( node );
+        return value;
     }
 
     return false;
@@ -414,8 +421,9 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             osg::Node* nodeToRemove = _children[cindex].get();
             removedChildren.push_back(nodeToRemove);
 
-            ExpirationCollector collector( _live.get(), _dead.get() );
+            ExpirationCollector collector( _live.get() );
             nodeToRemove->accept( collector );
+            _releaser->push( collector._toRelease );
 
             if ( _debug )
             {
@@ -437,3 +445,60 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
     }
     return false;
 }
+
+const TileKey& TilePagedLOD::getKey() const
+{
+    if (!getTileNode())
+    {
+        return TileKey::INVALID;
+    }
+    return getTileNode()->getKey();
+}
+
+double TilePagedLOD::getMinimumExpirationTime() const
+{
+    return PagedLOD::getMinimumExpiryTime(1);    
+}
+
+void TilePagedLOD::setMinimumExpirationTime(double minExpiryTime)
+{
+    PagedLOD::setMinimumExpiryTime(1, minExpiryTime);
+}
+
+unsigned int TilePagedLOD::getMinimumExpirationFrames() const
+{
+    return PagedLOD::getMinimumExpiryFrames(1);    
+}
+
+void TilePagedLOD::setMinimumExpirationFrames(unsigned int minExpiryFrames)
+{
+    PagedLOD::setMinimumExpiryFrames(1, minExpiryFrames);
+}
+
+
+void TilePagedLOD::loadChildren()
+{
+    TileKey key = getKey();
+
+    // Load all filenames that aren't currently loaded in the PagedLOD
+
+    if (getNumChildren() < getNumFileNames())
+    {
+        for (unsigned int i = 0; i < getNumFileNames(); i++)
+        {
+            std::string filename = getFileName(i);    
+            if (!filename.empty() && i >= getNumChildren())
+            {
+                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
+                if (!node.valid())
+                {
+                    break;
+                }
+                addChild(node.get());
+            }
+        }
+    }
+}
+
+
+

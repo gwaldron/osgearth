@@ -47,7 +47,6 @@ SET(TARGET_H
     MPShaders
     MPTerrainEngineNode
     MPTerrainEngineOptions
-    QuickReleaseGLObjects
     SingleKeyNodeFactory
     TerrainNode
     TileGroup

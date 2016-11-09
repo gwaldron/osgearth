@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -182,6 +182,10 @@ namespace osgEarth
         
         /**
          * Constructs a new model layer with a user-provided model source.
+         *
+         * Note: the ModelLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ModelLayerOptions will not be used.
          */
         ModelLayer(const ModelLayerOptions& options, ModelSource* source );
 
@@ -197,6 +201,7 @@ namespace osgEarth
         /** 
          * Gets the name of this model layer
          */
+        void setName(const std::string& name) { _runtimeOptions.name() = name; }
         const std::string& getName() const { return _runtimeOptions.name().get(); }
 
         /**
@@ -290,6 +295,10 @@ namespace osgEarth
          */
         void setOpacity( float opacity );
         float getOpacity() const;
+
+    public: // Layer
+
+        virtual Config getConfig() const;
 
     public:
 

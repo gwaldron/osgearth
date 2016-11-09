@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@ _inverseCalculated(false),
 _x0(0.0), _x1(1.0),
 _y0(0.0), _y1(1.0)
 {
-    this->setThreadSafeRefUnref(true);
+    //nop
 }
 
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
@@ -38,7 +38,7 @@ _dataExtent( dataExtent ),
 _x0(0.0), _x1(1.0),
 _y0(0.0), _y1(1.0)
 {
-    this->setThreadSafeRefUnref(true);
+    //nop
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,14 @@
 #define OSGEARTH_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/Status>
+#include <osgEarth/TileKey>
+#include <osg/BoundingBox>
+#include <osg/StateSet>
+#include <osg/RenderInfo>
+#include <osgDB/Options>
+#include <vector>
 
 namespace osgEarth
 {
@@ -37,20 +45,96 @@ namespace osgEarth
         /** dtor */
         virtual ~Layer() { }
 
-        /**
-         * Gets this layer's unique ID.
-         */
+        /** Gets this layer's unique ID. */
         UID getUID() const { return _uid; }
+
+        /** Layer name */
+        virtual void setName(const std::string& name) { _name = name; }
+        virtual const std::string& getName() const { return _name; }
+
+        /**
+         * Open a layer and return the status.
+         */
+        virtual const Status& open() { return _status; }
+
+        /**
+         * Gets the status of this layer.
+         */
+        virtual const Status& getStatus() const { return _status; }
 
         /**
          * Sequence controller if the layer has one.
          */
         virtual SequenceControl* getSequenceControl() { return 0L; }
 
+        /**
+         * Returns a Config object serializing this layer, if applicable.
+         */
+        virtual Config getConfig() const { return Config(); }
+
+        /**
+         * Whether the layer is enabled.
+         */
+        virtual bool getEnabled() const { return true; }
+
+
+
+        // *** NOTE *** Everything below this line is subject to change ***
+
+        /**
+         * Access the layer's stateset, creating it is necessary
+         */
+        osg::StateSet* getOrCreateStateSet() {
+            if (!_stateSet.valid())
+                _stateSet = new osg::StateSet();
+            return _stateSet.get();
+        }
+
+        /**
+         * Layer's stateset, or NULL if none exists
+         */
+        osg::StateSet* getStateSet() const {
+            return _stateSet.get();
+        }
+
+        /**
+         * Sets a new stateset on this layer
+         */
+        void setStateSet(osg::StateSet* stateSet) {
+            _stateSet = stateSet;
+        }
+
+        /**
+         * How (and if) to use this layer when rendering terrain tiles.
+         */
+        enum RenderType
+        {
+            // Layer does not require its own terrain rendering pass (model layers, elevation layers)
+            RENDERTYPE_NONE, 
+
+            // Layer requires a terrain rendering pass that draws terrain tile geometry
+            RENDERTYPE_TILE,
+
+            // Layer requires a terrain rendering pass that emits terrian patches or
+            // invokes a custom drawing function
+            RENDERTYPE_PATCH
+        };
+
+        RenderType getRenderType() const { return _renderType; }
+
+        void setRenderType(RenderType value) { _renderType = value; }
+
+        virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
     private:
         UID _uid;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        RenderType _renderType;
+        Status _status;
+        std::string _name;
     };
+
+    typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
 
 } // namespace osgEarth
 

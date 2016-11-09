@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,8 +26,11 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ResourceReleaser>
+#include <osgEarth/Terrain>
 #include <OpenThreads/Atomic>
 #include <map>
+#include <set>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
@@ -55,7 +58,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         };
 
     public:
-        TileNodeRegistry( const std::string& name );
+        TileNodeRegistry(const std::string& name, Terrain* terrainIF);
 
         /* Enabled revisioning on TileNodes, to support incremental update. */
         void setRevisioningEnabled(bool value);
@@ -96,14 +99,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Adds a tile to the registry */
         void add( TileNode* tile );
 
-        /** Adds several tiles to the registry */
-        //void add( const TileNodeVector& tiles );
-
         /** Removes a tile */
         void remove( TileNode* tile );
-
-        /** Moves a tile from this registry to another registry */
-        void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -113,9 +110,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Whether there are tiles in this registry (snapshot in time) */
         bool empty() const;
-
-        /** Runs an operation against the exclusively locked tile set. */
-        void run( Operation& op );
         
         /** Runs an operation against the read-locked tile set. */
         void run( const ConstOperation& op ) const;
@@ -123,10 +117,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
 
-        /** Tells the registry to listen for the TileNode for the specific key
-            to arrive, and upon its arrival, notifies the waiter. After notifying
-            the waiter, it removes the listen request. */
-        void listenFor(const TileKey& keyToWaitFor, TileNode* waiter);
+        /** Empty the registry, releasing all tiles. */
+        void releaseAll(ResourceReleaser*);
 
     protected:
 
@@ -135,11 +127,21 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         std::string                       _name;
         TileNodeMap                       _tiles;
         OpenThreads::Atomic               _frameNumber;
-        mutable Threading::ReadWriteMutex _tilesMutex;
+        mutable Threading::Mutex          _tilesMutex;
+        osg::observer_ptr<Terrain>        _terrain;
 
-        typedef std::vector<TileKey> TileKeyVector;
-        typedef std::map<TileKey, TileKeyVector> Notifications;
+        typedef std::set<TileKey> TileKeySet;
+        typedef std::map<TileKey, TileKeySet> Notifications;
         Notifications _notifications;
+
+    private:
+        /** Tells the registry to listen for the TileNode for the specific key
+            to arrive, and upon its arrival, notifies the waiter. After notifying
+            the waiter, it removes the listen request. (assumes lock held) */
+        void startListeningFor(const TileKey& keyToWaitFor, TileNode* waiter);
+
+        /** Removes a listen request set by startListeningFor (assumes lock held) */
+        void stopListeningFor(const TileKey& keyToWairFor, TileNode* waiter);
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -227,6 +227,10 @@ namespace osgEarth
 
         /**
          * Constructs a new image layer with a custom TileSource.
+         *
+         * Note: the ImageLayerOptions contains a driver() member for configuring a 
+         * TileSource. But in this constructor, you are passing in an existing TileSource,
+         * and thus the driver() member in ImageLayerOptions will not be used.
          */
         ImageLayer( const ImageLayerOptions& options, TileSource* tileSource );
 
@@ -316,6 +320,9 @@ namespace osgEarth
 
     public: // methods
 
+        virtual bool createTextureSupported() const { return false; }
+        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress) { return 0L; }
+
         /**
          * Creates a GeoImage from this layer corresponding to the provided key. The
          * image is in the profile of the key and will be reprojected, mosaiced and
@@ -336,6 +343,10 @@ namespace osgEarth
     public: // TerrainLayer override
 
         //CacheBin* getCacheBin( const Profile* profile );
+
+    public: // Layer
+
+        virtual Config getConfig() const;
 
     protected:
 

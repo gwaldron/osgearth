@@ -4,7 +4,9 @@
 #pragma vp_entryPoint oe_rexEngine_morph
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
-#pragma vp_define     OE_REX_VERTEX_MORPHING
+
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION)
+
 
 // stage
 vec3 vp_Normal; // up vector
@@ -14,11 +16,8 @@ vec4 oe_layer_tilec;
 
 out float oe_rex_morphFactor;
 
-uniform sampler2D oe_tile_elevationTex;
-uniform mat4      oe_tile_elevationTexMatrix;
-uniform vec2	  oe_tile_morph;
-uniform float     oe_tile_size;
-uniform vec4	  oe_tile_key;
+uniform vec2  oe_tile_morph;
+uniform float oe_tile_size;
 
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
@@ -52,10 +51,10 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
     // assume with no morphing)
 	vec4 wouldBePosition = position;
 
-	#ifdef OE_REX_VERTEX_MORPHING
+#ifdef OE_TERRAIN_RENDER_ELEVATION
         float elev = oe_terrain_getElevation( oe_layer_tilec.st );
 		wouldBePosition.xyz += up*elev;
-	#endif
+#endif
 
     vec4 wouldBePositionView = gl_ModelViewMatrix * wouldBePosition;
     
@@ -74,7 +73,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
-#ifdef OE_REX_VERTEX_MORPHING
+#ifdef OE_TERRAIN_MORPH_GEOMETRY
         vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
         oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif
@@ -84,4 +83,3 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
         oe_rex_morphFactor = 0.0;
     }
 }
-

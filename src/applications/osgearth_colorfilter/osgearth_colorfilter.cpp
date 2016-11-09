@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -700,16 +700,18 @@ main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( node );
     if ( node )
     {   
-        if (mapNode->getMap()->getNumImageLayers() == 0)
+        ImageLayerVector imageLayers;
+        mapNode->getMap()->getLayers(imageLayers);
+
+        if (imageLayers.empty())
         {
             return usage("Please provide a map with at least one image layer.");
         }
 
         // attach color filter to each layer.
-        unsigned numLayers = mapNode->getMap()->getNumImageLayers();
-        for( unsigned i=0; i<numLayers; ++i )
+        for (unsigned i = 0; i<imageLayers.size(); ++i)
         {
-            ImageLayer* layer = mapNode->getMap()->getImageLayerAt( i );
+            ImageLayer* layer = imageLayers.at( i );
 
             if ( layer->getEnabled() && layer->getVisible() )
             {

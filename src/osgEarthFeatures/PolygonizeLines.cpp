@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -542,7 +542,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "attribute vec3 oe_polyline_center; \n"
+        "in vec3 oe_polyline_center; \n"
         "uniform float oe_polyline_scale;  \n"
         "uniform float oe_polyline_min_pixels; \n"
         "uniform vec4 oe_PixelSizeVector; \n"
@@ -581,10 +581,6 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
 
     // this will install and update the oe_PixelSizeVector uniform.
     node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
-
-    // DYNAMIC since we will be altering the uniforms and we don't want 
-    // the stateset to get shared via statesetcache optimization.
-    stateset->setDataVariance(osg::Object::DYNAMIC);
 }
 
 

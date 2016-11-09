@@ -30,8 +30,13 @@ MapServiceLayer::getName() const {
 
 //===========================================================================
 
-TileInfo::TileInfo()
-: is_valid( false )
+TileInfo::TileInfo() :
+is_valid( false ),
+tile_size(0),
+min_level(0),
+max_level(0),
+num_tiles_wide(0),
+num_tiles_high(0)
 {
     //NOP
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ namespace osgEarth { namespace SimpleSky
 
     public: // SkyNode
 
-        osg::Light* getSunLight() { return _light.get(); }
+        osg::Light* getSunLight() const { return _light.get(); }
 
         void attach(osg::View* view, int lightNum);
 
@@ -58,7 +58,6 @@ namespace osgEarth { namespace SimpleSky
         void onSetMoonVisible();
         void onSetStarsVisible();
         void onSetAtmosphereVisible();
-        void onSetMinimumAmbient();
 
     public: // osg::Node
 

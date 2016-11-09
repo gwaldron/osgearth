@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -90,11 +90,10 @@ namespace osgEarth { namespace Util
         void setTextureSize(unsigned size);
 
         /**
-         * The ambient color of the shadow. This is blended with the fragment
-         * color to achieve shadowing. Default is 0x7f7f7fff
+         * The ambient color level of the shadow. 0.0 = black. Default is 0.4
          */
-        void setShadowColor(const osg::Vec4f& value);
-        const osg::Vec4f& getShadowColor() const { return _color; }
+        void setShadowColor(float value);
+        float getShadowColor() const { return _color; }
 
         /**
          * The blurring factor to apply to shadow PCF sampling. Using a blurring
@@ -118,7 +117,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Group>                _castingGroup;
         unsigned                                _size;
         float                                   _blurFactor;
-        osg::Vec4f                              _color;
+        float                                   _color;
         osg::ref_ptr<osg::Light>                _light;
         osg::ref_ptr<osg::Texture2DArray>       _shadowmap;
         osg::ref_ptr<osg::StateSet>             _rttStateSet;

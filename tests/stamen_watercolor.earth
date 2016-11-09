@@ -9,7 +9,5 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
 
-    <options>
-        <lighting>false</lighting>
-    </options>
+    <lod_blending/>
 </map>

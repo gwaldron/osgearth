@@ -30,6 +30,7 @@ namespace osgEarth
         virtual bool elevationTexturesRequired() const =0;
         virtual bool normalTexturesRequired() const =0;
         virtual bool parentTexturesRequired() const =0;
+        virtual bool elevationBorderRequired() const =0;
 
     public:
         virtual ~TerrainEngineRequirements() { }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -223,6 +223,7 @@ namespace osgEarth
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
+        bool elevationBorderRequired() const { return _elevationBorderRequired; }
             
 
     public: // Runtime properties
@@ -276,6 +277,7 @@ namespace osgEarth
         bool _requireElevationTextures;
         bool _requireNormalTextures;
         bool _requireParentTextures;
+        bool _elevationBorderRequired;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.

@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_SELECTION_INFO 1
 
 #include "Common"
+#include <osgEarth/Profile>
 #include <vector>
 
 
@@ -32,11 +33,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         double _fMorphStart;
         double _fMorphEnd;
     };
+
+    /**
+     * SelectionInfo is a data structure that holds the LOD distance switching 
+     * information for the terrain, to support paging and LOD morphing. 
+     * This is calculated once when the terrain is first created.
+     */
     class SelectionInfo
     {
     public:
+        SelectionInfo() : _numLods(0), _uiFirstLOD(0) { }
+
         bool initialized(void) const;
-        void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
+        //void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
+        void initialize(unsigned uiFirstLod, unsigned uiMaxLod, unsigned uiTileSize, const Profile* profile, double mtrf);
 
         unsigned numLods(void) const;
 
@@ -69,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // hence VisParameters) are not generated
         static const double             _fLodLowerBound;
     };
-}
-}
-}
+
+} } } // namespace
+
 #endif

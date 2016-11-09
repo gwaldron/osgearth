@@ -11,7 +11,6 @@ function positionAlongSegments() {
 		doLineString(feature, feature.geometry, output);                        
 	}
 	else if (feature.geometry.type == 'MultiLineString') {
-		var output = [];
 		for(var i=0; i<feature.geometry.coordinates.length; ++i) {
 			doLineString(feature, feature.geometry.coordinates[i], output);
 		}

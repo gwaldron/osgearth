@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/Lighting>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -280,8 +281,9 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
 
             if ( Registry::capabilities().supportsGLSL() )
             {
-                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
-                    GL_LIGHTING, render->lighting().value()));
+                stateset->setDefine(OE_LIGHTING_DEFINE, render->lighting().get());
+                //stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                //    GL_LIGHTING, render->lighting().value()));
             }
         }
 

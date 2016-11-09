@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -419,15 +419,13 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
-    _liveTiles = new TileNodeRegistry("live");
+    _liveTiles = new TileNodeRegistry("live", this->getTerrain());
     _liveTiles->setRevisioningEnabled( _terrainOptions.incrementalUpdate() == true );
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
-    // set up a registry for quick release:
-    if ( _terrainOptions.quickReleaseGLObjects() == true )
-    {
-        _deadTiles = new TileNodeRegistry("dead");
-    }
+    // Facility to properly release GL objects
+    _releaser = new ResourceReleaser();
+    this->addChild(_releaser.get());
 
     // reserve GPU resources. Must do this before initializing the model factory.
     if ( _primaryUnit < 0 )
@@ -467,12 +465,12 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     _batchUpdateInProgress = true;
 
     ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
+    map->getLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
         addElevationLayer( i->get() );
 
     ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    map->getLayers( imageLayers );
     for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         addImageLayer( i->get() );
 
@@ -568,17 +566,15 @@ MPTerrainEngineNode::getTerrainStateSet()
 
 namespace
 {
-    struct NotifyExistingNodesOp : public TileNodeRegistry::Operation
+    struct NotifyExistingNodesOp : public TileNodeRegistry::ConstOperation
     {
         TerrainEngine::NodeCallback* _cb;
 
         NotifyExistingNodesOp(TerrainEngine::NodeCallback* cb) : _cb(cb) { }
 
-        void operator()(TileNodeRegistry::TileNodeMap& tiles)
+        void operator()(const TileNodeRegistry::TileNodeMap& tiles) const
         {
-            //OE_INFO << LC << "Gonna notify " << tiles.size() << " existing nodes...\n";
-
-            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin();
+            for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin();
                 i != tiles.end();
                 ++i)
             {
@@ -618,7 +614,11 @@ MPTerrainEngineNode::dirtyTerrain()
     }
 
     // New terrain
-    _terrain = new TerrainNode( _deadTiles.get() );
+    _terrain = new TerrainNode();
+
+    // Clear out the tile registry:
+    _liveTiles->releaseAll(_releaser.get());
+
 
 #ifdef USE_RENDER_BINS
     _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
@@ -641,9 +641,9 @@ MPTerrainEngineNode::dirtyTerrain()
         // create a root node for each root tile key.
         OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
-        TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
-        root->setRangeFactor(_terrainOptions.minTileRangeFactor().get());
-        _terrain->addChild( root );
+        osg::Group* root = new osg::Group;
+        _terrain->addChild( root );        
+
 
         osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
@@ -657,17 +657,12 @@ MPTerrainEngineNode::dirtyTerrain()
             if ( node.valid() )
             {
                 root->addChild( node.get() );
-                root->setRange( child++, 0.0f, FLT_MAX );
-                root->setCenter( node->getBound().center() );
-                root->setNumChildrenThatCannotBeExpired( child );
             }
             else
             {
                 OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
             }
         }
-
-        _rootTilesRegistered = false;
     }
 
     updateState();
@@ -707,15 +702,13 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-#if 1
+#if 0
     static int c = 0;
     if ( ++c % 60 == 0 )
     {
         //OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
         _liveTiles->run( CheckForOrphans() );
         Registry::instance()->startActivity("MP live tiles", Stringify() << _liveTiles->size());
-        if (_deadTiles.valid())
-            Registry::instance()->startActivity("MP dead tiles", Stringify() << _deadTiles->size());
     }
 #endif
 
@@ -733,10 +726,16 @@ MPTerrainEngineNode::getKeyNodeFactory()
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+        MaskLayerVector maskLayers;
+        _update_mapf->getLayers(maskLayers);
+
+        ModelLayerVector modelLayers;
+        _update_mapf->getLayers(modelLayers);
+
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
+            maskLayers,
+            modelLayers,
             _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
@@ -747,7 +746,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _tileModelFactory.get(),
             compiler,
             _liveTiles.get(),
-            _deadTiles.get(),
+            _releaser.get(),
             _terrainOptions,
             this );
     }
@@ -805,7 +804,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     // Request a heightfield from the map, falling back on lower resolution tiles
     int tileSize = _terrainOptions.tileSize().get();    
-    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
+    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize, 0u );
 
     TileKey sampleKey = key;
     bool populated = false;
@@ -830,7 +829,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     {
         // We have no heightfield so just create a reference heightfield.
         int tileSize = _terrainOptions.tileSize().get();
-        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
+        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize, 0u );
         sampleKey = key;
     }
 
@@ -841,9 +840,15 @@ MPTerrainEngineNode::createTile( const TileKey& key )
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
+    MaskLayerVector maskLayers;
+    _update_mapf->getLayers(maskLayers);
+
+    ModelLayerVector modelLayers;
+    _update_mapf->getLayers(modelLayers);
+
     osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-        _update_mapf->terrainMaskLayers(),
-        _update_mapf->modelLayers(),
+        maskLayers,
+        modelLayers,
         _primaryUnit,
         optimizeTriangleOrientation,
         _terrainOptions );
@@ -885,30 +890,31 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             // then apply the actual change:
             switch( change.getAction() )
             {
-            case MapModelChange::ADD_IMAGE_LAYER:
-                addImageLayer( change.getImageLayer() );
+            case MapModelChange::ADD_LAYER:
+                if (change.getImageLayer())
+                    addImageLayer(change.getImageLayer());
+                else if (change.getElevationLayer())
+                    addElevationLayer(change.getElevationLayer());
                 break;
-            case MapModelChange::REMOVE_IMAGE_LAYER:
-                removeImageLayer( change.getImageLayer() );
+
+            case MapModelChange::REMOVE_LAYER:
+                if (change.getImageLayer())
+                    removeImageLayer(change.getImageLayer());
+                else if (change.getElevationLayer())
+                    removeElevationLayer(change.getElevationLayer());
                 break;
-            case MapModelChange::ADD_ELEVATION_LAYER:
-                addElevationLayer( change.getElevationLayer() );
+
+            case MapModelChange::MOVE_LAYER:
+                if (change.getImageLayer())
+                    moveImageLayer(change.getFirstIndex(), change.getSecondIndex());
+                else if (change.getElevationLayer())
+                    moveElevationLayer(change.getFirstIndex(), change.getSecondIndex());
                 break;
-            case MapModelChange::REMOVE_ELEVATION_LAYER:
-                removeElevationLayer( change.getElevationLayer() );
-                break;
-            case MapModelChange::MOVE_IMAGE_LAYER:
-                moveImageLayer( change.getFirstIndex(), change.getSecondIndex() );
-                break;
-            case MapModelChange::MOVE_ELEVATION_LAYER:
-                moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
-                break;
+
             case MapModelChange::TOGGLE_ELEVATION_LAYER:
                 toggleElevationLayer( change.getElevationLayer() );
                 break;
-            case MapModelChange::ADD_MODEL_LAYER:
-            case MapModelChange::REMOVE_MODEL_LAYER:
-            case MapModelChange::MOVE_MODEL_LAYER:
+
             default: 
                 break;
             }
@@ -1098,11 +1104,14 @@ MPTerrainEngineNode::updateState()
                     const char* I = "    ";
 
                     // second, install the per-layer color filter functions AND shared layer bindings.
+                    ImageLayerVector imageLayers;
+                    _update_mapf->getLayers(imageLayers);
+
                     bool ifStarted = false;
-                    int numImageLayers = _update_mapf->imageLayers().size();
+                    int numImageLayers = imageLayers.size();
                     for( int i=0; i<numImageLayers; ++i )
                     {
-                        ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                        ImageLayer* layer = imageLayers[i].get();
                         if ( layer->getEnabled() )
                         {
                             // install Color Filter function calls:
@@ -1199,10 +1208,13 @@ MPTerrainEngineNode::updateState()
             // assign the uniforms for each shared layer.
             if ( _update_mapf )
             {
-                int numImageLayers = _update_mapf->imageLayers().size();
+                ImageLayerVector imageLayers;
+                _update_mapf->getLayers(imageLayers);
+
+                int numImageLayers = imageLayers.size();
                 for( int i=0; i<numImageLayers; ++i )
                 {
-                    ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                    ImageLayer* layer = imageLayers[i].get();
                     if ( layer->getEnabled() && layer->isShared() )
                     {
                         terrainStateSet->addUniform( new osg::Uniform(

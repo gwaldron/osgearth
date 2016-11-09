@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@ class osgEarth_BYOTerrainEngineDriver : public osgDB::ReaderWriter
 public:
     osgEarth_BYOTerrainEngineDriver() {}
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth BYO Terrain Engine";
     }

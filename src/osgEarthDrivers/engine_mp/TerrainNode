@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -37,24 +37,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class TerrainNode : public osg::Group
     {
     public:
-
-        /**
-         * Constructs a new terrain node.
-         * @param[in ] deadTiles If non-NULL, the terrain node will active GL object
-         *             quick-release and use this registry to track dead tiles.
-         */
-        TerrainNode( TileNodeRegistry* deadTiles );
-
-    public: // osg::Node
-
-        virtual void traverse( osg::NodeVisitor &nv );
+        TerrainNode();
 
     protected:
 
         virtual ~TerrainNode() { }
-
-        osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
-        bool _quickReleaseCallbackInstalled;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,7 @@
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
+#include <osgEarth/TerrainTileNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -102,6 +103,35 @@ osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialRefere
     positioner->setUpdateCallback( new osg::AnimationPathCallback(animationPath, 0.0, 1.0));
     return positioner;
 }
+
+class CacheExtentNodeVisitor : public osg::NodeVisitor
+{
+public:
+    CacheExtentNodeVisitor(GeoExtent& extent):
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+          _extent(extent)
+      {
+      }
+
+      void apply(osg::Node& node)
+      {
+          TerrainTileNode* tile = dynamic_cast<TerrainTileNode*>(&node);
+          if (tile && tile->getKey().valid())
+          {              
+              if (tile->getKey().getExtent().intersects(_extent) && tile->getKey().getLevelOfDetail() < 11)
+              {
+                  // Set this tile to not expire.
+                  tile->setMinimumExpirationTime(DBL_MAX);
+                  OE_NOTICE << "Preloading children for " << tile->getKey().str() << std::endl;
+                  tile->loadChildren();
+              }
+          }          
+          traverse(node);
+      }
+
+      GeoExtent _extent;
+};
+
 
 int
 main(int argc, char** argv)
@@ -229,5 +259,21 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-    return viewer.run();
+    /*
+    TerrainTileNodeVisitor v;
+    root->accept(v);
+    */
+
+    GeoPoint center(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE);
+
+    GeoExtent extent(geoSRS, center.x() - 0.5, center.y() - 0.5, center.x() + 0.5, center.y() + 0.5);
+    CacheExtentNodeVisitor v(extent);
+
+    root->accept(v);
+
+    while (!viewer.done())
+    {        
+        viewer.frame();
+    }
+    return 0;
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -66,7 +66,7 @@ namespace osgEarth
 
         /**
          * The minimum tile LOD range as a factor of the tile's radius.
-         * Default = 6.0.
+         * Default = 7.0.
          */
         optional<float>& minTileRangeFactor() { return _minTileRangeFactor; }
         const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }

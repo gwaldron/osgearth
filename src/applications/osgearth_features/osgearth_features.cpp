@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -155,7 +155,6 @@ int main(int argc, char** argv)
         TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
         text->content() = StringExpression( "[cntry_name]" );
         text->priority() = NumericExpression( "[pop_cntry]" );
-        text->removeDuplicateLabels() = true;
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         text->fill()->color() = Color::White;

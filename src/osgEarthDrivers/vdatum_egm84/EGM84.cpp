@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -88,7 +88,7 @@ public:
         supportsExtension( "osgearth_vdatum_egm84", "osgEarth EGM84 vertical datum" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "osgEarth EGM84 vertical datum";
     }

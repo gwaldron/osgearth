@@ -1,0 +1,142 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_TERRAIN_DRAW_STATE_H
+#define OSGEARTH_REX_TERRAIN_DRAW_STATE_H 1
+
+#include "RenderBindings"
+
+#include <osg/RenderInfo>
+#include <osg/GLExtensions>
+#include <osg/StateSet>
+#include <osg/Program>
+
+#include <vector>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * Tracks the state of a single sampler through the draw process,
+     * to prevent redundant OpenGL texture binding and matrix uniform sets.
+     */
+    struct SamplerState
+    {
+        SamplerState() : _matrixUL(-1) { }
+        optional<osg::Texture*> _texture;    // Texture currently bound
+        optional<osg::Matrixf> _matrix;      // Matrix that is currently set
+        GLint _matrixUL;                     // Matrix uniform location
+
+        void clear() {
+            _texture.clear();
+            _matrix.clear();
+        }
+
+        void clearUniformData() {
+            _matrix.clear();
+            _matrixUL = -1;
+        }
+    };
+
+    /**
+     * Tracks the state of all samplers used in render a tile,
+     * to prevent redundant OpenGL binds.
+     */
+    struct TileSamplerState
+    {
+        std::vector<SamplerState> _samplers;
+
+        void clear() {
+            for (unsigned i = 0; i<_samplers.size(); ++i)
+                _samplers[i].clear();
+        }
+
+        void clearUniformData() {
+            for (unsigned i = 0; i<_samplers.size(); ++i)
+                _samplers[i].clearUniformData();
+        }
+    };
+
+    /**
+     * Tracks the state of terrain drawing settings in a single frame,
+     * to prevent redundant OpenGL calls.
+     */
+    struct DrawState : public osg::Referenced
+    {
+        unsigned _frame;
+
+        bool _stateInitialized;
+
+        // uniform locations
+        GLint _tileKeyUL;
+        GLint _parentTextureExistsUL;
+        GLint _layerUidUL;
+        GLint _layerOpacityUL;
+        GLint _layerOrderUL;
+        GLint _layerMinRangeUL;
+        GLint _layerMaxRangeUL;
+        GLint _elevTexelCoeffUL;
+        GLint _morphConstantsUL;
+
+        osg::ref_ptr<osg::GLExtensions> _ext;
+
+        optional<int>        _layerOrder;
+        optional<osg::Vec2f> _elevTexelCoeff;
+        optional<osg::Vec2f> _morphConstants;
+        optional<bool>       _parentTextureExists;
+
+        TileSamplerState _samplerState;
+
+        const RenderBindings* _bindings;
+
+        const osg::Program::PerContextProgram* _pcp;
+
+        osg::BoundingSphere _bs;
+        osg::BoundingBox    _box;
+
+        DrawState() :
+            _frame(0u),
+            _stateInitialized(false),
+            _tileKeyUL(-1),
+            _parentTextureExistsUL(-1),
+            _layerUidUL(-1),
+            _layerOpacityUL(-1),
+            _layerOrderUL(-1),
+            _layerMinRangeUL(-1),
+            _layerMaxRangeUL(-1),
+            _elevTexelCoeffUL(-1),
+            _morphConstantsUL(-1),
+            _ext(0L),
+            _bindings(0L),
+            _pcp(0L)
+        {
+            //nop
+        }
+
+        // Ensures that the Uniform Locations in the DrawState correspond to
+        // the currently applied program object.
+        void refresh(osg::RenderInfo& ri);
+
+        // Clears all saved state.
+        void clear();
+    };
+
+} } } // namespace 
+
+#endif // OSGEARTH_REX_TERRAIN_DRAW_STATE_H

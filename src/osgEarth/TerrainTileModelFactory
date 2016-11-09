@@ -41,12 +41,11 @@ namespace osgEarth
         /**
          * Creates a tile model and populates it with data from the map.
          *
-         * @param frame       Map frame from which to read source data
-         * @param key         Tile key for which to create the model
-         * @param modelStore  Access to other tile models; if set, the factory
-         *                    will be able to access parent and neighbor data
-         *                    where appropriate
-         * @param progress    Progress tracking callback
+         * @param frame        Map frame from which to read source data
+         * @param key          Tile key for which to create the model
+         * @param requirements Hints that tell the factory what types of data to add
+         * @param border       Size of a texture border to add to elevation and normal maps
+         * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const MapFrame&                  frame,
@@ -66,9 +65,16 @@ namespace osgEarth
             TerrainTileModel*            model,
             const MapFrame&              frame,
             const TileKey&               key,
+            unsigned                     border,
             ProgressCallback*            progress);
 
         virtual void addNormalMap(
+            TerrainTileModel*            model,
+            const MapFrame&              frame,
+            const TileKey&               key,
+            ProgressCallback*            progress);
+
+        virtual void addPatchLayers(
             TerrainTileModel*            model,
             const MapFrame&              frame,
             const TileKey&               key,
@@ -82,6 +88,7 @@ namespace osgEarth
             const TileKey&                  key,
             ElevationSamplePolicy           samplePolicy,
             ElevationInterpolation          interpolation,
+            unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
             ProgressCallback*               progress);
 

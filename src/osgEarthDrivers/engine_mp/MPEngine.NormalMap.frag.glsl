@@ -14,7 +14,7 @@ void oe_mp_NormalMap_fragment(inout vec4 color)
 {
     //const vec3 B = vec3(0,1,0);
 
-    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_normalMapCoords);
+    vec4 encodedNormal = texture(oe_tile_normalTex, oe_normalMapCoords);
     vec3 normal        = normalize(encodedNormal.xyz*2.0-1.0);
 
     //vp_Normal = normalize(oe_mp_NormalMap_TBN * normalTangent);

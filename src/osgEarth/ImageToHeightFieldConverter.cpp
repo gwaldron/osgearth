@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/GeoCommon>
 #include <osg/Notify>
+#include <osg/Texture>
 #include <limits.h>
 #include <string.h>
 
@@ -182,6 +183,32 @@ osg::Image* ImageToHeightFieldConverter::convert16(const osg::HeightField* hf ) 
           h = -SHRT_MAX;
       }
       *(short*)image->data(i) = (short)h;
+  }
+
+  return image;
+}
+
+osg::Image* ImageToHeightFieldConverter::convertToR32F(const osg::HeightField* hf) const
+{
+    if ( !hf ) {
+    return NULL;
+  }
+
+  osg::Image* image = new osg::Image();
+  image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT); //GL_LUMINANCE, GL_SHORT);
+  image->setInternalTextureFormat(GL_R32F);
+
+  const osg::FloatArray* floats = hf->getFloatArray();
+
+  for( unsigned int i = 0; i < floats->size(); ++i  ) {
+      float h = floats->at( i );
+      *(float*)image->data(i) = h;
+      // Set NO_DATA_VALUE to a valid short value.
+      //if (h == NO_DATA_VALUE)
+      //{        
+      //    h = -SHRT_MAX;
+      //}
+      //*(short*)image->data(i) = (short)h;
   }
 
   return image;

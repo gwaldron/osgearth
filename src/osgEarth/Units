@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -157,7 +157,7 @@ namespace osgEarth
         // Maks a new unit definition (SPEED)
         Units( const std::string& name, const std::string& abbr, const Units& distance, const Units& time );
 
-        Units() : _type(TYPE_INVALID) { }
+        Units() : _type(TYPE_INVALID), _toBase(0.0), _distance(0L), _time(0L) { }
 
     private:
 
@@ -202,7 +202,7 @@ namespace osgEarth
         }
 
         // loads the qualified number from an old-school config (e.g., { value="123" units="km" } )
-        qualified_double<T>( const Config& conf, const Units& defaultUnits ) {
+        qualified_double<T>( const Config& conf, const Units& defaultUnits ) : _value(0.0) {
             if ( conf.hasValue("value") ) {
                 _value = conf.value<double>("value", 0.0);
                 if ( !Units::parse( conf.value("units"), _units ) )

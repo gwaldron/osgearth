@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -142,7 +142,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
     }
 
-    const char* className()
+    const char* className() const
     { // override
         return "osgEarth Feature Model Pseudo-Loader";
     }
@@ -523,9 +523,8 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         // Use an appropriate resolution for this extents width
         double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
-        query.setFallBackOnNoData( true );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
-        query.getElevation( p, center.z(), resolution );
+        center.z() = query.getElevation( p, resolution );
         centerZ = center.z();
     }    
 

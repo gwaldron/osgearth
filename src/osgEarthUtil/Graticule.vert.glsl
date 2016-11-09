@@ -8,6 +8,7 @@ uniform vec4 oe_tile_key;
 out vec4 oe_layer_tilec;
 out vec2 oe_graticule_coord;
 
+
 void oe_graticule_vertex(inout vec4 vertex)
 {
     // calculate long and lat from [0..1] across the profile:

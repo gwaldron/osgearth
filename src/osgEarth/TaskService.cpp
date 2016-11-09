@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,11 @@ using namespace OpenThreads;
 TaskRequest::TaskRequest( float priority ) :
 osg::Referenced( true ),
 _priority( priority ),
-_state( STATE_IDLE )
+_state( STATE_IDLE ),
+_stamp(0),
+_startTime(0),
+_endTime(0),
+_completedEvent(0L)
 {
     _progress = new ProgressCallback();
 }

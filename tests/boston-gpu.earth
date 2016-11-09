@@ -121,7 +121,7 @@ to extruded buildings.
                     render-depth-offset:    false;
                 }
             </style>
-            <script language="javascript">
+            <script language="javascript" profile="full">
 				<url>../data/scripts/createLineOffsetPoints.js</url>
 			</script>
         </styles>   

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -59,6 +59,8 @@ namespace osgEarth
         * Converts a heightfield to an image.
         */
         osg::Image* convert(const osg::HeightField* hf, int pixelSize = 32);
+
+        osg::Image* convertToR32F(const osg::HeightField* hf) const;
 
     private:
         osg::HeightField* convert16(const osg::Image* image ) const; 

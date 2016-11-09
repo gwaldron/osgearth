@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -514,7 +514,7 @@ Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned in
 unsigned int
 Profile::getLevelOfDetailForHorizResolution( double resolution, int tileSize ) const
 {
-    if ( tileSize <= 0 || resolution <= 0.0 ) return 0;
+    if ( tileSize <= 0 || resolution <= 0.0 ) return 23;
 
     double tileRes = (_extent.width() / (double)_numTilesWideAtLod0) / (double)tileSize;
     unsigned int level = 0;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -52,62 +52,9 @@ struct App
 {
     osg::ref_ptr<PlaceNode> sunPos;
     osg::ref_ptr<PlaceNode> moonPos;
-    ui::HSliderControl* year;
-    ui::HSliderControl* month;
-    ui::HSliderControl* date;
     SkyNode* sky;
-
-    void set(const DateTime& dt)
-    {
-        year->setValue(dt.year());
-        month->setValue(dt.month());
-        date->setValue(dt.day());
-    }
-
-    void update()
-    {
-        DateTime oldDT = sky->getDateTime();
-        DateTime dt( (int)year->getValue(), (int)month->getValue(), (int)date->getValue(), oldDT.hours() );
-        sky->setDateTime( dt );
-    }
 };
 
-struct Update : public ui::ControlEventHandler
-{
-    App& _app;
-    Update(App& app) : _app(app) { }
-
-    void onValueChanged(ui::Control*)
-    {
-        _app.update();
-    }
-};
-
-ui::Container* makeUI(App& app)
-{
-    Update* update = new Update(app);
-
-    VBox* box = new VBox();
-
-    Grid* g = box->addControl(new Grid());
-
-    g->setControl(0, 0, new LabelControl("Year"));
-    app.year = g->setControl(1, 0, new HSliderControl(1990, 2020, 2015, update));
-    app.year->setHorizFill(true, 200);
-    g->setControl(2, 0, new LabelControl(app.year));
-
-    g->setControl(0, 1, new LabelControl("Month"));
-    app.month = g->setControl(1, 1, new HSliderControl(1, 13, 1, update));
-    app.month->setHorizFill(true, 200);
-    g->setControl(2, 1, new LabelControl(app.month));
-
-    g->setControl(0, 2, new LabelControl("Date"));
-    app.date = g->setControl(1, 2, new HSliderControl(1, 32, 1, update));
-    app.date->setHorizFill(true, 200);
-    g->setControl(2, 2, new LabelControl(app.date));
-    
-    return box;
-}
 
 int
 main(int argc, char** argv)
@@ -132,11 +79,10 @@ main(int argc, char** argv)
     osg::ref_ptr<osg::Image> mark = osgDB::readImageFile("../data/placemark32.png");
     
     App app;
-    ui::Container* gui = makeUI(app);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer, gui );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
         osg::Group* root = new osg::Group();
@@ -159,7 +105,6 @@ main(int argc, char** argv)
         if ( app.sky )
         {
             ephemeris = app.sky->getEphemeris();
-            app.set( DateTime() );
         }
 
         LatLongFormatter llf;

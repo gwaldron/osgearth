@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_XYZ_FEATURE_SOURCE_OPTIONS
+#define OSGEARTH_DRIVER_XYZ_FEATURE_SOURCE_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Options for the XYZ feature driver.
+     */
+    class XYZFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
+                
+        /** Data format extension of TFS data (json, gml) */
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }        
+
+        optional<bool>& invertY() { return _invertY; }
+        const optional<bool>& invertY() const { return _invertY; }
+
+        optional<int>& minLevel() { return _minLevel; }
+        const optional<int>& minLevel() const { return _minLevel; }
+
+        optional<int>& maxLevel() { return _maxLevel; }
+        const optional<int>& maxLevel() const { return _maxLevel; }
+
+    public:
+        XYZFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          FeatureSourceOptions( opt ),
+          _format("json")
+          {
+            setDriver( "xyz" );            
+            fromConfig( _conf );
+        }
+
+        virtual ~XYZFeatureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = FeatureSourceOptions::getConfig();
+            conf.updateIfSet( "url", _url ); 
+            conf.updateIfSet( "format", _format );
+            conf.updateIfSet( "invert_y", _invertY);
+            conf.updateIfSet( "min_level", _minLevel);
+            conf.updateIfSet( "max_level", _maxLevel);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "format", _format );
+            conf.getIfSet( "invert_y", _invertY );
+            conf.getIfSet( "min_level", _minLevel);
+            conf.getIfSet( "max_level", _maxLevel);
+        }
+
+        optional<URI>         _url;        
+        optional<std::string> _format;
+        optional<bool>        _invertY;
+        optional<int>         _minLevel;
+        optional<int>         _maxLevel;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_TFS_FEATURE_SOURCE_OPTIONS
+

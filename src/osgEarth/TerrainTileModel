@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/PatchLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/MapInfo>
 #include <osgEarth/Locators>
@@ -134,6 +135,30 @@ namespace osgEarth
     typedef std::vector< osg::ref_ptr<TerrainTileImageLayerModel> > TerrainTileImageLayerModelVector;
 
     /**
+     * Layer based on an Layer with RENDERTYPE_PATCH from the map.
+     */
+    class OSGEARTH_EXPORT TerrainTilePatchLayerModel : public TerrainTileLayerModel
+    {
+    public:
+        TerrainTilePatchLayerModel() { }
+
+    public:
+        /** Source layer */
+        void setPatchLayer(PatchLayer* layer) { _layer = layer; }
+        const PatchLayer* getPatchLayer() const { return _layer.get(); }
+
+        /** Patch data */
+        void setTileData(PatchLayer::TileData* data) { _tileData = data; }
+        PatchLayer::TileData* getTileData() const { return _tileData.get(); }
+
+    protected:
+        virtual ~TerrainTilePatchLayerModel() { }
+        osg::ref_ptr<PatchLayer> _layer;
+        osg::ref_ptr<PatchLayer::TileData> _tileData;
+    };
+    typedef std::vector< osg::ref_ptr<TerrainTilePatchLayerModel> > TerrainTilePatchLayerModelVector;
+
+    /**
      * Layer based on aggregated elevation data.
      */
     class OSGEARTH_EXPORT TerrainTileElevationModel : public TerrainTileLayerModel
@@ -181,6 +206,9 @@ namespace osgEarth
         TerrainTileImageLayerModelVector& colorLayers() { return _colorLayers; }
         const TerrainTileImageLayerModelVector& colorLayers() const { return _colorLayers; }
 
+        TerrainTilePatchLayerModelVector& patchLayers() { return _patchLayers; }
+        const TerrainTilePatchLayerModelVector& patchLayers() const { return _patchLayers; }
+
         /** Elevation Layer model (one) */
         osg::ref_ptr<TerrainTileElevationModel>& elevationModel() { return _elevationLayer; }
         const osg::ref_ptr<TerrainTileElevationModel>& elevationModel() const { return _elevationLayer; }
@@ -218,6 +246,7 @@ namespace osgEarth
         TileKey                                 _key;
         Revision                                _revision;
         TerrainTileImageLayerModelVector        _colorLayers;
+        TerrainTilePatchLayerModelVector        _patchLayers;
         TerrainTileImageLayerModelVector        _sharedLayers;
         osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;
         osg::ref_ptr<TerrainTileLayerModel>     _normalLayer;

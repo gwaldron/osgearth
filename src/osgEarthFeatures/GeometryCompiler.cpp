@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -385,7 +385,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // instance substitution (replaces marker)
     else if ( model )
     {
-        const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
+        const InstanceSymbol* instance = (const InstanceSymbol*)model;
 
         // use a separate filter context since we'll be munging the data
         FilterContext localCX = sharedCX;
@@ -491,7 +491,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         BuildGeometryFilter filter( style );
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
+
+        if (_options.maxPolygonTilingAngle().isSet())
+            filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();
 
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();

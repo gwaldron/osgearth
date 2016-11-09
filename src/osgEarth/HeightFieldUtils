@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -140,6 +140,10 @@ namespace osgEarth
         /**
          * Creates a heightfield containing MSL heights for the specified extent.
          *
+         * @param numCols Width of the heightfield, not including the border
+         * @param numRows Height of the heightfield, not including the border
+         * @param border Size (in samples) of the border (on each side). This will increase the
+         *               actual numRows and numCols.
          * @param expressHeightsAsHAE
          *      If the SRS (in GeoExtent) has a vertical datum, and expressHeightsAsHAE==true,
          *      the height values will be those of its reference geoid. If there is no vertical
@@ -150,6 +154,7 @@ namespace osgEarth
             const GeoExtent& ex, 
             unsigned         numCols,
             unsigned         numRows,
+            unsigned         border,
             bool             expressHeightsAsHAE =true);
 
         /**
@@ -198,6 +203,15 @@ namespace osgEarth
         static osg::Image* convertToNormalMap(
             const HeightFieldNeighborhood& hood,
             const SpatialReference*        hoodSRS);
+        
+        /**
+         * Reads elevation data from one image and writes a normal/curvature map
+         * for it to another image of the same size
+         */
+        static void createNormalMap(
+            const osg::Image* elevation,
+            osg::Image*       normalMap,
+            const GeoExtent&  extent);
 
 
         /**

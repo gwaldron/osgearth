@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -67,7 +67,6 @@ namespace osgEarth { namespace Features
 
     protected:
         Stroke _stroke;
-        bool   _makeScalable;
         friend class PolygonizeLinesFilter;
     };
 
@@ -92,7 +91,6 @@ namespace osgEarth { namespace Features
     protected:
 
         Style _style;
-        bool  _makeScalable;
     };
 
 } } // namespace osgEarth::Features

@@ -20,139 +20,117 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_DRAWABLE 1
 
 #include "Common"
-#include "TileNode"
-#include "TileNodeRegistry"
-#include "RenderBindings"
-#include "MPTexture"
-
+#include "TileRenderModel"
 #include <osg/Geometry>
-#include <osg/buffered_value>
-#include <osgEarth/Map>
+#include <osg/Image>
+#include <osg/Matrixf>
+#include <osgEarth/TileKey>
 #include <osgEarth/MapFrame>
 
 using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    struct ModifyBoundingBoxCallback : public osg::Referenced
+    {
+        ModifyBoundingBoxCallback(const MapFrame& frame) : _frame(frame) { }
+
+        mutable Threading::Mutex _mutex;
+        mutable MapFrame _frame;
+
+        void operator()(const TileKey& key, osg::BoundingBox& bbox) const
+        {
+            if (_frame.needsSync())
+            {
+                Threading::ScopedMutexLock lock(_mutex);
+                _frame.sync();
+            }
+
+            for (LayerVector::const_iterator layer = _frame.layers().begin();
+                layer != _frame.layers().end();
+                ++layer)
+            {
+                if (layer->valid())
+                {
+                    layer->get()->modifyTileBoundingBox(key, bbox);
+                }
+            }
+        }
+    };
+
     /**
-     * A Geometry that will draw its primitive sets multiple time,
-     * once for each configured "layer". For rendering multipass
-     * data from a single cull.
+     * TileDrawable is an osg::Drawable that represents an individual terrain tile
+     * for the purposes of scene graph operations (like intersections, bounds
+     * computation, statistics, etc.)
+     * 
+     * NOTE: TileDrawable does not actually render anything!
+     * The TerrainRenderData object does all the rendering of tiles.
+     *
+     * Instead, it exposes various osg::Drawable Functors for traversing
+     * the terrain's geometry. It also hold a pointer to the tile's elevation
+     * raster so it can properly reflect the elevation data in the texture.
      */
     class TileDrawable : public osg::Drawable
     {
     public:
-        // uniform name IDs.
-        unsigned _uidUniformNameID;
-        unsigned _orderUniformNameID;
-        unsigned _opacityUniformNameID;
-        unsigned _tileKeyUniformNameID;
-        unsigned _texMatrixUniformNameID;
-        unsigned _texMatrixParentUniformNameID;
-        unsigned _texParentExistsUniformNameID;
-        unsigned _minRangeUniformNameID;
-        unsigned _maxRangeUniformNameID;
-
-        // Data stored for each graphics context:
-        struct PerContextData {
-            PerContextData() : birthTime(-1.0f), lastFrame(0) { }
-            float    birthTime;
-            unsigned lastFrame;
-        };
-        mutable osg::buffered_object<PerContextData> _pcd;
-
-        mutable osg::Vec4f _tileMorphCValue;
-        mutable osg::Vec4f _tileGridDimsValue;
-        mutable osg::Vec4f _tileExtentsValue;
-        RenderBindings _bindings;
-
-        bool _supportsGLSL;
-
-        // underlying geometry, possible shared between this tile and other.
+        // underlying geometry, possibly shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
 
         // tile dimensions
         int _tileSize;
-
-        bool _drawPatch;
-
-        osg::ref_ptr<MPTexture> _mptex;
-
-        int _textureImageUnit;
-        int _textureParentImageUnit;
 
         const TileKey _key;
 
         osg::ref_ptr<const osg::Image> _elevationRaster;
         osg::Matrixf                   _elevationScaleBias;
 
-        int _skirtSize;
+        // cached 3D mesh of the terrain tile (derived from the elevation raster)
+        osg::Vec3f* _mesh;
 
-        float* _heightCache;
+        ModifyBoundingBoxCallback* _bboxCB;
 
     public:
         
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
-            const TileKey&        key,
-            const RenderBindings& bindings,
-            osg::Geometry*        geometry,
-            int                   tileSize,
-            int                   skirtSize);
-
-        // whether to draw this as a multi-image geometry or as a tesselation patch.
-        void setDrawAsPatches(bool value) { _drawPatch = value; }
-
-        /** Sets the multipass texture to use when rendering geometry. */
-        void setMPTexture(MPTexture* tex) { _mptex = tex; }
+            const TileKey& key,
+            osg::Geometry* geometry,
+            int            tileSize);
 
     public:
 
-        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
-
-        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
-
-        void drawPatches(osg::RenderInfo& renderInfo) const;
-
-        void drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const;
-
-        // validate the geometry is OK.
-        void validate();
-
         // Sets the elevation raster for this tile
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
-        const osg::Image* getElevationRaster() const;
-        const osg::Matrixf& getElevationMatrix() const;
 
-    public: // osg::Geometry overrides
+        const osg::Image* getElevationRaster() const {
+            return _elevationRaster.get();
+        }
 
-        // override so we can properly release the GL buffer objects
-        // that are not tracked by the Geometry itself but rather are
-        // stored in the LayerRenderData.
-        void releaseGLObjects(osg::State* state) const;
-        void resizeGLObjectBuffers(unsigned maxSize);
-        void compileGLObjects(osg::RenderInfo& renderInfo) const;
+        const osg::Matrixf& getElevationMatrix() const {
+            return _elevationScaleBias;
+        }
 
-        // this is copied mostly from osg::Geometry, but we've removed 
-        // all the code that handles non-fastPath (don't need it) and
-        // called into our custom renderPrimitiveSets method.
-        void drawImplementation(osg::RenderInfo& renderInfo) const;
+        // Set the render model so we can properly calculate bounding boxes
+        void setModifyBBoxCallback(ModifyBoundingBoxCallback* bboxCB) { _bboxCB = bboxCB; }
 
     public: // osg::Drawable overrides
 
         // These methods defer functors (like stats collection) to the underlying
         // (possibly shared) geometry instance.
-        bool supports(osg::Drawable::AttributeFunctor& f) const { return true; }
-        void accept(osg::Drawable::AttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        bool supports(const osg::Drawable::AttributeFunctor& f) const { return true; }
+        void accept(osg::Drawable::AttributeFunctor& f) { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(osg::Drawable::ConstAttributeFunctor& f) const { return true; }
+        bool supports(const osg::Drawable::ConstAttributeFunctor& f) const { return true; }
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(osg::PrimitiveFunctor& f) const { return true; }
+        bool supports(const osg::PrimitiveFunctor& f) const { return true; }
         void accept(osg::PrimitiveFunctor& f) const;
         
         /** indexed functor is NOT supported since we need to apply elevation dynamically */
-        bool supports(osg::PrimitiveIndexFunctor& f) const { return false; }
+        bool supports(const osg::PrimitiveIndexFunctor& f) const { return false; }
+
+        osg::BoundingSphere computeBound() const;
+        osg::BoundingBox computeBoundingBox() const;
 
     public:
         META_Object(osgEarth, TileDrawable);

@@ -140,7 +140,7 @@ public:
         this->supportsExtension("osgearth_featurefilter_join", className() );
     }
     
-    const char* className()
+    const char* className() const
     {
         return "JoinFeatureFilterPlugin";
     }

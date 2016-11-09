@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -428,6 +428,16 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
+    // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        if ( i->key() == "elevation" || i->key() == "heightfield" )
+        {
+            addElevationLayer( *i, map );
+        }
+    }
+
+
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
@@ -439,11 +449,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         else if ( i->key() == "image" )
         {
             addImageLayer( *i, map );
-        }
-
-        else if ( i->key() == "elevation" || i->key() == "heightfield" )
-        {
-            addElevationLayer( *i, map );
         }
 
         else if ( i->key() == "model" )
@@ -465,7 +470,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             }
         }
 
-        else // plugins/extensions.
+        else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
             addExtension( *i, mapNode.get() );
         }
@@ -500,33 +505,18 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
     mapConf.add( "options", optionsConf );
 
     // the layers
-    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-    {
-        ImageLayer* layer = i->get();
-        //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getImageLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
-        mapConf.add( "image", layerConf );
-    }
+    LayerVector layers;
+    mapf.getLayers(layers);
 
-    for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        ElevationLayer* layer = i->get();
-        //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getElevationLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
-        mapConf.add( "elevation", layerConf );
-    }
+        const Layer* layer = i->get();
 
-    for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
-    {
-        ModelLayer* layer = i->get();
-        Config layerConf = layer->getModelLayerOptions().getConfig();
-        layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
-        mapConf.add( "model", layerConf );
+        Config layerConf = layer->getConfig();
+        if (!layerConf.empty())
+        {
+            mapConf.add(layerConf);
+        }
     }
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;

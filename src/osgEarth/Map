@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,19 +36,23 @@
 namespace osgEarth
 {
     class MapInfo;
+    class ElevationPool;
 
     /**
      * Map is the main data model that the MapNode will render. It is a
      * container for all Layer objects (that contain the actual data) and
      * the rendering options.
      */
-    class OSGEARTH_EXPORT Map : public osg::Referenced
+    class OSGEARTH_EXPORT Map : public osg::Object
     {
     public:
-        /**
-         * Constructs a new, empty map.
-         */
-        Map( const MapOptions& options =MapOptions() );
+        META_Object(osgEarth, Map);
+
+        /** Construct a new, empty map. */
+        Map();
+
+        /** Construct a new empty map with options */
+        Map(const MapOptions& options);
 
     public:
         /**
@@ -82,93 +86,91 @@ namespace osgEarth
          */
         const SpatialReference* getWorldSRS() const;
 
+
         /**
-         * Copies references of the map image layers into the output list.
+         * Adds a Layer to the map. 
+         */
+        void addLayer(Layer* layer);
+
+        /**
+         * Inserts a Layer at a specific index in the Map.
+         */
+        void insertLayer(Layer* layer, unsigned index);
+
+        /**
+         * Removes a layer from the map.
+         */
+        void removeLayer(Layer* layer);
+
+        /**
+         * Moves a layer to another position in the Map.
+         */
+        void moveLayer(Layer* layer, unsigned index);
+
+        /**
+         * Gets the index of the specified layer, or returns
+         * getNumLayers() if the layer is not found.
+         */
+        unsigned getIndexOfLayer(Layer* layer) const;
+
+        /**
+         * Copies references of the map layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        Revision getImageLayers( ImageLayerVector& out_layers ) const;
+        Revision getLayers(LayerVector& out_layers) const;
 
         /**
-         * Gets the number of image layers in the map.
+         * Gets the number of layers in the map.
          */
-        int getNumImageLayers() const;
+        unsigned getNumLayers() const;
 
         /**
-         * Gets an image layer by name.
+         * Gets a layer by name.
          */
-        ImageLayer* getImageLayerByName( const std::string& name ) const;
+        Layer* getLayerByName(const std::string& name) const;
+
+        template<typename T> T* getLayerByName(const std::string& name) const {
+            return dynamic_cast<T*>(getLayerByName(name));
+        }
 
         /**
          * Gets an image layer by its unique ID.
          */
-        ImageLayer* getImageLayerByUID( UID layerUID ) const;
+        Layer* getLayerByUID(UID layerUID) const;
+
+        template<typename T> T* getLayerByUID(UID layerUID) const {
+            return dynamic_cast<T*>(getLayerByUID(layerUID));
+        }
 
         /**
-         * Gets an image layer at the specified index.
+         * Gets the layer at the specified index.
          */
-        ImageLayer* getImageLayerAt( int index ) const;
+        Layer* getLayerAt(unsigned index) const;
+
+        template<typename T> T* getLayerAt(unsigned index) const {
+            return dynamic_cast<T*>(getLayerAt(index));
+        }
 
         /**
-         * Copies references of the elevation layers into the output list.
-         * This method is thread safe. It returns the map revision that was
-         * in effect when the data was copied.
+         * Fills the vector with references to all layers of the specified type.
          */
-        Revision getElevationLayers( ElevationLayerVector& out_layers ) const;
-
-        /**
-         * Gets the number of elevation layers in the map.
-         */
-        int getNumElevationLayers() const;
-
-        /**
-         * Gets an elevation layer by name.
-         */
-        ElevationLayer* getElevationLayerByName( const std::string& name ) const;
-
-        /**
-         * Gets an elevation layer by its unique ID.
-         */
-        ElevationLayer* getElevationLayerByUID( UID layerUID ) const;
-
-        /**
-         * Gets an elevation layer at the specified index.
-         */
-        ElevationLayer* getElevationLayerAt( int index ) const;
-
-        /** 
-         * Copies references of the model layers into the output list.
-         * This method is thread safe. It returns the map revision that was
-         * in effect when the data was copied.
-         */
-        Revision getModelLayers( ModelLayerVector& out_layers ) const;
-
-        /**
-         * Gets the number of model layers in the map.
-         */
-        int getNumModelLayers() const;
-
-        /**
-         * Gets a model layer by name.
-         */
-        ModelLayer* getModelLayerByName( const std::string& name ) const;
-
-        /**
-         * Gets a model layer by its unique ID.
-         */
-        ModelLayer* getModelLayerByUID( UID layerUID ) const;
-
-        /**
-         * Gets the model layer at the specified index.
-         */
-        ModelLayer* getModelLayerAt( int index ) const;
-
-        /**
-         * Copies references of the mask layers into the output list.
-         * This method is thread safe. It returns the map revision that was
-         * in effect when the data was copied.
-         */
-        int getTerrainMaskLayers( MaskLayerVector& out_list ) const;
+        template<typename T>
+        Revision getLayers(std::vector< osg::ref_ptr<T> >& output) const {
+            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+                T* obj = dynamic_cast<T*>(i->get());
+                if (obj) output.push_back(obj);
+            }
+            return _dataModelRevision;
+        }
+        template<typename T>
+        Revision getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
+            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+                T* obj = dynamic_cast<T*>(i->get());
+                if (obj) output.push_back(obj);
+            }
+            return _dataModelRevision;
+        }
 
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
@@ -197,71 +199,6 @@ namespace osgEarth
         void endUpdate();
 
         /**
-         * Adds an image layer to the map.
-         */
-        void addImageLayer( ImageLayer* layer );
-
-        /**
-        * Adds an image layer to the map at the specified index.
-        */
-        void insertImageLayer( ImageLayer* layer, unsigned int index );
-
-        /**
-         * Removes an image layer from the map.
-         */
-        void removeImageLayer( ImageLayer* layer );
-
-        /**
-         * Moves (re-orders) an image layer to another index position in its list.
-         */
-        void moveImageLayer( ImageLayer* layer, unsigned int newIndex );
-
-        /**
-         * Adds an elevation layer to the map.
-         */
-        void addElevationLayer( ElevationLayer* layer );
-
-        /**
-         * Removes an elevation layer from the map.
-         */
-        void removeElevationLayer( ElevationLayer* layer );
-
-        /**
-         * Moves (re-orders) an elevation layer to another index position in its list.
-         */
-        void moveElevationLayer( ElevationLayer* layer, unsigned int newIndex );
-
-        /**
-         * Adds a new model layer to the map.
-         */
-        void addModelLayer( ModelLayer* layer );
-
-        /**
-         * Adds a new model layer to the map at the specified index.
-         */
-        void insertModelLayer( ModelLayer* layer, unsigned int index );
-
-        /**
-         * Removes a model layer from the map.
-         */
-        void removeModelLayer( ModelLayer* layer );
-
-        /**
-         * Moves (re-orders) an image layer to another index position in its list.
-         */
-        void moveModelLayer( ModelLayer* layer, unsigned int newIndex );
-
-        /**
-         * Adds a new layer to use as a terrain mask.
-         */
-        void addTerrainMaskLayer( MaskLayer* layer );
-
-        /**
-         * Removed a terrain mask layer that was set with setTerrainMaskLayer().
-         */
-        void removeTerrainMaskLayer( MaskLayer* layer );
-
-        /**
          * Clear all layers from this map.
          */
         void clear();
@@ -271,6 +208,100 @@ namespace osgEarth
          * (except for terrain mask layers)
          */
         void setLayersFromMap( const Map* map );
+
+
+    public: // backwards-compatibility - to be deprecated
+
+        /**
+         * Adds an image layer to the map.
+         */
+        void addImageLayer(ImageLayer* layer) {
+            addLayer(layer);
+        }
+
+        /**
+        * Adds an image layer to the map at the specified index.
+        */
+        void insertImageLayer(ImageLayer* layer, unsigned index) {
+            insertLayer(layer, index);
+        }
+
+        /**
+         * Removes an image layer from the map.
+         */
+        void removeImageLayer(ImageLayer* layer) {
+            removeLayer(layer);
+        }
+
+        /**
+         * Moves (re-orders) an image layer to another index position in its list.
+         */
+        void moveImageLayer(ImageLayer* layer, unsigned newIndex) {
+            moveLayer(layer, newIndex);
+        }
+
+        /**
+         * Adds an elevation layer to the map.
+         */
+        void addElevationLayer(ElevationLayer* layer) {
+            addLayer(layer);
+        }
+
+        /**
+         * Removes an elevation layer from the map.
+         */
+        void removeElevationLayer(ElevationLayer* layer) {
+            removeLayer(layer);
+        }
+
+        /**
+         * Moves (re-orders) an elevation layer to another index position in its list.
+         */
+        void moveElevationLayer(ElevationLayer* layer, unsigned newIndex) {
+            moveLayer(layer, newIndex);
+        }
+
+        /**
+         * Adds a new model layer to the map.
+         */
+        void addModelLayer(ModelLayer* layer) {
+            addLayer(layer);
+        }
+
+        /**
+         * Adds a new model layer to the map at the specified index.
+         */
+        void insertModelLayer(ModelLayer* layer, unsigned index) {
+            insertLayer(layer, index);
+        }
+
+        /**
+         * Removes a model layer from the map.
+         */
+        void removeModelLayer(ModelLayer* layer) {
+            removeLayer(layer);
+        }
+
+        /**
+         * Moves (re-orders) an image layer to another index position in its list.
+         */
+        void moveModelLayer(ModelLayer* layer, unsigned newIndex) {
+            moveLayer(layer, newIndex);
+        }
+
+        /**
+         * Adds a new layer to use as a terrain mask.
+         */
+        void addTerrainMaskLayer(MaskLayer* layer) {
+            addLayer(layer);
+        }
+
+        /**
+         * Removed a terrain mask layer that was set with setTerrainMaskLayer().
+         */
+        void removeTerrainMaskLayer(MaskLayer* layer) {
+            removeLayer(layer);
+        }
 
     public:
         /**
@@ -282,12 +313,12 @@ namespace osgEarth
         /**
          * Sets the readable name of this map.
          */
-        void setName( const std::string& name );
+        void setMapName( const std::string& name );
 
         /** 
          * Gets the readable name of this map.
          */
-        const std::string& getName() const { return _name; }
+        const std::string& getMapName() const { return _name; }
               
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.
@@ -334,11 +365,21 @@ namespace osgEarth
          */
         const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
+        /**
+         * Gets a version of the map profile without any vertical datum
+         */
         const Profile* getProfileNoVDatum() const { return _profileNoVDatum.get(); }
+
+        /**
+         * Access to an elevation sampling pool tied to this map
+         */
+        ElevationPool* getElevationPool() const;
 
     protected:
 
         virtual ~Map();
+
+        Map(const Map& rhs, const osg::CopyOp& copy) { }
 
     private:
 
@@ -346,10 +387,7 @@ namespace osgEarth
         MapOptions _mapOptions;
         const MapOptions _initMapOptions;
         std::string _name;
-        ImageLayerVector _imageLayers;
-        ElevationLayerVector _elevationLayers;
-        ModelLayerVector _modelLayers;
-        MaskLayerVector _terrainMaskLayers;
+        LayerVector _layers;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::Options> _globalOptions;
         mutable Threading::ReadWriteMutex _mapDataMutex;
@@ -357,6 +395,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
+        //osg::ref_ptr<ElevationPool> _elevationPool;
+        ElevationPool* _elevationPool;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;
@@ -368,7 +408,9 @@ namespace osgEarth
 
         void notifyElevationLayerVisibleChanged(TerrainLayer*);
 
+
     private:
+        void ctor();
         void calculateProfile();
 
         friend class MapInfo;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -88,7 +88,7 @@ public:
 
         if ( !image.valid() )
         {
-            return Status::Error( Status::ResourceUnavailable, Stringify() <<  "Faild to load data from \"" << _options.url()->full() << "\"" );
+            return Status::Error( Status::ResourceUnavailable, Stringify() <<  "Failed to load data from \"" << _options.url()->full() << "\"" );
         }
 
         // calculate and store the maximum LOD for which to return data
@@ -178,7 +178,7 @@ public:
         supportsExtension( "osgearth_osg", "OSG image driver for osgEarth" );
     }
 
-    virtual const char* className()
+    virtual const char* className() const
     {
         return "OSG Image Driver";
     }

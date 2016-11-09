@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -152,7 +152,7 @@ namespace osgEarth { namespace Util
         static double const G4;
 
         unsigned char permMod12[512];
-        bool permMod12Computed;
+        //bool permMod12Computed;
         void ComputePermMod12();
 
         // This method is a *lot* faster than using (int)Math.floor(x)

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@ namespace osgEarth
 
     /**
      * Stores information about the hardware and graphics system capbilities.
-     * The osgEarth::Registry stores a singleton Capabilities object that you can 
+     * The osgEarth::Registry stores a singleton Capabilities object that you can
      * use to determine what your system supports.
      */
     class OSGEARTH_EXPORT Capabilities : public osg::Referenced
@@ -64,13 +64,13 @@ namespace osgEarth
         int getDepthBufferBits() const { return _depthBits; }
 
         /** whether the GPU supports shaders. */
-        bool supportsGLSL() const { 
+        bool supportsGLSL() const {
             return _supportsGLSL; }
-        
+
         /** whether the GPU supports a minimum GLSL version */
-        bool supportsGLSL(float minimumVersion) const { 
+        bool supportsGLSL(float minimumVersion) const {
             return _supportsGLSL && _GLSLversion >= minimumVersion; }
-        
+
         /** whether the GPU supports a minimum GLSL version (as an int; e.g. 1.2 => "120") */
         bool supportsGLSL(unsigned minVersionInt) const {
             return _supportsGLSL && ((unsigned)(_GLSLversion*100.0f)) >= minVersionInt; }
@@ -79,7 +79,7 @@ namespace osgEarth
         float getGLSLVersion() const { return _GLSLversion; }
 
         /** GLSL version as an integer x 100. I.e.: GLSL 1.4 => 140. */
-        unsigned getGLSLVersionInt() const { return (unsigned)(_GLSLversion*100.0f); }
+        unsigned getGLSLVersionInt() const { return (unsigned)(_GLSLversion*100.0f + 0.5f); }
 
         /** Are we running OpenGLES? */
         bool isGLES() const { return _isGLES; }
@@ -140,7 +140,7 @@ namespace osgEarth
 
         /** whether the GPU supports writing to the depth fragment */
         bool supportsFragDepthWrite() const { return _supportsFragDepthWrite; }
-        
+
         /** whether the GPU supports a texture compression scheme */
         bool supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const;
 

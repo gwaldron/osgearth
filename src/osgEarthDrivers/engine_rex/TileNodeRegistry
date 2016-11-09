@@ -23,7 +23,8 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/TerrainEngineNode>
+//#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ResourceReleaser>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
 #include <map>
@@ -110,7 +111,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         typedef RandomAccessTileMap TileNodeMap;
-        //typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
 
         // Prototype for a locked tileset operation (see run)
         struct Operation {
@@ -174,13 +174,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void remove( TileNode* tile );
 
         /** Clears all tiles from the registry */
-        void clear();
+        //void clear();
 
         /** Moves a tile from this registry to another registry */
-        void move( TileNode* tile, TileNodeRegistry* destination );
+        //void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Moves all tiles to another registry. */
-        void moveAll(TileNodeRegistry* destinataion);
+        //void moveAll(TileNodeRegistry* destinataion);
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -203,10 +203,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Tells the registry to listen for the TileNode for the specific key
             to arrive, and upon its arrival, notifies the waiter. After notifying
             the waiter, it removes the listen request. */
-        void listenFor(const TileKey& keyToWaitFor, TileNode* waiter);
+        //void listenFor(const TileKey& keyToWaitFor, TileNode* waiter);
 
         /** Take an arbitrary node from the registry. */
         TileNode* takeAny();
+
+        /** Empty the registry, releasing all tiles. */
+        void releaseAll(ResourceReleaser*);
 
     protected:
 
@@ -229,6 +232,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             that node is not NULL */
         void addSafely(TileNode* node);
         void removeSafely(const TileKey& key);
+
+        /** Tells the registry to listen for the TileNode for the specific key
+            to arrive, and upon its arrival, notifies the waiter. After notifying
+            the waiter, it removes the listen request. (assumes lock held) */
+        void startListeningFor(const TileKey& keyToWaitFor, TileNode* waiter);
+
+        /** Removes a listen request set by startListeningFor (assumes lock held) */
+        void stopListeningFor(const TileKey& keyToWairFor, TileNode* waiter);
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

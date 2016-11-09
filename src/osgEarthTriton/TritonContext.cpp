@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -82,6 +82,12 @@ int
 TritonContext::getHeightMapSize() const
 {
     return osg::clampBetween(_options.heightMapSize().get(), 64, 2048);
+}
+
+const std::string&
+TritonContext::getMaskLayerName() const
+{
+    return _options.maskLayer().get();
 }
 
 void

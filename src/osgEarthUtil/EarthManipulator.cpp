@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -491,15 +491,33 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 
 /************************************************************************/
 
+void
+EarthManipulator::ctor_init()
+{
+    _last_action = ACTION_NULL;
+    _last_event = EVENT_MOUSE_DOUBLE_CLICK;
+    _time_s_last_event = 0.0;
+    _frameCount = 0;
+    _findNodeTraversalMask = 0x01;
+    _time_s_last_frame = 0.0;
+    _time_s_now = 0.0;
+    _centerHeight = 0.0;
+    _time_last_frame = 0.0;
+    _continuous_dx = 0;
+    _continuous_dy = 0;
+    _last_continuous_action_time = 0.0;
+    _single_axis_x = 0;
+    _single_axis_y = 0;
+    _setVPAccel = 0;
+    _setVPAccel2 = 0;
+    _lastTetherMode = TETHER_CENTER;
+    _homeViewpointDuration = 0;
+}
 
 EarthManipulator::EarthManipulator() :
-osgGA::CameraManipulator(),
-_last_action           ( ACTION_NULL ),
-_last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
-_time_s_last_event     ( 0.0 ),
-_frameCount            ( 0 ),
-_findNodeTraversalMask ( 0x01 )
+osgGA::CameraManipulator()
 {
+    ctor_init();
     reinitialize();
     configureDefaultSettings();
     if (_settings.valid())
@@ -507,13 +525,9 @@ _findNodeTraversalMask ( 0x01 )
 }
 
 EarthManipulator::EarthManipulator(osg::ArgumentParser& args) :
-osgGA::CameraManipulator(),
-_last_action           ( ACTION_NULL ),
-_last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
-_time_s_last_event     ( 0.0 ),
-_frameCount            ( 0 ),
-_findNodeTraversalMask ( 0x01 )
+osgGA::CameraManipulator()
 {
+    ctor_init();
     reinitialize();
     configureDefaultSettings();
     if (_settings.valid())
@@ -526,7 +540,7 @@ EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
 _last_event             ( EVENT_MOUSE_DOUBLE_CLICK ),
-_time_s_last_event      (0.0),
+_time_s_last_event      ( 0.0 ),
 _frameCount             ( 0 ),
 _settings               ( new Settings(*rhs.getSettings()) ),
 _findNodeTraversalMask  ( rhs._findNodeTraversalMask )

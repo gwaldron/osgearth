@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -76,40 +76,57 @@ namespace osgEarth { namespace Util
         // DTOR
         virtual ~GraticuleNode();
 
-        
+    public:
+        osg::StateSet* getStateSet(osgUtil::CullVisitor*);
+
     private:
 
         osgEarth::GeoExtent getViewExtent(osgUtil::CullVisitor* cullVisitor);
 
+
+        osg::observer_ptr< MapNode > _mapNode;
+        osg::ref_ptr< GraticuleTerrainEffect > _effect;
+        osg::ref_ptr< osg::NodeCallback > _callback;
+        osg::ref_ptr< LatLongFormatter > _formatter;
+        float _defaultResolution;
+        
+        osg::Vec2f _centerOffset;
+
+        osg::Vec3d _focalPoint;
+        const GraticuleOptions _options;
+        bool _visible;
+        double _metersPerPixel;
+        
+
+        std::vector< double > _resolutions;
+
+
+        struct CameraData
+        {
+            osg::ref_ptr<osg::StateSet> _stateset;
+            osg::ref_ptr<osg::Uniform> _resolutionUniform;
+            osg::ref_ptr<osg::StateSet> _labelStateset;
+            std::vector< osg::ref_ptr< LabelNode > > _labelPool;
+            float _resolution;
+            osg::Matrixd _lastViewMatrix;     
+            GeoExtent _viewExtent;
+            double _lon;
+            double _lat;
+        };
+        typedef std::map<osg::Camera*, CameraData> CameraDataMap;
+        CameraDataMap _cameraDataMap;
+        mutable Threading::Mutex _cameraDataMapMutex;
+        
+        CameraData& getCameraData(osg::Camera*);
+
         double getResolution() const;
         void setResolution(double resolution);
 
-        void initLabelPool();
+        void initLabelPool(CameraData&);
 
         void updateLabels();
 
         std::string getText(const GeoPoint& location, bool lat);
-
-
-        osg::observer_ptr< MapNode > _mapNode;
-        osg::ref_ptr< GraticuleTerrainEffect > _effect;
-        osg::ref_ptr< LatLongFormatter > _formatter;
-        osg::ref_ptr< osg::Uniform > _resolutionUniform;
-        float _resolution;
-        double _lon;
-        double _lat;
-        
-        osg::Vec2f _centerOffset;
-
-        GeoExtent _viewExtent;
-        osg::Vec3d _focalPoint;
-        std::vector< osg::ref_ptr< LabelNode > > _labelPool;
-        const GraticuleOptions _options;
-        bool _visible;
-        double _metersPerPixel;
-        osg::Matrixd _viewMatrix;
-
-        std::vector< double > _resolutions;
 
     };
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -50,6 +50,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             Layer()
             {
                 _texMatUniformID = ~0;
+                _layerID = 0u;
+                _opaque = true;
             }
 
             osgEarth::UID                  _layerID;
@@ -137,7 +139,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void drawImplementation(osg::RenderInfo& renderInfo) const;
         
         // override to correctly process GL_PATCHES if necessary
+        bool supports(const osg::PrimitiveFunctor&) const { return true; }
         void accept(osg::PrimitiveFunctor& functor) const;
+
+        bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
         void accept(osg::PrimitiveIndexFunctor& functor) const;
 
         // recalculate the bound for the tile key uniform.
@@ -149,8 +154,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         META_Object(osgEarth, MPGeometry);
-        MPGeometry() : osg::Geometry(), _frame(0L) { }
-        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _frame(rhs._frame) { }
+        MPGeometry();
+        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop);
         virtual ~MPGeometry() { }
     };
 

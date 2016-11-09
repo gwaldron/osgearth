@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -166,6 +166,11 @@ namespace osgEarth
          * Transforms this geopoint into another SRS.
          */
         bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
+
+        /**
+         * Transforms this point in place to another SRS.
+         */
+        bool transformInPlace(const SpatialReference* srs);
 
         /**
          * Transforms this geopoint's Z coordinate (in place)

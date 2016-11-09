@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -183,7 +183,9 @@ CacheFactory::create( const CacheOptions& options )
 const CacheOptions&
 CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const 
 {
-    return *static_cast<const CacheOptions*>( rwopt->getPluginData( CACHE_OPTIONS_TAG ) );
+    static CacheOptions s_default;
+    const void* data = rwopt->getPluginData(CACHE_OPTIONS_TAG);
+    return data ? *static_cast<const CacheOptions*>(data) : s_default;
 }
 
 CacheDriver::~CacheDriver()

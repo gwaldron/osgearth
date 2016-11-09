@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -55,7 +55,7 @@ namespace osgEarth { namespace Util { namespace Controls
     // internal state class
     struct ControlContext
     {
-        ControlContext() : _viewContextID(~0) { }
+        ControlContext() : _viewContextID(~0), _frameStamp(0L), _view(0L) { }
         osg::View* _view;
         osg::ref_ptr<const osg::Viewport> _vp;
         unsigned int _viewContextID;

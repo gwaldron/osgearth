@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -368,20 +368,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
 
     bool useAutoClip   = args.read("--autoclip");
-    bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
     bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
-
-    if (args.read("--verbose"))
-        osgEarth::setNotifyLevel(osg::INFO);
-    
-    if (args.read("--quiet"))
-        osgEarth::setNotifyLevel(osg::FATAL);
-
-    float ambientBrightness = 0.2f;
-    args.read("--ambientBrightness", ambientBrightness);
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -425,30 +415,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // some terrain effects.
     // TODO: Most of these are likely to move into extensions.
-    const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
-
-    // Shadowing.
-    if (args.read("--shadows"))
-    {
-        int unit;
-        if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
-        {
-            ShadowCaster* caster = new ShadowCaster();
-            caster->setTextureImageUnit( unit );
-            caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode );
-            if ( mapNode->getNumParents() > 0 )
-            {
-                insertGroup(caster, mapNode->getParent(0));
-            }
-            else
-            {
-                caster->addChild(mapNode);
-                root = caster;
-            }
-        }
-    }
 
     // Loading KML from the command line:
     if ( !kmlFile.empty() )
@@ -578,27 +545,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }
 
-    // Install elevation morphing
-    if ( !lodBlendingConf.empty() )
-    {
-        mapNode->getTerrainEngine()->addEffect( new LODBlending(lodBlendingConf) );
-    }
-
-    // Install vertical scaler
+    // Install vertical scaler.
+    // TODO: deprecate this, or move it to an extension.
     if ( !vertScaleConf.empty() )
     {
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
-    }
-
-    // Install a contour map effect.
-    if (args.read("--contourmap"))
-    {
-        mapNode->addExtension(Extension::create("contourmap", ConfigOptions()));
-
-        // with the cmdline switch, hids all the image layer so we can see the contour map.
-        for (unsigned i = 0; i < mapNode->getMap()->getNumImageLayers(); ++i) {
-            mapNode->getMap()->getImageLayerAt(i)->setVisible(false);
-        }
     }
 
     // Generic named value uniform with min/max.
@@ -652,6 +603,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         mapNode->addExtension(Extension::create("ocean_simple", ConfigOptions()));
     }
+
+    // Arbitrary extension:
+    std::string extname;
+    if (args.read("--extension", extname))
+    {
+        Extension* ext = Extension::create(extname, ConfigOptions());
+        if (ext)
+            mapNode->addExtension(ext);
+    }
     
 
     // Hook up the extensions!
@@ -670,6 +630,32 @@ MapNodeHelper::parse(MapNode*             mapNode,
         ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
         if ( controlIF )
             controlIF->connect( mainContainer );
+    }
+
+
+    // Shadowing. This is last because it needs access to a light which may be provided
+    // by one of the Sky extensions.
+    if (args.read("--shadows"))
+    {
+        int unit;
+        if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
+        {
+            ShadowCaster* caster = new ShadowCaster();
+            caster->setTextureImageUnit( unit );
+            caster->setLight( view->getLight() );
+            caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
+            //insertParent(caster, mapNode);
+            //root = findTopOfGraph(caster)->asGroup();
+            if ( mapNode->getNumParents() > 0 )
+            {
+                insertGroup(caster, mapNode->getParent(0));
+            }
+            else
+            {
+                caster->addChild(mapNode);
+                root = caster;
+            }
+        }
     }
 
     root->addChild( canvas );
@@ -704,11 +690,13 @@ MapNodeHelper::usage() const
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
+        << "  --shadows                     : activates model layer shadows\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
-        << "  --path [file]                 : load and playback an animation path\n";
+        << "  --path [file]                 : load and playback an animation path\n"
+        << "  --extension [name]            : loads a named extension\n";
 }
 
 
@@ -803,7 +791,7 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         skyYearSlider->addEventHandler( new SkyYearSlider(sky, yearLabel) );
 
         ++r;
-        grid->setControl(0, r, new ui::LabelControl("Min.Ambient: ", 16) );
+        grid->setControl(0, r, new ui::LabelControl("Ambient Light: ", 16) );
         ui::HSliderControl* ambient = grid->setControl(1, r, new ui::HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
         ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
         grid->setControl(2, r, new ui::LabelControl(ambient) );

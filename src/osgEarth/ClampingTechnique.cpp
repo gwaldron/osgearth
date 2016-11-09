@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -248,6 +248,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // set up the RTT camera:
     params._rttCamera = new osg::Camera();
+    params._rttCamera->setName("GPU Clamping");
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
     params._rttCamera->setClearDepth( 1.0 );
     params._rttCamera->setClearMask( GL_DEPTH_BUFFER_BIT );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,6 +39,11 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }
 
+        optional<std::string>& elevationEncoding() { return _elevationEncoding; }
+        const optional<std::string>& elevationEncoding() const { return _elevationEncoding; }
+
+
+
     public:
         XYZOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
         {
@@ -61,6 +66,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("url", _url);
             conf.updateIfSet("format", _format);
             conf.updateIfSet("invert_y", _invertY);
+            conf.updateIfSet("elevation_encoding", _elevationEncoding);
             return conf;
         }
 
@@ -75,11 +81,13 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "url", _url );
             conf.getIfSet( "format", _format );
             conf.getIfSet( "invert_y", _invertY );
+            conf.getIfSet( "elevation_encoding", _elevationEncoding );
         }
 
         optional<URI>         _url;
         optional<std::string> _format;
         optional<bool>        _invertY;
+        optional<std::string> _elevationEncoding;
     };
 
 } } // namespace osgEarth::Drivers

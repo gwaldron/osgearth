@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -109,18 +109,28 @@ public:
         {
             buf << key.str();
         }        
+
+        double r = key.getExtent().getBoundingGeoCircle().getRadius();
+        buf << "\nr = " << (int)r << "m";
         
         std::string text;
         text = buf.str();
 
         unsigned x = 10, y = 10;
 
-        osgText::FontResolution resolution(32, 32);
+        int res = 32;
+        osgText::FontResolution resolution(res, res);
         for( unsigned i=0; i<text.length(); ++i )
         {
-            osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
-            copySubImageAndColorize( glyph, image, x, y, _color );
-            x += glyph->s() + 1;
+            if (text.at(i) == '\n') {
+                y += res + 10;
+                x = 10;
+            }
+            else {            
+                osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
+                copySubImageAndColorize( glyph, image, x, y, _color );
+                x += glyph->s() + 1;
+            }
         }
 
         return image;
@@ -153,7 +163,7 @@ class DebugTileSourceDriver : public TileSourceDriver
             supportsExtension( "osgearth_debug", "Debugging driver" );
         }
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "Debugging Driver";
         }

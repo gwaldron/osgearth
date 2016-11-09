@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -80,7 +80,8 @@ _numTilesHigh(-1),
 _numTilesWide(-1),
 _timestamp(0),
 _version("1.0"),
-_tileMapService("http://tms.osgeo.org/1.0.0")
+_tileMapService("http://tms.osgeo.org/1.0.0"),
+_profile_type(Profile::TYPE_MERCATOR)
 {   
 }
 

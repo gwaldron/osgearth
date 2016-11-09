@@ -23,6 +23,20 @@ vec4 oe_layer_tilec;
 /**
  * Sample the elevation data at a UV tile coordinate.
  */
+float oe_terrain_getElevationUnscaled(in vec2 uv)
+{
+    // Texel-level scale and bias allow us to sample the elevation texture
+    // on texel center instead of edge.
+    vec2 elevc = uv
+        * oe_tile_elevTexelCoeff.x     // scale
+        + oe_tile_elevTexelCoeff.y;
+
+    return texture(oe_tile_elevationTex, elevc).r;
+}
+
+/**
+ * Sample the elevation data at a UV tile coordinate.
+ */
 float oe_terrain_getElevation(in vec2 uv)
 {
     // Texel-level scale and bias allow us to sample the elevation texture
@@ -30,7 +44,7 @@ float oe_terrain_getElevation(in vec2 uv)
     vec2 elevc = uv
         * oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[0][0]     // scale
         + oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[3].st     // bias
-        + oe_tile_elevTexelCoeff.y;                                      
+        + oe_tile_elevTexelCoeff.y;
 
     return texture(oe_tile_elevationTex, elevc).r;
 }
@@ -53,7 +67,11 @@ vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 
 vec4 oe_terrain_getNormalAndCurvature()
 {
-    vec2 uv_scaledBiased = oe_layer_tilec.st * oe_tile_normalTexMatrix[0][0] + oe_tile_normalTexMatrix[3].st;
+    vec2 uv_scaledBiased = oe_layer_tilec.st
+        * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
+        + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
+        + oe_tile_elevTexelCoeff.y;
+
     return texture(oe_tile_normalTex, uv_scaledBiased);
 }
 

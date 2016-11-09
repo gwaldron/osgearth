@@ -36,7 +36,9 @@ set(TARGET_GLSL
     GPUClamping.vert.glsl
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl
-    Instancing.vert.glsl)
+    Instancing.vert.glsl
+    PhongLighting.vert.glsl
+    PhongLighting.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -79,9 +81,9 @@ SET(LIB_PUBLIC_HEADERS
     DrapingTechnique
     DrawInstanced
     ECEF
-    ElevationField
     ElevationLayer
     ElevationLOD
+    ElevationPool
     ElevationQuery
     Export
     Extension
@@ -104,6 +106,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    Lighting
     LineFunctor
     Locators
     LocalTangentPlane
@@ -130,6 +133,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectIndex
     OverlayDecorator
     OverlayNode
+    PatchLayer
     PhongLightingEffect
     Picker
     IntersectionPicker
@@ -245,9 +249,9 @@ set(TARGET_SRC
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
-    ElevationField.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
+    ElevationPool.cpp
     ElevationQuery.cpp
     Extension.cpp
     FadeEffect.cpp
@@ -268,6 +272,7 @@ set(TARGET_SRC
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
+    Lighting.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp
@@ -290,6 +295,7 @@ set(TARGET_SRC
     ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+    PatchLayer.cpp
     PhongLightingEffect.cpp
     IntersectionPicker.cpp
     PrimitiveIntersector.cpp

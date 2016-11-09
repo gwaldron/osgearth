@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -120,13 +120,12 @@ _initStage               ( INIT_NONE ),
 _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
-_requireParentTextures   ( false )
+_requireParentTextures   ( false ),
+_elevationBorderRequired ( false ),
+_redrawRequired          ( true )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
-
-    // So we can draw coplanar geometry on flat ground if necessary.
-    //this->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -135,7 +134,11 @@ TerrainEngineNode::~TerrainEngineNode()
     if (_map.valid())
     {
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        
+        ImageLayerVector imageLayers;
+        mapf.getLayers(imageLayers);
+
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
             i->get()->removeCallback( _imageLayerController.get() );
         }
@@ -242,7 +245,10 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
 
         // register the layer Controller it with all pre-existing image layers:
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        ImageLayerVector imageLayers;
+        mapf.getLayers(imageLayers);
+
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );
         }
@@ -291,11 +297,13 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
     if ( _initStage == INIT_POSTINIT_COMPLETE )
     {
-        if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+        if (change.getAction() == MapModelChange::ADD_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->addCallback( _imageLayerController.get() );
         }
-        else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
+        else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
+            change.getImageLayer() != 0L)
         {
             change.getImageLayer()->removeCallback( _imageLayerController.get() );
         }

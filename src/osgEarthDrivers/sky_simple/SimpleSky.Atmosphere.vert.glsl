@@ -25,9 +25,9 @@ uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth
 uniform int atmos_nSamples; 	
 uniform float atmos_fSamples; 				
 
-varying vec3 atmos_v3Direction; 
-varying vec3 atmos_mieColor; 
-varying vec3 atmos_rayleighColor; 
+out vec3 atmos_v3Direction; 
+out vec3 atmos_mieColor; 
+out vec3 atmos_rayleighColor; 
 
 vec3 vVec; 
 float atmos_fCameraHeight;    // The camera's current height 		
@@ -139,7 +139,7 @@ void atmos_SkyFromAtmosphere(void)
 } 
 
 void atmos_vertex_main(inout vec4 VertexVIEW) 
-{ 
+{
     // Get camera position and height 
     vVec = osg_ViewMatrixInverse[3].xyz; 
     atmos_fCameraHeight = length(vVec); 

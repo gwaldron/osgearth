@@ -8,11 +8,11 @@ way to mitigate z-fighting issues.
 -->
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
-    
+
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>
-    
+
     <model name="boundaries" driver="feature_geom">
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
@@ -21,11 +21,12 @@ way to mitigate z-fighting issues.
             <style type="text/css">
                 states {
                    stroke:            #ffff00;
-				   render-depth-test: false;
-				   render-clip-plane: 0;
+                   render-depth-test: false;
+                   render-clip-plane: 0;
+                   render-order:      1;
                 }                    
             </style>
         </styles>        
     </model>
-  
+
 </map>

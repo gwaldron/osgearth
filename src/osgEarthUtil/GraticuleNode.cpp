@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,20 +21,62 @@
 */
 #include "GraticuleNode"
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #define LC "[GraticuleNode] "
 
+namespace
+{
+    struct GraticuleTerrainCallback : public osg::NodeCallback
+    {
+        osg::observer_ptr<GraticuleNode> _g;
+        GraticuleTerrainCallback(GraticuleNode* g) : _g(g) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            bool traversed = false;
+            osg::ref_ptr<GraticuleNode> grat;
+            if (_g.lock(grat))
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+                if (cv)
+                {
+                    osg::StateSet* stateset = grat->getStateSet(cv);
+                    if (stateset)
+                        cv->pushStateSet(stateset);
+
+                    traverse(node, nv);
+                    traversed = true;
+
+                    if (stateset)
+                        cv->popStateSet();
+                }
+            }
+
+            if (!traversed)
+                traverse(node, nv);
+        }
+    };
+
+    const char* textFadeFS =
+        "#version 330\n"
+        "uniform mat4 osg_ViewMatrixInverse;\n"
+        "void oe_graticule_text_frag(inout vec4 color) { \n"
+        "    const float maxHAE = 4000.0;\n"
+        "    vec3 eye = osg_ViewMatrixInverse[3].xyz;\n"
+        "    float hae = length(eye) - 6378137.0;\n"
+        "    float alpha = clamp(hae/maxHAE, 0.0, 1.0); \n"
+        "    color.a *= alpha;\n"
+        "}\n";
+}
+
 
 GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
 _mapNode(mapNode),
-    _resolution(10.0/180.0),
+    _defaultResolution(10.0/180.0),
     _options(options),
-    _lat(0.0),
-    _lon(0.0),
-    _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
     _visible(true),
     _metersPerPixel(0.0)
 {
@@ -81,14 +123,11 @@ _mapNode(mapNode),
     _effect = new GraticuleTerrainEffect( options, 0 );
     _mapNode->getTerrainEngine()->addEffect( _effect );
 
+    _callback = new GraticuleTerrainCallback(this);
+    _mapNode->getTerrainEngine()->addCullCallback(_callback.get());
+
     // Initialize the formatter
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
-
-    // Initialize the resolution uniform
-    _resolutionUniform = mapNode->getTerrainEngine()->getSurfaceStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
-    _resolutionUniform->set((float)_resolution);
-
-    initLabelPool();
 }
 
 GraticuleNode::~GraticuleNode()
@@ -97,6 +136,7 @@ GraticuleNode::~GraticuleNode()
     if ( mapNode.valid() )
     {
         mapNode->getTerrainEngine()->removeEffect( _effect );
+        mapNode->getTerrainEngine()->removeCullCallback( _callback.get() );
     }
 }
 
@@ -114,9 +154,6 @@ void GraticuleNode::setVisible(bool visible)
         {
             setNodeMask(~0u);
             _mapNode->getTerrainEngine()->addEffect(_effect.get());
-            // We need to re-initilize the uniform b/c the uniform may have been removed when the effect was removed.
-            _resolutionUniform = _mapNode->getTerrainEngine()->getSurfaceStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
-            _resolutionUniform->set((float)_resolution);
         }
         else
         {
@@ -126,7 +163,7 @@ void GraticuleNode::setVisible(bool visible)
     }
 }
 
-void GraticuleNode::initLabelPool()
+void GraticuleNode::initLabelPool(CameraData& cdata)
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
 
@@ -144,8 +181,7 @@ void GraticuleNode::initLabelPool()
         LabelNode* label = new LabelNode(_mapNode.get(), pt, "0,0");
         label->setDynamic(true);
         label->setStyle(style);
-        _labelPool.push_back(label);
-        addChild(label);
+        cdata._labelPool.push_back(label);
     }
 }
 
@@ -172,85 +208,124 @@ void GraticuleNode::setCenterOffset(const osg::Vec2f& offset)
 void GraticuleNode::updateLabels()
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
-
-    std::vector< GeoExtent > extents;
-    if (_viewExtent.crossesAntimeridian())
+    
+    
+    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    for (CameraDataMap::iterator i = _cameraDataMap.begin(); i != _cameraDataMap.end(); ++i)
     {
-        GeoExtent first, second;
-        _viewExtent.splitAcrossAntimeridian(first, second);
-        extents.push_back(first);
-        extents.push_back(second);
-    }
-    else
-    {
-        extents.push_back( _viewExtent );
-    }
+        CameraData& cdata = i->second;
 
-    double resDegrees = _resolution * 180.0;
-    // We want half the resolution so the labels don't appear as often as the grid lines
-    resDegrees *= 2.0;
+        std::vector< GeoExtent > extents;
+        if (cdata._viewExtent.crossesAntimeridian())
+        {
+            GeoExtent first, second;
+            cdata._viewExtent.splitAcrossAntimeridian(first, second);
+            extents.push_back(first);
+            extents.push_back(second);
+        }
+        else
+        {
+            extents.push_back( cdata._viewExtent );
+        }
+
+        double resDegrees = cdata._resolution * 180.0;
+        // We want half the resolution so the labels don't appear as often as the grid lines
+        resDegrees *= 2.0;
 
     
-    // Hide all the labels
-    for (unsigned int i = 0; i < _labelPool.size(); i++)
-    {
-        _labelPool[i]->setNodeMask(0);
-    }
+        // Hide all the labels
+        for (unsigned int i = 0; i < cdata._labelPool.size(); i++)
+        {
+            cdata._labelPool[i]->setNodeMask(0);
+        }
 
-    // Approximate offset in degrees
-    double degOffset = _metersPerPixel / 111000.0;
+        // Approximate offset in degrees
+        double degOffset = _metersPerPixel / 111000.0;
      
-    unsigned int labelIndex = 0;
+        unsigned int labelIndex = 0;
 
 
-    for (unsigned int extentIndex = 0; extentIndex < extents.size(); extentIndex++)
-    {
-        GeoExtent extent = extents[extentIndex];
-
-        int minLonIndex = floor(((extent.xMin() + 180.0)/resDegrees));
-        int maxLonIndex = ceil(((extent.xMax() + 180.0)/resDegrees));
-
-        int minLatIndex = floor(((extent.yMin() + 90)/resDegrees));
-        int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
-
-        // Generate horizontal labels
-        for (int i = minLonIndex; i <= maxLonIndex; i++)
+        bool done = false;
+        for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
         {
-            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
-            LabelNode* label = _labelPool[labelIndex++];
+            GeoExtent extent = extents[extentIndex];
 
-            label->setNodeMask(~0u);
-            label->setPosition(point);
-            std::string text = getText( point, false);
-            label->setText( text );
-            if (labelIndex == _labelPool.size() - 1)
+            int minLonIndex = floor(((extent.xMin() + 180.0)/resDegrees));
+            int maxLonIndex = ceil(((extent.xMax() + 180.0)/resDegrees));
+
+            int minLatIndex = floor(((extent.yMin() + 90)/resDegrees));
+            int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
+
+            // Generate horizontal labels
+            for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
             {
-                return;
+                GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
+                LabelNode* label = cdata._labelPool[labelIndex++];
+
+                label->setNodeMask(~0u);
+                label->setPosition(point);
+                std::string text = getText( point, false);
+                label->setText( text );
+                if (labelIndex == cdata._labelPool.size() - 1)
+                {
+                    done = true;
+                }
             }
-        }
 
-
-
-        // Generate the vertical labels
-        for (int i = minLatIndex; i <= maxLatIndex; i++)
-        {
-            GeoPoint point(srs, _lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
-            // Skip drawing labels at the poles
-            if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
+            // Generate the vertical labels
+            for (int i = minLatIndex; i <= maxLatIndex && !done; i++)
             {
-                continue;
-            }
-            LabelNode* label = _labelPool[labelIndex++];
-            label->setNodeMask(~0u);
-            label->setPosition(point);
-            std::string text = getText( point, true);
-            label->setText( text );
-            if (labelIndex == _labelPool.size() - 1)
-            {
-                return;
+                GeoPoint point(srs, cdata._lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+                // Skip drawing labels at the poles
+                if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
+                {
+                    continue;
+                }
+                LabelNode* label = cdata._labelPool[labelIndex++];
+                label->setNodeMask(~0u);
+                label->setPosition(point);
+                std::string text = getText( point, true);
+                label->setText( text );
+                if (labelIndex == cdata._labelPool.size() - 1)
+                {
+                    done = true;
+                }
             }
         }
     }
+}
+
+GraticuleNode::CameraData&
+GraticuleNode::getCameraData(osg::Camera* cam)
+{
+    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    CameraData& cdata = _cameraDataMap[cam];
+
+    // New camera data? Initialize:
+    if (cdata._labelPool.empty())
+    {
+        cdata._stateset = new osg::StateSet();
+        cdata._resolution = _defaultResolution;
+        cdata._resolutionUniform = cdata._stateset->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
+        cdata._resolutionUniform->set(cdata._resolution);
+        cdata._viewExtent = GeoExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90);
+        cdata._lat = 0.0;
+        cdata._lon = 0.0;
+        initLabelPool(cdata);
+
+        cdata._labelStateset = new osg::StateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(cdata._labelStateset.get());
+        vp->setFunction("oe_graticule_text_frag", textFadeFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    }
+
+    return cdata;
+}
+
+osg::StateSet*
+GraticuleNode::getStateSet(osgUtil::CullVisitor* cv)
+{
+    CameraData& cdata = getCameraData(cv->getCurrentCamera());
+    return cdata._stateset.get();
 }
 
 void GraticuleNode::traverse(osg::NodeVisitor& nv)
@@ -263,17 +338,19 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
-        osg::Vec3d vp = cv->getViewPoint();
-
         osg::Matrixd viewMatrix = *cv->getModelViewMatrix();
 
+        osg::Vec3d vp = cv->getViewPoint();
+
+        CameraData& cdata = getCameraData(cv->getCurrentCamera());
+        
         // Only update if the view matrix has changed.
-        if (viewMatrix != _viewMatrix)
+        if (viewMatrix != cdata._lastViewMatrix)
         {            
             GeoPoint eyeGeo;
             eyeGeo.fromWorld( _mapNode->getMapSRS(), vp );
-            _lon = eyeGeo.x();
-            _lat = eyeGeo.y();            
+            cdata._lon = eyeGeo.x();
+            cdata._lat = eyeGeo.y();            
 
             osg::Viewport* viewport = cv->getViewport();
 
@@ -295,14 +372,16 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
             {
                 GeoPoint focalGeo;
                 focalGeo.fromWorld( _mapNode->getMapSRS(), _focalPoint );
-                _lon = focalGeo.x();
-                _lat = focalGeo.y();
+                cdata._lon = focalGeo.x();
+                cdata._lat = focalGeo.y();
                 // We only store the previous view matrix if we actually got a hit.  Otherwise we still need to update.
-                _viewMatrix = viewMatrix;
+                cdata._lastViewMatrix = viewMatrix;
             }
 
+            // Get the view extent.
+            cdata._viewExtent = getViewExtent( cv );
 
-            double targetResolution = (_viewExtent.height() / 180.0) / _options.gridLines().get();
+            double targetResolution = (cdata._viewExtent.height() / 180.0) / _options.gridLines().get();
 
             double resolution = _resolutions[0];
             for (unsigned int i = 0; i < _resolutions.size(); i++)
@@ -317,8 +396,6 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
             // Trippy
             //resolution = targetResolution;
 
-            _viewExtent = getViewExtent( cv );
-
             // Try to compute an approximate meters to pixel value at this view.
             double fovy, aspectRatio, zNear, zFar;
             cv->getProjectionMatrix()->getPerspective(fovy, aspectRatio, zNear, zFar);
@@ -326,26 +403,39 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
             double halfWidth = osg::absolute( tan(osg::DegreesToRadians(fovy/2.0)) * dist );
             _metersPerPixel = (2.0 * halfWidth) / (double)viewport->height();
 
-            if (_resolution != resolution)
+            if (cdata._resolution != resolution)
             {
-                setResolution(resolution);
+                cdata._resolution = (float)resolution;
+                cdata._resolutionUniform->set(cdata._resolution);
             }
         }
+
+        // traverse the label pool for this camera.
+        cv->pushStateSet(cdata._labelStateset.get());
+
+        for(std::vector< osg::ref_ptr< LabelNode > >::iterator i = cdata._labelPool.begin();
+            i != cdata._labelPool.end();
+            ++i)
+        {
+            i->get()->accept(nv);
+        }
+
+        cv->popStateSet();
     }
+
     osg::Group::traverse(nv);
 }
 
 double GraticuleNode::getResolution() const
 {
-    return _resolution;
+    return _defaultResolution;
 }
 
 void GraticuleNode::setResolution(double resolution)
 {
-    if (_resolution != resolution)
+    if (_defaultResolution != resolution)
     {
-        _resolution = resolution;
-        _resolutionUniform->set((float)_resolution);
+        _defaultResolution = resolution;
     }
 }
 
@@ -362,6 +452,16 @@ osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisit
     osg::Matrixd mv = *cullVisitor->getModelViewMatrix();
     osg::Matrixd invmv = osg::Matrixd::inverse( mv );
 
+    // clamp the projection far plane so it's not on the other 
+    // side of the globe
+    osg::Vec3d eye = osg::Vec3d(0,0,0) * invmv;
+    double f, a, zn, zf;
+    proj.getPerspective(f,a,zn,zf);
+    zf = std::min(zf, eye.length()-1000.0);
+    proj.makePerspective(f, a, zn, zf);
+
+    const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("epsg:4326");
+    
     double nearPlane = proj(3,2) / (proj(2,2)-1.0);
     double farPlane = proj(3,2) / (1.0+proj(2,2));
 
@@ -382,7 +482,6 @@ osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisit
     std::vector< osg::Vec3d > verts;
     verts.reserve(9);
 
-
     // Include origin?
     //verts.push_back(osg::Vec3d(0., 0., 0. ));
     verts.push_back(osg::Vec3d( nLeft, nBottom, -nearPlane ));
@@ -393,8 +492,6 @@ osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisit
     verts.push_back(osg::Vec3d( fRight, fBottom, -farPlane ));
     verts.push_back(osg::Vec3d( fRight, fTop, -farPlane ));
     verts.push_back(osg::Vec3d( fLeft, fTop, -farPlane ));
-
-    const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("epsg:4326");
 
     // Compute the bounding sphere of the frustum.
     osg::BoundingSphered bs;
@@ -408,7 +505,7 @@ osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisit
     osgEarth::GeoPoint center;
     center.fromWorld(srs, bs.center());
 
-    double radiusDegrees = bs.radius() /= 111000.0;
+    double radiusDegrees = bs.radius() / 111000.0;
     
     // Try to clamp the maximum radius so far out views don't go wacky.
     radiusDegrees = osg::minimum(radiusDegrees, 90.0);

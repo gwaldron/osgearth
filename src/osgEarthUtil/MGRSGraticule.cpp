@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,14 +23,15 @@
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/ECEF>
-#include <osgEarth/DepthOffset>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
 #include <osg/Depth>
 #include <osg/LogicOp>
 #include <osg/MatrixTransform>
+#include <osg/ClipNode>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 
@@ -44,59 +45,157 @@ using namespace osgEarth::Symbology;
 
 #define MGRS_GRATICULE_EXTENSION "osgearthutil_mgrs_graticule"
 
+#define MGRS_GRATICULE_OBJECT_NAME "osgEarth.Util.MGRSGraticule"
+
 //---------------------------------------------------------------------------
 
-MGRSGraticuleOptions::MGRSGraticuleOptions( const Config& conf ) :
-UTMGraticuleOptions( conf )
+
+MGRSGraticule::MGRSGraticule(MapNode* mapNode) :
+_mapNode(mapNode)
 {
-    mergeConfig( _conf );
+    ctor();
+    rebuild();
+}
+
+MGRSGraticule::MGRSGraticule(MapNode* mapNode, const MGRSGraticuleOptions& options) :
+MGRSGraticuleOptions(options),
+_mapNode(mapNode)
+{
+    ctor();
+    rebuild();
 }
 
 void
-MGRSGraticuleOptions::mergeConfig( const Config& conf )
+MGRSGraticule::refresh()
 {
-    //todo
+    rebuild();
 }
 
-Config
-MGRSGraticuleOptions::getConfig() const
+void
+MGRSGraticule::ctor()
 {
-    Config conf = UTMGraticuleOptions::newConfig();
-    conf.key() = "mgrs_graticule";
-    //todo
-    return conf;
+    setName(MGRS_GRATICULE_OBJECT_NAME);
+
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    // make the shared depth attr:
+    ss->setMode( GL_DEPTH_TEST, 0 );
+    ss->setMode( GL_LIGHTING, 0 );
+    ss->setMode( GL_BLEND, 1 );
+
+    // force it to render after the terrain.
+    ss->setRenderBinDetails(1, "RenderBin");
+
+    // install the range callback for clip plane activation
+    this->addCullCallback( new RangeUniformCullCallback() );
 }
 
-//---------------------------------------------------------------------------
-
-
-MGRSGraticule::MGRSGraticule( MapNode* mapNode ) :
-UTMGraticule( 0L )
+void
+MGRSGraticule::setMapNode( MapNode* mapNode )
 {
     _mapNode = mapNode;
-    init();
+    rebuild();
+}
 
-    if ( !_options->secondaryStyle().isSet() )
+void
+MGRSGraticule::rebuild()
+{
+    applyDefaultStyles();
+    
+    // clear everything out
+    this->removeChildren( 0, this->getNumChildren() );
+
+    // requires a map node
+    if ( !getMapNode() )
     {
-        LineSymbol* line = _options->secondaryStyle()->getOrCreate<LineSymbol>();
+        return;
+    }
+
+    // requires a geocentric map
+    if ( !getMapNode()->isGeocentric() )
+    {
+        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
+        return;
+    }
+
+    const Profile* mapProfile = getMapNode()->getMap()->getProfile();
+
+    _profile = Profile::create(
+        mapProfile->getSRS(),
+        mapProfile->getExtent().xMin(),
+        mapProfile->getExtent().yMin(),
+        mapProfile->getExtent().xMax(),
+        mapProfile->getExtent().yMax(),
+        8, 4 );
+
+    _featureProfile = new FeatureProfile(_profile->getSRS());
+
+
+    // rebuild the graph:
+
+    // Horizon clipping plane.
+    osg::ClipPlane* cp = _clipPlane.get();
+    if ( cp )
+    {
+        _root = this;
+    }
+    else
+    {
+        osg::ClipNode* clipNode = new osg::ClipNode();
+        osgEarth::Registry::shaderGenerator().run( clipNode );
+        cp = new osg::ClipPlane( 0 );
+        clipNode->addClipPlane( cp );
+        _root = clipNode;
+    }
+    _root->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
+
+    this->addChild( _root );
+
+    // intialize the UTM sector tables for this profile.
+    _utmData.rebuild(_profile.get());
+
+    // now build the lateral tiles for the GZD level.
+    for( UTMData::SectorTable::iterator i = _utmData.sectorTable().begin(); i != _utmData.sectorTable().end(); ++i )
+    {
+        osg::Group* group = _utmData.buildGZDTile(i->first, i->second, gzdStyle().get(), _featureProfile.get(), getMapNode()->getMap());
+        if ( group )
+        { 
+            group = buildGZDChildren(group, i->first);
+            if (group)
+            {
+                _root->addChild(group);
+            }
+        }
+    }
+}
+
+void
+MGRSGraticule::applyDefaultStyles()
+{
+    if (!gzdStyle().isSet())
+    {
+        LineSymbol* line = gzdStyle()->getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::Gray;
+        line->stroke()->width() = 1.0;
+        line->tessellation() = 20;
+
+        TextSymbol* text = gzdStyle()->getOrCreate<TextSymbol>();
+        text->fill()->color() = Color(Color::White, 0.3f);
+        text->halo()->color() = Color(Color::Black, 0.2f);
+        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    }
+
+    if (!sqidStyle().isSet())
+    {
+        LineSymbol* line = sqidStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color(Color::White, 0.5f);
         line->stroke()->stipplePattern() = 0x1111;
 
-        TextSymbol* text = _options->secondaryStyle()->getOrCreate<TextSymbol>();
+        TextSymbol* text = sqidStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.1f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
-
-//    _minDepthOffset = DepthOffsetUtils::createMinOffsetUniform();
-//    _minDepthOffset->set( 11000.0f );
-}
-
-MGRSGraticule::MGRSGraticule( MapNode* mapNode, const MGRSGraticuleOptions& options ) :
-UTMGraticule( 0L, options )
-{
-    _mapNode = mapNode;
-    init();
 }
 
 osg::Group*
@@ -104,13 +203,19 @@ MGRSGraticule::buildGZDChildren( osg::Group* parent, const std::string& gzd )
 {
     osg::BoundingSphere bs = parent->getBound();
 
-    std::string uri = Stringify() << gzd << "." << getID() << "." << MGRS_GRATICULE_EXTENSION;
+    std::string uri = Stringify() << gzd << "." MGRS_GRATICULE_EXTENSION;
 
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
     plod->addChild( parent, 0.0, FLT_MAX );
     plod->setFileName( 1, uri );
     plod->setRange( 1, 0, bs.radius() * 10.0 );
+    
+    // pass a reference to this object through the loader.
+    osgDB::Options* readOptions = new osgDB::Options();
+    osg::UserDataContainer* udc = readOptions->getOrCreateUserDataContainer();
+    udc->addUserObject(this);
+    plod->setDatabaseOptions(readOptions);
 
     return plod;
 }
@@ -118,16 +223,16 @@ MGRSGraticule::buildGZDChildren( osg::Group* parent, const std::string& gzd )
 osg::Node*
 MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 {
-    const GeoExtent& extent = _gzd[gzd];
+    const GeoExtent& extent = _utmData.sectorTable()[gzd];
 
     // parse the GZD into its components:
     unsigned zone;
     char letter;
     sscanf( gzd.c_str(), "%u%c", &zone, &letter );
     
-    const TextSymbol* textSymFromOptions = _options->secondaryStyle()->get<TextSymbol>();
+    const TextSymbol* textSymFromOptions = sqidStyle()->get<TextSymbol>();
     if ( !textSymFromOptions )
-        textSymFromOptions = _options->primaryStyle()->get<TextSymbol>();
+        textSymFromOptions = sqidStyle()->get<TextSymbol>();
 
     // copy it since we intend to alter it
     osg::ref_ptr<TextSymbol> textSym = 
@@ -146,7 +251,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     extent.getSRS()->transform(centerMap, ecefSRS, centerECEF);
 
     osg::Matrix local2world;
-    ecefSRS->createLocalToWorld( centerECEF, local2world ); //= ECEF::createLocalToWorld(centerECEF);
+    ecefSRS->createLocalToWorld( centerECEF, local2world );
     osg::Matrix world2local;
     world2local.invert(local2world);
 
@@ -527,7 +632,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     osg::Group* group = new osg::Group();
 
     Style lineStyle;
-    lineStyle.add( _options->secondaryStyle()->get<LineSymbol>() );
+    lineStyle.add( sqidStyle()->get<LineSymbol>() );
 
     GeometryCompiler compiler;
     osg::ref_ptr<Session> session = new Session( getMapNode()->getMap() );
@@ -546,13 +651,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 
     Registry::shaderGenerator().run(textGeode, Registry::stateSetCache());
 
-    // prep for depth offset:
-    //DepthOffsetUtils::prepareGraph( group );
-    //group->getOrCreateStateSet()->addUniform( _minDepthOffset.get() );
-
     return group;
 }
-
 
 //---------------------------------------------------------------------------
 
@@ -562,46 +662,60 @@ namespace osgEarth { namespace Util
     class MGRSGraticuleFactory : public osgDB::ReaderWriter
     {
     public:
-        virtual const char* className()
+        MGRSGraticuleFactory()
         {
             supportsExtension( MGRS_GRATICULE_EXTENSION, "osgEarth MGRS graticule" );
+        }
+
+        const char* className() const
+        {
             return "osgEarth MGRS graticule LOD loader";
         }
 
-        virtual bool acceptsExtension(const std::string& extension) const
+        bool acceptsExtension(const std::string& extension) const
         {
             return osgDB::equalCaseInsensitive(extension, MGRS_GRATICULE_EXTENSION);
         }
 
-        virtual ReadResult readNode(const std::string& uri, const Options* options) const
+        ReadResult readNode(const std::string& uri, const Options* options) const
         {        
             std::string ext = osgDB::getFileExtension( uri );
             if ( !acceptsExtension( ext ) )
                 return ReadResult::FILE_NOT_HANDLED;
 
-            // the graticule definition is formatted: LEVEL_ID.MARKER.EXTENSION
-            std::string def = osgDB::getNameLessExtension( uri );
-            
-            std::string idStr = osgDB::getFileExtension(def);
-            unsigned id;
-            sscanf(idStr.c_str(), "%u", &id);
-
-            std::string gzd = osgDB::getNameLessExtension(def);
-
-            // look up the graticule referenced in the location name:
-            MGRSGraticule* graticule = 0L;
+            if ( !options )
             {
-                Threading::ScopedMutexLock lock( UTMGraticule::s_graticuleMutex );
-                UTMGraticule::UTMGraticuleRegistry::iterator i = UTMGraticule::s_graticuleRegistry.find(id);
-                if ( i != UTMGraticule::s_graticuleRegistry.end() )
-                    graticule = dynamic_cast<MGRSGraticule*>( i->second.get() );
+                OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (1)\n";
+                return ReadResult::ERROR_IN_READING_FILE;
             }
 
+            const osg::UserDataContainer* udc = options->getUserDataContainer();
+            if (!udc)
+            {
+                OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (2)\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+            }
+
+            MGRSGraticule* graticule = const_cast<MGRSGraticule*>(dynamic_cast<const MGRSGraticule*>(udc->getUserObject(MGRS_GRATICULE_OBJECT_NAME)));
+            if (!graticule)
+            {
+                OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (3)\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+
+            }
+            std::string def = osgDB::getNameLessExtension(uri);
+            std::string gzd = osgDB::getNameLessExtension(def);
+            
             osg::Node* result = graticule->buildSQIDTiles( gzd );
+
             return result ? ReadResult(result) : ReadResult::ERROR_IN_READING_FILE;
         }
     };
-    REGISTER_OSGPLUGIN(MGRS_GRATICULE_EXTENSION, MGRSGraticuleFactory)
+    REGISTER_OSGPLUGIN(MGRS_GRATICULE_EXTENSION, MGRSGraticuleFactory);
+
+
+    REGISTER_OSGEARTH_EXTENSION(osgearth_mgrs_graticule, MGRSGraticuleExtension);
+
 
 } } // namespace osgEarth::Util
 

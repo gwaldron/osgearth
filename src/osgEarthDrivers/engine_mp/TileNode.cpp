@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileNode"
+
+#include "TilePagedLOD"
 
 #include <osg/ClusterCullingCallback>
 #include <osg/NodeCallback>
@@ -47,6 +49,10 @@ _lastTraversalFrame( 0 ),
 _dirty             ( false ),
 _outOfDate         ( false )
 {
+    if (!key.valid())
+    {
+        OE_NOTICE << "TileNode constructor not valid...." << std::endl;
+    }
     this->setName( key.str() );
     this->setMatrix( matrix );
 

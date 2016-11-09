@@ -13,14 +13,14 @@ FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
 
 FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
   PATHS
-  ~/Library/Frameworks/geos/Headers
-  /Library/Frameworks/geos/Headers
   /usr/local/include/geos
   /usr/local/include/GEOS
   /usr/local/include
   /usr/include/geos
   /usr/include/GEOS
   /usr/include
+  ~/Library/Frameworks/geos/Headers
+  /Library/Frameworks/geos/Headers
   /sw/include/geos 
   /sw/include/GEOS 
   /sw/include # Fink

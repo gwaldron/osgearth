@@ -46,7 +46,6 @@
                 <surface>
                     <catalog>../data/splat/splat_catalog.xml</catalog>
                 </surface>
-        
                 <land_cover>
                     <layers>
                         <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5" cast_shadows="true">

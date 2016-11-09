@@ -1,6 +1,7 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -425,13 +426,20 @@ osg::HeightField*
 HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
                                              unsigned         numCols,
                                              unsigned         numRows,
+                                             unsigned         border,
                                              bool             expressAsHAE)
 {
     osg::HeightField* hf = new osg::HeightField();
-    hf->allocate( numCols, numRows );
-    hf->setOrigin( osg::Vec3d( ex.xMin(), ex.yMin(), 0.0 ) );
-    hf->setXInterval( (ex.xMax() - ex.xMin())/(double)(numCols-1) );
-    hf->setYInterval( (ex.yMax() - ex.yMin())/(double)(numRows-1) );
+
+    hf->allocate( numCols + 2*border, numRows + 2*border );
+
+    hf->setXInterval( ex.width() / (double)(numCols-1) );
+    hf->setYInterval( ex.height() / (double)(numRows-1) );
+
+    hf->setOrigin(osg::Vec3d(
+        ex.xMin() - hf->getXInterval()*(double)border,
+        ex.yMin() - hf->getYInterval()*(double)border,
+        0.0 ) );
 
     const VerticalDatum* vdatum = ex.isValid() ? ex.getSRS()->getVerticalDatum() : 0L;
 
@@ -444,12 +452,15 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
         double lonInterval = geodeticExtent.width() / (double)(numCols-1);
         double latInterval = geodeticExtent.height() / (double)(numRows-1);
 
-        for( unsigned r=0; r<numRows; ++r )
+        double latStart = latMin - latInterval*(double)border;
+        double lonStart = lonMin - lonInterval*(double)border;
+
+        for( unsigned r=0; r<hf->getNumRows(); ++r )
         {            
-            double lat = latMin + latInterval*(double)r;
-            for( unsigned c=0; c<numCols; ++c )
+            double lat = latStart + latInterval*(double)r;
+            for( unsigned c=0; c<hf->getNumColumns(); ++c )
             {
-                double lon = lonMin + lonInterval*(double)c;
+                double lon = lonStart + lonInterval*(double)c;
                 double offset = vdatum->msl2hae(lat, lon, 0.0);
                 hf->setHeight( c, r, offset );
             }
@@ -457,11 +468,12 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
     }
     else
     {
-        hf->getFloatArray()->assign(numCols*numRows, 0.0f);
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), 0.0f);
     }
 
-    hf->setBorderWidth( 0 );
-    return hf;    
+    hf->setBorderWidth( border );
+
+    return hf;
 }
 
 void
@@ -654,9 +666,9 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             n.normalize();
 
             // calculate and encode curvature (2nd derivative of elevation)
-            float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
-            float D = (0.5*(west.z()+east.z()) - centerHeight) * L2inv;
-            float E = (0.5*(south.z()+north.z()) - centerHeight) * L2inv;
+            //float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
+            float D = (0.5*(west.z()+east.z()) - centerHeight) / (sIntervalMeters*sIntervalMeters); //* L2inv;
+            float E = (0.5*(south.z()+north.z()) - centerHeight) / (tIntervalMeters*tIntervalMeters); //* L2inv;
             float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
 
             // encode for RGBA [0..1]
@@ -668,6 +680,66 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
     }
 
     return image;
+}
+
+void
+HeightFieldUtils::createNormalMap(const osg::Image* elevation,
+                                  osg::Image* normalMap,
+                                  const GeoExtent& extent)
+{   
+    ImageUtils::PixelReader readElevation(elevation);
+    ImageUtils::PixelWriter writeNormal(normalMap);
+
+    int sMax = (int)elevation->s()-1;
+    int tMax = (int)elevation->t()-1;
+    
+    double xcells = (double)(sMax);
+    double ycells = (double)(tMax);
+    double xres = 1.0/xcells;
+    double yres = 1.0/ycells;
+    
+    // north-south interval in meters:
+    double xInterval = extent.width() / (double)(sMax);
+    double yInterval = extent.height() / (double)(tMax);
+
+    const SpatialReference* srs = extent.getSRS();
+    double mPerDegAtEquator = (srs->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+    double dy = srs->isGeographic() ? yInterval * mPerDegAtEquator : yInterval;
+
+    for (int t = 0; t<(int)elevation->t(); ++t)
+    {
+        double lat = extent.yMin() + yInterval*(double)t;
+        double dx = srs->isGeographic() ? xInterval * mPerDegAtEquator * cos(osg::DegreesToRadians(lat)) : xInterval;
+
+        for(int s=0; s<(int)elevation->s(); ++s)
+        {
+            float h = readElevation(s, t).r();
+
+            osg::Vec3f west ( s > 0 ? -dx : 0, 0, h );
+            osg::Vec3f east ( s < sMax ?  dx : 0, 0, h );
+            osg::Vec3f south( 0, t > 0 ? -dy : 0, h );
+            osg::Vec3f north( 0, t < tMax ? dy : 0, h );
+
+            west.z() = readElevation(std::max(0, s - 1), t).r();
+            east.z() = readElevation(std::min(sMax, s + 1), t).r();
+            south.z() = readElevation(s, std::max(0, t - 1)).r();
+            north.z() = readElevation(s, std::min(tMax, t + 1)).r();
+
+            osg::Vec3f n = (east-west) ^ (north-south);
+            n.normalize();
+
+            // calculate and encode curvature (2nd derivative of elevation)
+            float D = (0.5*(west.z()+east.z()) - h) / (dx*dx);
+            float E = (0.5*(south.z()+north.z()) - h) / (dy*dy);
+            float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
+
+            // encode for RGBA [0..1]
+            osg::Vec4f NC( n.x(), n.y(), n.z(), curvature );
+            NC = (NC + osg::Vec4f(1.0,1.0,1.0,1.0))*0.5;
+
+            writeNormal(NC, s, t);
+        }
+    }
 }
 
 /******************************************************************************************/

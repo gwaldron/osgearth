@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -909,7 +909,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         if (!outputStage)
         {
             buf << "\n// Fragment output\n"
-                << "out vec4 oe_FragColor;\n";
+                << "out vec4 vp_FragColor;\n";
         }
 
         buf << "\n// Fragment stage inputs:\n";
@@ -994,7 +994,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             // in the absense of any output functions, generate a default output statement
             // that simply writes to gl_FragColor.
-            buf << INDENT << "oe_FragColor = vp_Color;\n";
+            buf << INDENT << "vp_FragColor = vp_Color;\n";
         }
         buf << "}\n";
 
@@ -1044,20 +1044,20 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
 }
 
 
-osg::Uniform*
-ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
-                                      osg::StateAttribute::GLModeValue value) const
-{
-    osg::Uniform* u = 0L;
-
-    if ( mode == GL_LIGHTING )
-    {
-        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
-        u->set( (value & osg::StateAttribute::ON) != 0 );
-    }
-
-    return u;
-}
+//osg::Uniform*
+//ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
+//                                      osg::StateAttribute::GLModeValue value) const
+//{
+//    osg::Uniform* u = 0L;
+//
+//    if ( mode == GL_LIGHTING )
+//    {
+//        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+//        u->set( (value & osg::StateAttribute::ON) != 0 );
+//    }
+//
+//    return u;
+//}
 
 std::string
 ShaderFactory::getRangeUniformName() const

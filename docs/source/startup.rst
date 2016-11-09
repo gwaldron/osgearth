@@ -31,7 +31,7 @@ Get the Dependencies
 
 **Required dependencies**
 
-    * OpenSceneGraph_ 3.2.1 or later
+    * OpenSceneGraph_ 3.4 or later
     * GDAL_ 1.9.2 or later - Geospatial Data Abstraction Layer
     * CURL_ - HTTP transfer library (comes with OpenSceneGraph_ 3rd party library distros)
       
@@ -45,9 +45,6 @@ Get the Dependencies
     * GEOS_ 3.2.0 or later - C++ library for topological operations.
       osgEarth uses GEOS to perform various geometry operations like buffering and intersections.
       If you plan to use vector feature data in osgEarth, you probably want this.
-
-    * LevelDB_ - Google's embedded key/value store. Include this if you want to build
-      osgEarth's optional "leveldb" cache driver.
 	
 	* SQLite_ - Self-contained, serverless, zero-configuration, transactional SQL database engine.
 	  Used for accessing sqlite/mbtiles datasets. You may need these tips to create the necessary

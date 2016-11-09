@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -81,7 +81,7 @@ _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
 _gpuClamping           ( false )
 {
-    //NOP
+    _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
 
 void
@@ -1222,7 +1222,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     AllocateAndMergeBufferObjectsVisitor allocAndMerge;
     group->accept( allocAndMerge );
 
-    // set a uniform indiciating that clamping attributes are available.
+    // set a uniform indicating that clamping attributes are available.
     Clamping::installHasAttrsUniform( group->getOrCreateStateSet() );
 
     // if we drew outlines, apply a poly offset too.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -78,7 +78,7 @@ main(int argc, char** argv)
     // find the first layer with sequence control.
     bool found = false;
     osgEarth::ImageLayerVector layers;
-    mapNode->getMap()->getImageLayers( layers );
+    mapNode->getMap()->getLayers( layers );
     for( osgEarth::ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
     {
         // get the sequence control interface for the layer, if there is one.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,14 +44,14 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileModelFactory*             modelFactory,
                                            TileModelCompiler*            modelCompiler,
                                            TileNodeRegistry*             liveTiles,
-                                           TileNodeRegistry*             deadTiles,
+                                           ResourceReleaser*             releaser,
                                            const MPTerrainEngineOptions& options,
                                            TerrainEngine*                engine ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
-_deadTiles       ( deadTiles ),
+_releaser        ( releaser ),
 _options         ( options ),
 _engine          ( engine )
 {
@@ -113,18 +113,18 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
     if ( prepareForChildren )
     {
         osg::BoundingSphere bs = tileNode->getBound();
-        TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles, _deadTiles );
+        TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles.get(), _releaser.get() );
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
         
         double rangeFactor = _options.minTileRangeFactor().get();
-        if (_options.adaptivePolarRangeFactor() == true)
-        {
-            double lat = model->_tileKey.getExtent().yMin() < 0 ? -model->_tileKey.getExtent().yMax() : model->_tileKey.getExtent().yMin();
-            double latRad = osg::DegreesToRadians(lat);
-            rangeFactor -= (rangeFactor - 1.0)*sin(latRad)*sin(latRad);
-        }
+        //if (_options.adaptivePolarRangeFactor() == true)
+        //{
+        //    double lat = model->_tileKey.getExtent().yMin() < 0 ? -model->_tileKey.getExtent().yMax() : model->_tileKey.getExtent().yMin();
+        //    double latRad = osg::DegreesToRadians(lat);
+        //    rangeFactor -= (rangeFactor - 1.0)*sin(latRad)*sin(latRad);
+        //}
         plod->setRangeFactor(rangeFactor);
 
         // Setup expiration.
@@ -143,32 +143,36 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
             //Compute the min range based on the 2D size of the tile
             GeoExtent extent = model->_tileKey.getExtent();
             double radius = 0.0;
-            
-#if 0
-            // Test code to use the equitorial radius so that all of the tiles at the same level
-            // have the same range.  This will make the poles page in more appropriately.
-            if (_frame.getMapInfo().isGeocentric())
+      
+            GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+            GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+            osg::Vec3d ll, ur;
+            lowerLeft.toWorld( ll );
+            upperRight.toWorld( ur );
+            double radiusDiag = (ur - ll).length() / 2.0;
+
+            if (_options.adaptivePolarRangeFactor() == true )
             {
-                GeoExtent equatorialExtent(
-                extent.getSRS(),
-                extent.west(),
-                -extent.height()/2.0,
-                extent.east(),
-                extent.height()/2.0 );
-                radius = equatorialExtent.getBoundingGeoCircle().getRadius();
+                GeoPoint left(extent.getSRS(), extent.xMin(), extent.yMin()+extent.height()*0.5, 0.0, ALTMODE_ABSOLUTE);
+                GeoPoint right(extent.getSRS(), extent.xMax(), extent.yMin()+extent.height()*0.5, 0.0, ALTMODE_ABSOLUTE);
+                osg::Vec3d l, r;
+                left.toWorld(l);
+                right.toWorld(r);
+                double radiusHoriz = 1.4142 * (r - l).length() / 2.0;
+                
+                double lat = model->_tileKey.getExtent().yMin() < 0 ? -model->_tileKey.getExtent().yMax() : model->_tileKey.getExtent().yMin();
+                double latRad = osg::DegreesToRadians(lat);
+
+                // mix between diagonal radius and horizontal radius based on latitude
+                double t = cos(latRad);
+                t = 1.0-(1.0-t)*(1.0-t);    // decelerate t to weight the mix in favor of equator (diag radius)
+                radius = t*radiusDiag + (1.0-t)*radiusHoriz;
             }
             else
-#endif
             {
-                GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-                GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-                osg::Vec3d ll, ur;
-                lowerLeft.toWorld( ll );
-                upperRight.toWorld( ur );
-                radius = (ur - ll).length() / 2.0;
+                radius = radiusDiag;
             }
           
-            //float minRange = (float)(radius * _options.minTileRangeFactor().value());
             float minRange = radius;
 
             plod->setRange( 0, minRange, FLT_MAX );
@@ -298,7 +302,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     {
         if ( _options.incrementalUpdate() == true )
         {
-            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _deadTiles.get());
+            quad = new TileGroup(key, _engine->getUID(), _liveTiles.get(), _releaser.get());
         }
         else
         {

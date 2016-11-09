@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -775,7 +775,7 @@ TerrainLayer::createTileSource()
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
-    else if (getCacheSettings()->isCacheEnabled())
+    else if (!tileSourceStatus.isError() && getCacheSettings()->isCacheEnabled())
     {
         OE_NOTICE << LC << "Failed to create \"" << _runtimeOptions->driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
@@ -788,10 +788,6 @@ TerrainLayer::createTileSource()
         disable(tileSourceStatus.message());
         setStatus(tileSourceStatus);
     }
-    //if (!ts.valid() && getCacheSettings()->isCacheDisabled())
-    //{
-    //    disable("Could not initialize TileSource and no cache is available");
-    //}
 
     return ts.release();
 }
@@ -818,6 +814,27 @@ TerrainLayer::applyProfileOverrides()
     {
         OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
     }
+}
+
+bool
+TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
+{
+    bool mayHaveDataInExtent = true;
+
+    if (getTileSource() && getProfile())
+    {
+        if (getProfile()->getSRS()->isEquivalentTo(ex.getSRS()))
+        {
+            GeoExtent ex_xform = getProfile()->clampAndTransformExtent(ex);
+            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex_xform);
+        }
+        else
+        {
+            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex);
+        }
+    }
+
+    return mayHaveDataInExtent;
 }
 
 bool

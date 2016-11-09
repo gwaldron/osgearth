@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,38 +21,11 @@
 
 #include <osgEarth/MapFrame>
 #include <osgEarth/Containers>
+#include <osgEarth/ElevationPool>
 #include <osgEarth/DPLineSegmentIntersector>
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT ElevationQueryCacheReadCallback : public osgUtil::IntersectionVisitor::ReadCallback
-    {
-        public:
-            ElevationQueryCacheReadCallback();
-
-            void setMaximumNumOfFilesToCache(unsigned int maxNumFilesToCache) { _maxNumFilesToCache = maxNumFilesToCache; }
-            unsigned int  getMaximumNumOfFilesToCache() const { return _maxNumFilesToCache; }
-
-            void clearDatabaseCache();
-
-            void pruneUnusedDatabaseCache();
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
-            virtual osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename);
-#else
-            virtual osg::Node* readNodeFile(const std::string& filename);
-#endif
-
-        protected:
-
-            typedef std::map<std::string, osg::ref_ptr<osg::Node> > FileNameSceneMap;
-
-            unsigned int _maxNumFilesToCache;
-            OpenThreads::Mutex  _mutex;
-            FileNameSceneMap    _filenameSceneMap;
-    };
-
-
     /**
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
      *
@@ -89,30 +62,31 @@ namespace osgEarth
          */
         ElevationQuery( const MapFrame& mapFrame );
 
-        /** dtor */
-        virtual ~ElevationQuery() { }
+        /**
+         * Sets a new map
+         */
+        void setMap(const Map* map);
 
-        /** Sets a new map frame */
+        /**
+         * Sets a new map frame
+         */
         void setMapFrame(const MapFrame& frame);
 
         /**
-         * Gets the terrain elevation at a point, given a terrain resolution.
+         * Gets the elevation data at a point, given a terrain resolution.
          *
          * @param point
          *      Coordinates for which to query elevation.
-         * @param out_elevation
-         *      Stores the elevation result in this variable upon success.
          * @param desiredResolution
          *      Optimal resolution of elevation data to use for the query (if available).
          *      Pass in 0 (zero) to use the best available resolution.
          * @param out_resolution
          *      Resolution of the resulting elevation value (if the method returns true).
          *
-         * @return True if the query succeeded, false upon failure.
+         * @return Sampled elevation value (or NO_DATA_VALUE)
          */
-        bool getElevation(
+        float getElevation(
             const GeoPoint& point,
-            double&         out_elevation,
             double          desiredResolution    =0.0,
             double*         out_actualResolution =0L );
 
@@ -134,85 +108,38 @@ namespace osgEarth
         bool getElevations(
             const std::vector<osg::Vec3d>& points,
             const SpatialReference*        pointsSRS,
-            std::vector<double>&           out_elevations,
-            double                         desiredResolution = 0.0 );
+            std::vector<float>&            out_elevations,
+            double                         desiredResolution =0.0 );
 
-        /**
-         * Whether a query should fall back on lower resolution data if no results
-         * are available at the requested resolution. Default is true.
-         */
-        void setFallBackOnNoData(bool value) { _fallBackOnNoData = value; }
-        bool getFallBackOnNoData() const { return _fallBackOnNoData; }
-
-        /**
-         * Sets the maximum cache size for elevation tiles.
-         */
-        void setMaxTilesToCache( int value );
-
-        /**
-         * Gets the maximum cache size for elevation tiles.
-         */
-        int getMaxTilesToCache() const;
-
-        /**
-        * Sets the maximum level override for elevation queries.
-        * A value of -1 turns off the override.
-        */
-        void setMaxLevelOverride(int maxLevelOverride);
-
-        /**
-        * Gets the maximum level override for elevation queries.
-        */
-        int getMaxLevelOverride() const;
-
-        /**
-         * Gets the average time per query
-         */
-        double getAverageQueryTime() const { return _queries > 0.0 ? _totalTime/_queries : 0.0; }
-
-        /**
-         * Gets the maximum level of data available at the given point.  If the layers have DataExtents provided they
-         * will be queried.  This allows certain areas on the earth to have higher levels of detail
-         * than others and avoids unnecessary queries where there isn't high resolution data available.
-         * Negative return value means there was no data available at the location.
-         */
-        int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const;
-
-        /** Clear the database cache.*/
-        void clearDatabaseCache() { if (_eqcrc.valid()) _eqcrc->clearDatabaseCache(); }
-
-        /** Set the ReadCallback that does the reading of external PagedLOD models, and caching of loaded subgraphs.
-          * Note, if you have multiple LineOfSight or HeightAboveTerrain objects in use at one time then you should share a single
-          * DatabaseCacheReadCallback between all of them. */
-        void setElevationQueryCacheReadCallback(ElevationQueryCacheReadCallback* eqcrc);
-
-        /** Get the ReadCallback that does the reading of external PagedLOD models, and caching of loaded subgraphs.*/
-        ElevationQueryCacheReadCallback* getElevationQueryCacheReadCallback() { return _eqcrc.get(); }
+        /** dtor */
+        virtual ~ElevationQuery() { }
 
     private:
-        MapFrame     _mapf;
-        int          _maxLevelOverride;
-        bool         _fallBackOnNoData;
+        // Map to query
+        MapFrame _mapf;
 
-        typedef LRUCache< TileKey, GeoHeightField > TileCache;
-        TileCache _cache;
-        double _queries;
-        double _totalTime;
+        // Map model layers marked as terrain patches
         std::vector<ModelLayer*> _patchLayers;
+
+        // Intersector to query the patch layers
         osg::ref_ptr<DPLineSegmentIntersector> _patchLayersLSI;
 
-        osg::ref_ptr<ElevationQueryCacheReadCallback> _eqcrc;
+        // Callback to force the intersector to materialize paged model nodes
+        osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
+
+        // Active elevation sampler
+        osg::ref_ptr<ElevationEnvelope> _envelope;
 
     private:
-        void postCTOR();
+        void reset();
         void sync();
         void gatherPatchLayers();
 
         bool getElevationImpl(
             const GeoPoint& point,
-            double&         out_elevation,
+            float&          out_elevation,
             double          desiredResolution,
-            double*         out_actualResolution =0L );
+            double*         out_actualResolution );
     };
 
 } // namespace osgEarth

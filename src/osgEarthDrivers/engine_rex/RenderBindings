@@ -22,20 +22,28 @@
 #include "Common"
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/Containers>
+#include <osg/Texture>
+#include <osg/Matrix>
 #include <vector>
+#include <map>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    /**
+     * Defines the usage information for a single texture sampler.
+     */
     class SamplerBinding
     {
     public:
         enum Usage
         {
-            COLOR,
-            ELEVATION,
-            NORMAL,
-            MATERIAL,
-            COLOR_PARENT
+            COLOR         = 0,
+            COLOR_PARENT  = 1,
+            ELEVATION     = 2,
+            NORMAL        = 3,
+            COVERAGE      = 4,
+            SHARED        = 5   // non-core shared layers start at this index
         };
 
     public:
@@ -62,6 +70,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const std::string& matrixName() const { return _matrixName; }
 
     public:
+        /** True if this binding is bound to a teture image unit and therefore active. */
         bool isActive() const { return _unit >= 0; }
 
     private:
@@ -89,8 +98,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
     };
 
-    typedef std::vector<SamplerBinding> RenderBindings;
-
+    /**
+     * Array of render bindings. This array is always indexed by the 
+     * SamplerBinding::USAGE itself. So for example, RenderBindings[0] is always
+     * the COLOR usage, [2] is the ELEVATION usage, etc. Shared layer bindings
+     * (i.e., custom samplers) start at index SHARED and go up from there.
+     */
+    typedef AutoArray<SamplerBinding> RenderBindings;
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 

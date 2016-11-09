@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -93,6 +93,11 @@ public:
                 _grid->setVisible( true );
         
             _lastFID = feature->getFID();
+
+            // Print out the feature as geojson, useful for debugging.
+            osg::ref_ptr< Feature > clone = new Feature(*feature);
+            clone->transform(SpatialReference::create("wgs84"));
+            OE_NOTICE << clone->getGeoJSON() << std::endl;
         }
     }
 

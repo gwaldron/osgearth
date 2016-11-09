@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,21 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/UTMGraticule>
-#include <osgEarthUtil/MGRSFormatter>
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
 
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthAnnotation/LabelNode>
-
 #include <osgEarth/Registry>
-#include <osgEarth/DepthOffset>
-#include <osgEarth/ECEF>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/ThreadingUtils>
 
 #include <OpenThreads/Mutex>
@@ -49,175 +42,19 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
-using namespace osgEarth::Annotation;
 
-Threading::Mutex UTMGraticule::s_graticuleMutex;
-UTMGraticule::UTMGraticuleRegistry UTMGraticule::s_graticuleRegistry;
 
-//---------------------------------------------------------------------------
-
-UTMGraticuleOptions::UTMGraticuleOptions( const Config& conf ) :
-ConfigOptions( conf ),
-_textScale   ( 1.0f )
-{
-    mergeConfig( _conf );
-}
-
-void
-UTMGraticuleOptions::mergeConfig( const Config& conf )
-{
-    //todo
-}
-
-Config
-UTMGraticuleOptions::getConfig() const
-{
-    Config conf = ConfigOptions::newConfig();
-    conf.key() = "utm_graticule";
-    //todo
-    return conf;
-}
+REGISTER_OSGEARTH_EXTENSION(osgearth_utm_graticule, UTMGraticuleExtension);
 
 //---------------------------------------------------------------------------
 
-
-UTMGraticule::UTMGraticule( MapNode* mapNode ) :
-_mapNode   ( mapNode ),
-_root      ( 0L )
-{
-    init();
-}
-
-UTMGraticule::UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options ) :
-_mapNode   ( mapNode ),
-_root      ( 0L )
-{
-    _options = options;
-    init();
-}
-
 void
-UTMGraticule::init()
+UTMData::rebuild(const Profile* profile)
 {
-    // safely generate a unique ID for this graticule:
-    _id = Registry::instance()->createUID();
-    {
-        Threading::ScopedMutexLock lock( s_graticuleMutex );
-        s_graticuleRegistry[_id] = this;
-    }
-
-    // make the shared depth attr:
-    this->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
-
-    // force it to render after the terrain.
-    this->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
-
-    // install the range callback for clip plane activation
-    this->addCullCallback( new RangeUniformCullCallback() );
-
-    // this will intialize the graph.
-    rebuild();
-}
-
-void
-UTMGraticule::setClipPlane(osg::ClipPlane* value)
-{
-    _clipPlane = value;
-    rebuild();
-}
-
-void
-UTMGraticule::setMapNode( MapNode* mapNode )
-{
-    _mapNode = mapNode;
-    rebuild();
-}
-
-void
-UTMGraticule::setOptions( const UTMGraticuleOptions& options )
-{
-    _options = options;
-    rebuild();
-}
-
-void
-UTMGraticule::rebuild()
-{
-    // clear everything out
-    this->removeChildren( 0, this->getNumChildren() );
-
-    // requires a map node
-    if ( !getMapNode() )
-    {
-        return;
-    }
-
-    // requires a geocentric map
-    if ( !getMapNode()->isGeocentric() )
-    {
-        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
-        return;
-    }
-
-    const Profile* mapProfile = getMapNode()->getMap()->getProfile();
-
-    _profile = Profile::create(
-        mapProfile->getSRS(),
-        mapProfile->getExtent().xMin(),
-        mapProfile->getExtent().yMin(),
-        mapProfile->getExtent().xMax(),
-        mapProfile->getExtent().yMax(),
-        8, 4 );
-
-    _featureProfile = new FeatureProfile(_profile->getSRS());
-
-    //todo: do this right..
-    osg::StateSet* set = this->getOrCreateStateSet();
-    set->setMode( GL_LIGHTING, 0 );
-    set->setMode( GL_BLEND, 1 );
-
-    // set up default options if the caller did not supply them
-    if ( !_options.isSet() )
-    {
-        _options->primaryStyle() = Style();
-
-        LineSymbol* line = _options->primaryStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::Gray;
-        line->stroke()->width() = 1.0;
-        line->tessellation() = 20;
-
-        TextSymbol* text = _options->primaryStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color(Color::White, 0.3f);
-        text->halo()->color() = Color(Color::Black, 0.2f);
-        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-    }
-
-
-    // rebuild the graph:
-
-    // Horizon clipping plane.
-    osg::ClipPlane* cp = _clipPlane.get();
-    if ( cp )
-    {
-        _root = this;
-    }
-    else
-    {
-        osg::ClipNode* clipNode = new osg::ClipNode();
-        osgEarth::Registry::shaderGenerator().run( clipNode );
-        cp = new osg::ClipPlane( 0 );
-        clipNode->addClipPlane( cp );
-        _root = clipNode;
-    }
-    _root->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
-
-
-    this->addChild( _root );
-
     // build the base Grid Zone Designator (GZD) loolup table. This is a table
     // that maps the GZD string to its extent.
     static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );
-    const SpatialReference* geosrs = _profile->getSRS()->getGeographicSRS();
+    const SpatialReference* geosrs = profile->getSRS()->getGeographicSRS();
 
     // build the lateral zones:
     for( unsigned zone = 0; zone < 60; ++zone )
@@ -255,31 +92,22 @@ UTMGraticule::rebuild()
     _gzd.erase( "32X" );
     _gzd.erase( "34X" );
     _gzd.erase( "36X" );
-
-    // now build the lateral tiles for the GZD level.
-    for( SectorTable::iterator i = _gzd.begin(); i != _gzd.end(); ++i )
-    {
-        osg::Node* tile = buildGZDTile( i->first, i->second );
-        if ( tile )
-            _root->addChild( tile );
-    }
 }
 
-
-osg::Node*
-UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
+osg::Group*
+UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const Style& style, const FeatureProfile* featureProfile, const Map* map)
 {
     osg::Group* group = new osg::Group();
 
     Style lineStyle;
-    lineStyle.add( _options->primaryStyle()->get<LineSymbol>() );
-    lineStyle.add( _options->primaryStyle()->get<AltitudeSymbol>() );
+    lineStyle.add( const_cast<LineSymbol*>(style.get<LineSymbol>()) );
+    lineStyle.add( const_cast<AltitudeSymbol*>(style.get<AltitudeSymbol>()) );
 
-    bool hasText = _options->primaryStyle()->get<TextSymbol>() != 0L;
+    bool hasText = style.get<TextSymbol>() != 0L;
 
     GeometryCompiler compiler;
-    osg::ref_ptr<Session> session = new Session( getMapNode()->getMap() );
-    FilterContext context( session.get(), _featureProfile.get(), extent );
+    osg::ref_ptr<Session> session = new Session(map);
+    FilterContext context( session.get(), featureProfile, extent );
 
     // make sure we get sufficient tessellation:
     compiler.options().maxGranularity() = 1.0;
@@ -332,10 +160,11 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         extent.getSRS()->transform( osg::Vec3d(extent.xMin(),tileCenter.y(),0), ecefSRS, west );
         extent.getSRS()->transform( osg::Vec3d(extent.xMax(),tileCenter.y(),0), ecefSRS, east );
 
-        TextSymbol* textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
+        const TextSymbol* textSym_in = style.get<TextSymbol>();
+        osg::ref_ptr<TextSymbol> textSym = textSym_in ? new TextSymbol(*textSym_in) : new TextSymbol();
         textSym->size() = (west-east).length() / 3.0;
 
-        TextSymbolizer ts( textSym );
+        TextSymbolizer ts(textSym.get());
         
         osg::Geode* textGeode = new osg::Geode();        
         osg::Drawable* d = ts.create(name);
@@ -351,11 +180,147 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         group->addChild(mt);
     }
 
-    group = buildGZDChildren( group, name );
+    //group = buildGZDChildren( group, name );
 
     group = ClusterCullingFactory::createAndInstall( group, centerECEF )->asGroup();
 
     return group;
 }
 
+//---------------------------------------------------------------------------
 
+
+UTMGraticule::UTMGraticule(MapNode* mapNode) :
+_mapNode   ( mapNode ),
+_root      ( 0L )
+{
+    ctor();
+    rebuild();
+}
+
+UTMGraticule::UTMGraticule(MapNode* mapNode, const UTMGraticuleOptions& options) :
+UTMGraticuleOptions(options),
+_mapNode   ( mapNode ),
+_root      ( 0L )
+{
+    ctor();
+    rebuild();
+}
+
+void
+UTMGraticule::ctor()
+{
+    // make the shared depth attr:
+    this->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
+
+    // force it to render after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
+
+    // install the range callback for clip plane activation
+    this->addCullCallback( new RangeUniformCullCallback() );
+}
+
+void
+UTMGraticule::refresh()
+{
+    rebuild();
+}
+
+void
+UTMGraticule::setClipPlane(osg::ClipPlane* value)
+{
+    _clipPlane = value;
+    rebuild();
+}
+
+void
+UTMGraticule::setMapNode( MapNode* mapNode )
+{
+    _mapNode = mapNode;
+    rebuild();
+}
+
+void
+UTMGraticule::rebuild()
+{
+    // clear everything out
+    this->removeChildren( 0, this->getNumChildren() );
+
+    // requires a map node
+    if ( !getMapNode() )
+    {
+        return;
+    }
+
+    // requires a geocentric map
+    if ( !getMapNode()->isGeocentric() )
+    {
+        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
+        return;
+    }
+
+    const Profile* mapProfile = getMapNode()->getMap()->getProfile();
+
+    _profile = Profile::create(
+        mapProfile->getSRS(),
+        mapProfile->getExtent().xMin(),
+        mapProfile->getExtent().yMin(),
+        mapProfile->getExtent().xMax(),
+        mapProfile->getExtent().yMax(),
+        8, 4 );
+
+    _featureProfile = new FeatureProfile(_profile->getSRS());
+
+    //todo: do this right..
+    osg::StateSet* set = this->getOrCreateStateSet();
+    set->setMode( GL_LIGHTING, 0 );
+    set->setMode( GL_BLEND, 1 );
+
+    // set up default options if the caller did not supply them
+    if ( !gzdStyle().isSet() )
+    {
+        gzdStyle() = Style();
+
+        LineSymbol* line = gzdStyle()->getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::Gray;
+        line->stroke()->width() = 1.0;
+        line->tessellation() = 20;
+
+        TextSymbol* text = gzdStyle()->getOrCreate<TextSymbol>();
+        text->fill()->color() = Color(Color::White, 0.3f);
+        text->halo()->color() = Color(Color::Black, 0.2f);
+        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    }
+
+
+    // rebuild the graph:
+
+    // Horizon clipping plane.
+    osg::ClipPlane* cp = _clipPlane.get();
+    if ( cp )
+    {
+        _root = this;
+    }
+    else
+    {
+        osg::ClipNode* clipNode = new osg::ClipNode();
+        osgEarth::Registry::shaderGenerator().run( clipNode );
+        cp = new osg::ClipPlane( 0 );
+        clipNode->addClipPlane( cp );
+        _root = clipNode;
+    }
+    _root->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
+
+
+    this->addChild( _root );
+
+    _utmData.rebuild(_profile.get());
+
+    // now build the lateral tiles for the GZD level.
+    for( UTMData::SectorTable::iterator i = _utmData.sectorTable().begin(); i != _utmData.sectorTable().end(); ++i )
+    {
+        osg::Node* tile = _utmData.buildGZDTile(i->first, i->second, gzdStyle().get(), _featureProfile.get(), getMapNode()->getMap());
+        if ( tile )
+            _root->addChild( tile );
+    }
+}

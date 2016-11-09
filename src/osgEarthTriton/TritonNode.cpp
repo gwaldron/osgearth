@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -48,12 +48,14 @@ _options ( options )
     _drawable = new TritonDrawable(mapNode, _TRITON);
     _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
     _alphaUniform->set(getAlpha());
+    _drawable->setNodeMask( TRITON_OCEAN_MASK );
+    this->addChild(_drawable);
 
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( _drawable );
-    geode->setNodeMask( TRITON_OCEAN_MASK );
+    //osg::Geode* geode = new osg::Geode();
+    //geode->addDrawable( _drawable );
+    //geode->setNodeMask( TRITON_OCEAN_MASK );
 
-    this->addChild( geode );
+    //this->addChild( geode );
 
     this->setNumChildrenRequiringUpdateTraversal(1);
 

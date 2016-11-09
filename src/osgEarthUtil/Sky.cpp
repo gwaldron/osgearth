@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
+#include <osgEarth/Lighting>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -58,9 +59,7 @@ SkyNode::baseInit(const SkyOptions& options)
     _moonVisible = true;
     _starsVisible = true;
     _atmosphereVisible = true;
-    _minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
-
-    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
+    //_minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
 
     setLighting( osg::StateAttribute::ON );
 
@@ -105,10 +104,14 @@ void
 SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
 {
     _lightingValue = value;
-    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
-        GL_LIGHTING, value );
+    //_lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
+    //    GL_LIGHTING, value );
+    //this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
 
-    this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
+    if (value & osg::StateAttribute::INHERIT)
+        this->getOrCreateStateSet()->removeDefine(OE_LIGHTING_DEFINE);
+    else
+        this->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, value);
 }
 
 void
@@ -137,27 +140,6 @@ SkyNode::setAtmosphereVisible(bool value)
 {
     _atmosphereVisible = value;
     onSetAtmosphereVisible();
-}
-
-void
-SkyNode::setMinimumAmbient(const osg::Vec4f& value)
-{
-    _minimumAmbient = value;
-    onSetMinimumAmbient();
-}
-
-void
-SkyNode::traverse(osg::NodeVisitor& nv)
-{
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        // update the light model uniforms.
-        if ( _lightingUniformsHelper.valid() )
-        {
-            _lightingUniformsHelper->cullTraverse( this, &nv );
-        }
-    }
-    osg::Group::traverse(nv);
 }
 
 //------------------------------------------------------------------------
@@ -217,7 +199,9 @@ SkyNode::create(const std::string& driver, MapNode* mapNode)
 const SkyOptions&
 SkyDriver::getSkyOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const SkyOptions*>( options->getPluginData(SKY_OPTIONS_TAG) );
+    static SkyOptions s_default;
+    const void* data = options->getPluginData(SKY_OPTIONS_TAG);
+    return data ? *static_cast<const SkyOptions*>(data) : s_default;
 }
 
 

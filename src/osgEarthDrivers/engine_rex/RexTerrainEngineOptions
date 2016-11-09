@@ -38,11 +38,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio             ( 0.0f ),
             _color                  ( Color::White ),
-            //_quickRelease           ( false ),
             _expirationThreshold    ( 300 ),
             _progressive            ( false ),
             _highResolutionFirst    ( true ),
             _normalMaps             ( true ),
+            _normalizeEdges         ( false ),
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
             _mergesPerFrame         ( 20 ),
@@ -59,6 +59,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~RexTerrainEngineOptions() { }
 
     public:
+        struct LODOptions {
+            optional<unsigned> _lod;
+            optional<float> _priorityScale;
+            optional<float> _priorityOffset;
+        };
+
+    public:
         /** Ratio of terrain tile skirt height to tile radius */
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
@@ -66,13 +73,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
-
-#if 0
-        /** Whether to run a post-render process that releases GL objects as quickly as
-          * possible, freeing up memory faster */
-        optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
-        const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
-#endif
 
         /** Minimum distance at which tiles will page out of memory once loaded */
         optional<float>& expirationRange() { return _expirationRange; }
@@ -94,6 +94,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& normalMaps() { return _normalMaps; }
         const optional<bool>& normalMaps() const { return _normalMaps; }
 
+        /** Whether to average normal vectors on tile boundaries. Doing so reduces the
+         *  the appearance of seams when using lighting, but requires extra CPU work. */
+        optional<bool>& normalizeEdges() { return _normalizeEdges; }
+        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
+
         /** Whether to morph terrain data between terrain tile LODs. */
         optional<bool>& morphTerrain() { return _morphTerrain; }
         const optional<bool>& morphTerrain() const { return _morphTerrain; }
@@ -105,6 +110,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Maximum number of tile data merges permitted per frame. 0 = infinity. */
         optional<int>& mergesPerFrame() { return _mergesPerFrame; }
         const optional<int>& mergesPerFrame() const { return _mergesPerFrame; }
+
+        /** Options for specific LODs */
+        std::vector<LODOptions>& lods() { return _lods; }
+        const std::vector<LODOptions>& lods() const { return _lods; }
 
 
     protected:
@@ -118,9 +127,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.updateIfSet( "progressive", _progressive );
             conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
             conf.updateIfSet( "normal_maps", _normalMaps );
+            conf.updateIfSet( "normalize_edges", _normalizeEdges);
             conf.updateIfSet( "morph_terrain", _morphTerrain );
             conf.updateIfSet( "morph_imagery", _morphImagery );
             conf.updateIfSet( "merges_per_frame", _mergesPerFrame );
+
+            if (!_lods.empty()) {
+                Config lodsConf("lods");
+                for (unsigned i = 0; i < _lods.size(); ++i) {
+                    Config lodConf("lod");
+                    lodConf.addIfSet("lod", _lods[i]._lod);
+                    lodConf.addIfSet("priority_scale", _lods[i]._priorityScale);
+                    lodConf.addIfSet("priority_offset", _lods[i]._priorityOffset);
+                    lodsConf.add(lodConf);
+                }
+                conf.add(lodsConf);
+            }
 
             return conf;
         }
@@ -140,9 +162,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "progressive", _progressive );
             conf.getIfSet( "high_resolution_first", _highResolutionFirst );
             conf.getIfSet( "normal_maps", _normalMaps );
+            conf.getIfSet( "normalize_edges", _normalizeEdges);
             conf.getIfSet( "morph_terrain", _morphTerrain );
             conf.getIfSet( "morph_imagery", _morphImagery );
             conf.getIfSet( "merges_per_frame", _mergesPerFrame );
+
+            const Config* lods = conf.child_ptr("lods");
+            if (lods) {
+                for (ConfigSet::const_iterator i = lods->children().begin(); i != lods->children().end(); ++i) {
+                    const Config& lodConf = *i;
+                    if (!lodConf.empty()) {
+                        _lods.push_back(LODOptions());
+                        LODOptions& lod = _lods.back();
+                        lodConf.getIfSet("lod", lod._lod);
+                        lodConf.getIfSet("priority_scale", lod._priorityScale);
+                        lodConf.getIfSet("priority_offset", lod._priorityOffset);
+                    }
+                }
+            }
         }
 
         optional<float>    _skirtRatio;
@@ -153,9 +190,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>     _progressive;
         optional<bool>     _highResolutionFirst;
         optional<bool>     _normalMaps;
+        optional<bool>     _normalizeEdges;
         optional<bool>     _morphTerrain;
         optional<bool>     _morphImagery;
         optional<int>      _mergesPerFrame;
+        std::vector<LODOptions> _lods;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -80,7 +80,7 @@ void oe_ocean_vertex(inout vec4 VertexVIEW)
     VertexVIEW = mvVertex2;  
 
     // read normalized [0..1] elevation data from the height texture:
-    ocean_v_enorm = texture2D( ocean_data, gl_MultiTexCoord0.st ).r;  
+    ocean_v_enorm = texture( ocean_data, gl_MultiTexCoord0.st ).r;  
 
     // send interpolated params to the fs:
     vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1);  

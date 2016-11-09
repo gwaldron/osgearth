@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,7 +49,7 @@ KML_Polygon::parseCoords( xml_node<>* node, KMLContext& cx )
             outer.parseCoords( outerRing, cx );
             if ( outer._geom.valid() )
             {
-                dynamic_cast<Ring*>(outer._geom.get())->rewind( Ring::ORIENTATION_CCW );
+                static_cast<Ring*>(outer._geom.get())->rewind( Ring::ORIENTATION_CCW );
                 poly->reserve( outer._geom->size() );
                 std::copy( outer._geom->begin(), outer._geom->end(), std::back_inserter(*poly) );
             }
@@ -65,7 +65,7 @@ KML_Polygon::parseCoords( xml_node<>* node, KMLContext& cx )
 				if ( inner._geom.valid() )
 				{
 					Geometry* innerGeom = inner._geom.get();
-					dynamic_cast<Ring*>(innerGeom)->rewind( Ring::ORIENTATION_CW );
+					static_cast<Ring*>(innerGeom)->rewind( Ring::ORIENTATION_CW );
 					poly->getHoles().push_back( dynamic_cast<Ring*>(innerGeom) );
 				}
 			}

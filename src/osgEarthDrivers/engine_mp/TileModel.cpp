@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -129,7 +129,8 @@ TileModel::NormalData::NormalData(osg::HeightField* hf,
                                   bool              fallbackData) :
 _hf          ( hf ),
 _locator     ( locator ),
-_fallbackData( fallbackData )
+_fallbackData( fallbackData ),
+_unit        ( -1 )
 {
     _neighbors._center = hf;
 }
@@ -253,24 +254,6 @@ _order       ( rhs._order ),
 _hasAlpha    ( rhs._hasAlpha )
 {
     //nop
-}
-
-void
-TileModel::ColorData::resizeGLObjectBuffers(unsigned maxSize)
-{
-    if ( _texture.valid() )
-    {
-        _texture->resizeGLObjectBuffers( maxSize );
-    }
-}
-
-void
-TileModel::ColorData::releaseGLObjects(osg::State* state) const
-{
-    if ( _texture.valid() && _texture->referenceCount() == 1 )
-    {
-        _texture->releaseGLObjects( state );
-    }
 }
 
 //------------------------------------------------------------------
@@ -413,22 +396,32 @@ TileModel::generateNormalTexture()
     _normalTexture->setUnRefImageDataAfterApply( false );
 }
 
+
 void
 TileModel::resizeGLObjectBuffers(unsigned maxSize)
 {
     for(ColorDataByUID::iterator i = _colorData.begin(); i != _colorData.end(); ++i )
-        i->second.resizeGLObjectBuffers( maxSize );
+    {
+        if (i->second.getTexture())
+            i->second.getTexture()->resizeGLObjectBuffers(maxSize);
+    }    
 }
 
 void
 TileModel::releaseGLObjects(osg::State* state) const
 {
-    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
-        i->second.releaseGLObjects( state );
+    unsigned count=0;
+
+    for (ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i)
+    {
+        if (i->second.getTexture() && i->second.getTexture()->referenceCount() == 1)
+            i->second.getTexture()->releaseGLObjects(state), ++count;
+    }
 
     if (_normalTexture.valid() && _normalTexture->referenceCount() == 1)
-        _normalTexture->releaseGLObjects(state);
+        _normalTexture->releaseGLObjects(state), ++count;
 
     if (_elevationTexture.valid() && _elevationTexture->referenceCount() == 1)
-        _elevationTexture->releaseGLObjects(state);
+        _elevationTexture->releaseGLObjects(state), ++count;
+
 }

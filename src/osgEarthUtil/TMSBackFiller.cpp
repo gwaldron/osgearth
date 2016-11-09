@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -34,8 +34,12 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
-TMSBackFiller::TMSBackFiller()
+TMSBackFiller::TMSBackFiller() :
+_minLevel(0u),
+_maxLevel(0u),
+_verbose(false)
 {
+    //nop
 }
 
 

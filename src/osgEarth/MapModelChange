@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,20 +38,25 @@ namespace osgEarth
         {
             BEGIN_BATCH_UPDATE,               // signals the start of multiple changes
             END_BATCH_UPDATE,                 // signals the end of multiple changes
-            ADD_IMAGE_LAYER,
-            REMOVE_IMAGE_LAYER,
-            MOVE_IMAGE_LAYER,
-            ADD_ELEVATION_LAYER,
-            REMOVE_ELEVATION_LAYER,
-            MOVE_ELEVATION_LAYER,
+            ADD_LAYER,
+            REMOVE_LAYER,
+            MOVE_LAYER,
+            //ADD_IMAGE_LAYER,
+            //REMOVE_IMAGE_LAYER,
+            //MOVE_IMAGE_LAYER,
+            //ADD_ELEVATION_LAYER,
+            //REMOVE_ELEVATION_LAYER,
+            //MOVE_ELEVATION_LAYER,
             TOGGLE_ELEVATION_LAYER,     // visibilty toggle on elevation is a model change.
-            ADD_MODEL_LAYER,
-            REMOVE_MODEL_LAYER,
-            MOVE_MODEL_LAYER,
-            ADD_MASK_LAYER,
-            REMOVE_MASK_LAYER,
+            //ADD_MODEL_LAYER,
+            //REMOVE_MODEL_LAYER,
+            //MOVE_MODEL_LAYER,
+            //ADD_MASK_LAYER,
+            //REMOVE_MASK_LAYER,
             UNSPECIFIED
         };
+
+        MapModelChange() : _action(UNSPECIFIED) { }
 
         MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 ) 
             : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }

@@ -1,0 +1,40 @@
+<!--
+osgEarth Sample - Graticule Extension.
+
+-->
+<map name="Graticule demo" type="geocentric">
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <!-- MGRS Graticule Extension -->
+    <mgrs_graticule>
+    
+        <!-- Style for the top level Grid Zone Designator cells -->
+        <gzd_style>
+            default {
+                stroke: #ffffff5f;
+                stroke-width: 2px;
+                text-color: #ffffff5f;
+                text-size: 10;
+                text-align: center_center;
+            }
+        </gzd_style>
+        
+        <!-- Style for the second-level SQID cells -->
+        <sqid_style>
+            default {
+                stroke: #ffff007f;
+                stroke-width: 1px;
+                text-color: #ffff004f;
+                text-align: center_center;
+            }
+        </sqid_style>
+    </mgrs_graticule>
+    
+</map>

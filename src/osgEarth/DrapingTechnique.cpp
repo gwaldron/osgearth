@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Lighting>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>
@@ -455,7 +456,8 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     osg::StateAttribute::OverrideValue forceOff =
         osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | osg::StateAttribute::OVERRIDE;
 
-    rttStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, forceOff) );
+    rttStateSet->setDefine(OE_LIGHTING_DEFINE, forceOff);
+    //rttStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, forceOff) );
     rttStateSet->setMode( GL_LIGHTING, forceOff );
     
     // activate blending within the RTT camera's FBO

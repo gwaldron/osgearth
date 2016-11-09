@@ -38,39 +38,39 @@ EngineContext::EngineContext(const Map*                     map,
                              Loader*                        loader,
                              Unloader*                      unloader,
                              TileNodeRegistry*              liveTiles,
-                             TileNodeRegistry*              deadTiles,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
                              const SelectionInfo&           selectionInfo,
-                             TilePatchCallbacks&            tilePatchCallbacks) :
-_frame         ( map ),
+                             ModifyBoundingBoxCallback*     bboxCB) :
+_map           ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _unloader      ( unloader ),
 _liveTiles     ( liveTiles ),
-_deadTiles     ( deadTiles ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo ),
-_tilePatchCallbacks( tilePatchCallbacks )
+_bboxCB        ( bboxCB ),
+_tick(0),
+_tilesLastCull(0)
 {
     _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
 }
 
-const MapFrame& EngineContext::getMapFrame()
-{
-    if (_frame.needsSync())
-        _frame.sync();
-
-    return _frame;
-}
+//const MapFrame& EngineContext::getMapFrame()
+//{
+//    if (_frame.needsSync())
+//        _frame.sync();
+//
+//    return _frame;
+//}
 
 void
 EngineContext::unloadChildrenOf(const TileNode* tile)
 {
-   _tilesWithChildrenToUnload.push_back( tile->getTileKey() );
-   OE_INFO << LC << "Unload children of: " << tile->getTileKey().str() << "\n";
+   _tilesWithChildrenToUnload.push_back( tile->getKey() );
+   OE_INFO << LC << "Unload children of: " << tile->getKey().str() << "\n";
 }
 
 void
@@ -133,7 +133,7 @@ namespace
                     const TileNode* tile = tiles.at(f%s);
                     if (tile->areSubTilesDormant(_stamp))
                     {
-                        _keys.push_back(tile->getTileKey());
+                        _keys.push_back(tile->getKey());
                     }
                 }
                 break;
@@ -144,7 +144,7 @@ namespace
                     for(unsigned i=0; i<4; ++i) {
                         const TileNode* tile = tiles.at((f+i)%s);
                         if ( tile->areSubTilesDormant(_stamp) )
-                            _keys.push_back( tile->getTileKey() );
+                            _keys.push_back( tile->getKey() );
                     }
                 }
             }
@@ -197,36 +197,4 @@ bool
 EngineContext::maxLiveTilesExceeded() const
 {
     return _liveTiles->size() > _options.expirationThreshold().get();
-}
-
-osg::Uniform*
-EngineContext::getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m)
-{
-    // Unique key for this uniform include the scale, the x/y bias, and the name ID.
-    osg::Vec4f key(m(0,0),m(3,0),m(3,1),(float)osg::Uniform::getNameID(name));
-
-    MatrixUniformMap::iterator i = _matrixUniforms.find(key);
-    if ( i != _matrixUniforms.end() )
-    {
-        return i->second.get();
-    }
-    
-    osg::Uniform* u = new osg::Uniform(name.c_str(), m);
-    _matrixUniforms[key] = u;
-
-    return u;
-}
-
-void
-EngineContext::invokeTilePatchCallbacks(osgUtil::CullVisitor* cv,
-                                        const TileKey&        tileKey,
-                                        osg::StateSet*        tileStateSet,
-                                        osg::Node*            tilePatch)
-{
-    for(TilePatchCallbacks::iterator i = _tilePatchCallbacks.begin();
-        i != _tilePatchCallbacks.end();
-        ++i)
-    {
-        i->get()->cull(cv, tileKey, tileStateSet, tilePatch);
-    }
 }

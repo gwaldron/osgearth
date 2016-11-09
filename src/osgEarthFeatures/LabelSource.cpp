@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -100,5 +100,7 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
 const LabelSourceOptions&
 LabelSourceDriver::getLabelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    return *static_cast<const LabelSourceOptions*>( options->getPluginData( LABEL_SOURCE_OPTIONS_TAG ) );
+    static LabelSourceOptions s_default;
+    const void* data = options->getPluginData(LABEL_SOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const LabelSourceOptions*>(data) : s_default;
 }

@@ -36,6 +36,7 @@ namespace osgEarth
         std::string DrapingVertex, DrapingFragment;
         std::string GPUClampingVertex, GPUClampingFragment, GPUClampingVertexLib;
         std::string InstancingVertex;
+        std::string PhongLightingVertex, PhongLightingFragment;
 	};	
 
 } // namespace osgEarth

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -140,6 +140,12 @@ namespace osgEarth { namespace SilverLining
         void SetVisibility(double vis);
         double GetVisibility() const;
 
+        void SetTurbidity(double turb);
+        double GetTurbidity() const;
+
+        void SetLightPollution(double wattsPerSqm);
+        double GetLightPollution() const;
+
         void SetPrecipitation(int type, double rate);
 
         int SetWind(double metersPerSecond, double degreesFromNorth);
@@ -155,6 +161,8 @@ namespace osgEarth { namespace SilverLining
             OVERCAST
         };
         void SetPresetConditions(ConditionPresets preset, Atmosphere& atm);
+
+        void EnableTimePassage(bool enabled, long relightFrequencyMS);
 
     public:
         AtmosphericConditions(uintptr_t handle) : _handle(handle) { }

@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.2
 
-varying vec4 oe_layer_tilec;
+in vec4 oe_layer_tilec;
 uniform sampler1D oe_contour_xfer;
 uniform float oe_contour_opacity;
 uniform float oe_contour_min;

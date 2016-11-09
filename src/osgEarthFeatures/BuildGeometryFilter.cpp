@@ -1,6 +1,6 @@
 /* -*_maxPolyTilingAngle_deg-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -806,13 +806,15 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         OE_WARN << LC << "Ring is NULL.\n";
         return;
     }
-
+    
     // Tile the incoming polygon if necessary
     // NB: this breaks down at higher latitudes; see https://github.com/gwaldron/osgearth/issues/746
 
     GeometryCollection tiles;
-    prepareForTesselation( ring, featureSRS, _maxPolyTilingAngle_deg.get(), MAX_POINTS_PER_CROP_TILE, tiles);    
-    //tiles.push_back( ring );
+    if (_maxPolyTilingAngle_deg.isSet())
+        prepareForTesselation( ring, featureSRS, _maxPolyTilingAngle_deg.get(), MAX_POINTS_PER_CROP_TILE, tiles);    
+    else
+        tiles.push_back( ring );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 
@@ -888,12 +890,15 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                 if (g)
                 {
                     osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(g->getVertexArray());
-                    OE_WARN << "Geometry " << i << " has " << verts->size() << " verts" << std::endl;
-                    OE_WARN << "Geometry " << i << " has " << g->getNumPrimitiveSets() << " primitive sets" << std::endl;
-                    for (unsigned int j = 0; j < g->getNumPrimitiveSets(); j++)
+                    if (verts)
                     {
-                        osg::PrimitiveSet* ps = g->getPrimitiveSet(j);
-                        OE_WARN << "PrimitiveSet " << j << ps->className() << std::endl;
+                        OE_WARN << "Geometry " << i << " has " << verts->size() << " verts" << std::endl;
+                        OE_WARN << "Geometry " << i << " has " << g->getNumPrimitiveSets() << " primitive sets" << std::endl;
+                        for (unsigned int j = 0; j < g->getNumPrimitiveSets(); j++)
+                        {
+                            osg::PrimitiveSet* ps = g->getPrimitiveSet(j);
+                            OE_WARN << "PrimitiveSet " << j << ps->className() << std::endl;
+                        }
                     }
                 }
             }

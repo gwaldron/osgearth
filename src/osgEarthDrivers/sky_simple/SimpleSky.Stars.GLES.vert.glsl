@@ -3,8 +3,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform vec3 atmos_v3LightDir; 
 uniform mat4 osg_ViewMatrixInverse; 
-varying float visibility; 
-varying vec4 osg_FrontColor; 
+
+out float visibility; 
+out vec4 osg_FrontColor; 
 
 float remap( float val, float vmin, float vmax, float r0, float r1 ) 
 { 

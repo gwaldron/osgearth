@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/Lighting>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -203,6 +204,16 @@ _modelSource( new NodeModelSource(node) )
 ModelLayer::~ModelLayer()
 {
     //nop
+}
+
+Config
+ModelLayer::getConfig() const
+{
+    Config layerConf = getModelLayerOptions().getConfig();
+    layerConf.set("name", getName());
+    layerConf.set("driver", getModelLayerOptions().driver()->getDriver());
+    layerConf.key() = "model";
+    return layerConf;
 }
 
 void
@@ -455,8 +466,9 @@ ModelLayer::setLightingEnabledNoLock(bool value)
 
             if ( Registry::capabilities().supportsGLSL() )
             {
-                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
-                    GL_LIGHTING, value ) );
+                stateset->setDefine(OE_LIGHTING_DEFINE, value);
+                //stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                //    GL_LIGHTING, value ) );
             }
         }
     }

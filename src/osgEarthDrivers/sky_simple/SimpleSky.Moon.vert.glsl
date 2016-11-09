@@ -2,7 +2,8 @@
 $GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform mat4 osg_ModelViewProjectionMatrix;
-varying vec4 moon_TexCoord;
+
+out vec4 moon_TexCoord;
 
 void main() 
 { 

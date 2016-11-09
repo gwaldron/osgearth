@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -338,6 +338,8 @@ PolyhedralLineOfSightNode::updateSamples()
 
     osg::Geometry* geom  = _geode->getDrawable(0)->asGeometry();
     osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
+    if (!verts)
+        return;
 
     double distance = _distance.as(Units::METERS);
 

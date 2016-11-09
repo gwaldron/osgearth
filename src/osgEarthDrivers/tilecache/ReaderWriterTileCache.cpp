@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -105,7 +105,7 @@ class TileCacheSourceFactory : public TileSourceDriver
     public:
         TileCacheSourceFactory() {}
 
-        virtual const char* className()
+        virtual const char* className() const
         {
             return "TileCache disk cache ReaderWriter";
         }

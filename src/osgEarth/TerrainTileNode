@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,17 +33,23 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class /*header-only*/ TerrainTileNode
+    class OSGEARTH_EXPORT TerrainTileNode
     {
-    public:
-        const TerrainTileModel* getModel() const { return _model.get(); }
+    public:    
+        virtual const TileKey& getKey() const = 0;
 
-        const TileKey& getKey() const { return _model->getKey(); }
+        virtual double getMinimumExpirationTime() const = 0;
+        virtual void setMinimumExpirationTime(double minExpiryTime) = 0;
+        
+        virtual unsigned int getMinimumExpirationFrames() const = 0;
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) = 0;
+
+
+        virtual void loadChildren() = 0;
+
 
     protected:
         virtual ~TerrainTileNode() { }
-
-        osg::ref_ptr<TerrainTileModel> _model;
     };
 };
 

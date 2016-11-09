@@ -23,11 +23,12 @@
 #include "RenderBindings"
 #include "Loader"
 #include "MaskGenerator"
-#include "MPTexture"
-#include "ProxySurfaceNode"
+#include "TileRenderModel"
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/TerrainTileNode>
 
 #include <OpenThreads/Atomic>
-#include <osgEarth/TerrainTileNode>
 #include <vector>
 
 namespace osg {
@@ -41,21 +42,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
     class SurfaceNode;
-    class ProxySurfaceNode;
     class SelectionInfo;
+    class TerrainCuller;
 
     /**
      * TileNode represents a single tile. TileNode has 5 children:
      * one SurfaceNode that renders the actual tile content under a MatrixTransform;
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
-    class TileNode : public osg::Group
+    class TileNode : public osg::Group,
+                     public osgEarth::TerrainTileNode
     {
     public:
         TileNode();
 
         /** TileKey of the key representing the data in this node. */
-        const TileKey& getTileKey() const { return _key; }
+        const TileKey& getKey() const { return _key; }
 
         /** Sets the map revision that this tile should be using. */
         void setMapRevision(Revision rev) { } // nyi - check for need
@@ -64,10 +66,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setDirty(bool value);
 
         /** Creates the geometry and state for this tilenode. */
-        void create(const TileKey& key, EngineContext* context);
-
-        /** Whether this node has enough data to traverse. */
-        bool isReadyToTraverse() const;
+        void create(const TileKey& key, TileNode* parent, EngineContext* context);
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
         bool isDormant(const osg::FrameStamp*) const;
@@ -78,26 +77,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
         void removeSubTiles();
 
-        /** Whether the tile drawables are visible */
-        bool isVisible(osg::CullStack* cs) const;
-
-        /** Load (or continue loading) content for the tiles in this quad. */
-        void load(osg::NodeVisitor& nv);
-
         /** Notifies this tile that another tile has come into existence. */
-        void notifyOfArrival(TileNode* that) { } // nyi - todo
-
-        /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(EngineContext* context);
+        void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
-        
-        /** merge in new stuff from a state set. */
-        void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
 
-        /** Access to the multipass texture attribute */
-        MPTexture* getMPTexture() const { return _mptex.get(); }
+        /** Returns the SurfaceNode under this node. */
+        SurfaceNode* getSurfaceNode() { return _surface.get(); }
 
         /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
@@ -108,13 +95,26 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
         const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
 
-        double getMinimumExpiryTime() const { return _minExpiryTime; }
-        void setMinimumExpiryTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
+        virtual double getMinimumExpirationTime() const { return _minExpiryTime; }
+        virtual void setMinimumExpirationTime(double minExpiryTime) { _minExpiryTime = minExpiryTime; }
         
-        unsigned int getMinimumExpiryFrames() const { return _minExpiryFrames; }
-        void setMinimumExpiryFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
+        virtual unsigned int getMinimumExpirationFrames() const { return _minExpiryFrames; }
+        virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
 
+        virtual void loadChildren();
+        
+        /** Merge new Tile model data into this tile's rendering data model. */
+        void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
 
+        /** Access the rendering model for this tile */
+        TileRenderModel& renderModel() { return _renderModel; }
+
+        const osg::Vec4f& getTileKeyValue() const { return _tileKeyValue; }
+
+        const osg::Vec2f& getMorphConstants() const { return _morphConstants; }
+
+        void loadSync(EngineContext* context);
+        
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -129,39 +129,49 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<SurfaceNode>          _patch;
         osg::ref_ptr<Loader::Request>      _loadRequest;
         osg::ref_ptr<Loader::Request>      _expireRequest;
+        osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         double                             _lastTraversalTime;
         OpenThreads::Atomic                _lastAcceptSurfaceFrame;
         unsigned                           _count;
-        osg::ref_ptr<MPTexture>            _mptex;
-        osg::ref_ptr<osg::StateSet>        _payloadStateSet;
         bool                               _childrenReady;
         unsigned int                       _minExpiryFrames;
         double                             _minExpiryTime;
+        mutable osg::Vec4f                 _tileKeyValue;
+        osg::Vec2f                         _morphConstants;
+
+        TileRenderModel                    _renderModel;
+
+        osg::observer_ptr<TileNode> _eastNeighbor;
+        osg::observer_ptr<TileNode> _southNeighbor;
+        bool _stitchNormalMap;
 
     private:
+
+        void updateNormalMap();
 
         void createChildren(EngineContext* context);
 
         /** Returns false if the Surface node fails visiblity test */
-        bool cull(osgUtil::CullVisitor* cv);
+        bool cull(TerrainCuller*);
 
-        bool accept_cull(osgUtil::CullVisitor* cv);
+        bool accept_cull(TerrainCuller*);
 
-        bool cull_stealth(osgUtil::CullVisitor* cv);
+        bool cull_stealth(TerrainCuller*);
 
-        bool accept_cull_stealth(osgUtil::CullVisitor* cv);
+        bool accept_cull_stealth(TerrainCuller*);
 
-        // returns true if any surface geometry was added (visible).
-        bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
+        bool shouldSubDivide(TerrainCuller*, const SelectionInfo&);
 
-        bool shouldSubDivide(osgUtil::CullVisitor* cv, const SelectionInfo& selectionInfo);
+        /** Load (or continue loading) content for the tiles in this quad. */
+        void load(TerrainCuller*);
 
-        void createPayloadStateSet(EngineContext*);
+        /** Ensure that inherited data from the parent node is up to date. */
+        void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
 
-        void updateTileUniforms(const SelectionInfo& selectionInfo);
+        void copyCommonSamplers();
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

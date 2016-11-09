@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2015 Pelican Mapping
+* Copyright 2016 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
-#include <osgEarthSplat/LandCoverTerrainEffect>
+#include <osgEarthSplat/LandCoverLayerFactory>
 #include <osgEarthSplat/SplatExtension>
 
 #define LC "[viewer] "
@@ -85,42 +85,6 @@ main(int argc, char** argv)
 
         // Get the MapNode
         MapNode* mapNode = MapNode::findMapNode( node );
-
-        // Find the Splat Extension
-        SplatExtension* splatExtension = mapNode->getExtension<SplatExtension>();
-        if (splatExtension)
-        {
-            OE_NOTICE << "Found Splat Extension" << std::endl;
-        }
-
-        LandCoverTerrainEffect* landCoverEffect = mapNode->getTerrainEngine()->getEffect<LandCoverTerrainEffect>();
-        if (landCoverEffect)
-        {
-            OE_NOTICE << "Found landcover terrain effect" << std::endl;
-
-            for (Zones::const_iterator zoneItr = landCoverEffect->getZones().begin();
-                zoneItr != landCoverEffect->getZones().end();
-                ++zoneItr)
-            {
-                // Get the StateSet for each of the LandCoverLayers
-                for (LandCoverLayers::iterator landCoverItr = zoneItr->get()->getLandCover()->getLayers().begin();
-                    landCoverItr != zoneItr->get()->getLandCover()->getLayers().end();
-                    ++landCoverItr)
-                {
-                    // Get the stateset for the layer.
-                    osg::StateSet* stateset = landCoverItr->get()->getOrCreateStateSet();
-
-                    // Get the VirtualProgram for this layer.
-                    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-
-                    // Make the "tree" layer all red.
-                    if (landCoverItr->get()->getName() == "trees")
-                    {                                         
-                        vp->setFunction( "color_landcover", color_landcover, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
-                    }
-                }
-            }
-        }
 
         viewer.setSceneData( node );
         while(!viewer.done())

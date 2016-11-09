@@ -11,9 +11,9 @@ uniform float atmos_g;
 uniform float atmos_g2; 
 uniform float atmos_fWeather; 
 
-varying vec3 atmos_v3Direction; 	
-varying vec3 atmos_mieColor; 
-varying vec3 atmos_rayleighColor; 
+in vec3 atmos_v3Direction; 	
+in vec3 atmos_mieColor; 
+in vec3 atmos_rayleighColor; 
 
 const float fExposure = 4.0; 
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgViewer/View>
 #include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -67,19 +68,22 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 i->get()->reset( aa.asView(), _mapNode );
         }
 
-#if 0 // testing AGL
+#if 1 // testing AGL, Dist to Point
         osg::Vec3d eye, center, up;
         aa.asView()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
         DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(eye, osg::Vec3d(0,0,0));
         osgUtil::IntersectionVisitor iv(lsi);
         lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
-        iv.setUserData( new Map() );
+        //iv.setUserData( new Map() );
         _mapNode->accept(iv);
 
         if ( !lsi->getIntersections().empty() )
         {            
             double agl = (eye - lsi->getFirstIntersection().getWorldIntersectPoint()).length();
-            OE_NOTICE << "AGL = " << agl << "m" << std::endl;
+            double dtp = (eye - world).length();
+            //OE_NOTICE << "AGL = " << agl << "m; DPT = " << dtp << "m" << std::endl;
+            Registry::instance()->startActivity("AGL", Stringify() << agl << " m");
+            Registry::instance()->startActivity("Range", Stringify() << dtp << " m");
         }
 #endif
     }

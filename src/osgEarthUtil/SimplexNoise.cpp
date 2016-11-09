@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,6 +84,7 @@ SimplexNoise::Grad::Grad(double x, double y, double z)
     this->x = x;
     this->y = y;
     this->z = z;
+    this->w = 1.0;
 }
 
 SimplexNoise::Grad::Grad(double x, double y, double z, double w)
@@ -123,7 +124,7 @@ const double   SimplexNoise::DefaultLacunarity   =  2.0;
 const double   SimplexNoise::DefaultRangeLow     = -1.0;
 const double   SimplexNoise::DefaultRangeHigh    =  1.0;
 const unsigned SimplexNoise::DefaultOctaves      =  10;
-const bool     SimplexNoise::DefaultNormalize    =  true;
+const bool     SimplexNoise::DefaultNormalize    =  false;
 
 
 SimplexNoise::SimplexNoise() :

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2015 Pelican Mapping
+ * Copyright 2016 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -229,7 +229,9 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
 const ModelSourceOptions&
 ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
+    static ModelSourceOptions s_default;
+    const void* data = options->getPluginData(MODEL_SOURCE_OPTIONS_TAG);
+    return data ? *static_cast<const ModelSourceOptions*>(data) : s_default;
 }
 
 ModelSourceDriver::~ModelSourceDriver()

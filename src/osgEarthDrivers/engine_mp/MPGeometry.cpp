@@ -597,21 +597,25 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     bool hasVertexAttributes = !_vertexAttribList.empty();
 
-    osg::ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
+#if OSG_VERSION_LESS_THAN(3,5,6)
+    osg::ArrayDispatchers& dispatchers = state.getArrayDispatchers();
+#else
+    osg::AttributeDispatchers& dispatchers = state.getAttributeDispatchers();
+#endif
 
-    arrayDispatchers.reset();
-    arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
+    dispatchers.reset();
+    dispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
 
 
     //Remove?
 #if OSG_VERSION_LESS_THAN(3,1,8)
-    arrayDispatchers.setUseGLBeginEndAdapter(false);
+    dispatchers.setUseGLBeginEndAdapter(false);
 #endif
 
 #if OSG_MIN_VERSION_REQUIRED(3,1,8)
-    arrayDispatchers.activateNormalArray(_normalArray.get());
+    dispatchers.activateNormalArray(_normalArray.get());
 #else
-    arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
+    dispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
 #endif
     
 
@@ -620,15 +624,15 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
         for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
         {
 #if OSG_MIN_VERSION_REQUIRED(3,1,8)
-            arrayDispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
+            dispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
 #else
-            arrayDispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
+            dispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
 #endif             
         }
     }
 
     // dispatch any attributes that are bound overall
-    arrayDispatchers.dispatch(BIND_OVERALL,0);
+    dispatchers.dispatch(BIND_OVERALL,0);
     state.lazyDisablingOfVertexAttributes();
 
 

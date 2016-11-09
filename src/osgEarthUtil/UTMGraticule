@@ -170,11 +170,11 @@ namespace osgEarth { namespace Util
 
     
     /**
-     * Extension that lets you load and configure an UTM Graticuler from an earth file.
+     * Extension that lets you load and configure an UTM Graticule from an earth file.
      * Usage:
-     *    <mgrs_graticule>
+     *    <utm_graticule>
      *       ...
-     *    </mgrs_graticule>
+     *    </utm_graticule>
      */
     class UTMGraticuleExtension : public Extension,
                                   public ExtensionInterface<MapNode>,

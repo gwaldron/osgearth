@@ -102,9 +102,10 @@ namespace osgEarth { namespace Util
         MGRSGraticule(MapNode* mapNode);
 
         /**
-         * If the change any of the options, call this to rebuild the graticule.
+         * If you change any of the options, call this to refresh the display
+         * to refelct the new settings.
          */
-        void dirtyOptions();
+        void refresh();
 
 
     public: // MapNodeObserver

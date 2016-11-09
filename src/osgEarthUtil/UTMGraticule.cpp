@@ -195,6 +195,7 @@ _mapNode   ( mapNode ),
 _root      ( 0L )
 {
     ctor();
+    rebuild();
 }
 
 UTMGraticule::UTMGraticule(MapNode* mapNode, const UTMGraticuleOptions& options) :
@@ -203,6 +204,7 @@ _mapNode   ( mapNode ),
 _root      ( 0L )
 {
     ctor();
+    rebuild();
 }
 
 void
@@ -216,8 +218,11 @@ UTMGraticule::ctor()
 
     // install the range callback for clip plane activation
     this->addCullCallback( new RangeUniformCullCallback() );
+}
 
-    // this will intialize the graph.
+void
+UTMGraticule::refresh()
+{
     rebuild();
 }
 

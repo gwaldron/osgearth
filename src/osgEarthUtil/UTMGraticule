@@ -126,8 +126,11 @@ namespace osgEarth { namespace Util
          */
         UTMGraticule( MapNode* mapNode );
 
-        /** dtor */
-        virtual ~UTMGraticule() { }
+        /**
+         * If you change any of the options, call this to refresh the display
+         * to refelct the new settings.
+         */
+        void refresh();
 
         /**
          * Sets the clip plane to use. If you don't set one, the object will
@@ -146,6 +149,10 @@ namespace osgEarth { namespace Util
 
         virtual MapNode* getMapNode() { return _mapNode.get(); }
 
+    protected:
+
+        /** dtor */
+        virtual ~UTMGraticule() { }
 
     private:
         osg::ref_ptr<const Profile>        _profile;

@@ -54,7 +54,7 @@ MGRSGraticule::MGRSGraticule(MapNode* mapNode) :
 _mapNode(mapNode)
 {
     ctor();
-    applyDefaultStyles();
+    rebuild();
 }
 
 MGRSGraticule::MGRSGraticule(MapNode* mapNode, const MGRSGraticuleOptions& options) :
@@ -62,13 +62,12 @@ MGRSGraticuleOptions(options),
 _mapNode(mapNode)
 {
     ctor();
-    applyDefaultStyles();
+    rebuild();
 }
 
 void
-MGRSGraticule::dirtyOptions()
+MGRSGraticule::refresh()
 {
-    applyDefaultStyles();
     rebuild();
 }
 
@@ -89,9 +88,6 @@ MGRSGraticule::ctor()
 
     // install the range callback for clip plane activation
     this->addCullCallback( new RangeUniformCullCallback() );
-
-    // this will intialize the graph.
-    rebuild();
 }
 
 void

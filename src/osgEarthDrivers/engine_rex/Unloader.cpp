@@ -77,7 +77,7 @@ UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
 {
     _mutex.lock();
     for(std::vector<TileKey>::const_iterator i = keys.begin(); i != keys.end(); ++i)
-        _parentKeys.push_back( *i );
+        _parentKeys.insert(*i);
     _mutex.unlock();
 }
 
@@ -90,7 +90,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
         {
             unsigned unloaded=0, notFound=0, notDormant=0;
             Threading::ScopedMutexLock lock( _mutex );
-            for(std::vector<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
+            for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
                 osg::ref_ptr<TileNode> parentNode;
                 if ( _tiles->get(*parentKey, parentNode) )
@@ -115,7 +115,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 else notFound++;
             }
 
-            //OE_NOTICE << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "; live=" << _live->size() << "\n";
+            OE_NOTICE << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "\n";
             _parentKeys.clear();
         }
     }

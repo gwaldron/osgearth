@@ -61,7 +61,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         int                            _threshold;
-        std::vector<TileKey>           _parentKeys;
+        std::set<TileKey>              _parentKeys;
         TileNodeRegistry*              _tiles;
         osg::ref_ptr<ResourceReleaser> _releaser;
         mutable Threading::Mutex       _mutex;

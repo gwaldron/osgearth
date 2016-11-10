@@ -369,7 +369,7 @@ namespace osgEarth
     class TerrainEngineNodeFactory
     {
     public:
-        static TerrainEngineNode* create( Map* map, const TerrainOptions& options );
+        static TerrainEngineNode* create(const TerrainOptions& options );
     };
 
     /**

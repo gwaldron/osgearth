@@ -449,7 +449,7 @@ TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCal
 #define LC "[TerrainEngineNodeFactory] "
 
 TerrainEngineNode*
-TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
+TerrainEngineNodeFactory::create(const TerrainOptions& options )
 {
     TerrainEngineNode* result = 0L;
 

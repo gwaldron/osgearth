@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
+#include <osgEarth/Utils>
 #include <osgEarthUtil/SimplexNoise>
 
 using namespace osgEarth;
@@ -226,10 +227,9 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
         return Status::Error(Status::ConfigurationError, "Required property base_layer is not set");
     }
 
-    const Map* map = dynamic_cast<const Map*>(osg::getUserObject(readOptions, "osgEarth.Map"));
+    const Map* map = OptionsData<Map>::get(readOptions, "osgEarth.Map");
     if (!map)
     {
-        OE_WARN << LC << "Massive failure! No Map in the readOptions!\n";
         return Status::Error(Status::AssertionFailure, "No osgEarth::Map found in read options");
     }
 

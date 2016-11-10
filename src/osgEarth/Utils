@@ -45,6 +45,30 @@ namespace osgEarth
 {    
     //------------------------------------------------------------------------
 
+
+    template<typename T>
+    class OptionsData : public osg::Object {
+    public:
+        static void put(osgDB::Options* o, const std::string& name, T* obj) {            
+            osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
+            udc->addUserObject(new OptionsData<T>(name, obj));
+        }
+        static const T* get(const osgDB::Options* o, const std::string& name) {
+            if (!o) return 0L;
+            const OptionsData<T>* oo = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
+            if (!oo) return 0L;
+            return oo->_obj;
+        }
+    public:
+        META_Object(osgEarth,OptionsData);
+        OptionsData(const std::string& name, T* obj) : _obj(obj) { setName(name); }
+        OptionsData() { }
+        OptionsData(const OptionsData& rhs, const osg::CopyOp& copy) : osg::Object(rhs, copy), _obj(rhs._obj) { }
+    private:
+        T* _obj;
+    };
+
+
     struct Utils
     {
         /**

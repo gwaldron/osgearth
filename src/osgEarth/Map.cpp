@@ -24,6 +24,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/Utils>
 #include <iterator>
 
 using namespace osgEarth;
@@ -117,7 +118,7 @@ Map::ctor()
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // encode this map in the read options.
-    _readOptions->getOrCreateUserDataContainer()->addUserObject(this);
+    OptionsData<Map>::put(_readOptions, "osgEarth.Map", this);
 
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes

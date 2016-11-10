@@ -67,6 +67,52 @@ namespace
                 node->onMapModelChanged( change );
         }
     };
+    
+
+    /**
+     * Run this visitor whenever you remove a layer, so that each
+     * TileNode can update its render model and get rid of passes
+     * that no longer exist.
+     */
+    struct UpdateRenderModels : public osg::NodeVisitor
+    {
+        const MapFrame& _frame;
+        unsigned _count;
+
+        UpdateRenderModels(const MapFrame& frame) : _frame(frame), _count(0u)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Node& node)
+        {
+            TileNode* tileNode = dynamic_cast<TileNode*>(&node);
+            if (tileNode)
+            {
+                cleanRenderModel(tileNode);
+            }
+            traverse(node);
+        }
+
+        void cleanRenderModel(TileNode* tileNode)
+        {
+            TileRenderModel& model = tileNode->renderModel();
+            for (int p = 0; p < model._passes.size(); ++p)
+            {
+                RenderingPass& pass = model._passes.at(p);
+
+                // if the map doesn't contain a layer with a matching UID,
+                // it's gone so remove it from the render model.
+                if (!_frame.containsLayer(pass._sourceUID))
+                {
+                    model._passes.erase(model._passes.begin()+p);
+                    --p;
+                    _count++;
+                }
+            }
+        }
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -510,6 +556,17 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        if (_renderModelUpdateRequired)
+        {
+            UpdateRenderModels visitor(*_update_mapf);
+            _terrain->accept(visitor);
+            _renderModelUpdateRequired = false;
+        }
+    }
+
+
 #if 0
     static int c = 0;
     if ( ++c % 60 == 0 )
@@ -609,6 +666,14 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         {
             if (getChild(i) != _terrain.get())
                 getChild(i)->accept(nv);
+        }
+
+        // If the culler found any orphaned data, we need to update the render model
+        // during the next update cycle.
+        if (culler._orphanedPassesDetected > 0u)
+        {
+            _renderModelUpdateRequired = true;
+            OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
         }
     }
 
@@ -846,11 +911,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 {
     if ( tileLayer && tileLayer->getEnabled() )
     {
-        // Install the image layer stateset on this layer.
-        // Later we will refactor this into an ImageLayerRenderer or something similar.
-        //osg::StateSet* stateSet = tileLayer->getOrCreateStateSet();
-        //stateSet->merge(*getSurfaceStateSet());
-
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(tileLayer);
         if (imageLayer)
         {
@@ -933,13 +993,14 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         }
     }
 
-    refresh();
-}
+    // Run the update visitor, which will clean out any rendering passes
+    // associated with the layer we just removed. This would happen 
+    // automatically during cull/update anyway, but it's more efficient
+    // to do it all at once.
+    UpdateRenderModels updater(*_update_mapf);
+    _terrain->accept(updater);
 
-void
-RexTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
-{
-    updateState();
+    //OE_INFO << LC << " Updated " << updater._count << " tiles\n";
 }
 
 void
@@ -961,12 +1022,6 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 
     layerRemoved->removeCallback( _elevationCallback.get() );
 
-    refresh();
-}
-
-void
-RexTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
-{
     refresh();
 }
 

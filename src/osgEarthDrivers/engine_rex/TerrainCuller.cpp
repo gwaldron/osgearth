@@ -29,7 +29,8 @@ TerrainCuller::TerrainCuller() :
 _frame(0L),
 _context(0L),
 _camera(0L),
-_currentTileNode(0L)
+_currentTileNode(0L),
+_orphanedPassesDetected(0u)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
@@ -55,8 +56,6 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
     SurfaceNode* surface = tileNode->getSurfaceNode();
 
     const RenderBindings&  bindings = _context->getRenderBindings();
-
-    //UID uid = pass._sourceUID;
 
     // skip layers that are not visible:
     if (pass._imageLayer.valid() && !pass._imageLayer->getVisible())
@@ -90,8 +89,6 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         if (elevRaster)
         {
             float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
-            //float size = (float)elevRaster->s();
-            //tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
 
             // Compute an elevation texture sampling scale/bias so we sample elevation data on center
             // instead of on edge (as we do with color, etc.)
@@ -110,7 +107,8 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
     }
     else
     {
-        OE_WARN << LC << "Internal error - _terrain.layer(uid=" << uid << ") returned NULL\n";
+        ++_orphanedPassesDetected;
+        //OE_WARN << LC << "Internal error - _terrain.layer(uid=" << uid << ") returned NULL\n";
         return 0L;
     }
 }
@@ -158,8 +156,11 @@ TerrainCuller::apply(osg::Node& node)
 
                     // Add the draw command:
                     DrawTileCommand* cmd = addDrawCommand(layer->getUID(), *defaultPass, tileNode);
-                    cmd->_drawPatch = true;
-                    cmd->_drawCallback = layer->getDrawCallback();
+                    if (cmd)
+                    {
+                        cmd->_drawPatch = true;
+                        cmd->_drawCallback = layer->getDrawCallback();
+                    }
                 }
             }
 
@@ -192,8 +193,8 @@ TerrainCuller::apply(osg::Node& node)
                 
                 if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
-                    addDrawCommand(pass._sourceUID, pass, _currentTileNode);
-                    ++count;
+                    if (addDrawCommand(pass._sourceUID, pass, _currentTileNode))
+                        ++count;
                 }
             }
 

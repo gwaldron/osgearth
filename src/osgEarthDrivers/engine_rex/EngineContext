@@ -107,7 +107,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
 
         osg::ref_ptr<const Map>               _map;
-        //MapFrame                              _frame;
         osg::ref_ptr<TileNodeRegistry>        _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;

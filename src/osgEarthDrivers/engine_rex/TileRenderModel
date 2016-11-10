@@ -51,6 +51,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct RenderingPass
     {
         bool _valid;
+        bool _orphaned;
         UID _sourceUID;
         Samplers _samplers;
         int _surrogatePass;
@@ -60,11 +61,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<const PatchLayer> _patchLayer;
 
         RenderingPass() :
-            _valid(false), _sourceUID(-1), _surrogatePass(-1), _samplers(SamplerBinding::SHARED), _surrogateSamplers(0L) { }
+            _valid(false), _orphaned(false), _sourceUID(-1), _surrogatePass(-1), _samplers(SamplerBinding::SHARED), _surrogateSamplers(0L) { }
 
         /** Whether this constitues a valid rendering pass and should be included in a tile */
         bool valid() const {
             return _valid;
+        }
+        
+        /** Whether this pass is no longer usable because it's source layer disappeared from the map */
+        bool orphaned() const {
+            return _orphaned;
         }
 
         /** Whether this rendering pass should be inherited from parent to child node. */

@@ -137,7 +137,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void removeElevationLayer( ElevationLayer* layerRemoved );
         void toggleElevationLayer( ElevationLayer* layer );
 
-        void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
         void updateState(); 
@@ -183,6 +182,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<UnloaderGroup> _unloader;
         
         osg::ref_ptr<osg::Group> _terrain;
+
+        bool _renderModelUpdateRequired;
 
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;

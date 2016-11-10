@@ -85,6 +85,11 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _context = context;
 
     _key = key;
+    
+    // create a data load request for this new tile:
+    _loadRequest = new LoadTileData( this, context );
+    _loadRequest->setName( _key.str() );
+    _loadRequest->setTileKey( _key );
 
     // whether the stitch together normal maps for adjacent tiles.
     _stitchNormalMap = context->_options.normalizeEdges() == true;
@@ -822,32 +827,16 @@ TileNode::copyCommonSamplers()
 
 void
 TileNode::load(TerrainCuller* culler)
-{
-    // Access the context:
-    EngineContext* context = culler->getEngineContext();
-
-    // Create a new load request on demand:
-    if ( !_loadRequest.valid() )
-    {
-        Threading::ScopedMutexLock lock(_mutex);
-        if ( !_loadRequest.valid() )
-        {
-            _loadRequest = new LoadTileData( this, context );
-            _loadRequest->setName( _key.str() );
-            _loadRequest->setTileKey( _key );
-        }
-    }
-
-    
+{    
     // Construct the load PRIORITY: 0=lowest, 1=highest.
     
-    const SelectionInfo& si = context->getSelectionInfo();
+    const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
     int numLods = si.numLods();
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
-    if ( context->getOptions().highResolutionFirst() == false )
+    if ( _context->getOptions().highResolutionFirst() == false )
         lodPriority = (float)(numLods - lod);
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -863,7 +852,7 @@ TileNode::load(TerrainCuller* culler)
     //priority /= (float)(numLods+1); // GW: moved this to the PagerLoader.
 
     // Submit to the loader.
-    context->getLoader()->load( _loadRequest.get(), priority, *culler );
+    _context->getLoader()->load( _loadRequest.get(), priority, *culler );
 }
 
 void

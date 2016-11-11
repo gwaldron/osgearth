@@ -294,9 +294,6 @@ MapNode::init()
     {
         _terrainEngineContainer->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
 
-        //_terrainEngineContainer->getOrCreateStateSet()->addUniform(
-        //    Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
-
         _terrainEngineContainer->getOrCreateStateSet()->setMode(
             GL_LIGHTING,
             terrainOptions.enableLighting().value() ? 1 : 0 );
@@ -317,12 +314,8 @@ MapNode::init()
     }
 
     // make a group for the model layers.
-    // NOTE: for now, we are going to nullify any shader programs that occur above the model
-    // group, since it does not YET support shader composition. Programs defined INSIDE a
-    // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    //_models->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
     addChild( _models.get() );
 
     // a decorator for overlay models:
@@ -376,10 +369,6 @@ MapNode::init()
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
         stateset->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
-
-        //stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
-        //    GL_LIGHTING,
-        //    _mapNodeOptions.enableLighting().value() ? 1 : 0));
 
         stateset->setMode(
             GL_LIGHTING,

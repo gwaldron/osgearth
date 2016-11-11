@@ -34,8 +34,10 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 #include <osgUtil/RenderBin>
+#include <set>
 
 #define OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER "OSGEARTH_TERRAIN_ENGINE"
+
 
 namespace osgUtil {
     class CullVisitor;
@@ -75,15 +77,15 @@ namespace osgEarth
          * Creates a new data model for a terrain tile, calling any registered
          * CreateTileModelCallbacks before returning the new object.
          *
-         * @param frame Map frame from which to create the new tile model
-         * @param key   Key for which to create the new tile model
-         * @param modelStore Optional interface for accessing other previously
-         *                   created tile models (see TerrainTileModelFactory)
+         * @param frame  Map frame from which to create the new tile model
+         * @param key    Key for which to create the new tile model
+         * @param layers UIDs of layers to fetch data for; NULL => all layers
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             ProgressCallback*            progress ) =0;
 
         
@@ -191,6 +193,7 @@ namespace osgEarth
         TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             ProgressCallback*            progress );
 
         void notifyOfTerrainTileNodeCreation(

@@ -40,6 +40,7 @@ _heightFieldCache( true, 128 )
 TerrainTileModel*
 TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TileKey&                   key,
+                                         const CreateTileModelFilter&     filter,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
@@ -49,15 +50,15 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    addImageLayers(model.get(), frame, key, progress);
+    addImageLayers(model.get(), frame, key, filter, progress);
 
-    addPatchLayers(model.get(), frame, key, progress);
+    addPatchLayers(model.get(), frame, key, filter, progress);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
-        addElevation( model.get(), frame, key, border, progress );
+        addElevation( model.get(), frame, key, filter, border, progress );
     }
 
     if ( requirements == 0L || requirements->normalTexturesRequired() )
@@ -73,6 +74,7 @@ void
 TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                                         const MapFrame&   frame,
                                         const TileKey&    key,
+                                        const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_image_layers);
@@ -88,7 +90,13 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()) )
+        if (!filter.accept(layer))
+            continue;
+
+        if (!layer->getEnabled())
+            continue;
+
+        if (layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
         {
             osg::Texture* tex = 0L;
 
@@ -144,6 +152,7 @@ void
 TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
                                         const MapFrame&   frame,
                                         const TileKey&    key,
+                                        const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_patch_layers);
@@ -157,8 +166,13 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     {
         PatchLayer* layer = i->get();
 
-        if (layer->getEnabled() &&
-            (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->accept(key))) //&& layer->isKeyInRange(key) )
+        if (!filter.accept(layer))
+            continue;
+
+        if (!layer->getEnabled())
+            continue;
+
+        if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->accept(key))
         {
             PatchLayer::TileData* tileData = layer->createTileData(key);
             if (tileData)
@@ -181,11 +195,15 @@ void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
+                                      const CreateTileModelFilter& filter,
                                       unsigned                     border,
                                       ProgressCallback*            progress)
 {    
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
+
+    if (!filter.empty() && !filter.elevation().isSetTo(true))
+        return;
 
     const MapInfo& mapInfo = frame.getMapInfo();
 
@@ -235,30 +253,33 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 }
 
 void
-TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
-                                      const MapFrame&              frame,
-                                      const TileKey&               key,
-                                      ProgressCallback*            progress)
+TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
+                                      const MapFrame&   frame,
+                                      const TileKey&    key,
+                                      ProgressCallback* progress)
 {
     OE_START_TIMER(fetch_normalmap);
 
-    const osgEarth::ElevationInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
-
-    // Can only generate the normal map if the center heightfield was built:
-    osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
-        model->heightFields(),
-        key.getProfile()->getSRS() );
-
-    if (image.valid())
+    if (model->elevationModel().valid())
     {
-        TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-        layerModel->setName( "oe_normal_map" );
+        const osgEarth::ElevationInterpolation& interp =
+            frame.getMapOptions().elevationInterpolation().get();
 
-        // Made an image, so store this as a texture with no matrix.
-        osg::Texture* texture = createNormalTexture( image );
-        layerModel->setTexture( texture );
-        model->normalModel() = layerModel;
+        // Can only generate the normal map if the center heightfield was built:
+        osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
+            model->heightFields(),
+            key.getProfile()->getSRS() );
+
+        if (image.valid())
+        {
+            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+            layerModel->setName( "oe_normal_map" );
+
+            // Made an image, so store this as a texture with no matrix.
+            osg::Texture* texture = createNormalTexture( image );
+            layerModel->setTexture( texture );
+            model->normalModel() = layerModel;
+        }
     }
 
     if (progress)

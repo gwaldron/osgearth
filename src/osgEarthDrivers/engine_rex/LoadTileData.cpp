@@ -59,7 +59,8 @@ LoadTileData::invoke()
         // Assemble all the components necessary to display this tile
         _dataModel = _context->getEngine()->createTileModel(
             localFrame,
-            tilenode->getKey(),
+            tilenode->getKey(),           
+            _filter,
             progress.get() ); // progress
     }
 }

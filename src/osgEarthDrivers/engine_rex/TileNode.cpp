@@ -828,8 +828,6 @@ TileNode::copyCommonSamplers()
 void
 TileNode::load(TerrainCuller* culler)
 {    
-    // Construct the load PRIORITY: 0=lowest, 1=highest.
-    
     const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
     int numLods = si.numLods();

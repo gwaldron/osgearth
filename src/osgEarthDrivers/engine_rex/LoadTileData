@@ -51,6 +51,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         EngineContext* _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
         TileRenderModel _renderModel;
+        CreateTileModelFilter _filter;
 
         virtual ~LoadTileData() { }
     };

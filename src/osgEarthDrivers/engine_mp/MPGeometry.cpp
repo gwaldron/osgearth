@@ -632,7 +632,11 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     }
 
     // dispatch any attributes that are bound overall
+#if OSG_VERSION_LESS_THAN(3,5,6)
     dispatchers.dispatch(BIND_OVERALL,0);
+#else
+    dispatchers.dispatch(0);
+#endif
     state.lazyDisablingOfVertexAttributes();
 
 

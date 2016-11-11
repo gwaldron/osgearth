@@ -128,48 +128,6 @@ namespace
 
 }
 
-//---------------------------------------------------------------------------
-
-#if 0
-static Threading::ReadWriteMutex s_engineNodeCacheMutex;
-//Caches the engines that have been created
-typedef std::map<UID, osg::observer_ptr<RexTerrainEngineNode> > EngineNodeCache;
-
-static
-EngineNodeCache& getEngineNodeCache()
-{
-    static EngineNodeCache s_cache;
-    return s_cache;
-}
-
-void
-RexTerrainEngineNode::registerEngine(RexTerrainEngineNode* engineNode)
-{
-    Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
-    getEngineNodeCache()[engineNode->_uid] = engineNode;
-    OE_DEBUG << LC << "Registered engine " << engineNode->_uid << std::endl;
-}
-
-// since this method is called in a database pager thread, we use a ref_ptr output
-// parameter to avoid the engine node being destructed between the time we 
-// return it and the time it's accessed; this could happen if the user removed the
-// MapNode from the scene during paging.
-void
-RexTerrainEngineNode::getEngineByUID( UID uid, osg::ref_ptr<RexTerrainEngineNode>& output )
-{
-    Threading::ScopedReadLock sharedLock( s_engineNodeCacheMutex );
-    EngineNodeCache::const_iterator k = getEngineNodeCache().find( uid );
-    if (k != getEngineNodeCache().end())
-        output = k->second.get();
-}
-
-UID
-RexTerrainEngineNode::getUID() const
-{
-    return _uid;
-}
-#endif
-
 //------------------------------------------------------------------------
 
 RexTerrainEngineNode::ElevationChangedCallback::ElevationChangedCallback( RexTerrainEngineNode* terrain ):
@@ -321,16 +279,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _unloader->setThreshold( _terrainOptions.expirationThreshold().get() );
     _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
-    
-#if 0
-    // handle an already-established map profile:
-    MapInfo mapInfo( map );
-    if ( _update_mapf->getProfile() )
-    {
-        // NOTE: this will initialize the map with the startup layers
-        onMapInfoEstablished( mapInfo );
-    }
-#endif
 
     // install a layer callback for processing further map actions:
     map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );

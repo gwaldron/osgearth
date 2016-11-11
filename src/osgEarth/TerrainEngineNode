@@ -169,10 +169,10 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        /** Adds a tile patch callback. */
+        /** @deprecated Adds a tile patch callback. */
         virtual void addTilePatchCallback(TilePatchCallback*);
 
-        /** Removes a tile patch callback. */
+        /** @deprecated Removes a tile patch callback. */
         virtual void removeTilePatchCallback(TilePatchCallback*);
 
         /** Gets the ComputeRangeCallback for this TerrainEngineNode */

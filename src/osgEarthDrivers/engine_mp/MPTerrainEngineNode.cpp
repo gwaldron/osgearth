@@ -55,9 +55,6 @@ using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 
-// TODO: bins don't work with SSDK. No idea why. Disable until further notice.
-//#define USE_RENDER_BINS 1
-
 //------------------------------------------------------------------------
 
 namespace
@@ -124,54 +121,6 @@ namespace
         }
     };
 
-#if 0
-    class NormalTexInstaller : public TerrainEngine::NodeCallback
-    {
-    public:
-        NormalTexInstaller(int unit) : _unit(unit) { }
-        
-    public: // TileNodeCallback
-        void operator()(const TileKey& key, osg::Node* node)
-        {
-            TileNode* tile = osgEarth::findTopMostNodeOfType<TileNode>(node);
-            if ( !tile )
-            {
-                OE_WARN << LC << "No tile " << key.str() << "\n";
-                return;
-            }
-
-            if ( !tile->getTileModel() )
-            {
-                OE_WARN << LC << "No tile model available for " << key.str() << "\n";
-                return;
-            }
-            
-            osg::StateSet* ss = node->getOrCreateStateSet();
-            osg::Texture* tex = tile->getTileModel()->getNormalTexture();
-            if ( tex )
-            {
-                ss->setTextureAttribute(_unit, tex);
-            }
-
-            osg::RefMatrixf* mat = tile->getModel()->getNormalTextureMatrix();
-            osg::Matrixf fmat;
-            if ( mat )
-            {
-                fmat = osg::Matrixf(*mat);
-            }
-            else
-            {
-                // special marker indicating that there's no valid normal texture.
-                fmat(0,0) = 0.0f;
-            }
-
-            ss->addUniform(new osg::Uniform("oe_tile_normalTexMatrix", fmat) );
-        }
-
-    private:
-        int _unit;
-    };
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -246,23 +195,6 @@ _stateUpdateRequired  ( false )
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
 
-#ifdef USE_RENDER_BINS
-    // Register our render bins protos.
-    {
-        // Mutex because addRenderBinPrototype isn't thread-safe.
-        Threading::ScopedMutexLock lock(_renderBinMutex);
-
-        // generate uniquely named render bin prototypes for this engine:
-        _terrainRenderBinPrototype = new TerrainBin();
-        _terrainRenderBinPrototype->setName( Stringify() << "oe.TerrainBin." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _terrainRenderBinPrototype->getName(), _terrainRenderBinPrototype.get() );
-
-        _payloadRenderBinPrototype = new PayloadBin();
-        _payloadRenderBinPrototype->setName( Stringify() << "oe.PayloadBin." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _payloadRenderBinPrototype->getName(), _payloadRenderBinPrototype.get() );
-    }
-#endif
-
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
 
@@ -277,11 +209,6 @@ _stateUpdateRequired  ( false )
 
 MPTerrainEngineNode::~MPTerrainEngineNode()
 {
-#ifdef USE_RENDER_BINS
-    osgUtil::RenderBin::removeRenderBinPrototype( _terrainRenderBinPrototype.get() );
-    osgUtil::RenderBin::removeRenderBinPrototype( _payloadRenderBinPrototype.get() );
-#endif
-
     if ( _update_mapf )
     {
         delete _update_mapf;
@@ -400,20 +327,6 @@ MPTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
     // First invoke the base class:
     TerrainEngineNode::setMap(map, options);
-
-#if 0
-void
-MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
-{
-    TerrainEngineNode::preInitialize( map, options );
-    //nop.
-}
-
-void
-MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
-{
-    TerrainEngineNode::postInitialize( map, options );
-#endif
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
@@ -565,11 +478,7 @@ MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 osg::StateSet*
 MPTerrainEngineNode::getTerrainStateSet()
 {
-#ifdef USE_RENDER_BINS
-    return _terrainRenderBinPrototype->getStateSet();
-#else
     return _terrain ? _terrain->getOrCreateStateSet() : 0L;
-#endif
 }
 
 namespace
@@ -627,13 +536,8 @@ MPTerrainEngineNode::dirtyTerrain()
     // Clear out the tile registry:
     _liveTiles->releaseAll(_releaser.get());
 
-
-#ifdef USE_RENDER_BINS
-    _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
-    _terrain->getOrCreateStateSet()->setNestRenderBins(false);
-#else
+    // minimizes depth overdraw
     _terrain->getOrCreateStateSet()->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
-#endif
 
     this->addChild( _terrain );
     // Build the first level of the terrain.

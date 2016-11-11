@@ -43,7 +43,6 @@ namespace osgEarth_engine_byo
     public: // internal TerrainEngineNode
 
         void setMap(const Map* map, const TerrainOptions& options);
-        //virtual void preInitialize( const Map* map, const TerrainOptions& options );
         const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
 
     private:

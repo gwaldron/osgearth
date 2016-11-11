@@ -276,6 +276,15 @@ MapNode::init()
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
+    // make a group for the model layers.
+    // NOTE: for now, we are going to nullify any shader programs that occur above the model
+    // group, since it does not YET support shader composition. Programs defined INSIDE a
+    // model layer will still work OK though.
+    _models = new osg::Group();
+    _models->setName( "osgEarth::MapNode.modelsGroup" );
+    //_models->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
+    addChild( _models.get() );
+
     // load and attach the terrain engine, but don't initialize it until we need it
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
 
@@ -315,15 +324,6 @@ MapNode::init()
     {
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
     }
-
-    // make a group for the model layers.
-    // NOTE: for now, we are going to nullify any shader programs that occur above the model
-    // group, since it does not YET support shader composition. Programs defined INSIDE a
-    // model layer will still work OK though.
-    _models = new osg::Group();
-    _models->setName( "osgEarth::MapNode.modelsGroup" );
-    //_models->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
-    addChild( _models.get() );
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();

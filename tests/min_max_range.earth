@@ -18,4 +18,8 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
+    <options>
+        <terrain attenuation_distance="6000000"/>
+    </options>
+    
 </map>

@@ -44,10 +44,12 @@ BYOTerrainEngineNode::~BYOTerrainEngineNode()
 }
 
 void
-BYOTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
+BYOTerrainEngineNode::setMap( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::preInitialize( map, options );
+    TerrainEngineNode::setMap( map, options );
+
     BYOTerrainEngineOptions myoptions(options);
+
     if ( myoptions.getNode() )
     {
         this->addChild( myoptions.getNode() );

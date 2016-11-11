@@ -428,6 +428,9 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
+    // Start a batch update of the map:
+    map->beginUpdate();
+
     // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
@@ -475,6 +478,9 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             addExtension( *i, mapNode.get() );
         }
     }
+
+    // Complete the batch update of the map
+    map->endUpdate();
 
     // return the topmost parent of the mapnode. It's possible that
     // an extension added parents!

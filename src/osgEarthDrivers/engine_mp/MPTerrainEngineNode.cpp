@@ -396,6 +396,13 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 }
 
 void
+MPTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
+{
+    // First invoke the base class:
+    TerrainEngineNode::setMap(map, options);
+
+#if 0
+void
 MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
     TerrainEngineNode::preInitialize( map, options );
@@ -406,6 +413,7 @@ void
 MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
 {
     TerrainEngineNode::postInitialize( map, options );
+#endif
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread

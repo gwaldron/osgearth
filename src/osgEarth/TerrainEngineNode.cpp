@@ -101,7 +101,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 TextureCompositor*
 TerrainEngineNode::getResources() const
 {
-    return _texCompositor.get();
+    return _textureResourceTracker.get();
 }
 
 void
@@ -185,7 +185,66 @@ TerrainEngineNode::dirtyTerrain()
     requestRedraw();
 }
 
+void
+TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
+{
+    if (!map) return;
 
+    _map = map;
+    
+    // Create a terrain utility interface. This interface can be used
+    // to query the in-memory terrain graph, subscribe to tile events, etc.
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
+
+    // Set up the CSN values. We support this because some manipulators look for it,
+    // but osgEarth itself doesn't use it.
+    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
+    
+    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
+    if ( !_map->isGeocentric() )
+        this->setEllipsoidModel( NULL );
+    
+    // Install an object to manage texture image unit usage:
+    _textureResourceTracker = new TextureCompositor();
+    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+    for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+        _textureResourceTracker->setTextureImageUnitOffLimits( *i );
+
+    // Register a callback so we can process further map model changes
+    _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );
+
+    // Force a render bin if specified in the options
+    if ( options.binNumber().isSet() )
+    {
+        osg::StateSet* set = getOrCreateStateSet();
+        set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
+    }
+   
+    // This is the object that creates the data model for each terrain tile.
+    _tileModelFactory = new TerrainTileModelFactory(options);
+
+    // Manually trigger the map callbacks the first time:
+    if (_map->getProfile())
+        onMapInfoEstablished(MapInfo(_map.get()));
+
+    // Create a layer controller. This object affects the uniforms
+    // that control layer appearance properties
+    _imageLayerController = new ImageLayerController(_map.get(), this);
+
+    // register the layer Controller it with all pre-existing image layers:
+    MapFrame mapf(_map.get(), Map::IMAGE_LAYERS);
+    ImageLayerVector imageLayers;
+    mapf.getLayers(imageLayers);
+
+    for (ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i)
+    {
+        i->get()->addCallback(_imageLayerController.get());
+    }
+
+    _initStage = INIT_POSTINIT_COMPLETE;
+}
+
+#if 0
 void
 TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
@@ -256,6 +315,7 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
 
     _initStage = INIT_POSTINIT_COMPLETE;
 }
+#endif
 
 osg::BoundingSphere
 TerrainEngineNode::computeBound() const
@@ -295,18 +355,15 @@ TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 void
 TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
-    if ( _initStage == INIT_POSTINIT_COMPLETE )
+    if (change.getAction() == MapModelChange::ADD_LAYER &&
+        change.getImageLayer() != 0L)
     {
-        if (change.getAction() == MapModelChange::ADD_LAYER &&
-            change.getImageLayer() != 0L)
-        {
-            change.getImageLayer()->addCallback( _imageLayerController.get() );
-        }
-        else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
-            change.getImageLayer() != 0L)
-        {
-            change.getImageLayer()->removeCallback( _imageLayerController.get() );
-        }
+        change.getImageLayer()->addCallback( _imageLayerController.get() );
+    }
+    else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
+        change.getImageLayer() != 0L)
+    {
+        change.getImageLayer()->removeCallback( _imageLayerController.get() );
     }
 
     // notify that a redraw is required.

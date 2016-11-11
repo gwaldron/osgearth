@@ -32,7 +32,7 @@
 #include <set>
 
 namespace osgEarth {
-    class TerrainEngine;
+    class TerrainEngineNode;
 }
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -171,7 +171,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class PagerLoader : public LoaderGroup
     {
     public:
-        PagerLoader(TerrainEngine* engine);
+        PagerLoader(TerrainEngineNode* engine);
 
         /** Tell the loader the maximum LOD so it can properly scale the priorities. */
         void setNumLODs(unsigned num);
@@ -226,7 +226,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //typedef std::set<RefRequest, SortRequest> MergeQueue;
         typedef std::multiset<RefRequest, SortRequest> MergeQueue;
 
-        UID              _engineUID;
+        //UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
         MergeQueue       _mergeQueue;  

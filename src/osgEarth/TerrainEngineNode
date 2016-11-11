@@ -260,9 +260,12 @@ namespace osgEarth
         friend class MapNode;
         friend class TerrainEngineNodeFactory;
 
+        virtual void setMap(const Map* map, const TerrainOptions& options);
+
         /** Attaches a map to the terrain engine and initialized it.*/
-        virtual void preInitialize( const Map* map, const TerrainOptions& options );
-        virtual void postInitialize( const Map* map, const TerrainOptions& options );
+        /** These are going to be deprecated... see setMap instead */
+        //virtual void preInitialize( const Map* map, const TerrainOptions& options );
+        //virtual void postInitialize( const Map* map, const TerrainOptions& options );
 
         // signals that a redraw is needed because something changed.
         virtual void requestRedraw();
@@ -271,8 +274,7 @@ namespace osgEarth
         // shaders, state, etc.
         virtual void dirtyState() { }
 
-        // allow subclasses direct access for convenience.
-        osg::ref_ptr<TextureCompositor> _texCompositor;
+        osg::ref_ptr<TextureCompositor> _textureResourceTracker;
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;

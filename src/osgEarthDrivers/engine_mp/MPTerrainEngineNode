@@ -79,8 +79,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public: // internal TerrainEngineNode
 
+        void setMap(const Map* map, const TerrainOptions& options);
+#if 0
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
         virtual void postInitialize( const Map* map, const TerrainOptions& options );
+#endif
         virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
         virtual osg::BoundingSphere computeBound() const;
 

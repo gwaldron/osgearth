@@ -55,11 +55,11 @@ namespace
         RexTerrainEngineNodeMapCallbackProxy(RexTerrainEngineNode* node) : _node(node) { }
         osg::observer_ptr<RexTerrainEngineNode> _node;
 
-        void onMapInfoEstablished( const MapInfo& mapInfo ) {
-            osg::ref_ptr<RexTerrainEngineNode> node;
-            if ( _node.lock(node) )
-                node->onMapInfoEstablished( mapInfo );
-        }
+        //void onMapInfoEstablished( const MapInfo& mapInfo ) {
+        //    osg::ref_ptr<RexTerrainEngineNode> node;
+        //    if ( _node.lock(node) )
+        //        node->onMapInfoEstablished( mapInfo );
+        //}
 
         void onMapModelChanged( const MapModelChange& change ) {
             osg::ref_ptr<RexTerrainEngineNode> node;
@@ -78,11 +78,17 @@ namespace
     {
         const MapFrame& _frame;
         unsigned _count;
+        bool _reload;
 
-        UpdateRenderModels(const MapFrame& frame) : _frame(frame), _count(0u)
+        UpdateRenderModels(const MapFrame& frame) : _frame(frame), _count(0u), _reload(false)
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
+        }
+
+        void setReloadData(bool value)
+        {
+            _reload = value;
         }
 
         void apply(osg::Node& node)
@@ -111,12 +117,20 @@ namespace
                     _count++;
                 }
             }
+
+            // todo. Might be better to use a Revision here though.
+            if (_reload)
+            {
+                tileNode->setDirty(true);
+            }
         }
     };
+
 }
 
 //---------------------------------------------------------------------------
 
+#if 0
 static Threading::ReadWriteMutex s_engineNodeCacheMutex;
 //Caches the engines that have been created
 typedef std::map<UID, osg::observer_ptr<RexTerrainEngineNode> > EngineNodeCache;
@@ -154,6 +168,7 @@ RexTerrainEngineNode::getUID() const
 {
     return _uid;
 }
+#endif
 
 //------------------------------------------------------------------------
 
@@ -181,6 +196,9 @@ _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false )
 {
+    // Necessary for pager object data
+    this->setName("osgEarth.RexTerrainEngineNode");
+
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
 
@@ -213,23 +231,16 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 }
 
 void
-RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
+RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
+    if (!map) return;
+
+    // Invoke the base class first:
+    TerrainEngineNode::setMap(map, options);
+
     // Force the mercator fast path off, since REX does not support it yet.
     TerrainOptions myOptions = options;
     myOptions.enableMercatorFastPath() = false;
-
-    TerrainEngineNode::preInitialize( map, myOptions );
-}
-
-void
-RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
-{
-    // Force the mercator fast path off, since REX does not support it yet.
-    TerrainOptions myOptions = options;
-    myOptions.enableMercatorFastPath() = false;
-
-    TerrainEngineNode::postInitialize( map, myOptions );
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
@@ -311,6 +322,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
     
+#if 0
     // handle an already-established map profile:
     MapInfo mapInfo( map );
     if ( _update_mapf->getProfile() )
@@ -318,6 +330,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         // NOTE: this will initialize the map with the startup layers
         onMapInfoEstablished( mapInfo );
     }
+#endif
 
     // install a layer callback for processing further map actions:
     map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );
@@ -337,11 +350,11 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     _batchUpdateInProgress = false;
 
-    // set up the initial shaders
-    updateState();
+    // set up the initial graph
+    refresh();
 
     // register this instance to the osgDB plugin can find it.
-    registerEngine( this );
+    //registerEngine( this );
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
@@ -387,11 +400,11 @@ RexTerrainEngineNode::refresh(bool forceDirty)
     }
 }
 
-void
-RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
-{
-    dirtyTerrain();
-}
+//void
+//RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
+//{
+//    dirtyTerrain();
+//}
 
 osg::StateSet*
 RexTerrainEngineNode::getSurfaceStateSet()
@@ -484,7 +497,7 @@ RexTerrainEngineNode::dirtyTerrain()
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
-    OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
+    OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
 
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
@@ -507,7 +520,6 @@ RexTerrainEngineNode::dirtyTerrain()
 
         // And load the tile's data synchronously (only for root tiles).
         tileNode->loadSync( context );
-
     }
 
     updateState();
@@ -961,7 +973,11 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // non-image tile layer. Keep track of these..
         }
 
-        refresh();
+        // Update the existing render models, and trigger a data reload.
+        // Later we can limit the reload to an update of only the new data.
+        UpdateRenderModels updateModels(*_update_mapf);
+        updateModels.setReloadData(true);
+        _terrain->accept(updateModels);
     }
 }
 

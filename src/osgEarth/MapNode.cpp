@@ -305,7 +305,7 @@ MapNode::init()
         // initialize it's CoordinateSystemNode. This is necessary in order to support
         // manipulators and to set up the texture compositor prior to frame-loop
         // initialization.
-        _terrainEngine->preInitialize( _map.get(), terrainOptions );
+        _terrainEngine->setMap( _map.get(), terrainOptions );
         _terrainEngineContainer->addChild( _terrainEngine );
     }
     else
@@ -483,14 +483,15 @@ MapNode::getTerrain() const
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
-    if ( !_terrainEngineInitialized && _terrainEngine )
-    {
-        _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
-        MapNode* me = const_cast< MapNode* >(this);
-        me->_terrainEngineInitialized = true;
-        me->dirtyBound();
-    }
-    return _terrainEngine;
+    return _terrainEngine.get();
+    //if ( !_terrainEngineInitialized && _terrainEngine )
+    //{
+    //    _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
+    //    MapNode* me = const_cast< MapNode* >(this);
+    //    me->_terrainEngineInitialized = true;
+    //    me->dirtyBound();
+    //}
+    //return _terrainEngine;
 }
 
 void

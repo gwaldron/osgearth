@@ -115,7 +115,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 else notFound++;
             }
 
-            OE_NOTICE << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "\n";
+            OE_DEBUG << LC << "Total=" << _parentKeys.size() << "; threshold=" << _threshold << "; unloaded=" << unloaded << "; notDormant=" << notDormant << "; notFound=" << notFound << "\n";
             _parentKeys.clear();
         }
     }

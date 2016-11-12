@@ -45,8 +45,6 @@ static Grid* s_elevationBox;
 static Grid* s_modelBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
-//static MapModelChange::ActionType s_changeAction;
-//static Layer* s_changeLayer;
 
 //------------------------------------------------------------------------
 
@@ -456,7 +454,7 @@ updateControlPanel()
 
         for( unsigned int i=0; i<mapf2.elevationLayers().size(); ++i )
         {
-            createLayerItem( s_elevationBox, row++, -1, -1, elevationLayers.at(i), false );
+            createLayerItem( s_elevationBox, row++, -1, -1, mapf2.elevationLayers().at(i), false );
         }
     }
 

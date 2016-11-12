@@ -256,9 +256,17 @@ Geometry* decodePolygon(const mapnik::vector::tile_feature& feature, const  Tile
                 else if (orientation == Geometry::ORIENTATION_CCW)
                 // Counter clockwise means a hole, add it to the existing polygon.
                 {
-                    // osgearth orientations are reversed from mvt
-                    currentRing->rewind(Geometry::ORIENTATION_CW);
-                    currentPolygon->getHoles().push_back( currentRing );
+                    if (currentPolygon.valid())
+                    {
+                        // osgearth orientations are reversed from mvt
+                        currentRing->rewind(Geometry::ORIENTATION_CW);
+                        currentPolygon->getHoles().push_back( currentRing );
+                    }
+                    else
+                    {
+                        // this means we encountered a "hole" without a parent outer ring,
+                        // discard for now -gw
+                    }
                 }
 
                 // Start a new ring

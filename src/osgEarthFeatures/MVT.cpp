@@ -33,6 +33,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+#define LC "[MVT] "
+
 #define CMD_BITS 3
 #define CMD_MOVETO 1
 #define CMD_LINETO 2
@@ -266,6 +268,7 @@ Geometry* decodePolygon(const mapnik::vector::tile_feature& feature, const  Tile
                     {
                         // this means we encountered a "hole" without a parent outer ring,
                         // discard for now -gw
+                        OE_INFO << LC << "Discarding improperly wound polygon (hole without an outer ring)\n";
                     }
                 }
 

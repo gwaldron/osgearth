@@ -37,9 +37,6 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
-    class TileNodeRegistry; // for UnloaderGroup
-
-
     /**
      * Interface for a utility to satisty Tile loading requests.
      */

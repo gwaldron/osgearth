@@ -79,11 +79,17 @@ namespace
         const MapFrame& _frame;
         unsigned _count;
         bool _reload;
+        std::set<UID> _layersToLoad;
 
         UpdateRenderModels(const MapFrame& frame) : _frame(frame), _count(0u), _reload(false)
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
+        }
+
+        std::set<UID>& layersToLoad()
+        {
+            return _layersToLoad;
         }
 
         void setReloadData(bool value)
@@ -121,6 +127,12 @@ namespace
             // todo. Might be better to use a Revision here though.
             if (_reload)
             {
+                tileNode->setDirty(true);
+            }
+
+            if (!_layersToLoad.empty())
+            {
+                tileNode->newLayers().insert(_layersToLoad.begin(), _layersToLoad.end());
                 tileNode->setDirty(true);
             }
         }
@@ -300,9 +312,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     // set up the initial graph
     refresh();
-
-    // register this instance to the osgDB plugin can find it.
-    //registerEngine( this );
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
@@ -924,7 +933,14 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         // Update the existing render models, and trigger a data reload.
         // Later we can limit the reload to an update of only the new data.
         UpdateRenderModels updateModels(*_update_mapf);
-        updateModels.setReloadData(true);
+
+        ImageLayerVector imageLayers;
+        _update_mapf->getLayers(imageLayers);
+        if (imageLayers.size() == 1)
+            updateModels.setReloadData(true);
+        else
+            updateModels.layersToLoad().insert(tileLayer->getUID());
+
         _terrain->accept(updateModels);
     }
 }

@@ -34,6 +34,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         LoadTileData(TileNode* tilenode, EngineContext* factory);
 
+        CreateTileModelFilter& filter() { return _filter; }
+
     public: // Loader::Request
 
         /** Fetches the data for the tile node. */

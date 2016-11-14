@@ -279,6 +279,14 @@ void
 TileNode::setDirty(bool value)
 {
     _dirty = value;
+    
+    if (_dirty == false && !_newLayers.empty())
+    {
+        _loadRequest->filter().clear();
+        _loadRequest->filter().layers() = _newLayers;
+        _newLayers.clear();
+        _dirty = true;
+    }
 }
 
 void

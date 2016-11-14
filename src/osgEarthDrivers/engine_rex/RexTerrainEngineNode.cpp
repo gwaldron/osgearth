@@ -934,12 +934,22 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         // Later we can limit the reload to an update of only the new data.
         UpdateRenderModels updateModels(*_update_mapf);
 
+#if 0
+        // This uses the loaddata filter approach which will only request
+        // data for one layer. It mostly works but not 100%; see hires-insets
+        // as an example. Removing the world layer and re-adding it while
+        // zoomed in doesn't result in all tiles reloading. Possibly a
+        // synchronization issue.
         ImageLayerVector imageLayers;
         _update_mapf->getLayers(imageLayers);
+
         if (imageLayers.size() == 1)
             updateModels.setReloadData(true);
         else
             updateModels.layersToLoad().insert(tileLayer->getUID());
+#else
+        updateModels.setReloadData(true);
+#endif
 
         _terrain->accept(updateModels);
     }

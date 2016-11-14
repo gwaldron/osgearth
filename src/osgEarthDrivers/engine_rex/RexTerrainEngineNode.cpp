@@ -580,7 +580,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
 
-//        OE_INFO << "CULL:\n";
+        //OE_INFO << "CULL:\n";
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
@@ -592,7 +592,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 lastLayer->_order = -1;
 
                 // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
-                if (lastLayer->_layer && lastLayer->_layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                if (lastLayer->_renderType == Layer::RENDERTYPE_TILE)
                 {
                     lastLayer->_order = order++;
 
@@ -606,7 +606,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                     surfaceStateSetPushed = false;
                 }                    
 
-//                OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << std::endl;
+                //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
 
                 cv->apply(*lastLayer);
             }
@@ -1056,6 +1056,8 @@ RexTerrainEngineNode::updateState()
             package.load(terrainVP, package.ENGINE_VERT_MODEL);
             
             surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
+
+            surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
 
             if (_terrainOptions.enableBlending() == true)
             {

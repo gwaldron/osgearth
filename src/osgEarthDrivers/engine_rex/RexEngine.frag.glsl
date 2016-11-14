@@ -5,7 +5,7 @@
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_IMAGERY, OE_TERRAIN_BLEND_IMAGERY)
+#pragma import_defines(OE_TERRAIN_RENDER_IMAGERY, OE_TERRAIN_MORPH_IMAGERY, OE_TERRAIN_BLEND_IMAGERY)
 
 uniform bool      oe_isPickCamera;
 uniform sampler2D oe_layer_tex;
@@ -27,6 +27,10 @@ in float oe_layer_rangeOpacity;
 
 void oe_rexEngine_frag(inout vec4 color)
 {
+#ifndef OE_TERRAIN_RENDER_IMAGERY
+    return;
+#endif
+
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
 	vec4 texelSelf = texture(oe_layer_tex, oe_layer_texc.st);
 

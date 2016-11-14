@@ -71,7 +71,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         // install everything we need in the Draw Command:
         tile._colorSamplers = pass ? &pass->_samplers : 0L;
         tile._sharedSamplers = &model->_sharedSamplers;
-        //tile._pass = &pass;
         tile._matrix = surface->getMatrix();
         tile._modelViewMatrix = *this->getModelViewMatrix();
         tile._keyValue = tileNode->getTileKeyValue();
@@ -107,12 +106,14 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
 
         return &tile;
     }
-    else
+    else if (pass)
     {
+        // The pass exists but it's layer doesn't - remember this so we can run
+        // a visitor to clean up the rendering models.
         ++_orphanedPassesDetected;
-        //OE_WARN << LC << "Internal error - _terrain.layer(uid=" << uid << ") returned NULL\n";
-        return 0L;
     }
+
+    return 0L;
 }
 
 void
@@ -125,6 +126,7 @@ TerrainCuller::apply(osg::Node& node)
     if (tileNode)
     {
         _currentTileNode = tileNode;
+        _currentTileDrawCommands = 0u;
         
         if (!_terrain.patchLayers().empty())
         {
@@ -158,6 +160,7 @@ TerrainCuller::apply(osg::Node& node)
                     {
                         cmd->_drawPatch = true;
                         cmd->_drawCallback = layer->getDrawCallback();
+                        ++_currentTileDrawCommands;
                     }
                 }
             }
@@ -180,9 +183,7 @@ TerrainCuller::apply(osg::Node& node)
             osg::Matrix mvm = *getModelViewMatrix();
             surface->computeLocalToWorldMatrix(mvm, this);
             pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
-
-            unsigned count = 0;
-            
+                        
             // First go through any legit rendering pass data in the Tile and
             // and add a DrawCommand for each.
             for (unsigned p = 0; p < renderModel._passes.size(); ++p)
@@ -192,7 +193,9 @@ TerrainCuller::apply(osg::Node& node)
                 if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
                     if (addDrawCommand(pass._sourceUID, &renderModel, &pass, _currentTileNode))
-                        ++count;
+                    {
+                        ++_currentTileDrawCommands;
+                    }
                 }
             }
 
@@ -201,7 +204,17 @@ TerrainCuller::apply(osg::Node& node)
             for (LayerVector::const_iterator i = _terrain.tileLayers().begin(); i != _terrain.tileLayers().end(); ++i)
             {
                 Layer* layer = i->get();
-                addDrawCommand(layer->getUID(), &renderModel, 0L, _currentTileNode);
+                if (addDrawCommand(layer->getUID(), &renderModel, 0L, _currentTileNode))
+                {
+                    ++_currentTileDrawCommands;
+                }
+            }
+
+            // If the culler added no draw commands for this tile... do something!
+            if (_currentTileDrawCommands == 0)
+            {
+                //OE_INFO << LC << "Adding blank render.\n";
+                addDrawCommand(-1, &renderModel, 0L, _currentTileNode);
             }
 
             popModelViewMatrix();

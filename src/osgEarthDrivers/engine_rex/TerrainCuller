@@ -43,6 +43,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         EngineContext* _context;
         osg::Camera* _camera;
         TileNode* _currentTileNode;
+        unsigned _currentTileDrawCommands;
         unsigned _orphanedPassesDetected;
 
     public:

@@ -80,6 +80,10 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
             }
         }
     }
+
+    // Include a "blank" layer for missing data.
+    LayerDrawable* blank = addLayerDrawable(0L);
+    blank->getOrCreateStateSet()->setDefine("OE_TERRAIN_RENDER_IMAGERY", osg::StateAttribute::OFF);
 }
 
 LayerDrawable*
@@ -94,7 +98,10 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
     ld->_order = _layerList.size() - 1;
     ld->_drawState = _drawState.get();
     if (layer)
+    {
         ld->setStateSet(layer->getStateSet());
+        ld->_renderType = layer->getRenderType();
+    }
 
     return ld;
 }

@@ -65,7 +65,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     private:
 
-        DrawTileCommand* addDrawCommand(UID sourceUID, const RenderingPass& pass, TileNode*);
+        DrawTileCommand* addDrawCommand(UID sourceUID, const TileRenderModel* model, const RenderingPass* pass, TileNode* node);
 
     };
 

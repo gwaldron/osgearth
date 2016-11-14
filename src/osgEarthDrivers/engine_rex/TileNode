@@ -173,8 +173,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Ensure that inherited data from the parent node is up to date. */
         void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
 
-        void copyCommonSamplers();
-
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;

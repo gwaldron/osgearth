@@ -623,6 +623,37 @@ GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
 }
 
 
+/**
+ * Gets the GeoExtent of the given filename.
+ */
+GeoExtent getGeoExtent(std::string& filename)
+{
+    GDALDataset* ds = (GDALDataset*)GDALOpen(filename.c_str(), GA_ReadOnly );
+    if (!ds)
+    {
+        return GeoExtent::INVALID;
+    }
+
+    // Get the geotransforms
+    double geotransform[6];
+    ds->GetGeoTransform(geotransform);
+
+    double minX, minY, maxX, maxY;
+
+    GDALApplyGeoTransform(geotransform, 0.0, ds->GetRasterYSize(), &minX, &minY);
+    GDALApplyGeoTransform(geotransform, ds->GetRasterXSize(), 0.0, &maxX, &maxY);
+
+    std::string srsString = ds->GetProjectionRef();
+    const SpatialReference* srs = SpatialReference::create(srsString);
+
+    GDALClose(ds);
+
+    GeoExtent ext(srs, minX, minY, maxX, maxY);
+    return ext;
+}
+
+
+
 class GDALTileSource : public TileSource
 {
 public:
@@ -769,7 +800,7 @@ public:
 
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
-                {                
+                {
                     ReadResult result = _cacheBin->readString( vrtKey, 0L);
                     if (result.succeeded())
                     {
@@ -932,7 +963,7 @@ public:
             }
         }
 
-     
+
         //Get the initial geotransform
         _srcDS->GetGeoTransform(_geotransform);
 
@@ -1076,6 +1107,9 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
         }
 
+
+
+
         OE_DEBUG << LC << INDENT << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
         if ( !profile )
@@ -1128,12 +1162,43 @@ public:
             OE_INFO << LC << INDENT << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
         }
 
+        // If the input dataset is a VRT, then get the individual files in the dataset and use THEM for the DataExtents.
+        // A VRT will create a potentially very large virtual dataset from sparse datasets, so using the extents from the underlying files
+        // will allow osgEarth to only create tiles where there is actually data.
+        DataExtentList dataExtents;
+        if (strcmp(_warpedDS->GetDriver()->GetDescription(), "VRT") == 0)
+        {
+            char **papszFileList = _warpedDS->GetFileList();
+            if (papszFileList != NULL)
+            {
+                for( int i = 0; papszFileList[i] != NULL; i++ )
+                {
+                    std::string file = papszFileList[i];
+                    GeoExtent ext = getGeoExtent(file);
+                    if (ext.isValid())
+                    {
+                        dataExtents.push_back(DataExtent(ext, 0, _maxDataLevel));
+                    }
+                }
+            }
+        }
+
+
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );
         // record the data extent in profile space:
         _extents = GeoExtent( srs, minX, minY, maxX, maxY);
         GeoExtent profile_extent = _extents.transform( profile->getSRS() );
 
-        getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
+        if (dataExtents.empty())
+        {
+            // Use the extents of the whole file.
+            getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
+        }
+        else
+        {
+            // Use the DataExtents from the subfiles of the VRT.
+            getDataExtents().insert(getDataExtents().end(), dataExtents.begin(), dataExtents.end());
+        }
 
         //Set the profile
         setProfile( profile );
@@ -1468,11 +1533,11 @@ public:
                 delete []green;
                 delete []blue;
                 delete []alpha;
-            }            
+            }
             else if (bandGray)
             {
                 if ( getOptions().coverage() == true )
-                {                    
+                {
                     GDALDataType gdalDataType = bandGray->GetRasterDataType();
                     int          gdalSampleSize;
                     GLenum       glDataType;
@@ -1500,14 +1565,14 @@ public:
                     }
 
                     // Create an un-normalized luminance image to hold coverage values.
-                    image = new osg::Image();                    
+                    image = new osg::Image();
                     image->allocateImage( tileSize, tileSize, 1, GL_LUMINANCE, glDataType );
                     image->setInternalTextureFormat( internalFormat );
                     ImageUtils::markAsUnNormalized( image, true );
                     memset(image->data(), 0, image->getImageSizeInBytes());
-                
-                    ImageUtils::PixelWriter write(image); 
-                    
+
+                    ImageUtils::PixelWriter write(image);
+
                     // initialize all coverage texels to NODATA. -gw
                     osg::Vec4 temp;
                     temp.r() = NO_DATA_VALUE;
@@ -1517,7 +1582,7 @@ public:
                             write(temp, s, t);
                         }
                     }
-                    
+
                     // coverage data; one channel data that is not subject to interpolated values
                     unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
                     memset(data, 0, target_width * target_height * gdalSampleSize);
@@ -1538,7 +1603,7 @@ public:
                             {
                                 unsigned char* ptr = &data[(src_col + src_row*target_width)*gdalSampleSize];
 
-                                float value = 
+                                float value =
                                     gdalSampleSize == 1 ? (float)(*ptr) :
                                     gdalSampleSize == 2 ? (float)*(unsigned short*)ptr :
                                     gdalSampleSize == 4 ? *(float*)ptr :
@@ -1563,7 +1628,7 @@ public:
 
                     delete [] data;
                 }
-                
+
                 else // greyscale image (not a coverage)
                 {
                     unsigned char *gray = new unsigned char[target_width * target_height];
@@ -1641,7 +1706,7 @@ public:
                 //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
                 //b/c interpolating pallete indexes doesn't make sense.
                 unsigned char *palette = new unsigned char[target_width * target_height];
-                
+
                 image = new osg::Image;
 
                 if ( _options.coverage() == true )
@@ -1681,7 +1746,7 @@ public:
                         unsigned char p = palette[src_col + src_row * target_width];
 
                         if ( _options.coverage() == true )
-                        {    
+                        {
                             osg::Vec4 pixel;
                             if ( isValidValue(p, bandPalette) )
                                 pixel.r() = (float)p;
@@ -1691,7 +1756,7 @@ public:
                             write(pixel, dst_col, dst_row);
                         }
                         else
-                        {                            
+                        {
                             osg::Vec4ub color;
                             getPalleteIndexColor( bandPalette, p, color );
                             if (!isValidValue( p, bandPalette))

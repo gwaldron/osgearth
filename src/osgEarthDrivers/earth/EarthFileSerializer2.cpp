@@ -503,7 +503,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         return mapConf; 
 
     const Map* map = input->getMap();
-    MapFrame mapf( map, Map::ENTIRE_MODEL );
+    MapFrame mapf( map );
 
     // the map and node options:
     Config optionsConf = map->getInitialMapOptions().getConfig();

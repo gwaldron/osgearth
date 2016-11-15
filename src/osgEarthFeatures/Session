@@ -68,7 +68,7 @@ namespace osgEarth { namespace Features
         /**
          * Gets the underlying map (frame) interface in this session
          */
-        MapFrame createMapFrame( Map::ModelParts parts =Map::TERRAIN_LAYERS ) const;
+        MapFrame createMapFrame() const;
 
         /**
          * Gets the map information backing up this session.
@@ -79,9 +79,11 @@ namespace osgEarth { namespace Features
         const SpatialReference* getMapSRS() const { return _mapInfo.getSRS(); }
 
         /**
-         * Gets the map related to this session. Be carefull, this is held by an osg::observer_ptr and may be NULL
+         * Gets the map related to this session.
+         * Be carefull, this is held by an osg::observer_ptr and may be NULL
          */
-        const Map* getMap() const { return _map.get(); }
+        //osg::ref_ptr<const Map> getMap() const;
+        //const Map* getMap() const { return _map.get(); }
 
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );

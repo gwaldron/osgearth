@@ -84,9 +84,9 @@ Session::getResourceCache()
 }
 
 MapFrame
-Session::createMapFrame( Map::ModelParts parts ) const
+Session::createMapFrame() const
 {
-    return MapFrame( _map.get(), parts );
+    return MapFrame( _map.get() );
 }
 
 void

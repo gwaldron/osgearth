@@ -21,6 +21,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/PatchLayer>
+#include <osgEarth/MapOptions>
+#include <osgEarth/MapFrame>
 
 #include <osg/Texture2D>
 

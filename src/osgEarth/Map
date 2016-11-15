@@ -31,12 +31,13 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ElevationPool>
 #include <osgDB/Options>
 
 namespace osgEarth
 {
     class MapInfo;
-    class ElevationPool;
+    //class ElevationPool;
 
     /**
      * Map is the main data model that the MapNode will render. It is a
@@ -395,8 +396,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profileNoVDatum;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _readOptions;
-        //osg::ref_ptr<ElevationPool> _elevationPool;
-        ElevationPool* _elevationPool;
+        osg::ref_ptr<ElevationPool> _elevationPool;
 
         struct ElevationLayerCB : public ElevationLayerCallback {
             osg::observer_ptr<Map> _map;

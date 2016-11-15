@@ -21,8 +21,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Query::Query( const Config& conf ):
-_map(0)
+Query::Query( const Config& conf )
 {
     mergeConfig( conf );
 }
@@ -32,7 +31,7 @@ _bounds(rhs._bounds),
 _expression(rhs._expression),
 _orderby(rhs._orderby),
 _tileKey(rhs._tileKey),
-_map(rhs._map)
+_mapFrame(rhs._mapFrame)
 {
     //nop
 }
@@ -129,12 +128,13 @@ Query::combineWith( const Query& rhs ) const
     return merged;
 }
 
-const Map* Query::getMap() const
-{
-    return _map;
-}
-
 void Query::setMap(const Map* map)
 {
-    _map = map;
+    _mapFrame.setMap(map);
 }
+
+void Query::setMap(const MapFrame& mapf)
+{
+    _mapFrame = mapf;
+}
+

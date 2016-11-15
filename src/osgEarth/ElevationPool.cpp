@@ -18,6 +18,8 @@
  */
 #include <osgEarth/ElevationPool>
 #include <osgEarth/TileKey>
+#include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 #include <osg/Shape>
 
 using namespace osgEarth;
@@ -37,6 +39,7 @@ ElevationPool::setMap(const Map* map)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     _map = map;
+    //_frame.setMap(map);
     _tiles.clear();
     _mru.clear();
     _entries = 0u;
@@ -271,13 +274,25 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
     ElevationEnvelope* e = new ElevationEnvelope();
     e->_inputSRS = srs;
-    e->_frame.setMap(_map.get());
+    osg::ref_ptr<const osg::Referenced> map;
+    if (_map.lock(map))
+        e->_frame.setMap(static_cast<const Map*>(map.get()));
     e->_lod = lod;
-    e->_pool = this;
+    //e->_pool = this;
     return e;
 }
 
 //........................................................................
+
+ElevationEnvelope::ElevationEnvelope()
+{
+    //nop
+}
+
+ElevationEnvelope::~ElevationEnvelope()
+{
+    //nop
+}
 
 bool
 ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_resolution)
@@ -317,7 +332,8 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            if (_pool->getTile(key, _frame, tile))
+            ElevationPool* pool = _frame.getElevationPool();
+            if (pool && pool->getTile(key, _frame, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());
@@ -357,7 +373,7 @@ ElevationEnvelope::getElevationAndResolution(double x, double y)
 
 unsigned
 ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
-                               std::vector<float>& output)
+                                 std::vector<float>& output)
 {
     unsigned count = 0u;
 
@@ -390,7 +406,7 @@ ElevationEnvelope::getElevations(const std::vector<osg::Vec3d>& input,
 
 bool
 ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
-                                     float& min, float& max)
+                                       float& min, float& max)
 {
     if (input.empty())
         return false;

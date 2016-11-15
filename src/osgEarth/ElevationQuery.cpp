@@ -18,6 +18,8 @@
  */
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/Map>
+#include <osgEarth/ElevationPool>
 #include <osgUtil/IntersectionVisitor>
 #include <osgSim/LineOfSight>
 
@@ -44,7 +46,7 @@ ElevationQuery::ElevationQuery(const MapFrame& mapFrame)
 void
 ElevationQuery::setMap(const Map* map)
 {
-    _mapf = MapFrame(map, (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS));
+    _mapf.setMap(map);
     reset();
 }
 
@@ -267,7 +269,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     if (!_envelope.valid() ||
         !point.getSRS()->isHorizEquivalentTo(_envelope->getSRS()) ||
         lod != _envelope->getLOD())
-    {
+    {        
         _envelope = _mapf.getElevationPool()->createEnvelope(point.getSRS(), lod);
     }
 

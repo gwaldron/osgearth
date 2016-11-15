@@ -407,7 +407,7 @@ updateControlPanel()
     s_imageBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    MapFrame mapf( s_activeMap.get(), Map::ENTIRE_MODEL );
+    MapFrame mapf( s_activeMap.get() );
     ImageLayerVector imageLayers;
     mapf.getLayers(imageLayers);
     int layerNum = imageLayers.size()-1;

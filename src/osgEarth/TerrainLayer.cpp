@@ -424,7 +424,17 @@ TerrainLayer::open()
     }
 
     return _status;
-    //return _runtimeOptions->enabled() == true;
+}
+
+void
+TerrainLayer::close()
+{
+    _profile = 0L;
+    _tileSource = 0L;
+    _openCalled = false;
+    _status = Status();
+    _readOptions = 0L;
+    _cacheSettings = 0L;
 }
 
 CacheSettings*

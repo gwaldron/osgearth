@@ -35,12 +35,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapInfo
     {
     public:
-        MapInfo( const Map* map );
+        MapInfo();
 
-        MapInfo( const MapInfo& rhs );
+        MapInfo(const Map* map);
+
+        MapInfo(const MapInfo& rhs);
 
         /** dtor */
         virtual ~MapInfo() { }
+
+        void setMap(const Map* map);
         
         const Profile* getProfile() const { return _profile.get(); }
         const SpatialReference* getSRS() const { return _profile->getSRS(); }

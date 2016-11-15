@@ -432,6 +432,8 @@ MapNode::~MapNode()
         this->onModelLayerRemoved( itr->get() );
     }
 
+    _map->clear();
+
     this->clearExtensions();
 }
 

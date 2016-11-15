@@ -20,7 +20,7 @@
 #define OSGEARTH_ELEVATION_POOL_H
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/MapFrame>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
@@ -32,6 +32,8 @@ namespace osgEarth
 {
     // defined at the end of this file
     class ElevationEnvelope;
+    class Map;
+
 
     /**
      * A pool of elevation data that can be used to manage regional elevation
@@ -46,7 +48,7 @@ namespace osgEarth
      * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
      * float z = envelope->getElevation(point);
      */
-    class OSGEARTH_EXPORT ElevationPool // : public osg::Referenced
+    class OSGEARTH_EXPORT ElevationPool : public osg::Referenced
     {
     public:
         /** ctor */
@@ -75,7 +77,8 @@ namespace osgEarth
 
     protected:
 
-        osg::observer_ptr<const Map> _map;
+        //MapFrame _frame;
+        osg::observer_ptr<const osg::Referenced> _map;
 
         ElevationLayerVector _layers;
 
@@ -215,13 +218,12 @@ namespace osgEarth
         unsigned getLOD() const { return _lod; }
 
     protected:
-        ElevationEnvelope() { }
-        virtual ~ElevationEnvelope() { }
+        ElevationEnvelope();
+        virtual ~ElevationEnvelope();
 
         ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
         unsigned _lod;
-        ElevationPool* _pool;
         MapFrame _frame;
         friend class ElevationPool;
 

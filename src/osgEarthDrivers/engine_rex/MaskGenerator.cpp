@@ -18,6 +18,7 @@
 */
 #include "MaskGenerator"
 
+#include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
 #include <osgEarthSymbology/Geometry>
 

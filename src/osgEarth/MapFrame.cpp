@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
@@ -27,8 +28,7 @@ using namespace osgEarth;
 MapFrame::MapFrame() :
 _initialized    ( false ),
 _highestMinLevel( 0 ),
-_mapInfo       ( 0L ),
-_parts(Map::ENTIRE_MODEL)
+_mapInfo        ( 0L )
 {
     //nop
 }
@@ -37,10 +37,10 @@ MapFrame::MapFrame(const MapFrame& rhs) :
 _initialized         ( rhs._initialized ),
 _map                 ( rhs._map.get() ),
 _mapInfo             ( rhs._mapInfo ),
-_parts               ( rhs._parts ),
 _highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
-_layers              ( rhs._layers )
+_layers              ( rhs._layers ),
+_pool                ( rhs._pool.get() )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -49,17 +49,6 @@ MapFrame::MapFrame(const Map* map) :
 _initialized    ( false ),
 _map            ( map ),
 _mapInfo        ( map ),
-_parts          ( Map::ENTIRE_MODEL ),
-_highestMinLevel( 0 )
-{
-    sync();
-}
-
-MapFrame::MapFrame(const Map* map, Map::ModelParts parts) :
-_initialized    ( false ),
-_map            ( map ),
-_mapInfo        ( map ),
-_parts          ( parts ),
 _highestMinLevel( 0 )
 {
     sync();
@@ -75,21 +64,27 @@ void
 MapFrame::setMap(const Map* map)
 {
     _layers.clear();
+    _pool = 0L;
 
     _map = map;
     if ( map )
-        _mapInfo = MapInfo(map);
+    {
+        _mapInfo.setMap(map);
+    }
 
     _initialized = false;
     _highestMinLevel = 0;
 
-    sync();
+    if (map)
+    {
+        sync();
+    }
 }
 
 ElevationPool*
 MapFrame::getElevationPool() const
 {
-    return _map->getElevationPool();
+    return static_cast<ElevationPool*>(_pool.get());
 }
 
 bool
@@ -101,11 +96,12 @@ MapFrame::sync()
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {
-        changed = _map->sync( *this );
+        changed = map->sync( *this );
         if ( changed )
         {
             refreshComputedValues();
         }
+        _pool = map->getElevationPool();
     }
     else
     {
@@ -134,6 +130,15 @@ MapFrame::needsSync() const
     return 
         _map.lock(map) &&
         (map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
+}
+
+void
+MapFrame::release()
+{
+    _layers.clear();
+    _pool = 0L;
+    _initialized = false;
+    _highestMinLevel = 0;
 }
 
 UID
@@ -202,7 +207,8 @@ bool
 MapFrame::isCached( const TileKey& key ) const
 {
     // is there a map cache at all?
-    if ( _map.valid() && _map->getCache() == 0L )
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) && map->getCache() == 0L)
         return false;
 
     for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
@@ -244,5 +250,10 @@ MapFrame::isCached( const TileKey& key ) const
 const MapOptions&
 MapFrame::getMapOptions() const
 {
-    return _map->getMapOptions();
+    static MapOptions defaultMapOptions;
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+        return map->getMapOptions();
+    else
+        return defaultMapOptions;
 }

@@ -215,7 +215,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
+    _update_mapf = new MapFrame( map );
 
     // A callback for overriding bounding boxes for tiles
     _modifyBBoxCallback = new ModifyBoundingBoxCallback(*_update_mapf);

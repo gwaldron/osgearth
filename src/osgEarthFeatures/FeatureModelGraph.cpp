@@ -160,8 +160,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         if ( graph.valid() )
         {
             // Take a reference on the map to avoid map destruction during thread operation
-            osg::ref_ptr<const Map> map = graph->getSession()->getMap();
-            if (map.valid() == true)
+            //osg::ref_ptr<const Map> map = graph->getSession()->getMap();
+            //if (map.valid() == true)
             {
                 Registry::instance()->startActivity(uri);
                 osg::Node* node = graph->load(lod, x, y, uri, readOptions);
@@ -646,6 +646,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
 
             // Calculate the bounds of this new tile:
             MapFrame mapf = _session->createMapFrame();
+            if (!mapf.isValid())
+                return 0L;
+
             osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
 
             // Apply the tile range multiplier to calculate a max camera range. The max range is
@@ -1012,7 +1015,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         if ( key )
             query.tileKey() = *key;
 
-        query.setMap( _session->getMap() );
+        query.setMap(_session->createMapFrame());// _session->getMap() );
 
         // does the level have a style name set?
         if ( level.styleName().isSet() )
@@ -1182,7 +1185,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                 {
                     // merge the selector's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap( _session->getMap() );
+                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // query, sort, and add each style group to th parent:
                     queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group, readOptions );
@@ -1197,7 +1200,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
                     // .. and merge it's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap( _session->getMap() );
+                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // then create the node.
                     osg::Group* styleGroup = createStyleGroup( combinedStyle, combinedQuery, index, readOptions );
@@ -1266,7 +1269,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
     {
         // merge the selector's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap( _session->getMap() );
+        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // query, sort, and add each style group to the parent:
         queryAndSortIntoStyleGroups( combinedQuery, *selector->styleExpression(), index, parent, readOptions );
@@ -1283,7 +1286,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
 
         // .. and merge it's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap( _session->getMap() );
+        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // then create the node.
         osg::Node* node = createStyleGroup(style, combinedQuery, index, readOptions);

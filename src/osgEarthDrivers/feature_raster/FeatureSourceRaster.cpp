@@ -66,8 +66,10 @@ public:
         return new FeatureListCursor( features );
 #else
 
-        osg::ref_ptr< osgEarth::ImageLayer > layer = query.getMap()->getLayerByName<ImageLayer>(*_options.layer());
-        if (layer.valid())
+        MapFrame mapf = query.getMap();
+        osgEarth::ImageLayer* layer = mapf.getLayerByName<osgEarth::ImageLayer>(_options.layer().get());
+        //osg::ref_ptr< osgEarth::ImageLayer > layer = query.getMap()->getLayerByName<ImageLayer>(*_options.layer());
+        if (layer)//.valid())
         {
             GeoImage image = layer->createImage( key );
          

@@ -131,16 +131,13 @@ Map::ctor()
 
 Map::~Map()
 {
-    if (_elevationPool)
-        delete _elevationPool;
-
     OE_DEBUG << "~Map" << std::endl;
 }
 
 ElevationPool*
 Map::getElevationPool() const
 {
-    return _elevationPool; //.get();
+    return _elevationPool.get();
 }
 
 void
@@ -553,20 +550,11 @@ void
 Map::clear()
 {
     LayerVector layersRemoved;
-
-    //ImageLayerVector     imageLayersRemoved;
-    //ElevationLayerVector elevLayersRemoved;
-    //ModelLayerVector     modelLayersRemoved;
-    //MaskLayerVector      maskLayersRemoved;
-
     Revision newRevision;
     {
         Threading::ScopedWriteLock lock( _mapDataMutex );
 
         layersRemoved.swap( _layers );
-        //imageLayersRemoved.swap( _imageLayers );
-        //elevLayersRemoved.swap ( _elevationLayers );
-        //modelLayersRemoved.swap( _modelLayers );
 
         // calculate a new revision.
         newRevision = ++_dataModelRevision;
@@ -582,6 +570,10 @@ Map::clear()
             i->get()->onMapModelChanged(MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, layer->get()));
         }
     }
+
+    // Force the elevation pool to reset its frame so it's not holding any references
+    // to old layers.
+    _elevationPool->setMap(this);
 }
 
 
@@ -762,7 +754,7 @@ Map::getWorldSRS() const
 }
 
 bool
-Map::sync( MapFrame& frame ) const
+Map::sync(MapFrame& frame) const
 {
     bool result = false;
 

@@ -425,6 +425,11 @@ namespace osgEarth
         void refreshTileSourceCachePolicyHint(TileSource*);
 
         Status _status;
+
+    protected:
+        /** Closes the layer, deleting its tile source and any other resources. */
+        virtual void close();
+
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

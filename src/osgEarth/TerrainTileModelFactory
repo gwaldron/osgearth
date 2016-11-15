@@ -23,11 +23,13 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TerrainEngineRequirements>
-#include <osgEarth/MapFrame>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
 
 namespace osgEarth
 {
+    class MapFrame;
+
     /**
      * Filter you can pass to TerrainTileModelFactory::createTileModel
      */

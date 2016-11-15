@@ -23,12 +23,18 @@
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
 #include <osgEarth/MapInfo>
-#include <osgEarth/Map>
+#include <osgEarth/Revisioning>
+#include <osgEarth/Layer>
+#include <osgEarth/ElevationLayer>
 
 namespace osgEarth
 {
     class Profile;
+    class Map;
+    class MapOptions;
+    class TileKey;
     class ElevationPool;
+    class ProgressCallback;
 
     /**
      * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
@@ -45,11 +51,7 @@ namespace osgEarth
 
         MapFrame(const MapFrame& rhs);
 
-        MapFrame(Map::ModelParts parts);
-
         MapFrame(const Map* map);
-
-        MapFrame(const Map* map, Map::ModelParts parts);
 
         bool isValid() const;
 
@@ -70,6 +72,9 @@ namespace osgEarth
          * True is a sync() would acquire new data.
          */
         bool needsSync() const;
+
+        /** Releases any references held by this frame. Call sync() to restablish */
+        void release();
 
         /** The source map's UID */
         UID getUID() const;
@@ -103,6 +108,15 @@ namespace osgEarth
         /** Whether the frame contains a layer with the matching UID */
         bool containsLayer(UID uid) const;
 
+        template<typename T>
+        T* getLayerByName(const std::string& name) {
+            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+                T* obj = dynamic_cast<T*>(i->get());
+                if (obj->getName() == name) return obj;
+            }
+            return 0L;
+        }
+
         /** The elevation layer stack snapshot */
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
 
@@ -128,6 +142,10 @@ namespace osgEarth
             bool                            expressHeightsAsHAE,
             ProgressCallback*               progress) const;
 
+        /**
+         * Gets the map's elevation pool.
+         * This returns a ref_ptr because the Map itself is held with an observer_ptr.
+         */
         ElevationPool* getElevationPool() const;
 
     private:
@@ -135,11 +153,11 @@ namespace osgEarth
         osg::observer_ptr<const Map> _map;
         std::string _name;
         MapInfo _mapInfo;
-        Map::ModelParts _parts;
         Revision _mapDataModelRevision;
         LayerVector _layers;
         ElevationLayerVector _elevationLayers;
         unsigned _highestMinLevel;
+        osg::ref_ptr<osg::Referenced> _pool;
 
         friend class Map;
 

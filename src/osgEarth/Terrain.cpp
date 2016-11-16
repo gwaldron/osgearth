@@ -346,38 +346,3 @@ Terrain::accept( osg::NodeVisitor& nv )
 {
     _graph->accept( nv );
 }
-
-
-//---------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[TerrainPatch] "
-
-TerrainPatch::TerrainPatch(osg::Node* patch, const Terrain* terrain) :
-_patch  ( patch ),
-_terrain( terrain )
-{
-    //nop
-    if ( patch == 0L || terrain == 0L )
-    {
-        OE_WARN << "ILLEGAL: Created a TerrainPatch with a NULL parameter" << std::endl;
-    }
-}
-
-
-bool
-TerrainPatch::getHeight(const SpatialReference* srs,
-                        double                  x, 
-                        double                  y,
-                        double*                 out_hamsl,
-                        double*                 out_hae ) const
-{
-    if ( _terrain && _patch )
-    {
-        return _terrain->getHeight( _patch.get(), srs, x, y, out_hamsl, out_hae );
-    }
-    else
-    {
-        return false;
-    }
-}

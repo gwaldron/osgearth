@@ -442,3 +442,36 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
 
     osg::Group::traverse(nv);
 }
+
+
+void
+GeometryPool::clear()
+{
+    if (!_releaser.valid() || !_enabled)
+        return;
+
+    ResourceReleaser::ObjectList objects;
+
+    // collect all objects in a thread safe manner
+    {
+        Threading::ScopedMutexLock exclusive( _geometryMapMutex );
+
+        for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
+        {
+            //if (i->second.get()->referenceCount() == 1)
+            {
+                objects.push_back(i->second.get());
+            }
+        }
+
+        _geometryMap.clear();
+
+        OE_INFO << LC << "Cleared " << objects.size() << " objects from the geometry pool\n";
+    }
+
+    // submit to the releaser.
+    if (!objects.empty())
+    {
+        _releaser->push(objects);
+    }
+}

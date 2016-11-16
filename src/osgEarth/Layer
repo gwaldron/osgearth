@@ -42,9 +42,6 @@ namespace osgEarth
     public:
         Layer();
 
-        /** dtor */
-        virtual ~Layer() { }
-
         /** Gets this layer's unique ID. */
         UID getUID() const { return _uid; }
 
@@ -125,6 +122,11 @@ namespace osgEarth
         void setRenderType(RenderType value) { _renderType = value; }
 
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
+
+    protected:
+
+        /** dtor */
+        virtual ~Layer();
 
     private:
         UID _uid;

@@ -56,30 +56,25 @@ _tick(0),
 _tilesLastCull(0)
 {
     _expirationRange2 = _options.expirationRange().get() * _options.expirationRange().get();
+    _mainThreadId = Threading::getCurrentThreadId();
 }
 
-//const MapFrame& EngineContext::getMapFrame()
-//{
-//    if (_frame.needsSync())
-//        _frame.sync();
-//
-//    return _frame;
-//}
-
-void
-EngineContext::unloadChildrenOf(const TileNode* tile)
+const Map*
+EngineContext::getMap() const
 {
-   _tilesWithChildrenToUnload.push_back( tile->getKey() );
-   OE_INFO << LC << "Unload children of: " << tile->getKey().str() << "\n";
+    if (Threading::getCurrentThreadId() != _mainThreadId)
+    {
+        OE_WARN << LC << "Illegal - do not call getMap from outside the main thread\n";
+    }
+    return _map;
 }
 
 void
 EngineContext::startCull(osgUtil::CullVisitor* cv)
 {
+#ifdef PROFILE
     _tick = osg::Timer::instance()->tick();
     _tilesLastCull = _liveTiles->size();
-
-#ifdef PROFILE
     _progress = new ProgressCallback();
 #endif
 }
@@ -174,23 +169,24 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
                     std::setprecision(2) << 100.0*i->second/totalCull << "%)" << std::endl;
             }
         }
-    }  
+    } 
 
 #if 0 // render bin printout
     Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
     OE_NOTICE << c.toJSON(true) << std::endl << std::endl;
 #endif
 
-    Scanner scanner(_tilesWithChildrenToUnload, cv->getFrameStamp());
+    // Scan for tiles that need to be unloaded.
+    std::vector<TileKey> tilesWithChildrenToUnload;
+    Scanner scanner(tilesWithChildrenToUnload, cv->getFrameStamp());
     _liveTiles->run( scanner );
 
-    if ( !_tilesWithChildrenToUnload.empty() )
+    if ( !tilesWithChildrenToUnload.empty() )
     {        
-        getUnloader()->unloadChildren( _tilesWithChildrenToUnload );
-        _tilesWithChildrenToUnload.clear();
+        getUnloader()->unloadChildren( tilesWithChildrenToUnload );
     }
 
-    Registry::instance()->startActivity("REX live tiles", Stringify()<<_liveTiles->size());
+    //Registry::instance()->startActivity("REX live tiles", Stringify()<<_liveTiles->size());
 }
 
 bool

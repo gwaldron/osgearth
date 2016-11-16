@@ -89,6 +89,7 @@ namespace osgEarth
         
         /** Get/Set the settings in a read-options structure. */
         static CacheSettings* get(const osgDB::Options* readOptions);
+        //static bool lock(const osgDB::Options* readOptions, osg::ref_ptr<CacheSettings>& output);
         void store(osgDB::Options* readOptions);
 
         /** for debugging */

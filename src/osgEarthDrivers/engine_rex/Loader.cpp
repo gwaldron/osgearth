@@ -20,6 +20,8 @@
 #include "RexTerrainEngineNode"
 
 #include <osgEarth/Registry>
+#include <osgEarth/Utils>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -177,7 +179,6 @@ namespace
 
 
 PagerLoader::PagerLoader(TerrainEngineNode* engine) :
-//_engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 ),
 _frameNumber   ( 0 ),
@@ -187,7 +188,8 @@ _numLODs       ( 20u )
 
     _dboptions = new osgDB::Options();
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
-    _dboptions->getOrCreateUserDataContainer()->addUserObject(engine);
+
+    OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
 
     // initialize the LOD priority scales and offsets
     for (unsigned i = 0; i < 64; ++i)
@@ -488,20 +490,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 unsigned requestUID;
                 sscanf(requestdef.c_str(), "%u", &requestUID);
 
-                const RexTerrainEngineNode* engine = dynamic_cast<const RexTerrainEngineNode*>(
-                    osg::getUserObject(dboptions, "osgEarth.RexTerrainEngineNode"));
-
-                // find the appropriate engine:
-                //osg::ref_ptr<RexTerrainEngineNode> engineNode;
-                //RexTerrainEngineNode::getEngineByUID( (UID)engineUID, engineNode );
-                if ( engine )
+                osg::ref_ptr<PagerLoader> loader;
+                if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                    PagerLoader* loader = dynamic_cast<PagerLoader*>(engine->getLoader());
-                    if ( loader )
-                    {
-                        Loader::Request* req = loader->invokeAndRelease( requestUID );
-                        return new RequestResultNode(req);
-                    }
+                    Loader::Request* req = loader->invokeAndRelease( requestUID );
+                    return new RequestResultNode(req);
                 }
                 return ReadResult::FILE_NOT_FOUND;
             }

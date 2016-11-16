@@ -49,15 +49,16 @@ namespace osgEarth
     template<typename T>
     class OptionsData : public osg::Object {
     public:
-        static void put(osgDB::Options* o, const std::string& name, T* obj) {            
+        static void set(osg::Object* o, const std::string& name, T* obj) {            
             osg::UserDataContainer* udc = o->getOrCreateUserDataContainer();
+            unsigned i = udc->getUserObjectIndex(name);
+            if (i == udc->getNumUserObjects()) udc->removeUserObject(i);
             udc->addUserObject(new OptionsData<T>(name, obj));
         }
-        static const T* get(const osgDB::Options* o, const std::string& name) {
-            if (!o) return 0L;
-            const OptionsData<T>* oo = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
-            if (!oo) return 0L;
-            return oo->_obj;
+        static bool lock(const osg::Object* o, const std::string& name, osg::ref_ptr<T>& out) {
+            if (!o) return false;
+            const OptionsData<T>* data = dynamic_cast<const OptionsData<T>*>(osg::getUserObject(o, name));
+            return data ? data->_obj.lock(out) : false;
         }
     public:
         META_Object(osgEarth,OptionsData);
@@ -65,7 +66,7 @@ namespace osgEarth
         OptionsData() { }
         OptionsData(const OptionsData& rhs, const osg::CopyOp& copy) : osg::Object(rhs, copy), _obj(rhs._obj) { }
     private:
-        T* _obj;
+        osg::observer_ptr<T> _obj;
     };
 
 

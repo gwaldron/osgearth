@@ -107,6 +107,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
          */
         bool isEnabled() const { return _enabled; }
 
+        /**
+         * Clear and reset the pool.
+         */
+        void clear();
+
+
     public: // osg::Node
 
         /** Perform an update traversal to check for unused resources. */

@@ -237,8 +237,7 @@ namespace osgEarth
 
         unsigned int               _id;
         osg::ref_ptr<Map>          _map;
-        osg::ref_ptr< osg::Group > _models;
-        osg::ref_ptr< osg::Group > _overlayModels;
+        osg::Group*                _models;
         OverlayDecorator*          _overlayDecorator;
         MapNodeOptions             _mapNodeOptions;
         Config                     _externalConf;
@@ -248,7 +247,7 @@ namespace osgEarth
         ModelLayerNodeMap        _modelLayerNodes;
         osg::Group*              _maskLayerNode;
         unsigned                 _lastNumBlacklistedFilenames;
-        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
+        TerrainEngineNode*       _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
@@ -271,16 +270,9 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr< MapCallback >        _mapCallback;
+        osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
-
-#if 0
-        MapNodeCullData* getCullData(osg::Camera* camera) const;
-        typedef std::map<osg::Camera*, osg::ref_ptr<MapNodeCullData> > CullDataMap;
-        mutable CullDataMap _cullData;
-        mutable Threading::ReadWriteMutex _cullDataMutex;
-#endif
     };
 
 } // namespace osgEarth

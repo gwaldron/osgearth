@@ -41,19 +41,20 @@ namespace osgEarth
     struct TerrainEngineNodeCallbackProxy : public MapCallback
     {
         TerrainEngineNodeCallbackProxy(TerrainEngineNode* node) : _node(node) { }
+
         osg::observer_ptr<TerrainEngineNode> _node;
 
         void onMapInfoEstablished( const MapInfo& mapInfo )
         {
-            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-            if ( safeNode.valid() )
+            osg::ref_ptr<TerrainEngineNode> safeNode;
+            if (_node.lock(safeNode))
                 safeNode->onMapInfoEstablished( mapInfo );
         }
 
         void onMapModelChanged( const MapModelChange& change )
         {
-            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-            if ( safeNode.valid() )
+            osg::ref_ptr<TerrainEngineNode> safeNode;
+            if (_node.lock(safeNode))
                 safeNode->onMapModelChanged( change );
         }
     };
@@ -130,11 +131,12 @@ _redrawRequired          ( true )
 
 TerrainEngineNode::~TerrainEngineNode()
 {
+    OE_DEBUG << LC << "~TerrainEngineNode\n";
+
     //Remove any callbacks added to the image layers
-    if (_map.valid())
+    if (_map)
     {
-        MapFrame mapf( _map.get() );
-        
+        MapFrame mapf( _map );        
         ImageLayerVector imageLayers;
         mapf.getLayers(imageLayers);
 
@@ -225,14 +227,14 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     // Manually trigger the map callbacks the first time:
     if (_map->getProfile())
-        onMapInfoEstablished(MapInfo(_map.get()));
+        onMapInfoEstablished(MapInfo(_map));
 
     // Create a layer controller. This object affects the uniforms
     // that control layer appearance properties
-    _imageLayerController = new ImageLayerController(_map.get(), this);
+    _imageLayerController = new ImageLayerController(_map, this);
 
     // register the layer Controller it with all pre-existing image layers:
-    MapFrame mapf(_map.get());
+    MapFrame mapf(_map);
     ImageLayerVector imageLayers;
     mapf.getLayers(imageLayers);
 
@@ -243,79 +245,6 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     _initStage = INIT_POSTINIT_COMPLETE;
 }
-
-#if 0
-void
-TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
-{
-    _map = map;
-    
-    // fire up a terrain utility interface
-    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
-
-    // set up the CSN values   
-    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
-    
-    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( !_map->isGeocentric() )
-        this->setEllipsoidModel( NULL );
-    
-    // install an object to manage texture image unit usage:
-    _texCompositor = new TextureCompositor();
-    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
-    for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _texCompositor->setTextureImageUnitOffLimits( *i );
-
-    // then register the callback so we can process further map model changes
-    _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
-
-    // apply render bin if necessary
-    if ( options.binNumber().isSet() )
-    {
-        osg::StateSet* set = getOrCreateStateSet();
-        set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
-    }
-
-    if ( options.enableMercatorFastPath().isSet() )
-    {
-        OE_INFO 
-            << LC << "Mercator fast path " 
-            << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
-    }
-    
-    // a default factory - this is the object that creates the data model for
-    // each terrain tile.
-    _tileModelFactory = new TerrainTileModelFactory(options);
-
-    _initStage = INIT_PREINIT_COMPLETE;
-}
-
-void
-TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
-{
-    if ( _map.valid() ) // i think this is always true [gw]
-    {
-        // manually trigger the map callbacks the first time:
-        if ( _map->getProfile() )
-            onMapInfoEstablished( MapInfo(_map.get()) );
-
-        // create a layer controller. This object affects the uniforms that control layer appearance properties
-        _imageLayerController = new ImageLayerController( _map.get(), this );
-
-        // register the layer Controller it with all pre-existing image layers:
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        ImageLayerVector imageLayers;
-        mapf.getLayers(imageLayers);
-
-        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-        {
-            i->get()->addCallback( _imageLayerController.get() );
-        }
-    }
-
-    _initStage = INIT_POSTINIT_COMPLETE;
-}
-#endif
 
 osg::BoundingSphere
 TerrainEngineNode::computeBound() const

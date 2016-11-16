@@ -91,7 +91,8 @@ Map::ctor()
     _readOptions = osg::clone( Registry::instance()->getDefaultOptions() );
 
     // put the CacheSettings object in there. We will propogate this throughout
-    // the data model and the renderer.
+    // the data model and the renderer. These will be stored in the readOptions
+    // (and ONLY there)
     CacheSettings* cacheSettings = new CacheSettings();
 
     // Set up a cache if there's one in the options:
@@ -118,7 +119,7 @@ Map::ctor()
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // encode this map in the read options.
-    OptionsData<Map>::put(_readOptions, "osgEarth.Map", this);
+    OptionsData<Map>::set(_readOptions, "osgEarth.Map", this);
 
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes
@@ -131,7 +132,7 @@ Map::ctor()
 
 Map::~Map()
 {
-    OE_DEBUG << "~Map" << std::endl;
+    OE_DEBUG << LC << "~Map" << std::endl;
 }
 
 ElevationPool*
@@ -278,6 +279,9 @@ Map::addLayer(Layer* layer)
         if (elevationLayer)
         {
             elevationLayer->addCallback(_elevationLayerCB.get());
+
+            // invalidate the elevation pool
+            getElevationPool()->clear();
         }
 
         ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
@@ -423,6 +427,9 @@ Map::removeLayer(Layer* layer)
     if (elevationLayer)
     {
         elevationLayer->removeCallback(_elevationLayerCB.get());
+
+        // invalidate the pool
+        getElevationPool()->clear();
     }
 
     // a separate block b/c we don't need the mutex
@@ -470,6 +477,12 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
         _layers.insert( _layers.begin() + newIndex, layerToMove.get() );
 
         newRevision = ++_dataModelRevision;
+    }
+
+    // if this is an elevation layer, invalidate the elevation pool
+    if (dynamic_cast<ElevationLayer*>(layer))
+    {
+        getElevationPool()->clear();
     }
 
     // a separate block b/c we don't need the mutex
@@ -571,9 +584,8 @@ Map::clear()
         }
     }
 
-    // Force the elevation pool to reset its frame so it's not holding any references
-    // to old layers.
-    _elevationPool->setMap(this);
+    // Invalidate the elevation pool.
+    getElevationPool()->clear();
 }
 
 

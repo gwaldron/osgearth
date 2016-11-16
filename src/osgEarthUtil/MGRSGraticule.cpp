@@ -25,6 +25,7 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Utils>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -213,8 +214,7 @@ MGRSGraticule::buildGZDChildren( osg::Group* parent, const std::string& gzd )
     
     // pass a reference to this object through the loader.
     osgDB::Options* readOptions = new osgDB::Options();
-    osg::UserDataContainer* udc = readOptions->getOrCreateUserDataContainer();
-    udc->addUserObject(this);
+    OptionsData<MGRSGraticule>::set(readOptions, "osgEarth.MGRSGraticule", this);
     plod->setDatabaseOptions(readOptions);
 
     return plod;
@@ -689,20 +689,20 @@ namespace osgEarth { namespace Util
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            const osg::UserDataContainer* udc = options->getUserDataContainer();
-            if (!udc)
+            osg::ref_ptr<MGRSGraticule> graticule;
+            if (!OptionsData<MGRSGraticule>::lock(options, "osgEarth.MGRSGraticule", graticule))
             {
                 OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (2)\n";
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            MGRSGraticule* graticule = const_cast<MGRSGraticule*>(dynamic_cast<const MGRSGraticule*>(udc->getUserObject(MGRS_GRATICULE_OBJECT_NAME)));
-            if (!graticule)
-            {
-                OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (3)\n";
-                return ReadResult::ERROR_IN_READING_FILE;
+            //MGRSGraticule* graticule = const_cast<MGRSGraticule*>(dynamic_cast<const MGRSGraticule*>(udc->getUserObject(MGRS_GRATICULE_OBJECT_NAME)));
+            //if (!graticule)
+            //{
+            //    OE_WARN << LC << "INTERNAL ERROR: MGRSGraticule object not present in Options (3)\n";
+            //    return ReadResult::ERROR_IN_READING_FILE;
 
-            }
+            //}
             std::string def = osgDB::getNameLessExtension(uri);
             std::string gzd = osgDB::getNameLessExtension(def);
             

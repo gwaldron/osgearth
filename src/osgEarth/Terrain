@@ -287,36 +287,6 @@ namespace osgEarth
         osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
     };
 
-
-    /**
-     * A TerrainPatch is a standalone subset of terrain that you can use for 
-     * height queries. The intention is that this be used for a "disconnected"
-     * terrain tile, i.e. one that is not in the scene graph yet -- making it
-     * MT-safe.
-     */
-    class OSGEARTH_EXPORT TerrainPatch : public TerrainResolver
-    {
-    public:
-        TerrainPatch( osg::Node* patch, const Terrain* terrain );
-
-
-    public: // TerrainResolver interface
-
-        /**
-        * Queries the elevation under the specified point. This method is
-        * identical to calling Terrain::getHeight with the specified patch.
-        */
-        bool getHeight(
-            const SpatialReference* srs,
-            double                  x,
-            double                  y,
-            double*                 out_heightAboveMSL,
-            double*                 out_heightAboveEllipsoid =0L) const;
-
-    protected:
-        osg::ref_ptr<osg::Node>     _patch;
-        osg::ref_ptr<const Terrain> _terrain;
-    };
 }
 
 #endif // OSGEARTH_COMPOSITING_H

@@ -131,6 +131,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<SurfaceNode>          _patch;
         osg::ref_ptr<LoadTileData>         _loadRequest;
+        //EngineContext*                     _context;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
         bool                               _dirty;

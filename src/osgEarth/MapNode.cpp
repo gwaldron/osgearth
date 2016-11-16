@@ -316,7 +316,7 @@ MapNode::init()
     // make a group for the model layers.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    addChild( _models.get() );
+    addChild( _models );
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
@@ -435,6 +435,12 @@ MapNode::~MapNode()
     _map->clear();
 
     this->clearExtensions();
+
+    osg::observer_ptr<TerrainEngineNode> te = _terrainEngine;
+    removeChildren(0, getNumChildren());
+    
+    OE_DEBUG << LC << "~MapNode (TerrainEngine="
+        << (te.valid()? te.get()->referenceCount() : 0) << ", Map=" << _map->referenceCount() << ")\n";
 }
 
 osg::BoundingSphere
@@ -445,8 +451,10 @@ MapNode::computeBound() const
     {
         bs.expandBy(  getTerrainEngine()->getBound() );
     }
-    if ( _models.valid() )
+
+    if (_models)
         bs.expandBy( _models->getBound() );
+
     return bs;
 }
 
@@ -485,15 +493,7 @@ MapNode::getTerrain() const
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
-    return _terrainEngine.get();
-    //if ( !_terrainEngineInitialized && _terrainEngine )
-    //{
-    //    _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
-    //    MapNode* me = const_cast< MapNode* >(this);
-    //    me->_terrainEngineInitialized = true;
-    //    me->dirtyBound();
-    //}
-    //return _terrainEngine;
+    return _terrainEngine;
 }
 
 void
@@ -554,7 +554,7 @@ MapNode::clearExtensions()
 osg::Group*
 MapNode::getModelLayerGroup() const
 {
-    return _models.get();
+    return _models;
 }
 
 osg::Node*

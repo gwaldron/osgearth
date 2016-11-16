@@ -32,7 +32,7 @@ LoadTileData::LoadTileData(TileNode* tilenode, EngineContext* context) :
 _tilenode(tilenode),
 _context(context)
 {
-    //nop
+    _mapFrame.setMap(context->getMap());
 }
 
 namespace
@@ -50,15 +50,13 @@ void
 LoadTileData::invoke()
 {
     osg::ref_ptr<TileNode> tilenode;
-    if ( _tilenode.lock(tilenode) )
+    if ( _tilenode.lock(tilenode) && _mapFrame.isValid() )
     {
-        MapFrame localFrame(_context->getMap());
-
         osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
 
         // Assemble all the components necessary to display this tile
         _dataModel = _context->getEngine()->createTileModel(
-            localFrame,
+            _mapFrame,
             tilenode->getKey(),           
             _filter,
             progress.get() ); // progress

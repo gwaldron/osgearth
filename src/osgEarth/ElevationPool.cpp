@@ -39,10 +39,14 @@ ElevationPool::setMap(const Map* map)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     _map = map;
-    //_frame.setMap(map);
-    _tiles.clear();
-    _mru.clear();
-    _entries = 0u;
+    clearImpl();
+}
+
+void
+ElevationPool::clear()
+{
+    Threading::ScopedMutexLock lock(_tilesMutex);
+    clearImpl();
 }
 
 void
@@ -50,9 +54,7 @@ ElevationPool::setElevationLayers(const ElevationLayerVector& layers)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     _layers = layers;
-    _tiles.clear();
-    _mru.clear();
-    _entries = 0u;
+    clearImpl();
 }
 
 void
@@ -60,9 +62,7 @@ ElevationPool::setTileSize(unsigned value)
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     _tileSize = value;
-    _tiles.clear();
-    _mru.clear();
-    _entries = 0u;
+    clearImpl();
 }
 
 bool
@@ -210,13 +210,12 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
 }
 
 void
-ElevationPool::clear()
+ElevationPool::clearImpl()
 {
-    _tilesMutex.lock();
+    // assumes the tiles lock is taken.
     _tiles.clear();
     _mru.clear();
     _entries = 0u;
-    _tilesMutex.unlock();
 }
 
 bool
@@ -228,11 +227,8 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
     {
         if (frame.sync())
         {
-            _tilesMutex.lock();
-            _tiles.clear();
-            _mru.clear();
-            _entries = 0u;
-            _tilesMutex.unlock();
+            // if this necessary?
+            clear();
         }
     }
    

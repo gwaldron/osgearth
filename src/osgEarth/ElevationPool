@@ -75,9 +75,11 @@ namespace osgEarth
         void setMaxEntries(unsigned maxEntries) { _maxEntries = maxEntries; }
         unsigned getMaxEntries() const          { return _maxEntries; }
 
+        /** Clears any cached tiles from the elevation pool. */
+        void clear();
+
     protected:
 
-        //MapFrame _frame;
         osg::observer_ptr<const osg::Referenced> _map;
 
         ElevationLayerVector _layers;
@@ -163,7 +165,7 @@ namespace osgEarth
         void popMRU();
 
         // clears and resets the pool.
-        void clear();
+        void clearImpl();
 
         friend class ElevationEnvelope;
     };

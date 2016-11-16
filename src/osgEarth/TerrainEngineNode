@@ -125,7 +125,7 @@ namespace osgEarth
     {
     public:
         /** Gets the map that this engine is rendering. */
-        const Map* getMap() const { return _map.get(); }
+        const Map* getMap() const { return _map; }
 
         /** Gets the Terrain interface for interacting with the scene graph */
         Terrain* getTerrain() { return _terrainInterface.get(); }
@@ -323,7 +323,7 @@ namespace osgEarth
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<const Map>            _map;
+        const Map*                         _map;
         bool                               _redrawRequired;
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;

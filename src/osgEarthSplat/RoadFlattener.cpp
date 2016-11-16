@@ -227,8 +227,8 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
         return Status::Error(Status::ConfigurationError, "Required property base_layer is not set");
     }
 
-    const Map* map = OptionsData<Map>::get(readOptions, "osgEarth.Map");
-    if (!map)
+    osg::ref_ptr<const Map> map;
+    if (!OptionsData<const Map>::lock(readOptions, "osgEarth.Map", map))
     {
         return Status::Error(Status::AssertionFailure, "No osgEarth::Map found in read options");
     }
@@ -245,7 +245,7 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
     }
 
     // Set up the elevation pool with our map:
-    _pool.setMap( map );
+    _pool.setMap( map.get() );
 
     // Instead of using all the map's elevation layers, we will use a custom set
     // consisting of just the base layer. Otherwise, the map will return elevation data

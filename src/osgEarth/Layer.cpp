@@ -21,9 +21,16 @@
 
 using namespace osgEarth;
 
+#define LC "[Layer] "
+
 Layer::Layer()
 {
     _uid = Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
     _status = Status::OK();
+}
+
+Layer::~Layer()
+{
+    OE_DEBUG << LC << "~Layer\n";
 }

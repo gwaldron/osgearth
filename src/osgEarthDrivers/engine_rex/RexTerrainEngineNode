@@ -156,13 +156,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::ref_ptr<ElevationChangedCallback> _elevationCallback;
 
-        MapFrame* _update_mapf; // map frame for the main/update traversal thread
+        MapFrame _mapFrame;
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<ResourceReleaser> _releaser;
-
-        //PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;        
+     
         EngineContext* getEngineContext();
         osg::ref_ptr< EngineContext > _engineContext;
         OpenThreads::Mutex _engineContextMutex;
@@ -178,9 +177,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Group> _terrain;
 
         bool _renderModelUpdateRequired;
-
-        Threading::Mutex _renderBinMutex;
-        osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
 
         RexTerrainEngineNode( const RexTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 

@@ -933,28 +933,31 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // non-image tile layer. Keep track of these..
         }
 
-        // Update the existing render models, and trigger a data reload.
-        // Later we can limit the reload to an update of only the new data.
-        UpdateRenderModels updateModels(_mapFrame);
+        if (_terrain)
+        {
+            // Update the existing render models, and trigger a data reload.
+            // Later we can limit the reload to an update of only the new data.
+            UpdateRenderModels updateModels(_mapFrame);
 
 #if 0
-        // This uses the loaddata filter approach which will only request
-        // data for one layer. It mostly works but not 100%; see hires-insets
-        // as an example. Removing the world layer and re-adding it while
-        // zoomed in doesn't result in all tiles reloading. Possibly a
-        // synchronization issue.
-        ImageLayerVector imageLayers;
-        _mapFrame.getLayers(imageLayers);
+            // This uses the loaddata filter approach which will only request
+            // data for one layer. It mostly works but not 100%; see hires-insets
+            // as an example. Removing the world layer and re-adding it while
+            // zoomed in doesn't result in all tiles reloading. Possibly a
+            // synchronization issue.
+            ImageLayerVector imageLayers;
+            _mapFrame.getLayers(imageLayers);
 
-        if (imageLayers.size() == 1)
-            updateModels.setReloadData(true);
-        else
-            updateModels.layersToLoad().insert(tileLayer->getUID());
+            if (imageLayers.size() == 1)
+                updateModels.setReloadData(true);
+            else
+                updateModels.layersToLoad().insert(tileLayer->getUID());
 #else
-        updateModels.setReloadData(true);
+            updateModels.setReloadData(true);
 #endif
 
-        _terrain->accept(updateModels);
+            _terrain->accept(updateModels);
+        }
     }
 }
 
@@ -986,12 +989,15 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         }
     }
 
-    // Run the update visitor, which will clean out any rendering passes
-    // associated with the layer we just removed. This would happen 
-    // automatically during cull/update anyway, but it's more efficient
-    // to do it all at once.
-    UpdateRenderModels updater(_mapFrame);
-    _terrain->accept(updater);
+    if (_terrain)
+    {
+        // Run the update visitor, which will clean out any rendering passes
+        // associated with the layer we just removed. This would happen 
+        // automatically during cull/update anyway, but it's more efficient
+        // to do it all at once.
+        UpdateRenderModels updater(_mapFrame);
+        _terrain->accept(updater);
+    }
 
     //OE_INFO << LC << " Updated " << updater._count << " tiles\n";
 }

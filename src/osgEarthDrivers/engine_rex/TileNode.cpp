@@ -568,6 +568,11 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+
+                if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())
+                {
+                    _context->getTileRasterizer()->push(0L, layer->getTexture(), model->getKey().getExtent());
+                }
             }
         }
     }

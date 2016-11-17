@@ -175,6 +175,7 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TileKey
     TileHandler
+    TileRasterizer
     TileSource
     TileVisitor
     TimeControl
@@ -331,6 +332,7 @@ set(TARGET_SRC
     TileKey.cpp
     TileHandler.cpp
     TilePatchCallback.cpp
+    TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp

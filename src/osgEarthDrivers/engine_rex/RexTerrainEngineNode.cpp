@@ -289,6 +289,10 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
 
+    // Tile rasterizer in case we need one
+    _rasterizer = new TileRasterizer();
+    this->addChild( _rasterizer );
+
     // install a layer callback for processing further map actions:
     map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );
 
@@ -314,6 +318,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _geometryPool.get(),
         _loader.get(),
         _unloader.get(),
+        _rasterizer,
         _liveTiles.get(),
         _renderBindings,
         _terrainOptions,
@@ -552,6 +557,13 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
+        // traverse all the other children (geometry pool, loader/unloader, etc.)
+        for (unsigned i = 0; i<getNumChildren(); ++i)
+        {
+            if (getChild(i) != _terrain.get())
+                getChild(i)->accept(nv);
+        }
+
         getEngineContext()->startCull( cv );
         
         TerrainCuller culler;
@@ -633,13 +645,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         this->getEngineContext()->endCull( cv );
 
-        // traverse all the other children (geometry pool, loader/unloader, etc.)
-        for (unsigned i = 0; i<getNumChildren(); ++i)
-        {
-            if (getChild(i) != _terrain.get())
-                getChild(i)->accept(nv);
-        }
-
         // If the culler found any orphaned data, we need to update the render model
         // during the next update cycle.
         if (culler._orphanedPassesDetected > 0u)
@@ -653,34 +658,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     {
         TerrainEngineNode::traverse( nv );
     }
-}
-
-
-EngineContext*
-RexTerrainEngineNode::getEngineContext()
-{
-    if ( !_engineContext.valid() )
-    {
-        Threading::ScopedMutexLock lock( _engineContextMutex );
-
-        // Double check.
-        if (!_engineContext.valid())
-        {
-            // initialize a key node factory.
-            _engineContext = new EngineContext(
-                getMap(),
-                this, // engine
-                _geometryPool.get(),
-                _loader.get(),
-                _unloader.get(),
-                _liveTiles.get(),
-                _renderBindings,
-                _terrainOptions,
-                _selectionInfo,
-                _modifyBBoxCallback.get());
-        }
-    }
-    return _engineContext.get();
 }
 
 unsigned int

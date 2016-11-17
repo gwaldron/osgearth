@@ -215,6 +215,9 @@ SkinResource::createStateSet( osg::Image* image ) const
 osg::ref_ptr<osg::Image>
 SkinResource::createImage( const osgDB::Options* dbOptions ) const
 {
+    if (getStatus().isError())
+        return 0L;
+
     ReadResult result;
     if (_readOptions.isSet())
     {
@@ -225,6 +228,13 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
     else
     {
         result = _imageURI->readImage(dbOptions);
+    }
+
+    if (result.failed())
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        if (_status.isOK())
+            _status = Status::Error(Status::ServiceUnavailable, "Failed to load resource image\n");
     }
     return result.releaseImage();
 }

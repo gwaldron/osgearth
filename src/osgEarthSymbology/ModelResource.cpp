@@ -60,7 +60,7 @@ ModelResource::getConfig() const
 const osg::BoundingBox&
 ModelResource::getBoundingBox(const osgDB::Options* dbo)
 {
-    if ( !_bbox.valid() )
+    if ( !_bbox.valid() && _status.isOK() )
     {
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_bbox.valid() )
@@ -91,6 +91,9 @@ namespace
 osg::Node*
 ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const
 {
+    if (_status.isError())
+        return 0L;
+
     osg::ref_ptr< osgDB::Options > options = dbOptions ? new osgDB::Options( *dbOptions ) : 0L;
 
     // Explicitly cache images so that models that share images will only load one copy.
@@ -139,6 +142,15 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
         if (tok.size() >= 2)
         {
             node = createNodeFromURI( URI(tok[1]), options.get() );
+        }
+    }
+
+    if (node == 0L && _status.isOK())
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        if (_status.isOK())
+        {
+            _status = Status::Error(Status::ServiceUnavailable, "Failed to load resource file");
         }
     }
 

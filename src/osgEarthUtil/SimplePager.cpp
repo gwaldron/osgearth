@@ -22,6 +22,7 @@ namespace
     struct ProgressMaster : public osg::NodeCallback
     {
         unsigned _frame;
+        bool _canCancel;
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
@@ -46,7 +47,10 @@ namespace
         // override from ProgressCallback
         bool isCanceled()
         {
-            return (!_master.valid()) || (_master->_frame - _lastFrame > 1u);
+            osg::ref_ptr<ProgressMaster> master;
+            if (!_master.lock(master)) return true;
+            if (!_master->_canCancel) return false;
+            return (master->_frame - _lastFrame > 1u);
         }
 
         // called by ProgressUpdater
@@ -130,7 +134,8 @@ _additive(false),
 _minLevel(0),
 _maxLevel(30),
 _priorityScale(1.0f),
-_priorityOffset(0.0f)
+_priorityOffset(0.0f),
+_canCancel(true)
 {
     // required in order to pass our "this" pointer to the pseudo loader:
     this->setName( "osgEarth::Util::SimplerPager::this" );
@@ -138,6 +143,16 @@ _priorityOffset(0.0f)
     // install the master framestamp tracker:
     _progressMaster = new ProgressMaster();
     addCullCallback( _progressMaster.get() );
+}
+
+void SimplePager::setEnableCancelation(bool value)
+{
+    static_cast<ProgressMaster*>(_progressMaster.get())->_canCancel = value;
+}
+
+bool SimplePager::getEnableCancalation() const
+{
+    return static_cast<ProgressMaster*>(_progressMaster.get())->_canCancel;
 }
 
 void SimplePager::build()

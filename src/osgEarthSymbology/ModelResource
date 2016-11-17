@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/InstanceResource>
+#include <osgEarth/Status>
 
 namespace osgEarth { namespace Symbology
 {
@@ -65,7 +66,6 @@ namespace osgEarth { namespace Symbology
         virtual osg::Node* createNodeFromURI(const URI& uri, const osgDB::Options* dbOptions) const;
 
         osg::BoundingBox _bbox;
-        Threading::Mutex _mutex;
         optional<bool>   _canScaleToFitXY;
         optional<bool>   _canScaleToFitZ;
     };

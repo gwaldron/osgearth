@@ -64,6 +64,9 @@ namespace osgEarth { namespace Util {
         void setFileLocationCallback(osgDB::FileLocationCallback* cb) { _fileLocationCallback = cb; }
         osgDB::FileLocationCallback* getFileLocationCallback() const  { return _fileLocationCallback.get(); }
 
+        void setEnableCancelation(bool value);
+        bool getEnableCancalation() const;
+
         /**
          * Gets the profile for the SimplePager.
          */
@@ -131,6 +134,7 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
         float _priorityScale;
         float _priorityOffset;
+        bool _canCancel;
         
         mutable Threading::Mutex _mutex;
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;

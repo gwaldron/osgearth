@@ -553,16 +553,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     }
 #endif
     
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() )
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-
-        // traverse all the other children (geometry pool, loader/unloader, etc.)
-        for (unsigned i = 0; i<getNumChildren(); ++i)
-        {
-            if (getChild(i) != _terrain.get())
-                getChild(i)->accept(nv);
-        }
 
         getEngineContext()->startCull( cv );
         
@@ -652,6 +645,22 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             _renderModelUpdateRequired = true;
             OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
         }
+
+        // traverse all the other children (geometry pool, loader/unloader, etc.)
+        _geometryPool->accept(nv);
+        _loader->accept(nv);
+        _unloader->accept(nv);
+        _releaser->accept(nv);
+
+        _rasterizer->traverse(nv);  // Why does this work, when accept() doesn't? No one knows.
+
+        //for (unsigned i = 0; i<getNumChildren(); ++i)
+        //{
+        //    if (getChild(i) != _terrain.get())
+        //        getChild(i)->accept(nv);
+        //        //nv.apply(*getChild(i));
+        //        //getChild(i)->traverse(nv); //accept(nv);
+        //}
     }
 
     //else

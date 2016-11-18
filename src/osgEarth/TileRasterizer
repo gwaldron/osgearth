@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TileKey>
 #include <osg/Camera>
 #include <queue>
 
@@ -54,17 +55,15 @@ namespace osgEarth
     protected:
         virtual ~TileRasterizer();
 
-        struct Entry {
-            bool _attached;
-            int _frames;
+        struct Job {
             osg::ref_ptr<osg::Node> _node;
             osg::ref_ptr<osg::Texture> _texture;
             GeoExtent _extent;
         };
 
         mutable Threading::Mutex _mutex;
-        typedef std::queue<Entry> WorkQueue;
-        WorkQueue _workQueue;
+        typedef std::queue<Job> JobQueue;
+        JobQueue _jobs;
     };
 
 } // namespace osgEarth

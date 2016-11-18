@@ -125,12 +125,6 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
                 layerModel->setImageLayer( layer );
 
-                // preserve layer ordering. Without this, layer draw order can get out of whack
-                // if you have a layer that doesn't appear in the model until a higher LOD. Instead
-                // of just getting appended to the draw set, the Order will make sure it gets 
-                // inserted in the correct position according to the map model.
-                layerModel->setOrder( order );
-
                 layerModel->setTexture( tex );
 
                 if ( layer->isShared() )

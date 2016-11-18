@@ -18,13 +18,12 @@
  */
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/NodeUtils>
+#include <osg/MatrixTransform>
 #include <osgDB/ReadFile>
 
 #define LC "[TileRasterizer] "
 
 using namespace osgEarth;
-
-static osg::ref_ptr<osg::Node> cow;
 
 TileRasterizer::TileRasterizer() :
 osg::Camera()
@@ -34,31 +33,15 @@ osg::Camera()
     setCullingActive(false);
 
     // set up the RTT camera.
-    setViewport(new osg::Viewport(0, 0, 256, 256));
-    setRenderTargetImplementation(FRAME_BUFFER_OBJECT);
-    setClearColor(osg::Vec4(1,0.5,0,0.5));
-    setClearDepth(1.0);
-    setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    //setImplicitBufferAttachmentMask(0, 0);
-    setRenderOrder(PRE_RENDER);
+    setClearColor(osg::Vec4(0,0,0,0));
+    setClearMask(GL_COLOR_BUFFER_BIT);
     setReferenceFrame(ABSOLUTE_RF);
     setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    setRenderOrder(PRE_RENDER);
+    setRenderTargetImplementation(FRAME_BUFFER_OBJECT);
+    setImplicitBufferAttachmentMask(0, 0);
+    setSmallFeatureCullingPixelSize(0.0f);
     setViewMatrix(osg::Matrix::identity());
-
-    cow = osgDB::readNodeFile("H:/devel/osg/OpenSceneGraph-Data/cow.osg");
-    if (!cow.valid())
-        exit(-1);
-
-    getOrCreateStateSet()->setMode(GL_BLEND, 1);
-    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
-    getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
-
-    addChild(cow.get());
-
-    double r = getBound().radius();
-    setProjectionMatrixAsOrtho(-r, r, -r, r, -1000, 1000);
-
-    OE_INFO << LC << "Radius = " << r << std::endl;
 }
 
 TileRasterizer::~TileRasterizer()
@@ -71,59 +54,60 @@ TileRasterizer::push(osg::Node* node, osg::Texture* texture, const GeoExtent& ex
 {
     Threading::ScopedMutexLock lock(_mutex);
 
-    _workQueue.push(Entry());
-    Entry& entry = _workQueue.back();
-    entry._frames = 0;
-    entry._attached = false;
-    entry._node = node;
-    entry._texture = texture;
-    entry._extent = extent;
-
-    OE_INFO << LC << "Pushed texture " << entry._texture->getName() << std::endl;
+    _jobs.push(Job());
+    Job& job = _jobs.back();
+    job._node = node;
+    job._texture = texture;
+    job._extent = extent;
 }
 
 void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        //nop
-    }
-
-    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         Threading::ScopedMutexLock lock(_mutex);
 
-        if (!_workQueue.empty())
+        // Detach if we have no work and the buffer attachment isn't empty.
+        if (!getBufferAttachmentMap().empty())
         {
-            //OE_INFO << LC << "Work queue size = " << _workQueue.size() << std::endl;
-
-            if (_workQueue.front()._frames == 0)
-            {
-                Entry& next = _workQueue.front();
-                OE_INFO << LC << "Attaching texture " << next._texture->getName() << std::endl;
-
-                setViewport(0, 0, next._texture->getTextureWidth(), next._texture->getTextureHeight());
-                setRenderingCache(NULL);
-                detach(COLOR_BUFFER);
-                attach(COLOR_BUFFER, next._texture.get(), 0u, 0u, false);
-            }
-
-            if (_workQueue.front()._frames == 1)
-            {
-                _workQueue.pop();
-            }
-            else
-            {
-                _workQueue.front()._frames++;
-            }
+            detach(osg::Camera::COLOR_BUFFER);
+            dirtyAttachmentMap();
+            removeChildren(0, 1);
         }
 
-        //if (_workQueue.empty())
-        //{
-        //    setNumChildrenRequiringUpdateTraversal(0);
-        //}
+        if (!_jobs.empty())
+        {
+            Job& job = _jobs.front();
+
+            // Get the next texture
+            osg::Texture* texture = job._texture.get();
+
+            // Setup the viewport and attach to the new texture
+            setViewport(0, 0, job._texture->getTextureWidth(), job._texture->getTextureHeight());
+
+            setProjectionMatrixAsOrtho(job._extent.xMin(), job._extent.xMax(), job._extent.yMin(), job._extent.yMax(), -100, 100);
+
+            bool mipmap = false;
+            //osg::Texture::FilterMode mode = job._texture->getFilter(osg::Texture::MIN_FILTER);
+            //bool mipmap =
+            //    (mode == osg::Texture::LINEAR_MIPMAP_LINEAR) || 
+            //    (mode == osg::Texture::LINEAR_MIPMAP_NEAREST) ||
+            //    (mode == osg::Texture::NEAREST_MIPMAP_LINEAR) ||
+            //    (mode == osg::Texture::NEAREST_MIPMAP_NEAREST);
+
+            attach(COLOR_BUFFER, job._texture.get(), 0u, 0u, mipmap);
+            dirtyAttachmentMap();
+
+            addChild(_jobs.front()._node.get());
+
+            // Remove the texture from the queue.
+            _jobs.pop();
+        }
     }
 
-    osg::Camera::traverse(nv);
+    if (!getBufferAttachmentMap().empty())
+    {
+        osg::Camera::traverse(nv);
+    }
 }

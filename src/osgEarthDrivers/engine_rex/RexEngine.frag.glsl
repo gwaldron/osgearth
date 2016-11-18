@@ -40,7 +40,7 @@ void oe_rexEngine_frag(inout vec4 color)
     texelParent = mix( vec4(texelSelf.rgb, 0.0), texelParent, oe_layer_texParentExists );
 
     // Resolve the final texel color:
-	vec4 texel = mix(texelSelf, texelParent, oe_rex_morphFactor);
+	vec4 texel = mix(texelSelf, texelParent, clamp(oe_rex_morphFactor,0.0,1.0));
 
     // Decide whether to use the texel or the incoming color:
 	texel = mix(color, texel, applyImagery);

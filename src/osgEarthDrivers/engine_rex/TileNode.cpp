@@ -568,17 +568,23 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+
+                // Handle an RTT image layer:
+                if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())
+                {
+                    // Check the texture's userdata for a Node. If there is one there,
+                    // render it to the texture using the Tile Rasterizer service.
+                    // TODO: consider hanging on to this texture and not applying it to
+                    // the live tile until the RTT is complete. (Prevents unsightly flashing)
+                    osg::Node* rttNode = dynamic_cast<osg::Node*>(layer->getTexture()->getUserData());
+                    if (rttNode)
+                    {
+                        _context->getTileRasterizer()->push(rttNode, layer->getTexture(), model->getKey().getExtent());
+                    }
+                }
             }
         }
     }
-    //else
-    //{
-    //    // No color layers? We need a rendering pass with a null texture then
-    //    // to accomadate the other samplers.
-    //    RenderingPass& pass = _renderModel.addPass();
-    //    pass._valid = true;
-    //    OE_INFO << LC << "Added default rendering pass..\n";
-    //}
 
     // Elevation:
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];

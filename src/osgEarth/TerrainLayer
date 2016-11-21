@@ -369,7 +369,7 @@ namespace osgEarth
         CacheBin* getCacheBin(const Profile* profile);
 
         /** Subclass can call this to indicate an error. */
-        void setStatus(const Status& value) { _status = value; }
+        const Status& setStatus(const Status& value) { _status = value; return _status; }
 
     protected:
 

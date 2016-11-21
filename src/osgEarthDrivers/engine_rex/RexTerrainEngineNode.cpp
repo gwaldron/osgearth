@@ -289,6 +289,10 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _unloader->setReleaser(_releaser.get());
     this->addChild( _unloader.get() );
 
+    // Tile rasterizer in case we need one
+    _rasterizer = new TileRasterizer();
+    this->addChild( _rasterizer );
+
     // install a layer callback for processing further map actions:
     map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );
 
@@ -314,6 +318,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _geometryPool.get(),
         _loader.get(),
         _unloader.get(),
+        _rasterizer,
         _liveTiles.get(),
         _renderBindings,
         _terrainOptions,
@@ -548,7 +553,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     }
 #endif
     
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() )
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
@@ -633,13 +638,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         this->getEngineContext()->endCull( cv );
 
-        // traverse all the other children (geometry pool, loader/unloader, etc.)
-        for (unsigned i = 0; i<getNumChildren(); ++i)
-        {
-            if (getChild(i) != _terrain.get())
-                getChild(i)->accept(nv);
-        }
-
         // If the culler found any orphaned data, we need to update the render model
         // during the next update cycle.
         if (culler._orphanedPassesDetected > 0u)
@@ -647,40 +645,28 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             _renderModelUpdateRequired = true;
             OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
         }
+
+        // traverse all the other children (geometry pool, loader/unloader, etc.)
+        _geometryPool->accept(nv);
+        _loader->accept(nv);
+        _unloader->accept(nv);
+        _releaser->accept(nv);
+
+        _rasterizer->traverse(nv);  // Why does this work, when accept() doesn't? No one knows.
+
+        //for (unsigned i = 0; i<getNumChildren(); ++i)
+        //{
+        //    if (getChild(i) != _terrain.get())
+        //        getChild(i)->accept(nv);
+        //        //nv.apply(*getChild(i));
+        //        //getChild(i)->traverse(nv); //accept(nv);
+        //}
     }
 
     //else
     {
         TerrainEngineNode::traverse( nv );
     }
-}
-
-
-EngineContext*
-RexTerrainEngineNode::getEngineContext()
-{
-    if ( !_engineContext.valid() )
-    {
-        Threading::ScopedMutexLock lock( _engineContextMutex );
-
-        // Double check.
-        if (!_engineContext.valid())
-        {
-            // initialize a key node factory.
-            _engineContext = new EngineContext(
-                getMap(),
-                this, // engine
-                _geometryPool.get(),
-                _loader.get(),
-                _unloader.get(),
-                _liveTiles.get(),
-                _renderBindings,
-                _terrainOptions,
-                _selectionInfo,
-                _modifyBBoxCallback.get());
-        }
-    }
-    return _engineContext.get();
 }
 
 unsigned int
@@ -933,28 +919,31 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // non-image tile layer. Keep track of these..
         }
 
-        // Update the existing render models, and trigger a data reload.
-        // Later we can limit the reload to an update of only the new data.
-        UpdateRenderModels updateModels(_mapFrame);
+        if (_terrain)
+        {
+            // Update the existing render models, and trigger a data reload.
+            // Later we can limit the reload to an update of only the new data.
+            UpdateRenderModels updateModels(_mapFrame);
 
 #if 0
-        // This uses the loaddata filter approach which will only request
-        // data for one layer. It mostly works but not 100%; see hires-insets
-        // as an example. Removing the world layer and re-adding it while
-        // zoomed in doesn't result in all tiles reloading. Possibly a
-        // synchronization issue.
-        ImageLayerVector imageLayers;
-        _mapFrame.getLayers(imageLayers);
+            // This uses the loaddata filter approach which will only request
+            // data for one layer. It mostly works but not 100%; see hires-insets
+            // as an example. Removing the world layer and re-adding it while
+            // zoomed in doesn't result in all tiles reloading. Possibly a
+            // synchronization issue.
+            ImageLayerVector imageLayers;
+            _mapFrame.getLayers(imageLayers);
 
-        if (imageLayers.size() == 1)
-            updateModels.setReloadData(true);
-        else
-            updateModels.layersToLoad().insert(tileLayer->getUID());
+            if (imageLayers.size() == 1)
+                updateModels.setReloadData(true);
+            else
+                updateModels.layersToLoad().insert(tileLayer->getUID());
 #else
-        updateModels.setReloadData(true);
+            updateModels.setReloadData(true);
 #endif
 
-        _terrain->accept(updateModels);
+            _terrain->accept(updateModels);
+        }
     }
 }
 
@@ -986,12 +975,15 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         }
     }
 
-    // Run the update visitor, which will clean out any rendering passes
-    // associated with the layer we just removed. This would happen 
-    // automatically during cull/update anyway, but it's more efficient
-    // to do it all at once.
-    UpdateRenderModels updater(_mapFrame);
-    _terrain->accept(updater);
+    if (_terrain)
+    {
+        // Run the update visitor, which will clean out any rendering passes
+        // associated with the layer we just removed. This would happen 
+        // automatically during cull/update anyway, but it's more efficient
+        // to do it all at once.
+        UpdateRenderModels updater(_mapFrame);
+        _terrain->accept(updater);
+    }
 
     //OE_INFO << LC << " Updated " << updater._count << " tiles\n";
 }

@@ -26,6 +26,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/TileRasterizer>
 
 #include "RexTerrainEngineOptions"
 #include "EngineContext"
@@ -51,9 +52,6 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
-
-    class SelectionInfo;
-
     class RexTerrainEngineNode : public TerrainEngineNode
     {
     public:
@@ -162,9 +160,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<ResourceReleaser> _releaser;
      
-        EngineContext* getEngineContext();
+        EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;
-        OpenThreads::Mutex _engineContextMutex;
+        //OpenThreads::Mutex _engineContextMutex;
 
         osg::Timer _timer;
         unsigned   _tileCount;
@@ -173,6 +171,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
         osg::ref_ptr<UnloaderGroup> _unloader;
+        TileRasterizer* _rasterizer;
         
         osg::ref_ptr<osg::Group> _terrain;
 

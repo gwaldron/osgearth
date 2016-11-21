@@ -1,7 +1,7 @@
 <map>
 
     <options>
-        <terrain driver="rex" progressive="false">
+        <terrain driver="rex">
             <lods>
                 <lod lod="13" priority_offset="7"/>
                 <lod lod="16" priority_offset="3"/>
@@ -22,34 +22,33 @@
             <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        <inner_width>20</inner_width>
-        <outer_width>200</outer_width>  
+        <inner_width>25</inner_width>
+        <outer_width>100</outer_width>  
     </elevation>
     
     
-    <image name="readymap_imagery" driver="tms" opacity="0.5" enabled="true">
+    <image name="readymap_imagery" driver="tms" opacity="0.9" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
         
     <image name="Debug" driver="debug" enabled="false"/>
     
-    
-    <image name="roads overlay" driver="agglite" min_level="9" max_data_level="16"> 
+    <road_surface min_level="13">
+        <cache_policy usage="none"/>
         <features name="roads" driver="ogr">
             <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        <styles>
-            <style type="text/css">
-                default {
-                   stroke: #42200;
-                   stroke-width: 20m;
-                }                    
-            </style>
-        </styles>        
-    </image>
-
+        <style type="text/css">
+            default {
+               stroke: #ffffff;
+               stroke-width: 25m;
+               stroke-image: "H:/data/textures/road.png";
+            }                    
+        </style>
+        <outer_width>100</outer_width>
+    </road_surface>
     
     <bumpmap>
         <image>../data/rock_hard.jpg</image>

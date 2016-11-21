@@ -93,7 +93,8 @@ namespace
             k == "model" ||
             k == "mask" ||
             k == "external" ||
-            k == "extensions";
+            k == "extensions" ||
+            k == "libraries";
     }
 
     /**
@@ -319,7 +320,7 @@ namespace
         ImageLayerOptions options( conf );
         options.name() = conf.value("name");
         ImageLayer* layer = new ImageLayer(options);
-        map->addImageLayer(layer);
+        map->addLayer(layer);
         if (layer->getStatus().isError())
             OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
     }
@@ -329,7 +330,7 @@ namespace
         ElevationLayerOptions options( conf );
         options.name() = conf.value( "name" );
         ElevationLayer* layer = new ElevationLayer(options);
-        map->addElevationLayer(layer);
+        map->addLayer(layer);
         if (layer->getStatus().isError())
             OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
     }
@@ -340,7 +341,7 @@ namespace
         options.name() = conf.value( "name" );
         options.driver() = ModelSourceOptions( conf );
         ModelLayer* layer = new ModelLayer(options);
-        map->addModelLayer(layer);
+        map->addLayer(layer);
         if (layer->getStatus().isError())
             OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
     }
@@ -351,7 +352,7 @@ namespace
         options.name() = conf.value( "name" );
         options.driver() = MaskSourceOptions(options);
         MaskLayer* layer = new MaskLayer(options);
-        map->addTerrainMaskLayer(layer);
+        map->addLayer(layer);
         if (layer->getStatus().isError())
             OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
     }
@@ -369,7 +370,20 @@ namespace
         return 0L;
     }
 
-    void addExtension(const Config& conf, MapNode* mapNode)
+    bool addLayer(const Config& conf, MapNode* mapNode)
+    {
+        std::string name = conf.key();
+        Layer* layer = Layer::create(name, conf);
+        if (layer)
+        {
+            mapNode->getMap()->addLayer(layer);
+            if (layer->getStatus().isError())
+                OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
+        }
+        return layer != 0L;
+    }
+
+    bool addExtension(const Config& conf, MapNode* mapNode)
     {
         std::string name = conf.key();
         Extension* extension = Extension::create( conf.key(), conf );
@@ -385,10 +399,12 @@ namespace
         if (extension)
         {
             mapNode->addExtension(extension);
+            return true;
         }
         else
         {            
             OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
+            return false;
         }
     }
 }
@@ -475,7 +491,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
-            addExtension( *i, mapNode.get() );
+            bool addedLayer = addLayer(*i, mapNode.get());
+
+            if ( !addedLayer )
+            {
+                //OE_INFO << LC << "Tried to load \"" << i->key() << "\" as a layer; now trying extension\n";
+                addExtension( *i, mapNode.get() );
+            }
         }
     }
 

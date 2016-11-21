@@ -423,7 +423,7 @@ TerrainLayer::open()
 
     }
 
-    return _status;
+    return getStatus();
 }
 
 void
@@ -432,7 +432,7 @@ TerrainLayer::close()
     _profile = 0L;
     _tileSource = 0L;
     _openCalled = false;
-    _status = Status();
+    setStatus(Status());
     _readOptions = 0L;
     _cacheSettings = 0L;
 }
@@ -680,7 +680,7 @@ TerrainLayer::disable(const std::string& msg)
     if (!_runtimeOptions->enabled().isSetTo(false))
     {
         _runtimeOptions->enabled() = false;
-        _status = Status::Error(msg);
+        setStatus(Status::Error(msg));
     }
 }
 
@@ -717,7 +717,7 @@ TerrainLayer::createTileSource()
             ts = TileSourceFactory::create( *_runtimeOptions->driver() );
             if ( !ts.valid() )
             {
-                setStatus(Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n"));
+                //setStatus(Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n"));
                 return 0L;
             }
         }

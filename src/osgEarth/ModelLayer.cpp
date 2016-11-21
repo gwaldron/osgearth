@@ -254,28 +254,28 @@ ModelLayer::open()
                         const Status& maskStatus = _maskSource->open(_readOptions.get());
                         if (maskStatus.isError())
                         {
-                            _status = maskStatus;
+                            setStatus(maskStatus);
                         }
                     }
                     else
                     {
-                        _status = Status::Error(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\"");
+                        setStatus(Status::Error(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\""));
                     }
                 }
             }
             else
             {
                 // propagate the model source's error status
-                _status = modelStatus;
+                setStatus(modelStatus);
             }
         }
         else
         {
-            _status = Status::Error(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
+            setStatus(Status::Error(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\""));
         }
     }
 
-    return _status;
+    return getStatus();
 }
 
 void

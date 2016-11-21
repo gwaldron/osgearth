@@ -132,13 +132,9 @@ namespace osgEarth
 
         const Status& open();
 
-        const Status& getStatus() const { return _status; }
-
     protected:
 
         Status initialize();
-
-        void setStatus(const Status& value) { _status = value; }
 
     private:
         MaskLayerOptions              _initOptions;
@@ -148,7 +144,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         osg::ref_ptr<osgDB::Options>  _readOptions;
         OpenThreads::Mutex            _mutex;
-        Status                        _status;
 
         void copyOptions();
     };

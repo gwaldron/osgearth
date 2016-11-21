@@ -576,10 +576,10 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     // render it to the texture using the Tile Rasterizer service.
                     // TODO: consider hanging on to this texture and not applying it to
                     // the live tile until the RTT is complete. (Prevents unsightly flashing)
-                    osg::Node* rttNode = dynamic_cast<osg::Node*>(layer->getTexture()->getUserData());
+                    GeoNode* rttNode = dynamic_cast<GeoNode*>(layer->getTexture()->getUserData());
                     if (rttNode)
                     {
-                        _context->getTileRasterizer()->push(rttNode, layer->getTexture(), model->getKey().getExtent());
+                        _context->getTileRasterizer()->push(rttNode->_node.get(), layer->getTexture(), rttNode->_extent); //model->getKey().getExtent());
                     }
                 }
             }

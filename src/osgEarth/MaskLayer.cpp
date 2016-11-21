@@ -109,8 +109,8 @@ MaskLayer::setReadOptions(const osgDB::Options* readOptions)
 const Status&
 MaskLayer::open()
 {
-    _status = initialize();
-    return _status;
+    setStatus(initialize());
+    return getStatus();
 }
 
 Status

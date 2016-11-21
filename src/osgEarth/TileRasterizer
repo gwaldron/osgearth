@@ -31,6 +31,18 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT GeoNode : public osg::Object
+    {
+    public:
+        META_Object(osgEarth, GeoNode);
+        GeoNode() { }
+        GeoNode(const GeoNode& rhs, const osg::CopyOp& copy) { }
+        GeoNode(osg::Node* node, const GeoExtent& extent) : _node(node), _extent(extent) { }
+
+        osg::ref_ptr<osg::Node> _node;
+        GeoExtent _extent;
+    };
+
     /**
      * Node that will render node graphs to textures, one at a time.
      */

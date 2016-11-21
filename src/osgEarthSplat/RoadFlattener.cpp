@@ -207,7 +207,7 @@ RoadHFOptions(options)
     setName("RoadHF");
 
     // Experiment with this and see what will work.
-    _pool.setTileSize(65u); //33u); //257u); //129u); //33u);
+    _pool.setTileSize(65u);
 }
 
 Status

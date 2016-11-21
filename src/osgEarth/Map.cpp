@@ -119,7 +119,7 @@ Map::ctor()
     _readOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
 
     // encode this map in the read options.
-    OptionsData<Map>::set(_readOptions, "osgEarth.Map", this);
+    OptionsData<const Map>::set(_readOptions, "osgEarth.Map", this);
 
     // set up a callback that the Map will use to detect Elevation Layer
     // visibility changes

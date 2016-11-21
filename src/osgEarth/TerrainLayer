@@ -219,9 +219,6 @@ namespace osgEarth
         /** Opens the layer and initializes the data source. */
         virtual const Status& open();
 
-        /** Gets the status of this layer, which will be unset if open() has not been called. */
-        const Status& getStatus() const { return _status; }
-
         /**
          * Whether to use this layer. Note, a layer is enabled/disabled once and its
          * status cannot be changed.
@@ -307,6 +304,7 @@ namespace osgEarth
          * Sets the I/O options to use. This data may include cache information.
          */
         void setReadOptions(const osgDB::Options* readOptions);
+        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
         /**
          * Data Extents reported for this layer are copied into output.
@@ -368,9 +366,6 @@ namespace osgEarth
 
         CacheBin* getCacheBin(const Profile* profile);
 
-        /** Subclass can call this to indicate an error. */
-        const Status& setStatus(const Status& value) { _status = value; return _status; }
-
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
@@ -423,8 +418,6 @@ namespace osgEarth
 
         // read the tile source's cache policy hint and apply as necessary
         void refreshTileSourceCachePolicyHint(TileSource*);
-
-        Status _status;
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

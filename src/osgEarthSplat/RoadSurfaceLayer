@@ -1,0 +1,125 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPLAT_ROAD_SURFACE_LAYER
+#define OSGEARTH_SPLAT_ROAD_SURFACE_LAYER 1
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/TileRasterizer>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Session>
+#include "Export"
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Configuration options for the land use tile source
+     */
+    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
+    {
+    public:
+        RoadSurfaceLayerOptions(const ImageLayerOptions& options = ImageLayerOptions())
+            : ImageLayerOptions(options)
+        {
+            _innerWidth.init(25.0);
+            _outerWidth.init(50.0);
+            fromConfig(_conf);
+        }
+
+    public:
+
+        optional<FeatureSourceOptions>& featureSourceOptions() { return _featureSourceOptions; }
+        const optional<FeatureSourceOptions>& featureSourceOptions() const { return _featureSourceOptions; }
+
+        optional<double>& innerWidth() { return _innerWidth; }
+        const optional<double>& innerWidth() const { return _innerWidth; }
+
+        optional<double>& outerWidth() { return _outerWidth; }
+        const optional<double>& outerWidth() const { return _outerWidth; }
+
+        optional<Style>& style() { return _style; }
+        const optional<Style>& style() const { return _style; }
+
+    public:
+        Config getConfig() const
+        {
+            Config conf;
+            conf.addObjIfSet("features",  _featureSourceOptions);
+            conf.addIfSet("inner_width", _innerWidth);
+            conf.addIfSet("outer_width", _outerWidth);
+            conf.addObjIfSet("style", _style);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ImageLayerOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf )
+        {
+            conf.getObjIfSet("features",  _featureSourceOptions);
+            conf.getIfSet("inner_width", _innerWidth);
+            conf.getIfSet("outer_width", _outerWidth);
+            conf.getObjIfSet("style", _style);
+        }
+        
+    private:
+        optional<FeatureSourceOptions> _featureSourceOptions;
+        optional<double> _innerWidth;
+        optional<double> _outerWidth;
+        optional<Style> _style;
+    };
+
+    /**
+     * Tile source that will read from ANOTHER tile source and perform
+     * various pre-processing syntheses operations like warping and detailing.
+     */
+    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer,
+                                                  public RoadSurfaceLayerOptions
+    {
+    public:
+        RoadSurfaceLayer();
+        RoadSurfaceLayer(const ConfigOptions& options);
+
+    public: // ImageLayer
+
+        bool createTextureSupported() const { return true; }
+
+        osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress);
+
+        const Status& open();
+
+    protected:
+        virtual ~RoadSurfaceLayer() { }
+
+        osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<FeatureSource> _features;
+        osg::ref_ptr<Session> _session;
+
+        GeoNode* createNode(const TileKey& key, ProgressCallback* progress);
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_ROAD_SURFACE_LAYER

@@ -18,7 +18,10 @@
  */
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
 #include <osg/MatrixTransform>
+#include <osg/Texture2D>
 #include <osgDB/ReadFile>
 
 #define LC "[TileRasterizer] "
@@ -42,6 +45,26 @@ osg::Camera()
     setImplicitBufferAttachmentMask(0, 0);
     setSmallFeatureCullingPixelSize(0.0f);
     setViewMatrix(osg::Matrix::identity());
+
+    osg::StateSet* ss = getOrCreateStateSet();
+    //VirtualProgram::getOrCreate(ss)->setInheritShaders(false);
+    ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+
+    ss->setMode(GL_BLEND, 0);
+    ss->setMode(GL_LIGHTING, 0);
+    ss->setMode(GL_CULL_FACE, 0);
+    
+#if 0
+    osg::Image* image = osgDB::readImageFile("H:/data/textures/road.jpg");
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+    tex->setMaxAnisotropy( 4.0f );
+    tex->setResizeNonPowerOfTwoHint( false );
+    ss->setTextureAttribute(0, tex);
+#endif
 }
 
 TileRasterizer::~TileRasterizer()

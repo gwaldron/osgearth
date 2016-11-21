@@ -28,6 +28,7 @@
 #include <osg/StateSet>
 #include <osg/RenderInfo>
 #include <osgDB/Options>
+#include <osgDB/FileNameUtils>
 #include <vector>
 
 namespace osgEarth
@@ -37,9 +38,11 @@ namespace osgEarth
     /**
      * Base class for all Map layers. 
      */
-    class OSGEARTH_EXPORT Layer : public osg::Referenced
+    class OSGEARTH_EXPORT Layer : public osg::Object
     {
     public:
+        META_Object(osgEarth, Layer);
+
         Layer();
 
         /** Gets this layer's unique ID. */
@@ -73,6 +76,7 @@ namespace osgEarth
          * Whether the layer is enabled.
          */
         virtual bool getEnabled() const { return true; }
+
 
 
 
@@ -123,10 +127,20 @@ namespace osgEarth
 
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
+    public: // Loading a layer from a plugin
+
+        static Layer* create(const std::string& name, const ConfigOptions& options);
+
+        static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+
     protected:
 
         /** dtor */
         virtual ~Layer();
+
+        Layer(const Layer& rhs, const osg::CopyOp& op) { }
+
+        const Status& setStatus(const Status& status) { _status = status; return _status; }
 
     private:
         UID _uid;
@@ -137,6 +151,62 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
+
+
+
+
+
+    // TODO: move this somewhere generic
+    template<class T>
+    class RegisterPluginLoader
+    {
+        public:
+            RegisterPluginLoader(const std::string& name)
+            {
+                if (osgDB::Registry::instance())
+                {
+                    _rw = new T(name);
+                    osgDB::Registry::instance()->addReaderWriter(_rw.get());
+                }
+            }
+
+            ~RegisterPluginLoader()
+            {
+                if (osgDB::Registry::instance())
+                {
+                    osgDB::Registry::instance()->removeReaderWriter(_rw.get());
+                }
+            }
+
+            T* get() { return _rw.get(); }
+
+        protected:
+            osg::ref_ptr<T> _rw;
+    };
+
+    // TODO: move this somewhere generic
+    template<typename T, typename U>
+    class PluginLoader : public osgDB::ReaderWriter
+    {
+    public: // Plugin stuff
+        PluginLoader(const std::string& name) {
+            supportsExtension( name, name );
+        }
+
+        virtual ~PluginLoader() { }
+
+        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
+        {
+          if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
+                return ReadResult::FILE_NOT_HANDLED;
+
+          return ReadResult( new T(U::getConfigOptions(dbOptions)) );
+        }
+    };
+    
+#define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
+    extern "C" void osgdb_##NAME(void) {} \
+    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
 
 } // namespace osgEarth
 

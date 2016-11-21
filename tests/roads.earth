@@ -44,7 +44,7 @@
             default {
                stroke: #ffffff;
                stroke-width: 25m;
-               stroke-image: "H:/data/textures/road.png";
+               stroke-image: "../data/road.png";
             }                    
         </style>
         <outer_width>100</outer_width>

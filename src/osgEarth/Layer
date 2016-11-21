@@ -29,6 +29,7 @@
 #include <osg/RenderInfo>
 #include <osgDB/Options>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 #include <vector>
 
 namespace osgEarth

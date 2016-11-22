@@ -20,6 +20,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
+#include <osgEarth/ShaderUtils>
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgDB/WriteFile>
@@ -145,7 +146,7 @@ RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
     }
 
     GeometryCompilerOptions options;
-    options.shaderPolicy() = ShaderPolicy::SHADERPOLICY_DISABLE;
+    options.shaderPolicy() = SHADERPOLICY_DISABLE;
 
     GeometryCompiler compiler(options);
     osg::ref_ptr<osg::Node> node = compiler.compile(cursor, style().get(), fc);

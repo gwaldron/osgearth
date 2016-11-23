@@ -31,32 +31,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-struct CowLayer : public ImageLayer
-{
-    CowLayer() : ImageLayer(ImageLayerOptions())
-    {
-    }
-
-    bool createTextureSupported() const { return true; }
-
-    osg::Texture* createTexture(const TileKey& key, ProgressCallback* p)
-    {
-        osg::Texture2D* tex = new osg::Texture2D();
-        tex->setTextureSize(256, 256);
-        tex->setInternalFormat(GL_RGBA);
-        tex->setSourceFormat(GL_RGBA);
-        tex->setSourceType(GL_UNSIGNED_BYTE);
-        tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-        tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
-        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-        tex->setResizeNonPowerOfTwoHint(false);
-        tex->setMaxAnisotropy(4.0f);
-        tex->setName(key.str());
-        return tex;
-    }
-};
-
 int
 usage(const char* name)
 {
@@ -111,8 +85,6 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( node )
     {
-        MapNode* mapNode = MapNode::get(node);
-        mapNode->getMap()->addLayer(new CowLayer());
         viewer.setSceneData( node );
         viewer.run();
     }

@@ -40,6 +40,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Lighting>
+#include <osgEarth/ResourceReleaser>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -273,6 +274,10 @@ MapNode::init()
             << std::endl;
     }
 
+    // Create and install a GL resource releaser that this node and extensions can use.
+    _resourceReleaser = new ResourceReleaser();
+    this->addChild(_resourceReleaser);
+
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
@@ -494,6 +499,12 @@ TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
     return _terrainEngine;
+}
+
+ResourceReleaser*
+MapNode::getResourceReleaser() const
+{
+    return _resourceReleaser;
 }
 
 void

@@ -35,6 +35,7 @@ namespace osgEarth
     class TerrainEngineNode;
     class MapNodeCullData;
     class SpatialReference;
+    class ResourceReleaser;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -168,6 +169,11 @@ namespace osgEarth
         TerrainEngineNode* getTerrainEngine() const;
 
         /**
+         * Gets a service that you can use to release GL objects.
+         */
+        ResourceReleaser* getResourceReleaser() const;
+
+        /**
          * Gets the Config object serializing external data. External data is information
          * that osgEarth itself does not control, but that an app can include in the
          * MapNode for the purposes of including it in a .earth file.
@@ -250,6 +256,7 @@ namespace osgEarth
         TerrainEngineNode*       _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
+        ResourceReleaser*        _resourceReleaser;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 

@@ -223,7 +223,7 @@ namespace osgEarth
          * Whether to use this layer. Note, a layer is enabled/disabled once and its
          * status cannot be changed.
          */
-        bool getEnabled() const { return *_runtimeOptions->enabled(); }        
+        virtual bool getEnabled() const { return *_runtimeOptions->enabled(); }        
 
         /**
          * Gets the readable name of the map layer.

@@ -278,7 +278,7 @@ namespace osgEarth
         void setVisible(bool value);
 
         /** Whether this layer is used at all. */
-        bool getEnabled() const;
+        virtual bool getEnabled() const;
 
         /** whether to apply lighting to the model layer's root node */
         void setLightingEnabled( bool value );

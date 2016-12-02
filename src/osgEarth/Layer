@@ -36,6 +36,7 @@ namespace osgEarth
 {
     class SequenceControl;
 
+
     /**
      * Base class for all Map layers. 
      */
@@ -44,26 +45,31 @@ namespace osgEarth
     public:
         META_Object(osgEarth, Layer);
 
+        /**
+         * Constructs a map layer
+         */
         Layer();
 
-        /** Gets this layer's unique ID. */
+        /**
+         * This layer's unique ID.
+         * This value is generated automatically at runtime and is not
+         * guaranteed to be the same from one run to the next.
+         */
         UID getUID() const { return _uid; }
-
-        /** Layer name */
-        virtual void setName(const std::string& name) { _name = name; }
-        virtual const std::string& getName() const { return _name; }
 
         /**
          * Open a layer and return the status.
+         * The default implementation does nothing.
          */
         virtual const Status& open() { return _status; }
 
         /**
          * Gets the status of this layer.
          */
-        virtual const Status& getStatus() const { return _status; }
+        const Status& getStatus() const { return _status; }
 
         /**
+         * @deprecated
          * Sequence controller if the layer has one.
          */
         virtual SequenceControl* getSequenceControl() { return 0L; }
@@ -74,14 +80,12 @@ namespace osgEarth
         virtual Config getConfig() const { return Config(); }
 
         /**
-         * Whether the layer is enabled.
+         * Whether the layer is enabled (used in the map)
          */
         virtual bool getEnabled() const { return true; }
 
 
-
-
-        // *** NOTE *** Everything below this line is subject to change ***
+        // *** NOTE *** Everything below this line is experimental and subject to change ***
 
         /**
          * Access the layer's stateset, creating it is necessary
@@ -148,7 +152,6 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         Status _status;
-        std::string _name;
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

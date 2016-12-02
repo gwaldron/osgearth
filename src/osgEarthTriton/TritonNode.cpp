@@ -37,6 +37,11 @@ _options ( options )
     if ( map )
         setSRS( map->getSRS() );
 
+    // Remember the resource releaser so we can properly destroy 
+    // Triton objects in a graphics context.
+    _releaser = mapNode->getResourceReleaser();
+
+    // create an object to house Triton data and resources.
     _TRITON = new TritonContext( options );
 
     if ( map )
@@ -51,12 +56,6 @@ _options ( options )
     _drawable->setNodeMask( TRITON_OCEAN_MASK );
     this->addChild(_drawable);
 
-    //osg::Geode* geode = new osg::Geode();
-    //geode->addDrawable( _drawable );
-    //geode->setNodeMask( TRITON_OCEAN_MASK );
-
-    //this->addChild( geode );
-
     this->setNumChildrenRequiringUpdateTraversal(1);
 
     // Place in the depth-sorted bin and set a rendering order.
@@ -66,7 +65,16 @@ _options ( options )
 
 TritonNode::~TritonNode()
 {
-    //nop
+    // submit the TRITON context to the releaser so it can shut down Triton
+    // objects in a valid graphics context.
+    if (_TRITON.valid())
+    {
+        osg::ref_ptr<ResourceReleaser> releaser;
+        if (_releaser.lock(releaser))
+        {
+            releaser->push(_TRITON.get());
+        }
+    }
 }
 
 void

@@ -25,6 +25,7 @@
 #include "TritonCallback"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
+#include <osgEarth/ResourceReleaser>
 #include <osg/Drawable>
 
 namespace osgEarth { namespace Triton
@@ -61,8 +62,7 @@ namespace osgEarth { namespace Triton
         TritonOptions               _options;
         osg::Drawable*              _drawable;
         osg::ref_ptr<osg::Uniform>  _alphaUniform;
-
-        //Environment* _environmentWrapper;
+        osg::observer_ptr<ResourceReleaser> _releaser;
     };
 
 } } // namespace osgEarth::Triton

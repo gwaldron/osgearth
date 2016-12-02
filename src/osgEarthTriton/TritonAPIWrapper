@@ -23,6 +23,11 @@
 #include <osg/Vec3>
 #include <stdint.h> // for uintptr_t
 
+namespace osgEarth {
+    namespace Util {
+        class OceanNode;
+    }
+}
 
 namespace osgEarth { namespace Triton
 {
@@ -79,9 +84,6 @@ namespace osgEarth { namespace Triton
 
         void SetQuality(OceanQuality value);
         OceanQuality GetQuality() const;
-
-        //void SetMaximumWavePeriod(double value);
-        //double GetMaximumWavePeriod() const;
 
         void EnableSpray(bool enabled);
         bool SprayEnabled() const;

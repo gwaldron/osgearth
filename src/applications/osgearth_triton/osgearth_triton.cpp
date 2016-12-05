@@ -79,6 +79,12 @@ public:
 
 struct App
 {
+    App()
+    {
+        triton = NULL;
+        mapNode = NULL;        
+    }
+
     MapNode*    mapNode;
     TritonNode* triton;
     Settings    settings;
@@ -99,6 +105,7 @@ struct App
         tritonOptions.user()        = "my_user_name";
         tritonOptions.licenseCode() = "my_license_code";
         tritonOptions.maxAltitude() = 10000;
+        tritonOptions.useHeightMap() = true;
 
         const char* ev_t = ::getenv("TRITON_PATH");
         if ( ev_t )
@@ -171,7 +178,7 @@ Container* createUI()
     grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_app.settings.alpha)));
     ++r;
     grid->setControl(0, r, new LabelControl("Toggle"));
-    grid->setControl(1, r, new CheckBoxControl(true, new Toggle()));
+    grid->setControl(1, r, new CheckBoxControl(false, new Toggle()));
 
     grid->getControl(1, r-1)->setHorizFill(true,200);
 
@@ -218,7 +225,7 @@ main(int argc, char** argv)
         viewer.setSceneData( node );
 
         s_app.mapNode = MapNode::get( node );
-        s_app.addTriton();
+        //s_app.addTriton();
 
         return viewer.run();
     }

@@ -387,7 +387,7 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
     double lookAtLat=0.0, lookAtLon=0.0, lookAtHeight=0.0;
     mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(center.x(), center.y(), center.z(), lookAtLat, lookAtLon, lookAtHeight);
 
-    // Calculate the distance to the horizon from the eyepoint
+    // Calculate the distance to the horizon from the eyepoint 
     double eyeLen = eye.length();
     double radE = mslEye.length();
     double hmax = radE + 8848.0;
@@ -438,7 +438,7 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
 
 #ifdef DEBUG_HEIGHTMAP
     mapNode->getParent(0)->removeChild(0, 1);
-    mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
+    mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCamera));
 #endif /* DEBUG_HEIGHTMAP */
 }
 
@@ -730,11 +730,15 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     _heightCamera->setFinalDrawCallback(new PassHeightMapToTritonCallback(_TRITON.get()));
 
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the
-    // terrain engine automatically generates at the specified location.
+    // terrain engine automatically generates at the specified location. We need to set
+    // this VP as "abstract" because it cannot run without the terrain engine's SDK 
+    // shaders installed.
     osg::StateSet* stateSet = _heightCamera->getOrCreateStateSet();
     osgEarth::VirtualProgram* heightProgram = osgEarth::VirtualProgram::getOrCreate(stateSet);
+    heightProgram->setName("Triton Height Map");
     heightProgram->setFunction( "oe_triton_setupHeightMap", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
     heightProgram->setFunction( "oe_triton_drawHeightMap", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    heightProgram->setIsAbstract(true);
 
     // If we're using a mask layer, enable that in the shader:
     if (!_TRITON->getMaskLayerName().empty())
@@ -755,6 +759,7 @@ void TritonDrawable::setupHeightMap(osg::State& state)
 
 
     _heightCamera->addChild( mapNode->getTerrainEngine() );
+
     _terrainChangedCallback = new OceanTerrainChangedCallback(this);
     if ( mapNode->getTerrain() )
         mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );

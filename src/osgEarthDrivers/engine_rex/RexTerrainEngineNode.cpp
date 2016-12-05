@@ -182,6 +182,8 @@ _stateUpdateRequired  ( false )
     {
         osg::StateSet* stateset = getOrCreateStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setName("RexTerrainEngineNode");
+        vp->setIsAbstract(true);    // cannot run by itself, requires additional children
         Shaders package;
         package.load(vp, package.SDK);
     }

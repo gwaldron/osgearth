@@ -103,6 +103,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    IntersectionPicker
     IOTypes
     JsonUtils
     Layer
@@ -136,7 +137,7 @@ SET(LIB_PUBLIC_HEADERS
     PatchLayer
     PhongLightingEffect
     Picker
-    IntersectionPicker
+    PluginLoader
     PrimitiveIntersector
     Profile
     Profiler
@@ -270,6 +271,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    IntersectionPicker.cpp
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
@@ -298,7 +300,6 @@ set(TARGET_SRC
     OverlayNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
-    IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp

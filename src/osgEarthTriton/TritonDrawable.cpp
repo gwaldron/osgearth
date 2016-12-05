@@ -325,7 +325,8 @@ static const size_t NUM_CONTEXTS = 64;
 
 TritonDrawable::TritonDrawable(osgEarth::MapNode* mapNode, TritonContext* TRITON) :
 _TRITON(TRITON),
-_mapNode(mapNode)
+_mapNode(mapNode),
+_heightCameraParent(0L)
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -758,8 +759,9 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     if ( mapNode->getTerrain() )
         mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
 
-    osg::Group* root = osgEarth::findTopMostNodeOfType<osg::Group>(mapNode);
-    root->addChild(_heightCamera.get());
+    _heightCameraParent->addChild(_heightCamera.get());
+    //osg::Group* root = osgEarth::findTopMostNodeOfType<osg::Group>(mapNode);
+    //root->addChild(_heightCamera.get());
 
 #ifdef DEBUG_HEIGHTMAP
     mapNode->getParent(0)->addChild(CreateTextureQuadOverlay(_heightMap, 0.65, 0.05, 0.3, 0.3));

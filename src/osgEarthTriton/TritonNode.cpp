@@ -50,11 +50,14 @@ _options ( options )
     if ( callback )
         _TRITON->setCallback( callback );
 
-    _drawable = new TritonDrawable(mapNode, _TRITON);
+    TritonDrawable* drawable = new TritonDrawable(mapNode, _TRITON);
+    _drawable = drawable;
     _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
     _alphaUniform->set(getAlpha());
     _drawable->setNodeMask( TRITON_OCEAN_MASK );
     this->addChild(_drawable);
+
+    drawable->_heightCameraParent = this;
 
     this->setNumChildrenRequiringUpdateTraversal(1);
 

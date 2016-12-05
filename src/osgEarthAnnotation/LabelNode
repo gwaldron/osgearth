@@ -125,6 +125,10 @@ namespace osgEarth { namespace Annotation
 
         virtual void dirty();
 
+    protected: // AnnotationNode override
+        
+        virtual bool supportsRenderBinDetails() const { return false; }
+
     protected:
         void init(const Style& style);
 

@@ -197,7 +197,7 @@ AnnotationNode::applyRenderSymbology(const Style& style)
         }
 #endif
 
-        if ( render->order().isSet() || render->renderBin().isSet() )
+        if ( supportsRenderBinDetails() && (render->order().isSet() || render->renderBin().isSet()) )
         {
             osg::StateSet* ss = getOrCreateStateSet();
             int binNumber = render->order().isSet() ? (int)render->order()->eval() : ss->getBinNumber();

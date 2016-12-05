@@ -172,6 +172,7 @@ ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
     conf.getIfSet( "sort_by_priority",    _sortByPriority );
     conf.getIfSet( "snap_to_pixel",       _snapToPixel );
     conf.getIfSet( "max_objects",         _maxObjects );
+    conf.getIfSet( "render_order",        _renderBinNumber );
 }
 
 Config
@@ -185,6 +186,7 @@ ScreenSpaceLayoutOptions::getConfig() const
     conf.addIfSet( "sort_by_priority",    _sortByPriority );
     conf.addIfSet( "snap_to_pixel",       _snapToPixel );
     conf.addIfSet( "max_objects",         _maxObjects );
+    conf.addIfSet( "render_order",        _renderBinNumber );
     return conf;
 }
 
@@ -817,10 +819,12 @@ bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 //----------------------------------------------------------------------------
 
 void
-ScreenSpaceLayout::activate(osg::StateSet* stateSet, int binNum)
+ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
 {
     if ( stateSet )
     {
+        int binNum = getOptions().renderOrder().get();
+
         // the OVERRIDE prevents subsequent statesets from disabling the layout bin
         stateSet->setRenderBinDetails(
             binNum,

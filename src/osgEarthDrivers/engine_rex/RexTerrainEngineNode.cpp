@@ -523,17 +523,7 @@ RexTerrainEngineNode::dirtyState()
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        // Inform the registry of the current frame so that Tiles have access
-        // to the information.
-        if ( _liveTiles.valid() && nv.getFrameStamp() )
-        {
-            _liveTiles->setTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
-        }
-    }
-
-    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         if (_renderModelUpdateRequired)
         {
@@ -541,20 +531,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             _terrain->accept(visitor);
             _renderModelUpdateRequired = false;
         }
+        TerrainEngineNode::traverse( nv );
     }
-
-
-#if 0
-    static int c = 0;
-    if ( ++c % 60 == 0 )
-    {
-        OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
-        _liveTiles->run( CheckForOrphans() );
-    }
-#endif
     
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() )
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        // Inform the registry of the current frame so that Tiles have access
+        // to the information.
+        if ( _liveTiles.valid() && nv.getFrameStamp() )
+        {
+            _liveTiles->setTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+        }
+
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
         getEngineContext()->startCull( cv );
@@ -646,6 +634,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             OE_INFO << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
         }
 
+        // we don't call this b/c we don't want _terrain
+        //TerrainEngineNode::traverse(nv);
+
         // traverse all the other children (geometry pool, loader/unloader, etc.)
         _geometryPool->accept(nv);
         _loader->accept(nv);
@@ -653,17 +644,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         _releaser->accept(nv);
 
         _rasterizer->traverse(nv);  // Why does this work, when accept() doesn't? No one knows.
-
-        //for (unsigned i = 0; i<getNumChildren(); ++i)
-        //{
-        //    if (getChild(i) != _terrain.get())
-        //        getChild(i)->accept(nv);
-        //        //nv.apply(*getChild(i));
-        //        //getChild(i)->traverse(nv); //accept(nv);
-        //}
     }
 
-    //else
+    else
     {
         TerrainEngineNode::traverse( nv );
     }

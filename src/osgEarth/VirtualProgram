@@ -378,6 +378,10 @@ namespace osgEarth
         void setMask(unsigned mask) { _mask = mask; }
         unsigned getMask() const { return _mask; }
 
+        /** Sets whether this VP is "abstract", i.e. pure virtual, and cannot be compiled on its own */
+        void setIsAbstract(bool value) { _isAbstract = value; }
+        bool getIsAbstract() const { return _isAbstract; }
+
     public: // StateAttribute
         virtual void compileGLObjects(osg::State& state) const;
         virtual void resizeGLObjectBuffers(unsigned maxSize);
@@ -493,6 +497,8 @@ namespace osgEarth
 
         bool _logShaders;
         std::string _logPath;
+
+        bool _isAbstract;
 
         AttribAliasMap _attribAliases;
 

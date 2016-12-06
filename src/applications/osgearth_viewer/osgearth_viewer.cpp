@@ -53,7 +53,10 @@ main(int argc, char** argv)
     float vfov = -1.0f;
     arguments.read("--vfov", vfov);
     
-    osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_ARRAY_OBJECT);
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+    //uncomment for VAOs
+    //osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_ARRAY_OBJECT);
+#endif
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);

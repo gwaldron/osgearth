@@ -463,7 +463,7 @@ RexTerrainEngineNode::dirtyTerrain()
     _mapFrame.getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
-    OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
+    OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
 
     for( unsigned i=0; i<keys.size(); ++i )
     {

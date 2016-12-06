@@ -125,6 +125,10 @@ _supportsGLSL(false)
     // we will set these later (in TileModelCompiler)
     this->setUseDisplayList(false);
     this->setUseVertexBufferObjects(true);
+    
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) this->setUseVertexArrayObject(true);
+#endif
 }
 
 
@@ -692,8 +696,13 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     renderPrimitiveSets(state, renderColor, true);
 
     // unbind the VBO's if any are used.
-    state.unbindVertexBufferObject();
-    state.unbindElementBufferObject();
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+    if (!state.useVertexArrayObject(_useVertexArrayObject) || state.getCurrentVertexArrayState()->getRequiresSetArrays())
+#endif
+    {
+        state.unbindVertexBufferObject();
+        state.unbindElementBufferObject();
+    }
 }
 
 void

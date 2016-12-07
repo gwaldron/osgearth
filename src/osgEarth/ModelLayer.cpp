@@ -225,6 +225,13 @@ ModelLayer::copyOptions()
     _alphaEffect->setAlpha( *_initOptions.opacity() );
 }
 
+void
+ModelLayer::setName(const std::string& name)
+{
+    Layer::setName(name);
+    _runtimeOptions.name() = name;
+}
+
 const Status&
 ModelLayer::open()
 {

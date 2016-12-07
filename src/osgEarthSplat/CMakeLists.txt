@@ -44,6 +44,7 @@ set(TARGET_SRC
     RoadSurfaceLayer.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
+    SplatLayer.cpp
 	SplatLayerFactory.cpp
 	SplatCoverageLegend.cpp
     Surface.cpp
@@ -65,6 +66,7 @@ set(LIB_PUBLIC_HEADERS
 	SplatExtension
 	SplatOptions
     SplatShaders
+    SplatLayer
 	SplatLayerFactory
     Surface
     Zone)

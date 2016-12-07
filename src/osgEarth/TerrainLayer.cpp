@@ -349,6 +349,18 @@ TerrainLayer::init()
 
         _runtimeOptions->cacheId().init(cacheId); // set as default value
     }
+
+    if (!_runtimeOptions->name().empty())
+    {
+        setName(_runtimeOptions->name());
+    }
+}
+
+void
+TerrainLayer::setName(const std::string& name)
+{
+    Layer::setName(name);
+    _runtimeOptions->name() = name;
 }
 
 const Status&

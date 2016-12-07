@@ -197,12 +197,13 @@ namespace osgEarth
         /** dtor */
         virtual ~ModelLayer();
 
-    public:
+    public: // osg::Object
         /** 
          * Gets the name of this model layer
          */
-        void setName(const std::string& name) { _runtimeOptions.name() = name; }
-        const std::string& getName() const { return _runtimeOptions.name().get(); }
+        virtual void setName(const std::string& name);
+
+    public:
 
         /**
          * Gets the initialization options for this layer.

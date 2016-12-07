@@ -106,6 +106,13 @@ MaskLayer::setReadOptions(const osgDB::Options* readOptions)
     _readOptions = Registry::cloneOrCreateOptions(readOptions);
 }
 
+void
+MaskLayer::setName(const std::string& name)
+{
+    Layer::setName(name);
+    _runtimeOptions.name() = name;
+}
+
 const Status&
 MaskLayer::open()
 {

@@ -106,12 +106,6 @@ namespace osgEarth
          */
         MaskSource* getMaskSource() const { return _maskSource.get(); }
 
-        /** 
-         * Gets the name of this mask layer
-         */
-        void setName(const std::string& name) { _runtimeOptions.name() = name; }
-        const std::string& getName() const { return *_runtimeOptions.name(); }
-
         /**
          * Minimum terrain LOD at which masking should occur
          */
@@ -125,6 +119,11 @@ namespace osgEarth
             float                   heightScale,
             const SpatialReference* srs,
             ProgressCallback*       progress );
+
+    public: // osg::Object
+        
+        /** Name of the layer */
+        virtual void setName(const std::string& name);
 
     public:
 

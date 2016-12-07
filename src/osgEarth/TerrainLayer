@@ -228,12 +228,15 @@ namespace osgEarth
         /**
          * Gets the readable name of the map layer.
          */
-        const std::string& getName() const { return getTerrainLayerRuntimeOptions().name(); }
+        //const std::string& getName() const { return getTerrainLayerRuntimeOptions().name(); }
+
+
+    public: // osg::Object
 
 		/**
-		 * Sets the readable name of the map layer
+		 * Sets the name of the map layer
 		 */
-		void setName( const std::string& name ) { _runtimeOptions->name() = name; }
+		virtual void setName( const std::string& name );
 
     public:
 

@@ -21,22 +21,64 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
+#include <osgEarthSymbology/Color>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Serializable configuation options for the SimpleOceanLayer.
+     */
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public ConfigOptions
+    {
+    public:
+        /** Color of the ocean surface */
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+
+    public:
+        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : ConfigOptions(op) {
+            _color.init(Color(0.1,0.22,0.32,0.85));
+            mergeConfig(_conf);
+        }
+
+        void mergeConfig(const Config& conf) {
+            conf.getIfSet("color", _color);   
+        }
+
+        Config getConfig() const {
+            Config conf;
+            conf.addIfSet("color", _color);
+            return conf;
+        }
+
+    private:
+        optional<Color> _color;
+        optional<float> _maxAltitude;
+    };
+
     /**
      * A Rex map layer that renders a simple ocean surface.
      * This layer requires that the map include bathymetric data (ocean floor).
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer,
+                                                 public SimpleOceanLayerOptions
     {
     public:
         /** Constructs a new ocean layer */
         SimpleOceanLayer();
 
-        //TODO: properties
+        /** Constructs a new layer from an options structure. */
+        SimpleOceanLayer(const SimpleOceanLayerOptions& options);
+
+        /** Call this after changing one or more of the options to apply the new values. */
+        void applyOptions();
 
     public: // Layer
+
+        /** serialize */
+        Config getConfig() const;
 
         /** callback that ensures proper culling */
         void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
@@ -44,6 +86,8 @@ namespace osgEarth { namespace Util
     protected:
 
         virtual ~SimpleOceanLayer() { }
+
+        void ctor();
     };
     
 

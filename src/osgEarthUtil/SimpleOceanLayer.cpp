@@ -28,13 +28,38 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+#define LC "[SimpleOceanLayer] "
+
+
+/** Register this layer so it can be used in an earth file */
+REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
+
 
 SimpleOceanLayer::SimpleOceanLayer() :
-Layer()
+Layer(),
+SimpleOceanLayerOptions()
 {
+    ctor();
+}
+
+SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
+Layer(),
+SimpleOceanLayerOptions(options)
+{
+    ctor();
+}
+
+void
+SimpleOceanLayer::ctor()
+{
+    this->setName("Simple Ocean");
+
+    OE_INFO << LC << "Creating a Simple Ocean Layer\n";
+
     const char* oceanFS =
         "#version 330 \n"
         "float oe_terrain_getElevation(); \n"
+        "uniform vec4 ocean_color; \n"
 
         "float ocean_remap( float val, float vmin, float vmax, float r0, float r1 ) { \n"
         "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
@@ -42,14 +67,13 @@ Layer()
         "}\n"
 
         "void ocean_FS(inout vec4 color) { \n"
-        "    const vec3 oceanColor = vec3(0.1, 0.22, 0.32); \n"
         "    const float lowF = -100.0;\n"
         "    const float hiF = -10.0;\n"
         "    const float seaLevel = 0.0;\n"
 
         "    float elevation = oe_terrain_getElevation(); \n"
         "    float alpha = ocean_remap(elevation, seaLevel+lowF, seaLevel+hiF, 1.0, 0.0); \n"
-        "    color = vec4(oceanColor, alpha); \n"
+        "    color = vec4(ocean_color.rgb, alpha*ocean_color.a); \n"
         "} \n";
 
     setRenderType(RENDERTYPE_TILE);
@@ -77,6 +101,16 @@ Layer()
     m->setShininess(m->FRONT_AND_BACK, 40.0);
     ss->setAttributeAndModes(m, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     m->setUpdateCallback(new MaterialCallback());
+
+    applyOptions();
+}
+
+void
+SimpleOceanLayer::applyOptions()
+{
+    osg::StateSet* ss = getOrCreateStateSet();
+
+    ss->getOrCreateUniform("ocean_color", osg::Uniform::FLOAT_VEC4)->set(color().get());
 }
 
 void 
@@ -84,4 +118,12 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
 {
     // Force the max Z to be at least sea level, to satisfy the culling pass
     box.zMax() = std::max(box.zMax(), 0.0f);
+}
+
+Config
+SimpleOceanLayer::getConfig() const
+{
+    Config conf = SimpleOceanLayerOptions::getConfig();
+    conf.key() = "simple_ocean";
+    return conf;
 }

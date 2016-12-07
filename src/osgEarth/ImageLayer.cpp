@@ -297,6 +297,15 @@ _runtimeOptions( options )
     init();
 }
 
+const Status&
+ImageLayer::open()
+{
+    if (!createTextureSupported())
+        return TerrainLayer::open();
+    else
+        return getStatus();
+}
+
 void
 ImageLayer::init()
 {

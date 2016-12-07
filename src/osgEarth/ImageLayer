@@ -341,8 +341,9 @@ namespace osgEarth
         void applyTextureCompressionMode(osg::Texture* texture) const;
 
     public: // TerrainLayer override
-
-        //CacheBin* getCacheBin( const Profile* profile );
+        
+        /** Opens the image layer and returns the status. */
+        virtual const Status& open();
 
     public: // Layer
 

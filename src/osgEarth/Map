@@ -131,47 +131,36 @@ namespace osgEarth
          */
         Layer* getLayerByName(const std::string& name) const;
 
-        template<typename T> T* getLayerByName(const std::string& name) const {
-            return dynamic_cast<T*>(getLayerByName(name));
-        }
+        template<typename T> T* getLayerByName(const std::string& name) const;
 
         /**
          * Gets an image layer by its unique ID.
          */
         Layer* getLayerByUID(UID layerUID) const;
 
-        template<typename T> T* getLayerByUID(UID layerUID) const {
-            return dynamic_cast<T*>(getLayerByUID(layerUID));
-        }
+        template<typename T> T* getLayerByUID(UID layerUID) const;
 
         /**
          * Gets the layer at the specified index.
          */
         Layer* getLayerAt(unsigned index) const;
 
-        template<typename T> T* getLayerAt(unsigned index) const {
-            return dynamic_cast<T*>(getLayerAt(index));
-        }
+        template<typename T> T* getLayerAt(unsigned index) const;
 
         /**
          * Fills the vector with references to all layers of the specified type.
          */
         template<typename T>
-        Revision getLayers(std::vector< osg::ref_ptr<T> >& output) const {
-            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-                T* obj = dynamic_cast<T*>(i->get());
-                if (obj) output.push_back(obj);
-            }
-            return _dataModelRevision;
-        }
+        Revision getLayers(std::vector< osg::ref_ptr<T> >& output) const;
+
         template<typename T>
-        Revision getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
-            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-                T* obj = dynamic_cast<T*>(i->get());
-                if (obj) output.push_back(obj);
-            }
-            return _dataModelRevision;
-        }
+        Revision getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const;
+
+        /**
+         * Gets the first layer of the specified type. This is useful when you 
+         * know there in only one layer of the type you are looking for.
+         */
+        template<typename T> T* getLayer() const;
 
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
@@ -415,6 +404,49 @@ namespace osgEarth
 
         friend class MapInfo;
     };
+    
+
+
+
+    // Templated inline methods
+
+    template<typename T> T* Map::getLayerByName(const std::string& name) const {
+        return dynamic_cast<T*>(getLayerByName(name));
+    }
+
+    template<typename T> T* Map::getLayerByUID(UID layerUID) const {
+        return dynamic_cast<T*>(getLayerByUID(layerUID));
+    }
+
+    template<typename T> T* Map::getLayerAt(unsigned index) const {
+        return dynamic_cast<T*>(getLayerAt(index));
+    }
+
+    template<typename T>
+    Revision Map::getLayers(std::vector< osg::ref_ptr<T> >& output) const {
+        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+            T* obj = dynamic_cast<T*>(i->get());
+            if (obj) output.push_back(obj);
+        }
+        return _dataModelRevision;
+    }
+
+    template<typename T>
+    Revision Map::getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const {
+        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+            T* obj = dynamic_cast<T*>(i->get());
+            if (obj) output.push_back(obj);
+        }
+        return _dataModelRevision;
+    }
+
+    template<typename T> T* Map::getLayer() const {
+        for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+            T* obj = dynamic_cast<T*>(i->get());
+            if (obj) return obj;
+        }
+        return 0L;
+    }
 }
 
 #endif // OSGEARTH_MAP_H

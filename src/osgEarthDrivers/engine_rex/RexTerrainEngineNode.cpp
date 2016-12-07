@@ -644,8 +644,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         _loader->accept(nv);
         _unloader->accept(nv);
         _releaser->accept(nv);
-
-        _rasterizer->traverse(nv);  // Why does this work, when accept() doesn't? No one knows.
+        _rasterizer->accept(nv);
     }
 
     else

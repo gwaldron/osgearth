@@ -33,6 +33,7 @@ _tilenode(tilenode),
 _context(context)
 {
     _mapFrame.setMap(context->getMap());
+    _engine = context->getEngine();
 }
 
 namespace
@@ -49,18 +50,28 @@ namespace
 void
 LoadTileData::invoke()
 {
-    osg::ref_ptr<TileNode> tilenode;
-    if ( _tilenode.lock(tilenode) && _mapFrame.isValid() )
-    {
-        osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
+    if (!_mapFrame.isValid())
+        return;
 
-        // Assemble all the components necessary to display this tile
-        _dataModel = _context->getEngine()->createTileModel(
-            _mapFrame,
-            tilenode->getKey(),           
-            _filter,
-            progress.get() ); // progress
-    }
+    // we're in a pager thread, so must lock safe pointers
+    // (don't access _context from here!)
+
+    osg::ref_ptr<TileNode> tilenode;
+    if (!_tilenode.lock(tilenode))
+        return;
+
+    osg::ref_ptr<TerrainEngineNode> engine;
+    if (!_engine.lock(engine))
+        return;
+
+    osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
+
+    // Assemble all the components necessary to display this tile
+    _dataModel = engine->createTileModel(
+        _mapFrame,
+        tilenode->getKey(),           
+        _filter,
+        progress.get() );
 }
 
 bool
@@ -80,7 +91,6 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         if ( _tilenode.lock(tilenode) )
         {
             const RenderBindings& bindings      = _context->getRenderBindings();
-            const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
 
             // Merge the new data into the tile.
             tilenode->merge(_dataModel.get(), bindings);

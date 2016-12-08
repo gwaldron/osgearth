@@ -50,6 +50,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;
+        osg::observer_ptr<TerrainEngineNode> _engine;
         EngineContext* _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
         TileRenderModel _renderModel;

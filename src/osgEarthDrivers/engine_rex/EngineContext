@@ -78,7 +78,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // use THAT from the pager thread.
         const Map* getMap() const;
 
-        TerrainEngineNode* getEngine() const { return _terrainEngine; }
+        // only call this variant when it's safe to do so (update, cull).
+        TerrainEngineNode* getEngine() const { return _terrainEngine.get(); }
 
         TileNodeRegistry* liveTiles() const { return _liveTiles; }
 
@@ -109,13 +110,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~EngineContext() { }
 
     public:
-
+        
+        osg::observer_ptr<TerrainEngineNode>  _terrainEngine;
         int                                   _mainThreadId;
         const Map*                            _map;
         TileNodeRegistry*                     _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;
-        TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
         Unloader*                             _unloader;

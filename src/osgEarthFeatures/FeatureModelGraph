@@ -227,7 +227,7 @@ namespace osgEarth { namespace Features
             OVERLAY_NO_CHANGE,
             OVERLAY_INSTALL_PLACEHOLDER,
             OVERLAY_INSTALL_CLAMPABLE,
-            OVERLAY_INSTALL_DRAPEABLEcA
+            OVERLAY_INSTALL_DRAPEABLE
         };
         OverlayChange                    _overlayChange;
 

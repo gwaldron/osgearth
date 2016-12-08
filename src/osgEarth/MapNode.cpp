@@ -44,6 +44,8 @@
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
+#include <osgUtil/Optimizer>
+#include <typeinfo>
 
 using namespace osgEarth;
 
@@ -53,6 +55,11 @@ using namespace osgEarth;
 
 namespace
 {
+    /**
+     * A group that the osgUtil::Optimizer won't remove even when it's empty.
+     */
+    struct StickyGroup : public osg::Group { };
+
     // adapter that lets MapNode listen to Map events
     struct MapNodeMapCallbackProxy : public MapCallback
     {
@@ -188,34 +195,44 @@ MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
 //---------------------------------------------------------------------------
 
 MapNode::MapNode() :
-_map( new Map() )
+_map( new Map() ),
+_models(0L),
+_terrainEngine(0L)
 {
     init();
 }
 
 MapNode::MapNode( Map* map ) :
-_map( map )
+_map( map ),
+_models(0L),
+_terrainEngine(0L)
 {
     init();
 }
 
 MapNode::MapNode( const MapNodeOptions& options ) :
 _map( new Map() ),
-_mapNodeOptions( options )
+_mapNodeOptions( options ),
+_models(0L),
+_terrainEngine(0L)
 {
     init();
 }
 
 MapNode::MapNode( Map* map, const MapNodeOptions& options ) :
 _map( map? map : new Map() ),
-_mapNodeOptions( options )
+_mapNodeOptions( options ),
+_models(0L),
+_terrainEngine(0L)
 {
     init();
 }
 
 MapNode::MapNode( Map* map, const MapNodeOptions& options, bool autoInit ) :
 _map( map? map : new Map() ),
-_mapNodeOptions( options )
+_mapNodeOptions( options ),
+_models(0L),
+_terrainEngine(0L)
 {
     if ( autoInit )
     {
@@ -288,9 +305,9 @@ MapNode::init()
     _terrainEngineInitialized = false;
 
     // the engine needs a container so we can set lighting state on the container and
-    // not on the terrain engine itself. Setting the dynamic variance will prevent
-    // an optimizer from collapsing the empty group node.
-    _terrainEngineContainer = new osg::Group();
+    // not on the terrain engine itself. Makeing it a StickyGroup prevents the osgUtil
+    // Optimizer from collapsing it if it's empty
+    _terrainEngineContainer = new StickyGroup();
     _terrainEngineContainer->setDataVariance( osg::Object::DYNAMIC );
     this->addChild( _terrainEngineContainer );
 
@@ -318,10 +335,10 @@ MapNode::init()
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
     }
 
-    // make a group for the model layers.
-    _models = new osg::Group();
+    // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
+    _models = new StickyGroup();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    addChild( _models );
+    this->addChild( _models );
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
@@ -454,11 +471,13 @@ MapNode::computeBound() const
     osg::BoundingSphere bs;
     if ( getTerrainEngine() )
     {
-        bs.expandBy(  getTerrainEngine()->getBound() );
+        bs.expandBy( getTerrainEngine()->getBound() );
     }
 
     if (_models)
+    {
         bs.expandBy( _models->getBound() );
+    }
 
     return bs;
 }
@@ -847,6 +866,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else
     {
-        osg::Group::traverse( nv );
+        if (dynamic_cast<osgUtil::BaseOptimizerVisitor*>(&nv) == 0L)
+            osg::Group::traverse( nv );
     }
 }

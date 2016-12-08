@@ -134,9 +134,9 @@ TerrainEngineNode::~TerrainEngineNode()
     OE_DEBUG << LC << "~TerrainEngineNode\n";
 
     //Remove any callbacks added to the image layers
-    if (_map)
+    if (_map.valid())
     {
-        MapFrame mapf( _map );        
+        MapFrame mapf( _map.get() );        
         ImageLayerVector imageLayers;
         mapf.getLayers(imageLayers);
 

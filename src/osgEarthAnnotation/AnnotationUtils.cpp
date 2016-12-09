@@ -87,6 +87,20 @@ AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding)
     return text_encoding;
 }
 
+namespace
+{
+    static int nextPowerOf2(int x)
+    {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
 osg::Drawable*
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
@@ -209,8 +223,11 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         font->setGlyphImageMargin( 2 );
     }
 
-    t->setFontResolution( size, size );
-    t->setBackdropOffset( (float)t->getFontWidth() / 256.0f, (float)t->getFontHeight() / 256.0f );
+    float resFactor = 2.0f;
+    int res = nextPowerOf2((int)(size*resFactor));
+    t->setFontResolution(res, res);
+    float offsetFactor = 1.0f / (resFactor*256.0f);
+    t->setBackdropOffset( (float)t->getFontWidth() * offsetFactor, (float)t->getFontHeight() * offsetFactor );
 
     if ( symbol && symbol->halo().isSet() )
     {

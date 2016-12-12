@@ -31,7 +31,7 @@ This shows how to label point features with an attribute.
                     text-content:   [name];
                     text-priority:  [rank_max];
                     text-align:     center-bottom;
-                    text-halo:      #3f3f3f;
+                    text-halo:      #1f1f1f;
                     text-size:      12+3*([rank_max]-9);
                 }     
             </style>

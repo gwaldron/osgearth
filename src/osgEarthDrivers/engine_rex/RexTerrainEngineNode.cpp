@@ -102,14 +102,14 @@ namespace
             TileNode* tileNode = dynamic_cast<TileNode*>(&node);
             if (tileNode)
             {
-                cleanRenderModel(tileNode);
+                apply(*tileNode);
             }
             traverse(node);
         }
 
-        void cleanRenderModel(TileNode* tileNode)
+        void apply(TileNode& tileNode)
         {
-            TileRenderModel& model = tileNode->renderModel();
+            TileRenderModel& model = tileNode.renderModel();
             for (int p = 0; p < model._passes.size(); ++p)
             {
                 RenderingPass& pass = model._passes.at(p);
@@ -127,13 +127,13 @@ namespace
             // todo. Might be better to use a Revision here though.
             if (_reload)
             {
-                tileNode->setDirty(true);
+                tileNode.setDirty(true);
             }
 
             if (!_layersToLoad.empty())
             {
-                tileNode->newLayers().insert(_layersToLoad.begin(), _layersToLoad.end());
-                tileNode->setDirty(true);
+                tileNode.newLayers().insert(_layersToLoad.begin(), _layersToLoad.end());
+                tileNode.setDirty(true);
             }
         }
     };
@@ -815,6 +815,7 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         if ( _mapFrame.sync() )
         {
             _liveTiles->setMapRevision( _mapFrame.getRevision() );
+            OE_INFO << LC << "MapFrame synced to new revision: " << _mapFrame.getRevision() << std::endl;
         }
 
         // dispatch the change handler

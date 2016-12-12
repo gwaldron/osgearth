@@ -38,7 +38,7 @@ void createControlPanel( osgViewer::View* );
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
-static osg::ref_ptr<Map> s_inactiveMap;
+//static osg::ref_ptr<Map> s_inactiveMap;
 static Grid* s_masterGrid;
 static Grid* s_imageBox;
 static Grid* s_elevationBox;
@@ -46,7 +46,28 @@ static Grid* s_modelBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
 
+enum LayerType {
+    IMAGE_LAYER = 0,
+    ELEVATION_LAYER = 1,
+    MODEL_LAYER = 2
+};
+struct LayerConfiguration {
+    ConfigOptions _options;
+    LayerType _type;
+};
+typedef std::map<std::string, LayerConfiguration> InactiveLayers;
+static InactiveLayers _inactive;
+
+std::string layerTypeNames[3] = {
+    "image",
+    "elevation",
+    "model"
+};
+
 //------------------------------------------------------------------------
+
+void updateControlPanel();
+
 
 struct MyMapListener : public MapCallback
 {
@@ -122,8 +143,8 @@ main( int argc, char** argv )
     s_activeMap->addMapCallback( new MyMapListener() );
 
     // a Map to hold inactive layers (layers that have been removed from the displayed Map)
-    s_inactiveMap = new Map();
-    s_inactiveMap->addMapCallback( new MyMapListener() );
+    //s_inactiveMap = new Map();
+    //s_inactiveMap->addMapCallback( new MyMapListener() );
 
     osg::Group* root = new osg::Group();
 
@@ -186,43 +207,39 @@ struct ModelLayerOpacityHandler : public ControlEventHandler
 
 struct AddLayerHandler : public ControlEventHandler
 {
-    AddLayerHandler( TerrainLayer* layer ) : _layer(layer) { }
+    AddLayerHandler(const LayerConfiguration& lc) : _lc(lc) { }
+
     void onClick( Control* control, int mouseButtonMask ) {
-
-        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer.get() );
-        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer.get() );
-
-        if (imageLayer)
-        {
-            s_inactiveMap->removeImageLayer( imageLayer );
-            s_activeMap->addImageLayer( imageLayer );
+        Layer* layer = 0L;
+        if (_lc._type == IMAGE_LAYER) {
+            layer = new ImageLayer(_lc._options);
         }
-        else
-        {
-            s_inactiveMap->removeElevationLayer( elevationLayer );
-            s_activeMap->addElevationLayer( elevationLayer );
+        else if (_lc._type == ELEVATION_LAYER) {
+            layer = new ElevationLayer(_lc._options);
         }
+        else {
+            return;
+        }
+        s_activeMap->addLayer(layer);
+        _inactive.erase(layer->getName());
     }
-    osg::ref_ptr<TerrainLayer> _layer;
+
+    LayerConfiguration _lc;
 };
 
 struct RemoveLayerHandler : public ControlEventHandler
 {
     RemoveLayerHandler( TerrainLayer* layer ) : _layer(layer) { }
-    void onClick( Control* control, int mouseButtonMask ) {        
-        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer.get() );
-        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer.get() );
 
-        if (imageLayer)
-        {
-            s_inactiveMap->addImageLayer( imageLayer );
-            s_activeMap->removeImageLayer( imageLayer );
-        }
-        else
-        {
-            s_inactiveMap->addElevationLayer( elevationLayer );
-            s_activeMap->removeElevationLayer( elevationLayer );
-        }
+    void onClick( Control* control, int mouseButtonMask ) {
+        LayerConfiguration& lc = _inactive[_layer->getName()];
+        lc._type =
+            dynamic_cast<ImageLayer*>(_layer.get())? IMAGE_LAYER :
+            dynamic_cast<ElevationLayer*>(_layer.get()) ? ELEVATION_LAYER :
+            MODEL_LAYER;
+        lc._options = _layer->getInitialOptions();
+
+        s_activeMap->removeLayer(_layer.get());
     }
     osg::ref_ptr<TerrainLayer> _layer;
 };
@@ -231,17 +248,7 @@ struct MoveLayerHandler : public ControlEventHandler
 {
     MoveLayerHandler( TerrainLayer* layer, int newIndex ) : _layer(layer), _newIndex(newIndex) { }
     void onClick( Control* control, int mouseButtonMask ) {
-        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer );
-        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer );
-
-        if (imageLayer)
-        {
-            s_activeMap->moveImageLayer( imageLayer, _newIndex );
-        }
-        else
-        {
-            s_activeMap->moveElevationLayer( elevationLayer, _newIndex );
-        }
+        s_activeMap->moveLayer(_layer, _newIndex);
     }
     TerrainLayer* _layer;
     int _newIndex;
@@ -305,6 +312,11 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
 {
     int gridCol = 0;
 
+    // layer type
+    std::string typeName = dynamic_cast<ImageLayer*>(layer) ? "image" : dynamic_cast<ElevationLayer*>(layer) ? "elevation" : "other";
+    LabelControl* typeLabel = new LabelControl(typeName, osg::Vec4(.5,.7,.5,1));
+    grid->setControl( gridCol++, gridRow, typeLabel );
+
     // a checkbox to enable/disable the layer:
     CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
     enabled->addEventHandler( new LayerVisibleHandler(layer) );
@@ -360,12 +372,28 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
     addRemove->setHorizAlign( Control::ALIGN_CENTER );
     addRemove->setBackColor( .4,.4,.4,1 );
     addRemove->setActiveColor( .8,0,0,1 );
-    if ( isActive )
-        addRemove->addEventHandler( new RemoveLayerHandler(layer) );
-    else
-        addRemove->addEventHandler( new AddLayerHandler(layer) );
+    addRemove->addEventHandler( new RemoveLayerHandler(layer) );
+
     grid->setControl( gridCol, gridRow, addRemove );
     gridCol++;
+}
+
+void
+createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const LayerConfiguration& lc )
+{
+    int gridCol = 0;
+
+    // the layer name
+    LabelControl* nameLabel = new LabelControl( name );
+    grid->setControl( gridCol, gridRow, nameLabel );
+    gridCol++;
+    
+    LabelControl* addRemove = new LabelControl( "ADD", 14 );
+    addRemove->setHorizAlign( Control::ALIGN_CENTER );
+    addRemove->setBackColor( .4,.4,.4,1 );
+    addRemove->setActiveColor( .8,0,0,1 );
+    addRemove->addEventHandler( new AddLayerHandler(lc) );
+    grid->setControl( gridCol, gridRow, addRemove );
 }
 
 void
@@ -397,39 +425,63 @@ void
 updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
+    OE_INFO << "updateControlPanel\n";
 
     //Rebuild all the image layers    
     s_imageBox->clearControls();
 
     int row = 0;
 
-    LabelControl* activeLabel = new LabelControl( "Image Layers", 20, osg::Vec4f(1,1,0,1) );
+    LabelControl* activeLabel = new LabelControl( "Map Layers", 20, osg::Vec4f(1,1,0,1) );
     s_imageBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
     MapFrame mapf( s_activeMap.get() );
+
+    const LayerVector& layers = mapf.layers();
+    for (int i = layers.size()-1; i >= 0; --i)
+    {
+        Layer* layer = layers[i].get();
+        if (dynamic_cast<ImageLayer*>(layer))
+        {
+            createLayerItem(s_imageBox, row++, i, layers.size(), dynamic_cast<ImageLayer*>(layer), true);
+        }
+        else if (dynamic_cast<ElevationLayer*>(layer))
+        {
+            createLayerItem( s_imageBox, row++, i, layers.size(), dynamic_cast<ElevationLayer*>(layer), true );
+        }
+        else if (dynamic_cast<ModelLayer*>(layer))
+        {
+            createModelLayerItem( s_imageBox, row++, dynamic_cast<ModelLayer*>(layer), true );
+        }
+    }
+
+    // inactive layers:
+    if (!_inactive.empty())
+    {
+        s_imageBox->setControl(0, row++, new LabelControl("Removed:", 18, osg::Vec4f(1,1,0,1)));
+        for (InactiveLayers::const_iterator i = _inactive.begin(); i != _inactive.end(); ++i)
+        {
+            createInactiveLayerItem(s_imageBox, row++, i->first, i->second);
+        }
+    }
+
+#if 0
     ImageLayerVector imageLayers;
     mapf.getLayers(imageLayers);
     int layerNum = imageLayers.size()-1;
     for( ImageLayerVector::const_reverse_iterator i = imageLayers.rbegin(); i != imageLayers.rend(); ++i )
         createLayerItem( s_imageBox, row++, layerNum--, imageLayers.size(), i->get(), true );
 
-    MapFrame mapf2( s_inactiveMap.get() );
-    imageLayers.clear();
-    mapf2.getLayers(imageLayers);
-    if ( imageLayers.size() > 0 )
+    // inactive layers:
+    if (!_inactive.empty())
     {
-        LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
-        s_imageBox->setControl( 1, row++, inactiveLabel );
-
-        for( unsigned int i=0; i<imageLayers.size(); ++i )
+        s_imageBox->setControl(0, row++, new LabelControl("Removed:", 18, osg::Vec4f(1,1,0,1)));
+        for (InactiveLayers::const_iterator i = _inactive.begin(); i != _inactive.end(); ++i)
         {
-            createLayerItem( s_imageBox, row++, -1, -1, imageLayers[i].get(), false );
+            createInactiveLayerItem(s_imageBox, row++, i->first, i->second);
         }
     }
-
-
-
 
     //Rebuild the elevation layers
     s_elevationBox->clearControls();
@@ -447,19 +499,6 @@ updateControlPanel()
     for( ElevationLayerVector::const_reverse_iterator i = elevationLayers.rbegin(); i != elevationLayers.rend(); ++i )
         createLayerItem( s_elevationBox, row++, layerNum--, elevationLayers.size(), i->get(), true );
 
-    if ( mapf2.elevationLayers().size() > 0 )
-    {
-        LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
-        s_elevationBox->setControl( 1, row++, inactiveLabel );
-
-        for( unsigned int i=0; i<mapf2.elevationLayers().size(); ++i )
-        {
-            createLayerItem( s_elevationBox, row++, -1, -1, mapf2.elevationLayers().at(i), false );
-        }
-    }
-
-
-
     //Rebuild the model layers
     s_modelBox->clearControls();
 
@@ -473,4 +512,5 @@ updateControlPanel()
     mapf.getLayers(modelLayers);
     for( ModelLayerVector::const_reverse_iterator i = modelLayers.rbegin(); i != modelLayers.rend(); ++i )
         createModelLayerItem( s_modelBox, row++, i->get(), true );
+#endif
 }

@@ -64,6 +64,10 @@ LoadTileData::invoke()
     if (!_engine.lock(engine))
         return;
 
+    // ensure the map frame is up to date:
+    if (_mapFrame.needsSync())
+        _mapFrame.sync();
+
     osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
 
     // Assemble all the components necessary to display this tile
@@ -85,30 +89,40 @@ LoadTileData::isCanceled()
 void
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
-    if ( _dataModel.valid() )
+    // ensure we got an actual datamodel:
+    if (_dataModel.valid())
     {
-        osg::ref_ptr<TileNode> tilenode;
-        if ( _tilenode.lock(tilenode) )
+        // ensure it's in sync with the map revision (not out of date):
+        if (_dataModel->getRevision() == _context->getMap()->getDataModelRevision())
         {
-            const RenderBindings& bindings      = _context->getRenderBindings();
+            // ensure the tile node hasn't expired:
+            osg::ref_ptr<TileNode> tilenode;
+            if ( _tilenode.lock(tilenode) )
+            {
+                const RenderBindings& bindings = _context->getRenderBindings();
 
-            // Merge the new data into the tile.
-            tilenode->merge(_dataModel.get(), bindings);
+                // Merge the new data into the tile.
+                tilenode->merge(_dataModel.get(), bindings);
 
-            // Mark as complete. TODO: per-data requests will do something different.
-            tilenode->setDirty( false );
+                // Mark as complete. TODO: per-data requests will do something different.
+                tilenode->setDirty( false );
 
-            // Notify listeners that we've added a tile.
-            _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode->getSurfaceNode() );
+                // Notify listeners that we've added a tile.
+                _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode->getSurfaceNode() );
 
-            OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
-
-            // Delete the model immediately
-            _dataModel = 0L;
+                OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
+            }
+            else
+            {
+                OE_DEBUG << LC << "LoadTileData failed; TileNode disappeared\n";
+            }
         }
         else
         {
-            OE_DEBUG << LC << "LoadTileData failed; TileNode disappeared\n";
+            OE_INFO << LC << "apply " << _dataModel->getKey().str() << " ignored b/c it is out of date\n";
         }
+
+        // Delete the model immediately
+        _dataModel = 0L;
     }
 }

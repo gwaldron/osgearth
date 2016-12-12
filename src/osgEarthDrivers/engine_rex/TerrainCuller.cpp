@@ -176,7 +176,7 @@ TerrainCuller::apply(osg::Node& node)
     {
         SurfaceNode* surface = dynamic_cast<SurfaceNode*>(&node);
         if (surface)
-        {            
+        {
             TileRenderModel& renderModel = _currentTileNode->renderModel();
 
             // push the surface matrix:

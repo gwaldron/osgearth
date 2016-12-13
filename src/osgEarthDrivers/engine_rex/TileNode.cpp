@@ -773,6 +773,12 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             mySampler._matrix = parentSampler._matrix;
             mySampler._matrix.preMult(scaleBias[quadrant]);
             ++changes;
+
+            // Update the local elevation raster cache (for culling and intersection testing).
+            if (s == SamplerBinding::ELEVATION)
+            {
+                this->setElevationRaster(mySampler._texture->getImage(0), mySampler._matrix);
+            }
         }
     }
 

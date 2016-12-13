@@ -153,7 +153,7 @@ namespace
                         double blend = osg::clampBetween(
                             (shortestD - innerRadius) / (outerRadius - innerRadius),
                             0.0, 1.0);
-                    
+
                         float elevP = envelope->getElevation(P.x(), P.y());
 
                         float elevPROJ;
@@ -275,7 +275,13 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
 {
     if (!_elevationLayer.valid())
     {
-        OE_WARN << LC << "No elevation layer.\n";
+        OE_DEBUG << LC << "No elevation layer.\n";
+        return 0L;
+    }
+
+    if (!_featureSource.valid())
+    {
+        OE_DEBUG << LC << "No feature source.\n";
         return 0L;
     }
 
@@ -299,10 +305,26 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
         outerRadius = outerRadius / metersPerDegree;
     }
 
-    Bounds bounds;
-    osg::ref_ptr<FeatureCursor> cursor;
-    if (_featureSource.valid())
+    // We will collection all the feature geometries in this multi:
+    MultiGeometry geoms;
+      
+    // Resolve the list of tile keys that intersect the incoming extent:
+    std::vector<TileKey> featureKeys;
+    if (_featureSource->getFeatureProfile() && _featureSource->getFeatureProfile()->getProfile())
     {
+        _featureSource->getFeatureProfile()->getProfile()->getIntersectingTiles(key, featureKeys);    
+    }
+    else
+    {
+        featureKeys.push_back(key);
+    }
+
+    for (int i = 0; i < featureKeys.size(); ++i)
+    {
+        const TileKey& fkey = featureKeys[i];
+
+        Bounds bounds;
+
         Query query;
 
         if (_featureSource->getFeatureProfile()->getTiled())
@@ -310,7 +332,7 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
             // A Tiled source should contain a natural buffer, that is, 
             // the features should extend some distance outside the tile
             // key extents. (At least outerWidth meters).
-            query.tileKey() = key;
+            query.tileKey() = fkey;
         }
         else
         {
@@ -325,17 +347,38 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
         }
 
         // Query the source.
-        cursor = _featureSource->createFeatureCursor(query);
-        if (cursor.valid() && !cursor->hasMore())
-            cursor = 0L;
+        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+
+        if (cursor.valid() && cursor->hasMore())
+        {
+            const SpatialReference* featureSRS = _featureSource->getFeatureProfile()->getSRS();
+            bool needsTransform = !featureSRS->isHorizEquivalentTo(key.getExtent().getSRS());
+
+            while (cursor->hasMore())
+            {
+                Feature* feature = cursor->nextFeature();
+
+                // xform to the key's coordinate system
+                if (needsTransform)
+                    feature->transform(key.getExtent().getSRS());
+
+                //TODO: test the geometry bounds against the expanded tilekey bounds
+                //      in order to discard geometries we don't care about
+
+                geoms.getComponents().push_back(feature->getGeometry());
+
+                //if (progress && progress->isCanceled())
+                //    break;
+            }
+        }
     }
 
-    if (cursor.valid() && cursor->hasMore())
+    if (!geoms.getComponents().empty())
     {
         osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
             ex,
             257, 257,           // base tile size for elevation data
-            0u,                 // 1 sample border around the data makes it 259x259
+            0u,                 // no border
             true);              // initialize to HAE (0.0) heights
 
         // Initialize to NO DATA.
@@ -343,25 +386,6 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
 
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool.createEnvelope(ex.getSRS(), key.getLOD());
-
-
-        MultiGeometry geoms;
-        int count = 0;
-        while (cursor->hasMore())
-        {
-            Feature* feature = cursor->nextFeature();
-
-            // xform to the key's coordinate system
-            if (!key.getExtent().getSRS()->isHorizEquivalentTo(feature->getSRS()))
-                feature->transform(key.getExtent().getSRS());
-
-            geoms.getComponents().push_back(feature->getGeometry());
-
-            //if (progress && progress->isCanceled())
-            //    break;
-        }
-
-
 
         if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope, progress) || (progress && progress->isCanceled()))
         {

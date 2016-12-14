@@ -618,15 +618,24 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Other Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {
-        unsigned bindingIndex = SamplerBinding::SHARED + i;
-        const SamplerBinding& binding = bindings[bindingIndex];
-
         TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
         if (layerModel->getTexture())
         {
-            osg::Texture* tex = layerModel->getTexture();
-            _renderModel._sharedSamplers[bindingIndex]._texture = tex;
-            _renderModel._sharedSamplers[bindingIndex]._matrix.makeIdentity();
+            // locate the shared binding corresponding to this layer:
+            UID uid = layerModel->getImageLayer()->getUID();
+            unsigned bindingIndex = INT_MAX;
+            for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i) {
+                if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid)) {
+                    bindingIndex = i;
+                }                   
+            }
+
+            if (bindingIndex < INT_MAX)
+            {
+                osg::Texture* tex = layerModel->getTexture();
+                _renderModel._sharedSamplers[bindingIndex]._texture = tex;
+                _renderModel._sharedSamplers[bindingIndex]._matrix.makeIdentity();
+            }
         }
     }
 

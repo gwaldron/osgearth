@@ -860,14 +860,13 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             // for a shared layer, allocate a shared image unit if necessary.
             if ( imageLayer->isShared() )
             {
-                optional<int>& unit = imageLayer->shareImageUnit();
-                if ( !unit.isSet() )
+                if (!imageLayer->shareImageUnit().isSet())
                 {
                     int temp;
                     if ( getResources()->reserveTextureImageUnit(temp) )
                     {
                         imageLayer->shareImageUnit() = temp;
-                        OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << imageLayer->getName() << std::endl;
+                        //OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << imageLayer->getName() << std::endl;
                     }
                     else
                     {
@@ -876,7 +875,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                 }
 
                 // Build a sampler binding for the shared layer.
-                if ( unit.isSet() )
+                if ( imageLayer->shareImageUnit().isSet() )
                 {
                     // Find the next empty SHARED slot:
                     unsigned newIndex = SamplerBinding::SHARED;
@@ -887,13 +886,13 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                     SamplerBinding& newBinding = _renderBindings[newIndex];
                     newBinding.usage()       = SamplerBinding::SHARED;
                     newBinding.sourceUID()   = imageLayer->getUID();
-                    newBinding.unit()        = unit.get();
+                    newBinding.unit()        = imageLayer->shareImageUnit().get();
                     newBinding.samplerName() = imageLayer->shareTexUniformName().get();
                     newBinding.matrixName()  = imageLayer->shareTexMatUniformName().get();
 
                     OE_INFO << LC 
-                        << " .. Sampler=\"" << newBinding.samplerName() << "\", "
-                        << "Matrix=\"" << newBinding.matrixName() << ", "
+                        << "Shared Layer \"" << imageLayer->getName() << "\" : sampler=\"" << newBinding.samplerName() << "\", "
+                        << "matrix=\"" << newBinding.matrixName() << "\", "
                         << "unit=" << newBinding.unit() << "\n";
                 }
             }

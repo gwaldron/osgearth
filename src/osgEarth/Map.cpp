@@ -259,49 +259,52 @@ Map::addLayer(Layer* layer)
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
-        TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-        if (terrainLayer)
+        if (layer->getEnabled())
         {
-            // Set the DB options for the map from the layer, including the cache policy.
-            terrainLayer->setReadOptions( _readOptions.get() );
-
-            // Tell the layer the map profile, if supported:
-            if ( _profile.valid() )
+            TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
+            if (terrainLayer)
             {
-                terrainLayer->setTargetProfileHint( _profile.get() );
+                // Set the DB options for the map from the layer, including the cache policy.
+                terrainLayer->setReadOptions( _readOptions.get() );
+
+                // Tell the layer the map profile, if supported:
+                if ( _profile.valid() )
+                {
+                    terrainLayer->setTargetProfileHint( _profile.get() );
+                }
+
+                // open the layer:
+                terrainLayer->open();
             }
 
-            // open the layer:
-            terrainLayer->open();
-        }
+            ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+            if (elevationLayer)
+            {
+                elevationLayer->addCallback(_elevationLayerCB.get());
 
-        ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-        if (elevationLayer)
-        {
-            elevationLayer->addCallback(_elevationLayerCB.get());
+                // invalidate the elevation pool
+                getElevationPool()->clear();
+            }
 
-            // invalidate the elevation pool
-            getElevationPool()->clear();
-        }
+            ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
+            if (modelLayer)
+            {
+                // initialize the model layer
+                modelLayer->setReadOptions(_readOptions.get());
 
-        ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-        if (modelLayer)
-        {
-            // initialize the model layer
-            modelLayer->setReadOptions(_readOptions.get());
+                // open it and check the status
+                modelLayer->open();
+            }
 
-            // open it and check the status
-            modelLayer->open();
-        }
+            MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
+            if (maskLayer)
+            {
+                // initialize the model layer
+                maskLayer->setReadOptions(_readOptions.get());
 
-        MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
-        if (maskLayer)
-        {
-            // initialize the model layer
-            maskLayer->setReadOptions(_readOptions.get());
-
-            // open it and check the status
-            maskLayer->open();
+                // open it and check the status
+                maskLayer->open();
+            }
         }
 
         int newRevision;
@@ -331,46 +334,49 @@ Map::insertLayer(Layer* layer, unsigned index)
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
-        TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-        if (terrainLayer)
+        if (layer->getEnabled())
         {
-            // Set the DB options for the map from the layer, including the cache policy.
-            terrainLayer->setReadOptions( _readOptions.get() );
-
-            // Tell the layer the map profile, if supported:
-            if ( _profile.valid() )
+            TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
+            if (terrainLayer)
             {
-                terrainLayer->setTargetProfileHint( _profile.get() );
+                // Set the DB options for the map from the layer, including the cache policy.
+                terrainLayer->setReadOptions( _readOptions.get() );
+
+                // Tell the layer the map profile, if supported:
+                if ( _profile.valid() )
+                {
+                    terrainLayer->setTargetProfileHint( _profile.get() );
+                }
+
+                // open the layer:
+                terrainLayer->open();
             }
 
-            // open the layer:
-            terrainLayer->open();
-        }
+            ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
+            if (modelLayer)
+            {
+                // initialize the model layer
+                modelLayer->setReadOptions(_readOptions.get());
 
-        ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-        if (modelLayer)
-        {
-            // initialize the model layer
-            modelLayer->setReadOptions(_readOptions.get());
+                // open it and check the status
+                modelLayer->open();
+            }
 
-            // open it and check the status
-            modelLayer->open();
-        }
+            ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+            if (elevationLayer)
+            {
+                elevationLayer->addCallback(_elevationLayerCB.get());
+            }
 
-        ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-        if (elevationLayer)
-        {
-            elevationLayer->addCallback(_elevationLayerCB.get());
-        }
+            MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
+            if (maskLayer)
+            {
+                // initialize the model layer
+                maskLayer->setReadOptions(_readOptions.get());
 
-        MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
-        if (maskLayer)
-        {
-            // initialize the model layer
-            maskLayer->setReadOptions(_readOptions.get());
-
-            // open it and check the status
-            maskLayer->open();
+                // open it and check the status
+                maskLayer->open();
+            }
         }
 
         int newRevision;

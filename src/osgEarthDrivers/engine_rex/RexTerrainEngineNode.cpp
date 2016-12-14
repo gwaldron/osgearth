@@ -55,12 +55,6 @@ namespace
         RexTerrainEngineNodeMapCallbackProxy(RexTerrainEngineNode* node) : _node(node) { }
         osg::observer_ptr<RexTerrainEngineNode> _node;
 
-        //void onMapInfoEstablished( const MapInfo& mapInfo ) {
-        //    osg::ref_ptr<RexTerrainEngineNode> node;
-        //    if ( _node.lock(node) )
-        //        node->onMapInfoEstablished( mapInfo );
-        //}
-
         void onMapModelChanged( const MapModelChange& change ) {
             osg::ref_ptr<RexTerrainEngineNode> node;
             if ( _node.lock(node) )
@@ -295,6 +289,9 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _rasterizer = new TileRasterizer();
     this->addChild( _rasterizer );
 
+    // Initialize the core render bindings.
+    setupRenderBindings();
+
     // install a layer callback for processing further map actions:
     map->addMapCallback( new RexTerrainEngineNodeMapCallbackProxy(this) );
 
@@ -393,6 +390,17 @@ RexTerrainEngineNode::getSurfaceStateSet()
 void
 RexTerrainEngineNode::setupRenderBindings()
 {
+    // Release any pre-existing bindings:
+    for (unsigned i = 0; i < _renderBindings.size(); ++i)
+    {
+        SamplerBinding& b = _renderBindings[i];
+        if (b.isActive())
+        {
+            getResources()->releaseTextureImageUnit(b.unit());
+        }
+    }
+    _renderBindings.clear();
+
     // "SHARED" is the start of shared layers, so we always want the bindings
     // vector to be at least that size.
     _renderBindings.resize(SamplerBinding::SHARED);
@@ -407,19 +415,22 @@ RexTerrainEngineNode::setupRenderBindings()
     elevation.usage()       = SamplerBinding::ELEVATION;
     elevation.samplerName() = "oe_tile_elevationTex";
     elevation.matrixName()  = "oe_tile_elevationTexMatrix";
-    getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
+    if (this->elevationTexturesRequired())
+        getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
    
     SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
     normal.usage()       = SamplerBinding::NORMAL;
     normal.samplerName() = "oe_tile_normalTex";
     normal.matrixName()  = "oe_tile_normalTexMatrix";
-    getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
+    if (this->normalTexturesRequired())
+        getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
     
     SamplerBinding& colorParent = _renderBindings[SamplerBinding::COLOR_PARENT];
     colorParent.usage()       = SamplerBinding::COLOR_PARENT;
     colorParent.samplerName() = "oe_layer_texParent";
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
-    getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
+    if (this->parentTexturesRequired())
+        getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
 }
 
 void
@@ -446,17 +457,6 @@ RexTerrainEngineNode::dirtyTerrain()
     _terrain = new osg::Group();
     this->addChild( _terrain );
 
-    // are we LOD blending?
-    bool setupParentData = 
-        _terrainOptions.morphImagery() == true || // gw: redundant?
-        this->parentTexturesRequired();
-    
-    // reserve GPU unit for the main color texture:
-    if ( _renderBindings.empty() )
-    {
-        setupRenderBindings();
-    }
-
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector<TileKey> keys;
@@ -464,6 +464,10 @@ RexTerrainEngineNode::dirtyTerrain()
 
     // create a root node for each root tile key.
     OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
+
+    // We need to take a self-ref here to ensure that the TileNode's data loader
+    // can use its observer_ptr back to the terrain engine.
+    this->ref();
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
@@ -485,8 +489,11 @@ RexTerrainEngineNode::dirtyTerrain()
         _terrain->addChild( tileNode );
 
         // And load the tile's data synchronously (only for root tiles).
-        tileNode->loadSync( _engineContext.get() );
+        tileNode->loadSync();
     }
+
+    // release the self-ref.
+    this->unref_nodelete();
 
     // Set up the state sets.
     updateState();
@@ -863,7 +870,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                 if (!imageLayer->shareImageUnit().isSet())
                 {
                     int temp;
-                    if ( getResources()->reserveTextureImageUnit(temp) )
+                    if ( getResources()->reserveTextureImageUnit(temp, imageLayer->getName().c_str()) )
                     {
                         imageLayer->shareImageUnit() = temp;
                         //OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << imageLayer->getName() << std::endl;

@@ -358,7 +358,7 @@ namespace
     }
 
     // support for "special" extension names (convenience and backwards compat)
-    Extension* createSpecialExtension(const Config& conf, MapNode* mapNode)
+    Extension* createSpecialExtension(const Config& conf)
     {
         // special support for the default sky extension:
         if (conf.key() == "sky" && !conf.hasValue("driver"))
@@ -370,20 +370,20 @@ namespace
         return 0L;
     }
 
-    bool addLayer(const Config& conf, MapNode* mapNode)
+    bool addLayer(const Config& conf, Map* map)
     {
         std::string name = conf.key();
         Layer* layer = Layer::create(name, conf);
         if (layer)
         {
-            mapNode->getMap()->addLayer(layer);
+            map->addLayer(layer);
             if (layer->getStatus().isError())
                 OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
         }
         return layer != 0L;
     }
 
-    bool addExtension(const Config& conf, MapNode* mapNode)
+    Extension* loadExtension(const Config& conf)
     {
         std::string name = conf.key();
         Extension* extension = Extension::create( conf.key(), conf );
@@ -393,19 +393,25 @@ namespace
             extension = Extension::create(name, conf);
 
             if (!extension)
-                extension = createSpecialExtension(conf, mapNode);
+                extension = createSpecialExtension(conf);
         }
 
-        if (extension)
+        if (!extension)
         {
-            mapNode->addExtension(extension);
-            return true;
-        }
-        else
-        {            
             OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
-            return false;
         }
+
+        return extension;
+        //if (extension)
+        //{
+        //    mapNode->addExtension(extension);
+        //    return true;
+        //}
+        //else
+        //{            
+        //    OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
+        //    return false;
+        //}
     }
 }
 
@@ -438,12 +444,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
     Map* map = new Map( mapOptions );
 
-    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
-    MapNodeOptions mapNodeOptions( conf.child( "options" ) );
-
-    // Create a map node.
-    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
-
     // Start a batch update of the map:
     map->beginUpdate();
 
@@ -456,6 +456,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         }
     }
 
+    Config externalConfig;
+    std::vector<osg::ref_ptr<Extension> > extensions;
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
@@ -482,27 +484,52 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
-            mapNode->externalConfig() = *i;
+            externalConfig = *i;
+            
             for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
             {
-                addExtension( *e, mapNode.get() );
+                Extension* extension = loadExtension(*e);
+                if (extension)
+                    extensions.push_back(extension);
+                //addExtension( *e, mapNode.get() );
             }
         }
 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
-            bool addedLayer = addLayer(*i, mapNode.get());
+            bool addedLayer = addLayer(*i, map); //mapNode.get());
 
             if ( !addedLayer )
             {
+                Extension* extension = loadExtension(*i);
+                if (extension)
+                    extensions.push_back(extension);
                 //OE_INFO << LC << "Tried to load \"" << i->key() << "\" as a layer; now trying extension\n";
-                addExtension( *i, mapNode.get() );
+                //addExtension( *i, mapNode.get() );
             }
         }
     }
 
     // Complete the batch update of the map
     map->endUpdate();
+
+    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
+    MapNodeOptions mapNodeOptions( conf.child("options") );
+
+    // Create a map node.
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
+
+    // Apply the external conf if there is one.
+    if (!externalConfig.empty())
+    {
+        mapNode->externalConfig() = externalConfig;
+    }
+
+    // Install the extensions
+    for (unsigned i = 0; i < extensions.size(); ++i)
+    {
+        mapNode->addExtension(extensions.at(i).get());
+    }
 
     // return the topmost parent of the mapnode. It's possible that
     // an extension added parents!

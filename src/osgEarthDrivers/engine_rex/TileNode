@@ -114,7 +114,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const osg::Vec2f& getMorphConstants() const { return _morphConstants; }
 
-        void loadSync(EngineContext* context);
+        void loadSync();
 
         std::set<UID>& newLayers() { return _newLayers; }
         

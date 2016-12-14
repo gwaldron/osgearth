@@ -563,8 +563,11 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
                     // This is a new pass that just showed up at this LOD
                     // Since it just arrived at this LOD, make the parent the same as the color.
-                    pass->_samplers[SamplerBinding::COLOR_PARENT]._texture = layer->getTexture();
-                    pass->_samplers[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
+                    if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+                    {
+                        pass->_samplers[SamplerBinding::COLOR_PARENT]._texture = layer->getTexture();
+                        pass->_samplers[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
+                    }
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
@@ -579,7 +582,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     GeoNode* rttNode = dynamic_cast<GeoNode*>(layer->getTexture()->getUserData());
                     if (rttNode)
                     {
-                        _context->getTileRasterizer()->push(rttNode->_node.get(), layer->getTexture(), rttNode->_extent); //model->getKey().getExtent());
+                        _context->getTileRasterizer()->push(rttNode->_node.get(), layer->getTexture(), rttNode->_extent);
                     }
                 }
             }
@@ -661,7 +664,7 @@ void TileNode::loadChildren()
     if ( !_childrenReady )
     {        
         // Create the children
-        createChildren( _context );        
+        createChildren( _context.get() );        
         _childrenReady = true;        
         int numChildren = getNumChildren();
         if ( numChildren > 0 )
@@ -672,7 +675,7 @@ void TileNode::loadChildren()
                 if (child)
                 {
                     // Load the children's data.
-                    child->loadSync(_context);
+                    child->loadSync();
                 }
             }
         }
@@ -714,7 +717,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                 
                 // the color-parent gets special treatment, since it is not included
                 // in the TileModel (rather it is always derived here).
-                if (s == SamplerBinding::COLOR_PARENT)
+                if (s == SamplerBinding::COLOR_PARENT && bindings[SamplerBinding::COLOR_PARENT].isActive())
                 {
                     const Sampler& parentSampler = parentPass._samplers[SamplerBinding::COLOR];
                     osg::Matrixf newMatrix = parentSampler._matrix;
@@ -773,7 +776,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     const Samplers& parentSharedSamplers = parent->_renderModel._sharedSamplers;
     Samplers& mySharedSamplers = _renderModel._sharedSamplers;
     for (unsigned s = 0; s<mySharedSamplers.size(); ++s)
-    {
+    {        
         Sampler& mySampler = mySharedSamplers[s];
         if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
         {
@@ -784,7 +787,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
             ++changes;
 
             // Update the local elevation raster cache (for culling and intersection testing).
-            if (s == SamplerBinding::ELEVATION)
+            if (s == SamplerBinding::ELEVATION && mySampler._texture.valid())
             {
                 this->setElevationRaster(mySampler._texture->getImage(0), mySampler._matrix);
             }
@@ -838,9 +841,10 @@ TileNode::load(TerrainCuller* culler)
 }
 
 void
-TileNode::loadSync(EngineContext* context)
+TileNode::loadSync()
 {
-    osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, context);
+    osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, _context.get());
+    loadTileData->setEnableCancelation(false);
     loadTileData->invoke();
     loadTileData->apply(0L);
 }

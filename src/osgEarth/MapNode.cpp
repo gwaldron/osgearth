@@ -547,7 +547,7 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
             extensionIF->connect( this );
         }
 
-        OE_INFO << LC << "Added extension [" << extension->getName() << "]\n";
+        OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";
     }
 }
 

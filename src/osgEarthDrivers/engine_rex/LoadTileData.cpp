@@ -30,7 +30,8 @@ using namespace osgEarth;
 
 LoadTileData::LoadTileData(TileNode* tilenode, EngineContext* context) :
 _tilenode(tilenode),
-_context(context)
+_context(context),
+_enableCancel(true)
 {
     _mapFrame.setMap(context->getMap());
     _engine = context->getEngine();
@@ -68,7 +69,8 @@ LoadTileData::invoke()
     if (_mapFrame.needsSync())
         _mapFrame.sync();
 
-    osg::ref_ptr<ProgressCallback> progress = new MyProgress(this);
+    // Only use a progress callback is cancelation is enabled.    
+    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
@@ -77,6 +79,7 @@ LoadTileData::invoke()
         _filter,
         progress.get() );
 }
+
 
 bool
 LoadTileData::isCanceled()

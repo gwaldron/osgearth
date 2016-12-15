@@ -77,43 +77,41 @@ osgEarth Sample - Raster to feature example.
 
     </model>
 
-    <extensions> 
-      
-         <splat>        
-            <coverage>
-                <layer> CLASSMAP </layer>
-                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-            </coverage>
-            
-            <zones>
-                <zone name="default" doc="Default Climate Zone">            
-                    <surface>
-                        <catalog>../data/splat/splat_catalog.xml</catalog>
-                    </surface>
-                </zone>                
-            </zones>
-            
-        </splat>
+  
+     <splat>        
+        <coverage>
+            <layer> CLASSMAP </layer>
+            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+        </coverage>
+        
+        <zones>
+            <zone name="default" doc="Default Climate Zone">            
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>                
+        </zones>
+        
+    </splat>
 
-        <viewpoints>            
-            <viewpoint name="Trees 1">
-              <heading>-66.2945</heading>
-              <pitch>-14.0905</pitch>
-              <range>3408.89m</range>
-              <long>-121.7544800272052</long>
-              <lat>46.7792209225515</lat>
-              <height>1445.844014885835</height>
-            </viewpoint>
-            
-            <viewpoint name="Trees 2">              
-              <heading>12.2384</heading>
-              <pitch>-4.26323</pitch>
-              <range>1421.77m</range>
-              <long>-121.8282019325911</long>
-              <lat>46.65132101133439</lat>
-              <height>1128.989560711198</height>
-            </viewpoint>
-        </viewpoints>
-               
-    </extensions>
+    <viewpoints>            
+        <viewpoint name="Trees 1">
+          <heading>-66.2945</heading>
+          <pitch>-14.0905</pitch>
+          <range>3408.89m</range>
+          <long>-121.7544800272052</long>
+          <lat>46.7792209225515</lat>
+          <height>1445.844014885835</height>
+        </viewpoint>
+        
+        <viewpoint name="Trees 2">              
+          <heading>12.2384</heading>
+          <pitch>-4.26323</pitch>
+          <range>1421.77m</range>
+          <long>-121.8282019325911</long>
+          <lat>46.65132101133439</lat>
+          <height>1128.989560711198</height>
+        </viewpoint>
+    </viewpoints>
+
 </map>

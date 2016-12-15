@@ -223,6 +223,11 @@ ModelLayer::copyOptions()
 
     _alphaEffect = new AlphaEffect();
     _alphaEffect->setAlpha( *_initOptions.opacity() );
+    
+    if (!_runtimeOptions.name()->empty())
+    {
+        setName(_runtimeOptions.name().get());
+    }
 }
 
 void

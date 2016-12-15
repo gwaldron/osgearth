@@ -98,6 +98,10 @@ void
 MaskLayer::copyOptions()
 {
     _runtimeOptions = _initOptions;
+    if (!_runtimeOptions.name()->empty())
+    {
+        setName(_runtimeOptions.name().get());
+    }
 }
 
 void

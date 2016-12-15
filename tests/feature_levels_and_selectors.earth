@@ -85,10 +85,8 @@ Shows how to use Levels and Selectors together when rendering feature data.
     
     <options lighting="false"/>
     
-    <external>
-        <decluttering>
-            <sort_by_priority>true</sort_by_priority>
-        </decluttering>
-    </external>
+    <screen_space_layout>
+        <sort_by_priority>true</sort_by_priority>
+    </screen_space_layout>
   
 </map>

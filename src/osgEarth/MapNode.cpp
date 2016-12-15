@@ -422,9 +422,6 @@ MapNode::init()
         }
     }
 
-    // install the default rendermode uniform:
-    stateset->addUniform( new osg::Uniform("oe_isShadowCamera", false) );
-
     // install a default material for everything in the map
     osg::Material* defaultMaterial = new MaterialGL3();
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));

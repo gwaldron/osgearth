@@ -37,10 +37,10 @@ _orphanedPassesDetected(0u)
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
+TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
-    _terrain.setup(frame, bindings, defaultStateSet, frameNum);
+    _terrain.setup(frame, bindings, frameNum, *this, _camera);
 }
 
 float
@@ -140,7 +140,7 @@ TerrainCuller::apply(osg::Node& node)
             {
                 PatchLayer* layer = i->get();
                 if (layer->getAcceptCallback() == 0L ||
-                    layer->getAcceptCallback()->accept(_currentTileNode->getKey()))
+                    layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
                 {
                     // Push this tile's matrix if we haven't already done so:
                     if (!pushedMatrix)

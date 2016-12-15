@@ -31,6 +31,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/PatchLayer>
+#include <osgEarth/Shadowing>
 
 #include <osg/Texture2D>
 #include <osg/BlendFunc>
@@ -43,6 +44,68 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
+
+namespace
+{
+    class LandCoverPatchLayer : public PatchLayer,
+                                public PatchLayer::AcceptCallback
+    {
+    public:
+        LandCoverPatchLayer() : PatchLayer()
+        {
+            this->setAcceptCallback(this);
+        }
+
+        void setZoneAndLayer(const Zone* zone, const LandCoverLayer* layer)
+        {
+            _zone = zone;
+            _landCoverLayer = layer;
+        }
+
+    public: // AcceptCallback
+
+        /**
+         * Whether to cull this layer. We only want to cull this layer if 
+         * (a) its zone is currently active; and (b) this is either a shadowmap camera
+         * or a rendering camera.
+         */
+        bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+        {
+            // If this layer doesn't belong to the active zone, reject it.
+            const Zone* zone = VisitorData::fetch<const Zone>(nv, "oe.landcover.zone");
+            if (zone && zone != _zone.get())
+                return false;
+            
+            // if this is a shadow camera and the layer is configured to cast shadows, accept it.
+            if (osgEarth::Shadowing::isShadowCamera(camera))
+            {
+                bool ok = (_landCoverLayer->getCastShadows() == true);
+                //OE_INFO << "Layer=" << getName() << " - shadow pass (" << ok << ")\n";
+                return ok;
+            }
+
+            // if this is a depth-pass camera (and not a shadow cam), reject it.
+            unsigned clearMask = camera->getClearMask();
+            bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
+            if (isDepthCamera)
+                return false;
+
+            // otherwise, accept it.
+            //OE_INFO << "Layer="<<getName()<< " - render pass.\n";
+            return true;
+        }
+
+        bool acceptKey(const TileKey& key) const
+        {
+            return _landCoverLayer->getLOD() == key.getLOD();
+        }
+
+    private:
+        osg::ref_ptr<const Zone> _zone;
+        osg::ref_ptr<const LandCoverLayer> _landCoverLayer;
+    };
+}
+
 
 LandCoverLayerFactory::LandCoverLayerFactory() :
 _noiseTexUnit    ( -1 ),
@@ -57,16 +120,16 @@ LandCoverLayerFactory::setDBOptions(const osgDB::Options* dbo)
     _dbo = dbo;
 }
 
-namespace
-{
-    struct AcceptLOD : public PatchLayer::AcceptCallback {
-        unsigned _lod;
-        AcceptLOD(unsigned lod) { _lod = lod; }
-        bool accept(const TileKey& key) const {
-            return key.getLOD() == _lod;
-        }
-    };
-}
+//namespace
+//{
+//    struct AcceptLOD : public PatchLayer::AcceptCallback {
+//        unsigned _lod;
+//        AcceptLOD(unsigned lod) { _lod = lod; }
+//        bool accept(const TileKey& key) const {
+//            return key.getLOD() == _lod;
+//        }
+//    };
+//}
 
 void
 LandCoverLayerFactory::install(MapNode* mapNode)
@@ -151,7 +214,7 @@ LandCoverLayerFactory::install(MapNode* mapNode)
                             layerShader->setType(osg::Shader::GEOMETRY);
                             vp->setShader(layerShader);
 
-                            OE_INFO << LC << "Adding land cover layer: " << layer->getName() << " to Zone " << zone->getName() << " at LOD " << layer->getLOD() << "\n";
+                            OE_INFO << LC << "Adding land cover layer \"" << layer->getName() << "\" to zone \"" << zone->getName() << "\" at LOD " << layer->getLOD() << "\n";
 
                             // Install the uniforms
                             stateset->addUniform(new osg::Uniform("oe_landcover_windFactor", layer->getWind()));
@@ -188,12 +251,13 @@ LandCoverLayerFactory::install(MapNode* mapNode)
                             stateset->addUniform(new osg::Uniform("oe_landcover_texArray", _landCoverTexUnit));
 
 
-                            osgEarth::PatchLayer* patch = new osgEarth::PatchLayer();
-                            patch->setName("Land Cover - " + layer->getName());
-                            patch->setAcceptCallback( new AcceptLOD(layer->getLOD()) );
+                            //osgEarth::PatchLayer* patch = new osgEarth::PatchLayer();
+                            LandCoverPatchLayer* patch = new LandCoverPatchLayer();
+                            patch->setZoneAndLayer(zone, layer);
+                            patch->setName("Land Cover: " + layer->getName());
+                            //patch->setAcceptCallback( new AcceptLOD(layer->getLOD()) );
                             patch->setStateSet( stateset );
                             mapNode->getMap()->addLayer( patch );
-                            OE_INFO << LC << "Added a LandCover layer to the map, UID = " << patch->getUID() << std::endl;
                         }
                         else
                         {

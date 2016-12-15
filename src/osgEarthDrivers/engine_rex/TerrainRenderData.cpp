@@ -36,7 +36,8 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet, unsigned frameNum)
+TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings,
+                         unsigned frameNum, osg::NodeVisitor& nv, const osg::Camera* camera)
 {
     _bindings = &bindings;
 
@@ -64,18 +65,28 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings, 
 
             if (render)
             {
-                addLayerDrawable(layer);
-
                 // Make a list of "global" layers. There are layers whose data is not
                 // represented in the TerrainTileModel, like a splatting layer or a patch
                 // layer. The data for these is dynamic and not based on data fetched.
                 if (imageLayer == 0 && layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
                     tileLayers().push_back(layer);
+                    addLayerDrawable(layer);
                 }
                 else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
                 {
-                    patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
+                    PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
+
+                    if (patchLayer->getAcceptCallback() != 0L &&
+                        patchLayer->getAcceptCallback()->acceptLayer(nv, camera))
+                    {
+                        patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
+                        addLayerDrawable(layer);
+                    }
+                }
+                else
+                {
+                    addLayerDrawable(layer);
                 }
             }
         }

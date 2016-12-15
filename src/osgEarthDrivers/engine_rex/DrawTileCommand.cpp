@@ -60,8 +60,6 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layer
     }
 
     // Apply samplers for this tile draw:
-    //const Samplers& samplers = _pass->_surrogateSamplers ? *_pass->_surrogateSamplers : _pass->_samplers;
-
     unsigned s = 0;
 
     if (_colorSamplers)

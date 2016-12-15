@@ -150,8 +150,9 @@ ShadowCaster::reinitialize()
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
-    _rttStateSet->addUniform(new osg::Uniform("oe_isShadowCamera", true), osg::StateAttribute::OVERRIDE);
+    //_rttStateSet->addUniform(new osg::Uniform("oe_isShadowCamera", true), osg::StateAttribute::OVERRIDE);
 
+    _rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
 
     _renderStateSet = new osg::StateSet();
     

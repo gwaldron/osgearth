@@ -565,7 +565,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         culler.pushModelViewMatrix(cv->getModelViewMatrix(), cv->getCurrentCamera()->getReferenceFrame());
         culler._camera = cv->getCurrentCamera();
         culler._context = this->getEngineContext();
-        culler.setup(_mapFrame, this->getEngineContext()->getRenderBindings(), getSurfaceStateSet());
+
+        // Prepare the culler with the set of renderable layers:
+        culler.setup(_mapFrame, this->getEngineContext()->getRenderBindings());
 
         // Assemble the terrain drawable:
         _terrain->accept(culler);
@@ -585,7 +587,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
 
-        //OE_INFO << "CULL:\n";
+        //OE_INFO << "CULL\n";
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();

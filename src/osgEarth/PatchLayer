@@ -50,6 +50,9 @@ namespace osgEarth
         };
 
         /**
+         * Cull callback that executes when a /
+
+        /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
         struct DrawCallback : public osg::Referenced
@@ -63,7 +66,11 @@ namespace osgEarth
          */
         struct AcceptCallback : public osg::Referenced
         {
-            virtual bool accept(const TileKey& key) const =0;
+            /** Whether to accept the entire layer. Innvoked during Cull. */
+            virtual bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const { return true; }
+
+            /** Whether to accept a specific tile. Invoked during Cull. */
+            virtual bool acceptKey(const TileKey& key) const { return true; }
         };
 
 

@@ -168,7 +168,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
         if (!layer->getEnabled())
             continue;
 
-        if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->accept(key))
+        if (layer->getAcceptCallback() == 0L || layer->getAcceptCallback()->acceptKey(key))
         {
             PatchLayer::TileData* tileData = layer->createTileData(key);
             if (tileData)

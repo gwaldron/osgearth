@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainCuller();
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet);
+        void setup(const MapFrame& frame, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }

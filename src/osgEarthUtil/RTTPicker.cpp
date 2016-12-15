@@ -190,8 +190,8 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     VirtualProgram* vp = createRTTProgram();
     rttSS->setAttribute( vp );
 
-    // designate this as a pick camera, overriding any defaults below
-    rttSS->addUniform( new osg::Uniform("oe_isPickCamera", true), osg::StateAttribute::OVERRIDE );
+    // designate this as a pick camera
+    rttSS->setDefine("OE_IS_PICK_CAMERA");
 
     // default value for the objectid override uniform:
     rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getObjectIDUniformName().c_str(), 0u) );

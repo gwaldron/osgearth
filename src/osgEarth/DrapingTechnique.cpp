@@ -347,56 +347,41 @@ DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
     return getBound(params).valid();
 }
 
-#if OSG_MIN_VERSION_REQUIRED(3,4,0)
-
-// Customized texture class will disable texture filtering when rendering under a pick camera.
-class DrapingTexture : public osg::Texture2D
+namespace
 {
-public:
-    virtual void apply(osg::State& state) const {
-        osg::State::UniformMap::const_iterator i = state.getUniformMap().find("oe_isPickCamera");
-        bool isPickCamera = false;
-        if (i != state.getUniformMap().end())
+    // Customized texture class will disable texture filtering when rendering under a pick camera.
+    class DrapingTexture : public osg::Texture2D
+    {
+    public:
+        virtual void apply(osg::State& state) const
         {
-            if (!i->second.uniformVec.empty())
+            const osg::StateSet::DefineList& defines = state.getDefineMap().currentDefines;
+            if (defines.find("OE_IS_PICK_CAMERA") != defines.end())
             {
-                i->second.uniformVec.back().first->get(isPickCamera);
+                FilterMode minFilter = _min_filter;
+                FilterMode magFilter = _mag_filter;
+                DrapingTexture* ncThis = const_cast<DrapingTexture*>(this);
+                ncThis->_min_filter = NEAREST;
+                ncThis->_mag_filter = NEAREST;
+                ncThis->dirtyTextureParameters();
+                osg::Texture2D::apply(state);
+                ncThis->_min_filter = minFilter;
+                ncThis->_mag_filter = magFilter;
+                ncThis->dirtyTextureParameters();
+            }
+            else
+            {
+                osg::Texture2D::apply(state);
             }
         }
-
-        if (isPickCamera)
-        {
-            FilterMode minFilter = _min_filter;
-            FilterMode magFilter = _mag_filter;
-            DrapingTexture* ncThis = const_cast<DrapingTexture*>(this);
-            ncThis->_min_filter = NEAREST;
-            ncThis->_mag_filter = NEAREST;
-            ncThis->dirtyTextureParameters();
-            osg::Texture2D::apply(state);
-            ncThis->_min_filter = minFilter;
-            ncThis->_mag_filter = magFilter;
-            ncThis->dirtyTextureParameters();
-        }
-        else
-        {
-            osg::Texture2D::apply(state);
-        }
-    }
-};
-
-#endif
+    };
+}
 
 void
 DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
     // create the projected texture:
-
-#if OSG_MIN_VERSION_REQUIRED(3,4,0)
     osg::Texture2D* projTexture = new DrapingTexture(); 
-#else 
-    osg::Texture2D* projTexture = new osg::Texture2D();
-    OE_WARN << LC << "RTT Picking of draped geometry may not work propertly under OSG < 3.4" << std::endl;
-#endif
 
     projTexture->setTextureSize( *_textureSize, *_textureSize );
     projTexture->setInternalFormat( GL_RGBA );

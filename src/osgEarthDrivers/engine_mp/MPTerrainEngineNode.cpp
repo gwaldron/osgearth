@@ -976,7 +976,7 @@ MPTerrainEngineNode::updateState()
 
             package.replace( "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
             package.replace( "$MP_SECONDARY_UNIT", Stringify() << (_secondaryUnit>=0?_secondaryUnit:0) );
-
+                
             package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
 
             package.load( vp, package.EngineVertexModel );

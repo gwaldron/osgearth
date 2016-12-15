@@ -466,7 +466,10 @@ GeometryPool::clear()
 
         _geometryMap.clear();
 
-        OE_INFO << LC << "Cleared " << objects.size() << " objects from the geometry pool\n";
+        if (!objects.empty())
+        {
+            OE_INFO << LC << "Cleared " << objects.size() << " objects from the geometry pool\n";
+        }
     }
 
     // submit to the releaser.

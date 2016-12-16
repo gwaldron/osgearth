@@ -299,9 +299,11 @@ FeatureNode::onTileAdded(const TileKey&          key,
                          osg::Node*              tile,
                          TerrainCallbackContext& context)
 {
-    if ( !tile || _featurePolytope.contains( tile->getBound() ) )
+    osg::Polytope tope;
+    key.getExtent().createPolytope(tope);
+    if (tope.contains(this->getBound()))
     {
-        clamp( context.getTerrain(), tile );
+        clamp(context.getTerrain(), context.getTerrain()->getGraph());
     }
 }
 
@@ -311,15 +313,19 @@ FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
     if ( terrain && patch )
     {
         const AltitudeSymbol* alt = getStyle().get<AltitudeSymbol>();
+        if (alt && alt->technique() != alt->TECHNIQUE_SCENE)
+            return;
+
         bool relative = alt && alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_SCENE;
+        float offset = alt ? alt->verticalOffset()->eval() : 0.0f;
 
         GeometryClamper clamper;
         clamper.setTerrainPatch( patch );
         clamper.setTerrainSRS( terrain->getSRS() );
         clamper.setPreserveZ( relative );
+        clamper.setOffset( offset );
 
         this->accept( clamper );
-        this->dirtyBound();
     }
 }
 

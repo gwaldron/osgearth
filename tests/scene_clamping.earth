@@ -43,6 +43,7 @@ osgEarth Sample - Annotations
                 render-depth-offset-auto: true;
             </style>
         </circle>
+        <label text="WHITE = clamped to ground" lat="22.074" long="-159.5"/>
         
         <circle name="Circle clamped with an altitude offset">
             <position lat="22.074" long="-159.606"/>
@@ -53,9 +54,10 @@ osgEarth Sample - Annotations
                 altitude-clamping:  relative;
                 altitude-technique: scene;
                 altitude-binding:   vertex;
-                altitude-offset:    500;
+                altitude-offset:    1000;
             </style>
         </circle>
+        <label text="YELLOW = clamped relative to ground" lat="22.17" long="-159.606"/>
              
         <circle name="Circle clamped above the ground by its centroid">
             <position lat="22.074" long="-159.606"/>
@@ -66,9 +68,51 @@ osgEarth Sample - Annotations
                 altitude-clamping:  relative;
                 altitude-technique: scene;
                 altitude-binding:   centroid;
-                altitude-offset:    1000;
+                altitude-offset:    2000;
             </style>
         </circle>
+        <label text="CYAN = clamped relative to ground by centroid" lat="22.074" long="-159.7"/>
+        
+        
+        <feature name="Feature clamped to ground">
+            <srs>wgs84</srs>
+            <geometry>
+                LINESTRING(-159.606 22.074, -159.606 22.5)
+            </geometry>
+            <style type="text/css">
+                stroke:              #ffffff;
+                stroke-width:        3;
+                stroke-tessellation-size: 500m;
+                altitude-clamping:   terrain;
+                altitude-technique:  scene;
+                render-depth-offset-auto: true;
+            </style>
+        </feature>
+        
+        <feature name="Feature clamped relative to ground">
+            <srs>wgs84</srs>
+            <geometry>
+                LINESTRING(-159.606 22.074, -159.606 22.5)
+            </geometry>
+            <style type="text/css">
+                stroke:              #ffff00;
+                stroke-width:        3;
+                stroke-tessellation-size: 500m;
+                altitude-clamping:   relative;
+                altitude-technique:  scene;
+                altitude-offset:     1000;
+            </style>
+        </feature>
+        
+        
+        <place text="Placemark">
+            <position lat="22.074" long="-159.606"/>
+            <icon>../data/placemark32.png</icon>
+            <style type="text/css">
+                text-declutter: true;
+                text-halo:      #777;
+            </style>
+        </place>
 
     </annotations>
 </map>

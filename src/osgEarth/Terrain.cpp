@@ -79,7 +79,13 @@ _profile       ( mapProfile ),
 _geocentric    ( geocentric ),
 _terrainOptions( terrainOptions )
 {
-    //nop
+    _updateQueue = new osg::OperationQueue();
+}
+
+void
+Terrain::update()
+{
+    _updateQueue->runOperations();
 }
 
 bool
@@ -315,10 +321,9 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
         OE_WARN << LC << "notify with a null node!" << std::endl;
     }
 
-    osg::ref_ptr<osg::OperationQueue> queue;
-    if ( _callbacksSize > 0 && _updateOperationQueue.lock(queue) )
+    if (_callbacksSize > 0)
     {
-        queue->add( new OnTileAddedOperation(key, node, this) );
+        _updateQueue->add(new OnTileAddedOperation(key, node, this));
     }
 }
 

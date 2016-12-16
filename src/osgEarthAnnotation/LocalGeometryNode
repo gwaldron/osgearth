@@ -113,7 +113,7 @@ namespace osgEarth { namespace Annotation
 
     public: // osg::Node
 
-        virtual osg::BoundingSphere computeBound() const;
+        //virtual osg::BoundingSphere computeBound() const;
 
     protected: // GeoPositionNode
 
@@ -129,7 +129,7 @@ namespace osgEarth { namespace Annotation
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
         bool _clampRelative;
-        mutable osg::Polytope _boundingPT;
+        //mutable osg::Polytope _boundingPT;
 
         void initNode();
         void initGeometry(const osgDB::Options*);

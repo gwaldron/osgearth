@@ -217,8 +217,9 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
 
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
-AnnotationNode          ( conf ),
-_horizonCullingRequested( true )
+AnnotationNode            ( conf ),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );

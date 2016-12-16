@@ -68,7 +68,7 @@ TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*        
                                                               TerrainEngineNode* engine) :
 _mapf  ( map ),
 _engine( engine )
-{
+{    
     //nop
 }
 
@@ -126,7 +126,10 @@ _elevationBorderRequired ( false ),
 _redrawRequired          ( true )
 {
     // register for event traversals so we can properly reset the dirtyCount
-    ADJUST_EVENT_TRAV_COUNT( this, 1 );
+    ADJUST_EVENT_TRAV_COUNT(this, 1);
+
+    // register for update traversals so we can process terrain callbacks
+    ADJUST_UPDATE_TRAV_COUNT(this, 1);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -360,6 +363,7 @@ namespace
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
+#if 0
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         // see if we need to set up the Terrain object with an update ops queue.
@@ -387,9 +391,17 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    else 
+#endif
+    
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         _dirtyCount = 0;
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        _terrainInterface->update();
     }
 
     osg::CoordinateSystemNode::traverse( nv );

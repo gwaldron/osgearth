@@ -254,7 +254,7 @@ namespace osgEarth
         void accept( osg::NodeVisitor& nv );
 
         // access the raw terrain graph
-        osg::Node* getGraph() { return _graph.get(); }
+        osg::Node* getGraph() const { return _graph.get(); }
         
         // queues the onTileAdded callback (internal)
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
@@ -271,6 +271,9 @@ namespace osgEarth
     private:
         Terrain( osg::Node* graph, const Profile* profile, bool geocentric, const TerrainOptions& options );
 
+        /** update traversal. */
+        void update();
+
         friend class TerrainEngineNode;
 
         typedef std::list< osg::ref_ptr<TerrainCallback> > CallbackList;
@@ -284,7 +287,7 @@ namespace osgEarth
         bool                         _geocentric;
         const TerrainOptions&        _terrainOptions;
 
-        osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
+        osg::ref_ptr<osg::OperationQueue> _updateQueue;
     };
 
 }

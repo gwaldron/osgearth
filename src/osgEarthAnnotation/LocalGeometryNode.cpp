@@ -221,11 +221,23 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
                                osg::Node*              patch, 
                                TerrainCallbackContext& context)
 {
-    // if key and data intersect then
-    if ( _boundingPT.contains(patch->getBound()) )
+    // This was faster, but less precise and resulted in a lot of unnecessary clamp attempts:
+    //if ( _boundingPT.contains(patch->getBound()) )
+
+    // Does the tile key's polytope intersect the world bounds or this object?
+    // (taking getParent(0) gives the world-tranformed bounds vs. local bounds)
+    osg::Polytope tope;
+    key.getExtent().createPolytope(tope);
+    if (tope.contains(this->getParent(0)->getBound()))
     {    
-        clampToScene( patch, context.getTerrain() );
-        this->dirtyBound();
+        clampToScene(context.getTerrain()->getGraph(), context.getTerrain() );
+        
+
+        //OE_INFO << LC << "Clamped to " << key.str()
+        //    //<< "; center=" << bs.center().x() << ", " << bs.center().y() << ", " << bs.center().z()
+        //    << "; radius=" << this->getBound().radius()
+        //    << "; position=" << this->getPosition().toString()
+        //    << "\n";
     }
 }
 
@@ -240,8 +252,13 @@ LocalGeometryNode::clampToScene(osg::Node* patch, const Terrain* terrain)
     clamper.setOffset( getPosition().alt() );
 
     this->accept( clamper );
+
+    // should be unnecessary single the GeometryClamper should dirty the bound
+    // of the underlying geometry anyway
+    //this->dirtyBound();
 }
 
+#if 0
 osg::BoundingSphere
 LocalGeometryNode::computeBound() const
 {
@@ -288,6 +305,7 @@ LocalGeometryNode::computeBound() const
 
     return bs;
 }
+#endif
 
 void
 LocalGeometryNode::dirty()

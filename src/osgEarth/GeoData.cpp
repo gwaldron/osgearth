@@ -553,6 +553,15 @@ GeoPoint::distanceTo(const GeoPoint& rhs) const
     }
 }
 
+std::string
+GeoPoint::toString() const
+{
+    std::stringstream buf;
+    buf << "x=" << x() << ", y=" << y() << ", z=" << z() << "; m=" <<
+        (_altMode == ALTMODE_ABSOLUTE ? "abs" : "rel");
+    return buf.str();
+}
+
 
 //------------------------------------------------------------------------
 

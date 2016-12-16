@@ -110,8 +110,12 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 // Mark as complete. TODO: per-data requests will do something different.
                 tilenode->setDirty( false );
 
-                // Notify listeners that we've added a tile.
-                _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode.get() ); //->getSurfaceNode() );
+                // Notify listeners that we've added a tile. The patch must be in world space
+                // (include a transform). Only need to fire onTileAdded if there's real elevation data...right?
+                if (_dataModel->elevationModel().valid())
+                {
+                    _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode.get() );
+                }
 
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
             }

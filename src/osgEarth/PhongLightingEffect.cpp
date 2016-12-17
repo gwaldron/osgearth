@@ -87,6 +87,7 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         shaders.load(vp, shaders.PhongLightingFragment);
 
         stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
+        stateset->setDefine("OE_NUM_LIGHTS", "1");
 
         //if ( _lightingUniform.valid() )
         //    stateset->addUniform( _lightingUniform.get() );

@@ -4,7 +4,7 @@
 #pragma vp_entryPoint oe_phong_fragment
 #pragma vp_location   fragment_lighting
 
-#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
 
 //uniform bool oe_mode_GL_LIGHTING; 
 
@@ -14,10 +14,10 @@ in vec3 oe_phong_vertexView3;
 vec3 vp_Normal;
 
 
-#define MAX_LIGHTS 8
+//#define MAX_LIGHTS 8
 
 // Total number of lights in the scene
-uniform int osg_NumLights;
+//uniform int osg_NumLights;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -36,7 +36,7 @@ struct osg_LightSourceParameters
 
    bool enabled;
 };  
-uniform osg_LightSourceParameters osg_LightSource[MAX_LIGHTS];
+uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];
 
 // Surface material:
 struct osg_MaterialParameters  
@@ -73,7 +73,7 @@ void oe_phong_fragment(inout vec4 color)
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
     
-    int numLights = min(osg_NumLights, MAX_LIGHTS);
+    int numLights = OE_NUM_LIGHTS; //min(osg_NumLights, MAX_LIGHTS);
 
     for (int i=0; i<numLights; ++i)
     {

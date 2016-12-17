@@ -69,6 +69,8 @@ SkyNode::baseInit(const SkyOptions& options)
         _dateTime = DateTime(_dateTime.year(), _dateTime.month(), _dateTime.day(), (double)hours);
         // (don't call setDateTime since we are called from the CTOR)
     }
+
+    this->getOrCreateStateSet()->setDefine("OE_NUM_LIGHTS", "1");
 }
 
 void

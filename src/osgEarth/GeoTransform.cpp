@@ -141,9 +141,9 @@ GeoTransform::onTileAdded(const TileKey&          key,
        return;
    }
 
-   if (!key.getExtent().contains(_position))
+   if (key.valid() && !key.getExtent().contains(_position))
    {
-       OE_DEBUG << LC << "onTileAdded fail condition 2\n";
+       OE_TEST << LC << "onTileAdded fail condition 2\n";
        return;
    }
 

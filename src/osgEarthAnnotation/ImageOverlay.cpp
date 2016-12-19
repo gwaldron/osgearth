@@ -759,7 +759,7 @@ ImageOverlay::onTileAdded(const TileKey&          key,
                           osg::Node*              tile, 
                           TerrainCallbackContext& context)
 {
-    if ( tile == 0L || _boundingPolytope.contains(tile->getBound()) )
+    if ( tile == 0L || !key.valid() || _boundingPolytope.contains(tile->getBound()) )
     {
         clamp( context.getTerrain(), tile );
     }

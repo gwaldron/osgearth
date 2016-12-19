@@ -221,16 +221,29 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
                                osg::Node*              patch, 
                                TerrainCallbackContext& context)
 {
+    bool needsClamp;
+
     // This was faster, but less precise and resulted in a lot of unnecessary clamp attempts:
     //if ( _boundingPT.contains(patch->getBound()) )
 
     // Does the tile key's polytope intersect the world bounds or this object?
     // (taking getParent(0) gives the world-tranformed bounds vs. local bounds)
-    osg::Polytope tope;
-    key.getExtent().createPolytope(tope);
-    if (tope.contains(this->getParent(0)->getBound()))
+    if (key.valid())
+    {
+        osg::Polytope tope;
+        key.getExtent().createPolytope(tope);
+        needsClamp = tope.contains(this->getParent(0)->getBound());
+    }
+    else
+    {
+        // with no key, must clamp no matter what
+        needsClamp = true;
+    }
+
+    if (needsClamp)
     {    
         clampToScene(context.getTerrain()->getGraph(), context.getTerrain() );
+    }
         
 
         //OE_INFO << LC << "Clamped to " << key.str()
@@ -238,7 +251,7 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
         //    << "; radius=" << this->getBound().radius()
         //    << "; position=" << this->getPosition().toString()
         //    << "\n";
-    }
+    
 }
 
 void

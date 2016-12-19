@@ -230,6 +230,10 @@ void
 GeoPositionNode::setConfig(const Config& conf)
 {
     //AnnotationNode::setConfig(conf);
+    if (conf.hasValue("name"))
+    {
+        setName(conf.value("name"));
+    }
 
     if ( conf.hasChild( "position" ) )
     {

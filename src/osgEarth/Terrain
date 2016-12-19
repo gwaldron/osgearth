@@ -258,12 +258,12 @@ namespace osgEarth
         
         // queues the onTileAdded callback (internal)
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
-        // fires the onTileAdded callback (internal)
-        void fireTileAdded( const TileKey& key, osg::Node* tile );
 
         // queues the onTileRemoved callback (internal)
         void notifyTilesRemoved(const std::vector<TileKey>& keys);
-        void fireTilesRemoved(const std::vector<TileKey>& keys);
+
+        // internal
+        void notifyMapElevationChanged();
 
         /** dtor */
         virtual ~Terrain() { }
@@ -288,6 +288,20 @@ namespace osgEarth
         const TerrainOptions&        _terrainOptions;
 
         osg::ref_ptr<osg::OperationQueue> _updateQueue;
+        
+        void fireMapElevationChanged();
+        void fireTileAdded( const TileKey& key, osg::Node* tile );
+        void fireTilesRemoved(const std::vector<TileKey>& keys);
+
+        struct OnTileAddedOperation : public osg::Operation {
+            osg::observer_ptr<Terrain> _terrain;
+            TileKey _key;
+            osg::observer_ptr<osg::Node> _node;
+            unsigned _count;
+            OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain);
+            void operator()(osg::Object*);
+            int _delay;
+        };
     };
 
 }

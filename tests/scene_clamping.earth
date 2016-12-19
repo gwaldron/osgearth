@@ -105,7 +105,7 @@ osgEarth Sample - Annotations
         </feature>
         
         
-        <place text="Placemark">
+        <place name="Placemark" text="Placemark">
             <position lat="22.074" long="-159.606"/>
             <icon>../data/placemark32.png</icon>
             <style type="text/css">

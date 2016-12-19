@@ -299,9 +299,22 @@ FeatureNode::onTileAdded(const TileKey&          key,
                          osg::Node*              tile,
                          TerrainCallbackContext& context)
 {
-    osg::Polytope tope;
-    key.getExtent().createPolytope(tope);
-    if (tope.contains(this->getBound()))
+    bool needsClamp;
+
+    if (key.valid())
+    {
+        osg::Polytope tope;
+        key.getExtent().createPolytope(tope);
+        needsClamp = tope.contains(this->getBound());
+    }
+    else
+    {
+        // without a valid tilekey we don't know the extent of the change,
+        // so clamping is required.
+        needsClamp = true;
+    }
+
+    if (needsClamp)
     {
         clamp(context.getTerrain(), context.getTerrain()->getGraph());
     }

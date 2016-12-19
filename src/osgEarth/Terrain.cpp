@@ -29,46 +29,37 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
-namespace
+Terrain::OnTileAddedOperation::OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
+    : osg::Operation("OnTileAdded", true),
+        _terrain(terrain), _key(key), _node(node), _count(0), _delay(0) { }
+
+void Terrain::OnTileAddedOperation::operator()(osg::Object*)
 {
-    struct BaseOp : public osg::Operation
+    if ( getKeep() == false )
+        return;
+
+    if (_delay-- > 0)
+        return;
+
+    ++_count;
+    osg::ref_ptr<Terrain>   terrain;
+    osg::ref_ptr<osg::Node> node;
+    
+    if ( _terrain.lock(terrain) && (!_key.valid() || _node.lock(node)) )
     {
-        BaseOp(Terrain* terrain, bool keepByDefault) : osg::Operation("",keepByDefault), _terrain(terrain) { }
-        osg::observer_ptr<Terrain> _terrain;
-    };
+        if (_key.valid())
+            terrain->fireTileAdded( _key, node.get() );
+        else
+            terrain->fireTileAdded( _key, 0L );
 
-    struct OnTileAddedOperation : public BaseOp
+    }
+    else
     {
-        TileKey _key;
-        osg::observer_ptr<osg::Node> _node;
-        unsigned _count;
+        // nop; tile expired; let it go.
+        OE_DEBUG << "Tile expired before notification: " << _key.str() << std::endl;
+    }
 
-        OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
-            : BaseOp(terrain, true), _key(key), _node(node), _count(0) { }
-
-        void operator()(osg::Object*)
-        {
-            if ( getKeep() == false )
-                return;
-
-            ++_count;
-            osg::ref_ptr<Terrain>   terrain;
-            osg::ref_ptr<osg::Node> node;
-
-            if ( _terrain.lock(terrain) && _node.lock(node) )
-            {
-                //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
-                terrain->fireTileAdded( _key, node.get() );
-                this->setKeep( false );
-            }
-            else
-            {
-                // nop; tile expired; let it go.
-                //OE_NOTICE << "Tile expired before notification: " << _key.str() << std::endl;
-                this->setKeep( false );
-            }
-        }
-    };
+    this->setKeep( false );
 }
 
 //---------------------------------------------------------------------------
@@ -323,6 +314,9 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
 
     if (_callbacksSize > 0)
     {
+        if (!key.valid())
+            OE_WARN << LC << "notifyTileAdded with key = NULL\n";
+
         _updateQueue->add(new OnTileAddedOperation(key, node, this));
     }
 }
@@ -345,7 +339,22 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
     }
 }
 
+void
+Terrain::notifyMapElevationChanged()
+{
+    if (_callbacksSize > 0)
+    {
+        OnTileAddedOperation* op = new OnTileAddedOperation(TileKey::INVALID, 0L, this);
+        op->_delay = 1; // let the terrain update before applying this
+        _updateQueue->add(op);
+    }
+}
 
+void
+Terrain::fireMapElevationChanged()
+{
+    // nop
+}
 void
 Terrain::accept( osg::NodeVisitor& nv )
 {

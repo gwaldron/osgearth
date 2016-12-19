@@ -298,6 +298,11 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         change.getImageLayer()->removeCallback( _imageLayerController.get() );
     }
 
+    if (change.getElevationLayer() != 0L)
+    {
+        getTerrain()->notifyMapElevationChanged();
+    }
+
     // notify that a redraw is required.
     requestRedraw();
 }

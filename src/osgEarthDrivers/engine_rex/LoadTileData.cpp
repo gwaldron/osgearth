@@ -33,6 +33,7 @@ _tilenode(tilenode),
 _context(context),
 _enableCancel(true)
 {
+    this->setTileKey(tilenode->getKey());
     _mapFrame.setMap(context->getMap());
     _engine = context->getEngine();
 }
@@ -114,7 +115,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 // (include a transform). Only need to fire onTileAdded if there's real elevation data...right?
                 if (_dataModel->elevationModel().valid())
                 {
-                    _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode.get() );
+                    _context->getEngine()->getTerrain()->notifyTileAdded( _dataModel->getKey(), tilenode.get() );
                 }
 
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";

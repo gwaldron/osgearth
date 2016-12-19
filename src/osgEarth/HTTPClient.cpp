@@ -776,7 +776,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     }
 
     // clears any session cookies..?
-    InternetSetOption( 0, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0 );
+    // Commented this out, because is invalidates authorization caching:
+    //InternetSetOption( 0, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0 );
     
     // parse the URL:
     URL_COMPONENTS urlcomp;

@@ -163,8 +163,9 @@ bool
 Map::isGeocentric() const
 {
     return
-        _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC ||
-        _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+        _mapOptions.coordSysType().isSet() ? _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC :
+        getSRS() ? getSRS()->isGeographic() :
+        true;
 }
 
 const osgDB::Options*
@@ -613,143 +614,71 @@ Map::setLayersFromMap(const Map* map)
 void
 Map::calculateProfile()
 {
+    // collect the terrain layers; we will need them later
+    TerrainLayerVector layers;
+    getLayers(layers);
+
+    // Figure out the map profile:
     if ( !_profile.valid() )
     {
-        osg::ref_ptr<const Profile> userProfile;
+        osg::ref_ptr<const Profile> profile;
+
+        // Do the map options contain a profile? If so, try to use it:
         if ( _mapOptions.profile().isSet() )
         {
-            userProfile = Profile::create( _mapOptions.profile().value() );
+            profile = Profile::create( _mapOptions.profile().value() );
         }
 
-        if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC )
+        // Do the map options contain an override coordinate system type?
+        // If so, attempt to apply that next:
+        if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_GEOCENTRIC))
         {
-            if ( userProfile.valid() )
+            if (profile.valid() && profile->getSRS()->isProjected())
             {
-                if ( userProfile->isOK() && userProfile->getSRS()->isGeographic() )
-                {
-                    _profile = userProfile.get();
-                }
-                else
-                {
-                    OE_WARN << LC
-                        << "Map is geocentric, but the configured profile SRS ("
-                        << userProfile->getSRS()->getName() << ") is not geographic; "
-                        << "it will be ignored."
-                        << std::endl;
-                }
-            }
-        }
-        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE )
-        {
-            if ( userProfile.valid() )
-            {
-                if ( userProfile->isOK() && userProfile->getSRS()->isCube() )
-                {
-                    _profile = userProfile.get();
-                }
-                else
-                {
-                    OE_WARN << LC
-                        << "Map is geocentric cube, but the configured profile SRS ("
-                        << userProfile->getSRS()->getName() << ") is not geocentric cube; "
-                        << "it will be ignored."
-                        << std::endl;
-                }
-            }
-        }
-        else // CSTYPE_PROJECTED
-        {
-            if ( userProfile.valid() )
-            {
-                if ( userProfile->isOK() && userProfile->getSRS()->isProjected() )
-                {
-                    _profile = userProfile.get();
-                }
-                else
-                {
-                    OE_WARN << LC
-                        << "Map is projected, but the configured profile SRS ("
-                        << userProfile->getSRS()->getName() << ") is not projected; "
-                        << "it will be ignored."
-                        << std::endl;
-                }
+                OE_WARN << LC << "Geocentric map type conflicts with the projected SRS profile; ignoring your profile\n";
+                profile = Registry::instance()->getGlobalGeodeticProfile();
             }
         }
 
-        // At this point, if we don't have a profile we need to search tile sources until we find one.
-        if ( !_profile.valid() )
+        // Do the map options ask for a projected map?
+        else if (_mapOptions.coordSysType().isSetTo(MapOptions::CSTYPE_PROJECTED))
         {
-            Threading::ScopedReadLock lock( _mapDataMutex );
-
-            for (LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+            // Is there a conflict in the MapOptions?
+            if (profile.valid() && profile->getSRS()->isGeographic())
             {
-                TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(i->get());
-                if (terrainLayer && terrainLayer->getTileSource())
+                OE_WARN << LC << "Projected map type conflicts with the geographic SRS profile; converting to Equirectangular projection\n";
+                unsigned u, v;
+                profile->getNumTiles(0, u, v);
+                const osgEarth::SpatialReference* eqc = profile->getSRS()->createEquirectangularSRS();
+                osgEarth::GeoExtent e = profile->getExtent().transform( eqc );
+                profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
+            }
+
+            // Is there no profile set? Try to derive it from the Map layers:
+            if (!profile.valid())
+            {
+                for (TerrainLayerVector::iterator i = layers.begin(); !profile.valid() && i != layers.end(); ++i)
                 {
-                    _profile = terrainLayer->getTileSource()->getProfile();
+                    profile = i->get()->getProfile();
                 }
             }
-        }
 
-        // ensure that the profile we found is the correct kind
-        // convert a geographic profile to Plate Carre if necessary
-        if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC && !( _profile.valid() && _profile->getSRS()->isGeographic() ) )
-        {
-            // by default, set a geocentric map to use global-geodetic WGS84.
-            _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-        }
-        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE && !( _profile.valid() && _profile->getSRS()->isCube() ) )
-        {
-            //If the map type is a Geocentric Cube, set the profile to the cube profile.
-            _profile = osgEarth::Registry::instance()->getCubeProfile();
-        }
-        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && _profile.valid() && _profile->getSRS()->isGeographic() )
-        {
-            OE_INFO << LC << "Projected map with geographic SRS; activating EQC profile" << std::endl;
-            unsigned u, v;
-            _profile->getNumTiles(0, u, v);
-            const osgEarth::SpatialReference* eqc = _profile->getSRS()->createEquirectangularSRS();
-            osgEarth::GeoExtent e = _profile->getExtent().transform( eqc );
-            _profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
-        }
-        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && !( _profile.valid() && _profile->getSRS()->isProjected() ) )
-        {
-            // TODO: should there be a default projected profile?
-            _profile = 0;
-        }
-
-        // finally, fire an event if the profile has been set.
-        if ( _profile.valid() )
-        {
-            OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
-
-            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+            if (!profile.valid())
             {
-                i->get()->onMapInfoEstablished( MapInfo(this) );
+                OE_WARN << LC << "No profile information available; defaulting to Mercator projection\n";
+                profile = Registry::instance()->getGlobalMercatorProfile();
             }
         }
 
-        else
-        {
-            OE_WARN << LC << "Warning, not yet able to establish a map profile!" << std::endl;
+        // Finally, if there is still no profile, default to global geodetic.
+        if (!profile.valid())
+        {            
+            profile = Registry::instance()->getGlobalGeodeticProfile();
         }
-    }
 
-    if ( _profile.valid() )
-    {
-        // tell all the loaded layers what the profile is, as a hint
-        {
-            Threading::ScopedWriteLock lock( _mapDataMutex );
 
-            for (LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
-            {
-                TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(i->get());
-                if (terrainLayer && terrainLayer->getEnabled())
-                {
-                    terrainLayer->setTargetProfileHint(_profile.get());
-                }
-            }
-        }
+        // Set the map's profile!
+        _profile = profile.release();        
 
         // create a "proxy" profile to use when querying elevation layers with a vertical datum
         if ( _profile->getSRS()->getVerticalDatum() != 0L )
@@ -761,6 +690,23 @@ Map::calculateProfile()
         else
         {
             _profileNoVDatum = _profile;
+        }
+
+        // finally, fire an event if the profile has been set.
+        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapInfoEstablished( MapInfo(this) );
+        }
+    }
+
+    // Tell all the layers about the profile
+    for (TerrainLayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        if (i->get()->getEnabled())
+        {
+            i->get()->setTargetProfileHint(_profile.get());
         }
     }
 }

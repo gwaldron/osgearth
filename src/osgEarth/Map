@@ -37,7 +37,6 @@
 namespace osgEarth
 {
     class MapInfo;
-    //class ElevationPool;
 
     /**
      * Map is the main data model that the MapNode will render. It is a

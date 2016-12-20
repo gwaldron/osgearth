@@ -40,7 +40,6 @@ MapOptions::fromConfig( const Config& conf )
     conf.getIfSet( "type", "round",      _cstype, CSTYPE_GEOCENTRIC );
     conf.getIfSet( "type", "projected",  _cstype, CSTYPE_PROJECTED );
     conf.getIfSet( "type", "flat",       _cstype, CSTYPE_PROJECTED );
-    conf.getIfSet( "type", "cube",       _cstype, CSTYPE_GEOCENTRIC_CUBE );
 
     conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.getIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
@@ -61,7 +60,6 @@ MapOptions::getConfig() const
     // all variations:
     conf.updateIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
     conf.updateIfSet( "type", "projected",  _cstype, CSTYPE_PROJECTED );
-    conf.updateIfSet( "type", "cube",       _cstype, CSTYPE_GEOCENTRIC_CUBE );
 
     conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.updateIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);

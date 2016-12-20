@@ -145,7 +145,7 @@ namespace osgEarth { namespace Annotation
         // callback from Terrain whsen new data arrives
         void onTileAdded(
             const TileKey&          key, 
-            osg::Node*              tile, 
+            osg::Node*              graph, 
             TerrainCallbackContext& context);
         
     private:
@@ -182,7 +182,7 @@ namespace osgEarth { namespace Annotation
 
         osg::ref_ptr< TerrainCallbackAdapter<ImageOverlay> > _clampCallback;
         
-        void clamp(const Terrain* terrain, osg::Node* patch);
+        void clamp(osg::Node* patch, const Terrain* terrain);
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }

@@ -115,7 +115,11 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 // (include a transform). Only need to fire onTileAdded if there's real elevation data...right?
                 if (_dataModel->elevationModel().valid())
                 {
-                    _context->getEngine()->getTerrain()->notifyTileAdded( _dataModel->getKey(), tilenode.get() );
+                    // Notify the terrain of the new tile. The "graph" needs to be
+                    // the entire terrain graph since REX can load tiles out of order.
+                    _context->getEngine()->getTerrain()->notifyTileAdded(
+                        _dataModel->getKey(),
+                        _context->getEngine()->getTerrain()->getGraph() );
                 }
 
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";

@@ -246,7 +246,7 @@ static const size_t NUM_CONTEXTS = 64;
 
         // Called when the terrain engine loads a new tile (or new tile heightfield data).
         // When this happens we need to update the Triton height map.
-        void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, osgEarth::TerrainCallbackContext& context)
+        void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* graph, osgEarth::TerrainCallbackContext& context)
         {
             osg::ref_ptr<TritonDrawable> drawable;
             if ( _drawable.lock(drawable) )

@@ -216,7 +216,7 @@ FeatureNode::build()
             if ( ap.sceneClamping )
             {
                 getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-                clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
+                clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
             }
             else
             {
@@ -296,7 +296,7 @@ void FeatureNode::init()
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
 FeatureNode::onTileAdded(const TileKey&          key,
-                         osg::Node*              tile,
+                         osg::Node*              graph,
                          TerrainCallbackContext& context)
 {
     bool needsClamp;
@@ -316,14 +316,14 @@ FeatureNode::onTileAdded(const TileKey&          key,
 
     if (needsClamp)
     {
-        clamp(context.getTerrain(), context.getTerrain()->getGraph());
+        clamp(graph, context.getTerrain());
     }
 }
 
 void
-FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
+FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
 {
-    if ( terrain && patch )
+    if ( terrain && graph )
     {
         const AltitudeSymbol* alt = getStyle().get<AltitudeSymbol>();
         if (alt && alt->technique() != alt->TECHNIQUE_SCENE)
@@ -333,7 +333,7 @@ FeatureNode::clamp(const Terrain* terrain, osg::Node* patch)
         float offset = alt ? alt->verticalOffset()->eval() : 0.0f;
 
         GeometryClamper clamper;
-        clamper.setTerrainPatch( patch );
+        clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
         clamper.setPreserveZ( relative );
         clamper.setOffset( offset );

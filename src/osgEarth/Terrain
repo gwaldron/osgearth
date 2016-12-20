@@ -72,14 +72,15 @@ namespace osgEarth
          * A tile was added to the terrain graph.
          * @param key
          *      Tile key of the new tile, including the geographic extents
-         * @param tile
-         *      Geometry of the new tile
+         * @param graph
+         *      Scene graph that can be used to intersect the tile (though it
+         *      may include more than just the new tile)
          * @param context
          *      Contextual information about the callback
          */
         virtual void onTileAdded(
             const TileKey&          key, 
-            osg::Node*              tile, 
+            osg::Node*              graph, 
             TerrainCallbackContext& context) { }
 
         /** dtor */

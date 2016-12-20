@@ -25,10 +25,6 @@ osgEarth Sample - Annotations
         </viewpoint>
     </viewpoints>
 
-    <options>
-        <terrain driver="rex" progressive="false"/>
-    </options>
-
     <annotations>  
 
         <circle name="Circle clamped directly to the ground">

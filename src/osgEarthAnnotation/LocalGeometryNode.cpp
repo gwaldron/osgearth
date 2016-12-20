@@ -218,7 +218,7 @@ LocalGeometryNode::applyAltitudeSymbology(const Style& style)
 
 void
 LocalGeometryNode::onTileAdded(const TileKey&          key, 
-                               osg::Node*              patch, 
+                               osg::Node*              graph, 
                                TerrainCallbackContext& context)
 {
     bool needsClamp;
@@ -242,33 +242,24 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
 
     if (needsClamp)
     {    
-        clampToScene(context.getTerrain()->getGraph(), context.getTerrain() );
+        clamp(graph, context.getTerrain());
     }
-        
-
-        //OE_INFO << LC << "Clamped to " << key.str()
-        //    //<< "; center=" << bs.center().x() << ", " << bs.center().y() << ", " << bs.center().z()
-        //    << "; radius=" << this->getBound().radius()
-        //    << "; position=" << this->getPosition().toString()
-        //    << "\n";
-    
 }
 
 void
-LocalGeometryNode::clampToScene(osg::Node* patch, const Terrain* terrain)
+LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
 {
-    GeometryClamper clamper;
+    if (terrain && graph)
+    {
+        GeometryClamper clamper;
 
-    clamper.setTerrainPatch( patch );
-    clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
-    clamper.setPreserveZ( _clampRelative );
-    clamper.setOffset( getPosition().alt() );
+        clamper.setTerrainPatch( graph );
+        clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
+        clamper.setPreserveZ( _clampRelative );
+        clamper.setOffset( getPosition().alt() );
 
-    this->accept( clamper );
-
-    // should be unnecessary single the GeometryClamper should dirty the bound
-    // of the underlying geometry anyway
-    //this->dirtyBound();
+        this->accept( clamper );
+    }
 }
 
 #if 0
@@ -328,7 +319,7 @@ LocalGeometryNode::dirty()
     // re-clamp the geometry if necessary.
     if ( _clampCallback.valid() && getMapNode() )
     {
-        clampToScene( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
+        clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
     }
 }
 

@@ -140,11 +140,11 @@ namespace osgEarth { namespace Annotation
     public:
         void onTileAdded(
             const TileKey&          key, 
-            osg::Node*              tile, 
+            osg::Node*              graph, 
             TerrainCallbackContext& context);
 
-        virtual void clampToScene(
-            osg::Node*     tile,
+        virtual void clamp(
+            osg::Node*     graph,
             const Terrain* terrain);
     };
 

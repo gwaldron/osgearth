@@ -114,12 +114,12 @@ namespace
     struct ManipTerrainCallback : public TerrainCallback
     {
         ManipTerrainCallback(EarthManipulator* manip) : _manip(manip) { }
-        void onTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
+        void onTileAdded(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
         {
             osg::ref_ptr<EarthManipulator> safe;
             if ( _manip.lock(safe) )
             {
-                safe->handleTileAdded(key, tile, context);
+                safe->handleTileAdded(key, graph, context);
             }
         }
         osg::observer_ptr<EarthManipulator> _manip;
@@ -751,7 +751,7 @@ EarthManipulator::established()
 
 
 void
-EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
+EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* graph, TerrainCallbackContext& context)
 {
     // Only do collision avoidance if it's enabled, we're not tethering and
     // we're not in the middle of setting a viewpoint.

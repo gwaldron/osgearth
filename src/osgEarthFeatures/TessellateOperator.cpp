@@ -101,8 +101,8 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
     }
 
     Units featureUnits = feature->getSRS() ? feature->getSRS()->getUnits() : Units::METERS;
-    bool isGeo = feature->getSRS() ? feature->getSRS()->isGeographic() : true;
-    GeoInterpolation interp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
+    bool isGeo = feature->getSRS() ? feature->getSRS()->isGeographic() : false;
+    GeoInterpolation geoInterp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
 
     double sliceSize = 0.0;
     int    numPartitions = _numPartitions;
@@ -134,7 +134,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
                     slices = std::max( 1u, (unsigned)((*v - *(v+1)).length() / sliceSize) );
 
                 if ( isGeo )
-                    tessellateGeo( *v, *(v+1), slices, interp, newVerts );
+                    tessellateGeo( *v, *(v+1), slices, geoInterp, newVerts );
                 else
                     tessellateLinear( *v, *(v+1), slices, newVerts );
             }
@@ -145,7 +145,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
                     slices = std::max( 1u, (unsigned)((*v - *g->begin()).length() / sliceSize) );
 
                 if ( isGeo )
-                    tessellateGeo( *v, *g->begin(), slices, interp, newVerts );
+                    tessellateGeo( *v, *g->begin(), slices, geoInterp, newVerts );
                 else
                     tessellateLinear( *v, *g->begin(), slices, newVerts );
             }

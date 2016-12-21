@@ -25,7 +25,9 @@ osgEarth Sample - Annotations
         </viewpoint>
     </viewpoints>
 
-    <annotations>  
+    <annotations>
+    
+        
 
         <circle name="Circle clamped directly to the ground">
             <position lat="22.074" long="-159.606"/>
@@ -99,6 +101,22 @@ osgEarth Sample - Annotations
                 altitude-offset:     1000;
             </style>
         </feature>
+        
+        <local_geometry name="Local Geometry tessellated and clamped">
+            <geometry>
+                LINESTRING(0 0, 25000 0, 25000 25000, 0 25000, 0 0);
+            </geometry>
+            <position lat="22.078" long="-159.602"/>
+            <style type="text/css">
+                stroke:          #ff00ff;
+                stroke-width:    3px;
+                stroke-tessellation: 128;
+                render-lighting: false;
+                altitude-clamping: terrain;
+                altitude-technique: scene;
+                render-depth-offset-auto: true;
+            </style>
+        </local_geometry>
         
         
         <place name="Placemark" text="Placemark">

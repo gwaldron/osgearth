@@ -91,7 +91,6 @@ bool
 MapFrame::sync()
 {
     bool changed = false;
-    _elevationLayers.clear();
 
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
@@ -106,15 +105,9 @@ MapFrame::sync()
     else
     {
         _layers.clear();
-    }
-
-    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        ElevationLayer* e = dynamic_cast<ElevationLayer*>(i->get());
-        if (e)
-            _elevationLayers.push_back(e);
-    }
-    
+        _elevationLayers.clear();
+        changed = true;
+    }    
 
     return changed;
 }
@@ -163,8 +156,9 @@ MapFrame::containsLayer(UID uid) const
 void
 MapFrame::refreshComputedValues()
 {
-    // cache the min LOD based on all image/elev layers
     _highestMinLevel = 0;
+
+    _elevationLayers.clear();
 
     for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
@@ -175,6 +169,12 @@ MapFrame::refreshComputedValues()
             if (minLevel.isSet() && minLevel.value() > _highestMinLevel)
             {
                 _highestMinLevel = minLevel.value();
+            }
+            
+            ElevationLayer* elevation = dynamic_cast<ElevationLayer*>(terrainLayer);
+            if (elevation)
+            {
+                _elevationLayers.push_back(elevation);
             }
         }
     }

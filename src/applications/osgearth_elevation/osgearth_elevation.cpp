@@ -169,6 +169,22 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 };
 
 
+struct ClickToRemoveElevation : public ControlEventHandler
+{
+    void onClick(Control*)
+    {
+        Map* map = s_mapNode->getMap();
+        ElevationLayerVector layers;
+        map->getLayers(layers);
+        map->beginUpdate();
+        for (ElevationLayerVector::iterator i = layers.begin(); i != layers.end(); ++i) {
+            map->removeLayer(i->get());
+        }
+        map->endUpdate();
+    }
+};
+
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
@@ -207,6 +223,7 @@ int main(int argc, char** argv)
     grid->setControl(0,r++,new LabelControl("Scene graph intersection:"));
     grid->setControl(0,r++,new LabelControl("EGM96 elevation:"));
     grid->setControl(0,r++,new LabelControl("Query resolution:"));
+    grid->setControl(0, r++, new ButtonControl("Click to remove all elevation data", new ClickToRemoveElevation()));
 
     r = 1;
     s_posLabel = grid->setControl(1,r++,new LabelControl(""));

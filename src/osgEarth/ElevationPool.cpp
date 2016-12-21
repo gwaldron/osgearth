@@ -227,6 +227,7 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
     {
         if (frame.sync())
         {
+            // Probably unnecessary because the Map itself will clear the pool.
             clear();
         }
     }

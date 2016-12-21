@@ -151,6 +151,9 @@ Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
         newRevision = ++_dataModelRevision;
     }
 
+    // reinitialize the elevation pool:
+    _elevationPool->clear();
+
     // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {

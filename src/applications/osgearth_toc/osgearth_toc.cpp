@@ -38,7 +38,6 @@ void createControlPanel( osgViewer::View* );
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
-//static osg::ref_ptr<Map> s_inactiveMap;
 static Grid* s_masterGrid;
 static Grid* s_imageBox;
 static Grid* s_elevationBox;
@@ -237,7 +236,7 @@ struct RemoveLayerHandler : public ControlEventHandler
             dynamic_cast<ImageLayer*>(_layer.get())? IMAGE_LAYER :
             dynamic_cast<ElevationLayer*>(_layer.get()) ? ELEVATION_LAYER :
             MODEL_LAYER;
-        lc._options = _layer->getInitialOptions();
+        lc._options = _layer->getTerrainLayerRuntimeOptions();
 
         s_activeMap->removeLayer(_layer.get());
     }

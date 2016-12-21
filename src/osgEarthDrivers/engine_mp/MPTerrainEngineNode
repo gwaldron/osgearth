@@ -132,7 +132,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void toggleElevationLayer( ElevationLayer* layer );
 
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
-        void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveElevationLayer( ElevationLayer* layer );
         
         void updateState(); 
 

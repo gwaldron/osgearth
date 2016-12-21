@@ -129,7 +129,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void removeElevationLayer( ElevationLayer* layerRemoved );
         void toggleElevationLayer( ElevationLayer* layer );
 
-        void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveElevationLayer( ElevationLayer* layerMoved );
         
         void updateState(); 
 

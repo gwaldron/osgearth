@@ -847,6 +847,11 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                     removeElevationLayer(change.getElevationLayer());
                 break;
 
+            case MapModelChange::MOVE_LAYER:
+                if (change.getElevationLayer())
+                    moveElevationLayer(change.getElevationLayer());
+                break;
+
             case MapModelChange::TOGGLE_ELEVATION_LAYER:
                 toggleElevationLayer( change.getElevationLayer() );
                 break;
@@ -989,7 +994,11 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 
     layer->addCallback( _elevationCallback.get() );
 
-    refresh();
+    // only need to refresh is the elevation layer is visible.
+    if (layer->getVisible())
+    {
+        refresh();
+    }
 }
 
 void
@@ -1000,7 +1009,24 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 
     layerRemoved->removeCallback( _elevationCallback.get() );
 
-    refresh();
+    // only need to refresh is the elevation layer is visible.
+    if (layerRemoved->getVisible())
+    {
+        refresh();
+    }
+}
+
+void
+RexTerrainEngineNode::moveElevationLayer(ElevationLayer* layerMoved)
+{
+    if ( layerMoved->getEnabled() == false )
+        return;
+
+    // only need to refresh is the elevation layer is visible.
+    if (layerMoved->getVisible())
+    {
+        refresh();
+    }
 }
 
 void

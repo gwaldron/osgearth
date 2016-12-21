@@ -820,7 +820,7 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                 if (change.getImageLayer())
                     moveImageLayer(change.getFirstIndex(), change.getSecondIndex());
                 else if (change.getElevationLayer())
-                    moveElevationLayer(change.getFirstIndex(), change.getSecondIndex());
+                    moveElevationLayer(change.getElevationLayer());
                 break;
 
             case MapModelChange::TOGGLE_ELEVATION_LAYER:
@@ -910,7 +910,11 @@ MPTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 
     layer->addCallback( _elevationCallback.get() );
 
-    refresh();
+    // only need to refresh the terrain if the layer is visible
+    if (layer->getVisible())
+    {
+        refresh();
+    }
 }
 
 void
@@ -921,13 +925,21 @@ MPTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 
     layerRemoved->removeCallback( _elevationCallback.get() );
 
-    refresh();
+    // only need to refresh the terrain if the layer was visible
+    if (layerRemoved->getVisible())
+    {
+        refresh();
+    }
 }
 
 void
-MPTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
-{
-    refresh();
+MPTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
+{    
+    // only need to refresh the terrain if the layer is visible
+    if (layer->getVisible())
+    {
+        refresh();
+    }
 }
 
 void

@@ -68,7 +68,7 @@ void oe_ocean_fragment(inout vec4 color)
     // color it
     color = vec4( color.rgb, maskEffect * rangeEffect * color.a * oe_ocean_alpha );  
 
-    "    color = vec4( maskEffect, 0, 0, 1 );   // debugging
+    //    color = vec4( maskEffect, 0, 0, 1 );   // debugging
 }
 
 #else // no mask
@@ -106,7 +106,7 @@ void oe_ocean_fragment(inout vec4 color)
     // color it
     color = vec4( color.rgb, terrainEffect * rangeEffect * oe_ocean_alpha * color.a );  
 
-         color = vec4( terrainEffect, 0, 0, 1 );   // debugging
+   //      color = vec4( terrainEffect, 0, 0, 1 );   // debugging
 }
 
 #endif

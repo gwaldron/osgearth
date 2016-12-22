@@ -18,12 +18,12 @@ http://readymap.org
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
     
     <!-- Ocean parameters. -->
-    <ocean driver="simple">
+    <simple_ocean driver="simple">
         
         <!-- Masking layer to use (optional...without a masking layer, osgEarth will sample the
              terrain elevation data to determine where the ocean is.
@@ -37,7 +37,7 @@ http://readymap.org
         
         <max_altitude>250000</max_altitude>
         
-    </ocean>
+    </simple_ocean>
     
     
     <viewpoints>

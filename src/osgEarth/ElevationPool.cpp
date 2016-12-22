@@ -29,7 +29,7 @@ using namespace osgEarth;
 ElevationPool::ElevationPool() :
 _entries(0u),
 _maxEntries( 128u ),
-_tileSize(33u)
+_tileSize( 257u )
 {
     //nop
 }

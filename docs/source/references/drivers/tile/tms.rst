@@ -11,9 +11,9 @@ Example usage::
     
 Properties:
 
-    :url:      Root URL (or pathname) of the TMS repository
-    :tmsType:  Set to ``google`` to invert the Y axis of the tile index
-    :format:   Override the format reported by the service (e.g., jpg, png)
+    :url:       Root URL (or pathname) of the TMS repository
+    :tms_type:  Set to ``google`` to invert the Y axis of the tile index
+    :format:    Override the format reported by the service (e.g., jpg, png)
 
 
 .. _Tile Map Service:  http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification

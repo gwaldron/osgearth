@@ -36,6 +36,32 @@ namespace osgEarth
     class SequenceControl;
 
 
+    class OSGEARTH_EXPORT LayerOptions : public ConfigOptions
+    {
+    public:
+        /** Name of the layer */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        optional<bool>& enabled() { return _enabled; }
+        const optional<bool>& enabled() const { return _enabled; }
+
+    public:
+        LayerOptions();
+        LayerOptions(const ConfigOptions& configOptions);
+
+        Config getConfig() const;
+        void fromConfig(const Config& conf);
+        virtual void mergeConfig(const Config& conf);
+
+    protected:
+        void setDefaults();
+
+        optional<std::string> _name;
+        optional<bool> _enabled;
+    };
+
+
     /**
      * Base class for all Map layers. 
      */
@@ -48,6 +74,11 @@ namespace osgEarth
          * Constructs a map layer
          */
         Layer();
+
+        /**
+         * Constructs a map layer by deserializing options. 
+         */
+        Layer(LayerOptions* options);
 
         /**
          * This layer's unique ID.
@@ -76,12 +107,15 @@ namespace osgEarth
         /**
          * Returns a Config object serializing this layer, if applicable.
          */
-        virtual Config getConfig() const { return Config(); }
+        virtual Config getConfig() const { return Config(); }     
+        
+        /** Layer options governing this layer */
+        const LayerOptions& getLayerOptions() const { return *_layerOptions; }
 
         /**
          * Whether the layer is enabled (used in the map)
          */
-        virtual bool getEnabled() const { return true; }
+        virtual bool getEnabled() const { return getLayerOptions().enabled().get(); }
 
 
         // *** NOTE *** Everything below this line is experimental and subject to change ***
@@ -131,6 +165,11 @@ namespace osgEarth
 
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
+    public: // osg::Object
+
+        virtual void setName(const std::string& name);
+
+
     public: // Loading a layer from a plugin
 
         static Layer* create(const std::string& name, const ConfigOptions& options);
@@ -144,6 +183,9 @@ namespace osgEarth
 
         Layer(const Layer& rhs, const osg::CopyOp& op) { }
 
+        // post-ctor initialization, chain to subclasses.
+        virtual void init();
+
         const Status& setStatus(const Status& status) { _status = status; return _status; }
 
     private:
@@ -151,6 +193,11 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         Status _status;
+
+    private:
+        LayerOptions* _layerOptions;
+        LayerOptions  _layerOptionsConcrete;
+        LayerOptions& mutableLayerOptions() { return *_layerOptions; }
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

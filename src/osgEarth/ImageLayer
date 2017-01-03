@@ -37,14 +37,17 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageLayerOptions : public TerrainLayerOptions
     {
     public:
-        /** Constructs new image layer options. */
-        ImageLayerOptions( const ConfigOptions& options =ConfigOptions() );
+        // Construct empty options
+        ImageLayerOptions();
 
-        /**
-         * Constructs new image layer options, giving a name to the layer and specifying
-         * driver options to use.
-         */         
-        ImageLayerOptions( const std::string& name, const TileSourceOptions& driverOpt =TileSourceOptions() );
+        // Deserialize options from a config structure
+        ImageLayerOptions(const ConfigOptions& options);
+
+        // Construct options with a default name
+        ImageLayerOptions(const std::string& name);
+
+        // Consruct options with a name and a driver configuration
+        ImageLayerOptions(const std::string& name, const TileSourceOptions& tileSourceOptions);
 
         /** dtor */
         virtual ~ImageLayerOptions() { }
@@ -218,12 +221,12 @@ namespace osgEarth
         /**
          * Constructs a new image layer.
          */
-        ImageLayer( const ImageLayerOptions& options );
+        ImageLayer(const ImageLayerOptions& options);
 
         /**
          * Constructs a new image layer with the given name and driver options.
          */
-        ImageLayer( const std::string& name, const TileSourceOptions& driverOptions );
+        ImageLayer(const std::string& name, const TileSourceOptions& tileSourceOptions);
 
         /**
          * Constructs a new image layer with a custom TileSource.
@@ -232,17 +235,14 @@ namespace osgEarth
          * TileSource. But in this constructor, you are passing in an existing TileSource,
          * and thus the driver() member in ImageLayerOptions will not be used.
          */
-        ImageLayer( const ImageLayerOptions& options, TileSource* tileSource );
+        ImageLayer(const ImageLayerOptions& options, TileSource* tileSource);
 
         /** dtor */
         virtual ~ImageLayer() { }
 
     public:
-        /**
-         * Access to the initialization options used to create this image layer
-         */
-        const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
+        /** Options governing this image layer */
+        const ImageLayerOptions& getImageLayerOptions() const;
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );
@@ -276,25 +276,30 @@ namespace osgEarth
          * @param opacity Opacity [0..1] -> [transparent..opaque]
          */
         void setOpacity( float opacity );
+        float getOpacity() const;
 
-        float getOpacity() const { return *_runtimeOptions.opacity(); }
-
-        float getMinVisibleRange() const { return *_runtimeOptions.minVisibleRange();}
+        /**
+         * Minimum camera range at which this image layer is visible 
+         */
+        float getMinVisibleRange() const;
         void setMinVisibleRange( float minVisibleRange );
-
-        float getMaxVisibleRange() const { return *_runtimeOptions.maxVisibleRange();}
+        
+        /**
+         * Maximum camera range at which this image layer is visible 
+         */
+        float getMaxVisibleRange() const;
         void setMaxVisibleRange( float maxVisibleRange );
 
         /**
          * Whether this layer is marked for render sharing
          */
-        bool isShared() const { return *_runtimeOptions.shared() == true; }
+        bool isShared() const;
 
         /**
          * Whether this layer represents coverage data that should not be subject
          * to color-space filtering, interpolation, or compression.
          */
-        bool isCoverage() const { return *_runtimeOptions.coverage() == true; }
+        bool isCoverage() const;
 
         /**
          * When isShared() == true, the engine will call this function to bind the
@@ -340,16 +345,25 @@ namespace osgEarth
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
 
+
     public: // TerrainLayer override
         
         /** Opens the image layer and returns the status. */
         virtual const Status& open();
 
+
     public: // Layer
 
         virtual Config getConfig() const;
 
+    protected: // Layer
+            
+        virtual void init();
+
     protected:
+
+        // Constructor for a subclass that owns the layer options structure
+        ImageLayer(ImageLayerOptions* optionsPtr);
 
         // Creates an image that's in the same profile as the provided key.
         GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
@@ -363,9 +377,7 @@ namespace osgEarth
         // doesn't match the layer profile.
         GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
-
-    protected:
-        ImageLayerOptions                        _runtimeOptions;
+        //ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
@@ -377,9 +389,15 @@ namespace osgEarth
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
-        void init();
 
         TileSource::ImageOperation* getOrCreatePreCacheOp();
+
+    private:
+        ImageLayerOptions* _layerOptions;
+        ImageLayerOptions  _layerOptionsConcrete;
+    protected:
+        ImageLayerOptions& mutableImageLayerOptions() { return *_layerOptions; }
+
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

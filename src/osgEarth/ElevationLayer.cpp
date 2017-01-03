@@ -31,14 +31,28 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-ElevationLayerOptions::ElevationLayerOptions( const ConfigOptions& options ) :
+ElevationLayerOptions::ElevationLayerOptions() :
+TerrainLayerOptions()
+{
+    setDefaults();
+    fromConfig(_conf);
+}
+
+ElevationLayerOptions::ElevationLayerOptions(const ConfigOptions& options) :
 TerrainLayerOptions( options )
 {
     setDefaults();
     fromConfig( _conf );
 }
 
-ElevationLayerOptions::ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions ) :
+ElevationLayerOptions::ElevationLayerOptions(const std::string& name) :
+TerrainLayerOptions( name )
+{
+    setDefaults();
+    fromConfig( _conf );
+}
+
+ElevationLayerOptions::ElevationLayerOptions(const std::string& name, const TileSourceOptions& driverOptions) :
 TerrainLayerOptions( name, driverOptions )
 {
     setDefaults();
@@ -133,25 +147,35 @@ namespace
 
 //------------------------------------------------------------------------
 
-ElevationLayer::ElevationLayer( const ElevationLayerOptions& options ) :
-TerrainLayer   ( options, &_runtimeOptions ),
-_runtimeOptions( options )
+ElevationLayer::ElevationLayer(const ElevationLayerOptions& options) :
+TerrainLayer(&_layerOptionsConcrete),
+_layerOptions(&_layerOptionsConcrete),
+_layerOptionsConcrete(options)
 {
     init();
 }
 
-ElevationLayer::ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer   ( ElevationLayerOptions(name, driverOptions), &_runtimeOptions ),
-_runtimeOptions( ElevationLayerOptions(name, driverOptions) )
+ElevationLayer::ElevationLayer(const std::string& name, const TileSourceOptions& driverOptions) :
+TerrainLayer(&_layerOptionsConcrete),
+_layerOptions(&_layerOptionsConcrete),
+_layerOptionsConcrete(name, driverOptions)
 {
     init();
 }
 
-ElevationLayer::ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer   ( options, &_runtimeOptions, tileSource ),
-_runtimeOptions( options )
+ElevationLayer::ElevationLayer(const ElevationLayerOptions& options, TileSource* tileSource) :
+TerrainLayer(&_layerOptionsConcrete, tileSource),
+_layerOptions(&_layerOptionsConcrete),
+_layerOptionsConcrete(options)
 {
     init();
+}
+
+ElevationLayer::ElevationLayer(ElevationLayerOptions* optionsPtr) :
+TerrainLayer(optionsPtr? optionsPtr : &_layerOptionsConcrete),
+_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
+{
+    //init(); // will be called by subclass.
 }
 
 void
@@ -164,12 +188,18 @@ ElevationLayer::init()
     setRenderType(RENDERTYPE_NONE);
 }
 
+bool
+ElevationLayer::isOffset() const
+{
+    return getElevationLayerOptions().offset().get();
+}
+
 Config
 ElevationLayer::getConfig() const
 {
     Config layerConf = getElevationLayerOptions().getConfig();
-    layerConf.set("name", getName());
-    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    //layerConf.set("name", getName());
+    layerConf.set("driver", getElevationLayerOptions().driver()->getDriver());
     layerConf.key() = "elevation";
     return layerConf;
 }
@@ -535,7 +565,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // post-processing:
     if ( result.valid() )
     {
-        if ( _runtimeOptions.noDataPolicy() == NODATA_MSL )
+        if ( getElevationLayerOptions().noDataPolicy() == NODATA_MSL )
         {
             // requested VDatum:
             const VerticalDatum* outputVDatum = key.getExtent().getSRS()->getVerticalDatum();

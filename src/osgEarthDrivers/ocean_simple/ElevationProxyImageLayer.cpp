@@ -32,7 +32,7 @@ ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
 ImageLayer( options ),
 _mapf     ( sourceMap )
 {
-    _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    mutableImageLayerOptions().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 TileSource*
@@ -44,7 +44,7 @@ ElevationProxyImageLayer::createTileSource()
 bool
 ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
-    return key.getLevelOfDetail() <= *_runtimeOptions.maxLevel();
+    return key.getLevelOfDetail() <= getImageLayerOptions().maxLevel().get();
 }
 
 bool

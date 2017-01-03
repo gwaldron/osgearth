@@ -165,7 +165,7 @@ MapFrame::refreshComputedValues()
         TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(i->get());
         if (terrainLayer)
         {
-            const optional<unsigned>& minLevel = terrainLayer->getTerrainLayerRuntimeOptions().minLevel();
+            const optional<unsigned>& minLevel = terrainLayer->getTerrainLayerOptions().minLevel();
             if (minLevel.isSet() && minLevel.value() > _highestMinLevel)
             {
                 _highestMinLevel = minLevel.value();

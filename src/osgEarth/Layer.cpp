@@ -24,7 +24,57 @@ using namespace osgEarth;
 
 #define LC "[Layer] "
 
-Layer::Layer()
+//.................................................................
+
+LayerOptions::LayerOptions() :
+ConfigOptions()
+{
+    fromConfig(_conf);
+}
+
+LayerOptions::LayerOptions(const ConfigOptions& co) :
+ConfigOptions(co)
+{
+    fromConfig(_conf);
+}
+
+Config LayerOptions::getConfig() const
+{
+    //isolate ? LayerOp::newConfig() : ConfigOptions::getConfig();
+    Config conf = ConfigOptions::newConfig();
+    conf.addIfSet("name", _name);
+    conf.addIfSet("enabled", _enabled);
+    return conf;
+}
+
+void LayerOptions::fromConfig(const Config& conf)
+{
+    _enabled.init(true);
+
+    conf.getIfSet("name", _name);
+    conf.getIfSet("enabled", _enabled);
+}
+
+void LayerOptions::mergeConfig(const Config& conf)
+{
+    ConfigOptions::mergeConfig(conf);
+    fromConfig(_conf);
+}
+
+//.................................................................
+
+Layer::Layer() :
+_layerOptions(&_layerOptionsConcrete)
+{
+    _uid = osgEarth::Registry::instance()->createUID();
+    _renderType = RENDERTYPE_NONE;
+    _status = Status::OK();
+
+    init();
+}
+
+Layer::Layer(LayerOptions* optionsPtr) :
+_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -36,6 +86,22 @@ Layer::~Layer()
     OE_DEBUG << LC << "~Layer\n";
 }
 
+void
+Layer::init()
+{
+    // Copy the layer options name into the Object name.
+    if (getLayerOptions().name().isSet())
+    {
+        osg::Object::setName(getLayerOptions().name().get());
+    }
+}
+
+void
+Layer::setName(const std::string& name)
+{
+    osg::Object::setName(name);
+    mutableLayerOptions().name() = name;
+}
 
 
 #define LAYER_OPTIONS_TAG "osgEarth.LayerOptions"

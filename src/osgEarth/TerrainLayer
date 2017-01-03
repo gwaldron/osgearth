@@ -39,20 +39,17 @@ namespace osgEarth
     /**
      * Initialization (and serializable) options for a terrain layer.
      */
-    class OSGEARTH_EXPORT TerrainLayerOptions : public ConfigOptions
+    class OSGEARTH_EXPORT TerrainLayerOptions : public LayerOptions
     {
     public:
-        TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() );
-        TerrainLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
+        TerrainLayerOptions();
+        TerrainLayerOptions(const ConfigOptions& options);
+        TerrainLayerOptions(const std::string& name);
+        TerrainLayerOptions(const std::string& name, const TileSourceOptions& driverOptions);
 
         /** dtor */
         virtual ~TerrainLayerOptions() { }
 
-        /**
-         * The readable name of the layer.
-         */
-        std::string& name() { return _name; }
-        const std::string& name() const { return _name; }
 
         /**
          * Gets the explicity vertical datum identifier that will override a vertical
@@ -99,8 +96,8 @@ namespace osgEarth
          * the layer will remain in its map model but will not be used by the 
          * terrain engine. You cannot change the "enabled" state at runtime.
          */        
-        optional<bool>& enabled() { return _enabled; }
-        const optional<bool>& enabled() const { return _enabled; }
+        //optional<bool>& enabled() { return _enabled; }
+        //const optional<bool>& enabled() const { return _enabled; }
 
         /**
          * Whether to render (or otherwise use) the layer.
@@ -162,10 +159,9 @@ namespace osgEarth
         virtual void mergeConfig( const Config& conf );
 
     private:
-        void fromConfig( const Config& conf );
         void setDefaults();
+        void fromConfig( const Config& conf );
        
-        std::string                 _name;
         optional<std::string>       _vertDatum;
         optional<TileSourceOptions> _driver;
         optional<unsigned>          _minLevel;
@@ -174,7 +170,7 @@ namespace osgEarth
         optional<double>            _maxResolution;
         optional<float>             _loadingWeight;
         optional<bool>              _exactCropping;
-        optional<bool>              _enabled;
+        //optional<bool>              _enabled;
         optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
@@ -203,14 +199,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public Layer
     {
     protected:
-        TerrainLayer( 
-            const TerrainLayerOptions& initOptions, 
-            TerrainLayerOptions*       runtimeOptions );
-        
-        TerrainLayer( 
-            const TerrainLayerOptions& initOptions, 
-            TerrainLayerOptions*       runtimeOptions,
-            TileSource*                tileSource );
+        TerrainLayer(TerrainLayerOptions*);
+
+        TerrainLayer(TerrainLayerOptions*, TileSource*);
 
         virtual ~TerrainLayer();
 
@@ -223,35 +214,19 @@ namespace osgEarth
          * Whether to use this layer. Note, a layer is enabled/disabled once and its
          * status cannot be changed.
          */
-        virtual bool getEnabled() const { return *_runtimeOptions->enabled(); }        
+        virtual bool getEnabled() const { return _runtimeEnabled; }
+
 
         /**
-         * Gets the readable name of the map layer.
+         * The options used to initialize this layer.
          */
-        //const std::string& getName() const { return getTerrainLayerRuntimeOptions().name(); }
-
-
-    public: // osg::Object
-
-		/**
-		 * Sets the name of the map layer
-		 */
-		virtual void setName( const std::string& name );
-
-    public:
-
-        /**
-         * The options data connected to this layer.
-         */
-        const TerrainLayerOptions& getInitialOptions() const { return _initOptions; }
-
-        const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return *_runtimeOptions; }
+        const TerrainLayerOptions& getTerrainLayerOptions() const { return *_layerOptions; }
 
         /**
          * Whether to draw (or otherwise use) this layer.
          */
         void setVisible( bool value );
-        bool getVisible() const { return getEnabled() && *_runtimeOptions->visible(); }
+        bool getVisible() const { return getEnabled() && getTerrainLayerOptions().visible() == true; }
 
         /**
          * Gets the profile of this MapLayer
@@ -362,7 +337,7 @@ namespace osgEarth
 
     protected:
 
-        /** Creates the driver the supplies the actual data. Internal function. */
+        // Creates the driver the supplies the actual data. Internal function.
         virtual TileSource* createTileSource();
 
         void applyProfileOverrides();
@@ -383,25 +358,30 @@ namespace osgEarth
         mutable osg::ref_ptr<const Profile> _profile;
 
         // CTOR initialization; call from subclass.
-        void init();
+        virtual void init();
 
         // cache key for metadata
         std::string getMetadataKey(const Profile*) const;
 
     private:
-        std::string                    _name;
-        std::string                    _referenceURI;
-        TerrainLayerOptions            _initOptions;
-        TerrainLayerOptions*           _runtimeOptions;
+        TerrainLayerOptions* _layerOptions;
+        TerrainLayerOptions  _layerOptionsConcrete;
+        TerrainLayerOptions& mutableTerrainLayerOptions() { return *_layerOptions; }
 
         mutable Threading::Mutex       _initTileSourceMutex;
         osg::ref_ptr<TileSource>       _tileSource;
 
-        std::string                    _cacheId;
+        // The cache ID used at runtime. This will either be the cacheId found in
+        // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
+        std::string _runtimeCacheId;
+
+        // Enabled flag that starts out as the enabled() in the options, but might
+        // get overridden.
+        bool _runtimeEnabled;
         
         // cache policy that may be automatically set by the layer and will 
         // override the runtime options policy if set.
-        optional<CachePolicy>          _effectiveCachePolicy;
+        optional<CachePolicy> _runtimeCachePolicy;
 
         typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
         CacheBinMetadataMap _cacheBinMetadata;

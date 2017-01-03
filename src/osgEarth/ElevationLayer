@@ -32,13 +32,21 @@ namespace osgEarth
     {
     public:
         /** Constructs new elevation layer options. */
-        ElevationLayerOptions( const ConfigOptions& options =ConfigOptions() );
+        ElevationLayerOptions();
+        
+        /** Deserializes new elevation layer options. */
+        ElevationLayerOptions(const ConfigOptions& options);
+
+        // Constructs new options with a layer name
+        ElevationLayerOptions(const std::string& name);
 
         /** Constructs new elevation layer options, given the underlying driver options. */
-        ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
+        ElevationLayerOptions(const std::string& name, const TileSourceOptions& driverOptions);
 
         /** dtor */
         virtual ~ElevationLayerOptions() { }
+
+    public:
 
         optional<bool>& offset() { return _offset; }
         const optional<bool>& offset() const { return _offset; }
@@ -109,8 +117,8 @@ namespace osgEarth
         virtual ~ElevationLayer() { }
 
         /** Gets the initialization options with which the layer was created. */
-        const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
+        const ElevationLayerOptions& getElevationLayerOptions() const { return *_layerOptions; }
+        //virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ElevationLayerCallback* cb );
@@ -132,15 +140,20 @@ namespace osgEarth
         /**
          * Whether this layer contains offsets instead of absolute heights
          */
-        bool isOffset() const {
-            return _runtimeOptions.offset() == true;
-        }
+        bool isOffset() const;
 
     public: // Layer
 
         virtual Config getConfig() const;
 
+    protected: // Layer
+
+        virtual void init();
+
     protected:
+
+        // ctor called by a subclass that owns the options structure
+        ElevationLayer(ElevationLayerOptions* optionsPtr);
         
         // creates a geoHF directly from the tile source
         osg::HeightField* createHeightFieldFromTileSource( 
@@ -154,7 +167,9 @@ namespace osgEarth
             ProgressCallback*  progress );
         
     private:
-        ElevationLayerOptions _runtimeOptions;
+        ElevationLayerOptions* _layerOptions;
+        ElevationLayerOptions  _layerOptionsConcrete;
+        ElevationLayerOptions& mutableElevationLayerOptions() { return *_layerOptions; }
 
         ElevationLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
@@ -164,8 +179,6 @@ namespace osgEarth
 
         TileSource::HeightFieldOperation* getOrCreatePreCacheOp();
         Threading::Mutex _mutex;
-
-        void init();
     };
 
 

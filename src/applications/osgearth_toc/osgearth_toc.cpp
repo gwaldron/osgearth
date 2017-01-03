@@ -236,7 +236,7 @@ struct RemoveLayerHandler : public ControlEventHandler
             dynamic_cast<ImageLayer*>(_layer.get())? IMAGE_LAYER :
             dynamic_cast<ElevationLayer*>(_layer.get()) ? ELEVATION_LAYER :
             MODEL_LAYER;
-        lc._options = _layer->getTerrainLayerRuntimeOptions();
+        lc._options = _layer->getTerrainLayerOptions();
 
         s_activeMap->removeLayer(_layer.get());
     }

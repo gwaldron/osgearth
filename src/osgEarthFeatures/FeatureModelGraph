@@ -105,11 +105,6 @@ namespace osgEarth { namespace Features
         Session* getSession() { return _session; }
 
         /**
-         * UID given to this feature graph when registered with the pseudo-loader
-         */
-        UID getUID() const { return _uid; }
-
-        /**
          * Mark the feature graph dirty and in need of regeneration 
          */
         void dirty();
@@ -201,7 +196,6 @@ namespace osgEarth { namespace Features
         FeatureModelSourceOptions        _options;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
-        UID                              _uid;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;
         GeoExtent                        _usableFeatureExtent;

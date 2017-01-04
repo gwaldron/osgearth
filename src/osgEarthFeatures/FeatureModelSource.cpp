@@ -226,7 +226,8 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _preMergeOps.get(),
        _postMergeOps.get() );
 
-    graph->setName( session->getName() );
+    //removed this because an FMG needs an internal name for pseudoloader
+    //graph->setName( session->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

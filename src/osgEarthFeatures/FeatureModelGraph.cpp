@@ -55,6 +55,8 @@ using namespace osgEarth::Symbology;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+#define USER_OBJECT_NAME "osgEarth.FeatureModelGraph"
+
 namespace
 {
     // callback to force features onto the high-latency queue.
@@ -75,15 +77,10 @@ namespace
 
 namespace
 {
-    UID                               _uid         = 0;
-    Threading::ReadWriteMutex         _fmgMutex;
-    typedef std::map<UID, osg::observer_ptr<FeatureModelGraph> > FMGRegistry;
-    FMGRegistry _fmgRegistry;
-
-    static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
+    static std::string s_makeURI(unsigned lod, unsigned x, unsigned y)
     {
         std::stringstream buf;
-        buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
+        buf << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
         std::string str;
         str = buf.str();
         return str;
@@ -96,7 +93,8 @@ namespace
                                 const FeatureDisplayLayout& layout,
                                 RefNodeOperationVector* postMergeOps,
                                 osgDB::FileLocationCallback* flc,
-                                const osgDB::Options* readOptions)
+                                const osgDB::Options* readOptions,
+                                FeatureModelGraph* fmg)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         ProxyNode* p = new ProxyNode();
@@ -127,6 +125,9 @@ namespace
         options->setFileLocationCallback( flc );
         p->setDatabaseOptions( options );
 
+        // so we can find the FMG instance in the pseudoloader.
+        options->getOrCreateUserDataContainer()->addUserObject(fmg);
+
         return p;
     }
 }
@@ -152,11 +153,15 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
             return ReadResult::FILE_NOT_HANDLED;
 
-        UID uid;
+        //UID uid;
         unsigned lod, x, y;
-        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &lod, &x, &y );
+        sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
 
-        osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
+        osg::ref_ptr<FeatureModelGraph> graph =
+            dynamic_cast<FeatureModelGraph*>(const_cast<osg::Object*>(
+                osg::getUserObject(readOptions, USER_OBJECT_NAME)));
+
+        //osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
         if ( graph.valid() )
         {
             // Take a reference on the map to avoid map destruction during thread operation
@@ -171,29 +176,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         }
 
         return ReadResult::ERROR_IN_READING_FILE;
-    }
-
-    static UID registerGraph( FeatureModelGraph* graph )
-    {
-        Threading::ScopedWriteLock lock( _fmgMutex );
-        UID key = ++_uid;
-        _fmgRegistry[key] = graph;
-        OE_TEST << "Registered FMG " << key << std::endl;
-        return key;
-    }
-
-    static void unregisterGraph( UID uid )
-    {
-        Threading::ScopedWriteLock lock( _fmgMutex );
-        _fmgRegistry.erase( uid );
-        OE_TEST << "UNregistered FMG " << uid << std::endl;
-    }
-
-    static FeatureModelGraph* getGraph( UID uid ) 
-    {
-        Threading::ScopedReadLock lock( _fmgMutex );
-        FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
-        return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
 };
 
@@ -276,7 +258,8 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
 void
 FeatureModelGraph::ctor()
 {
-    _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+    // So we can pass it to the pseudoloader
+    setName(USER_OBJECT_NAME);
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
@@ -483,7 +466,7 @@ FeatureModelGraph::ctor()
 
 FeatureModelGraph::~FeatureModelGraph()
 {
-    osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
+    //nop
 }
 
 void
@@ -599,7 +582,7 @@ FeatureModelGraph::setupPaging()
         bs.radius() * _options.layout()->tileSizeFactor().value();
 
     // build the URI for the top-level paged LOD:
-    std::string uri = s_makeURI( _uid, 0, 0, 0 );
+    std::string uri = s_makeURI( 0, 0, 0 );
 
     // bulid the top level Paged LOD:
     osg::Group* pagedNode = createPagedNode( 
@@ -608,11 +591,10 @@ FeatureModelGraph::setupPaging()
         0.0f, 
         maxRange, 
         _options.layout().get(),
-        //*_options.layout()->priorityOffset(), 
-        //*_options.layout()->priorityScale(),
         _postMergeOperations.get(),
         _defaultFileLocationCallback.get(),
-        getSession()->getDBOptions() );
+        getSession()->getDBOptions(),
+        this);
 
     return pagedNode;
 }
@@ -830,7 +812,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                 maxRange = subtile_bs.radius() * _options.layout()->tileSizeFactor().value();
             }
 
-            std::string uri = s_makeURI( _uid, subtileLOD, u, v );
+            std::string uri = s_makeURI( subtileLOD, u, v );
 
             // check the blacklist to make sure we haven't unsuccessfully tried
             // this URI before
@@ -854,11 +836,10 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     uri, 
                     0.0f, maxRange, 
                     _options.layout().get(),
-                    //*_options.layout()->priorityOffset(), 
-                    //*_options.layout()->priorityScale(),
                     _postMergeOperations.get(),
                     _defaultFileLocationCallback.get(),
-                    readOptions);
+                    readOptions,
+                    this);
 
                 parent->addChild( pagedNode );
             }

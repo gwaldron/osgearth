@@ -219,15 +219,16 @@ Map::setCache(Cache* cache)
         cacheSettings->setCache(cache);
 }
 
-void
-Map::addMapCallback( MapCallback* cb ) const
+MapCallback*
+Map::addMapCallback(MapCallback* cb) const
 {
     if ( cb )
         _mapCallbacks.push_back( cb );
+    return cb;
 }
 
 void
-Map::removeMapCallback( MapCallback* cb ) const
+Map::removeMapCallback(MapCallback* cb) const
 {
     MapCallbackList::iterator i = std::find( _mapCallbacks.begin(), _mapCallbacks.end(), cb);
     if (i != _mapCallbacks.end())

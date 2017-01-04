@@ -165,12 +165,12 @@ namespace osgEarth
          * Adds a map layer callback to this map. This will be notified whenever layers are
          * added, removed, or re-ordered.
          */
-        void addMapCallback( MapCallback* callback ) const;
+        MapCallback* addMapCallback(MapCallback* callback) const;
 
         /**
          * Removes a callback previously added with addMapCallback.
          */
-        void removeMapCallback( MapCallback* callback ) const;
+        void removeMapCallback(MapCallback* callback) const;
 
         /**
          * Begin a batch-update operation. Call this if you intend to add multiple

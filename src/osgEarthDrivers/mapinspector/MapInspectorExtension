@@ -35,7 +35,7 @@ namespace osgEarth { namespace MapInspector
     class MapInspectorExtension : public Extension,
                                   public ExtensionInterface<MapNode>,
                                   public ExtensionInterface<Control>,
-                                  public MapCallback
+                                  public MapCallback //TODO: remove, bad double-inheritance
     {
     public:
         META_Object(osgearth_ext_MapInspector, MapInspectorExtension);

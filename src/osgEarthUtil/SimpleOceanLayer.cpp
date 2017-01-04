@@ -20,10 +20,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/SimpleOceanLayer>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Lighting>
+#include <osgEarth/Map>
 #include <osg/CullFace>
 #include <osg/Material>
+
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -35,16 +38,56 @@ using namespace osgEarth::Util;
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 
+namespace
+{
+    struct MapCallbackAdapter : public MapCallback
+    {
+        MapCallbackAdapter(SimpleOceanLayer* obj) : _ocean(obj) { }
+        
+        void onImageLayerAdded(ImageLayer* layer, unsigned index)
+        {
+            osg::ref_ptr<SimpleOceanLayer> ocean;
+            if (_ocean.lock(ocean))
+            {
+                if (ocean->getOptions().maskLayer().isSetTo(layer->getName()))
+                {
+                    if (ocean->setMaskLayer(layer))
+                    {
+                        _activeMaskLayerName = layer->getName();
+                    }
+                }
+            }
+        }
+
+        void onImageLayerRemoved(ImageLayer* layer, unsigned index)
+        {
+            osg::ref_ptr<SimpleOceanLayer> ocean;
+            if (_ocean.lock(ocean))
+            {
+                if (layer->getName() == _activeMaskLayerName)
+                {
+                    ocean->setMaskLayer(0L);
+                }
+            }
+        }
+
+        osg::observer_ptr<SimpleOceanLayer> _ocean;
+        std::string _activeMaskLayerName;
+    };
+}
+
+
 SimpleOceanLayer::SimpleOceanLayer() :
-Layer(),
-SimpleOceanLayerOptions()
+Layer(&_layerOptionsConcrete),
+_layerOptions(&_layerOptionsConcrete)
 {
     ctor();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-Layer(),
-SimpleOceanLayerOptions(options)
+Layer(&_layerOptionsConcrete),
+_layerOptions(&_layerOptionsConcrete),
+_layerOptionsConcrete(options)
 {
     ctor();
 }
@@ -52,39 +95,23 @@ SimpleOceanLayerOptions(options)
 void
 SimpleOceanLayer::ctor()
 {
-    this->setName("Simple Ocean");
-
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    const char* oceanFS =
-        "#version 330 \n"
-        "float oe_terrain_getElevation(); \n"
-        "uniform vec4 ocean_color; \n"
+    _mapCallback = 0L;
 
-        "float ocean_remap( float val, float vmin, float vmax, float r0, float r1 ) { \n"
-        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
-        "    return r0 + vr * (r1-r0); \n"
-        "}\n"
-
-        "void ocean_FS(inout vec4 color) { \n"
-        "    const float lowF = -100.0;\n"
-        "    const float hiF = -10.0;\n"
-        "    const float seaLevel = 0.0;\n"
-
-        "    float elevation = oe_terrain_getElevation(); \n"
-        "    float alpha = ocean_remap(elevation, seaLevel+lowF, seaLevel+hiF, 1.0, 0.0); \n"
-        "    color = vec4(ocean_color.rgb, alpha*ocean_color.a); \n"
-        "} \n";
-
+    this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TILE);
 
     osg::StateSet* ss = getOrCreateStateSet();
+    ss->setDataVariance(ss->DYNAMIC);
+    
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    Shaders shaders;
+    shaders.load(vp, shaders.SimpleOceanLayer_Vertex);
+    shaders.load(vp, shaders.SimpleOceanLayer_Fragment);
 
     ss->setDefine("OE_TERRAIN_RENDER_ELEVATION", osg::StateAttribute::OFF);
     ss->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP", osg::StateAttribute::OFF);
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setFunction("ocean_FS", oceanFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     // remove backface culling so we can see underwater
     // (use OVERRIDE since the terrain engine sets back face culling.)
@@ -93,24 +120,115 @@ SimpleOceanLayer::ctor()
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // Material.
-    osg::Material* m = new osg::Material();
-    m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(.5, .5, .5, 1));
-    m->setDiffuse(m->FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
-    m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.2, 0.2, 0.2, 1));
-    m->setEmission(m->FRONT_AND_BACK, osg::Vec4(0, 0, 0, 1));
-    m->setShininess(m->FRONT_AND_BACK, 40.0);
-    ss->setAttributeAndModes(m, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+#if 0
+    osg::Material* m = new MaterialGL3();
+    m->setAmbient(m->FRONT, osg::Vec4(.5, .5, .5, 1));
+    m->setDiffuse(m->FRONT, osg::Vec4(1, 1, 1, 1));
+    m->setSpecular(m->FRONT, osg::Vec4(1, 1, 1, 1)); //0.2, 0.2, 0.2, 1));
+    m->setEmission(m->FRONT, osg::Vec4(0, 0, 0, 1));
+    m->setShininess(m->FRONT, 100.0);
+    ss->setAttributeAndModes(m, 1); //osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     m->setUpdateCallback(new MaterialCallback());
+#endif
+    
+    setColor(getOptions().color().get());
+    setMaxAltitude(getOptions().maxAltitude().get());
+}
 
-    applyOptions();
+bool
+SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
+{
+    if (maskLayer)
+    {
+        if (!maskLayer->getEnabled())
+        {
+            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" disabled\n";
+            return false;
+        }
+
+        if (!maskLayer->isShared())
+        {
+            OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" is not a shared\n";
+            return false;
+        }
+
+        // activate the mask.
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setDefine("OE_OCEAN_MASK", maskLayer->shareTexUniformName().get());
+        ss->setDefine("OE_OCEAN_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
+
+        OE_INFO << LC << "Installed \"" << maskLayer->getName() << "\" as mask layer\n";
+    }
+
+    else
+    {
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->removeDefine("OE_OCEAN_MASK");
+        ss->removeDefine("OE_OCEAN_MASK_MATRIX");
+
+        OE_INFO << LC << "Uninstalled mask layer\n";
+    }
+
+    return true;
 }
 
 void
-SimpleOceanLayer::applyOptions()
-{
-    osg::StateSet* ss = getOrCreateStateSet();
+SimpleOceanLayer::addedToMap(const Map* map)
+{    
+    if (getOptions().maskLayer().isSet())
+    {
+        // subscribe so we know if the mask layer arrives or departs:
+        _mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
 
-    ss->getOrCreateUniform("ocean_color", osg::Uniform::FLOAT_VEC4)->set(color().get());
+        // see if it's already there. If so, try to install it; 
+        // if not, rely on the MapCallback to let us know if and when
+        // it arrives.
+        ImageLayer* maskLayer = map->getLayerByName<ImageLayer>(getOptions().maskLayer().get());
+        if (maskLayer)
+        {
+            setMaskLayer(maskLayer);
+        }
+    }      
+}
+
+void
+SimpleOceanLayer::removedFromMap(const Map* map)
+{
+    if (getOptions().maskLayer().isSet())
+    {
+        if (_mapCallback)
+            map->removeMapCallback(_mapCallback);
+        _mapCallback = 0L;
+        setMaskLayer(0L);
+    }
+}
+
+void
+SimpleOceanLayer::setColor(const Color& color)
+{
+    mutableOptions().color() = color;
+    getOrCreateStateSet()->getOrCreateUniform(
+        "ocean_color", osg::Uniform::FLOAT_VEC4)->set(color);
+}
+
+const Color&
+SimpleOceanLayer::getColor() const
+{
+    return getOptions().color().get();
+}
+
+void
+SimpleOceanLayer::setMaxAltitude(float alt)
+{
+    mutableOptions().maxAltitude() = alt;
+    getOrCreateStateSet()->getOrCreateUniform(
+        "ocean_maxAltitude", osg::Uniform::FLOAT)->set(alt);
+}
+
+float
+SimpleOceanLayer::getMaxAltitude() const
+{
+    return getOptions().maxAltitude().get();
 }
 
 void 
@@ -123,7 +241,7 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
 Config
 SimpleOceanLayer::getConfig() const
 {
-    Config conf = SimpleOceanLayerOptions::getConfig();
+    Config conf = getOptions().getConfig();
     conf.key() = "simple_ocean";
     return conf;
 }

@@ -21,7 +21,12 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
+#include <osgEarth/MapCallback>
 #include <osgEarthSymbology/Color>
+
+namespace osgEarth {
+    class ImageLayer;
+}
 
 namespace osgEarth { namespace Util
 {
@@ -30,40 +35,54 @@ namespace osgEarth { namespace Util
     /**
      * Serializable configuation options for the SimpleOceanLayer.
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public ConfigOptions
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public LayerOptions
     {
     public:
         /** Color of the ocean surface */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
+        /** Maximum altitude at which the ocean is visible */
+        optional<float>& maxAltitude() { return _maxAltitude; }
+        const optional<float>& maxAltitude() const { return _maxAltitude; }
+
+        /** Name of a Map Layer to use as an ocean mask. */
+        optional<std::string>& maskLayer() { return _maskLayer; }
+        const optional<std::string>& maskLayer() const { return _maskLayer; }
+
     public:
-        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : ConfigOptions(op) {
-            _color.init(Color(0.1,0.22,0.32,0.85));
+        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : LayerOptions(op) {
+            _color.init(Color("#1D2C4FE7"));
+            _maxAltitude.init(500000.f);
             mergeConfig(_conf);
         }
 
         void mergeConfig(const Config& conf) {
-            conf.getIfSet("color", _color);   
+            conf.getIfSet("color", _color);
+            conf.getIfSet("max_altitude", _maxAltitude);
+            conf.getIfSet("mask_layer", _maskLayer);
         }
 
         Config getConfig() const {
             Config conf;
             conf.addIfSet("color", _color);
+            conf.addIfSet("max_altitude", _maxAltitude);
+            conf.addIfSet("mask_layer", _maskLayer);
             return conf;
         }
 
     private:
         optional<Color> _color;
         optional<float> _maxAltitude;
+        optional<std::string> _maskLayer;
     };
+
 
     /**
      * A Rex map layer that renders a simple ocean surface.
      * This layer requires that the map include bathymetric data (ocean floor).
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer,
-                                                 public SimpleOceanLayerOptions
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer
     {
     public:
         /** Constructs a new ocean layer */
@@ -72,22 +91,49 @@ namespace osgEarth { namespace Util
         /** Constructs a new layer from an options structure. */
         SimpleOceanLayer(const SimpleOceanLayerOptions& options);
 
-        /** Call this after changing one or more of the options to apply the new values. */
-        void applyOptions();
+        /** Options used to create this layer */
+        const SimpleOceanLayerOptions& getOptions() const { return *_layerOptions; }
+
+    public:
+
+        /** Ocean surface color (including transparency in the alpha channel) */
+        void setColor(const Color& color);
+        const Color& getColor() const;
+
+        /** Maximum altitude at which the ocean layer is visible */
+        void setMaxAltitude(float altitude_m);
+        float getMaxAltitude() const;
+
+        /** Sets a masking layer (returns true upon success) */
+        bool setMaskLayer(const ImageLayer* layer);
 
     public: // Layer
 
         /** serialize */
-        Config getConfig() const;
+        virtual Config getConfig() const;
 
         /** callback that ensures proper culling */
         void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+
+    protected: // Layer
+
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
 
     protected:
 
         virtual ~SimpleOceanLayer() { }
 
         void ctor();
+
+    private:
+
+        SimpleOceanLayerOptions* _layerOptions;
+        SimpleOceanLayerOptions  _layerOptionsConcrete;
+        SimpleOceanLayerOptions& mutableOptions() { return *_layerOptions; }
+
+        MapCallback* _mapCallback;
     };
     
 

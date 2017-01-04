@@ -38,4 +38,10 @@ Shaders::Shaders()
 
     Shadowing_Fragment = "Shadowing.frag.glsl";
     _sources[Shadowing_Fragment] = "@Shadowing.frag.glsl@";
+
+    SimpleOceanLayer_Vertex = "SimpleOceanLayer.vert.glsl";
+    _sources[SimpleOceanLayer_Vertex] = "@SimpleOceanLayer.vert.glsl@";
+
+    SimpleOceanLayer_Fragment = "SimpleOceanLayer.frag.glsl";
+    _sources[SimpleOceanLayer_Fragment] = "@SimpleOceanLayer.frag.glsl@";
 }

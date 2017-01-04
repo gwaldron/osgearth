@@ -424,7 +424,6 @@ void
 updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
-    OE_INFO << "updateControlPanel\n";
 
     //Rebuild all the image layers    
     s_imageBox->clearControls();

@@ -170,7 +170,7 @@ namespace osgEarth
         /**
          * Removes a callback previously added with addMapCallback.
          */
-        void removeMapCallback( MapCallback* callback );
+        void removeMapCallback( MapCallback* callback ) const;
 
         /**
          * Begin a batch-update operation. Call this if you intend to add multiple
@@ -377,7 +377,7 @@ namespace osgEarth
         const MapOptions _initMapOptions;
         std::string _name;
         LayerVector _layers;
-        MapCallbackList _mapCallbacks;
+        mutable MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::Options> _globalOptions;
         mutable Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;

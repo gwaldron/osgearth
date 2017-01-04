@@ -86,6 +86,12 @@ Layer::~Layer()
     OE_DEBUG << LC << "~Layer\n";
 }
 
+Config
+Layer::getConfig() const
+{
+    return getLayerOptions().getConfig();
+}
+
 void
 Layer::init()
 {

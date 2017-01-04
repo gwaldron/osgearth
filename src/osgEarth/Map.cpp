@@ -133,6 +133,7 @@ Map::ctor()
 Map::~Map()
 {
     OE_DEBUG << LC << "~Map" << std::endl;
+    clear();
 }
 
 ElevationPool*
@@ -222,11 +223,11 @@ void
 Map::addMapCallback( MapCallback* cb ) const
 {
     if ( cb )
-        const_cast<Map*>(this)->_mapCallbacks.push_back( cb );
+        _mapCallbacks.push_back( cb );
 }
 
 void
-Map::removeMapCallback( MapCallback* cb )
+Map::removeMapCallback( MapCallback* cb ) const
 {
     MapCallbackList::iterator i = std::find( _mapCallbacks.begin(), _mapCallbacks.end(), cb);
     if (i != _mapCallbacks.end())
@@ -323,6 +324,9 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
+        // tell the layer it was just added.
+        layer->addedToMap(this);
+
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -397,6 +401,9 @@ Map::insertLayer(Layer* layer, unsigned index)
             newRevision = ++_dataModelRevision;
         }
 
+        // tell the layer it was just added.
+        layer->addedToMap(this);
+
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -431,6 +438,9 @@ Map::removeLayer(Layer* layer)
                 break;
             }
         }
+
+        // tell the layer it was just removed.
+        layerToRemove->removedFromMap(this);
     }
 
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layerToRemove.get());

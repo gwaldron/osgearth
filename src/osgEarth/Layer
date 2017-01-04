@@ -35,7 +35,9 @@ namespace osgEarth
 {
     class SequenceControl;
 
-
+    /**
+     * Base serializable options class for configuring a Layer.
+     */
     class OSGEARTH_EXPORT LayerOptions : public ConfigOptions
     {
     public:
@@ -43,6 +45,7 @@ namespace osgEarth
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
+        /** Whether to use this layer in the map */
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
 
@@ -107,9 +110,11 @@ namespace osgEarth
         /**
          * Returns a Config object serializing this layer, if applicable.
          */
-        virtual Config getConfig() const { return Config(); }     
+        virtual Config getConfig() const; 
         
-        /** Layer options governing this layer */
+        /**
+         * Layer options governing this layer
+         */
         const LayerOptions& getLayerOptions() const { return *_layerOptions; }
 
         /**
@@ -188,6 +193,12 @@ namespace osgEarth
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
 
+        // Map will call this function when this Layer is added to a Map.
+        virtual void addedToMap(const class Map*) { }
+
+        // Map will call this function when this Layer is removed from a Map.
+        virtual void removedFromMap(const class Map*) { }
+
     private:
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
@@ -198,6 +209,9 @@ namespace osgEarth
         LayerOptions* _layerOptions;
         LayerOptions  _layerOptionsConcrete;
         LayerOptions& mutableLayerOptions() { return *_layerOptions; }
+
+        // allow the map access to the addedToMap/removedFromMap methods
+        friend class Map;
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

@@ -32,7 +32,7 @@ using namespace osgEarth::Splat;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#define LC "[RoadHFTileSource] "
+#define LC "[FlatteningTileSource] "
 
 
 namespace
@@ -200,18 +200,14 @@ namespace
 
 
 
-RoadHFTileSource::RoadHFTileSource(const RoadHFOptions& options) :
-TileSource(options),
-RoadHFOptions(options)
+FlatteningTileSource::FlatteningTileSource() :
+TileSource(TileSourceOptions())
 {
-    setName("RoadHF");
-
-    // Experiment with this and see what will work.
-    _pool.setTileSize(65u);
+    setName("FlatteningTileSource");
 }
 
 Status
-RoadHFTileSource::initialize(const osgDB::Options* readOptions)
+FlatteningTileSource::initialize(const osgDB::Options* readOptions)
 {
     _readOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
 
@@ -222,78 +218,36 @@ RoadHFTileSource::initialize(const osgDB::Options* readOptions)
         setProfile( profile );
     }
 
-    if (!elevationBaseLayer().isSet())
-    {
-        return Status::Error(Status::ConfigurationError, "Required property base_layer is not set");
-    }
-
-    osg::ref_ptr<const Map> map;
-    if (!OptionsData<const Map>::lock(readOptions, "osgEarth.Map", map))
-    {
-        return Status::Error(Status::AssertionFailure, "No osgEarth::Map found in read options");
-    }
-
-    _elevationLayer = map->getLayerByName<ElevationLayer>(elevationBaseLayer().get());
-    if (!_elevationLayer.valid())
-    {
-        return Status::Error(Status::ServiceUnavailable, "Specified base layer could not be found in the Map");
-    }
-
-    if (!_elevationLayer->getStatus().isOK())
-    {
-        return Status::Error(Status::ServiceUnavailable, "Specified base layer reported an error");
-    }
-
-    // Set up the elevation pool with our map:
-    _pool.setMap( map.get() );
-
-    // Instead of using all the map's elevation layers, we will use a custom set
-    // consisting of just the base layer. Otherwise, the map will return elevation data
-    // for the very layer we are trying to build!
-    ElevationLayerVector layers;
-    layers.push_back(_elevationLayer.get());
-    _pool.setElevationLayers(layers);
-
-    // load up the feature source for flattening vectors
-    if (featureSourceOptions().isSet())
-    {
-        _featureSource = FeatureSourceFactory::create(featureSourceOptions().get());
-        const Status& fsStatus = _featureSource->open(_readOptions.get());
-        
-        // if the feature source won't open, bail out.
-        if (fsStatus.isError())
-            return fsStatus;
-    }
-
     // ready!
     return Status::OK();
 }
 
 
 osg::HeightField*
-RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
+FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
 {
-    if (!_elevationLayer.valid())
-    {
-        OE_DEBUG << LC << "No elevation layer.\n";
-        return 0L;
-    }
-
     if (!_featureSource.valid())
     {
         OE_DEBUG << LC << "No feature source.\n";
         return 0L;
     }
 
+    if (_pool->getElevationLayers().empty())
+    {
+        OE_WARN << LC << "Internal error - Pool layer set is empty\n";
+        return 0L;
+    }
+    
+
     OE_START_TIMER(create);
 
     const GeoExtent& ex = key.getExtent();
 
     // all points <= innerRadius from the centerline are flattened
-    double innerRadius = innerWidth().get() * 0.5;
+    double innerRadius = _innerWidth * 0.5;
 
     // all points > innerRadius and <= outerRadius and smoothstep blended
-    double outerRadius = outerWidth().get() * 0.5;
+    double outerRadius = _outerWidth * 0.5;
 
     // adjust those values based on latitude in a geographic map
     if (ex.getSRS()->isGeographic())
@@ -385,7 +339,7 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
         hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
 
         // Create an elevation query envelope at the LOD we are creating
-        osg::ref_ptr<ElevationEnvelope> envelope = _pool.createEnvelope(ex.getSRS(), key.getLOD());
+        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(ex.getSRS(), key.getLOD());
 
         if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope, progress) || (progress && progress->isCanceled()))
         {
@@ -401,3 +355,161 @@ RoadHFTileSource::createHeightField(const TileKey& key, ProgressCallback* progre
 
     return 0L;
 }
+
+//........................................................................
+
+namespace
+{
+    struct MapCallbackAdapter : public MapCallback
+    {
+        MapCallbackAdapter(FlatteningLayer* obj) : _object(obj) { }
+        
+        void onElevationLayerAdded(ElevationLayer* layer, unsigned index)
+        {
+            osg::ref_ptr<FlatteningLayer> object;
+            if (_object.lock(object))
+            {
+                if (object->getFlatteningLayerOptions().elevationBaseLayer().isSetTo(layer->getName()))
+                {
+                    object->setBaseLayer(layer);
+                    _activeBaseLayer = layer->getName();
+                }
+            }
+        }
+
+        void onElevationLayerRemoved(ElevationLayer* layer, unsigned index)
+        {
+            osg::ref_ptr<FlatteningLayer> object;
+            if (_object.lock(object))
+            {
+                if (_activeBaseLayer == layer->getName())
+                {
+                    object->setBaseLayer(0L);
+                    _activeBaseLayer.clear();
+                }
+            }
+        }
+
+        osg::observer_ptr<FlatteningLayer> _object;
+        std::string _activeBaseLayer;
+    };
+}
+
+
+//........................................................................
+
+#undef  LC
+#define LC "[FlatteningLayer] "
+
+FlatteningLayer::FlatteningLayer() :
+ElevationLayer(&_localOptionsConcrete),
+_localOptions(&_localOptionsConcrete),
+_mapCallback(0L)
+{
+    init();
+}
+
+FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
+ElevationLayer(&_localOptionsConcrete),
+_localOptions(&_localOptionsConcrete),
+_localOptionsConcrete(options),
+_mapCallback(0L)
+{
+    init();
+}
+
+void
+FlatteningLayer::init()
+{
+    // always call base class initialize
+    ElevationLayer::init();
+    
+    // Experiment with this and see what will work.
+    _pool.setTileSize(65u);
+
+    OE_INFO << LC << "Initialized!\n";
+}
+
+const Status&
+FlatteningLayer::open()
+{
+    // ensure the caller named a feature source:
+    if (!options().featureSourceOptions().isSet())
+    {
+        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
+    }
+
+    // open the feature source:
+    _featureSource = FeatureSourceFactory::create(options().featureSourceOptions().get());
+    const Status& fsStatus = _featureSource->open(_readOptions.get());
+        
+    // if the feature source won't open, bail out.
+    if (fsStatus.isError())
+    {
+        return setStatus(fsStatus);
+    }
+
+    return ElevationLayer::open(); //getStatus();
+}
+
+TileSource*
+FlatteningLayer::createTileSource()
+{
+    _ts = new FlatteningTileSource();
+    _ts->setElevationPool(&_pool);
+    _ts->setInnerWidth(options().innerWidth().get());
+    _ts->setOuterWidth(options().outerWidth().get());
+    _ts->setFeatureSource(_featureSource.get());
+    return _ts;
+}
+
+FlatteningLayer::~FlatteningLayer()
+{
+    //nop
+}
+
+void
+FlatteningLayer::setBaseLayer(ElevationLayer* layer)
+{
+    ElevationLayerVector layers;
+
+    if (layer)
+    {
+        // Instead of using all the map's elevation layers, we will use a custom set
+        // consisting of just the base layer. Otherwise, the map will return elevation data
+        // for the very layer we are trying to build!
+        layers.push_back(layer);
+    }
+
+    _pool.setElevationLayers(layers);
+}
+
+void
+FlatteningLayer::addedToMap(const Map* map)
+{   
+    if (options().elevationBaseLayer().isSet())
+    {  
+        // Initialize the elevation pool with our map:
+        OE_INFO << LC << "Attaching elevation pool to map, base layer = " << options().elevationBaseLayer().get() << "\n";
+        _pool.setMap( map );
+
+        // Listen for the addition or removal of our base layer:
+        _mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
+
+        // see if the base layer is already loaded:
+        osg::ref_ptr<ElevationLayer> baseLayer = map->getLayerByName<ElevationLayer>(
+            options().elevationBaseLayer().get());
+
+        if (baseLayer.valid())
+            setBaseLayer(baseLayer.get());
+    }
+}
+
+void
+FlatteningLayer::removedFromMap(const Map* map)
+{
+    if (_mapCallback)
+        map->removeMapCallback(_mapCallback);
+    _mapCallback = 0L;
+}
+

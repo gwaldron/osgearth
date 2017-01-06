@@ -32,27 +32,52 @@ namespace osgEarth { namespace Splat
     using namespace osgEarth::Features;
 
     /**
-     * Configuration options for the land use tile source
+     * Tile source that will read from ANOTHER tile source and perform
+     * various pre-processing syntheses operations like warping and detailing.
      */
-    class OSGEARTHSPLAT_EXPORT RoadHFOptions : public osgEarth::TileSourceOptions    
+    class OSGEARTHSPLAT_EXPORT FlatteningTileSource : public osgEarth::TileSource
     {
     public:
-        RoadHFOptions(const osgEarth::TileSourceOptions& options)
-            : osgEarth::TileSourceOptions(options)
-        {
-            setDriver("roadhf");
-            _innerWidth.init(20.0f);
-            _outerWidth.init(10.0f);
-            fromConfig(_conf);
-        }
+        FlatteningTileSource();
 
+        void setElevationPool(ElevationPool* pool) { _pool = pool; }
+
+        void setInnerWidth(double width) { _innerWidth = width; }
+
+        void setOuterWidth(double width) { _outerWidth = width; }
+
+        void setFeatureSource(FeatureSource* fs) { _featureSource = fs; }
+
+
+    public: // TileSource
+
+        Status initialize(const osgDB::Options* readOptions);
+
+        osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress);
+
+    protected:
+        virtual ~FlatteningTileSource() { }
+
+        osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<FeatureSource>  _featureSource;
+        double _innerWidth;
+        double _outerWidth;
+
+        ElevationPool* _pool;
+    };
+
+
+    class OSGEARTHSPLAT_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
+    {
     public:
-
+        FlatteningLayerOptions(const ConfigOptions& co = ConfigOptions()) :
+            ElevationLayerOptions(co)
+        {
+            mergeConfig(_conf);
+        }
+        
         optional<std::string>& elevationBaseLayer() { return _elevationBaseLayer; }
         const optional<std::string>& elevationBaseLayer() const { return _elevationBaseLayer; }
-
-        optional<ElevationLayerOptions>& elevationLayerOptions() { return _elevationLayerOptions; }
-        const optional<ElevationLayerOptions>& elevationLayerOptions() const { return _elevationLayerOptions; }
 
         optional<FeatureSourceOptions>& featureSourceOptions() { return _featureSourceOptions; }
         const optional<FeatureSourceOptions>& featureSourceOptions() const { return _featureSourceOptions; }
@@ -67,7 +92,7 @@ namespace osgEarth { namespace Splat
         Config getConfig() const
         {
             Config conf;
-            conf.addObjIfSet("elevation", _elevationLayerOptions);
+            //conf.addObjIfSet("elevation", _elevationLayerOptions);
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("inner_width", _innerWidth);
             conf.addIfSet("outer_width", _outerWidth);
@@ -76,15 +101,9 @@ namespace osgEarth { namespace Splat
         }
 
     protected:
-        void mergeConfig( const Config& conf ) {
-            TileSourceOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-
-    private:
-        void fromConfig( const Config& conf )
+        void mergeConfig( const Config& conf )
         {
-            conf.getObjIfSet("elevation", _elevationLayerOptions);
+            //conf.getObjIfSet("elevation", _elevationLayerOptions);
             conf.getObjIfSet("features",  _featureSourceOptions);
             conf.getIfSet("inner_width", _innerWidth);
             conf.getIfSet("outer_width", _outerWidth);
@@ -92,67 +111,55 @@ namespace osgEarth { namespace Splat
         }
         
     private:
-        optional<ElevationLayerOptions> _elevationLayerOptions;
+        //optional<ElevationLayerOptions> _elevationLayerOptions;
         optional<FeatureSourceOptions>  _featureSourceOptions;
         optional<double> _innerWidth;
         optional<double> _outerWidth;
         optional<std::string> _elevationBaseLayer;
     };
 
-    /**
-     * Tile source that will read from ANOTHER tile source and perform
-     * various pre-processing syntheses operations like warping and detailing.
-     */
-    class OSGEARTHSPLAT_EXPORT RoadHFTileSource : public osgEarth::TileSource,
-                                                  public RoadHFOptions
+
+    class OSGEARTHSPLAT_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        RoadHFTileSource(const RoadHFOptions& options);
+        FlatteningLayer();
+        FlatteningLayer(const FlatteningLayerOptions& options);
 
-    public: // TileSource
+        const FlatteningLayerOptions& getFlatteningLayerOptions() const { return *_localOptions; }
 
-        Status initialize(const osgDB::Options* readOptions);
+        // the elevation layer that we want to flatten
+        void setBaseLayer(ElevationLayer* layer);
 
-        osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress);
+    public: // ElevationLayer
 
-        //CachePolicy getCachePolicyHint() const;
+        virtual const Status& open();
+
+    protected: // ElevationLayer
+
+        // called by the elevation layer to create our custom tile source
+        virtual TileSource* createTileSource();
+
+        // called by the map when this layer is added/removed
+        virtual void addedToMap(const class Map*);
+        virtual void removedFromMap(const class Map*);
 
     protected:
-        virtual ~RoadHFTileSource() { }
+        void init();        
+        virtual ~FlatteningLayer();
 
-        osg::ref_ptr<osgDB::Options> _readOptions;    
-        osg::ref_ptr<ElevationLayer> _elevationLayer;
-        osg::ref_ptr<FeatureSource>  _featureSource;
+    private:
+        FlatteningLayerOptions* _localOptions;
+        FlatteningLayerOptions  _localOptionsConcrete;
+        FlatteningLayerOptions& mutableOptions() { return *_localOptions; }
+        const FlatteningLayerOptions& options() const { return *_localOptions; }
 
+        MapCallback* _mapCallback;
+        FlatteningTileSource* _ts;
         ElevationPool _pool;
+        osg::ref_ptr<FeatureSource> _featureSource;
     };
 
-    /**
-     * Driver plugin used to load a land use tile source.
-     */
-    class OSGEARTHSPLAT_EXPORT RoadHFDriver : public osgEarth::TileSourceDriver
-    {
-    public:
-        RoadHFDriver()
-        {
-            supportsExtension( "osgearth_roadhf", "RoadHFDriver" );
-        }
-
-        virtual const char* className() const
-        {
-            return "RoadHFDriver";
-        }
-
-        virtual ReadResult readObject(const std::string& file_name, const Options* options) const
-        {
-            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
-                return ReadResult::FILE_NOT_HANDLED;
-
-            return new RoadHFTileSource(getTileSourceOptions(options));
-        }
-    };
-
-    REGISTER_OSGPLUGIN(osgearth_roadhf, RoadHFDriver);
+    REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
 
 } } // namespace osgEarth::Splat
 

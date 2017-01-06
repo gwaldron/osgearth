@@ -244,10 +244,10 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
     const GeoExtent& ex = key.getExtent();
 
     // all points <= innerRadius from the centerline are flattened
-    double innerRadius = _innerWidth * 0.5;
+    double innerRadius = _innerBuffer;
 
     // all points > innerRadius and <= outerRadius and smoothstep blended
-    double outerRadius = _outerWidth * 0.5;
+    double outerRadius = _outerBuffer;
 
     // adjust those values based on latitude in a geographic map
     if (ex.getSRS()->isGeographic())
@@ -401,13 +401,13 @@ namespace
 #undef  LC
 #define LC "[FlatteningLayer] "
 
-FlatteningLayer::FlatteningLayer() :
-ElevationLayer(&_localOptionsConcrete),
-_localOptions(&_localOptionsConcrete),
-_mapCallback(0L)
-{
-    init();
-}
+//FlatteningLayer::FlatteningLayer() :
+//ElevationLayer(&_localOptionsConcrete),
+//_localOptions(&_localOptionsConcrete),
+//_mapCallback(0L)
+//{
+//    init();
+//}
 
 FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
 ElevationLayer(&_localOptionsConcrete),
@@ -457,8 +457,8 @@ FlatteningLayer::createTileSource()
 {
     _ts = new FlatteningTileSource();
     _ts->setElevationPool(&_pool);
-    _ts->setInnerWidth(options().innerWidth().get());
-    _ts->setOuterWidth(options().outerWidth().get());
+    _ts->setInnerBuffer(options().flatBuffer().get());
+    _ts->setOuterBuffer(options().totalBuffer().get());
     _ts->setFeatureSource(_featureSource.get());
     return _ts;
 }

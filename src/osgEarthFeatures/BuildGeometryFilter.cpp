@@ -35,8 +35,6 @@
 #include <osg/LineWidth>
 #include <osg/LineStipple>
 #include <osg/Point>
-#include <osg/Depth>
-#include <osg/PolygonOffset>
 #include <osg/MatrixTransform>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>

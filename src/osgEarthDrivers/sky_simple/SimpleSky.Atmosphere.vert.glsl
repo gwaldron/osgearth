@@ -28,6 +28,7 @@ uniform float atmos_fSamples;
 out vec3 atmos_v3Direction; 
 out vec3 atmos_mieColor; 
 out vec3 atmos_rayleighColor; 
+out float atmos_renderFromSpace;
 
 vec3 vVec; 
 float atmos_fCameraHeight;    // The camera's current height 		
@@ -92,6 +93,7 @@ void atmos_SkyFromSpace(void)
     atmos_mieColor      = v3FrontColor * atmos_fKmESun; 				
     atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); 						
     atmos_v3Direction = vVec  - v3Pos; 			
+    atmos_renderFromSpace = 1.0;
 } 		
 
 void atmos_SkyFromAtmosphere(void) 		
@@ -136,6 +138,7 @@ void atmos_SkyFromAtmosphere(void)
     atmos_mieColor      = v3FrontColor * atmos_fKmESun; 			
     atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); 				
     atmos_v3Direction = vVec - v3Pos; 				
+    atmos_renderFromSpace = 0.0;
 } 
 
 void atmos_vertex_main(inout vec4 VertexVIEW) 

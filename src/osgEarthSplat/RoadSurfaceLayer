@@ -36,7 +36,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
     {
     public:
-        RoadSurfaceLayerOptions(const ImageLayerOptions& options = ImageLayerOptions())
+        RoadSurfaceLayerOptions(const ConfigOptions& options = ConfigOptions())
             : ImageLayerOptions(options)
         {
             _innerWidth.init(25.0);
@@ -98,8 +98,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
-        RoadSurfaceLayer();
-        RoadSurfaceLayer(const ConfigOptions& options);
+        RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
 
         const RoadSurfaceLayerOptions& getRoadSurfaceLayerOptions() const { return *_localOptions; }
 
@@ -113,6 +112,12 @@ namespace osgEarth { namespace Splat
 
         // Creates a texture for the given tile key
         osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress);
+
+    protected: // Layer
+
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
 
     protected:
         virtual ~RoadSurfaceLayer() { }
@@ -130,6 +135,8 @@ namespace osgEarth { namespace Splat
         RoadSurfaceLayerOptions& mutableOptions() { return *_localOptions; }
         const RoadSurfaceLayerOptions& options() const { return *_localOptions; }
     };
+
+    REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
 } } // namespace osgEarth::Splat
 

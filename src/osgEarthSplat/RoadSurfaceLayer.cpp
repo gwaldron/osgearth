@@ -33,55 +33,62 @@ using namespace osgEarth::Symbology;
 #define LC "[RoadSurfaceLayer] "
 
 
-REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
-
-RoadSurfaceLayer::RoadSurfaceLayer() :
+RoadSurfaceLayer::RoadSurfaceLayer(const RoadSurfaceLayerOptions& options) :
 ImageLayer(&_localOptionsConcrete),
-_localOptions(&_localOptionsConcrete)
-{
-    //nop
-}
-
-RoadSurfaceLayer::RoadSurfaceLayer(const ConfigOptions& options) :
-ImageLayer(options),
 _localOptions(&_localOptionsConcrete),
 _localOptionsConcrete(options)
 {
-    //nop
+    ImageLayer::init();
+
+    if (getName().empty())
+        setName("Road surface");
 }
 
 const Status&
 RoadSurfaceLayer::open()
 {
+    // assert a feature source:
     if (!options().featureSourceOptions().isSet())
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
 
+    // create and attempt to open that feature source:
     _features = FeatureSourceFactory::create(options().featureSourceOptions().get());
     if (!_features)
         return setStatus(Status::Error(Status::ServiceUnavailable, "Cannot load feature source"));
 
-    osg::ref_ptr<const Map> map;
-    OptionsData<const Map>::lock(getReadOptions(), "osgEarth.Map", map);
-    if (!map.valid())
-        return setStatus(Status::Error(Status::AssertionFailure, "const Map not found in OptionsData<>"));
-
-    // create a session for feature processing
-    _session = new Session(map.get(), new StyleSheet(), _features.get(), getReadOptions());
-    _session->setResourceCache(new ResourceCache());
-
-    if (options().style().isSet())
-        _session->styles()->addStyle(options().style().get());
-    else
-        OE_WARN << LC << "No style available\n";
-
     setStatus(_features->open());
 
     if (getStatus().isOK())
-        ImageLayer::open();
-    
-    //OE_INFO << LC << "Status = " << getStatus().message() << "\n";
-    return getStatus();
+        return ImageLayer::open();
+    else
+        return getStatus();
+}
+
+void
+RoadSurfaceLayer::addedToMap(const Map* map)
+{   
+    if (_features.valid())
+    {
+        // create a session for feature processing based in the Map:
+        _session = new Session(map, new StyleSheet(), _features.get(), getReadOptions());
+        _session->setResourceCache(new ResourceCache());
+
+        if (options().style().isSet())
+            _session->styles()->addStyle(options().style().get());
+        else
+            OE_WARN << LC << "No style available\n";
+    }
+    else
+    {
+        OE_WARN << LC << "Added to map before opening features\n";
+    }
+}
+
+void
+RoadSurfaceLayer::removedFromMap(const Map* map)
+{
+    _session = 0L;
 }
 
 osg::Texture*

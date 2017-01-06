@@ -33,7 +33,7 @@ using namespace osgEarth::Symbology;
 
 #define LC "[FlatteningTileSource] "
 
-#define OE_TEST OE_INFO
+#define OE_TEST OE_DEBUG
 
 namespace
 {    
@@ -69,9 +69,14 @@ namespace
         }
     }
 
+    double inline mix(double a, double b, double t)
+    {
+        return a*(1.0-t) + b*t;
+    }
+
     double inline smoothstep(double a, double b, double t)
     {
-        // smoothsetp (approximates cosine):
+        // smoothstep (approximates cosine):
         double mu = t*t*(3.0-2.0*t);
         return a*(1.0-mu) + b*mu;
     }
@@ -180,9 +185,12 @@ namespace
                             if (elevB == NO_DATA_VALUE)
                                 elevB = elevP;
 
-                            elevPROJ = smoothstep(elevA, elevB, bestT);
+                            // linear interpolation of height from point A to point B:
+                            elevPROJ = mix(elevA, elevB, bestT);
+                            //elevPROJ = smoothstep(elevA, elevB, bestT);
                         }
 
+                        // smoothstep interpolation of height along the buffer:
                         float h = smoothstep(elevPROJ, elevP, blend);
 
                         hf->setHeight(col, row, h);
@@ -401,25 +409,11 @@ namespace
 #undef  LC
 #define LC "[FlatteningLayer] "
 
-//FlatteningLayer::FlatteningLayer() :
-//ElevationLayer(&_localOptionsConcrete),
-//_localOptions(&_localOptionsConcrete),
-//_mapCallback(0L)
-//{
-//    init();
-//}
-
 FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
 ElevationLayer(&_localOptionsConcrete),
 _localOptions(&_localOptionsConcrete),
 _localOptionsConcrete(options),
 _mapCallback(0L)
-{
-    init();
-}
-
-void
-FlatteningLayer::init()
 {
     // always call base class initialize
     ElevationLayer::init();
@@ -449,7 +443,7 @@ FlatteningLayer::open()
         return setStatus(fsStatus);
     }
 
-    return ElevationLayer::open(); //getStatus();
+    return ElevationLayer::open();
 }
 
 TileSource*

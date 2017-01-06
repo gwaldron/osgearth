@@ -172,7 +172,7 @@ namespace osgEarth { namespace Util
         virtual void removedFromMap(const class Map*);
 
     protected:
-        void init();        
+
         virtual ~FlatteningLayer();
 
     private:

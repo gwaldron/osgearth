@@ -40,7 +40,6 @@ set(TARGET_SRC
     LandCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
     NoiseTextureFactory.cpp
-    RoadFlattener.cpp
     RoadSurfaceLayer.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
@@ -59,7 +58,6 @@ set(LIB_PUBLIC_HEADERS
     LandCoverTilePatchCallback
     LandUseTileSource
     NoiseTextureFactory
-    RoadFlattener
     RoadSurfaceLayer
 	SplatCoverageLegend
 	SplatCatalog

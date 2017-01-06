@@ -228,7 +228,7 @@ namespace osgEarth
         osg::ref_ptr<const SpatialReference> _inputSRS;
         unsigned _lod;
         MapFrame _frame;
-        osg::ref_ptr<ElevationPool> _pool;
+        ElevationPool* _pool;
         friend class ElevationPool;
 
     private:

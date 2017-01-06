@@ -16,24 +16,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "RoadFlattener"
+#include <osgEarthUtil/FlatteningLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthSymbology/Query>
-#include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
 #include <osgEarth/Utils>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthSymbology/Query>
 
 using namespace osgEarth;
-using namespace osgEarth::Splat;
+using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 #define LC "[FlatteningTileSource] "
 
+#define OE_TEST OE_INFO
 
 namespace
 {    
@@ -427,7 +427,7 @@ FlatteningLayer::init()
     // Experiment with this and see what will work.
     _pool.setTileSize(65u);
 
-    OE_INFO << LC << "Initialized!\n";
+    OE_TEST << LC << "Initialized!\n";
 }
 
 const Status&
@@ -455,6 +455,7 @@ FlatteningLayer::open()
 TileSource*
 FlatteningLayer::createTileSource()
 {
+    OE_TEST << LC << "Creating tile source\n";
     _ts = new FlatteningTileSource();
     _ts->setElevationPool(&_pool);
     _ts->setInnerBuffer(options().flatBuffer().get());
@@ -471,6 +472,9 @@ FlatteningLayer::~FlatteningLayer()
 void
 FlatteningLayer::setBaseLayer(ElevationLayer* layer)
 {
+    OE_TEST << LC << "Setting base layer to "
+        << (layer ? layer->getName() : "null") << std::endl;
+
     ElevationLayerVector layers;
 
     if (layer)
@@ -490,7 +494,7 @@ FlatteningLayer::addedToMap(const Map* map)
     if (options().elevationBaseLayer().isSet())
     {  
         // Initialize the elevation pool with our map:
-        OE_INFO << LC << "Attaching elevation pool to map, base layer = " << options().elevationBaseLayer().get() << "\n";
+        OE_INFO << LC << "Attaching elevation pool to map\n";
         _pool.setMap( map );
 
         // Listen for the addition or removal of our base layer:
@@ -501,7 +505,9 @@ FlatteningLayer::addedToMap(const Map* map)
             options().elevationBaseLayer().get());
 
         if (baseLayer.valid())
+        {
             setBaseLayer(baseLayer.get());
+        }
     }
 }
 

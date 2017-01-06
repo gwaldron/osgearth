@@ -16,17 +16,17 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_SPLAT_ROAD_HF_TILE_SOURCE
-#define OSGEARTH_SPLAT_ROAD_HF_TILE_SOURCE 1
+#ifndef OSGEARTH_UTIL_FLATTENING_LAYER
+#define OSGEARTH_UTIL_FLATTENING_LAYER 1
 
+#include <osgEarthUtil/Common>
 #include <osgEarth/TileSource>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationPool>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgDB/FileNameUtils>
-#include "Export"
 
-namespace osgEarth { namespace Splat
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
@@ -40,7 +40,7 @@ namespace osgEarth { namespace Splat
      * This driver is only suitable for internal use by FlatteningLayer.
      * It is not exported.
      */
-    class FlatteningTileSource : public osgEarth::TileSource
+    class FlatteningTileSource : public TileSource
     {
     public:
         /** constructor */
@@ -78,11 +78,10 @@ namespace osgEarth { namespace Splat
         ElevationPool* _pool;
     };
 
-
     /**
      * Serializable options to configure a FlatteningLayer.
      */
-    class OSGEARTHSPLAT_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
+    class OSGEARTHUTIL_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
     {
     public:
         // constructor
@@ -143,7 +142,7 @@ namespace osgEarth { namespace Splat
      * flatten the terrain around vector features. The use case is to make
      * roads flat or prevent rivers and lakes from sloping with the terrain.
      */
-    class OSGEARTHSPLAT_EXPORT FlatteningLayer : public ElevationLayer
+    class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
         // Create a layer with no options.
@@ -190,6 +189,6 @@ namespace osgEarth { namespace Splat
 
     REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
 
-} } // namespace osgEarth::Splat
+} } // namespace osgEarth::Util
 
-#endif // OSGEARTH_SPLAT_ROAD_HF_TILE_SOURCE
+#endif // OSGEARTH_UTIL_FLATTENING_LAYER

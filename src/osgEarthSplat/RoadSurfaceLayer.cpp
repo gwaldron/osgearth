@@ -37,14 +37,16 @@ REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
 
 RoadSurfaceLayer::RoadSurfaceLayer() :
-ImageLayer(ImageLayerOptions())
+ImageLayer(&_localOptionsConcrete),
+_localOptions(&_localOptionsConcrete)
 {
     //nop
 }
 
 RoadSurfaceLayer::RoadSurfaceLayer(const ConfigOptions& options) :
 ImageLayer(options),
-RoadSurfaceLayerOptions(options)
+_localOptions(&_localOptionsConcrete),
+_localOptionsConcrete(options)
 {
     //nop
 }
@@ -52,10 +54,10 @@ RoadSurfaceLayerOptions(options)
 const Status&
 RoadSurfaceLayer::open()
 {
-    if (!featureSourceOptions().isSet())
+    if (!options().featureSourceOptions().isSet())
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
 
-    _features = FeatureSourceFactory::create(featureSourceOptions().get());
+    _features = FeatureSourceFactory::create(options().featureSourceOptions().get());
     if (!_features)
         return setStatus(Status::Error(Status::ServiceUnavailable, "Cannot load feature source"));
 
@@ -68,8 +70,8 @@ RoadSurfaceLayer::open()
     _session = new Session(map.get(), new StyleSheet(), _features.get(), getReadOptions());
     _session->setResourceCache(new ResourceCache());
 
-    if (style().isSet())
-        _session->styles()->addStyle(style().get());
+    if (options().style().isSet())
+        _session->styles()->addStyle(options().style().get());
     else
         OE_WARN << LC << "No style available\n";
 
@@ -112,7 +114,7 @@ GeoNode*
 RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
 {
     // all points > innerRadius and <= outerRadius and smoothstep blended
-    double outerRadius = outerWidth().get() * 0.5;
+    double outerRadius = options().outerWidth().get() * 0.5;
 
     // adjust those values based on latitude in a geographic map
     if (key.getExtent().getSRS()->isGeographic())
@@ -145,11 +147,11 @@ RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
         outputExtent = outputExtent.transform(fc.getOutputSRS());
     }
 
-    GeometryCompilerOptions options;
-    options.shaderPolicy() = SHADERPOLICY_DISABLE;
+    GeometryCompilerOptions geomOptions;
+    geomOptions.shaderPolicy() = SHADERPOLICY_DISABLE;
 
-    GeometryCompiler compiler(options);
-    osg::ref_ptr<osg::Node> node = compiler.compile(cursor, style().get(), fc);
+    GeometryCompiler compiler(geomOptions);
+    osg::ref_ptr<osg::Node> node = compiler.compile(cursor, options().style().get(), fc);
 
     //if (node)
     //    osgDB::writeNodeFile(*node, "out.osgb");

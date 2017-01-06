@@ -24,6 +24,7 @@ SET(HEADERS_ROOT
     ExampleResources
     Export
     FeatureQueryTool
+    FlatteningLayer
     Fog
     Formatter
     GeodeticGraticule
@@ -112,6 +113,7 @@ SET(SOURCES_ROOT
     Ephemeris.cpp
     ExampleResources.cpp
     FeatureQueryTool.cpp
+    FlatteningLayer.cpp
     Fog.cpp
     GeodeticGraticule.cpp
     GraticuleExtension.cpp

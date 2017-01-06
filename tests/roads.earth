@@ -15,16 +15,16 @@
     </elevation>  
             
             
-    <elevation name="roadhf" driver="roadhf" min_level="13" max_level="13">
+    <flattened_elevation name="road flattener" min_level="13" max_level="13">
         <cache_policy usage="none"/>
         <base_layer>readymap_elevation</base_layer>
         <features name="roads" driver="ogr">
             <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        <inner_width>25</inner_width>
-        <outer_width>100</outer_width>  
-    </elevation>
+        <flat_buffer>12</flat_buffer>
+        <total_buffer>50</total_buffer>
+    </flattened_elevation>
     
     
     <image name="readymap_imagery" driver="tms" opacity="0.9" enabled="true">
@@ -34,6 +34,7 @@
         
     <image name="Debug" driver="debug" enabled="false"/>
     
+    <!--
     <road_surface min_level="13">
         <cache_policy usage="none"/>
         <features name="roads" driver="ogr">
@@ -49,6 +50,7 @@
         </style>
         <outer_width>100</outer_width>
     </road_surface>
+    -->
     
     <bumpmap>
         <image>../data/rock_hard.jpg</image>

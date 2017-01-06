@@ -95,20 +95,24 @@ namespace osgEarth { namespace Splat
      * Tile source that will read from ANOTHER tile source and perform
      * various pre-processing syntheses operations like warping and detailing.
      */
-    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer,
-                                                  public RoadSurfaceLayerOptions
+    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
         RoadSurfaceLayer();
         RoadSurfaceLayer(const ConfigOptions& options);
 
+        const RoadSurfaceLayerOptions& getRoadSurfaceLayerOptions() const { return *_localOptions; }
+
     public: // ImageLayer
 
+        // Opens the layer and returns a status
+        const Status& open();
+
+        // Use createTexture() instead of createImage() for this layer
         bool createTextureSupported() const { return true; }
 
+        // Creates a texture for the given tile key
         osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress);
-
-        const Status& open();
 
     protected:
         virtual ~RoadSurfaceLayer() { }
@@ -118,6 +122,13 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Session> _session;
 
         GeoNode* createNode(const TileKey& key, ProgressCallback* progress);
+
+
+    private:
+        RoadSurfaceLayerOptions* _localOptions;
+        RoadSurfaceLayerOptions  _localOptionsConcrete;
+        RoadSurfaceLayerOptions& mutableOptions() { return *_localOptions; }
+        const RoadSurfaceLayerOptions& options() const { return *_localOptions; }
     };
 
 } } // namespace osgEarth::Splat

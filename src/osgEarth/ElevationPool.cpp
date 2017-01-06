@@ -26,6 +26,9 @@ using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
+#define OE_TEST OE_DEBUG
+
+
 ElevationPool::ElevationPool() :
 _entries(0u),
 _maxEntries( 128u ),
@@ -82,10 +85,12 @@ ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
         bool ok;
         if (_layers.empty())
         {
+            OE_TEST << LC << "Populating from FULL MAP (" << keyToUse.str() << ")\n";
             ok = frame.populateHeightField(hf, keyToUse, false /*heightsAsHAE*/, 0L);
         }
         else
         {
+            OE_TEST << LC << "Populating from layers (" << keyToUse.str() << ")\n";
             ok = _layers.populateHeightField(hf, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
 
@@ -159,7 +164,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
     // This means the tile object exists but has yet to be populated:
     if ( tile->_status == STATUS_EMPTY )
     {
-        OE_DEBUG << "  getTile(" << key.str() << ") -> fetch from map\n";
+        OE_TEST << "  getTile(" << key.str() << ") -> fetch from map\n";
         tile->_status.exchange(STATUS_IN_PROGRESS);
         _tilesMutex.unlock();
 
@@ -173,7 +178,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
     // This means the tile object is populated and available for use:
     else if ( tile->_status == STATUS_AVAILABLE )
     {
-        OE_DEBUG << "  getTile(" << key.str() << ") -> available\n";
+        OE_TEST << "  getTile(" << key.str() << ") -> available\n";
         out = tile.get();
 
         // Mark this tile as recently used:
@@ -193,7 +198,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
     // This means the attempt to populate the tile with data failed.
     else if ( tile->_status == STATUS_FAIL )
     {
-        OE_DEBUG << "  getTile(" << key.str() << ") -> fail\n";
+        OE_TEST << "  getTile(" << key.str() << ") -> fail\n";
         _tilesMutex.unlock();
         out = 0L;
         return false;
@@ -205,6 +210,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
     {
         OE_DEBUG << "  getTile(" << key.str() << ") -> in progress...waiting\n";
         _tilesMutex.unlock();
+        out = 0L;
         return true;            // out:NULL => check back later please.
     }
 }
@@ -246,7 +252,7 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
     if ( !tile.valid() && OE_GET_TIMER(get) >= timeout )
     {
         // this means we timed out trying to fetch the map tile.
-        OE_WARN << LC << "Timout fetching tile " << key.str() << std::endl;
+        OE_TEST << LC << "Timout fetching tile " << key.str() << std::endl;
     }
 
     if ( tile.valid() )
@@ -274,13 +280,14 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
     if (_map.lock(map))
         e->_frame.setMap(static_cast<const Map*>(map.get()));
     e->_lod = lod;
-    //e->_pool = this;
+    e->_pool = this;
     return e;
 }
 
 //........................................................................
 
-ElevationEnvelope::ElevationEnvelope()
+ElevationEnvelope::ElevationEnvelope() :
+_pool(0L)
 {
     //nop
 }
@@ -328,8 +335,8 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            ElevationPool* pool = _frame.getElevationPool();
-            if (pool && pool->getTile(key, _frame, tile))
+            //ElevationPool* pool = _frame.getElevationPool();
+            if (_pool && _pool->getTile(key, _frame, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());

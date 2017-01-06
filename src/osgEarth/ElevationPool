@@ -63,6 +63,7 @@ namespace osgEarth
          * that you set with setMap().
          */
         void setElevationLayers(const ElevationLayerVector& layers);
+        const ElevationLayerVector& getElevationLayers() const { return _layers; }
 
         /** Sets the dimension of heightfield tiles to read from the map */
         void setTileSize(unsigned size);
@@ -227,6 +228,7 @@ namespace osgEarth
         osg::ref_ptr<const SpatialReference> _inputSRS;
         unsigned _lod;
         MapFrame _frame;
+        osg::ref_ptr<ElevationPool> _pool;
         friend class ElevationPool;
 
     private:

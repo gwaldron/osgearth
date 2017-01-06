@@ -354,25 +354,11 @@ TerrainLayer::init()
 
         unsigned hash = osgEarth::hashString(hashConf.toJSON());
         _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
-
-        //getTerrainLayerOptions().cacheId().init(cacheId); // set as default value
     }
 
     // copy this over since it might get changed.
     _runtimeEnabled = getTerrainLayerOptions().enabled().get();
-
-    //if (!_runtimeOptions->name().empty())
-    //{
-    //    setName(_runtimeOptions->name());
-    //}
 }
-
-//void
-//TerrainLayer::setName(const std::string& name)
-//{
-//    Layer::setName(name);
-//    _runtimeOptions->name() = name;
-//}
 
 const Status&
 TerrainLayer::open()
@@ -397,7 +383,7 @@ TerrainLayer::open()
                 else
                 {
                     // Initialize the tile source once and only once.
-                    ts = createTileSource();
+                    ts = createAndOpenTileSource();
                 }
 
                 if ( ts.valid() )
@@ -720,6 +706,21 @@ TerrainLayer::getCacheBinMetadata(const Profile* profile)
 
 TileSource*
 TerrainLayer::createTileSource()
+{    
+    if (getTerrainLayerOptions().driver().isSet())
+    {
+        OE_INFO << LC << "Creating \"" << getTerrainLayerOptions().driver()->getDriver() << "\" driver\n";
+
+        return TileSourceFactory::create(getTerrainLayerOptions().driver().get());
+    }
+    else
+    {
+        return 0L;
+    }
+}
+
+TileSource*
+TerrainLayer::createAndOpenTileSource()
 {
     osg::ref_ptr<TileSource> ts;
 
@@ -731,6 +732,8 @@ TerrainLayer::createTileSource()
 
     else
     {
+        ts = createTileSource();
+
         // Instantiate it from driver options if it has not already been created.
         // This will also set a manual "override" profile if the user provided one.
         if ( getTerrainLayerOptions().driver().isSet() )

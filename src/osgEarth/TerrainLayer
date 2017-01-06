@@ -337,7 +337,11 @@ namespace osgEarth
 
     protected:
 
-        // Creates the driver the supplies the actual data. Internal function.
+        // Creates the driver the supplies the actual data.
+        // By default, this function will either return the tile source passed
+        // into the CTOR or it will try to load it from a plugin based on the
+        // driver specification in the TileSourceOptions. You can override this
+        // method to create your own tile source.
         virtual TileSource* createTileSource();
 
         void applyProfileOverrides();
@@ -401,6 +405,8 @@ namespace osgEarth
 
         // read the tile source's cache policy hint and apply as necessary
         void refreshTileSourceCachePolicyHint(TileSource*);
+
+        TileSource* createAndOpenTileSource();
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

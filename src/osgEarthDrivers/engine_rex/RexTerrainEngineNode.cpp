@@ -587,15 +587,16 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
 
-        //OE_INFO << "CULL\n";
+        //std::stringstream buf;
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
         {
-            if (!i->get()->_tiles.empty())
+            lastLayer = i->get();
+
+            if (!lastLayer->_tiles.empty())
             {
-                lastLayer = i->get();
                 lastLayer->_order = -1;
 
                 // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
@@ -614,10 +615,15 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 }                    
 
                 //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
+                //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
 
                 cv->apply(*lastLayer);
             }
+
+            //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
         }
+
+        //Registry::instance()->startActivity("DRAW\n", buf.str());
 
         // The last layer to render must clear up the OSG state,
         // otherwise it will be corrupt and can lead to crashing.

@@ -44,7 +44,7 @@ Networking:
     :OSGEARTH_HTTP_TIMEOUT:                Sets an HTTP timeout (seconds)
     :OSG_CURL_PROXY:                       Sets a proxy server for HTTP requests (string)
     :OSG_CURL_PROXYPORT:                   Sets a proxy port for HTTP proxy server (integer)
-    :OSGEARTH_PROXYAUTH:                   Sets proxy authentication information (username:password)
+    :OSGEARTH_CURL_PROXYAUTH:              Sets proxy authentication information (username:password)
     :OSGEARTH_SIMULATE_HTTP_RESPONSE_CODE: Simulates HTTP errors (for debugging; set to HTTP response code)
 
 Misc:

@@ -93,7 +93,6 @@ void atmos_SkyFromSpace(void)
     atmos_mieColor      = v3FrontColor * atmos_fKmESun; 				
     atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); 						
     atmos_v3Direction = vVec  - v3Pos; 			
-    atmos_renderFromSpace = 1.0;
 } 		
 
 void atmos_SkyFromAtmosphere(void) 		
@@ -138,7 +137,6 @@ void atmos_SkyFromAtmosphere(void)
     atmos_mieColor      = v3FrontColor * atmos_fKmESun; 			
     atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); 				
     atmos_v3Direction = vVec - v3Pos; 				
-    atmos_renderFromSpace = 0.0;
 } 
 
 void atmos_vertex_main(inout vec4 VertexVIEW) 
@@ -154,5 +152,12 @@ void atmos_vertex_main(inout vec4 VertexVIEW)
     else
     { 
         atmos_SkyFromAtmosphere(); 
-    } 
+    }
+
+    // Transition from space to atmosphere
+    atmos_renderFromSpace = clamp(
+        (atmos_fOuterRadius-atmos_fCameraHeight)/
+        (atmos_fOuterRadius-atmos_fInnerRadius),
+        0.0, 1.0 );
+    atmos_renderFromSpace = atmos_renderFromSpace*atmos_renderFromSpace;
 }

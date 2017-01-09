@@ -28,17 +28,12 @@ void atmos_fragment_main(inout vec4 color)
     float fCos = dot(atmos_v3LightDir, atmos_v3Direction) / length(atmos_v3Direction); 
     float fRayleighPhase = 1.0;  // 0.75 * (1.0 + fCos*fCos); 
     float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / atmos_fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); 
-    vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor; 
-    if (atmos_renderFromSpace == 0.0)
-    {
-        vec3 skyColor = 1.0 - exp(f4Color * -fExposure); 
-        color.rgb = skyColor.rgb*atmos_fWeather; 
-        color.a = (skyColor.r+skyColor.g+skyColor.b) * 2.0; 
-    }
-    else
-    {
-        // Ignore exposure and weather in this case
-        color.rgb = f4Color; 
-        color.a = 1.0;
-    }
+    vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor;
+    
+    vec3 skyColor = 1.0 - exp(f4Color * -fExposure); 
+    vec4 colorSpace;
+    colorSpace.rgb = skyColor.rgb*atmos_fWeather; 
+    colorSpace.a = (skyColor.r+skyColor.g+skyColor.b) * 2.0;
+
+    color = mix(vec4(f4Color,1.0), colorSpace, atmos_renderFromSpace);
 }

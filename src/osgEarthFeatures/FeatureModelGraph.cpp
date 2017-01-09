@@ -1502,39 +1502,6 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             _clampable->setDepthOffsetOptions(*render->depthOffset());
         }
     }
-
-#if 0
-    else 
-    {
-        if ( render && render->depthOffset().isSet() )
-        {
-            _depthOffsetAdapter.setGraph( this );
-            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
-        }
-
-        if ( render && render->renderBin().isSet() )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderBinDetails(
-                ss->getBinNumber(),
-                render->renderBin().get() );
-        }
-
-        if ( render && render->order().isSet() )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderBinDetails(
-                (int)render->order()->eval(),
-                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
-        }
-
-        if ( render && render->transparent() == true )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderingHint( ss->TRANSPARENT_BIN );
-        }
-    }
-#endif
 }
 
 void

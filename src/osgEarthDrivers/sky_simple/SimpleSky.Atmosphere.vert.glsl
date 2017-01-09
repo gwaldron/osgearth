@@ -139,6 +139,8 @@ void atmos_SkyFromAtmosphere(void)
     atmos_v3Direction = vVec - v3Pos; 				
 } 
 
+uniform float FFF;
+
 void atmos_vertex_main(inout vec4 VertexVIEW) 
 {
     // Get camera position and height 
@@ -148,16 +150,17 @@ void atmos_vertex_main(inout vec4 VertexVIEW)
     if(atmos_fCameraHeight >= atmos_fOuterRadius)
     { 
         atmos_SkyFromSpace(); 
+        //atmos_renderFromSpace = 1.0;
     } 
     else
     { 
         atmos_SkyFromAtmosphere(); 
+        //atmos_renderFromSpace = 0.0;
     }
 
     // Transition from space to atmosphere
-    atmos_renderFromSpace = clamp(
+    atmos_renderFromSpace = 1.0 - clamp(
         (atmos_fOuterRadius-atmos_fCameraHeight)/
-        (atmos_fOuterRadius-atmos_fInnerRadius),
+        (atmos_fOuterRadius-20000),
         0.0, 1.0 );
-    atmos_renderFromSpace = atmos_renderFromSpace*atmos_renderFromSpace;
 }

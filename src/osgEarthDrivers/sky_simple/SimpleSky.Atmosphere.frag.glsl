@@ -31,9 +31,9 @@ void atmos_fragment_main(inout vec4 color)
     vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor;
     
     vec3 skyColor = 1.0 - exp(f4Color * -fExposure); 
-    vec4 colorSpace;
-    colorSpace.rgb = skyColor.rgb*atmos_fWeather; 
-    colorSpace.a = (skyColor.r+skyColor.g+skyColor.b) * 2.0;
+    vec4 atmosColor;
+    atmosColor.rgb = skyColor.rgb*atmos_fWeather; 
+    atmosColor.a = (skyColor.r+skyColor.g+skyColor.b) * 2.0;
 
-    color = mix(vec4(f4Color,1.0), colorSpace, atmos_renderFromSpace);
+    color = mix(atmosColor, vec4(f4Color,1.0), atmos_renderFromSpace);
 }

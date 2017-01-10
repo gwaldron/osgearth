@@ -551,8 +551,8 @@ _findNodeTraversalMask  ( rhs._findNodeTraversalMask )
 
 EarthManipulator::~EarthManipulator()
 {
-    osg::ref_ptr<MapNode> mapNode = _mapNode;
-    if (mapNode.valid() && _terrainCallback && mapNode->getTerrain())
+    osg::ref_ptr<MapNode> mapNode;
+    if (_mapNode.lock(mapNode) && _terrainCallback && mapNode->getTerrain())
     {
         mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
     }

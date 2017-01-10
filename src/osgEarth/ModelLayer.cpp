@@ -23,7 +23,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osg/Depth>
 
-#define LC "[ModelLayer] "
+#define LC "[ModelLayer] \"" << getName() << "\" "
 
 using namespace osgEarth;
 
@@ -203,6 +203,7 @@ _modelSource( new NodeModelSource(node) )
 ModelLayer::~ModelLayer()
 {
     //nop
+    OE_DEBUG << LC << "~ModelLayer\n";
 }
 
 void

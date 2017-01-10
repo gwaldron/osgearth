@@ -106,7 +106,7 @@ _dataModelRevision   ( 0 )
 
 Map::~Map()
 {
-    OE_DEBUG << "~Map" << std::endl;
+    OE_DEBUG << LC << "~Map" << std::endl;
 }
 
 void

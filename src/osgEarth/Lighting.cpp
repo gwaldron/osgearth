@@ -64,18 +64,22 @@ GenerateGL3LightingUniforms::apply(osg::Node& node)
                     if (dynamic_cast<MaterialGL3*>(material) == 0L)
                     {
                         mat = new MaterialGL3(*material), rap->second;
-                        stateset->setAttributeAndModes(mat);    
+                        stateset->setAttributeAndModes(mat);
                     }
     #endif
 
                     // Install the MaterialCallback so uniforms are updated.
                     if (!mat->getUpdateCallback())
                     {
+                      if (stateset->getDataVariance() == osg::Object::DYNAMIC)
                         mat->setUpdateCallback(new MaterialCallback());
+                      else
+                      {
+                        MaterialCallback mc;
+                        mc.operator()(mat, NULL);
+                      }
                     }
-
                 }
-
 
                 // mark this stateset as visited.
                 _statesets.insert(stateset);
@@ -89,7 +93,7 @@ void
 GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
 {
     if (lightSource.getLight())
-    {        
+    {
         if (!alreadyInstalled<LightSourceGL3UniformGenerator>(lightSource.getCullCallback()))
         {
             lightSource.addCullCallback(new LightSourceGL3UniformGenerator());
@@ -112,7 +116,7 @@ GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
 
 bool
 LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
-{    
+{
     osg::LightSource* lightSource = dynamic_cast<osg::LightSource*>(obj);
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(data);
 
@@ -125,7 +129,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         std::string prefix;
         if (light->getLightNum() < 10)
         {
-            prefix = UPREFIX "LightSource[#].";            
+            prefix = UPREFIX "LightSource[#].";
             prefix.at(prefix.length() - 3) = (char)('0' + light->getLightNum());
         }
         else
@@ -141,7 +145,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         // Place these uniforms at the root stateset so they affect the entire graph:
         osg::StateSet* ss = cv->getCurrentRenderStage()->getStateSet();
         if (ss == 0L)
-            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());        
+            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());
 
         ss->getOrCreateUniform(prefix + "ambient", osg::Uniform::FLOAT_VEC4)->set(light->getAmbient());
         ss->getOrCreateUniform(prefix + "diffuse", osg::Uniform::FLOAT_VEC4)->set(light->getDiffuse());
@@ -164,7 +168,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         LightGL3* lightGL3 = dynamic_cast<LightGL3*>(light);
         bool enabled = lightGL3 ? lightGL3->getEnabled() : true;
         ss->getOrCreateUniform(prefix + "enabled", osg::Uniform::BOOL)->set(enabled);
-        
+
         osg::Uniform* fsu = ss->getOrCreateUniform("oe_lighting_framestamp", osg::Uniform::UNSIGNED_INT);
         unsigned fs;
         fsu->get(fs);
@@ -191,16 +195,22 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 //............................................................................
 void MaterialCallback::operator() (osg::StateAttribute* attr, osg::NodeVisitor* nv)
 {
+    static const std::string AMBIENT = UPREFIX "FrontMaterial.ambient";
+    static const std::string DIFFUSE = UPREFIX "FrontMaterial.diffuse";
+    static const std::string SPECULAR = UPREFIX "FrontMaterial.specular";
+    static const std::string EMISSION = UPREFIX "FrontMaterial.emission";
+    static const std::string SHININESS = UPREFIX "FrontMaterial.shininess";
+
     osg::Material* material = static_cast<osg::Material*>(attr);
     for (unsigned int i = 0; i < attr->getNumParents(); i++)
     {
         osg::StateSet* stateSet = attr->getParent(i);
 
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.ambient", osg::Uniform::FLOAT_VEC4)->set(material->getAmbient(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.diffuse", osg::Uniform::FLOAT_VEC4)->set(material->getDiffuse(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.specular", osg::Uniform::FLOAT_VEC4)->set(material->getSpecular(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.emission", osg::Uniform::FLOAT_VEC4)->set(material->getEmission(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.shininess", osg::Uniform::FLOAT)->set(material->getShininess(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(AMBIENT, osg::Uniform::FLOAT_VEC4)->set(material->getAmbient(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(DIFFUSE, osg::Uniform::FLOAT_VEC4)->set(material->getDiffuse(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(SPECULAR, osg::Uniform::FLOAT_VEC4)->set(material->getSpecular(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(EMISSION, osg::Uniform::FLOAT_VEC4)->set(material->getEmission(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(SHININESS, osg::Uniform::FLOAT)->set(material->getShininess(osg::Material::FRONT));
 
         //TODO: back-face materials
     }

@@ -10,6 +10,10 @@ uniform float oe_depthOffset_maxBias;
 uniform float oe_depthOffset_minRange;
 uniform float oe_depthOffset_maxRange;
 
+//uniform mat4 gl_ProjectionMatrix;
+
+float oe_depthOffset_biasClip;
+
 void oe_depthOffset_vertex(inout vec4 vertexView)
 {
     // calculate range to target:
@@ -22,6 +26,15 @@ void oe_depthOffset_vertex(inout vec4 vertexView)
 	// clamp the bias to 1/2 of the range of the vertex. We don't want to 
     // pull the vertex TOO close to the camera and certainly not behind it.
     bias = min(bias, range*0.5);
+    bias = min(bias, oe_depthOffset_maxBias);
+
+    //vec4 p0 = gl_ProjectionMatrix * vec4(0,0,0,1);
+    //vec4 p1 = gl_ProjectionMatrix * vec4(0,0,-bias,1);
+    //oe_depthOffset_biasClip = distance(p0, p1);
+    //oe_depthOffset_biasClip = p1.z;
+
+    //vec4 refPointClip = gl_ProjectionMatrix * vec4(0.0, 0.0, -bias, 1.0);
+    //oe_depthOffset_biasClip = refPointClip.z;
 
     //   pull the vertex towards the camera.
     vec3 pullVec = normalize(vertexView.xyz);

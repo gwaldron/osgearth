@@ -71,14 +71,14 @@ namespace
 
     double inline mix(double a, double b, double t)
     {
-        return a*(1.0-t) + b*t;
+        return a + (b-a)*t;
     }
 
     double inline smoothstep(double a, double b, double t)
     {
         // smoothstep (approximates cosine):
         double mu = t*t*(3.0-2.0*t);
-        return a*(1.0-mu) + b*mu;
+        return a + (b-a)*mu; //a*(1.0-mu) + b*mu;
     }
 
     bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerRadius, double outerRadius, ElevationEnvelope* envelope, ProgressCallback* progress)
@@ -107,7 +107,7 @@ namespace
 
                 P.y() = ex.yMin() + (double)row * row_interval;
 
-                double shortestD2 = DBL_MAX;
+                double closestD2 = DBL_MAX; // closest distance (squared) from P to a segment
 
                 ConstGeometryIterator giter(geom, false);
                 while (giter.hasMore())
@@ -119,44 +119,50 @@ namespace
                         const osg::Vec3d& A = part->at(i);
                         const osg::Vec3d& B = part->at(i+1);
                     
-                        osg::Vec3d AB = B - A;
+                        osg::Vec3d AB = B - A;    // current segment AB
 
-                        double t;  // parameter [0..1] on segment
-                        double D2; // shortest distance from point to segment, squared
-                        double L2 = AB.length2();
-                        osg::Vec3d AP = P - A;
+                        double t;                 // parameter [0..1] on segment AB
+                        double D2;                // shortest distance from point P to segment AB, squared
+                        double L2 = AB.length2(); // length (squared) of segment AB
+                        osg::Vec3d AP = P - A;    // vector from endpoint A to point P
 
                         if (L2 == 0.0)
                         {
-                            // trivial case: segment is zero-length
+                            // trivial case: zero-length segment
                             t = 0.0;
                             D2 = AP.length2();
                         }
                         else
                         {
-                            // calculate parameter and project our point on to the segment
+                            // calculate parameter "t" [0..1] which will yield the closest point on AB to P:
                             t = osg::clampBetween((AP * AB)/L2, 0.0, 1.0);
+
+                            // project our point P onto segment AB:
                             PROJ.set( A + AB*t );
+
+                            // measure the distance from P to the segment AB (squared):
                             D2 = (P - PROJ).length2();
                         }
 
-                        if (D2 < shortestD2)
+                        // if P is closer to AB than to any other segment thus far, remember the segment
+                        // so we sample it later.
+                        if (D2 < closestD2)
                         {
-                            shortestD2 = D2;
+                            closestD2 = D2;
                             bestA = A;
                             bestB = B;
                             bestT = t;
                         }
                     }
                 
-                    if (shortestD2 <= outerRadius2)
+                    if (closestD2 <= outerRadius2)
                     {
-                        double shortestD = sqrt(shortestD2);
+                        double closestD = sqrt(closestD2);
 
                         // Blend factor. 0 = distance is less than or equal to the inner radius;
                         //               1 = distance is greater than or equal to the outer radius.
                         double blend = osg::clampBetween(
-                            (shortestD - innerRadius) / (outerRadius - innerRadius),
+                            (closestD - innerRadius) / (outerRadius - innerRadius),
                             0.0, 1.0);
 
                         float elevP = envelope->getElevation(P.x(), P.y());
@@ -187,7 +193,6 @@ namespace
 
                             // linear interpolation of height from point A to point B:
                             elevPROJ = mix(elevA, elevB, bestT);
-                            //elevPROJ = smoothstep(elevA, elevB, bestT);
                         }
 
                         // smoothstep interpolation of height along the buffer:
@@ -419,7 +424,8 @@ _mapCallback(0L)
     ElevationLayer::init();
     
     // Experiment with this and see what will work.
-    _pool.setTileSize(65u);
+    //_pool.setTileSize(65u);
+    _pool.setTileSize(257u);
 
     OE_TEST << LC << "Initialized!\n";
 }

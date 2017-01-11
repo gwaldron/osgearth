@@ -19,11 +19,11 @@
         <cache_policy usage="none"/>
         <base_layer>readymap_elevation</base_layer>
         <features name="roads" driver="ogr">
-            <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
+            <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        <flat_buffer>12</flat_buffer>
-        <total_buffer>50</total_buffer>
+        <flat_buffer>50</flat_buffer>
+        <total_buffer>100</total_buffer>
     </flattened_elevation>
     
     
@@ -33,6 +33,31 @@
     
         
     <image name="Debug" driver="debug" enabled="false"/>
+    
+    
+    <model driver="feature_geom" min_level="13">
+        <cache_policy usage="none"/>
+        <features name="roads" driver="ogr">
+            <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        <layout tile_size="2000">
+            <level class="default" max_range="10000"/>
+        </layout>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffff00;
+                   stroke-width: 25m;
+                   //stroke-tessellation-size: 50m;
+                   stroke-image: "../data/road.png";
+                   altitude-clamping: terrain;
+                   render-order: 1;
+                   altitude-offset: 0.05;
+                }                    
+            </style>
+        </styles>
+    </model>
     
     <!--
     <road_surface min_level="13">
@@ -58,9 +83,35 @@
         <intensity>8.2</intensity>
     </bumpmap>     
     
-    
-    <xi:include href="viewpoints.xml"/>
-    
+    <viewpoints>
+        <viewpoint>
+            <heading>17.33521725357022</heading>
+            <height>2462.60273069609</height>
+            <lat>46.82181702111031</lat>
+            <long>-121.7814936386096</long>
+            <name>Mt Rainier, Washington</name>
+            <pitch>-21.29241356548601</pitch>
+            <range>23926.75258864516</range>
+        </viewpoint>
+        <viewpoint name="Slant">
+          <heading>132.744</heading>
+          <pitch>-13.1889</pitch>
+          <range>61.0073m</range>
+          <long>-121.6678442419581</long>
+          <lat>46.76550978324325</lat>
+          <height>1079.961525737308</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Edge">
+          <heading>16.6491</heading>
+          <pitch>-1.07347</pitch>
+          <range>261.916m</range>
+          <long>-121.6706934749621</long>
+          <lat>46.76699648357788</lat>
+          <height>1063.86648590304</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+    </viewpoints>
     
     <libraries>osgearthsplat</libraries>
 </map>

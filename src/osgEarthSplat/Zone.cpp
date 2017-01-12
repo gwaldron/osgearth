@@ -154,13 +154,14 @@ void
 ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osg::StateSet* stateset = 0L;
+    
+    Zone* finalZone = 0L;
 
     if ( _zones.size() > 0 )
     {
         osg::Vec3d vp = nv->getViewPoint();
         double z2 = vp.length2();
 
-        Zone* finalZone = 0L;
         unsigned zoneIndex = 0;
         unsigned finalZoneIndex = ~0;
 
@@ -196,4 +197,9 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if ( stateset )
         static_cast<osgUtil::CullVisitor*>(nv)->popStateSet();
+
+    if (finalZone)
+    {
+        VisitorData::remove(*nv, "oe.landcover.zone");
+    }
 }

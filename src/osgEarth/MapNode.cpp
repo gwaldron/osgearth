@@ -838,25 +838,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
             _terrainEngine->accept( v );
         }
 
-        // This is a placeholder for later, if we decide to delay the automatic opening of
-        // layers until the first traversal.
-#if 0
-        // if the model has changed, we need to queue up an update so we can open new layers.
-        if (_mapRevisionMonitor.outOfSyncWith(_map->getDataModelRevision()))
-        {
-            openMapLayers();
-            _mapRevisionMonitor.sync(_map->getDataModelRevision());
-        }
-#endif
-
         // traverse:
-        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-    }
-
-    else if (nv.getVisitorType() == nv.UPDATE_VISITOR || nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        // put the MapNode in the visitor data and traverse.
-        VisitorData::store(nv, "osgEarth::MapNode", this);
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 

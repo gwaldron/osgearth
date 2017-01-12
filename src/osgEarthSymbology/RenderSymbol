@@ -77,6 +77,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& renderBin() { return _renderBin; }
         const optional<std::string>& renderBin() const { return _renderBin; }
 
+        /** enable decaling (lequal + polygonoffset) */
+        optional<bool>& decal() { return _decal; }
+        const optional<bool>& decal() const { return _decal; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -92,6 +96,7 @@ namespace osgEarth { namespace Symbology
         optional<float>              _minAlpha;
         optional<std::string>        _renderBin;
         optional<bool>               _transparent;
+        optional<bool>               _decal;
         
         /** dtor */
         virtual ~RenderSymbol() { }

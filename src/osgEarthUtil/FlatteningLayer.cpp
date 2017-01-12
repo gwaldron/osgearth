@@ -78,10 +78,47 @@ namespace
     {
         // smoothstep (approximates cosine):
         double mu = t*t*(3.0-2.0*t);
-        return a + (b-a)*mu; //a*(1.0-mu) + b*mu;
+        return a + (b-a)*mu;
+    }
+    
+    double inline clamp(double a, double lo, double hi)
+    {
+        return std::max(std::min(a, hi), lo);
     }
 
-    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, double innerRadius, double outerRadius, ElevationEnvelope* envelope, ProgressCallback* progress)
+    osg::Vec3d inline getInternalPoint(const Polygon* p)
+    {
+        // TODO - fix to ensure an internal point.
+        return p->getBounds().center();
+    }
+
+    double inline square(double a)
+    {
+        return a*a;
+    }
+
+    typedef osg::Vec3d POINT;
+    typedef osg::Vec3d VECTOR;
+
+    double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
+    {        
+        double Dmin = DBL_MAX;
+        ConstSegmentIterator segIter(poly, true);
+        while (segIter.hasMore())
+        {
+            const Segment segment = segIter.next();
+            const POINT& A = segment.first;
+            const POINT& B = segment.second;
+            const VECTOR AP = P-A, AB = B-A;
+            double t = clamp((AP*AB)/AB.length2(), 0.0, 1.0);
+            VECTOR PROJ = A + AB*t;
+            double D = (P - PROJ).length2();
+            if (D < Dmin) Dmin = D;
+        }
+        return Dmin;
+    }
+    
+    bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -90,14 +127,13 @@ namespace
         double col_interval = ex.width() / (double)(hf->getNumColumns()-1);
         double row_interval = ex.height() / (double)(hf->getNumRows()-1);
 
-        osg::Vec3d P, PROJ, bestA, bestB;
-        double bestT;
+        POINT Pex, P, internalP;
 
-        double outerRadius2 = outerRadius*outerRadius;
-
+        bool needsTransform = ex.getSRS() != geomSRS;
+        
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
         {
-            P.x() = ex.xMin() + (double)col * col_interval;
+            Pex.x() = ex.xMin() + (double)col * col_interval;
 
             for (unsigned row = 0; row < hf->getNumRows(); ++row)
             {
@@ -105,19 +141,124 @@ namespace
                 //if (progress && progress->isCanceled())
                 //    return false;
 
-                P.y() = ex.yMin() + (double)row * row_interval;
+                Pex.y() = ex.yMin() + (double)row * row_interval;
+
+                if (needsTransform)
+                    ex.getSRS()->transform(Pex, geomSRS, P);
+                else
+                    P = Pex;
+                
+                bool done = false;
+                double minD2 = bufferWidth; // minimum distance(squared) to closest polygon edge
+
+                const Polygon* bestPoly = 0L;
+
+                ConstGeometryIterator giter(geom, false);
+                while (giter.hasMore() && !done)
+                {
+                    const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
+                    if (polygon)
+                    {
+                        // Does the point P fall within the polygon?
+                        if (polygon->contains2D(P.x(), P.y()))
+                        {
+                            // yes, flatten it to the polygon's centroid elevation;
+                            // and we're dont with this point.
+                            done = true;
+                            bestPoly = polygon;
+                            minD2 = -1.0;
+                        }
+
+                        // If not in the polygon, how far to the closest edge?
+                        else
+                        {
+                            double D2 = getDistanceSquaredToClosestEdge(P, polygon);
+                            if (D2 < minD2)
+                            {
+                                minD2 = D2;
+                                bestPoly = polygon;
+                            }
+                        }
+                    }
+                }
+
+                if (bestPoly && minD2 != 0.0)
+                {
+                    float h;
+                    POINT internalP = getInternalPoint(bestPoly);
+                    float elevInternal = envelope->getElevation(internalP.x(), internalP.y());
+
+                    if (minD2 < 0.0)
+                    {
+                        h = elevInternal;
+                    }
+                    else
+                    {
+                        float elevNatural = envelope->getElevation(P.x(), P.y());
+                        double blend = clamp(sqrt(minD2)/bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
+                        h = smoothstep(elevInternal, elevNatural, blend);
+                    }
+
+                    hf->setHeight(col, row, h);
+                    wroteChanges = true;
+                }
+
+            }
+        }
+
+        return wroteChanges;
+    }
+
+
+    bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+    {
+        bool wroteChanges = false;
+
+        const GeoExtent& ex = key.getExtent();
+
+        double col_interval = ex.width() / (double)(hf->getNumColumns()-1);
+        double row_interval = ex.height() / (double)(hf->getNumRows()-1);
+
+        osg::Vec3d Pex, P, PROJ, bestA, bestB;
+        double bestT;
+
+        double innerRadius = lineWidth * 0.5;
+        double outerRadius = innerRadius + bufferWidth;
+        double outerRadius2 = square(outerRadius);
+
+        bool needsTransform = ex.getSRS() != geomSRS;
+
+        //OE_INFO << "ir=" << innerRadius << ", or=" << outerRadius << std::endl;
+
+        for (unsigned col = 0; col < hf->getNumColumns(); ++col)
+        {
+            Pex.x() = ex.xMin() + (double)col * col_interval;
+
+            for (unsigned row = 0; row < hf->getNumRows(); ++row)
+            {
+                // check for cancelation periodically
+                //if (progress && progress->isCanceled())
+                //    return false;
+
+                Pex.y() = ex.yMin() + (double)row * row_interval;
+
+                // Move the point into the working SRS if necessary
+                if (needsTransform)
+                    ex.getSRS()->transform(Pex, geomSRS, P);
+                else
+                    P = Pex;
 
                 double closestD2 = DBL_MAX; // closest distance (squared) from P to a segment
 
-                ConstGeometryIterator giter(geom, false);
+                ConstGeometryIterator giter(geom);
                 while (giter.hasMore())
                 {
                     const Geometry* part = giter.next();
                 
                     for (int i = 0; i < part->size()-1; ++i)
                     {
-                        const osg::Vec3d& A = part->at(i);
-                        const osg::Vec3d& B = part->at(i+1);
+                        const osg::Vec3d& A = (*part)[i];
+                        const osg::Vec3d& B = (*part)[i+1];
                     
                         osg::Vec3d AB = B - A;    // current segment AB
 
@@ -135,7 +276,7 @@ namespace
                         else
                         {
                             // calculate parameter "t" [0..1] which will yield the closest point on AB to P:
-                            t = osg::clampBetween((AP * AB)/L2, 0.0, 1.0);
+                            t = clamp((AP * AB)/L2, 0.0, 1.0);
 
                             // project our point P onto segment AB:
                             PROJ.set( A + AB*t );
@@ -154,67 +295,75 @@ namespace
                             bestT = t;
                         }
                     }
-                
-                    if (closestD2 <= outerRadius2)
-                    {
-                        double closestD = sqrt(closestD2);
-
-                        // Blend factor. 0 = distance is less than or equal to the inner radius;
-                        //               1 = distance is greater than or equal to the outer radius.
-                        double blend = osg::clampBetween(
-                            (closestD - innerRadius) / (outerRadius - innerRadius),
-                            0.0, 1.0);
-
-                        float elevP = envelope->getElevation(P.x(), P.y());
-
-                        float elevPROJ;
-
-                        if (bestT == 0.0)
-                        {
-                            elevPROJ = envelope->getElevation(bestA.x(), bestA.y());
-                            if (elevPROJ == NO_DATA_VALUE)
-                                elevPROJ = elevP;
-                        }
-                        else if (bestT == 1.0)
-                        {
-                            elevPROJ = envelope->getElevation(bestB.x(), bestB.y());
-                            if (elevPROJ == NO_DATA_VALUE)
-                                elevPROJ = elevP;
-                        }
-                        else
-                        {
-                            float elevA = envelope->getElevation(bestA.x(), bestA.y());
-                            if (elevA == NO_DATA_VALUE)
-                                elevA = elevP;
-
-                            float elevB = envelope->getElevation(bestB.x(), bestB.y());
-                            if (elevB == NO_DATA_VALUE)
-                                elevB = elevP;
-
-                            // linear interpolation of height from point A to point B:
-                            elevPROJ = mix(elevA, elevB, bestT);
-                        }
-
-                        // smoothstep interpolation of height along the buffer:
-                        float h = smoothstep(elevPROJ, elevP, blend);
-
-                        hf->setHeight(col, row, h);
-
-                        wroteChanges = true;
-                    }
                 }
+                
+                if (closestD2 <= outerRadius2)
+                {
+                    double closestD = sqrt(closestD2);
+
+                    // Blend factor. 0 = distance is less than or equal to the inner radius;
+                    //               1 = distance is greater than or equal to the outer radius.
+                    double blend = clamp(
+                        (closestD - innerRadius) / (outerRadius - innerRadius),
+                        0.0, 1.0);
+
+                    float elevP = envelope->getElevation(P.x(), P.y());
+
+                    float elevPROJ;
+
+                    if (bestT == 0.0)
+                    {
+                        elevPROJ = envelope->getElevation(bestA.x(), bestA.y());
+                        if (elevPROJ == NO_DATA_VALUE)
+                            elevPROJ = elevP;
+                    }
+                    else if (bestT == 1.0)
+                    {
+                        elevPROJ = envelope->getElevation(bestB.x(), bestB.y());
+                        if (elevPROJ == NO_DATA_VALUE)
+                            elevPROJ = elevP;
+                    }
+                    else
+                    {
+                        float elevA = envelope->getElevation(bestA.x(), bestA.y());
+                        if (elevA == NO_DATA_VALUE)
+                            elevA = elevP;
+
+                        float elevB = envelope->getElevation(bestB.x(), bestB.y());
+                        if (elevB == NO_DATA_VALUE)
+                            elevB = elevP;
+
+                        // linear interpolation of height from point A to point B:
+                        elevPROJ = mix(elevA, elevB, bestT);
+                    }
+
+                    // smoothstep interpolation of height along the buffer:
+                    float h = smoothstep(elevPROJ, elevP, blend);
+
+                    hf->setHeight(col, row, h);
+
+                    wroteChanges = true;
+                }                
             }
         }
 
         return wroteChanges;
     }
+    
+    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+    {
+        if (geom->isLinear())
+            return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, progress);
+        else
+            return integratePolygons(key, hf, geom, geomSRS, bufferWidth, envelope, progress);
+    }
 }
 
 
 
-
-FlatteningTileSource::FlatteningTileSource() :
-TileSource(TileSourceOptions())
+FlatteningTileSource::FlatteningTileSource(const FlatteningLayerOptions& options) :
+TileSource(TileSourceOptions()),
+FlatteningLayerOptions(options)
 {
     setName("FlatteningTileSource");
 }
@@ -256,21 +405,21 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 
     const GeoExtent& ex = key.getExtent();
 
-    // all points <= innerRadius from the centerline are flattened
-    double innerRadius = _innerBuffer;
+    //// all points <= innerRadius from the centerline are flattened
+    //double innerRadius = _innerBuffer;
 
-    // all points > innerRadius and <= outerRadius and smoothstep blended
-    double outerRadius = _outerBuffer;
+    //// all points > innerRadius and <= outerRadius and smoothstep blended
+    //double outerRadius = _outerBuffer;
 
-    // adjust those values based on latitude in a geographic map
-    if (ex.getSRS()->isGeographic())
-    {
-        double latMid = fabs(ex.yMin() + ex.height()*0.5);
-        double metersPerDegAtEquator = (ex.getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double metersPerDegree = metersPerDegAtEquator * cos(osg::DegreesToRadians(latMid));
-        innerRadius = innerRadius / metersPerDegree;
-        outerRadius = outerRadius / metersPerDegree;
-    }
+    //// adjust those values based on latitude in a geographic map
+    //if (ex.getSRS()->isGeographic())
+    //{
+    //    double latMid = fabs(ex.yMin() + ex.height()*0.5);
+    //    double metersPerDegAtEquator = (ex.getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+    //    double metersPerDegree = metersPerDegAtEquator * cos(osg::DegreesToRadians(latMid));
+    //    innerRadius = innerRadius / metersPerDegree;
+    //    outerRadius = outerRadius / metersPerDegree;
+    //}
 
     // We will collection all the feature geometries in this multi:
     MultiGeometry geoms;
@@ -285,6 +434,16 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
     {
         featureKeys.push_back(key);
     }
+
+    const SpatialReference* featureSRS = _featureSource->getFeatureProfile()->getSRS();
+
+    // We must do all the feature processing in a projected system since we're using vector math.
+    const SpatialReference* workingSRS =
+        ex.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
+        ex.getSRS();
+
+    bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
+
 
     for (int i = 0; i < featureKeys.size(); ++i)
     {
@@ -303,13 +462,17 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
         }
         else
         {
-            // Query a bounding box that's a bit larger than the key so that lines
+            // Query a bounding box that's a bit larger than the key so that features
             // extending outside the box (or close to the box) will still affect
             // the flattening algorithm
+            Distance boundsBuffer = (lineWidth().get()*0.5) + bufferWidth().get();
+            double radius = SpatialReference::transformUnits(boundsBuffer, ex.getSRS(), ex.yMin()>=0?ex.yMax():ex.yMin());
+            //OE_INFO << "radius = " << radius << std::endl;
+
             bounds = ex.bounds();
-            bounds.expandBy(bounds.xMin() - outerRadius, bounds.yMin() - outerRadius, 0);
-            bounds.expandBy(bounds.xMax() + outerRadius, bounds.yMax() + outerRadius, 0);
-            bounds.transform(ex.getSRS(), _featureSource->getFeatureProfile()->getSRS());
+            bounds.expandBy(bounds.xMin() - radius, bounds.yMin() - radius, 0);
+            bounds.expandBy(bounds.xMax() + radius, bounds.yMax() + radius, 0);
+            bounds.transform(ex.getSRS(), featureSRS);
             query.bounds() = bounds;
         }
 
@@ -325,11 +488,11 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
             {
                 Feature* feature = cursor->nextFeature();
 
-                // xform to the key's coordinate system
+                // Transform the feature geometry to our working (projected) SRS.
                 if (needsTransform)
-                    feature->transform(key.getExtent().getSRS());
+                    feature->transform(workingSRS);
 
-                //TODO: test the geometry bounds against the expanded tilekey bounds
+                //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
                 //      in order to discard geometries we don't care about
 
                 geoms.getComponents().push_back(feature->getGeometry());
@@ -352,9 +515,13 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
         hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
 
         // Create an elevation query envelope at the LOD we are creating
-        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(ex.getSRS(), key.getLOD());
+        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
 
-        if(integrate(key, hf, &geoms, innerRadius, outerRadius, envelope, progress) || (progress && progress->isCanceled()))
+        // Resolve the buffering widths:
+        double lineWidthLocal = lineWidth()->as(workingSRS->getUnits());
+        double bufferWidthLocal = bufferWidth()->as(workingSRS->getUnits());
+        
+        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, progress) || (progress && progress->isCanceled()))
         {
             //double t_create = OE_GET_TIMER(create);
             //OE_INFO << LC << key.str() << " : t=" << t_create << "s\n";
@@ -456,10 +623,8 @@ TileSource*
 FlatteningLayer::createTileSource()
 {
     OE_TEST << LC << "Creating tile source\n";
-    _ts = new FlatteningTileSource();
+    _ts = new FlatteningTileSource(options());
     _ts->setElevationPool(&_pool);
-    _ts->setInnerBuffer(options().flatBuffer().get());
-    _ts->setOuterBuffer(options().totalBuffer().get());
     _ts->setFeatureSource(_featureSource.get());
     return _ts;
 }

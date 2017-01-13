@@ -71,6 +71,7 @@ namespace osgEarth
          * a reference terrain (see setTerrain).
          */
         void setAutoRecomputeHeights(bool value);
+        bool getAutoRecomputeHeights() const { return _autoRecomputeHeights; }
 
     public:
         /** Callback that lets the user intercept the compute*Matrix functions during a traversal. */
@@ -99,9 +100,11 @@ namespace osgEarth
                 : osg::MatrixTransform::computeWorldToLocalMatrix(m, nv);
         }
 
+
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
+
 
     public: // TerrainCallback interface
 
@@ -110,14 +113,15 @@ namespace osgEarth
                          osg::Node*              node,
                          TerrainCallbackContext& context);
 
+
     protected:
         virtual ~GeoTransform() { }
 
-        GeoPoint                   _position;
-        osg::observer_ptr<Terrain> _terrain;
-        bool                       _autoRecompute;
-        bool                       _autoRecomputeReady;
-        bool                       _terrainRequested;
+        GeoPoint                   _position;                 // Current position
+        osg::observer_ptr<Terrain> _terrain;                  // Terrain for relative height resolution
+        bool                       _terrainCallbackInstalled; // Whether the Terrain callback is in
+        bool                       _findTerrain;              // True is we need _terrain but don't have it
+        bool                       _autoRecomputeHeights;     // Whether to resolve relative position Z's
 
         osg::ref_ptr<ComputeMatrixCallback> _computeMatrixCallback;
 

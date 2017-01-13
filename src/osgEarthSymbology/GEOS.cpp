@@ -212,7 +212,7 @@ GEOSContext::GEOSContext()
     geos::geom::PrecisionModel* pm = new geos::geom::PrecisionModel(geom::PrecisionModel::FLOATING);
 
     // Factory will clone the PM
-    _factory = new geos::geom::GeometryFactory( pm );
+    _factory = geos::geom::GeometryFactory::create( pm );
 
     // Delete the template.
     delete pm;
@@ -220,7 +220,6 @@ GEOSContext::GEOSContext()
 
 GEOSContext::~GEOSContext()
 {
-    delete _factory;
 }
 
 geom::Geometry*
@@ -229,12 +228,7 @@ GEOSContext::importGeometry(const Symbology::Geometry* input)
     geom::Geometry* output = 0L;
     if ( input && input->isValid() )
     {
-        output = import( input, _factory );
-
-        // if output is ok, it will have a pointer to f. this is probably a leak.
-        // TODO: Check whether this is a leak!! -gw
-        //if ( !output )
-        //    delete f;
+        output = import( input, _factory.get() );
     }
     return output;
 }
@@ -327,10 +321,7 @@ GEOSContext::disposeGeometry(geom::Geometry* input)
 {
     if (input)
     {
-        geom::GeometryFactory* f = const_cast<geom::GeometryFactory*>(input->getFactory());
         _factory->destroyGeometry(input);
-        if ( f != _factory )
-            delete f;
     }
 }
 

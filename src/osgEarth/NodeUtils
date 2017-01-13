@@ -242,6 +242,16 @@ namespace osgEarth
         return node && node->getNumParents() > 0 ? findTopOfGraph(node->getParent(0)) : node;
     }
 
+    /** Finds a typed node in a node visitor's node path */
+    template<typename T>
+    T* findInNodePath(osg::NodeVisitor& nv) {
+        for (osg::NodePath::iterator i = nv.getNodePath().begin(); i != nv.getNodePath().end(); ++i) {
+            T* node = dynamic_cast<T*>(*i);
+            if (node) return node;
+        }
+        return 0L;
+    }
+
     /**
      * Replace one group with another
      */

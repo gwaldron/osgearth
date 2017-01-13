@@ -132,7 +132,7 @@ to extruded buildings.
     <model name="Parks" driver="feature_geom" enabled="true">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
-        </features>
+        </features>        
         
         <layout tile_size_factor="3">
             <level max_range="2000"/>
@@ -140,6 +140,7 @@ to extruded buildings.
         
         <instancing>true</instancing>
 		<cluster_culling>false</cluster_culling>
+        <feature_indexing enabled="false"/>
         
         <styles>
             <style type="text/css">

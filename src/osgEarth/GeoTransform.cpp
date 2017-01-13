@@ -18,6 +18,7 @@
  */
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Terrain>
+#include <osgEarth/MapNode>
 
 #define LC "[GeoTransform] "
 
@@ -27,7 +28,8 @@ using namespace osgEarth;
 
 GeoTransform::GeoTransform() :
 _autoRecompute     ( false ),
-_autoRecomputeReady( false )
+_autoRecomputeReady( false ),
+_terrainRequested  ( false )
 {
    //nop
 }
@@ -40,6 +42,7 @@ osg::MatrixTransform(rhs, op)
     _terrain            = rhs._terrain.get();
     _autoRecompute      = rhs._autoRecompute;
     _autoRecomputeReady = false;
+    _terrainRequested   = false;
 }
 
 void
@@ -50,7 +53,9 @@ GeoTransform::setTerrain(Terrain* terrain)
     // Change in the terrain means we need to recompute the position
     // if one is set.
     if ( _position.isValid() )
+    {
         setPosition( _position );
+    }
 }
 
 void
@@ -84,6 +89,13 @@ GeoTransform::setPosition(const GeoPoint& position)
     if (position.altitudeMode() == ALTMODE_RELATIVE && !terrain.valid())
     {
         OE_TEST << LC << "setPosition failed condition 1\n";
+
+        // need to find a terrain, so schedule an update traversal.
+        if (!_terrainRequested)
+        {
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+            _terrainRequested = true;
+        }
         return false;
     }
 
@@ -148,6 +160,26 @@ GeoTransform::onTileAdded(const TileKey&          key,
    }
 
    setPosition(_position);
+}
+
+void
+GeoTransform::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        if (_terrainRequested)
+        {
+            MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
+            if (mapNode)
+            {
+                _terrainRequested = false;
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
+                setTerrain(mapNode->getTerrain());
+            }
+        }
+    }
+
+    osg::MatrixTransform::traverse(nv);
 }
 
 void

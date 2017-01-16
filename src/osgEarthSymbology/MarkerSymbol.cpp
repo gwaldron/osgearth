@@ -263,6 +263,8 @@ MarkerSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_RANDOM;
         else if ( match(c.value(), "centroid") ) 
             style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+        else if ( match(c.value(), "first") )
+            style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_FIRSTVERTEX;
     }
     else if ( match(c.key(), "marker-density") ) {
         style.getOrCreate<MarkerSymbol>()->density() = as<float>(c.value(), 1.0f);

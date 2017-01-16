@@ -135,6 +135,8 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_RANDOM;
         else if ( match(c.value(), "centroid") ) 
             style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_CENTROID;
+        else if ( match(c.value(), "first") )
+            style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_FIRSTVERTEX;
     }
     else if ( match(c.key(), "model-density") ) {
         style.getOrCreate<ModelSymbol>()->density() = as<float>(c.value(), 1.0f);

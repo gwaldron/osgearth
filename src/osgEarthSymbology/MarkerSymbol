@@ -46,6 +46,9 @@ namespace osgEarth { namespace Symbology
             /** Places one model instance at the centroid of the feature. */
             PLACEMENT_CENTROID,
 
+            /** Places one model instance at the centroid of the feature. */
+            PLACEMENT_FIRSTVERTEX,
+
             /** Places a model instance at each feature point. */
             PLACEMENT_VERTEX,
 

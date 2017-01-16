@@ -52,6 +52,9 @@ namespace osgEarth { namespace Symbology
             /** Places one instance at the centroid of the feature. */
             PLACEMENT_CENTROID,
 
+            /** Places one instance at the first vertex of the feature. */
+            PLACEMENT_FIRSTVERTEX,
+
             /** Places instances at regular intervals within/along the feature geometry,
                 according to density. */
             PLACEMENT_INTERVAL,

@@ -35,6 +35,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureTileSource
     Filter
     FilterContext
+    FirstVertexFilter
     GeometryCompiler
     GeometryUtils
     LabelSource
@@ -77,6 +78,7 @@ SET(TARGET_SRC
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
+    FirstVertexFilter.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
     LabelSource.cpp

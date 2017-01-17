@@ -335,7 +335,6 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         {
             TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            //ElevationPool* pool = _frame.getElevationPool();
             if (_pool && _pool->getTile(key, _frame, tile))
             {
                 // Got the new tile; put it in the query set:

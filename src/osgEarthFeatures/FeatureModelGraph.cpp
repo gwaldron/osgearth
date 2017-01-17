@@ -37,6 +37,8 @@
 #include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
+#include <osg/PolygonOffset>
+#include <osg/Depth>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
@@ -1536,6 +1538,15 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
         {
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderingHint( ss->TRANSPARENT_BIN );
+        }
+        
+        if (render->decal() == true)
+        {
+            getOrCreateStateSet()->setAttributeAndModes(
+                new osg::PolygonOffset(-1,-1), 1);
+
+            getOrCreateStateSet()->setAttributeAndModes(
+                new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
         }
     }
 }

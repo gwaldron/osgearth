@@ -22,17 +22,14 @@
             <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        <flat_buffer>50</flat_buffer>
-        <total_buffer>100</total_buffer>
+        <line_width>50m</line_width>
+        <buffer_width>50m</buffer_width>
     </flattened_elevation>
     
     
     <image name="readymap_imagery" driver="tms" opacity="0.9" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-    
-        
-    <image name="Debug" driver="debug" enabled="false"/>
     
     
     <model driver="feature_geom" min_level="13">
@@ -47,12 +44,16 @@
         <styles>
             <style type="text/css">
                 default {
-                   stroke: #ffff00;
+                   stroke: #ffffff;
                    stroke-width: 25m;
-                   //stroke-tessellation-size: 50m;
+                   stroke-tessellation-size: 50m;
                    stroke-image: "../data/road.png";
                    altitude-clamping: terrain;
+                   altitude-resolution: 0.00001;
+                   altitude-binding: vertex;
                    render-order: 1;
+                   render-transparent: true;
+                   render-decal: true;
                    altitude-offset: 0.05;
                 }                    
             </style>
@@ -77,6 +78,8 @@
     </road_surface>
     -->
     
+    <image driver="debug"/>
+    
     <bumpmap>
         <image>../data/rock_hard.jpg</image>
         <octaves>8</octaves>
@@ -92,6 +95,26 @@
             <name>Mt Rainier, Washington</name>
             <pitch>-21.29241356548601</pitch>
             <range>23926.75258864516</range>
+        </viewpoint>
+        <viewpoint name="Schvoy">
+          <heading>-0.523182</heading>
+          <pitch>-65.9341</pitch>
+          <range>676.617m</range>
+          <long>-121.63097887223</long>
+          <lat>46.76306559231917</lat>
+          <height>930.1141443094239</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+
+        
+        <viewpoint name="Broken">
+          <heading>13.6397</heading>
+          <pitch>-13.0747</pitch>
+          <range>124.882m</range>
+          <long>-121.6383054147929</long>
+          <lat>46.7624901147203</lat>
+          <height>951.450418044813</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
         <viewpoint name="Slant">
           <heading>132.744</heading>

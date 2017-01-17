@@ -34,7 +34,8 @@ _order(rhs._order),
 _clipPlane(rhs._clipPlane),
 _minAlpha(rhs._minAlpha),
 _renderBin(rhs._renderBin),
-_transparent(rhs._transparent)
+_transparent(rhs._transparent),
+_decal(rhs._decal)
 {
 }
 
@@ -46,7 +47,8 @@ _backfaceCulling( true ),
 _order          ( 0 ),
 _clipPlane      ( 0 ),
 _minAlpha       ( 0.0f ),
-_transparent    ( false )
+_transparent    ( false ),
+_decal          ( false )
 {
     mergeConfig(conf);
 }
@@ -65,6 +67,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "min_alpha",        _minAlpha );
     conf.addIfSet   ( "render_bin",       _renderBin );
     conf.addIfSet   ( "transparent",      _transparent );
+    conf.addIfSet   ( "decal",            _decal);
     return conf;
 }
 
@@ -80,6 +83,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "min_alpha",        _minAlpha );
     conf.getIfSet   ( "render_bin",       _renderBin );
     conf.getIfSet   ( "transparent",      _transparent );
+    conf.getIfSet   ( "decal",            _decal);
 }
 
 void
@@ -129,5 +133,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-transparent") ) {
         style.getOrCreate<RenderSymbol>()->transparent() = as<bool>(c.value(), *defaults.transparent() );
+    }
+    else if (match(c.key(), "render-decal")) {
+        style.getOrCreate<RenderSymbol>()->decal() = as<bool>(c.value(), *defaults.decal());
     }
 }

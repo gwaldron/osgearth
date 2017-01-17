@@ -63,21 +63,21 @@ GenerateGL3LightingUniforms::apply(osg::Node& node)
                     // error messages on the console.
                     if (dynamic_cast<MaterialGL3*>(material) == 0L)
                     {
-                        mat = new MaterialGL3(*material), rap->second;
-                        stateset->setAttributeAndModes(mat);
+                        mat = new MaterialGL3(*material);
+                        stateset->setAttributeAndModes(mat, rap->second);
                     }
     #endif
 
                     // Install the MaterialCallback so uniforms are updated.
                     if (!mat->getUpdateCallback())
                     {
-                      if (stateset->getDataVariance() == osg::Object::DYNAMIC)
-                        mat->setUpdateCallback(new MaterialCallback());
-                      else
-                      {
-                        MaterialCallback mc;
-                        mc.operator()(mat, NULL);
-                      }
+                        if (stateset->getDataVariance() == osg::Object::DYNAMIC)
+                            mat->setUpdateCallback(new MaterialCallback());
+                        else
+                        {
+                            MaterialCallback mc;
+                            mc.operator()(mat, NULL);
+                        }
                     }
                 }
 

@@ -92,7 +92,6 @@ void
 GeoPositionNode::init()
 {    
     _geoxform = new GeoTransform();
-    _geoxform->setAutoRecomputeHeights( true );
     this->addChild( _geoxform );
 
     _paxform = new osg::PositionAttitudeTransform();

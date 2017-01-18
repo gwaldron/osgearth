@@ -25,6 +25,10 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarth/MapNode>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Metrics>
+#include <osgEarth/Memory>
+#include <iostream>
 
 #define LC "[viewer] "
 
@@ -41,6 +45,7 @@ usage(const char* name)
     return 0;
 }
 
+
 int
 main(int argc, char** argv)
 {
@@ -52,6 +57,8 @@ main(int argc, char** argv)
 
     float vfov = -1.0f;
     arguments.read("--vfov", vfov);
+
+    
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
@@ -86,10 +93,47 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        viewer.run();
+
+        viewer.realize();        
+
+        while (!viewer.done())
+        {            
+            ScopedMetric fm("frame");
+
+            {
+                ScopedMetric m("advance");
+                viewer.advance();
+            }
+
+            {
+                ScopedMetric m("event");
+                viewer.eventTraversal();
+            }
+
+            {
+                ScopedMetric m("update");
+                viewer.updateTraversal();
+            }
+
+            {
+                ScopedMetric m("render");
+                viewer.renderingTraversals();            
+            }
+
+
+            // Report memory every 100 frames
+            if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
+            {
+                Metrics::counter("WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
+                Metrics::counter("PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
+                Metrics::counter("PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
+            }
+        }                
     }
     else
     {
         return usage(argv[0]);
     }
+
+    return 0;
 }

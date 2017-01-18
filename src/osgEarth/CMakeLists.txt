@@ -125,6 +125,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskSource
     Memory
     MemCache
+    Metrics
     ModelLayer
     ModelSource
     NativeProgramAdapter
@@ -197,7 +198,7 @@ IF (NOT TINYXML_FOUND)
     SET(LIB_PUBLIC_HEADERS
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
-        tinyxml.h 
+        tinyxml.h
     )
 ENDIF (NOT TINYXML_FOUND)
 
@@ -214,14 +215,14 @@ ENDIF (NOT TINYXML_FOUND)
 SET(VERSION_GIT_SOURCE "")
 IF (OSGEARTH_EMBED_GIT_SHA)
 	ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
-	
+
 	# auto-generate the VersionGit file to include the git SHA1 variable.
 	configure_file(
 		"${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
+		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp"
 		@ONLY)
-    
-	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")	
+
+	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
@@ -290,6 +291,7 @@ set(TARGET_SRC
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
+    Metrics.cpp
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp

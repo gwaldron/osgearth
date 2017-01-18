@@ -28,6 +28,7 @@
 #include <osgEarth/MemCache>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Metrics>
 #include <osg/Version>
 #include <osgDB/WriteFile>
 #include <memory.h>
@@ -547,6 +548,12 @@ GeoImage
 ImageLayer::createImage(const TileKey&    key,
                         ProgressCallback* progress)
 {
+    Config args;
+    args.add("key", key.str());
+    args.add("name", getName());
+    ScopedMetric m("ImageLayer::createImage", args);
+
+
     if (getStatus().isError())
     {
         return GeoImage::INVALID;

@@ -18,6 +18,8 @@
 */
 #include "TileNodeRegistry"
 
+#include <osgEarth/Metrics>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -128,6 +130,8 @@ TileNodeRegistry::addSafely(TileNode* tile)
         << ": tiles=" << _tiles.size()
         << ", notifiers=" << _notifiers.size()
         << std::endl;
+
+    Metrics::counter("TileNodeRegistry::NumTiles", _tiles.size());
 }
 
 void
@@ -142,6 +146,8 @@ TileNodeRegistry::removeSafely(const TileKey& key)
 
         // remove the tile.
         _tiles.erase( key );
+
+        Metrics::counter("TileNodeRegistry::NumTiles", _tiles.size());
     }
 
     //for(TileKeyOneToMany::iterator i = _notifiers.begin(); i != _notifiers.end(); )

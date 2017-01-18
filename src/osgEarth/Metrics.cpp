@@ -135,7 +135,7 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
         << "\"ph\": \"B\","
         << "\"name\": \""  << name << "\"";
 
@@ -177,7 +177,7 @@ void ChromeMetricsBackend::end(const std::string& name)
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
         << "\"ph\": \"E\","
         << "\"name\": \""  << name << "\""
         << "}";
@@ -202,24 +202,24 @@ void ChromeMetricsBackend::counter(const std::string& graph,
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
         << "\"ph\": \"C\","
         << "\"name\": \""  << graph << "\","
         << "\"args\" : {";
 
         if (!name0.empty())
         {
-            _metricsFile << "    \"" << name0 << "\": " << value0;
+            _metricsFile << "    \"" << name0 << "\": " << std::setprecision(9) << value0;
         }
 
         if (!name1.empty())
         {
-            _metricsFile << ",    \"" << name1 << "\": " << value1;
+            _metricsFile << ",    \"" << name1 << "\": " << std::setprecision(9) <<value1;
         }
 
         if (!name2.empty())
         {
-            _metricsFile << ",    \"" << name2 << "\": " << value2;
+            _metricsFile << ",    \"" << name2 << "\": " << std::setprecision(9) <<value2;
         }
         _metricsFile << "}}";
 }

@@ -94,10 +94,16 @@ main(int argc, char** argv)
     {
         viewer.setSceneData( node );
 
-        viewer.realize();        
+        viewer.realize(); 
+
+        double totalFrameTime = 0.0;
+        // Report memory and fps every 30 frames.
+        unsigned int reportEvery = 30;
 
         while (!viewer.done())
         {            
+            osg::Timer_t frameStart = osg::Timer::instance()->tick();
+
             ScopedMetric fm("frame");
 
             {
@@ -120,13 +126,25 @@ main(int argc, char** argv)
                 viewer.renderingTraversals();            
             }
 
+            // Record the frame time.
+            osg::Timer_t frameEnd = osg::Timer::instance()->tick();
+            double frameTime = osg::Timer::instance()->delta_s(frameStart, frameEnd);
+            totalFrameTime += frameTime;
 
-            // Report memory periodically.
-            if (Metrics::enabled() && viewer.getFrameStamp()->getFrameNumber() % 60 == 0)
+            // Report memory and fps periodically. periodically.
+            if (viewer.getFrameStamp()->getFrameNumber() % reportEvery == 0)
             {
-                Metrics::counter("WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
-                Metrics::counter("PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
-                Metrics::counter("PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
+                double fps = 1.0 / (totalFrameTime / (double)reportEvery );                
+                totalFrameTime = 0.0;
+                
+                // Only report the metrics if they are enabled to avoid computing the memory.
+                if (Metrics::enabled())
+                {
+                    Metrics::counter("WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
+                    Metrics::counter("PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
+                    Metrics::counter("PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
+                    Metrics::counter("FPS", "FPS", fps);
+                }                
             }
         }                
     }

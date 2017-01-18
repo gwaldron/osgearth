@@ -36,44 +36,14 @@ using namespace osgEarth::Symbology;
 #define OE_TEST OE_DEBUG
 
 namespace
-{    
-    void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
-    {
-
-        double dL = (double)((int)key.getLOD() - baseLOD);
-        double factor = pow(2.0, dL); //exp2(dL);
-        double invFactor = 1.0/factor;
-
-        u *= invFactor;
-        v *= invFactor;
-
-        if (factor >= 1.0)
-        {
-            unsigned nx, ny;
-            key.getProfile()->getNumTiles(key.getLOD(), nx, ny);
-
-            double tx = (double)key.getTileX();
-            double ty = (double)ny - (double)key.getTileY() - 1.0;
-
-            double ax = floor(tx * invFactor);
-            double ay = floor(ty * invFactor);
-            
-            double bx = ax * factor;
-            double by = ay * factor;
-            
-            double cx = bx + factor;
-            double cy = by + factor;
-
-            u += (tx - bx) / (cx - bx);
-            v += (ty - by) / (cy - by);
-        }
-    }
-
+{
+    // linear interpolation between a and b
     double inline mix(double a, double b, double t)
     {
         return a + (b-a)*t;
     }
 
+    // smoothstep (cos approx) interpolation between a and b
     double inline smoothstep(double a, double b, double t)
     {
         // smoothstep (approximates cosine):
@@ -81,24 +51,105 @@ namespace
         return a + (b-a)*mu;
     }
     
+    // clamp "a" to [lo..hi].
     double inline clamp(double a, double lo, double hi)
     {
         return std::max(std::min(a, hi), lo);
     }
 
-    osg::Vec3d inline getInternalPoint(const Polygon* p)
-    {
-        // TODO - fix to ensure an internal point.
-        return p->getBounds().center();
-    }
-
-    double inline square(double a)
-    {
-        return a*a;
-    }
-
     typedef osg::Vec3d POINT;
     typedef osg::Vec3d VECTOR;
+
+    // iterator that permits the use of looping indexes.
+    template<typename T>
+    struct CircleIterator {
+        CircleIterator(const std::vector<T>& v) : _v(v) { }
+        int size() const { return _v.size(); }
+        const T& operator[](int i) const { return _v[i % _v.size()]; }
+        const std::vector<T>& _v;
+    };
+    
+    // is P inside the CCW triangle ABC?
+    bool triangleContains(const POINT& A, const POINT& B, const POINT& C, const POINT& P)
+    {
+        VECTOR AB = B-A, BC = C-B, CA = A-C;
+        if (((P - A) ^ AB).z() > 0.0) return false;
+        if (((P - B) ^ BC).z() > 0.0) return false;
+        if (((P - C) ^ CA).z() > 0.0) return false;
+        return true;
+    }
+
+    // Find a point internal to the polygon.
+    // This will not always work with polygons that contain holes,
+    // so we need to come up with a different algorithm if this becomes a problem.
+    // Maybe try a random point generator and profile it.
+    osg::Vec3d inline getInternalPoint(const Polygon* p)
+    {
+        // Simple test: if the centroid is in the polygon, use it.
+        osg::Vec3d centroid = p->getBounds().center();
+        if (p->contains2D(centroid.x(), centroid.y()))
+            return centroid;
+
+        // Concave/holey polygon, so try the hard way.
+        // Ref: http://apodeline.free.fr/FAQ/CGAFAQ/CGAFAQ-3.html
+
+        CircleIterator<POINT> vi(p->asVector());
+
+        for (int i = 0; i < vi.size(); ++i)
+        {
+            const POINT& V = vi[i];
+            const POINT& A = vi[i-1];
+            const POINT& B = vi[i+1];
+
+            if (((V - A) ^ (B - V)).z() > 0.0) // Convex vertex? (assume CCW winding)
+            {
+                double minDistQV2 = DBL_MAX;   // shortest distance from test point to candidate point
+                int indexBestQ;                // index of best candidate point
+
+                // loop over all other verts (besides A, V, B):
+                for (int j = i + 2; j < i + 2 + vi.size() - 3; ++j)
+                {
+                    const POINT& Q = vi[j];
+
+                    if (triangleContains(A, V, B, Q))
+                    {
+                        double distQV2 = (Q - V).length2();
+                        if (distQV2 < minDistQV2)
+                        {
+                            minDistQV2 = distQV2;
+                            indexBestQ = j;
+                        }
+                    }
+                }
+
+                POINT result;
+
+                // If no inside point was found, return the midpoint of AB.
+                if (minDistQV2 == DBL_MAX)
+                {
+                    result = (A+B)*0.5;
+                }
+
+                // Otherwise, use the midpoint of QV.
+                else
+                {
+                    const POINT& Q = vi[indexBestQ];
+                    result = (Q+V)*0.5;
+                }
+
+                // make sure the resulting point doesn't fall within any of the
+                // polygon's holes.
+                if (p->contains2D(result.x(), result.y()))
+                {
+                    return result;
+                }
+            }
+        }
+
+        // Will only happen is holes prevent us from finding an internal point.
+        OE_WARN << LC << "getInternalPoint failed miserably\n";
+        return p->getBounds().center();
+    }
 
     double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
     {        
@@ -118,7 +169,11 @@ namespace
         return Dmin;
     }
     
-    bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+    // Creates a heightfield that flattens an area intersecting the input polygon geometry.
+    // The height of the area is found by sampling a point internal to the polygon.
+    // bufferWidth = width of transition from flat area to natural terrain.
+    bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
+                           double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -149,7 +204,7 @@ namespace
                     P = Pex;
                 
                 bool done = false;
-                double minD2 = bufferWidth; // minimum distance(squared) to closest polygon edge
+                double minD2 = bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
 
                 const Polygon* bestPoly = 0L;
 
@@ -210,7 +265,11 @@ namespace
     }
 
 
-    bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+    // Create a heightfield that flattens the terrain around linear geometry.
+    // lineWidth = width of completely flat area
+    // bufferWidth = width of transition from flat area to natural terrain
+    bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
+                        double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -224,7 +283,7 @@ namespace
 
         double innerRadius = lineWidth * 0.5;
         double outerRadius = innerRadius + bufferWidth;
-        double outerRadius2 = square(outerRadius);
+        double outerRadius2 = outerRadius * outerRadius;
 
         bool needsTransform = ex.getSRS() != geomSRS;
 
@@ -350,7 +409,8 @@ namespace
         return wroteChanges;
     }
     
-    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS, double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
+                   double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
     {
         if (geom->isLinear())
             return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, progress);
@@ -399,27 +459,11 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
         OE_WARN << LC << "Internal error - Pool layer set is empty\n";
         return 0L;
     }
-    
+
 
     OE_START_TIMER(create);
 
     const GeoExtent& ex = key.getExtent();
-
-    //// all points <= innerRadius from the centerline are flattened
-    //double innerRadius = _innerBuffer;
-
-    //// all points > innerRadius and <= outerRadius and smoothstep blended
-    //double outerRadius = _outerBuffer;
-
-    //// adjust those values based on latitude in a geographic map
-    //if (ex.getSRS()->isGeographic())
-    //{
-    //    double latMid = fabs(ex.yMin() + ex.height()*0.5);
-    //    double metersPerDegAtEquator = (ex.getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-    //    double metersPerDegree = metersPerDegAtEquator * cos(osg::DegreesToRadians(latMid));
-    //    innerRadius = innerRadius / metersPerDegree;
-    //    outerRadius = outerRadius / metersPerDegree;
-    //}
 
     // We will collection all the feature geometries in this multi:
     MultiGeometry geoms;
@@ -481,9 +525,7 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 
         if (cursor.valid() && cursor->hasMore())
         {
-            const SpatialReference* featureSRS = _featureSource->getFeatureProfile()->getSRS();
-            bool needsTransform = !featureSRS->isHorizEquivalentTo(key.getExtent().getSRS());
-
+            //const SpatialReference* featureSRS = _featureSource->getFeatureProfile()->getSRS();
             while (cursor->hasMore())
             {
                 Feature* feature = cursor->nextFeature();

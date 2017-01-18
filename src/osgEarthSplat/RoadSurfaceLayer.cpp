@@ -119,52 +119,67 @@ RoadSurfaceLayer::createTexture(const TileKey& key, ProgressCallback* progress)
 
 GeoNode*
 RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
-{
-    // all points > innerRadius and <= outerRadius and smoothstep blended
-    double outerRadius = options().outerWidth().get() * 0.5;
-
-    // adjust those values based on latitude in a geographic map
-    if (key.getExtent().getSRS()->isGeographic())
+{        
+    // Resolve the list of tile keys that intersect the incoming extent:
+    std::vector<TileKey> featureKeys;
+    if (_features->getFeatureProfile() && _features->getFeatureProfile()->getProfile())
     {
-        double latMid = fabs(key.getExtent().yMin() + key.getExtent().height()*0.5);
-        double metersPerDegAtEquator = (key.getExtent().getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double metersPerDegree = metersPerDegAtEquator * cos(osg::DegreesToRadians(latMid));
-        //innerRadius = innerRadius / metersPerDegree;
-        outerRadius = outerRadius / metersPerDegree;
+        _features->getFeatureProfile()->getProfile()->getIntersectingTiles(key, featureKeys);    
+    }
+    else
+    {
+        featureKeys.push_back(key);
     }
 
-    // Expand the query bounds to encompass any feature within outerRadius of the tile:
-    Bounds queryBounds = key.getExtent().bounds();
-    queryBounds.expandBy(queryBounds.xMin() - outerRadius, queryBounds.yMin() - outerRadius, 0);
-    queryBounds.expandBy(queryBounds.xMax() + outerRadius, queryBounds.yMax() + outerRadius, 0);
-    queryBounds.transform(key.getExtent().getSRS(), _features->getFeatureProfile()->getSRS());
+    const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    const SpatialReference* featureSRS = featureProfile->getSRS();
 
-    // Use that to query the feature source:
-    Query query;
-    query.bounds() = queryBounds;
-    osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
-    if (!cursor.valid() || !cursor->hasMore())
-        return 0L;
+    FeatureList features;
 
+    std::set<TileKey> fkeys;
+
+    for (int i = 0; i < featureKeys.size(); ++i)
+    {        
+        if (featureKeys[i].getLOD() > featureProfile->getMaxLevel())
+            fkeys.insert(featureKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
+    }
+
+    for (std::set<TileKey>::const_iterator i = fkeys.begin(); i != fkeys.end(); ++i)
+    {
+        Query query;
+        query.tileKey() = *i;
+
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+        if (cursor.valid())
+        {
+            cursor->fill(features);
+        }
+    }
+
+    // Create the output extent in feature SRS:
     GeoExtent outputExtent = key.getExtent();
     FilterContext fc(_session.get(), _features->getFeatureProfile(), outputExtent);
+    
+    // By default, the geometry compiler will use the Session's Map SRS at the output SRS
+    // for feature data. We want a projected output so we can take an overhead picture of it.
+    // So set the output SRS to mercator instead.
     if (key.getExtent().getSRS()->isGeographic())
     {
         fc.setOutputSRS(SpatialReference::get("spherical-mercator"));
         outputExtent = outputExtent.transform(fc.getOutputSRS());
     }
 
+    // turn off the shader generation:
     GeometryCompilerOptions geomOptions;
     geomOptions.shaderPolicy() = SHADERPOLICY_DISABLE;
 
+    // compile the features into a node.
     GeometryCompiler compiler(geomOptions);
-    osg::ref_ptr<osg::Node> node = compiler.compile(cursor, options().style().get(), fc);
-
-    //if (node)
-    //    osgDB::writeNodeFile(*node, "out.osgb");
-
+    osg::ref_ptr<osg::Node> node = compiler.compile(features, options().style().get(), fc);
+    
     if (node && node->getBound().valid())
     {
+        // return that new node.
         return new GeoNode(node.release(), outputExtent);
     }
     else

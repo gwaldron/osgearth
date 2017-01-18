@@ -51,12 +51,25 @@ namespace osgEarth
 
         /**
          * A counter event
-         * @param name
-         *        The name of the counter
-         * @param value
-         *        The value of the counter.
+         * @param graph
+         *        The graph to display the counters on.
+         * @param name0
+         *        The name of the first counter.
+         * @param value0
+         *        The value of the first counter.
+         * @param name1
+         *        The name of the second counter.
+         * @param value1
+         *        The value of the second counter.
+         * @param name2
+         *        The name of the third counter.
+         * @param value2
+         *        The value of the third counter.
          */
-        virtual void counter(const std::string& name, double value) = 0;
+        virtual void counter(const std::string& graph,
+                             const std::string& name0, double value0,
+                             const std::string& name1, double value1,
+                             const std::string& name2, double value2) = 0;
     };
 
     /**
@@ -71,8 +84,29 @@ namespace osgEarth
 
         virtual void begin(const std::string& name, const Config& args =Config());
         virtual void end(const std::string& name);
-        virtual void counter(const std::string& name, double value);
+        
 
+        /**
+         * A counter event
+         * @param graph
+         *        The graph to display the counters on.
+         * @param name0
+         *        The name of the first counter.
+         * @param value0
+         *        The value of the first counter.
+         * @param name1
+         *        The name of the second counter.
+         * @param value1
+         *        The value of the second counter.
+         * @param name2
+         *        The name of the third counter.
+         * @param value2
+         *        The value of the third counter.
+         */
+        virtual void counter(const std::string& graph,
+                             const std::string& name0, double value0,
+                             const std::string& name1, double value1,
+                             const std::string& name2, double value2);
 
     protected:
         std::ofstream _metricsFile;
@@ -101,12 +135,61 @@ namespace osgEarth
 
         /**
          * A counter event
-         * @param name
-         *        The name of the counter
-         * @param value
-         *        The value of the counter.
+         * @param graph
+         *        The graph to display the counters on.
+         * @param name0
+         *        The name of the first counter.
+         * @param value0
+         *        The value of the first counter.         
          */
-        static void counter(const std::string& name, double value);
+        static void counter(const std::string& graph,const std::string& name0, double value0);
+           
+        /**
+         * A counter event
+         * @param graph
+         *        The graph to display the counters on.
+         * @param name0
+         *        The name of the first counter.
+         * @param value0
+         *        The value of the first counter.
+         * @param name1
+         *        The name of the second counter.
+         * @param value1
+         *        The value of the second counter.
+         */
+        static void counter(const std::string& graph,const std::string& name0, double value0,
+                                                     const std::string& name1, double value1);
+
+        /**
+         * A counter event
+         * @param graph
+         *        The graph to display the counters on.
+         * @param name0
+         *        The name of the first counter.
+         * @param value0
+         *        The value of the first counter.
+         * @param name1
+         *        The name of the second counter.
+         * @param value1
+         *        The value of the second counter.
+         * @param name2
+         *        The name of the third counter.
+         * @param value2
+         *        The value of the third counter.
+         */
+        static void counter(const std::string& graph,const std::string& name0, double value0,
+                                                     const std::string& name1, double value1,
+                                                     const std::string& name2, double value2);
+
+        /**
+         * Gets the metrics backend.
+         */
+        static MetricsBackend* getMetricsBackend();
+
+        /*
+         * Whether metrics collection is enabled.  Equivalent to checking getMetricsBackend != NULL;
+         */
+        static bool enabled();
 
         /**
          * Sets the MetricsBackend

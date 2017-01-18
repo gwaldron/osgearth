@@ -131,7 +131,7 @@ TileNodeRegistry::addSafely(TileNode* tile)
         << ", notifiers=" << _notifiers.size()
         << std::endl;
 
-    Metrics::counter("TileNodeRegistry::NumTiles", _tiles.size());
+    Metrics::counter("RexStats", "Tiles", _tiles.size());
 }
 
 void
@@ -147,7 +147,7 @@ TileNodeRegistry::removeSafely(const TileKey& key)
         // remove the tile.
         _tiles.erase( key );
 
-        Metrics::counter("TileNodeRegistry::NumTiles", _tiles.size());
+        Metrics::counter("RexStats", "Tiles", _tiles.size());
     }
 
     //for(TileKeyOneToMany::iterator i = _notifiers.begin(); i != _notifiers.end(); )

@@ -121,12 +121,12 @@ main(int argc, char** argv)
             }
 
 
-            // Report memory every 100 frames
-            if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
+            // Report memory periodically.
+            if (Metrics::enabled() && viewer.getFrameStamp()->getFrameNumber() % 60 == 0)
             {
-                Metrics::counter("WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
-                Metrics::counter("PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
-                Metrics::counter("PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
+                Metrics::counter("WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
+                Metrics::counter("PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
+                Metrics::counter("PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
             }
         }                
     }

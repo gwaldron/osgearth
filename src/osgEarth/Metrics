@@ -46,8 +46,10 @@ namespace osgEarth
          * Ends an event
          * @param name
          *        The name of the event.
+         * @param args
+         *        The arguments to the event.
          */
-        virtual void end(const std::string& name) = 0;
+        virtual void end(const std::string& name, const Config& args =Config()) = 0;
 
         /**
          * A counter event
@@ -83,7 +85,7 @@ namespace osgEarth
         ~ChromeMetricsBackend();
 
         virtual void begin(const std::string& name, const Config& args =Config());
-        virtual void end(const std::string& name);
+        virtual void end(const std::string& name, const Config& args =Config());
         
 
         /**
@@ -130,8 +132,10 @@ namespace osgEarth
          * Ends an event
          * @param name
          *        The name of the event.
+         * @param args
+         *        The arguments to the event.
          */
-        static void end(const std::string& name);
+        static void end(const std::string& name,  const Config& args = Config());
 
         /**
          * A counter event

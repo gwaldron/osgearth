@@ -55,11 +55,11 @@ void Metrics::begin(const std::string& name, const Config& args)
     }
 }
 
-void Metrics::end(const std::string& name)
+void Metrics::end(const std::string& name, const Config& args)
 {
     if (s_metrics_backend)
     {
-        s_metrics_backend->end(name);
+        s_metrics_backend->end(name, args);
     }
 }
 
@@ -130,7 +130,7 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
     else
     {
         _metricsFile << "," << std::endl;
-    }    
+    }
     _metricsFile << "{"
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
@@ -161,7 +161,7 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
         _metricsFile << "}";
 }
 
-void ChromeMetricsBackend::end(const std::string& name)
+void ChromeMetricsBackend::end(const std::string& name, const Config& args)
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
     if (_firstEvent)
@@ -171,16 +171,35 @@ void ChromeMetricsBackend::end(const std::string& name)
     else
     {
         _metricsFile << "," << std::endl;
-    } 
-
+    }
     _metricsFile << "{"
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
         << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
         << "\"ph\": \"E\","
-        << "\"name\": \""  << name << "\""
-        << "}";
+        << "\"name\": \""  << name << "\"";
+
+    if (!args.empty())
+    {
+        _metricsFile << "," << std::endl << " \"args\": {";
+        bool first = true;
+        for( ConfigSet::const_iterator i = args.children().begin(); i != args.children().end(); ++i ) {
+            if (first)
+            {
+                first = !first;
+            }
+            else
+            {
+                _metricsFile << "," << std::endl;
+            }
+            _metricsFile << "\"" << i->key() << "\" : \"" << i->value() << "\"";
+        }
+        _metricsFile << "}";
+    }
+
+
+        _metricsFile << "}";
 }
 
 void ChromeMetricsBackend::counter(const std::string& graph,
@@ -196,7 +215,7 @@ void ChromeMetricsBackend::counter(const std::string& graph,
     else
     {
         _metricsFile << "," << std::endl;
-    } 
+    }
 
     _metricsFile << "{"
         << "\"cat\": \"" << "" << "\","

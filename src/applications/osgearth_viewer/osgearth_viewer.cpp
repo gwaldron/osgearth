@@ -97,8 +97,8 @@ main(int argc, char** argv)
         viewer.realize(); 
 
         double totalFrameTime = 0.0;
-        // Report memory and fps every 30 frames.
-        unsigned int reportEvery = 30;
+        // Report memory and fps every 5 frames.
+        unsigned int reportEvery = 5;
 
         while (!viewer.done())
         {            

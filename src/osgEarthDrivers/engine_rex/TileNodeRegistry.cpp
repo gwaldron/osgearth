@@ -334,6 +334,8 @@ TileNodeRegistry::releaseAll(ResourceReleaser* releaser)
 
         _tiles.clear();
         _notifiers.clear();
+
+        Metrics::counter("RexStats", "Tiles", _tiles.size());
     }
 
     releaser->push(objects);

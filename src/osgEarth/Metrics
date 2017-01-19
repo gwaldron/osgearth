@@ -114,6 +114,7 @@ namespace osgEarth
         std::ofstream _metricsFile;
         OpenThreads::Mutex _mutex;    
         bool _firstEvent;
+        osg::Timer_t _startTime;
     };
 
     class OSGEARTH_EXPORT Metrics

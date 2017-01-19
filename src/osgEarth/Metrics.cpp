@@ -51,7 +51,7 @@ namespace
 
 void Metrics::begin(const std::string& name, const Config& args)
 {
-    if (s_metrics_backend)
+    if (s_metrics_backend.valid())
     {
         s_metrics_backend->begin(name, args);
     }
@@ -59,7 +59,8 @@ void Metrics::begin(const std::string& name, const Config& args)
 
 void Metrics::begin(const std::string& name, unsigned int argCount, ...)
 {
-    if (!s_metrics_backend) return;
+    if (!s_metrics_backend.valid())
+        return;
 
     Config conf;
 
@@ -80,7 +81,8 @@ void Metrics::begin(const std::string& name, unsigned int argCount, ...)
 
 void Metrics::end(const std::string& name, unsigned int argCount, ...)
 {
-    if (!s_metrics_backend) return;
+    if (!s_metrics_backend.valid())
+        return;
 
     Config conf;
 
@@ -101,7 +103,7 @@ void Metrics::end(const std::string& name, unsigned int argCount, ...)
 
 void Metrics::end(const std::string& name, const Config& args)
 {
-    if (s_metrics_backend)
+    if (s_metrics_backend.valid())
     {
         s_metrics_backend->end(name, args);
     }
@@ -127,7 +129,7 @@ void Metrics::counter(const std::string& graph,const std::string& name0, double 
                                         const std::string& name1, double value1,
                                         const std::string& name2, double value2)
 {
-    if (s_metrics_backend)
+    if (s_metrics_backend.valid())
     {
         s_metrics_backend->counter(graph, name0, value0,
                                           name1, value1,
@@ -153,6 +155,7 @@ bool Metrics::enabled()
 ChromeMetricsBackend::ChromeMetricsBackend(const std::string& filename):
 _firstEvent(true)
 {
+    _startTime = osg::Timer::instance()->tick();
     _metricsFile.open(filename.c_str(), std::ios::out);
     _metricsFile << "[";
 }
@@ -166,6 +169,8 @@ ChromeMetricsBackend::~ChromeMetricsBackend()
 
 void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
     OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
     if (_firstEvent)
     {
@@ -179,7 +184,7 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->delta_u(_startTime, now) << "\","
         << "\"ph\": \"B\","
         << "\"name\": \""  << name << "\"";
 
@@ -207,6 +212,8 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
 
 void ChromeMetricsBackend::end(const std::string& name, const Config& args)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
     OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
     if (_firstEvent)
     {
@@ -220,7 +227,7 @@ void ChromeMetricsBackend::end(const std::string& name, const Config& args)
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->delta_u(_startTime, now) << "\","
         << "\"ph\": \"E\","
         << "\"name\": \""  << name << "\"";
 
@@ -242,8 +249,7 @@ void ChromeMetricsBackend::end(const std::string& name, const Config& args)
         _metricsFile << "}";
     }
 
-
-        _metricsFile << "}";
+    _metricsFile << "}";
 }
 
 void ChromeMetricsBackend::counter(const std::string& graph,
@@ -251,6 +257,8 @@ void ChromeMetricsBackend::counter(const std::string& graph,
                              const std::string& name1, double value1,
                              const std::string& name2, double value2)
 {
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
     OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_mutex);
     if (_firstEvent)
     {
@@ -265,7 +273,7 @@ void ChromeMetricsBackend::counter(const std::string& graph,
         << "\"cat\": \"" << "" << "\","
         << "\"pid\": \"" << 0 << "\","
         << "\"tid\": \"" << osgEarth::Threading::getCurrentThreadId() << "\","
-        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->time_u() << "\","
+        << "\"ts\": \""  << std::setprecision(9) << osg::Timer::instance()->delta_u(_startTime, now) << "\","
         << "\"ph\": \"C\","
         << "\"name\": \""  << graph << "\","
         << "\"args\" : {";

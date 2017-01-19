@@ -21,6 +21,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
+#include <osgEarth/Metrics>
 #include <osg/Version>
 #include <iterator>
 
@@ -414,6 +415,11 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
+    ScopedMetric m("ElevationLayer::createHeightField", 2,
+                   "key", key.str().c_str(),
+                   "name", getName().c_str());
+
+
     if (getStatus().isError())
     {
         return GeoHeightField::INVALID;

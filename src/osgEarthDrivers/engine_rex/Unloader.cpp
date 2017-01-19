@@ -85,13 +85,13 @@ UnloaderGroup::unloadChildren(const std::vector<TileKey>& keys)
 
 void
 UnloaderGroup::traverse(osg::NodeVisitor& nv)
-{        
-    ScopedMetric m("UnloaderGroup::traverse");
-
+{
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {        
         if ( _parentKeys.size() > _threshold )
         {
+            ScopedMetric m("Unloader expire");
+
             unsigned unloaded=0, notFound=0, notDormant=0;
             Threading::ScopedMutexLock lock( _mutex );
             for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
@@ -103,20 +103,16 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                     if ( parentNode->areSubTilesDormant(nv.getFrameStamp()) )
                     {
                         // find and move all tiles to be unloaded to the dead pile.
-                        Metrics::begin("ExpirationCollector");
                         ExpirationCollector collector( _tiles );
                         for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
                             parentNode->getSubTile(i)->accept( collector );
                         unloaded += collector._count;
-                        Metrics::end("ExpirationCollector");
 
                         // submit all collected nodes for GL resource release:
                         if (!collector._nodes.empty() && _releaser.valid())
                             _releaser->push(collector._nodes);
 
-                        Metrics::begin("removeSubTiles");
                         parentNode->removeSubTiles();
-                        Metrics::end("removeSubTiles");
                     }
                     else notDormant++;
                 }

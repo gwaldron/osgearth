@@ -220,6 +220,8 @@ namespace osgEarth
          * Sets the MetricsBackend
          */
         static void setMetricsBackend( MetricsBackend* backend );
+
+        static Config encodeArgs(unsigned count, ...);
     };
 
     /**
@@ -233,13 +235,22 @@ namespace osgEarth
     class OSGEARTH_EXPORT ScopedMetric
     {
     public:
-        ScopedMetric(const std::string& name, const Config& args =Config());
+        ScopedMetric(const std::string& name);
+        ScopedMetric(const std::string& name, const Config& args);
         ScopedMetric(const std::string& name, int argCount, ...);
         ~ScopedMetric();
         std::string _name;
-        Config _args;
     };
 
+#define METRIC_BEGIN(...) if (osgEarth::Metrics::enabled()) osgEarth::Metrics::begin(__VA_ARGS__)
+
+#define METRIC_END(...)   if (osgEarth::Metrics::enabled()) osgEarth::Metrics::end(__VA_ARGS__)
+    
+#define METRIC_SCOPED(NAME) \
+    osgEarth::ScopedMetric scoped_metric__(NAME) 
+
+#define METRIC_SCOPED_EX(NAME, COUNT, ...) \
+    osgEarth::ScopedMetric scoped_metric__(NAME, osgEarth::Metrics::enabled() ? osgEarth::Metrics::encodeArgs(COUNT, __VA_ARGS__) : osgEarth::Config())
 };
 
 #endif

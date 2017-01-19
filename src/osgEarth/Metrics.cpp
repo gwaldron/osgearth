@@ -57,6 +57,25 @@ void Metrics::begin(const std::string& name, const Config& args)
     }
 }
 
+Config Metrics::encodeArgs(unsigned count, ...)
+{
+    Config conf;
+
+    va_list args;
+    va_start( args, count );    
+
+    for (unsigned int i = 0; i < count; i++)
+    {
+        char* key = va_arg(args, char*);
+        char* value = va_arg(args, char*);
+        conf.add( key, value );
+    }
+
+    va_end(args);
+
+    return conf;
+}
+
 void Metrics::begin(const std::string& name, unsigned int argCount, ...)
 {
     if (!s_metrics_backend.valid())
@@ -206,8 +225,7 @@ void ChromeMetricsBackend::begin(const std::string& name, const Config& args)
         _metricsFile << "}";
     }
 
-
-        _metricsFile << "}";
+    _metricsFile << "}";
 }
 
 void ChromeMetricsBackend::end(const std::string& name, const Config& args)
@@ -296,6 +314,13 @@ void ChromeMetricsBackend::counter(const std::string& graph,
 }
 
 
+
+ScopedMetric::ScopedMetric(const std::string& name) :
+_name(name)
+{
+    static Config s_emptyConfig;
+    Metrics::begin(_name, s_emptyConfig);
+}
 
 ScopedMetric::ScopedMetric(const std::string& name, const Config& args) :
 _name(name)

@@ -750,7 +750,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    Metrics::begin("HTTPClient::doGet", 1,
+    METRIC_BEGIN("HTTPClient::doGet", 1,
                    "url", request.getURL().c_str());
 
     OE_START_TIMER(http_get);
@@ -957,7 +957,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
             progress->stats("http_cancel_count") += 1;
     }
 
-    Metrics::end("HTTPClient::doGet", 1,
+    METRIC_END("HTTPClient::doGet", 1,
                  "response_code", toString<int>(response.getCode()).c_str());
 
     return response;
@@ -970,7 +970,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    Metrics::begin("HTTPClient::doGet", 1,
+    METRIC_BEGIN("HTTPClient::doGet", 1,
                    "url", request.getURL().c_str());
 
     initialize();
@@ -1309,8 +1309,9 @@ HTTPClient::doGet(const HTTPRequest&    request,
         }
     }
 
-    Metrics::end("HTTPClient::doGet", 1,
-                 "response_code", toString<int>(response.getCode()).c_str());
+    METRIC_END("HTTPClient::doGet", 2,
+               "response_code", toString<int>(response.getCode()).c_str(),
+               "canceled", toString<bool>(response.isCancelled()));
 
     return response;
 }
@@ -1454,7 +1455,10 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1530,7 +1534,10 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1602,7 +1609,10 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1655,7 +1665,10 @@ HTTPClient::doReadString(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }

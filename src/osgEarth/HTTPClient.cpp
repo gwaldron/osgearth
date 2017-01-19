@@ -750,9 +750,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    Config beginArgs;
-    beginArgs.add("url", request.getURL());
-    Metrics::begin("HTTPClient::doGet", beginArgs);
+    Metrics::begin("HTTPClient::doGet", 1,
+                   "url", request.getURL().c_str());
 
     OE_START_TIMER(http_get);
 
@@ -958,9 +957,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
             progress->stats("http_cancel_count") += 1;
     }
 
-    Config endArgs;
-    endArgs.add("response_code", response.getCode());
-    Metrics::end("HTTPClient::doGet", endArgs);
+    Metrics::end("HTTPClient::doGet", 1,
+                 "response_code", toString<int>(response.getCode()).c_str());
 
     return response;
 }
@@ -972,9 +970,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
-    Config beginArgs;
-    beginArgs.add("url", request.getURL());
-    Metrics::begin("HTTPClient::doGet", beginArgs);
+    Metrics::begin("HTTPClient::doGet", 1,
+                   "url", request.getURL().c_str());
 
     initialize();
 
@@ -1312,12 +1309,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
         }
     }
 
-
-
-    Config endArgs;
-    endArgs.add("response_code", response.getCode());
-    Metrics::end("HTTPClient::doGet", endArgs);
-
+    Metrics::end("HTTPClient::doGet", 1,
+                 "response_code", toString<int>(response.getCode()).c_str());
 
     return response;
 }

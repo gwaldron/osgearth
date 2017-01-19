@@ -415,10 +415,9 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
-    Config args;
-    args.add("key", key.str());
-    args.add("name", getName());
-    ScopedMetric m("ElevationLayer::createHeightField", args);
+    ScopedMetric m("ElevationLayer::createHeightField", 2,
+                   "key", key.str().c_str(),
+                   "name", getName().c_str());
 
 
     if (getStatus().isError())

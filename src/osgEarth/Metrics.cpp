@@ -19,6 +19,8 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/ThreadingUtils>
 
+#include <cstdarg>
+
 using namespace osgEarth;
 
 
@@ -53,6 +55,48 @@ void Metrics::begin(const std::string& name, const Config& args)
     {
         s_metrics_backend->begin(name, args);
     }
+}
+
+void Metrics::begin(const std::string& name, unsigned int argCount, ...)
+{
+    if (!s_metrics_backend) return;
+
+    Config conf;
+
+    va_list args;
+    va_start( args, argCount );    
+
+    for (unsigned int i = 0; i < argCount; i++)
+    {
+        char* key = va_arg(args, char*);
+        char* value = va_arg(args, char*);
+        conf.add( key, value );
+    }
+
+    va_end(args);
+
+    begin(name, conf);
+}
+
+void Metrics::end(const std::string& name, unsigned int argCount, ...)
+{
+    if (!s_metrics_backend) return;
+
+    Config conf;
+
+    va_list args;
+    va_start( args, argCount );    
+
+    for (unsigned int i = 0; i < argCount; i++)
+    {
+        char* key = va_arg(args, char*);
+        char* value = va_arg(args, char*);
+        conf.add( key, value );
+    }
+
+    va_end(args);
+
+    end(name, conf);
 }
 
 void Metrics::end(const std::string& name, const Config& args)
@@ -249,6 +293,28 @@ ScopedMetric::ScopedMetric(const std::string& name, const Config& args) :
 _name(name)
 {
     Metrics::begin(_name, args);
+}
+
+ScopedMetric::ScopedMetric(const std::string& name, int argCount, ...) :
+_name(name)
+{
+    if (!s_metrics_backend) return;
+
+    Config conf;
+
+    va_list args;
+    va_start( args, argCount );    
+
+    for (unsigned int i = 0; i < argCount; i++)
+    {
+        char* key = va_arg(args, char*);
+        char* value = va_arg(args, char*);
+        conf.add( key, value );
+    }
+
+    va_end(args);
+
+    Metrics::begin(_name, conf);
 }
 
 ScopedMetric::~ScopedMetric()

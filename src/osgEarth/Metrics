@@ -128,6 +128,26 @@ namespace osgEarth
          */
         static void begin(const std::string& name, const Config& args =Config());
 
+
+        /**
+         * Begins an event with a variable number of arguments
+         * @param name
+         *        The name of the event
+         * @param argCount
+         *        The number of argument pairs (key, value) that will 
+         */
+        static void begin(const std::string& name, unsigned int argCount, ...);
+
+        /**
+         * Ends an event with a variable number of arguments
+         * @param name
+         *        The name of the event
+         * @param argCount
+         *        The number of argument pairs (key, value) that will 
+
+         */
+        static void end(const std::string& name, unsigned int argCount, ...);
+
         /**
          * Ends an event
          * @param name
@@ -213,6 +233,7 @@ namespace osgEarth
     {
     public:
         ScopedMetric(const std::string& name, const Config& args =Config());
+        ScopedMetric(const std::string& name, int argCount, ...);
         ~ScopedMetric();
         std::string _name;
         Config _args;

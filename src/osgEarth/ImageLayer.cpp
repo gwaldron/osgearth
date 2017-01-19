@@ -548,11 +548,9 @@ GeoImage
 ImageLayer::createImage(const TileKey&    key,
                         ProgressCallback* progress)
 {
-    Config args;
-    args.add("key", key.str());
-    args.add("name", getName());
-    ScopedMetric m("ImageLayer::createImage", args);
-
+    ScopedMetric m("ImageLayer::createImage", 2,
+                    "key", key.str().c_str(),
+                    "name", getName().c_str());
 
     if (getStatus().isError())
     {

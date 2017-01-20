@@ -63,7 +63,7 @@ Config Metrics::encodeArgs(unsigned count, ...)
     Config conf;
 
     va_list args;
-    va_start( args, count );    
+    va_start( args, count );
 
     for (unsigned int i = 0; i < count; i++)
     {
@@ -85,7 +85,7 @@ void Metrics::begin(const std::string& name, unsigned int argCount, ...)
     Config conf;
 
     va_list args;
-    va_start( args, argCount );    
+    va_start( args, argCount );
 
     for (unsigned int i = 0; i < argCount; i++)
     {
@@ -107,7 +107,7 @@ void Metrics::end(const std::string& name, unsigned int argCount, ...)
     Config conf;
 
     va_list args;
-    va_start( args, argCount );    
+    va_start( args, argCount );
 
     for (unsigned int i = 0; i < argCount; i++)
     {
@@ -181,53 +181,109 @@ int Metrics::run(osgViewer::Viewer& viewer)
             viewer.realize();
         }
 
+        // If Metrics are enabled, enable stats on the Viewer so that it we can report them for the Metrics
+                if (Metrics::enabled())
+        {
+            osgViewer::ViewerBase::Scenes scenes;
+            viewer.getScenes(scenes);
+            for(osgViewer::ViewerBase::Scenes::iterator itr = scenes.begin();
+                itr != scenes.end();
+                ++itr)
+            {
+                osgViewer::Scene* scene = *itr;
+                osgDB::DatabasePager* dp = scene->getDatabasePager();
+                if (dp && dp->isRunning())
+                {
+                    dp->resetStats();
+                }
+            }
+
+            viewer.getViewerStats()->collectStats("frame_rate",true);
+            viewer.getViewerStats()->collectStats("event",true);
+            viewer.getViewerStats()->collectStats("update",true);
+
+            viewer.getCamera()->getStats()->collectStats("rendering",true);
+            viewer.getCamera()->getStats()->collectStats("gpu",true);
+        }
+
         double totalFrameTime = 0.0;
         // Report memory and fps every 10 frames.
         unsigned int reportEvery = 10;
 
         while (!viewer.done())
         {
-            osg::Timer_t frameStart = osg::Timer::instance()->tick();
-
-            METRIC_SCOPED("frame");
-
-            viewer.advance();
-
             {
-                METRIC_SCOPED("event");
-                viewer.eventTraversal();
-            }
+                METRIC_SCOPED_EX("frame", 1, "number", toString<int>(viewer.getFrameStamp()->getFrameNumber()).c_str());
+                {
+                    METRIC_SCOPED("advance");
+                    viewer.advance();
+                }
 
-            {
-                METRIC_SCOPED("update");
-                viewer.updateTraversal();
-            }
+                {
+                    METRIC_SCOPED("event");
+                    viewer.eventTraversal();
+                }
 
-            {
-                METRIC_SCOPED("cull/draw");
-                viewer.renderingTraversals();
-            }
+                {
+                    METRIC_SCOPED("update");
+                    viewer.updateTraversal();
+                }
 
-            // Record the frame time.
-            osg::Timer_t frameEnd = osg::Timer::instance()->tick();
-            double frameTime = osg::Timer::instance()->delta_s(frameStart, frameEnd);
-            totalFrameTime += frameTime;
+                {
+                    METRIC_SCOPED("render");
+                    viewer.renderingTraversals();
+                }
+
+            }
 
             // Report memory and fps periodically. periodically.
             if (viewer.getFrameStamp()->getFrameNumber() % reportEvery == 0)
             {
-                double fps = 1.0 / (totalFrameTime / (double)reportEvery);
-                totalFrameTime = 0.0;
-
                 // Only report the metrics if they are enabled to avoid computing the memory.
                 if (Metrics::enabled())
                 {
-                    Metrics::counter("WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
-                    Metrics::counter("PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
-                    Metrics::counter("PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
-                    Metrics::counter("FPS", "FPS", fps);
+                    Metrics::counter("Memory::WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
+                    Metrics::counter("Memory::PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
+                    Metrics::counter("Memory::PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
                 }
             }
+
+            double eventTime = 0.0;
+            if (viewer.getViewerStats()->getAttribute(viewer.getViewerStats()->getLatestFrameNumber(), "Event traversal time taken", eventTime))
+            {
+                Metrics::counter("Viewer::Event", "Event", eventTime * 1000.0);
+            }
+
+            double updateTime = 0.0;
+            if (viewer.getViewerStats()->getAttribute(viewer.getViewerStats()->getLatestFrameNumber(), "Update traversal time taken", updateTime))
+            {
+                Metrics::counter("Viewer::Update", "Update", updateTime * 1000.0);
+            }
+
+            double cullTime = 0.0;
+            if (viewer.getCamera()->getStats()->getAttribute(viewer.getCamera()->getStats()->getLatestFrameNumber(), "Cull traversal time taken", cullTime))
+            {
+                Metrics::counter("Viewer::Cull", "Cull", cullTime * 1000.0);
+            }
+
+            double drawTime = 0.0;
+            if (viewer.getCamera()->getStats()->getAttribute(viewer.getCamera()->getStats()->getLatestFrameNumber(), "Draw traversal time taken", drawTime))
+            {
+                Metrics::counter("Viewer::Draw", "Draw", drawTime * 1000.0);
+            }
+
+            double gpuTime = 0.0;
+            if (viewer.getCamera()->getStats()->getAttribute(viewer.getCamera()->getStats()->getLatestFrameNumber()-1, "GPU draw time taken", gpuTime))
+            {
+                Metrics::counter("Viewer::GPU", "GPU", gpuTime * 1000.0);
+            }
+
+            double frameRate = 0.0;
+            if (viewer.getViewerStats()->getAttribute(viewer.getViewerStats()->getLatestFrameNumber() - 1, "Frame rate", frameRate))
+            {
+                Metrics::counter("Viewer::FPS", "FPS", frameRate);
+            }
+
         }
 
         return 0;
@@ -406,7 +462,7 @@ _name(name)
     Config conf;
 
     va_list args;
-    va_start( args, argCount );    
+    va_start( args, argCount );
 
     for (unsigned int i = 0; i < argCount; i++)
     {

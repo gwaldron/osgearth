@@ -1311,7 +1311,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     METRIC_END("HTTPClient::doGet", 2,
                "response_code", toString<int>(response.getCode()).c_str(),
-               "canceled", toString<bool>(response.isCancelled()));
+               "canceled", toString<bool>(response.isCancelled()).c_str());
 
     return response;
 }

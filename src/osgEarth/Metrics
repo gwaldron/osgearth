@@ -25,6 +25,11 @@
 #include <iostream>
 #include <osgDB/fstream>
 
+// forward
+namespace osgViewer {
+    class Viewer;
+}
+
 namespace osgEarth
 {
     /**
@@ -221,7 +226,15 @@ namespace osgEarth
          */
         static void setMetricsBackend( MetricsBackend* backend );
 
+        /**
+         * Encodes varargs into a Config object for serialization by the metrics backend
+         */
         static Config encodeArgs(unsigned count, ...);
+
+        /**
+         * Convenience function to run the OSG frame loop with metrics.
+         */
+        static int run(osgViewer::Viewer& viewer);
     };
 
     /**

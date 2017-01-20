@@ -27,7 +27,6 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
-#include <osgEarth/Memory>
 #include <iostream>
 
 #define LC "[viewer] "
@@ -93,60 +92,7 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-
-        viewer.realize(); 
-
-        double totalFrameTime = 0.0;
-        // Report memory and fps every 10 frames.
-        unsigned int reportEvery = 10;
-
-        while (!viewer.done())
-        {            
-            osg::Timer_t frameStart = osg::Timer::instance()->tick();
-
-            ScopedMetric fm("frame");
-
-            {
-                ScopedMetric m("advance");
-                viewer.advance();
-            }
-
-            {
-                ScopedMetric m("event");
-                viewer.eventTraversal();
-            }
-
-            {
-                ScopedMetric m("update");
-                viewer.updateTraversal();
-            }
-
-            {
-                ScopedMetric m("render");
-                viewer.renderingTraversals();            
-            }
-
-            // Record the frame time.
-            osg::Timer_t frameEnd = osg::Timer::instance()->tick();
-            double frameTime = osg::Timer::instance()->delta_s(frameStart, frameEnd);
-            totalFrameTime += frameTime;
-
-            // Report memory and fps periodically. periodically.
-            if (viewer.getFrameStamp()->getFrameNumber() % reportEvery == 0)
-            {
-                double fps = 1.0 / (totalFrameTime / (double)reportEvery );                
-                totalFrameTime = 0.0;
-                
-                // Only report the metrics if they are enabled to avoid computing the memory.
-                if (Metrics::enabled())
-                {
-                    Metrics::counter("WorkingSet", "WorkingSet", Memory::getProcessPhysicalUsage() / 1048576);
-                    Metrics::counter("PrivateBytes", "PrivateBytes", Memory::getProcessPrivateUsage() / 1048576);
-                    Metrics::counter("PeakPrivateBytes", "PeakPrivateBytes", Memory::getProcessPeakPrivateUsage() / 1048576);
-                    Metrics::counter("FPS", "FPS", fps);
-                }                
-            }
-        }                
+        Metrics::run(viewer);
     }
     else
     {

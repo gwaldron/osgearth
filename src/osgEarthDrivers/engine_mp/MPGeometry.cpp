@@ -586,7 +586,7 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
     osg::Geometry::compileGLObjects( renderInfo );
 }
 
-
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
 osg::VertexArrayState*
 MPGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
 {
@@ -598,6 +598,7 @@ MPGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
 
     return vas;
 }
+#endif
 
 
 void 

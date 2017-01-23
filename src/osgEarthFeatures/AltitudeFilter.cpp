@@ -215,6 +215,11 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         if (!perVertex)
         {
             centroidElevation = eq.getElevation( centroid, _maxRes );
+            // Check for NO_DATA_VALUE and use zero instead.
+            if (centroidElevation == NO_DATA_VALUE)
+            {
+                centroidElevation = 0.0;
+            }
         }
         
         GeometryIterator gi( feature->getGeometry() );

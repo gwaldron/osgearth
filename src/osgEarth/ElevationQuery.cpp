@@ -247,7 +247,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     if ( _mapf.elevationLayers().empty() )
     {
         // this means there are no heightfields.
-        out_elevation = 0.0;
+        out_elevation = NO_DATA_VALUE;
         return true;
     }
 

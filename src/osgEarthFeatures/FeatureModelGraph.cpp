@@ -508,7 +508,13 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
-        center.z() = query.getElevation( p, resolution );
+        float elevation = query.getElevation( p, resolution );
+        // Check for NO_DATA_VALUE and use zero instead.
+        if (elevation == NO_DATA_VALUE)
+        {
+            elevation = 0.0f;
+        }
+        center.z() = elevation;
     }    
 
     corner.x() = workingExtent.xMin();

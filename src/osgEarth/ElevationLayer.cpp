@@ -635,6 +635,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     if ( !hf )
         return false;
 
+    METRIC_SCOPED("ElevationLayer.populateHeightField");
+
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D
     // terrain, for example. Construct a temporary key that doesn't have the vertical

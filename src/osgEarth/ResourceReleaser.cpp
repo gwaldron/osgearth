@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Metrics>
 #include <osg/Version>
 
 using namespace osgEarth;
@@ -60,6 +61,7 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
         Threading::ScopedMutexLock lock(_mutex);
         if (!_toRelease.empty())
         {
+            METRIC_SCOPED("ResourceReleaser");
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
                 osg::Object* object = i->get();

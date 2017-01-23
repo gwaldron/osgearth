@@ -182,11 +182,11 @@ int Metrics::run(osgViewer::Viewer& viewer)
         }
 
         // If Metrics are enabled, enable stats on the Viewer so that it we can report them for the Metrics
-                if (Metrics::enabled())
+        if (Metrics::enabled())
         {
             osgViewer::ViewerBase::Scenes scenes;
             viewer.getScenes(scenes);
-            for(osgViewer::ViewerBase::Scenes::iterator itr = scenes.begin();
+            for (osgViewer::ViewerBase::Scenes::iterator itr = scenes.begin();
                 itr != scenes.end();
                 ++itr)
             {
@@ -198,12 +198,12 @@ int Metrics::run(osgViewer::Viewer& viewer)
                 }
             }
 
-            viewer.getViewerStats()->collectStats("frame_rate",true);
-            viewer.getViewerStats()->collectStats("event",true);
-            viewer.getViewerStats()->collectStats("update",true);
+            viewer.getViewerStats()->collectStats("frame_rate", true);
+            viewer.getViewerStats()->collectStats("event", true);
+            viewer.getViewerStats()->collectStats("update", true);
 
-            viewer.getCamera()->getStats()->collectStats("rendering",true);
-            viewer.getCamera()->getStats()->collectStats("gpu",true);
+            viewer.getCamera()->getStats()->collectStats("rendering", true);
+            viewer.getCamera()->getStats()->collectStats("gpu", true);
         }
 
         double totalFrameTime = 0.0;
@@ -422,21 +422,22 @@ void ChromeMetricsBackend::counter(const std::string& graph,
         << "\"name\": \""  << graph << "\","
         << "\"args\" : {";
 
-        if (!name0.empty())
-        {
-            _metricsFile << "    \"" << name0 << "\": " << std::setprecision(9) << value0;
-        }
+    if (!name0.empty())
+    {
+        _metricsFile << "    \"" << name0 << "\": " << std::setprecision(9) << value0;
+    }
 
-        if (!name1.empty())
-        {
-            _metricsFile << ",    \"" << name1 << "\": " << std::setprecision(9) <<value1;
-        }
+    if (!name1.empty())
+    {
+        _metricsFile << ",    \"" << name1 << "\": " << std::setprecision(9) <<value1;
+    }
 
-        if (!name2.empty())
-        {
-            _metricsFile << ",    \"" << name2 << "\": " << std::setprecision(9) <<value2;
-        }
-        _metricsFile << "}}";
+    if (!name2.empty())
+    {
+        _metricsFile << ",    \"" << name2 << "\": " << std::setprecision(9) <<value2;
+    }
+
+    _metricsFile << "}}";
 }
 
 

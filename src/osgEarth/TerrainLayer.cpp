@@ -32,7 +32,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[TerrainLayer] Layer \"" << getName() << "\" "
+#define LC "[TerrainLayer] \"" << getName() << "\" "
 
 //------------------------------------------------------------------------
 
@@ -282,6 +282,7 @@ _tileSize( 256 )
 TerrainLayer::~TerrainLayer()
 {
     //nop
+    OE_DEBUG << LC << "~TerrainLayer\n";
 }
 
 void

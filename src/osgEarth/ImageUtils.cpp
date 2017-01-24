@@ -1091,7 +1091,7 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
 bool
 ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 {
-    if ( !image || !PixelReader::supports(image) )
+    if ( !image || !hasAlphaChannel(image) || !PixelReader::supports(image) )
         return false;
 
     PixelReader read(image);

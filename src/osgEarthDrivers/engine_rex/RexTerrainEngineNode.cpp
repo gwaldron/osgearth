@@ -542,6 +542,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         //if ( data.valid() )
         //    nv.setUserData( data.get() );
+
+        VisitorData::remove(nv, ENGINE_CONTEXT_TAG);
     }
 
     else

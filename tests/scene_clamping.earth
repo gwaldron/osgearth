@@ -11,7 +11,7 @@ osgEarth Sample - Annotations
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
-    <image driver="debug"/>
+    <image driver="debug" visible="false"/>
 
     <viewpoints time="0.1">
         <viewpoint name="Circles">
@@ -27,8 +27,6 @@ osgEarth Sample - Annotations
 
     <annotations>
     
-        
-
         <circle name="Circle clamped directly to the ground">
             <position lat="22.074" long="-159.606"/>
             <radius value="1.2" units="km"/>

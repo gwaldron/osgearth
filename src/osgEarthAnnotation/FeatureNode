@@ -93,7 +93,6 @@ namespace osgEarth { namespace Annotation
          */
         void setStyleSheet(StyleSheet* styleSheet);
 
-
         /**
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
@@ -115,6 +114,10 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setStyle(const Style& style);
 
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor&);
+
     public: // MapNodeObserver
 
         virtual void setMapNode( MapNode* mapNode );
@@ -135,6 +138,7 @@ namespace osgEarth { namespace Annotation
 
         typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;
+        bool _clampDirty;
 
         osg::ref_ptr< osg::Node >    _compiled;
 

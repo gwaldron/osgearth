@@ -209,6 +209,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     // register me.
     context->liveTiles()->add( this );
+
+    // tell the world.
+    OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
+    context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
 }
 
 osg::BoundingSphere
@@ -542,6 +546,8 @@ TileNode::createChildren(EngineContext* context)
 void
 TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 {
+    bool newElevationData = false;
+
     // Add color passes:
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
     if (color.isActive())
@@ -602,6 +608,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
 
         setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
+
+        newElevationData = true;
     } 
 
     // Normals:
@@ -654,6 +662,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         getSubTile(1)->refreshInheritedData(this, bindings);
         getSubTile(2)->refreshInheritedData(this, bindings);
         getSubTile(3)->refreshInheritedData(this, bindings);
+    }
+
+    if (newElevationData)
+    {
+        OE_DEBUG << LC << "notify (merge) key " << getKey().str() << std::endl;
+        _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
     }
 }
 

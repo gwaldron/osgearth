@@ -111,6 +111,8 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 // Mark as complete. TODO: per-data requests will do something different.
                 tilenode->setDirty( false );
 
+#if 0 // gw - moved the notifications to TileNode.
+
                 // Notify listeners that we've added a tile. The patch must be in world space
                 // (include a transform). Only need to fire onTileAdded if there's real elevation data...right?
                 if (_dataModel->elevationModel().valid())
@@ -121,6 +123,7 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                         _dataModel->getKey(),
                         _context->getEngine()->getTerrain()->getGraph() );
                 }
+#endif
 
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
             }

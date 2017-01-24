@@ -122,6 +122,7 @@ namespace osgEarth
         bool                       _terrainCallbackInstalled; // Whether the Terrain callback is in
         bool                       _findTerrain;              // True is we need _terrain but don't have it
         bool                       _autoRecomputeHeights;     // Whether to resolve relative position Z's
+        bool                       _dirtyClamp;               // Whether a terrain clamp is required
 
         osg::ref_ptr<ComputeMatrixCallback> _computeMatrixCallback;
 

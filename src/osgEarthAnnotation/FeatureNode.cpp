@@ -57,7 +57,8 @@ FeatureNode::FeatureNode(MapNode* mapNode,
 AnnotationNode(),
 _options           ( options ),
 _needsRebuild      ( true ),
-_styleSheet        ( styleSheet )
+_styleSheet        ( styleSheet ),
+_clampDirty        (false)
 {
     _features.push_back( feature );
 
@@ -80,7 +81,8 @@ FeatureNode::FeatureNode(MapNode* mapNode,
 AnnotationNode(),
 _options        ( options ),
 _needsRebuild   ( true ),
-_styleSheet     ( styleSheet )
+_styleSheet     ( styleSheet ),
+_clampDirty     ( false )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
     FeatureNode::setMapNode( mapNode );
@@ -299,24 +301,29 @@ FeatureNode::onTileAdded(const TileKey&          key,
                          osg::Node*              graph,
                          TerrainCallbackContext& context)
 {
-    bool needsClamp;
+    if (!_clampDirty)
+    {
+        bool needsClamp;
 
-    if (key.valid())
-    {
-        osg::Polytope tope;
-        key.getExtent().createPolytope(tope);
-        needsClamp = tope.contains(this->getBound());
-    }
-    else
-    {
-        // without a valid tilekey we don't know the extent of the change,
-        // so clamping is required.
-        needsClamp = true;
-    }
+        if (key.valid())
+        {
+            osg::Polytope tope;
+            key.getExtent().createPolytope(tope);
+            needsClamp = tope.contains(this->getBound());
+        }
+        else
+        {
+            // without a valid tilekey we don't know the extent of the change,
+            // so clamping is required.
+            needsClamp = true;
+        }
 
-    if (needsClamp)
-    {
-        clamp(graph, context.getTerrain());
+        if (needsClamp)
+        {
+            _clampDirty = true;
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+            //clamp(graph, context.getTerrain());
+        }
     }
 }
 
@@ -342,6 +349,25 @@ FeatureNode::clamp(osg::Node* graph, const Terrain* terrain)
     }
 }
 
+void
+FeatureNode::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clampDirty)
+    {
+        if (getMapNode())
+        {
+            osg::ref_ptr<Terrain> terrain = getMapNode()->getTerrain();
+            if (terrain.valid())
+                clamp(terrain->getGraph(), terrain.get());
+
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            _clampDirty = false;
+        }
+    }
+    AnnotationNode::traverse(nv);
+}
+
+
 //-------------------------------------------------------------------
 
 OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
@@ -350,7 +376,8 @@ OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 FeatureNode::FeatureNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions ) :
-AnnotationNode(conf)
+AnnotationNode(conf),
+_clampDirty(false)
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )

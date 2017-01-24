@@ -115,6 +115,8 @@ namespace osgEarth { namespace Annotation
 
         //virtual osg::BoundingSphere computeBound() const;
 
+        virtual void traverse(osg::NodeVisitor&);
+
     protected: // GeoPositionNode
 
         virtual void dirty();
@@ -125,6 +127,7 @@ namespace osgEarth { namespace Annotation
         Style                        _style;
         osg::ref_ptr<osg::Node>      _node;
         osg::ref_ptr<Geometry>       _geom;
+        bool                         _clampDirty;
         
         typedef TerrainCallbackAdapter<LocalGeometryNode> ClampCallback;
         osg::ref_ptr<ClampCallback> _clampCallback;

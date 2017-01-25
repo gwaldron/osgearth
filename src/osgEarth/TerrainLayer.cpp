@@ -734,18 +734,20 @@ TerrainLayer::createAndOpenTileSource()
     {
         ts = createTileSource();
 
-        // Instantiate it from driver options if it has not already been created.
-        // This will also set a manual "override" profile if the user provided one.
-        if ( getTerrainLayerOptions().driver().isSet() )
-        {
-            OE_INFO << LC << "Creating \"" << getTerrainLayerOptions().driver()->getDriver() << "\" driver\n";
-            ts = TileSourceFactory::create( getTerrainLayerOptions().driver().get() );
-            if ( !ts.valid() )
-            {
-                //setStatus(Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n"));
-                return 0L;
-            }
-        }
+        if (!ts.valid())
+            return 0L;
+
+        //// Instantiate it from driver options if it has not already been created.
+        //// This will also set a manual "override" profile if the user provided one.
+        //if ( getTerrainLayerOptions().driver().isSet() )
+        //{
+        //    ts = TileSourceFactory::create( getTerrainLayerOptions().driver().get() );
+        //    if ( !ts.valid() )
+        //    {
+        //        //setStatus(Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to find driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n"));
+        //        return 0L;
+        //    }
+        //}
     }
 
     Status tileSourceStatus;

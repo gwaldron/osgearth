@@ -249,6 +249,9 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         this->_requireNormalTextures = true;
     }
 
+    // ensure we get full coverage at the first LOD.
+    this->_requireFullDataAtFirstLOD = true;
+
     // A shared registry for tile nodes in the scene graph. Enable revision tracking
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
@@ -488,7 +491,7 @@ RexTerrainEngineNode::dirtyTerrain()
         // Add it to the scene graph
         _terrain->addChild( tileNode );
 
-        // And load the tile's data synchronously (only for root tiles).
+        // And load the tile's data synchronously (only for root tiles)
         tileNode->loadSync();
     }
 

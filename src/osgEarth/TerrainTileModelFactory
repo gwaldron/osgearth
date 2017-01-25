@@ -92,11 +92,12 @@ namespace osgEarth
     protected:
 
         virtual void addImageLayers(
-            TerrainTileModel*            model,
-            const MapFrame&              frame,
-            const TileKey&               key,
-            const CreateTileModelFilter& filter,
-            ProgressCallback*            progress);
+            TerrainTileModel*                model,
+            const MapFrame&                  frame,
+            const TerrainEngineRequirements* reqs,
+            const TileKey&                   key,
+            const CreateTileModelFilter&     filter,
+            ProgressCallback*                progress);
 
         virtual void addElevation(
             TerrainTileModel*            model,
@@ -168,6 +169,7 @@ namespace osgEarth
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;
+        osg::ref_ptr<osg::Texture> _emptyTexture;
     };
 }
 

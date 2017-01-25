@@ -37,6 +37,9 @@ _options         ( options ),
 _heightFieldCache( true, 128 )
 {
     _heightFieldCacheEnabled = (::getenv("OSGEARTH_MEMORY_PROFILE") == 0L);
+
+    // Create an empty texture that we can use as a placeholder
+    _emptyTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
 }
 
 TerrainTileModel*
@@ -52,7 +55,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    addImageLayers(model.get(), frame, key, filter, progress);
+    addImageLayers(model.get(), frame, requirements, key, filter, progress);
 
     addPatchLayers(model.get(), frame, key, filter, progress);
 
@@ -75,6 +78,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 void
 TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                                         const MapFrame&   frame,
+                                        const TerrainEngineRequirements* reqs,
                                         const TileKey&    key,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
@@ -98,10 +102,10 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
         if (!layer->getEnabled())
             continue;
 
+        osg::Texture* tex = 0L;
+
         if (layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
         {
-            osg::Texture* tex = 0L;
-
             if (layer->createTextureSupported())
             {
                 tex = layer->createTexture( key, progress );
@@ -119,23 +123,33 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                         tex = createImageTexture(geoImage.getImage(), layer);
                 }
             }
+        }
+        
+        // if this is the first LOD, and the engine requires that the first LOD
+        // be populated, make an empty texture if we didn't get one.
+        if (tex == 0L &&
+            _options.firstLOD() == key.getLOD() &&
+            reqs && reqs->fullDataAtFirstLodRequired())
+        {
+            tex = _emptyTexture.get();
+        }
+         
+        if (tex)
+        {
+            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
 
-            if (tex)
-            {
-                TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-                layerModel->setImageLayer( layer );
+            layerModel->setImageLayer(layer);
 
-                layerModel->setTexture( tex );
+            layerModel->setTexture(tex);
 
-                if ( layer->isShared() )
-                    model->sharedLayers().push_back( layerModel );
+            if (layer->isShared())
+                model->sharedLayers().push_back(layerModel);
 
-                if ( layer->getVisible() )
-                    model->colorLayers().push_back( layerModel );
+            if (layer->getVisible())
+                model->colorLayers().push_back(layerModel);
 
-                if ( layer->isDynamic() )
-                    model->setRequiresUpdateTraverse( true );
-            }
+            if (layer->isDynamic())
+                model->setRequiresUpdateTraverse(true);
         }
     }
 

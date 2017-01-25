@@ -226,7 +226,8 @@ namespace osgEarth
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
-        bool elevationBorderRequired() const { return _elevationBorderRequired; }
+        bool elevationBorderRequired() const { return _requireElevationBorder; }
+        bool fullDataAtFirstLodRequired() const { return _requireFullDataAtFirstLOD; }
             
 
     public: // Runtime properties
@@ -265,11 +266,6 @@ namespace osgEarth
 
         virtual void setMap(const Map* map, const TerrainOptions& options);
 
-        /** Attaches a map to the terrain engine and initialized it.*/
-        /** These are going to be deprecated... see setMap instead */
-        //virtual void preInitialize( const Map* map, const TerrainOptions& options );
-        //virtual void postInitialize( const Map* map, const TerrainOptions& options );
-
         // signals that a redraw is needed because something changed.
         virtual void requestRedraw();
 
@@ -282,7 +278,8 @@ namespace osgEarth
         bool _requireElevationTextures;
         bool _requireNormalTextures;
         bool _requireParentTextures;
-        bool _elevationBorderRequired;
+        bool _requireElevationBorder;
+        bool _requireFullDataAtFirstLOD;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
@@ -324,7 +321,6 @@ namespace osgEarth
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<const Map>            _map;
-        //const Map*                         _map;
         bool                               _redrawRequired;
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;

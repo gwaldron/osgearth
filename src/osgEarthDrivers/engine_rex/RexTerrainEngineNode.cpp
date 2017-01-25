@@ -593,10 +593,10 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             i != culler._terrain.layers().end();
             ++i)
         {
-            lastLayer = i->get();
-
-            if (!lastLayer->_tiles.empty())
+            // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
+            if (!i->get()->_tiles.empty())
             {
+                lastLayer = i->get();
                 lastLayer->_order = -1;
 
                 // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.

@@ -142,11 +142,10 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
 
             layerModel->setTexture(tex);
 
+            model->colorLayers().push_back(layerModel);
+
             if (layer->isShared())
                 model->sharedLayers().push_back(layerModel);
-
-            if (layer->getVisible())
-                model->colorLayers().push_back(layerModel);
 
             if (layer->isDynamic())
                 model->setRequiresUpdateTraverse(true);

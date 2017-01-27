@@ -113,9 +113,6 @@ ModelLayerOptions::setDefaults()
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
-
-    // Expressly set it here since we want no caching by default on a model layer.
-    _cachePolicy = CachePolicy::NO_CACHE;
 }
 
 Config

@@ -30,6 +30,10 @@ using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(elevation, osgEarth::ElevationLayer);
+}
+
 //------------------------------------------------------------------------
 
 ElevationLayerOptions::ElevationLayerOptions() :
@@ -71,6 +75,8 @@ Config
 ElevationLayerOptions::getConfig( bool isolate ) const
 {
     Config conf = TerrainLayerOptions::getConfig( isolate );
+    conf.key() = "elevation";
+
     conf.updateIfSet("offset", _offset);
     conf.updateIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );

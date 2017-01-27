@@ -28,6 +28,10 @@
 
 using namespace osgEarth;
 
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(model, ModelLayer);
+}
+
 //------------------------------------------------------------------------
 
 namespace
@@ -122,6 +126,7 @@ Config
 ModelLayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::newConfig();
+    conf.key() = "model";
 
     conf.updateIfSet( "name",           _name );
     conf.updateIfSet( "enabled",        _enabled );
@@ -209,8 +214,8 @@ ModelLayer::~ModelLayer()
 Config
 ModelLayer::getConfig() const
 {
-    Config layerConf = getModelLayerOptions().getConfig();
-    layerConf.set("name", getName());
+    Config layerConf = Layer::getConfig(); //getModelLayerOptions().getConfig();
+    layerConf.set("name", getName()); // redundant?
     layerConf.set("driver", getModelLayerOptions().driver()->getDriver());
     layerConf.key() = "model";
     return layerConf;
@@ -293,7 +298,7 @@ ModelLayer::open()
 void
 ModelLayer::setReadOptions(const osgDB::Options* readOptions)
 {
-    _readOptions = Registry::cloneOrCreateOptions(readOptions);
+    Layer::setReadOptions(readOptions);
 
     // Create some local cache settings for this layer:
     CacheSettings* oldSettings = CacheSettings::get(readOptions);

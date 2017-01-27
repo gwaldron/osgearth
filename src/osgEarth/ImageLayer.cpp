@@ -43,6 +43,10 @@ using namespace OpenThreads;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(image, ImageLayer);
+}
+
 //------------------------------------------------------------------------
 
 ImageLayerOptions::ImageLayerOptions() :
@@ -142,6 +146,7 @@ Config
 ImageLayerOptions::getConfig(bool isolate) const
 {
     Config conf = TerrainLayerOptions::getConfig( isolate );
+    conf.key() = "image";
 
     conf.updateIfSet( "nodata_image",   _noDataImageFilename );
     conf.updateIfSet( "opacity",        _opacity );

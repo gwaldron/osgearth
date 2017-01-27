@@ -282,7 +282,6 @@ namespace osgEarth
          * Sets the I/O options to use. This data may include cache information.
          */
         void setReadOptions(const osgDB::Options* readOptions);
-        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
         /**
          * Data Extents reported for this layer are copied into output.

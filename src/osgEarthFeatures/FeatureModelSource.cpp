@@ -53,6 +53,8 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "features", _featureOptions );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
+    conf.getIfSet("feature_source", _featureSourceLayer);
+
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
     conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
@@ -80,6 +82,8 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
+    conf.updateIfSet("feature_source", _featureSourceLayer);
+
     conf.updateObjIfSet( "styles",           _styles );
     conf.updateObjIfSet( "layout",           _layout );
     conf.updateObjIfSet( "cache_policy",     _cachePolicy );
@@ -131,9 +135,16 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
     {
         _features = _options.featureSource().get();
     }
+
     else if ( _options.featureOptions().isSet() )
     {
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+    }
+
+    else if (_options.featureSourceLayer().isSet())
+    {
+        //TODO
+        OE_WARN << LC << "options.featureSourceLayer NYI\n";
     }
 
     if (!_features.valid())

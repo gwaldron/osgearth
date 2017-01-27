@@ -530,13 +530,6 @@ namespace
                             }
                         }
                     }
-
-                    OE_TEST << LC 
-                        << uri.base() << ": " 
-                        << (result.succeeded() ? "OK" : "FAILED") 
-                        << "; policy=" << cp->usageString()
-                        << (result.isFromCache() && result.succeeded() ? "; (from cache)" : "")
-                        << std::endl;
                 }
 
 
@@ -550,6 +543,13 @@ namespace
                     }
                 }
             }
+
+            OE_TEST << LC
+                << uri.base() << ": "
+                << (result.succeeded() ? "OK" : "FAILED")
+                //<< "; policy=" << cp->usageString()
+                << (result.isFromCache() && result.succeeded() ? "; (from cache)" : "")
+                << std::endl;
         }
 
         // post-process if there's a post-URI callback.

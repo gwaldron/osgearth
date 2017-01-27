@@ -45,23 +45,8 @@ static Grid* s_modelBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
 
-enum LayerType {
-    IMAGE_LAYER = 0,
-    ELEVATION_LAYER = 1,
-    MODEL_LAYER = 2
-};
-struct LayerConfiguration {
-    ConfigOptions _options;
-    LayerType _type;
-};
-typedef std::map<std::string, LayerConfiguration> InactiveLayers;
+typedef std::map<std::string, ConfigOptions> InactiveLayers;
 static InactiveLayers _inactive;
-
-std::string layerTypeNames[3] = {
-    "image",
-    "elevation",
-    "model"
-};
 
 //------------------------------------------------------------------------
 
@@ -164,9 +149,9 @@ main( int argc, char** argv )
 
 //------------------------------------------------------------------------
 
-struct LayerVisibleHandler : public ControlEventHandler
+struct TerrainLayerVisibleHandler : public ControlEventHandler
 {
-    LayerVisibleHandler( TerrainLayer* layer ) : _layer(layer) { }
+    TerrainLayerVisibleHandler( TerrainLayer* layer ) : _layer(layer) { }
     void onValueChanged( Control* control, bool value )
     {
         _layer->setVisible( value );
@@ -206,50 +191,41 @@ struct ModelLayerOpacityHandler : public ControlEventHandler
 
 struct AddLayerHandler : public ControlEventHandler
 {
-    AddLayerHandler(const LayerConfiguration& lc) : _lc(lc) { }
+    AddLayerHandler(const ConfigOptions& lc) : _lc(lc) { }
 
-    void onClick( Control* control, int mouseButtonMask ) {
-        Layer* layer = 0L;
-        if (_lc._type == IMAGE_LAYER) {
-            layer = new ImageLayer(_lc._options);
+    void onClick( Control* control, int mouseButtonMask )
+    {
+        Layer* layer = Layer::create(_lc);
+        if (layer)
+        {
+            s_activeMap->addLayer(layer);
+            _inactive.erase(layer->getName());
         }
-        else if (_lc._type == ELEVATION_LAYER) {
-            layer = new ElevationLayer(_lc._options);
-        }
-        else {
-            return;
-        }
-        s_activeMap->addLayer(layer);
-        _inactive.erase(layer->getName());
     }
 
-    LayerConfiguration _lc;
+    ConfigOptions _lc;
 };
 
 struct RemoveLayerHandler : public ControlEventHandler
 {
-    RemoveLayerHandler( TerrainLayer* layer ) : _layer(layer) { }
+    RemoveLayerHandler( Layer* layer ) : _layer(layer) { }
 
-    void onClick( Control* control, int mouseButtonMask ) {
-        LayerConfiguration& lc = _inactive[_layer->getName()];
-        lc._type =
-            dynamic_cast<ImageLayer*>(_layer.get())? IMAGE_LAYER :
-            dynamic_cast<ElevationLayer*>(_layer.get()) ? ELEVATION_LAYER :
-            MODEL_LAYER;
-        lc._options = _layer->getTerrainLayerOptions();
-
-        s_activeMap->removeLayer(_layer.get());
+    void onClick( Control* control, int mouseButtonMask )
+    {
+        _inactive[_layer->getName()] = _layer->getConfig(); // save it
+        s_activeMap->removeLayer(_layer.get()); // and remove it
     }
-    osg::ref_ptr<TerrainLayer> _layer;
+    osg::ref_ptr<Layer> _layer;
 };
 
 struct MoveLayerHandler : public ControlEventHandler
 {
-    MoveLayerHandler( TerrainLayer* layer, int newIndex ) : _layer(layer), _newIndex(newIndex) { }
-    void onClick( Control* control, int mouseButtonMask ) {
+    MoveLayerHandler( Layer* layer, int newIndex ) : _layer(layer), _newIndex(newIndex) { }
+    void onClick( Control* control, int mouseButtonMask )
+    {
         s_activeMap->moveLayer(_layer, _newIndex);
     }
-    TerrainLayer* _layer;
+    Layer* _layer;
     int _newIndex;
 };
 
@@ -307,26 +283,49 @@ createControlPanel( osgViewer::View* view )
 }
 
 void
-createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, TerrainLayer* layer, bool isActive )
+createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Layer* layer, bool isActive )
 {
     int gridCol = 0;
 
-    // layer type
-    std::string typeName = dynamic_cast<ImageLayer*>(layer) ? "image" : dynamic_cast<ElevationLayer*>(layer) ? "elevation" : "other";
-    LabelControl* typeLabel = new LabelControl(typeName, osg::Vec4(.5,.7,.5,1));
-    grid->setControl( gridCol++, gridRow, typeLabel );
+    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
+    ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
 
     // a checkbox to enable/disable the layer:
-    CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
-    enabled->addEventHandler( new LayerVisibleHandler(layer) );
-    grid->setControl( gridCol++, gridRow, enabled );
+    if (terrainLayer)
+    {
+        CheckBoxControl* enabled = new CheckBoxControl( terrainLayer->getVisible() );
+        enabled->addEventHandler( new TerrainLayerVisibleHandler(terrainLayer) );
+        grid->setControl( gridCol, gridRow, enabled );
+    }
+    else if (modelLayer)
+    {
+        CheckBoxControl* enabled = new CheckBoxControl( modelLayer->getVisible() );
+        enabled->addEventHandler( new ModelLayerVisibleHandler(modelLayer) );
+        grid->setControl( gridCol, gridRow, enabled );
+    }
+    gridCol++;
 
     // the layer name
     LabelControl* name = new LabelControl( layer->getName() );
     grid->setControl( gridCol, gridRow, name );
     gridCol++;
 
-    ImageLayer* imageLayer = dynamic_cast< ImageLayer* > (layer );
+    // layer type
+    std::string typeName = typeid(*layer).name();
+    typeName = typeName.substr(typeName.find_last_of(":")+1);
+    LabelControl* typeLabel = new LabelControl(typeName, osg::Vec4(.5,.7,.5,1));
+    grid->setControl( gridCol, gridRow, typeLabel );
+    gridCol++;
+
+    // status indicator
+    LabelControl* statusLabel = layer->getStatus().isOK()
+        ? new LabelControl("[ok]", osg::Vec4(0,1,0,1))
+        : new LabelControl("[error]", osg::Vec4(1,0,0,1));
+    grid->setControl( gridCol, gridRow, statusLabel );
+    gridCol++;
+
     if (imageLayer)
     {
         // an opacity slider
@@ -336,13 +335,6 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
         opacity->addEventHandler( new LayerOpacityHandler(imageLayer) );
         grid->setControl( gridCol, gridRow, opacity );
     }
-    gridCol++;
-
-    // status indicator
-    LabelControl* statusLabel = layer->getStatus().isOK()
-        ? new LabelControl("[ok]", osg::Vec4(0,1,0,1))
-        : new LabelControl("[error]", osg::Vec4(1,0,0,1));
-    grid->setControl( gridCol, gridRow, statusLabel );
     gridCol++;
 
     // move buttons
@@ -378,7 +370,7 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
 }
 
 void
-createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const LayerConfiguration& lc )
+createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const ConfigOptions& lc )
 {
     int gridCol = 0;
 
@@ -440,18 +432,21 @@ updateControlPanel()
     for (int i = layers.size()-1; i >= 0; --i)
     {
         Layer* layer = layers[i].get();
-        if (dynamic_cast<ImageLayer*>(layer))
-        {
-            createLayerItem(s_imageBox, row++, i, layers.size(), dynamic_cast<ImageLayer*>(layer), true);
-        }
-        else if (dynamic_cast<ElevationLayer*>(layer))
-        {
-            createLayerItem( s_imageBox, row++, i, layers.size(), dynamic_cast<ElevationLayer*>(layer), true );
-        }
-        else if (dynamic_cast<ModelLayer*>(layer))
-        {
-            createModelLayerItem( s_imageBox, row++, dynamic_cast<ModelLayer*>(layer), true );
-        }
+
+        createLayerItem(s_imageBox, row++, i, layers.size(), layer, true);
+
+        //if (dynamic_cast<ImageLayer*>(layer))
+        //{
+        //    createLayerItem(s_imageBox, row++, i, layers.size(), dynamic_cast<ImageLayer*>(layer), true);
+        //}
+        //else if (dynamic_cast<ElevationLayer*>(layer))
+        //{
+        //    createLayerItem( s_imageBox, row++, i, layers.size(), dynamic_cast<ElevationLayer*>(layer), true );
+        //}
+        //else if (dynamic_cast<ModelLayer*>(layer))
+        //{
+        //    createModelLayerItem( s_imageBox, row++, dynamic_cast<ModelLayer*>(layer), true );
+        //}
     }
 
     // inactive layers:

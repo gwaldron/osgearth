@@ -115,6 +115,8 @@ namespace osgEarth { namespace Splat
 
     protected: // Layer
 
+        virtual Config getConfig() const;
+
         virtual void addedToMap(const class Map*);
 
         virtual void removedFromMap(const class Map*);
@@ -122,7 +124,6 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~RoadSurfaceLayer() { }
 
-        osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<Session> _session;
 
@@ -135,8 +136,6 @@ namespace osgEarth { namespace Splat
         RoadSurfaceLayerOptions& mutableOptions() { return *_localOptions; }
         const RoadSurfaceLayerOptions& options() const { return *_localOptions; }
     };
-
-    REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
 
 } } // namespace osgEarth::Splat
 

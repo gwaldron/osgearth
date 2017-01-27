@@ -91,6 +91,12 @@ namespace osgEarth
         UID getUID() const { return _uid; }
 
         /**
+         * Sets the osgDB read options for this Layer.
+         */
+        virtual void setReadOptions(const osgDB::Options* options);
+        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
+
+        /**
          * Open a layer and return the status.
          * The default implementation does nothing.
          */
@@ -170,14 +176,21 @@ namespace osgEarth
 
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
+        /**
+         * Return the class type name without namespace. For example if the leaf class type
+         * is osgEarth::ImageLayer, this method returns "ImageLayer".
+         */
+        const char* getTypeName() const;
+
     public: // osg::Object
 
         virtual void setName(const std::string& name);
 
 
     public: // Loading a layer from a plugin
-
-        static Layer* create(const std::string& name, const ConfigOptions& options);
+        
+        static Layer* create(const ConfigOptions& options);
+        static Layer* create(const std::string& driver, const ConfigOptions& options);
 
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
 
@@ -212,6 +225,9 @@ namespace osgEarth
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;
+
+    protected:
+        osg::ref_ptr<osgDB::Options> _readOptions;
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

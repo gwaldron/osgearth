@@ -86,6 +86,12 @@ Layer::~Layer()
     OE_DEBUG << LC << "~Layer\n";
 }
 
+void
+Layer::setReadOptions(const osgDB::Options* options)
+{
+    _readOptions = Registry::cloneOrCreateOptions(options);
+}
+
 Config
 Layer::getConfig() const
 {
@@ -109,8 +115,19 @@ Layer::setName(const std::string& name)
     mutableLayerOptions().name() = name;
 }
 
+const char*
+Layer::getTypeName() const
+{
+    return typeid(this).name();
+}
 
 #define LAYER_OPTIONS_TAG "osgEarth.LayerOptions"
+
+Layer*
+Layer::create(const ConfigOptions& options)
+{
+    return create(options.getConfig().key(), options);
+}
 
 Layer*
 Layer::create(const std::string& name, const ConfigOptions& options)

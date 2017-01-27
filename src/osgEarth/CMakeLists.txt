@@ -107,6 +107,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    LayerListener
     Lighting
     LineFunctor
     Locators
@@ -190,6 +191,7 @@ SET(LIB_PUBLIC_HEADERS
     VerticalDatum
     Viewpoint
     VirtualProgram
+    WrapperLayer
     XmlUtils
 )
 

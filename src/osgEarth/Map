@@ -111,7 +111,7 @@ namespace osgEarth
          * Gets the index of the specified layer, or returns
          * getNumLayers() if the layer is not found.
          */
-        unsigned getIndexOfLayer(Layer* layer) const;
+        unsigned getIndexOfLayer(const Layer* layer) const;
 
         /**
          * Copies references of the map layers into the output list.

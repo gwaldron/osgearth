@@ -32,6 +32,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
+    FeatureSourceLayer
     FeatureTileSource
     Filter
     FilterContext
@@ -74,6 +75,7 @@ SET(TARGET_SRC
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
+    FeatureSourceLayer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

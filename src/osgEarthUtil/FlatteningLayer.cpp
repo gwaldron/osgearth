@@ -580,46 +580,6 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 
 //........................................................................
 
-namespace
-{
-    struct MapCallbackAdapter : public MapCallback
-    {
-        MapCallbackAdapter(FlatteningLayer* obj) : _object(obj) { }
-        
-        void onElevationLayerAdded(ElevationLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<FlatteningLayer> object;
-            if (_object.lock(object))
-            {
-                if (object->getFlatteningLayerOptions().elevationBaseLayer().isSetTo(layer->getName()))
-                {
-                    object->setBaseLayer(layer);
-                    _activeBaseLayer = layer->getName();
-                }
-            }
-        }
-
-        void onElevationLayerRemoved(ElevationLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<FlatteningLayer> object;
-            if (_object.lock(object))
-            {
-                if (_activeBaseLayer == layer->getName())
-                {
-                    object->setBaseLayer(0L);
-                    _activeBaseLayer.clear();
-                }
-            }
-        }
-
-        osg::observer_ptr<FlatteningLayer> _object;
-        std::string _activeBaseLayer;
-    };
-}
-
-
-//........................................................................
-
 #undef  LC
 #define LC "[FlatteningLayer] "
 
@@ -643,22 +603,42 @@ const Status&
 FlatteningLayer::open()
 {
     // ensure the caller named a feature source:
-    if (!options().featureSourceOptions().isSet())
+    if (!options().featureSourceOptions().isSet() &&
+        !options().featureSourceLayer().isSet())
     {
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
     }
 
-    // open the feature source:
-    _featureSource = FeatureSourceFactory::create(options().featureSourceOptions().get());
-    const Status& fsStatus = _featureSource->open(_readOptions.get());
-        
-    // if the feature source won't open, bail out.
-    if (fsStatus.isError())
+    // If the feature source is inline, open it now.
+    if (options().featureSourceOptions().isSet())
     {
-        return setStatus(fsStatus);
+        // open the feature source:
+        FeatureSource* fs = FeatureSourceFactory::create(options().featureSourceOptions().get());
+        if (!fs)
+        {
+            return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source as defined"));
+        }
+
+        setFeatureSource(fs);
+
+        if (getStatus().isError())
+            return getStatus();
     }
 
     return ElevationLayer::open();
+}
+
+void
+FlatteningLayer::setFeatureSource(FeatureSource* fs)
+{
+    if (fs)
+    {
+        _featureSource = fs;
+        if (_ts)
+        {
+            _ts->setFeatureSource(fs);
+        }
+    }
 }
 
 TileSource*
@@ -673,13 +653,14 @@ FlatteningLayer::createTileSource()
 
 FlatteningLayer::~FlatteningLayer()
 {
-    //nop
+    _baseLayerListener.clear();
+    _featureLayerListener.clear();
 }
 
-void
+bool
 FlatteningLayer::setBaseLayer(ElevationLayer* layer)
 {
-    OE_TEST << LC << "Setting base layer to "
+    OE_INFO << LC << "Setting base layer to "
         << (layer ? layer->getName() : "null") << std::endl;
 
     ElevationLayerVector layers;
@@ -693,6 +674,25 @@ FlatteningLayer::setBaseLayer(ElevationLayer* layer)
     }
 
     _pool.setElevationLayers(layers);
+
+    return true;
+}
+
+bool
+FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+{
+    if (layer)
+    {
+        if (layer->getStatus().isOK())
+            setFeatureSource(layer->getFeatureSource());
+        else
+            return false;
+    }
+    else
+    {
+        setFeatureSource(0L);
+    }
+    return true;
 }
 
 void
@@ -704,16 +704,23 @@ FlatteningLayer::addedToMap(const Map* map)
         OE_INFO << LC << "Attaching elevation pool to map\n";
         _pool.setMap( map );
 
-        // Listen for the addition or removal of our base layer:
-        _mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
-
-        // see if the base layer is already loaded:
-        osg::ref_ptr<ElevationLayer> baseLayer = map->getLayerByName<ElevationLayer>(
-            options().elevationBaseLayer().get());
-
-        if (baseLayer.valid())
+        // Listen for our specified base layer to arrive/depart the map.
+        // setBaseLayer will be automatically called.
+        if (options().elevationBaseLayer().isSet())
         {
-            setBaseLayer(baseLayer.get());
+            _baseLayerListener.listen(
+                map, 
+                options().elevationBaseLayer().get(), 
+                this, &FlatteningLayer::setBaseLayer);
+        }
+        
+        // Listen for our feature source layer to arrive, if there is one.
+        if (options().featureSourceLayer().isSet())
+        {
+            _featureLayerListener.listen(
+                map,
+                options().featureSourceLayer().get(), 
+                this, &FlatteningLayer::setFeatureSourceLayer);
         }
     }
 }

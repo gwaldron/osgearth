@@ -23,8 +23,9 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationPool>
-#include <osgEarth/Units>
+#include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgDB/FileNameUtils>
 
 namespace osgEarth { namespace Util
@@ -49,6 +50,10 @@ namespace osgEarth { namespace Util
         optional<std::string>& elevationBaseLayer() { return _elevationBaseLayer; }
         const optional<std::string>& elevationBaseLayer() const { return _elevationBaseLayer; }
 
+        /** Name of the feature source layer to use for flattening. */
+        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
+        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
+
         /** Features that will drive the flattening process. */
         optional<FeatureSourceOptions>& featureSourceOptions() { return _featureSourceOptions; }
         const optional<FeatureSourceOptions>& featureSourceOptions() const { return _featureSourceOptions; }
@@ -68,6 +73,7 @@ namespace osgEarth { namespace Util
             Config conf;
             conf.addIfSet("base_layer", _elevationBaseLayer);
             conf.addObjIfSet("features",  _featureSourceOptions);
+            conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("buffer_width", _bufferWidth);
             return conf;
@@ -78,6 +84,7 @@ namespace osgEarth { namespace Util
         {
             conf.getIfSet("base_layer", _elevationBaseLayer);
             conf.getObjIfSet("features",  _featureSourceOptions);
+            conf.getIfSet("feature_source", _featureSourceLayer);
             conf.getIfSet("line_width", _lineWidth);
             conf.getIfSet("buffer_width", _bufferWidth);
         }
@@ -85,10 +92,12 @@ namespace osgEarth { namespace Util
     private:
         //optional<ElevationLayerOptions> _elevationLayerOptions;
         optional<FeatureSourceOptions>  _featureSourceOptions;
+        optional<std::string> _featureSourceLayer;
         optional<Distance> _lineWidth;
         optional<Distance> _bufferWidth;
         optional<std::string> _elevationBaseLayer;
     };
+
 
     /**
      * Tile source that will take elevation data (from elsewhere in the map)
@@ -145,7 +154,13 @@ namespace osgEarth { namespace Util
         const FlatteningLayerOptions& getFlatteningLayerOptions() const { return *_localOptions; }
 
         // the elevation layer that we want to flatten
-        void setBaseLayer(ElevationLayer* layer);
+        bool setBaseLayer(ElevationLayer* layer);
+
+        // Feature source layer to get a FeatureSource from
+        bool setFeatureSourceLayer(FeatureSourceLayer* layer);    
+        
+        // the feature source from which to read flattening geometry
+        void setFeatureSource(FeatureSource* fs);
 
     public: // ElevationLayer
 
@@ -175,6 +190,9 @@ namespace osgEarth { namespace Util
         FlatteningTileSource* _ts;
         ElevationPool _pool;
         osg::ref_ptr<FeatureSource> _featureSource;
+
+        LayerListener<FlatteningLayer, ElevationLayer> _baseLayerListener;
+        LayerListener<FlatteningLayer, FeatureSourceLayer> _featureLayerListener;
     };
 
     REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);

@@ -127,9 +127,7 @@ namespace osgEarth
 
     public:
 
-        void setReadOptions(const osgDB::Options* readOptions);
-
-        const Status& open();
+        virtual const Status& open();
 
     protected:
 

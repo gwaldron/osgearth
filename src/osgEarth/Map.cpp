@@ -267,22 +267,21 @@ Map::addLayer(Layer* layer)
     {
         if (layer->getEnabled())
         {
+            // Pass along the Read Options (including the cache settings, etc.) to the layer:
+            layer->setReadOptions(_readOptions.get());
+            
+            // If this is a terrain layer, tell it about the Map profile.
             TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-            if (terrainLayer)
+            if (terrainLayer && _profile.valid())
             {
-                // Set the DB options for the map from the layer, including the cache policy.
-                terrainLayer->setReadOptions( _readOptions.get() );
+                terrainLayer->setTargetProfileHint( _profile.get() );
+            }            
 
-                // Tell the layer the map profile, if supported:
-                if ( _profile.valid() )
-                {
-                    terrainLayer->setTargetProfileHint( _profile.get() );
-                }
+            // Attempt to open the layer. Don't check the status here.
+            layer->open();
 
-                // open the layer:
-                terrainLayer->open();
-            }
-
+            // If this is an elevation layer, install a callback so we know when
+            // it's visibility changes:
             ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
             if (elevationLayer)
             {
@@ -290,26 +289,6 @@ Map::addLayer(Layer* layer)
 
                 // invalidate the elevation pool
                 getElevationPool()->clear();
-            }
-
-            ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-            if (modelLayer)
-            {
-                // initialize the model layer
-                modelLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                modelLayer->open();
-            }
-
-            MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
-            if (maskLayer)
-            {
-                // initialize the model layer
-                maskLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                maskLayer->open();
             }
         }
 
@@ -567,7 +546,7 @@ Map::getLayerAt(unsigned index) const
 }
 
 unsigned
-Map::getIndexOfLayer(Layer* layer) const
+Map::getIndexOfLayer(const Layer* layer) const
 {
     Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
     unsigned index = 0;

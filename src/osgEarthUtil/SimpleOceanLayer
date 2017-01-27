@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
-#include <osgEarth/MapCallback>
+#include <osgEarth/LayerListener>
 #include <osgEarthSymbology/Color>
 
 namespace osgEarth {
@@ -104,7 +104,7 @@ namespace osgEarth { namespace Util
         void setMaxAltitude(float altitude_m);
         float getMaxAltitude() const;
 
-        /** Sets a masking layer (returns true upon success) */
+        /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
         bool setMaskLayer(const ImageLayer* layer);
 
     public: // Layer
@@ -133,7 +133,7 @@ namespace osgEarth { namespace Util
         SimpleOceanLayerOptions  _layerOptionsConcrete;
         SimpleOceanLayerOptions& mutableOptions() { return *_layerOptions; }
 
-        MapCallback* _mapCallback;
+        LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
     };
     
 

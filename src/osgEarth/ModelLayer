@@ -243,17 +243,6 @@ namespace osgEarth
     public:
 
         /**
-         * Sets the read options for this layer to user; this includes
-         * Cache and CachePolicy information potentially.
-         */
-        void setReadOptions(const osgDB::Options* readOptions);
-
-        /**
-         * Perform one-time initialization of the model layer.
-         */
-        const Status& open();
-
-        /**
          * Creates the scene graph representing this model layer for the given Map,
          * or returns one that already exists.
          */
@@ -294,7 +283,21 @@ namespace osgEarth
 
     public: // Layer
 
+        /**
+         * Perform one-time initialization of the model layer.
+         */
+        virtual const Status& open();
+
+        /**
+         * Serialize this layer
+         */
         virtual Config getConfig() const;
+
+        /**
+         * Sets the read options for this layer to user; this includes
+         * Cache and CachePolicy information potentially.
+         */
+        virtual void setReadOptions(const osgDB::Options* readOptions);
 
     public:
 
@@ -314,7 +317,6 @@ namespace osgEarth
         ModelLayerCallbackList        _callbacks;
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
-        osg::ref_ptr<osgDB::Options>  _readOptions;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;

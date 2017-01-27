@@ -8,31 +8,32 @@
             </lods>
         </terrain>
     </options>
-    
-    
-    <elevation name="readymap_elevation" driver="tms" enabled="true">
+
+
+    <elevation name="ReadyMap elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>  
-            
-            
-    <flattened_elevation name="road flattener" min_level="13" max_level="13">
+
+    <feature_source name="roads" driver="ogr">
+        <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </feature_source>
+
+    <flattened_elevation name="Road Flattener" min_level="13" max_level="13">
         <cache_policy usage="none"/>
-        <base_layer>readymap_elevation</base_layer>
-        <features name="roads" driver="ogr">
-            <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
+        <base_layer>ReadyMap elevation</base_layer>
+        <feature_source>roads</feature_source>
         <line_width>50m</line_width>
         <buffer_width>50m</buffer_width>
     </flattened_elevation>
-    
-    
-    <image name="readymap_imagery" driver="tms" opacity="0.9" enabled="true">
+
+
+    <image name="ReadyMap imagery" driver="tms" opacity="0.9" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-    
-    
-    <model driver="feature_geom" min_level="13">
+
+
+    <model name="Road surface" driver="feature_geom" min_level="13">
         <cache_policy usage="none"/>
         <features name="roads" driver="ogr">
             <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
@@ -59,7 +60,7 @@
             </style>
         </styles>
     </model>
-    
+
     <!--
     <road_surface min_level="13">
         <cache_policy usage="none"/>
@@ -77,15 +78,15 @@
         <outer_width>100</outer_width>
     </road_surface>
     -->
-    
-    <image driver="debug"/>
-    
+
+    <image name="Debug" driver="debug"/>
+
     <bumpmap>
         <image>../data/rock_hard.jpg</image>
         <octaves>8</octaves>
         <intensity>8.2</intensity>
     </bumpmap>     
-    
+
     <viewpoints>
         <viewpoint>
             <heading>17.33521725357022</heading>
@@ -97,44 +98,44 @@
             <range>23926.75258864516</range>
         </viewpoint>
         <viewpoint name="Schvoy">
-          <heading>-0.523182</heading>
-          <pitch>-65.9341</pitch>
-          <range>676.617m</range>
-          <long>-121.63097887223</long>
-          <lat>46.76306559231917</lat>
-          <height>930.1141443094239</height>
-          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            <heading>-0.523182</heading>
+            <pitch>-65.9341</pitch>
+            <range>676.617m</range>
+            <long>-121.63097887223</long>
+            <lat>46.76306559231917</lat>
+            <height>930.1141443094239</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
 
-        
+
         <viewpoint name="Broken">
-          <heading>13.6397</heading>
-          <pitch>-13.0747</pitch>
-          <range>124.882m</range>
-          <long>-121.6383054147929</long>
-          <lat>46.7624901147203</lat>
-          <height>951.450418044813</height>
-          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            <heading>13.6397</heading>
+            <pitch>-13.0747</pitch>
+            <range>124.882m</range>
+            <long>-121.6383054147929</long>
+            <lat>46.7624901147203</lat>
+            <height>951.450418044813</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
         <viewpoint name="Slant">
-          <heading>132.744</heading>
-          <pitch>-13.1889</pitch>
-          <range>61.0073m</range>
-          <long>-121.6678442419581</long>
-          <lat>46.76550978324325</lat>
-          <height>1079.961525737308</height>
-          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            <heading>132.744</heading>
+            <pitch>-13.1889</pitch>
+            <range>61.0073m</range>
+            <long>-121.6678442419581</long>
+            <lat>46.76550978324325</lat>
+            <height>1079.961525737308</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
         <viewpoint name="Edge">
-          <heading>16.6491</heading>
-          <pitch>-1.07347</pitch>
-          <range>261.916m</range>
-          <long>-121.6706934749621</long>
-          <lat>46.76699648357788</lat>
-          <height>1063.86648590304</height>
-          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            <heading>16.6491</heading>
+            <pitch>-1.07347</pitch>
+            <range>261.916m</range>
+            <long>-121.6706934749621</long>
+            <lat>46.76699648357788</lat>
+            <height>1063.86648590304</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
     </viewpoints>
-    
+
     <libraries>osgearthsplat</libraries>
 </map>

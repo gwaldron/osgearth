@@ -37,7 +37,7 @@ using namespace osgEarth::Util;
 /** Register this layer so it can be used in an earth file */
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
-
+#if 0
 namespace
 {
     struct MapCallbackAdapter : public MapCallback
@@ -75,6 +75,7 @@ namespace
         std::string _activeMaskLayerName;
     };
 }
+#endif
 
 
 SimpleOceanLayer::SimpleOceanLayer() :
@@ -97,7 +98,7 @@ SimpleOceanLayer::ctor()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    _mapCallback = 0L;
+    //_mapCallback = 0L;
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TILE);
@@ -177,17 +178,20 @@ SimpleOceanLayer::addedToMap(const Map* map)
 {    
     if (getOptions().maskLayer().isSet())
     {
+        // listen for the mask layer.
+        _layerListener.listen(map, getOptions().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
+
         // subscribe so we know if the mask layer arrives or departs:
-        _mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
+        //_mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
 
         // see if it's already there. If so, try to install it; 
         // if not, rely on the MapCallback to let us know if and when
         // it arrives.
-        ImageLayer* maskLayer = map->getLayerByName<ImageLayer>(getOptions().maskLayer().get());
-        if (maskLayer)
-        {
-            setMaskLayer(maskLayer);
-        }
+        //ImageLayer* maskLayer = map->getLayerByName<ImageLayer>(getOptions().maskLayer().get());
+        //if (maskLayer)
+        //{
+        //    setMaskLayer(maskLayer);
+        //}
     }      
 }
 
@@ -196,9 +200,10 @@ SimpleOceanLayer::removedFromMap(const Map* map)
 {
     if (getOptions().maskLayer().isSet())
     {
-        if (_mapCallback)
-            map->removeMapCallback(_mapCallback);
-        _mapCallback = 0L;
+        _layerListener.clear();
+        //if (_mapCallback)
+        //    map->removeMapCallback(_mapCallback);
+        //_mapCallback = 0L;
         setMaskLayer(0L);
     }
 }

@@ -26,7 +26,8 @@ http://readymap.org
     </elevation>
     
     <simple_ocean>      
-        <color>#1D2C4FE7</color>
+        <!-- <color>#1D2C4FF7</color> -->
+        <color>#FF0000FF</color>
         <max_altitude>500000</max_altitude>
         <mask_layer>ocean_mask</mask_layer>
     </simple_ocean>

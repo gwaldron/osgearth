@@ -52,6 +52,7 @@ Config
 MaskLayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
+    conf.key() = "mask";
 
     conf.updateIfSet( "name", _name );
     conf.updateIfSet( "min_level", _minLevel );
@@ -102,12 +103,6 @@ MaskLayer::copyOptions()
     {
         setName(_runtimeOptions.name().get());
     }
-}
-
-void
-MaskLayer::setReadOptions(const osgDB::Options* readOptions)
-{
-    _readOptions = Registry::cloneOrCreateOptions(readOptions);
 }
 
 void

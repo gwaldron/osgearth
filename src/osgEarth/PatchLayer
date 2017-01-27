@@ -50,9 +50,6 @@ namespace osgEarth
         };
 
         /**
-         * Cull callback that executes when a /
-
-        /**
          * Callback that the terrain engine will call for custom tile rendering.
          */
         struct DrawCallback : public osg::Referenced

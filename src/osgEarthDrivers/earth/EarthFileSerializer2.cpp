@@ -83,15 +83,17 @@ namespace
 		return std::find_first_of(it, end, PATH_SEPARATORS, PATH_SEPARATORS+PATH_SEPARATORS_LEN);
 	}
 
+    // Config tags that we handle specially (versus just letting the plugin mechanism
+    // take take of them)
     bool isReservedWord(const std::string& k)
     {
         return
             k == "options" ||
-            k == "image" ||
+            //k == "image" ||
             k == "elevation" ||
             k == "heightfield" ||
-            k == "model" ||
-            k == "mask" ||
+            //k == "model" ||
+            //k == "mask" ||
             k == "external" ||
             k == "extensions" ||
             k == "libraries";
@@ -315,6 +317,7 @@ namespace
 
 namespace
 {
+#if 0
     void addImageLayer(const Config& conf, Map* map)
     {
         ImageLayerOptions options( conf );
@@ -356,6 +359,7 @@ namespace
         if (layer->getStatus().isError())
             OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
     }
+#endif
 
     // support for "special" extension names (convenience and backwards compat)
     Extension* createSpecialExtension(const Config& conf)
@@ -378,7 +382,7 @@ namespace
         {
             map->addLayer(layer);
             if (layer->getStatus().isError())
-                OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
+                OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
         }
         return layer != 0L;
     }
@@ -402,16 +406,6 @@ namespace
         }
 
         return extension;
-        //if (extension)
-        //{
-        //    mapNode->addExtension(extension);
-        //    return true;
-        //}
-        //else
-        //{            
-        //    OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
-        //    return false;
-        //}
     }
 }
 
@@ -448,11 +442,21 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     map->beginUpdate();
 
     // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
+    // TODO: revisit this since we should really be listening for elevation data changes and
+    // re-clamping based on that..
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if ( i->key() == "elevation" || i->key() == "heightfield" )
+        // for backwards compatibility:
+        if (i->key() == "heightfield")
         {
-            addElevationLayer( *i, map );
+            Config temp = *i;
+            temp.key() = "elevation";
+            addLayer(temp, map);
+        }
+
+        else if ( i->key() == "elevation" ) // || i->key() == "heightfield" )
+        {
+            addLayer(*i, map);
         }
     }
 
@@ -467,12 +471,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             // nop - handled earlier
         }
 
+#if 0
         else if ( i->key() == "image" )
         {
             addImageLayer( *i, map );
         }
 
-        else if ( i->key() == "model" )
+        else */if ( i->key() == "model" )
         {
             addModelLayer( *i, map );
         }
@@ -481,6 +486,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         {
             addMaskLayer( *i, map );
         }
+#endif
 
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
@@ -497,15 +503,15 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
-            bool addedLayer = addLayer(*i, map); //mapNode.get());
+            // try to add as a plugin Layer first:
+            bool addedLayer = addLayer(*i, map); 
 
+            // failing that, try to load as an extension:
             if ( !addedLayer )
             {
                 Extension* extension = loadExtension(*i);
                 if (extension)
                     extensions.push_back(extension);
-                //OE_INFO << LC << "Tried to load \"" << i->key() << "\" as a layer; now trying extension\n";
-                //addExtension( *i, mapNode.get() );
             }
         }
     }

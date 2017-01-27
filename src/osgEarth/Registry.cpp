@@ -69,7 +69,7 @@ _overrideCachePolicyInitialized( false )
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
-    
+
     // support Chinese character in the file name and attributes in ESRI's shapefile
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
     CPLSetConfigOption("SHAPE_ENCODING","");
@@ -109,11 +109,11 @@ _overrideCachePolicyInitialized( false )
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/jpg",                            "jpg" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/dds",                            "dds" );
-    
+
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
     if ( !zipLib.empty() )
-        osgDB::Registry::instance()->loadLibrary( zipLib );    
+        osgDB::Registry::instance()->loadLibrary( zipLib );
 
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
@@ -153,13 +153,13 @@ Registry::~Registry()
     //nop
 }
 
-Registry* 
+Registry*
 Registry::instance(bool erase)
 {
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
-    if (erase) 
-    {   
+    if (erase)
+    {
         s_registry->destruct();
         s_registry = 0;
     }
@@ -167,21 +167,17 @@ Registry::instance(bool erase)
     return s_registry.get(); // will return NULL on erase
 }
 
-void 
+void
 Registry::destruct()
 {
     //nop
 }
 
-
-OpenThreads::ReentrantMutex&
-Registry::getGDALMutex()
+OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
 {
-    //_numGdalMutexGets++;
-    //OE_NOTICE << "GDAL = " << _numGdalMutexGets << std::endl;
+    static OpenThreads::ReentrantMutex _gdal_mutex;
     return _gdal_mutex;
 }
-
 
 const Profile*
 Registry::getGlobalGeodeticProfile() const
@@ -314,7 +310,7 @@ Registry::getDefaultCacheDriverName() const
             {
                 _cacheDriver = value;
                 OE_DEBUG << LC << "Cache driver set from environment: " << value << std::endl;
-            }        
+            }
         }
     }
     return _cacheDriver.get();
@@ -485,17 +481,17 @@ Registry::setShaderGenerator(ShaderGenerator* shaderGen)
     if ( shaderGen != 0L && shaderGen != _shaderGen.get() )
         _shaderGen = shaderGen;
 }
-        
+
 void
-Registry::setURIReadCallback( URIReadCallback* callback ) 
-{ 
+Registry::setURIReadCallback( URIReadCallback* callback )
+{
     _uriReadCallback = callback;
 }
 
 URIReadCallback*
 Registry::getURIReadCallback() const
 {
-    return _uriReadCallback.get(); 
+    return _uriReadCallback.get();
 }
 
 void
@@ -521,7 +517,7 @@ Registry::createUID()
 }
 
 const osgDB::Options*
-Registry::getDefaultOptions() const 
+Registry::getDefaultOptions() const
 {
     return _defaultOptions.get();
 }
@@ -529,8 +525,8 @@ Registry::getDefaultOptions() const
 osgDB::Options*
 Registry::cloneOrCreateOptions(const osgDB::Options* input)
 {
-    osgDB::Options* newOptions = 
-        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::DEEP_COPY_USERDATA)) : 
+    osgDB::Options* newOptions =
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::DEEP_COPY_USERDATA)) :
         new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
@@ -641,9 +637,9 @@ Registry::getActivities(std::set<std::string>& output)
     }
 }
 
-std::string 
+std::string
 Registry::getExtensionForMimeType(const std::string& mt)
-{            
+{
     std::string mt_lower = osgEarth::toLower(mt);
 
     const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
@@ -657,9 +653,9 @@ Registry::getExtensionForMimeType(const std::string& mt)
     return std::string();
 }
 
-std::string 
+std::string
 Registry::getMimeTypeForExtension(const std::string& ext)
-{            
+{
     std::string ext_lower = osgEarth::toLower(ext);
 
     const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();

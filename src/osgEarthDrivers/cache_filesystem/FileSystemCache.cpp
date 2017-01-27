@@ -124,7 +124,7 @@ namespace
         std::string                       _binPath;        // full path to the bin's root folder
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
-        mutable OpenThreads::ReentrantMutex _mutex;
+        mutable Threading::Mutex          _mutex;
     };
 
     void writeMeta( const std::string& fullPath, const Config& meta )

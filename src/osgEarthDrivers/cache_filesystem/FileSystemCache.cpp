@@ -42,6 +42,8 @@ using namespace osgEarth::Threading;
 #define OSG_EXT   ".osgb"
 #define OSG_COMPRESS
 
+#define OE_TEST OE_DEBUG
+
 namespace
 {
     /** 
@@ -395,6 +397,7 @@ namespace
 
             ReadResult rr( r.getObject(), meta );
             rr.setLastModifiedTime(timeStamp);
+            OE_TEST << LC << "Read \"" << key << "\" from cache bin " << _binID << "\n";
             return rr;            
         }
     }
@@ -467,7 +470,7 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+            OE_TEST << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
         }
         else
         {

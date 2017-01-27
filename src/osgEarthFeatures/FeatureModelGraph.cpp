@@ -1054,7 +1054,10 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         }
 
         // cache it if appropriate.
-        writeTileToCache(cacheKey, group.get(), readOptions);
+        if (_options.nodeCaching() == true)
+        {
+            writeTileToCache(cacheKey, group.get(), readOptions);
+        }
     }
 
     if ( group->getNumChildren() > 0 )
@@ -1753,8 +1756,6 @@ FeatureModelGraph::redraw()
     else
     {
         FeatureLevel defaultLevel( 0.0f, FLT_MAX );
-        
-        //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
     }
 

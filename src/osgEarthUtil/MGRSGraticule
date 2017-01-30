@@ -191,7 +191,8 @@ namespace osgEarth { namespace Util
         }
 
         bool disconnect(MapNode* mapNode) {
-            mapNode->onModelLayerRemoved(_layer.get());
+            mapNode->getMap()->removeLayer(_layer.get());
+            //mapNode->onModelLayerRemoved(_layer.get());
             return true;
         }
 

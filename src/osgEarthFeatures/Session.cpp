@@ -130,6 +130,12 @@ Session::getScriptEngine() const
     return _styleScriptEngine.get();
 }
 
+void
+Session::setFeatureSource(FeatureSource* fs)
+{
+    _featureSource = fs;
+}
+
 FeatureSource*
 Session::getFeatureSource() const 
 { 

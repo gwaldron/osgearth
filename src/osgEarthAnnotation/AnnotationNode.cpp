@@ -51,6 +51,9 @@ _priority   ( 0.0f )
     
     _horizonCuller = new HorizonCullCallback();
     this->addCullCallback( _horizonCuller.get() );
+
+    _mapNodeRequired = true;
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 AnnotationNode::AnnotationNode(const Config& conf) :
@@ -65,11 +68,42 @@ _priority   ( 0.0f )
     this->addCullCallback( _horizonCuller.get() );
 
     this->setName( conf.value("name") );
+
+    _mapNodeRequired = true;
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 AnnotationNode::~AnnotationNode()
 {
     setMapNode( 0L );
+}
+
+void
+AnnotationNode::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        // MapNode auto discovery.
+        if (_mapNodeRequired)
+        {
+            if (getMapNode() == 0L)
+            {
+                MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
+                if (mapNode)
+                {
+                    setMapNode(mapNode);
+                    ADJUST_UPDATE_TRAV_COUNT(this, -1);
+                }
+            }
+
+            if (getMapNode() != 0L)
+            {
+                _mapNodeRequired = false;
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            }
+        }
+    }
+    osg::Group::traverse(nv);
 }
 
 void

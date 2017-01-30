@@ -65,11 +65,21 @@ namespace
     {
         MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
 
+        void onLayerAdded(Layer* layer, unsigned index) {
+            _node->onLayerAdded(layer, index);
+            // for backwards compat until we refactor ModelLayer to use Layer::getNode
+            MapCallback::onLayerAdded(layer, index);
+        }
+        void onLayerRemoved(Layer* layer, unsigned index) {
+            _node->onLayerRemoved(layer, index);
+            // for backwards compat until we refactor ModelLayer to use Layer::getNode
+            MapCallback::onLayerRemoved(layer, index);
+        }
         void onModelLayerAdded( ModelLayer* layer, unsigned int index ) {
             _node->onModelLayerAdded( layer, index );
         }
-        void onModelLayerRemoved( ModelLayer* layer ) {
-            _node->onModelLayerRemoved( layer );
+        void onModelLayerRemoved(ModelLayer* layer, unsigned index) {
+            _node->onModelLayerRemoved( layer, index );
         }
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
@@ -374,17 +384,21 @@ MapNode::init()
     addTerrainDecorator( _overlayDecorator );
 
     // install any pre-existing model layers:
-    ModelLayerVector modelLayers;
-    _map->getLayers( modelLayers );
-    int modelLayerIndex = 0;
-    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
-    {
-        onModelLayerAdded( k->get(), modelLayerIndex );
-    }
+    //ModelLayerVector modelLayers;
+    //_map->getLayers( modelLayers );
+    //int modelLayerIndex = 0;
+    //for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
+    //{
+    //    onModelLayerAdded( k->get(), modelLayerIndex );
+    //}
 
+    // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
-    // install a layer callback for processing further map actions:
-    _map->addMapCallback( _mapCallback.get()  );
+    _map->addMapCallback( _mapCallback.get() );
+
+    // Simulate adding all existing layers:
+    _mapCallback->invokeOnLayerAdded(_map.get());
+
 
     osg::StateSet* stateset = getOrCreateStateSet();
 
@@ -442,13 +456,14 @@ MapNode::~MapNode()
 {
     _map->removeMapCallback( _mapCallback.get() );
 
-    ModelLayerVector modelLayers;
-    _map->getLayers( modelLayers );
-    //Remove our model callback from any of the model layers in the map
-    for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
-    {
-        this->onModelLayerRemoved( itr->get() );
-    }
+    _mapCallback->invokeOnLayerRemoved(_map.get());
+    //ModelLayerVector modelLayers;
+    //_map->getLayers( modelLayers );
+    ////Remove our model callback from any of the model layers in the map
+    //for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
+    //{
+    //    this->onModelLayerRemoved( itr->get() );
+    //}
 
     _map->clear();
 
@@ -578,17 +593,18 @@ MapNode::clearExtensions()
 }
 
 osg::Group*
-MapNode::getModelLayerGroup() const
+MapNode::getLayerNodeGroup() const
 {
     return _models;
 }
 
 osg::Node*
-MapNode::getModelLayerNode( ModelLayer* layer ) const
+MapNode::getLayerNode(Layer* layer) const
 {
-    ModelLayerNodeMap::const_iterator i = _modelLayerNodes.find( layer );
-    return i != _modelLayerNodes.end() ? i->second : 0L;
+    LayerNodeMap::const_iterator i = _layerNodes.find( layer );
+    return i != _layerNodes.end() ? i->second : 0L;
 }
+
 
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
@@ -609,7 +625,36 @@ MapNode::isGeocentric() const
 }
 
 void
-MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
+MapNode::onLayerAdded(Layer* layer, unsigned index)
+{
+    if (!layer || !layer->getEnabled())
+        return;
+
+    osg::Node* node = layer->getNode();
+    if (node)
+    {
+        OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
+        _layerNodes[layer] = node;
+        _models->addChild(node);
+    }
+}
+
+void
+MapNode::onLayerRemoved(Layer* layer, unsigned index)
+{
+    if (!layer || !layer->getNode())
+    {
+        LayerNodeMap::iterator i = _layerNodes.find(layer);
+        if (i != _layerNodes.end())
+        {
+            _models->removeChild(layer->getNode());
+            _layerNodes.erase(i);
+        }
+    }
+}
+
+void
+MapNode::onModelLayerAdded(ModelLayer* layer, unsigned int index)
 {
     if ( !layer->getEnabled() )
         return;
@@ -629,7 +674,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 
     if ( node )
     {
-        if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
+        if ( _layerNodes.find( layer ) != _layerNodes.end() )
         {
             OE_WARN
                 << "Illegal: tried to add the name model layer more than once: "
@@ -669,7 +714,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 }
             }
 
-            _modelLayerNodes[ layer ] = node;
+            _layerNodes[ layer ] = node;
         }
 
         dirtyBound();
@@ -677,13 +722,13 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 }
 
 void
-MapNode::onModelLayerRemoved( ModelLayer* layer )
+MapNode::onModelLayerRemoved(ModelLayer* layer, unsigned index)
 {
     if ( layer )
     {
         // look up the node associated with this model layer.
-        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
-        if ( i != _modelLayerNodes.end() )
+        LayerNodeMap::iterator i = _layerNodes.find( layer );
+        if ( i != _layerNodes.end() )
         {
             osg::Node* node = i->second;
 
@@ -696,7 +741,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
                 _models->removeChild( node );
             }
 
-            _modelLayerNodes.erase( i );
+            _layerNodes.erase( i );
         }
 
         dirtyBound();
@@ -709,8 +754,8 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
     if ( layer )
     {
         // look up the node associated with this model layer.
-        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
-        if ( i != _modelLayerNodes.end() )
+        LayerNodeMap::iterator i = _layerNodes.find( layer );
+        if ( i != _layerNodes.end() )
         {
             osg::ref_ptr<osg::Node> node = i->second;
 

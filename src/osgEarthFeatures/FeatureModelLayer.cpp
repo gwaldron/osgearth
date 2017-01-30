@@ -29,22 +29,17 @@ REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer);
 
 //...........................................................................
 
-FeatureModelLayerOptions::FeatureModelLayerOptions( const ConfigOptions& options ) :
-LayerOptions       ( options ),
-_lit               ( true ),
-_maxGranularity_deg( 1.0 ),
-_clusterCulling    ( true ),
-_backfaceCulling   ( true ),
-_alphaBlending     ( true ),
-_sessionWideResourceCache( true ),
-_nodeCaching(false)
+FeatureModelLayerOptions::FeatureModelLayerOptions(const ConfigOptions& options) :
+LayerOptions(options),
+FeatureModelOptions()
 {
-    fromConfig( _conf );
+    mergeConfig( _conf );
 }
-
-void
-FeatureModelLayerOptions::fromConfig(const Config& conf)
+        
+void FeatureModelLayerOptions::mergeConfig(const Config& conf)
 {
+    LayerOptions::mergeConfig(conf);
+
     conf.getIfSet("feature_source", _featureSourceLayer);
 
     conf.getObjIfSet( "styles",           _styles );
@@ -107,31 +102,77 @@ FeatureModelLayer::~FeatureModelLayer()
     //NOP
 }
 
+void
+FeatureModelLayer::init()
+{
+    Layer::init();
+    _root = new osg::Group();
+}
+
 bool
 FeatureModelLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 {
+    if (layer && layer->getStatus().isError())
+    {
+        setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
+        return false;
+    }
+
+    if (layer)
+        OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
+
     setFeatureSource(layer ? layer->getFeatureSource() : 0L);
-    return false;
+    return true;
 }
 
 void
 FeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
-    _featureSource = source;
-    //TODO
+    if (_featureSource != source)
+    {
+        if (source)
+            OE_INFO << LC << "Setting feature source \"" << source->getName() << "\"\n";
+
+        _featureSource = source;
+
+        if (source && source->getStatus().isError())
+        {
+            setStatus(source->getStatus());
+            return;
+        }
+
+        create();
+    }
+}
+
+osg::Node*
+FeatureModelLayer::getNode() const
+{
+    OE_DEBUG << LC << "getNode\n";
+    return _root.get();
 }
 
 const Status&
 FeatureModelLayer::open()
 {
+    OE_DEBUG << LC << "open\n";
     return Layer::open();
 }
 
 void
 FeatureModelLayer::addedToMap(const Map* map)
 {
+    OE_DEBUG << LC << "addedToMap\n";
+
+    // Save a reference to the map since we'll need it to
+    // create a new session object later.
+    _session = new Session(map);
+    _session->setStyles( options().styles().get() );
+
     if (options().featureSourceLayer().isSet())
     {
+        _featureSourceLayerListener.clear();
+
         _featureSourceLayerListener.listen(
             map,
             options().featureSourceLayer().get(),
@@ -139,14 +180,36 @@ FeatureModelLayer::addedToMap(const Map* map)
             &FeatureModelLayer::setFeatureSourceLayer);
     }
 
-    _fmg = new FeatureModelGraph(
-        session,
-        options,
-        factory);
+    create();
 }
 
 void
 FeatureModelLayer::removedFromMap(const Map* map)
 {
     _featureSourceLayerListener.clear();
+}
+
+void
+FeatureModelLayer::create()
+{
+    if (_featureSource.valid() && _session.valid())
+    {
+        _session->setFeatureSource(_featureSource.get());
+
+        //TODO: get this from somewhere
+        GeometryCompilerOptions compilerOptions;
+
+        FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(compilerOptions);
+
+        FeatureModelGraph* fmg = new FeatureModelGraph(
+            _session.get(),
+            compilerOptions,
+            nodeFactory,
+            0L,
+            0L,
+            0L);
+        
+        _root->removeChildren(0, _root->getNumChildren());
+        _root->addChild(fmg);
+    }
 }

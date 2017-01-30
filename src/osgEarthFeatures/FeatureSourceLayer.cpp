@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/FeatureSourceLayer>
 
-#define LC "[FeatureSourceLayer] "
+#define LC "[FeatureSourceLayer] " << getName() << ": "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -54,7 +54,7 @@ FeatureSourceLayer::open()
         _featureSource = 0L;
     }
     
-    OE_INFO << LC << "Opened feature source OK\n";
+    OE_INFO << LC << "Opened feature source OK.\n";
     return getStatus();
 }
 

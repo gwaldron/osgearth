@@ -176,7 +176,7 @@ GeoTransform::traverse(osg::NodeVisitor& nv)
                 _findTerrain = false;
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);
                 setTerrain(mapNode->getTerrain());
-                OE_WARN << LC << "Discovered terrain.\n";
+                OE_DEBUG << LC << "Discovered terrain.\n";
             }
         }
 

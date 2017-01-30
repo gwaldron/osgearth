@@ -33,10 +33,9 @@ using namespace osgEarth::Symbology;
 
 #define LC "[FeatureModelSource] "
 
-//------------------------------------------------------------------------
+//........................................................................
 
-FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& options ) :
-ModelSourceOptions ( options ),
+FeatureModelOptions::FeatureModelOptions() :
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _clusterCulling    ( true ),
@@ -44,6 +43,15 @@ _backfaceCulling   ( true ),
 _alphaBlending     ( true ),
 _sessionWideResourceCache( true ),
 _nodeCaching(false)
+{
+    //nop
+}
+
+//........................................................................
+
+FeatureModelSourceOptions::FeatureModelSourceOptions(const ConfigOptions& options) :
+ModelSourceOptions(options),
+FeatureModelOptions()
 {
     fromConfig( _conf );
 }
@@ -53,9 +61,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
     conf.getObjIfSet( "features", _featureOptions );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
-
-    conf.getIfSet("feature_source", _featureSourceLayer);
-
+    
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
     conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated

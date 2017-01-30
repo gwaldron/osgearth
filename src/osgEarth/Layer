@@ -128,6 +128,15 @@ namespace osgEarth
          */
         virtual bool getEnabled() const { return getLayerOptions().enabled().get(); }
 
+        /**
+         * Gets a optional scene graph provided by the layer (default is NULL).
+         * When this layer is added to a Map, the MapNode will add this node to 
+         * its scene graph; and remove it when the Layer is removed from the Map.
+         * (Note: This method is const to discourage you from *creating* the node in this
+         * method, since the MapNode may call it just to test for the node's existance.)
+         */
+        virtual osg::Node* getNode() const { return 0L; }
+
 
         // *** NOTE *** Everything below this line is experimental and subject to change ***
 

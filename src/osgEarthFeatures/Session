@@ -82,6 +82,12 @@ namespace osgEarth { namespace Features
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
 
+        /**
+         * Set the feature source to draw upon in this Session. 
+         * Do no call this after the Session is already in use.
+         */
+        void setFeatureSource(FeatureSource*);
+        
         /** Gets the current feature source */
         FeatureSource* getFeatureSource() const;
 

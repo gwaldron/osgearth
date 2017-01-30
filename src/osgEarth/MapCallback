@@ -60,7 +60,7 @@ namespace osgEarth
         virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
         virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
-        virtual void onModelLayerRemoved( ModelLayer* layer ) { }
+        virtual void onModelLayerRemoved( ModelLayer* layer, unsigned int index ) { }
         virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
@@ -68,6 +68,14 @@ namespace osgEarth
 
         /** dtor */
         virtual ~MapCallback() { }
+
+        /**
+         * Invokes a callback method for all layers in the specified Map.
+         * This is useful if you create a callback for a Map that already has
+         * existing Layers in it and you want to "simulate" adding/removing them all.
+         */
+        void invokeOnLayerAdded(const class Map*);
+        void invokeOnLayerRemoved(const class Map*);
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;

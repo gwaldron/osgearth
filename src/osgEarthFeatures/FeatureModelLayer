@@ -21,6 +21,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
@@ -36,99 +37,25 @@ namespace osgEarth { namespace Features
     /**
      * Serializable options to configure a FeatureModelLayerOptions.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public LayerOptions
+    class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public LayerOptions,
+                                                             public FeatureModelOptions
     {
     public:
         // constructor
-        FeatureModelLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            LayerOptions(co)
-        {
-            mergeConfig(_conf);
-        }        
+        FeatureModelLayerOptions(const ConfigOptions& co = ConfigOptions());
         
         /** Name of the feature source layer to use for flattening. */
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
-        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
-        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
-
-        /** Maximum span of a generated edge, in degrees. For geocentric maps only */
-        optional<double>& maxGranularity() { return _maxGranularity_deg; }
-        const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
-
-        /** Whether to explicity set/clear GL lighting on the result */
-        optional<bool>& enableLighting() { return _lit; }
-        const optional<bool>& enableLighting() const { return _lit; }
-
-        /** Information that controls paging and tiling of the dataset */
-        optional<FeatureDisplayLayout>& layout() { return _layout; }
-        const optional<FeatureDisplayLayout>& layout() const { return _layout; }
-
-        optional<bool>& clusterCulling() { return _clusterCulling; }
-        const optional<bool>& clusterCulling() const { return _clusterCulling; }
-
-        /** Expression that will assign a node name to geometry built from each feature.
-            Note; this may disable various scene graph optimizations. */
-        optional<StringExpression>& featureName() { return _featureNameExpr; }
-        const optional<StringExpression>& featureName() const { return _featureNameExpr; }
-
-        /** Whether to index feature data for use with the global ObjectIndex (default = yes)
-            for the purposes of search, picking, etc. */
-        optional<FeatureSourceIndexOptions>& featureIndexing() { return _featureIndexing; }
-        const optional<FeatureSourceIndexOptions>& featureIndexing() const { return _featureIndexing; }
-
-        /** Whether to activate backface culling (default = yes) */
-        optional<bool>& backfaceCulling() { return _backfaceCulling; }
-        const optional<bool>& backfaceCulling() const { return _backfaceCulling; }
-
-        /** Whether to activate alpha blending (default = yes) */
-        optional<bool>& alphaBlending() { return _alphaBlending; }
-        const optional<bool>& alphaBlending() const { return _alphaBlending; }
-
-        /** Explicity caching policy for data from the underlying feature source */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
-        /** Fading properties */
-        optional<FadeOptions>& fading() { return _fading; }
-        const optional<FadeOptions>& fading() const { return _fading; }
-
-        /** Whether to enable caching of actual OSG nodes. default = false. */
-        optional<bool>& nodeCaching() { return _nodeCaching; }
-        const optional<bool>& nodeCaching() const { return _nodeCaching; }
-
-        /** Debug: whether to enable a session-wide resource cache (default=true) */
-        optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
-        const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
-
-    public:
+    public: // LayerOptions
         virtual Config getConfig() const;
 
-    protected:
-        virtual void mergeConfig(const Config& conf) {
-            LayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
+    protected: // LayerOptions
+        virtual void mergeConfig(const Config& conf);
         
     private:
-        void fromConfig(const Config& conf);
-
-        optional<std::string>               _featureSourceLayer;
-        optional<FeatureDisplayLayout>      _layout;
-        optional<StringExpression>          _featureNameExpr;
-        optional<bool>                      _lit;
-        optional<double>                    _maxGranularity_deg;
-        optional<bool>                      _clusterCulling;
-        optional<bool>                      _backfaceCulling;
-        optional<bool>                      _alphaBlending;
-        optional<CachePolicy>               _cachePolicy;
-        optional<FadeOptions>               _fading;
-        optional<FeatureSourceIndexOptions> _featureIndexing;
-        optional<bool>                      _sessionWideResourceCache;
-        optional<std::string>               _featureSourceLayer;
-        optional<bool>                      _nodeCaching;
-        osg::ref_ptr<StyleSheet>            _styles;
+        optional<std::string> _featureSourceLayer;
     };
 
 
@@ -161,9 +88,14 @@ namespace osgEarth { namespace Features
         // called by the map when this layer is removed
         virtual void removedFromMap(const class Map*);
 
+        // The Node representing this layer.
+        virtual osg::Node* getNode() const;
+
     protected:
 
         virtual ~FeatureModelLayer();
+
+        virtual void init();
 
     private:
         // options support.
@@ -175,7 +107,9 @@ namespace osgEarth { namespace Features
     private:
         osg::ref_ptr<FeatureSource> _featureSource;
         LayerListener<FeatureModelLayer, FeatureSourceLayer> _featureSourceLayerListener;
-        osg::ref_ptr<class FeatureModelGraph> _fmg;
+        osg::ref_ptr<class Session> _session;
+        osg::ref_ptr<osg::Group> _root;
+        void create();
     };
 
 } } // namespace osgEarth::Features

@@ -72,6 +72,8 @@ namespace osgEarth { namespace Annotation
     public:
 
         const std::string& getName() const { return osg::Group::getName(); }
+
+        void traverse(osg::NodeVisitor& nv);
         
         /**
          * Priority of the item. A negative Priority means "never occlude me".
@@ -151,6 +153,7 @@ namespace osgEarth { namespace Annotation
             
         osg::observer_ptr<MapNode> _mapNode;
         static Style s_emptyStyle;
+        bool _mapNodeRequired;
 
     public:
 

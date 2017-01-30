@@ -38,13 +38,10 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-
-    class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions
+    
+    class FeatureModelOptions
     {
     public: //properties
-
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
@@ -99,6 +96,37 @@ namespace osgEarth { namespace Features
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
 
     public:
+        FeatureModelOptions();
+
+    protected:
+        optional<FeatureSourceOptions>      _featureOptions;
+        optional<FeatureDisplayLayout>      _layout;
+        optional<StringExpression>          _featureNameExpr;
+        optional<bool>                      _lit;
+        optional<double>                    _maxGranularity_deg;
+        optional<bool>                      _clusterCulling;
+        optional<bool>                      _backfaceCulling;
+        optional<bool>                      _alphaBlending;
+        optional<CachePolicy>               _cachePolicy;
+        optional<FadeOptions>               _fading;
+        optional<FeatureSourceIndexOptions> _featureIndexing;
+        optional<bool>                      _sessionWideResourceCache;
+        optional<std::string>               _featureSourceLayer;
+        optional<bool>                      _nodeCaching;
+        osg::ref_ptr<StyleSheet>            _styles;
+    };
+
+
+
+    class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions,
+                                                              public FeatureModelOptions
+    {
+    public: //properties
+
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+    public:
         /** A live feature source instance to use. Note, this does not serialize. */
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
         const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
@@ -119,23 +147,8 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        optional<FeatureSourceOptions>      _featureOptions;
-        optional<FeatureDisplayLayout>      _layout;
-        optional<StringExpression>          _featureNameExpr;
-        optional<bool>                      _lit;
-        optional<double>                    _maxGranularity_deg;
-        optional<bool>                      _clusterCulling;
-        optional<bool>                      _backfaceCulling;
-        optional<bool>                      _alphaBlending;
-        optional<CachePolicy>               _cachePolicy;
-        optional<FadeOptions>               _fading;
-        optional<FeatureSourceIndexOptions> _featureIndexing;
-        optional<bool>                      _sessionWideResourceCache;
-        optional<std::string>               _featureSourceLayer;
-        optional<bool>                      _nodeCaching;
-
-        osg::ref_ptr<StyleSheet>            _styles;
-        osg::ref_ptr<FeatureSource>         _featureSource;
+        optional<FeatureSourceOptions> _featureOptions;
+        osg::ref_ptr<FeatureSource>    _featureSource;
     };
 
 

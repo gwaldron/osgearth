@@ -144,12 +144,6 @@ FeatureModelSource::initialize(const osgDB::Options* readOptions)
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
     }
 
-    else if (_options.featureSourceLayer().isSet())
-    {
-        //TODO
-        OE_WARN << LC << "options.featureSourceLayer NYI\n";
-    }
-
     if (!_features.valid())
         return Status::Error(Status::ServiceUnavailable, "Failed to create a feature driver");
 

@@ -45,10 +45,6 @@ namespace osgEarth { namespace Features
 
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
-        
-        /** Name of the feature source layer to open. */
-        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
-        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }

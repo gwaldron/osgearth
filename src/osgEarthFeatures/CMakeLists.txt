@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureIndex
     FeatureListSource
     FeatureModelGraph
+    FeatureModelLayer
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
@@ -72,6 +73,7 @@ SET(TARGET_SRC
     FeatureDrawSet.cpp
     FeatureListSource.cpp
     FeatureModelGraph.cpp
+    FeatureModelLayer.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp

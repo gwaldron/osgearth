@@ -33,6 +33,8 @@
 
 #include <osgUtil/CullVisitor>
 
+#include <osg/LOD>
+
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 

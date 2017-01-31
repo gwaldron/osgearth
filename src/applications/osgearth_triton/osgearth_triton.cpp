@@ -18,6 +18,7 @@
 */
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/NodeUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>

@@ -26,6 +26,8 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ModelLayer>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
@@ -84,7 +86,7 @@ int main(int argc, char** argv)
     // to load a local GeoTIFF file:
     GDALOptions basemapOpt;
     basemapOpt.url() = "../data/world.tif";
-    map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
     // Next we add a feature layer. 
     OGRFeatureOptions featureOptions;
@@ -131,7 +133,7 @@ int main(int argc, char** argv)
         rasterOptions.featureOptions() = featureOptions;
         rasterOptions.styles() = new StyleSheet();
         rasterOptions.styles()->addStyle( style );
-        map->addImageLayer( new ImageLayer("my features", rasterOptions) );
+        map->addLayer(new ImageLayer("my features", rasterOptions) );
     }
     else //if (useGeom || useOverlay)
     {
@@ -142,7 +144,7 @@ int main(int argc, char** argv)
         geomOptions.enableLighting() = false;
 
         ModelLayerOptions layerOptions( "my features", geomOptions );
-        map->addModelLayer( new ModelLayer(layerOptions) );
+        map->addLayer( new ModelLayer(layerOptions) );
     }
 
     if ( useLabels )
@@ -166,7 +168,7 @@ int main(int argc, char** argv)
         geomOptions.styles() = new StyleSheet();
         geomOptions.styles()->addStyle( labelStyle );
 
-        map->addModelLayer( new ModelLayer("labels", geomOptions) );
+        map->addLayer( new ModelLayer("labels", geomOptions) );
     }
 
     

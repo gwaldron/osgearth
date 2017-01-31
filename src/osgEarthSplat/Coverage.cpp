@@ -19,6 +19,7 @@
 #include "Coverage"
 #include "SplatCoverageLegend"
 #include <osgEarth/Map>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/XmlUtils>
 #include <osgDB/Options>
 

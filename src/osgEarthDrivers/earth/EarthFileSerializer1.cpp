@@ -24,6 +24,7 @@ using namespace osgEarth;
 MapNode*
 EarthFileSerializer1::deserialize( const Config& conf, const std::string& referenceURI ) const
 {
+#if 0
     // piece together a MapOptions, TerrainOptions, and MapNodeOptions:
     Config mapOptionsConf;
     mapOptionsConf.setReferrer( conf.referrer() );
@@ -132,7 +133,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
 
-        map->addModelLayer( new ModelLayer(layerOpt) );
+        map->addLayer( new ModelLayer(layerOpt) );
         //map->addModelLayer( new ModelLayer( i->value("name"), ModelSourceOptions(*i) ) );
     }
 
@@ -146,9 +147,11 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         options.name() = maskLayerConf.value( "name" );
         options.driver() = MaskSourceOptions(options);
 
-        map->addTerrainMaskLayer( new MaskLayer(options) );
+        map->addLayer( new MaskLayer(options) );
     }
 
     return new MapNode( map, mapNodeOptions );
+#endif
+    return 0L;
 }
 

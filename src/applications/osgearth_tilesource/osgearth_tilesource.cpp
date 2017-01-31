@@ -25,6 +25,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Registry>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
@@ -105,7 +106,7 @@ int main(int argc, char** argv)
     ImageLayerOptions options( "custom" );
     CustomTileSource* tileSource = new CustomTileSource();
     tileSource->open();
-    map->addImageLayer( new ImageLayer(options, tileSource) );
+    map->addLayer( new ImageLayer(options, tileSource) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNode* mapNode = new MapNode( map );

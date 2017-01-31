@@ -22,6 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapNodeObserver>
+#include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osg/ClipPlane>

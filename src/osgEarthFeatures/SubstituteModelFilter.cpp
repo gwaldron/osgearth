@@ -28,6 +28,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/NodeUtils>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -383,7 +384,7 @@ namespace
         osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
        
         // Now remove any geodes
-        FindNodesVisitor<osg::Geode> findGeodes;
+        osgEarth::FindNodesVisitor<osg::Geode> findGeodes;
         clone->accept(findGeodes);
         for (unsigned int i = 0; i < findGeodes._results.size(); i++)
         {

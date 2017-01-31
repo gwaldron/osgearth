@@ -27,6 +27,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarth/Utils>
@@ -198,7 +199,7 @@ int main(int argc, char** argv)
         // to load a local GeoTIFF file:
         GDALOptions basemapOpt;
         basemapOpt.url() = "../data/world.tif";
-        map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+        map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
         // That's it, the map is ready; now create a MapNode to render the Map:
         MapNodeOptions mapNodeOptions;

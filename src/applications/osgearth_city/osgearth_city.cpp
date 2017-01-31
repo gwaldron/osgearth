@@ -25,6 +25,8 @@
 #include <osgViewer/Viewer>
 
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ModelLayer>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
@@ -110,7 +112,7 @@ void addImagery(Map* map)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = IMAGERY_URL;
-    map->addImageLayer( new ImageLayer("ReadyMap imagery", imagery) );
+    map->addLayer( new ImageLayer("ReadyMap imagery", imagery) );
 }
 
 
@@ -119,7 +121,7 @@ void addElevation(Map* map)
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = ELEVATION_URL;
-    map->addElevationLayer( new ElevationLayer("ReadyMap elevation", elevation) );
+    map->addLayer( new ElevationLayer("ReadyMap elevation", elevation) );
 }
 
 
@@ -190,7 +192,7 @@ void addBuildings(Map* map)
     fgm_opt.styles() = styleSheet;
     fgm_opt.layout() = layout;
 
-    map->addModelLayer( new ModelLayer( "buildings", fgm_opt ) );
+    map->addLayer( new ModelLayer( "buildings", fgm_opt ) );
 }
 
 
@@ -243,7 +245,7 @@ void addStreets(Map* map)
     fgm_opt.styles() = new StyleSheet();
     fgm_opt.styles()->addStyle( style );
 
-    map->addModelLayer( new ModelLayer("streets", fgm_opt) );
+    map->addLayer( new ModelLayer("streets", fgm_opt) );
 }
 
 
@@ -293,5 +295,5 @@ void addParks(Map* map)
     fgm_opt.styles()->addStyle( style );
     fgm_opt.compilerOptions().instancing() = true;
 
-    map->addModelLayer( new ModelLayer("parks", fgm_opt) );
+    map->addLayer( new ModelLayer("parks", fgm_opt) );
 }

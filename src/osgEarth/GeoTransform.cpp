@@ -19,6 +19,7 @@
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Terrain>
 #include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
 
 #define LC "[GeoTransform] "
 

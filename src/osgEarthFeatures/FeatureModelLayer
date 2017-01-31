@@ -48,6 +48,10 @@ namespace osgEarth { namespace Features
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
+        /** Embedded feature source configuration. */
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+
     public: // LayerOptions
         virtual Config getConfig() const;
 
@@ -56,6 +60,7 @@ namespace osgEarth { namespace Features
         
     private:
         optional<std::string> _featureSourceLayer;
+        optional<FeatureSourceOptions> _featureSource;
     };
 
 

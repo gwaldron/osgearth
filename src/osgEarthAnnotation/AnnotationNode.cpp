@@ -26,6 +26,8 @@
 
 #include <osgEarth/DepthOffset>
 #include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/ShaderUtils>
 
 #include <osg/PolygonOffset>
 #include <osg/Depth>

@@ -23,6 +23,7 @@
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Lighting>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Map>
 #include <osg/CullFace>
 #include <osg/Material>
@@ -37,56 +38,17 @@ using namespace osgEarth::Util;
 /** Register this layer so it can be used in an earth file */
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
-#if 0
-namespace
-{
-    struct MapCallbackAdapter : public MapCallback
-    {
-        MapCallbackAdapter(SimpleOceanLayer* obj) : _ocean(obj) { }
-        
-        void onImageLayerAdded(ImageLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<SimpleOceanLayer> ocean;
-            if (_ocean.lock(ocean))
-            {
-                if (ocean->getOptions().maskLayer().isSetTo(layer->getName()))
-                {
-                    if (ocean->setMaskLayer(layer))
-                    {
-                        _activeMaskLayerName = layer->getName();
-                    }
-                }
-            }
-        }
-
-        void onImageLayerRemoved(ImageLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<SimpleOceanLayer> ocean;
-            if (_ocean.lock(ocean))
-            {
-                if (layer->getName() == _activeMaskLayerName)
-                {
-                    ocean->setMaskLayer(0L);
-                }
-            }
-        }
-
-        osg::observer_ptr<SimpleOceanLayer> _ocean;
-        std::string _activeMaskLayerName;
-    };
-}
-#endif
 
 
 SimpleOceanLayer::SimpleOceanLayer() :
-Layer(&_layerOptionsConcrete),
+VisibleLayer(&_layerOptionsConcrete),
 _layerOptions(&_layerOptionsConcrete)
 {
     ctor();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-Layer(&_layerOptionsConcrete),
+VisibleLayer(&_layerOptionsConcrete),
 _layerOptions(&_layerOptionsConcrete),
 _layerOptionsConcrete(options)
 {
@@ -180,18 +142,6 @@ SimpleOceanLayer::addedToMap(const Map* map)
     {
         // listen for the mask layer.
         _layerListener.listen(map, getOptions().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
-
-        // subscribe so we know if the mask layer arrives or departs:
-        //_mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
-
-        // see if it's already there. If so, try to install it; 
-        // if not, rely on the MapCallback to let us know if and when
-        // it arrives.
-        //ImageLayer* maskLayer = map->getLayerByName<ImageLayer>(getOptions().maskLayer().get());
-        //if (maskLayer)
-        //{
-        //    setMaskLayer(maskLayer);
-        //}
     }      
 }
 
@@ -201,9 +151,6 @@ SimpleOceanLayer::removedFromMap(const Map* map)
     if (getOptions().maskLayer().isSet())
     {
         _layerListener.clear();
-        //if (_mapCallback)
-        //    map->removeMapCallback(_mapCallback);
-        //_mapCallback = 0L;
         setMaskLayer(0L);
     }
 }

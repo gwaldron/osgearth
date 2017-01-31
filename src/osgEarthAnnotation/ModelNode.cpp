@@ -31,6 +31,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/NodeUtils>
 
 #define LC "[ModelNode] "
 

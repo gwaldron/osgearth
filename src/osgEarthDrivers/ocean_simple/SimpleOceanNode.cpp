@@ -31,6 +31,7 @@
 #include <osg/CullFace>
 #include <osg/Depth>
 #include <osg/Texture2D>
+#include <osg/Material>
 
 #define LC "[SimpleOceanNode] "
 
@@ -156,7 +157,7 @@ SimpleOceanNode::rebuild()
             maskLayer()->visible() = false;
 
             ImageLayer* layer = new ImageLayer("ocean-mask", maskLayer().get());
-            oceanMap->addImageLayer( layer );
+            oceanMap->addLayer( layer );
 
             ss->setDefine("OE_SIMPLE_OCEAN_USE_MASK");
             OE_INFO << LC << "Using mask layer \"" << layer->getName() << "\"\n";
@@ -175,7 +176,7 @@ SimpleOceanNode::rebuild()
             epo.visible() = false;
             epo.shareTexUniformName() = "oe_ocean_proxyTex";
             epo.shareTexMatUniformName() = "oe_ocean_proxyMat";
-            oceanMap->addImageLayer( new ElevationProxyImageLayer(mapNode->getMap(), epo) );
+            oceanMap->addLayer( new ElevationProxyImageLayer(mapNode->getMap(), epo) );
             OE_INFO << LC << "Using elevation proxy layer\n";
         }
 

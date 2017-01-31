@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 
 #define LC "[GeometryNode] "
 

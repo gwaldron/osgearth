@@ -31,6 +31,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GeoMath>
 #include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/NodeUtils>
 
 #include <osg/Depth>
 #include <osgText/Text>

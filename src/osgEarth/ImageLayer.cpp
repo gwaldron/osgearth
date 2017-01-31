@@ -333,20 +333,6 @@ ImageLayer::getImageLayerOptions() const
     return *_layerOptions;
 }
 
-//ImageLayer::ImageLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-//TerrainLayer   ( ImageLayerOptions(name, driverOptions), &_runtimeOptions ),
-//_runtimeOptions( ImageLayerOptions(name, driverOptions) )
-//{
-//    init();
-//}
-//
-//ImageLayer::ImageLayer( const ImageLayerOptions& options, TileSource* tileSource ) :
-//TerrainLayer   ( options, &_runtimeOptions, tileSource ),
-//_runtimeOptions( options )
-//{
-//    init();
-//}
-
 const Status&
 ImageLayer::open()
 {
@@ -390,26 +376,7 @@ ImageLayer::getConfig() const
     conf.key() = "image";
     conf.set("driver", getImageLayerOptions().driver()->getDriver()); // need?
     return conf;
-    //Config layerConf = getImageLayerOptions().getConfig();
-    //layerConf.set("name", getName());
-    //layerConf.set("driver", getInitialOptions().driver()->getDriver());
-    //layerConf.key() = "image";
-    //return layerConf;
 }
-
-//void
-//ImageLayer::addCallback( ImageLayerCallback* cb )
-//{
-//    _callbacks.push_back( cb );
-//}
-//
-//void
-//ImageLayer::removeCallback( ImageLayerCallback* cb )
-//{
-//    ImageLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-//    if ( i != _callbacks.end() ) 
-//        _callbacks.erase( i );
-//}
 
 void
 ImageLayer::fireCallback(CallbackMethodPtr method)
@@ -420,16 +387,6 @@ ImageLayer::fireCallback(CallbackMethodPtr method)
         if (cb) (cb->*method)( this );
     }
 }
-
-//void
-//ImageLayer::fireCallback( ImageLayerCallbackMethodPtr method )
-//{
-//    for( ImageLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-//    {
-//        ImageLayerCallback* cb = i->get();
-//        (cb->*method)( this );
-//    }
-//}
 
 void
 ImageLayer::setOpacity( float value ) 
@@ -537,17 +494,6 @@ ImageLayer::getOrCreatePreCacheOp()
     }
     return _preCacheOp.get();
 }
-
-
-//CacheBin*
-//ImageLayer::getCacheBin( const Profile* profile)
-//{
-//    // specialize ImageLayer to only consider the horizontal signature (ignore vertical
-//    // datum component for images)
-//    std::string binId = *_runtimeOptions.cacheId() + "_" + profile->getHorizSignature();
-//    return TerrainLayer::getCacheBin( profile, binId );
-//}
-
 
 GeoImage
 ImageLayer::createImage(const TileKey&    key,

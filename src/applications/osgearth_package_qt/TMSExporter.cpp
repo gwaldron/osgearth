@@ -30,6 +30,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
@@ -195,7 +196,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
             layerOptions.mergeConfig( layer->getImageLayerOptions().getConfig( true ) );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-            outMap->addImageLayer( new ImageLayer( layerOptions ) );
+            outMap->addLayer( new ImageLayer( layerOptions ) );
         }
         layerNum++;
     }
@@ -231,7 +232,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
             layerOptions.mergeConfig( layer->getElevationLayerOptions().getConfig( true ) );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-            outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+            outMap->addLayer( new ElevationLayer( layerOptions ) );
         }
 
         layerNum++;

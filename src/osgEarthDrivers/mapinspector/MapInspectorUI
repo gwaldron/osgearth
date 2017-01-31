@@ -21,6 +21,8 @@
 
 #include <osgEarth/MapCallback>
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainLayer>
+#include <osgEarth/ModelLayer>
 #include <osgEarthUtil/Controls>
 #include <osg/View>
 

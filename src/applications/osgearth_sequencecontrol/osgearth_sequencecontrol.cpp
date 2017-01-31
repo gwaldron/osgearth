@@ -23,6 +23,7 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/MapNode>
 #include <osgEarth/TimeControl>
+#include <osgEarth/ImageLayer>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 

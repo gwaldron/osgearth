@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/UTMGraticule>
 #include <osgEarth/Extension>
+#include <osgEarth/ModelLayer>
 
 namespace osgEarth { namespace Util
 {

@@ -28,6 +28,7 @@
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarth/MapNode>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/NodeUtils>
 #include <osg/MatrixTransform>
 
 using namespace osgEarth;

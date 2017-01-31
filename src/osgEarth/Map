@@ -25,10 +25,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/MapCallback>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ElevationPool>
@@ -198,99 +194,100 @@ namespace osgEarth
          */
         void setLayersFromMap( const Map* map );
 
-
+#if 0
     public: // backwards-compatibility - to be deprecated
 
         /**
          * Adds an image layer to the map.
          */
-        void addImageLayer(ImageLayer* layer) {
+        void addImageLayer(class ImageLayer* layer) {
             addLayer(layer);
         }
 
         /**
         * Adds an image layer to the map at the specified index.
         */
-        void insertImageLayer(ImageLayer* layer, unsigned index) {
+        void insertImageLayer(class ImageLayer* layer, unsigned index) {
             insertLayer(layer, index);
         }
 
         /**
          * Removes an image layer from the map.
          */
-        void removeImageLayer(ImageLayer* layer) {
+        void removeImageLayer(class ImageLayer* layer) {
             removeLayer(layer);
         }
 
         /**
          * Moves (re-orders) an image layer to another index position in its list.
          */
-        void moveImageLayer(ImageLayer* layer, unsigned newIndex) {
+        void moveImageLayer(class ImageLayer* layer, unsigned newIndex) {
             moveLayer(layer, newIndex);
         }
 
         /**
          * Adds an elevation layer to the map.
          */
-        void addElevationLayer(ElevationLayer* layer) {
+        void addElevationLayer(class ElevationLayer* layer) {
             addLayer(layer);
         }
 
         /**
          * Removes an elevation layer from the map.
          */
-        void removeElevationLayer(ElevationLayer* layer) {
+        void removeElevationLayer(class ElevationLayer* layer) {
             removeLayer(layer);
         }
 
         /**
          * Moves (re-orders) an elevation layer to another index position in its list.
          */
-        void moveElevationLayer(ElevationLayer* layer, unsigned newIndex) {
+        void moveElevationLayer(class ElevationLayer* layer, unsigned newIndex) {
             moveLayer(layer, newIndex);
         }
 
         /**
          * Adds a new model layer to the map.
          */
-        void addModelLayer(ModelLayer* layer) {
+        void addModelLayer(class ModelLayer* layer) {
             addLayer(layer);
         }
 
         /**
          * Adds a new model layer to the map at the specified index.
          */
-        void insertModelLayer(ModelLayer* layer, unsigned index) {
+        void insertModelLayer(class ModelLayer* layer, unsigned index) {
             insertLayer(layer, index);
         }
 
         /**
          * Removes a model layer from the map.
          */
-        void removeModelLayer(ModelLayer* layer) {
+        void removeModelLayer(class ModelLayer* layer) {
             removeLayer(layer);
         }
 
         /**
          * Moves (re-orders) an image layer to another index position in its list.
          */
-        void moveModelLayer(ModelLayer* layer, unsigned newIndex) {
+        void moveModelLayer(class ModelLayer* layer, unsigned newIndex) {
             moveLayer(layer, newIndex);
         }
 
         /**
          * Adds a new layer to use as a terrain mask.
          */
-        void addTerrainMaskLayer(MaskLayer* layer) {
+        void addTerrainMaskLayer(class MaskLayer* layer) {
             addLayer(layer);
         }
 
         /**
          * Removed a terrain mask layer that was set with setTerrainMaskLayer().
          */
-        void removeTerrainMaskLayer(MaskLayer* layer) {
+        void removeTerrainMaskLayer(class MaskLayer* layer) {
             removeLayer(layer);
         }
+#endif
 
     public:
         /**

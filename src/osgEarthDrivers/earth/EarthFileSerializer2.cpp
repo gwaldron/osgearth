@@ -22,6 +22,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <stdio.h>

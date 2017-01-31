@@ -41,6 +41,7 @@ void FeatureModelLayerOptions::mergeConfig(const Config& conf)
     VisibleLayerOptions::mergeConfig(conf);
 
     conf.getIfSet("feature_source", _featureSourceLayer);
+    conf.getObjIfSet("features", _featureSource);
 
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
@@ -66,6 +67,7 @@ FeatureModelLayerOptions::getConfig() const
     conf.key() = "feature_model";
 
     conf.updateIfSet("feature_source", _featureSourceLayer);
+    conf.updateObjIfSet("features", _featureSource);
 
     conf.updateObjIfSet( "styles",           _styles );
     conf.updateObjIfSet( "layout",           _layout );
@@ -157,6 +159,21 @@ const Status&
 FeatureModelLayer::open()
 {
     OE_DEBUG << LC << "open\n";
+
+    if (options().featureSource().isSet())
+    {
+        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
+        if (fs)
+        {
+            fs->setReadOptions(getReadOptions());
+            fs->open();
+            setFeatureSource(fs);
+        }
+        else
+        {
+            setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
+        }
+    }
     return Layer::open();
 }
 
@@ -172,8 +189,6 @@ FeatureModelLayer::addedToMap(const Map* map)
 
     if (options().featureSourceLayer().isSet())
     {
-        _featureSourceLayerListener.clear();
-
         _featureSourceLayerListener.listen(
             map,
             options().featureSourceLayer().get(),
@@ -210,6 +225,8 @@ FeatureModelLayer::create()
             0L,  // ModelSource not used by this layer
             0L,  // TODO: support for preMerge callback
             0L); // TODO: support for postMerge callback
+
+        OE_WARN << LC << "TODO: pre/post merge callbacks not implemented\n";
         
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);

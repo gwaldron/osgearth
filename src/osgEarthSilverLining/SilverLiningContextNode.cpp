@@ -27,6 +27,7 @@
 #include <osg/Light>
 #include <osg/LightSource>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/NodeUtils>
 
 #undef  LC
 #define LC "[SilverLiningContextNode] "

@@ -35,7 +35,7 @@ namespace osgEarth { namespace Util
     /**
      * Serializable configuation options for the SimpleOceanLayer.
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public LayerOptions
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
     {
     public:
         /** Color of the ocean surface */
@@ -51,7 +51,7 @@ namespace osgEarth { namespace Util
         const optional<std::string>& maskLayer() const { return _maskLayer; }
 
     public:
-        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : LayerOptions(op) {
+        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : VisibleLayerOptions(op) {
             _color.init(Color("#1D2C4FE7"));
             _maxAltitude.init(500000.f);
             mergeConfig(_conf);
@@ -82,7 +82,7 @@ namespace osgEarth { namespace Util
      * A Rex map layer that renders a simple ocean surface.
      * This layer requires that the map include bathymetric data (ocean floor).
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
         /** Constructs a new ocean layer */

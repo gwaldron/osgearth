@@ -23,8 +23,8 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/GuiActions>
 
-
 #include <osgEarth/Map>
+#include <osgEarth/ModelLayer>
 #include <osgEarth/Viewpoint>
 #include <osgEarthAnnotation/AnnotationNode>
 
@@ -381,7 +381,7 @@ void ElevationLayerControlWidget::onEnabledCheckStateChanged(int state)
 void ElevationLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeElevationLayer(_layer);
+    _parent->getMap()->removeLayer(_layer);
 }
 
 void ElevationLayerControlWidget::setLayerVisible(bool visible)
@@ -497,7 +497,7 @@ void ImageLayerControlWidget::onSliderValueChanged(int value)
 void ImageLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeImageLayer(_layer);
+    _parent->getMap()->removeLayer(_layer);
 }
 
 void ImageLayerControlWidget::setLayerVisible(bool visible)
@@ -597,7 +597,7 @@ void ModelLayerControlWidget::onEnabledCheckStateChanged(int state)
 void ModelLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
-    _parent->getMap()->removeModelLayer(_layer);
+    _parent->getMap()->removeLayer(_layer);
 }
 
 void ModelLayerControlWidget::setLayerVisible(bool visible)
@@ -896,19 +896,19 @@ void LayerManagerWidget::doLayerWidgetDrop(LayerControlWidgetBase* widget, Layer
     {
       ElevationLayerControlWidget* elevWidget = dynamic_cast<ElevationLayerControlWidget*>(widget);
       if (elevWidget)
-        _map->moveElevationLayer(elevWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
+        _map->moveLayer(elevWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
     }
     else if (_type == IMAGE_LAYERS)
     {
       ImageLayerControlWidget* imageWidget = dynamic_cast<ImageLayerControlWidget*>(widget);
       if (imageWidget)
-        _map->moveImageLayer(imageWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
+        _map->moveLayer(imageWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
     }
     else if (_type == MODEL_LAYERS)
     {
       ModelLayerControlWidget* modelWidget = dynamic_cast<ModelLayerControlWidget*>(widget);
       if (modelWidget)
-        _map->moveModelLayer(modelWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
+        _map->moveLayer(modelWidget->layer(), newRow >= 0 ? newRow : _stack->count() - 1);
     }
   }
 }

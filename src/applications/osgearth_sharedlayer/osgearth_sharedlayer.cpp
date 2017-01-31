@@ -155,8 +155,8 @@ int main(int argc, char** argv)
 
     // create a new map and add our two layers.
     MapNode* mapnode = new MapNode();
-    mapnode->getMap()->addImageLayer( imagery );
-    mapnode->getMap()->addImageLayer( sharedLayer );
+    mapnode->getMap()->addLayer( imagery );
+    mapnode->getMap()->addLayer( sharedLayer );
 
     // make a custom color-filter shader that will modulate the imagery
     // using the texture from the shared layer. (Using a ColorFilter 

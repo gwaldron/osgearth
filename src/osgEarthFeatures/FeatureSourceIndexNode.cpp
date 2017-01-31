@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/Registry>
+#include <osgEarth/NodeUtils>
 #include <algorithm>
 
 using namespace osgEarth;

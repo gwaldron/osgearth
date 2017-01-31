@@ -114,7 +114,7 @@ ModelLayerOptions::setDefaults()
     _terrainPatch.init( false );
 
     // Expressly set it here since we want no caching by default on a model layer.
-    _cachePolicy = CachePolicy::NO_CACHE;
+    //_cachePolicy = CachePolicy::NO_CACHE;
 }
 
 Config

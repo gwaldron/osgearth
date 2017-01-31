@@ -82,13 +82,17 @@ namespace osgEarth { namespace Features
         optional<bool>& alphaBlending() { return _alphaBlending; }
         const optional<bool>& alphaBlending() const { return _alphaBlending; }
 
-        /** Explicity caching policy for data from the underlying feature source */
+        /** Explicit caching policy for data from the underlying feature source */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
         /** Fading properties */
         optional<FadeOptions>& fading() { return _fading; }
         const optional<FadeOptions>& fading() const { return _fading; }
+
+        /** Whether to enable caching of actual OSG Nodes. Default= false. */
+        optional<bool>& nodeCaching() { return _nodeCaching; }
+        const optional<bool>& nodeCaching() const { return _nodeCaching; }
 
         /** Debug: whether to enable a session-wide resource cache (default=true) */
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
@@ -127,6 +131,7 @@ namespace osgEarth { namespace Features
         optional<FadeOptions>               _fading;
         optional<FeatureSourceIndexOptions> _featureIndexing;
         optional<bool>                      _sessionWideResourceCache;
+        optional<bool>                      _nodeCaching;
 
         osg::ref_ptr<StyleSheet>            _styles;
         osg::ref_ptr<FeatureSource>         _featureSource;

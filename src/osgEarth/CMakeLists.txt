@@ -191,6 +191,7 @@ SET(LIB_PUBLIC_HEADERS
     VerticalDatum
     Viewpoint
     VirtualProgram
+    VisibleLayer
     WrapperLayer
     XmlUtils
 )
@@ -350,6 +351,7 @@ set(TARGET_SRC
     VerticalDatum.cpp
     Viewpoint.cpp
     VirtualProgram.cpp
+    VisibleLayer.cpp
     XmlUtils.cpp
     ${SHADERS_CPP} )
 

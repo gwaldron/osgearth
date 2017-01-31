@@ -397,45 +397,45 @@ ImageLayer::getConfig() const
     //return layerConf;
 }
 
-void
-ImageLayer::addCallback( ImageLayerCallback* cb )
-{
-    _callbacks.push_back( cb );
-}
+//void
+//ImageLayer::addCallback( ImageLayerCallback* cb )
+//{
+//    _callbacks.push_back( cb );
+//}
+//
+//void
+//ImageLayer::removeCallback( ImageLayerCallback* cb )
+//{
+//    ImageLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
+//    if ( i != _callbacks.end() ) 
+//        _callbacks.erase( i );
+//}
 
 void
-ImageLayer::removeCallback( ImageLayerCallback* cb )
+ImageLayer::fireCallback(CallbackMethodPtr method)
 {
-    ImageLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
-        _callbacks.erase( i );
-}
-
-void
-ImageLayer::fireCallback( TerrainLayerCallbackMethodPtr method )
-{
-    for( ImageLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
     {
-        ImageLayerCallback* cb = i->get();
-        (cb->*method)( this );
+        Callback* cb = dynamic_cast<Callback*>(i->get());
+        if (cb) (cb->*method)( this );
     }
 }
 
-void
-ImageLayer::fireCallback( ImageLayerCallbackMethodPtr method )
-{
-    for( ImageLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ImageLayerCallback* cb = i->get();
-        (cb->*method)( this );
-    }
-}
+//void
+//ImageLayer::fireCallback( ImageLayerCallbackMethodPtr method )
+//{
+//    for( ImageLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+//    {
+//        ImageLayerCallback* cb = i->get();
+//        (cb->*method)( this );
+//    }
+//}
 
 void
 ImageLayer::setOpacity( float value ) 
 {
     mutableImageLayerOptions().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
-    fireCallback( &ImageLayerCallback::onOpacityChanged );
+    fireCallback( &Callback::onOpacityChanged );
 }
 
 float
@@ -448,7 +448,7 @@ void
 ImageLayer::setMinVisibleRange( float minVisibleRange )
 {
     mutableImageLayerOptions().minVisibleRange() = minVisibleRange;
-    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
+    fireCallback( &Callback::onVisibleRangeChanged );
 }
 
 float
@@ -461,7 +461,7 @@ void
 ImageLayer::setMaxVisibleRange( float maxVisibleRange )
 {
     mutableImageLayerOptions().maxVisibleRange() = maxVisibleRange;
-    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
+    fireCallback( &Callback::onVisibleRangeChanged );
 }
 
 float
@@ -486,7 +486,7 @@ void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
     mutableImageLayerOptions().colorFilters().push_back( filter );
-    fireCallback( &ImageLayerCallback::onColorFiltersChanged );
+    fireCallback( &Callback::onColorFiltersChanged );
 }
 
 void
@@ -497,7 +497,7 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
     if ( i != filters.end() )
     {
         filters.erase( i );
-        fireCallback( &ImageLayerCallback::onColorFiltersChanged );
+        fireCallback( &Callback::onColorFiltersChanged );
     }
 }
 

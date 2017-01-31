@@ -30,7 +30,7 @@ REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer);
 //...........................................................................
 
 FeatureModelLayerOptions::FeatureModelLayerOptions(const ConfigOptions& options) :
-LayerOptions(options),
+VisibleLayerOptions(options),
 FeatureModelOptions()
 {
     mergeConfig( _conf );
@@ -38,7 +38,7 @@ FeatureModelOptions()
         
 void FeatureModelLayerOptions::mergeConfig(const Config& conf)
 {
-    LayerOptions::mergeConfig(conf);
+    VisibleLayerOptions::mergeConfig(conf);
 
     conf.getIfSet("feature_source", _featureSourceLayer);
 
@@ -63,7 +63,7 @@ void FeatureModelLayerOptions::mergeConfig(const Config& conf)
 Config
 FeatureModelLayerOptions::getConfig() const
 {
-    Config conf = LayerOptions::getConfig();
+    Config conf = VisibleLayerOptions::getConfig();
     conf.key() = "feature_model";
 
     conf.updateIfSet("feature_source", _featureSourceLayer);
@@ -90,7 +90,7 @@ FeatureModelLayerOptions::getConfig() const
 //...........................................................................
 
 FeatureModelLayer::FeatureModelLayer(const FeatureModelLayerOptions& options) :
-Layer(&_optionsConcrete),
+VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
@@ -105,8 +105,11 @@ FeatureModelLayer::~FeatureModelLayer()
 void
 FeatureModelLayer::init()
 {
-    Layer::init();
+    VisibleLayer::init();
     _root = new osg::Group();
+
+    // Set the status to ERROR until we get a valid node together.
+    setStatus(Status::Error(Status::ConfigurationError, "Missing feature source"));
 }
 
 bool
@@ -196,9 +199,10 @@ FeatureModelLayer::create()
     {
         _session->setFeatureSource(_featureSource.get());
 
-        //TODO: get this from somewhere
-        GeometryCompilerOptions compilerOptions;
+        // the compiler options are a subset of the layer options
+        GeometryCompilerOptions compilerOptions(options());
 
+        // the factory builds nodes for the model graph:
         FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(compilerOptions);
 
         FeatureModelGraph* fmg = new FeatureModelGraph(
@@ -211,5 +215,12 @@ FeatureModelLayer::create()
         
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);
+
+        setStatus(Status::OK());
+    }
+
+    else if (getStatus().isOK())
+    {
+        setStatus(Status(Status::ConfigurationError));
     }
 }

@@ -23,6 +23,7 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 #include <OpenThreads/ScopedLock>
 #include <limits.h>
 
@@ -31,7 +32,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-CacheTileHandler::CacheTileHandler( TerrainLayer* layer, Map* map ):
+CacheTileHandler::CacheTileHandler( TerrainLayer* layer, const Map* map ):
 _layer( layer ),
 _map( map )
 {
@@ -121,7 +122,7 @@ void CacheSeed::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }
 
-void CacheSeed::run( TerrainLayer* layer, Map* map )
+void CacheSeed::run( TerrainLayer* layer, const Map* map )
 {
     _visitor->setTileHandler( new CacheTileHandler( layer, map ) );
     _visitor->run( map->getProfile() );

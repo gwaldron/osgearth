@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
-#include <osgEarth/Layer>
+#include <osgEarth/VisibleLayer>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
@@ -39,7 +39,7 @@ namespace osgEarth
     /**
      * Initialization (and serializable) options for a terrain layer.
      */
-    class OSGEARTH_EXPORT TerrainLayerOptions : public LayerOptions
+    class OSGEARTH_EXPORT TerrainLayerOptions : public VisibleLayerOptions
     {
     public:
         TerrainLayerOptions();
@@ -90,20 +90,6 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
-        
-        /**
-         * Whether to use this layer with the map. Setting this to false means that 
-         * the layer will remain in its map model but will not be used by the 
-         * terrain engine. You cannot change the "enabled" state at runtime.
-         */        
-        //optional<bool>& enabled() { return _enabled; }
-        //const optional<bool>& enabled() const { return _enabled; }
-
-        /**
-         * Whether to render (or otherwise use) the layer.
-         */
-        optional<bool>& visible() { return _visible; }
-        const optional<bool>& visible() const { return _visible; }
 
         /**
          * Whether to use exact cropping if image cropping is necessary
@@ -170,8 +156,6 @@ namespace osgEarth
         optional<double>            _maxResolution;
         optional<float>             _loadingWeight;
         optional<bool>              _exactCropping;
-        //optional<bool>              _enabled;
-        optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
         optional<unsigned>          _maxDataLevel;
@@ -182,21 +166,9 @@ namespace osgEarth
     };
 
     /**
-     * Runtime property notification callback for TerrainLayers.
-     */
-    struct TerrainLayerCallback : public osg::Referenced
-    {
-        virtual void onVisibleChanged( class TerrainLayer* layer ) { }
-        virtual ~TerrainLayerCallback() { }
-    };
-
-    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(class TerrainLayer* layer);
-
-
-    /**
      * A layer that comprises the terrain skin (image or elevation layer)
      */
-    class OSGEARTH_EXPORT TerrainLayer : public Layer
+    class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
     protected:
         TerrainLayer(TerrainLayerOptions*);
@@ -221,12 +193,6 @@ namespace osgEarth
          * The options used to initialize this layer.
          */
         const TerrainLayerOptions& getTerrainLayerOptions() const { return *_layerOptions; }
-
-        /**
-         * Whether to draw (or otherwise use) this layer.
-         */
-        void setVisible( bool value );
-        bool getVisible() const { return getEnabled() && getTerrainLayerOptions().visible() == true; }
 
         /**
          * Gets the profile of this MapLayer
@@ -294,6 +260,11 @@ namespace osgEarth
 
         virtual SequenceControl* getSequenceControl();
 
+    public:
+        struct TerrainLayerCallback : public VisibleLayer::Callback {
+            //placeholder
+        };
+        typedef void(Callback::*CallbackMethodPtr)(TerrainLayer*);
 
     public:
         
@@ -395,7 +366,7 @@ namespace osgEarth
 
         bool _openCalled;
 
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
+        //virtual void fireCallback(CallbackMethodPtr method) =0;
 
         // methods accesible by Map:
         friend class Map;

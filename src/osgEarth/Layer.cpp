@@ -118,7 +118,7 @@ Layer::setName(const std::string& name)
 const char*
 Layer::getTypeName() const
 {
-    return typeid(this).name();
+    return typeid(*this).name();
 }
 
 #define LAYER_OPTIONS_TAG "osgEarth.LayerOptions"
@@ -173,4 +173,18 @@ Layer::getConfigOptions(const osgDB::Options* options)
     static ConfigOptions s_default;
     const void* data = options->getPluginData(LAYER_OPTIONS_TAG);
     return data ? *static_cast<const ConfigOptions*>(data) : s_default;
+}
+
+void
+Layer::addCallback(Callback* cb)
+{
+    _callbacks.push_back( cb );
+}
+
+void
+Layer::removeCallback(Callback* cb)
+{
+    CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
+    if ( i != _callbacks.end() ) 
+        _callbacks.erase( i );
 }

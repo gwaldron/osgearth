@@ -386,15 +386,15 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
 
-        struct ElevationLayerCB : public ElevationLayerCallback {
+        struct ElevationLayerCB : public VisibleLayer::Callback {
             osg::observer_ptr<Map> _map;
             ElevationLayerCB(Map*);
-            void onVisibleChanged(TerrainLayer* layer);
+            void onVisibleChanged(VisibleLayer* layer);
         };
         osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
         friend struct ElevationLayerCB;
 
-        void notifyElevationLayerVisibleChanged(TerrainLayer*);
+        void notifyElevationLayerVisibleChanged(VisibleLayer*);
 
 
     private:

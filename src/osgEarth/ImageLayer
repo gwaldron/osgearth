@@ -171,23 +171,6 @@ namespace osgEarth
     //--------------------------------------------------------------------
 
     /**
-     * Callback for receiving notification of property changes on an ImageLayer.
-     */
-    struct ImageLayerCallback : public TerrainLayerCallback
-    {
-        virtual void onOpacityChanged( class ImageLayer* layer ) { }
-        virtual void onVisibleRangeChanged( class ImageLayer* layer ) {}
-        virtual void onColorFiltersChanged( class ImageLayer* layer ) { }
-        virtual ~ImageLayerCallback() { }
-    };
-
-    typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(class ImageLayer* layer);
-
-    typedef std::list< osg::ref_ptr<ImageLayerCallback> > ImageLayerCallbackList;
-
-    //--------------------------------------------------------------------
-
-    /**
      * Internal utility class for post-processing image tiles that come from 
      * a TileSource
      */
@@ -245,10 +228,10 @@ namespace osgEarth
         const ImageLayerOptions& getImageLayerOptions() const;
 
         /** Adds a property notification callback to this layer */
-        void addCallback( ImageLayerCallback* cb );
+        //void addCallback( ImageLayerCallback* cb );
 
         /** Removes a property notification callback from this layer */
-        void removeCallback( ImageLayerCallback* cb );
+        //void removeCallback( ImageLayerCallback* cb );
 
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );
@@ -321,7 +304,17 @@ namespace osgEarth
          */
         optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
         const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
+        
+    public:
+        struct Callback : public TerrainLayer::Callback {
+            virtual void onOpacityChanged( ImageLayer* layer ) { }
+            virtual void onVisibleRangeChanged( ImageLayer* layer ) { }
+            virtual void onColorFiltersChanged( ImageLayer* layer ) { }
+        };
 
+        typedef void (Callback::*CallbackMethodPtr)(ImageLayer* layer);
+
+    //--------------------------------------------------------------------
 
     public: // methods
 
@@ -381,13 +374,12 @@ namespace osgEarth
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
-        ImageLayerCallbackList                   _callbacks;
+        //ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
         optional<std::string>                    _shareTexUniformName;
         optional<std::string>                    _shareTexMatUniformName;
 
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
-        virtual void fireCallback( ImageLayerCallbackMethodPtr method );
+        virtual void fireCallback(CallbackMethodPtr method);
 
 
         TileSource::ImageOperation* getOrCreatePreCacheOp();

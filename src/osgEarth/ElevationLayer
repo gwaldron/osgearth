@@ -71,21 +71,6 @@ namespace osgEarth
     //--------------------------------------------------------------------
 
     /**
-     * Callback for receiving notification of property changes on an ElevationLayer.
-     */
-    struct ElevationLayerCallback : public TerrainLayerCallback
-    {
-        //TODO
-    };
-
-    typedef void (ElevationLayerCallback::*ElevationLayerCallbackMethodPtr)(class ElevationLayer* layer);
-
-    typedef std::list< osg::ref_ptr<ElevationLayerCallback> > ElevationLayerCallbackList;
-
-
-    //--------------------------------------------------------------------
-
-    /**
      * A map terrain layer containing elevation grid heightfields.
      */
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
@@ -121,10 +106,10 @@ namespace osgEarth
         //virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
-        void addCallback( ElevationLayerCallback* cb );
+        //void addCallback( ElevationLayerCallback* cb );
 
         /** Removes a property notification callback from this layer */
-        void removeCallback( ElevationLayerCallback* cb );
+        //void removeCallback( ElevationLayerCallback* cb );
 
     public: // methods
 
@@ -165,15 +150,23 @@ namespace osgEarth
         osg::HeightField* assembleHeightFieldFromTileSource(
             const TileKey&     key,
             ProgressCallback*  progress );
+
+    public:
+
+        struct Callback : public TerrainLayer::Callback {
+            // placeholder.
+        };
+        typedef void (Callback::*CallbackMethodPtr)(ElevationLayer*);
+
         
     private:
         ElevationLayerOptions* _layerOptions;
         ElevationLayerOptions  _layerOptionsConcrete;
         ElevationLayerOptions& mutableElevationLayerOptions() { return *_layerOptions; }
 
-        ElevationLayerCallbackList _callbacks;
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
-        virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
+        //ElevationLayerCallbackList _callbacks;
+        //virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
+        //virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
 
         mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
 

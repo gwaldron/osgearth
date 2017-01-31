@@ -40,9 +40,10 @@ namespace osgEarth { namespace Features
         static void setDefaults(const GeometryCompilerOptions& defaults);
 
     public:
+        /**
+         * Construct new copiler options, optionally deserializing them
+         */
         GeometryCompilerOptions(const ConfigOptions& conf =ConfigOptions());
-        
-        virtual ~GeometryCompilerOptions() { }
 
     public:
         /** Maximum span of a generated edge, in degrees. Applicable to geocentric maps only */
@@ -134,6 +135,7 @@ namespace osgEarth { namespace Features
     public:
        GeometryCompilerOptions(bool); // internal
     };
+
 
     /**
      * Compiles a collection of features against a style.

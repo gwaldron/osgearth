@@ -20,7 +20,7 @@ the feature data.
         <url>../data/world.tif</url>
     </image>
     
-    <feature_model name="Countries" feature_source="world-data">        
+    <feature_model name="Countries" feature_source="world-data">
         <styles>        
             <style type="text/css">
                 p1 {
@@ -84,8 +84,6 @@ the feature data.
         
     </feature_model>
     
-
-                      
     <feature_source name="world-data" driver="ogr">
         <url>../data/world.shp</url>
         <filters>

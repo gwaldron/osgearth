@@ -37,21 +37,21 @@ using namespace OpenThreads;
 //------------------------------------------------------------------------
 
 TerrainLayerOptions::TerrainLayerOptions() :
-LayerOptions()
+VisibleLayerOptions()
 {
     setDefaults();
     mergeConfig( _conf ); 
 }
 
 TerrainLayerOptions::TerrainLayerOptions(const ConfigOptions& co) :
-LayerOptions(co)
+VisibleLayerOptions(co)
 {
     setDefaults();
     mergeConfig(_conf);
 }
 
 TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName) :
-LayerOptions()
+VisibleLayerOptions()
 {
     setDefaults();
     mergeConfig( _conf );
@@ -59,7 +59,7 @@ LayerOptions()
 }
 
 TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName, const TileSourceOptions& driverOptions) :
-LayerOptions()
+VisibleLayerOptions()
 {
     setDefaults();
     mergeConfig( _conf );
@@ -70,8 +70,6 @@ LayerOptions()
 void
 TerrainLayerOptions::setDefaults()
 {
-    //_enabled.init( true );
-    _visible.init( true );
     _exactCropping.init( false );
     _reprojectedTileSize.init( 256 );
     _cachePolicy.init( CachePolicy() );
@@ -86,14 +84,11 @@ TerrainLayerOptions::getConfig(bool isolate) const
 {
     Config conf = isolate? newConfig() : LayerOptions::getConfig();
 
-    //conf.set("name", _name);
     conf.updateIfSet( "min_level", _minLevel );
     conf.updateIfSet( "max_level", _maxLevel );
     conf.updateIfSet( "min_resolution", _minResolution );
     conf.updateIfSet( "max_resolution", _maxResolution );
     conf.updateIfSet( "loading_weight", _loadingWeight );
-    conf.updateIfSet( "enabled", _enabled );
-    conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
     conf.updateIfSet( "max_data_level", _maxDataLevel );
@@ -121,8 +116,6 @@ TerrainLayerOptions::mergeConfig(const Config& conf)
     conf.getIfSet( "min_resolution", _minResolution );
     conf.getIfSet( "max_resolution", _maxResolution );
     conf.getIfSet( "loading_weight", _loadingWeight );
-    conf.getIfSet( "enabled", _enabled );
-    conf.getIfSet( "visible", _visible );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
     conf.getIfSet( "max_data_level", _maxDataLevel );
@@ -143,13 +136,6 @@ TerrainLayerOptions::mergeConfig(const Config& conf)
     if ( conf.hasValue("driver") )
         driver() = TileSourceOptions(conf);
 }
-
-//void
-//TerrainLayerOptions::mergeConfig( const Config& conf )
-//{
-//    LayerOptions::mergeConfig( conf );
-//    fromConfig( conf );
-//}
 
 //------------------------------------------------------------------------
 
@@ -263,7 +249,7 @@ TerrainLayer::CacheBinMetadata::getConfig() const
 //------------------------------------------------------------------------
 
 TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
-Layer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
+VisibleLayer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
 _layerOptions(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
 _openCalled(false),
 _tileSize(256),
@@ -273,7 +259,7 @@ _runtimeEnabled(true)
 }
 
 TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr, TileSource* tileSource) :
-Layer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
+VisibleLayer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
 _layerOptions(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
 _tileSource(tileSource),
 _openCalled(false),
@@ -934,13 +920,6 @@ TerrainLayer::isCached(const TileKey& key) const
         return false;
     
     return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
-}
-
-void
-TerrainLayer::setVisible( bool value )
-{
-    mutableTerrainLayerOptions().visible() = value;
-    fireCallback( &TerrainLayerCallback::onVisibleChanged );
 }
 
 void

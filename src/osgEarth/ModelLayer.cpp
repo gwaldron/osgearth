@@ -58,14 +58,14 @@ namespace
 //------------------------------------------------------------------------
 
 ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
-ConfigOptions( options )
+VisibleLayerOptions( options )
 {
     setDefaults();
     fromConfig( _conf ); 
 }
 
 ModelLayerOptions::ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions ) :
-ConfigOptions()
+VisibleLayerOptions()
 {
     setDefaults();
     fromConfig( _conf );
@@ -74,7 +74,7 @@ ConfigOptions()
 }
 
 ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
-ConfigOptions(rhs.getConfig())
+VisibleLayerOptions(rhs.getConfig())
 {
     _name = optional<std::string>(rhs._name);
     _driver = optional<ModelSourceOptions>(rhs._driver);
@@ -126,8 +126,6 @@ ModelLayerOptions::getConfig() const
     conf.key() = "model";
 
     conf.updateIfSet( "name",           _name );
-    conf.updateIfSet( "enabled",        _enabled );
-    conf.updateIfSet( "visible",        _visible );
     conf.updateIfSet( "lighting",       _lighting );
     conf.updateIfSet( "opacity",        _opacity );
     conf.updateIfSet( "mask_min_level", _maskMinLevel );
@@ -151,8 +149,6 @@ void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "name",           _name );
-    conf.getIfSet( "enabled",        _enabled );
-    conf.getIfSet( "visible",        _visible );
     conf.getIfSet( "lighting",       _lighting );
     conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "mask_min_level", _maskMinLevel );
@@ -177,26 +173,38 @@ ModelLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-ModelLayer::ModelLayer( const ModelLayerOptions& options ) :
+ModelLayer::ModelLayer(const ModelLayerOptions& options) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options),
 _initOptions( options )
 {
     copyOptions();
 }
 
-ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
-_initOptions( ModelLayerOptions( name, options ) )
+ModelLayer::ModelLayer(const std::string& name, const ModelSourceOptions& options) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(ModelLayerOptions(name, options)),
+_initOptions(ModelLayerOptions(name, options)) // todo- remove
 {
     copyOptions();
 }
 
-ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
+ModelLayer::ModelLayer(const ModelLayerOptions& options, ModelSource* source) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options),
 _modelSource( source ),
 _initOptions( options )
 {
     copyOptions();
 }
 
-ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
+ModelLayer::ModelLayer(const std::string& name, osg::Node* node) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(ModelLayerOptions(name)),
 _initOptions( ModelLayerOptions(name) ),
 _modelSource( new NodeModelSource(node) )
 {
@@ -406,35 +414,13 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
     return node;
 }
 
-bool
-ModelLayer::getEnabled() const
+osg::Node*
+ModelLayer::getNode() const
 {
-    return *_runtimeOptions.enabled();
-}
-
-bool
-ModelLayer::getVisible() const
-{
-    return getEnabled() && *_runtimeOptions.visible();
-}
-
-void
-ModelLayer::setVisible(bool value)
-{
-    if ( _runtimeOptions.visible() != value )
-    {
-        _runtimeOptions.visible() = value;
-
-        _mutex.lock();
-        for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
-        {
-            if ( i->second.valid() )
-                i->second->setNodeMask( value ? ~0 : 0 );
-        }
-        _mutex.unlock();
-
-        fireCallback( &ModelLayerCallback::onVisibleChanged );
-    }
+    if (!_graphs.empty())
+        return _graphs.begin()->second.get();
+    else
+        return 0L;
 }
 
 float
@@ -452,7 +438,7 @@ ModelLayer::setOpacity(float opacity)
 
         _alphaEffect->setAlpha(opacity);
 
-        fireCallback( &ModelLayerCallback::onOpacityChanged );
+        fireCallback( &Callback::onOpacityChanged );
     }
 }
 
@@ -495,27 +481,12 @@ ModelLayer::isLightingEnabled() const
 }
 
 void
-ModelLayer::addCallback( ModelLayerCallback* cb )
+ModelLayer::fireCallback(CallbackMethodPtr method)
 {
-    _callbacks.push_back( cb );
-}
-
-void
-ModelLayer::removeCallback( ModelLayerCallback* cb )
-{
-    ModelLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
-        _callbacks.erase( i );
-}
-
-
-void
-ModelLayer::fireCallback( ModelLayerCallbackMethodPtr method )
-{
-    for( ModelLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
     {
-        ModelLayerCallback* cb = i->get();
-        (cb->*method)( this );
+        Callback* cb = dynamic_cast<Callback*>(i->get());
+        if (cb) (cb->*method)( this );
     }
 }
 

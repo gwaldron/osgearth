@@ -136,7 +136,7 @@ namespace osgEarth { namespace QtGui
 
 
     //---------------------------------------------------------------------------
-    struct DataManagerElevationLayerCallback : public osgEarth::ElevationLayerCallback
+    struct DataManagerElevationLayerCallback : public osgEarth::ElevationLayer::Callback
     {
       DataManagerElevationLayerCallback(DataManager* dm) : _dm(dm) { }
 
@@ -151,7 +151,7 @@ namespace osgEarth { namespace QtGui
 
 
     //---------------------------------------------------------------------------
-    struct DataManagerImageLayerCallback : public osgEarth::ImageLayerCallback
+    struct DataManagerImageLayerCallback : public osgEarth::ImageLayer::Callback
     {
       DataManagerImageLayerCallback(DataManager* dm) : _dm(dm) { }
 
@@ -172,7 +172,7 @@ namespace osgEarth { namespace QtGui
 
 
     //---------------------------------------------------------------------------
-    struct DataManagerModelLayerCallback : public osgEarth::ModelLayerCallback
+    struct DataManagerModelLayerCallback : public osgEarth::ModelLayer::Callback
     {
       DataManagerModelLayerCallback(DataManager* dm) : _dm(dm) { }
 

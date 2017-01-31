@@ -317,50 +317,6 @@ namespace
 
 namespace
 {
-#if 0
-    void addImageLayer(const Config& conf, Map* map)
-    {
-        ImageLayerOptions options( conf );
-        options.name() = conf.value("name");
-        ImageLayer* layer = new ImageLayer(options);
-        map->addLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addElevationLayer(const Config& conf, Map* map)
-    {
-        ElevationLayerOptions options( conf );
-        options.name() = conf.value( "name" );
-        ElevationLayer* layer = new ElevationLayer(options);
-        map->addLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addModelLayer(const Config& conf, Map* map)
-    {
-        ModelLayerOptions options( conf );
-        options.name() = conf.value( "name" );
-        options.driver() = ModelSourceOptions( conf );
-        ModelLayer* layer = new ModelLayer(options);
-        map->addLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addMaskLayer(const Config& conf, Map* map)
-    {
-        MaskLayerOptions options(conf);
-        options.name() = conf.value( "name" );
-        options.driver() = MaskSourceOptions(options);
-        MaskLayer* layer = new MaskLayer(options);
-        map->addLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-#endif
-
     // support for "special" extension names (convenience and backwards compat)
     Extension* createSpecialExtension(const Config& conf)
     {
@@ -381,8 +337,6 @@ namespace
         if (layer)
         {
             map->addLayer(layer);
-            if (layer->getStatus().isError())
-                OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
         }
         return layer != 0L;
     }
@@ -406,6 +360,18 @@ namespace
         }
 
         return extension;
+    }
+
+    void reportErrors(const Map* map)
+    {
+        for (unsigned i = 0; i < map->getNumLayers(); ++i)
+        {
+            const Layer* layer = map->getLayerAt(i);
+            if (layer->getStatus().isError())
+            {
+                OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
+            }
+        }
     }
 }
 
@@ -518,6 +484,9 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
     // Complete the batch update of the map
     map->endUpdate();
+
+    // If any errors occurred, report them now.
+    reportErrors(map);
 
     // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
     MapNodeOptions mapNodeOptions( conf.child("options") );

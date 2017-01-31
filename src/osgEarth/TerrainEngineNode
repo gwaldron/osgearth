@@ -308,7 +308,7 @@ namespace osgEarth
 
     private:
         
-        struct ImageLayerController : public ImageLayerCallback
+        struct ImageLayerController : public ImageLayer::Callback
         {
             ImageLayerController( const Map* map, TerrainEngineNode* engine );
             void onColorFiltersChanged( ImageLayer* layer ); 

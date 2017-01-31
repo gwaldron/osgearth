@@ -40,7 +40,7 @@ _map(map)
 }
 
 void
-Map::ElevationLayerCB::onVisibleChanged(TerrainLayer* layer)
+Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer)
 {
     osg::ref_ptr<Map> map;
     if ( _map.lock(map) )
@@ -143,7 +143,7 @@ Map::getElevationPool() const
 }
 
 void
-Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
+Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
 {
     // bump the revision safely:
     Revision newRevision;

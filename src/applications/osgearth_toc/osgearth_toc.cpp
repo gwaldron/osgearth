@@ -149,14 +149,14 @@ main( int argc, char** argv )
 
 //------------------------------------------------------------------------
 
-struct TerrainLayerVisibleHandler : public ControlEventHandler
+struct ToggleLayerVisibility : public ControlEventHandler
 {
-    TerrainLayerVisibleHandler( TerrainLayer* layer ) : _layer(layer) { }
+    ToggleLayerVisibility( VisibleLayer* layer ) : _layer(layer) { }
     void onValueChanged( Control* control, bool value )
     {
         _layer->setVisible( value );
     }
-    TerrainLayer* _layer;
+    VisibleLayer* _layer;
 };
 
 struct LayerOpacityHandler : public ControlEventHandler
@@ -167,16 +167,6 @@ struct LayerOpacityHandler : public ControlEventHandler
         _layer->setOpacity( value );
     }
     ImageLayer* _layer;
-};
-
-struct ModelLayerVisibleHandler : public ControlEventHandler
-{
-    ModelLayerVisibleHandler( ModelLayer* layer ) : _layer(layer) { }
-    void onValueChanged( Control* control, bool value )
-    {
-        _layer->setVisible( value );
-    }
-    ModelLayer* _layer;
 };
 
 struct ModelLayerOpacityHandler : public ControlEventHandler
@@ -283,26 +273,22 @@ createControlPanel( osgViewer::View* view )
 }
 
 void
-createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Layer* layer, bool isActive )
+addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isActive )
 {
     int gridCol = 0;
+    int gridRow = grid->getNumRows();
 
+    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
 
     // a checkbox to enable/disable the layer:
-    if (terrainLayer)
+    if (visibleLayer)
     {
-        CheckBoxControl* enabled = new CheckBoxControl( terrainLayer->getVisible() );
-        enabled->addEventHandler( new TerrainLayerVisibleHandler(terrainLayer) );
-        grid->setControl( gridCol, gridRow, enabled );
-    }
-    else if (modelLayer)
-    {
-        CheckBoxControl* enabled = new CheckBoxControl( modelLayer->getVisible() );
-        enabled->addEventHandler( new ModelLayerVisibleHandler(modelLayer) );
+        CheckBoxControl* enabled = new CheckBoxControl( visibleLayer->getVisible() );
+        enabled->addEventHandler( new ToggleLayerVisibility(visibleLayer) );
         grid->setControl( gridCol, gridRow, enabled );
     }
     gridCol++;
@@ -388,31 +374,6 @@ createInactiveLayerItem( Grid* grid, int gridRow, const std::string& name, const
 }
 
 void
-createModelLayerItem( Grid* grid, int gridRow, ModelLayer* layer, bool isActive )
-{
-    // a checkbox to enable/disable the layer:
-    CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
-    enabled->addEventHandler( new ModelLayerVisibleHandler(layer) );
-    grid->setControl( 0, gridRow, enabled );
-
-    // the layer name
-    LabelControl* name = new LabelControl( layer->getName() );
-    grid->setControl( 1, gridRow, name );
-
-    LabelControl* statusLabel = layer->getStatus().isOK()
-        ? new LabelControl("[ok]", osg::Vec4(0, 1, 0, 1))
-        : new LabelControl("[error]", osg::Vec4(1, 0, 0, 1));
-    grid->setControl(2, gridRow, statusLabel);
-
-    // an opacity slider
-    HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, layer->getOpacity() );
-    opacity->setWidth( 125 );
-    opacity->setHeight( 12 );
-    opacity->addEventHandler( new ModelLayerOpacityHandler(layer) );
-    grid->setControl( 3, gridRow, opacity );
-}
-
-void
 updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
@@ -433,20 +394,7 @@ updateControlPanel()
     {
         Layer* layer = layers[i].get();
 
-        createLayerItem(s_imageBox, row++, i, layers.size(), layer, true);
-
-        //if (dynamic_cast<ImageLayer*>(layer))
-        //{
-        //    createLayerItem(s_imageBox, row++, i, layers.size(), dynamic_cast<ImageLayer*>(layer), true);
-        //}
-        //else if (dynamic_cast<ElevationLayer*>(layer))
-        //{
-        //    createLayerItem( s_imageBox, row++, i, layers.size(), dynamic_cast<ElevationLayer*>(layer), true );
-        //}
-        //else if (dynamic_cast<ModelLayer*>(layer))
-        //{
-        //    createModelLayerItem( s_imageBox, row++, dynamic_cast<ModelLayer*>(layer), true );
-        //}
+        addLayerItem(s_imageBox, i, layers.size(), layer, true);
     }
 
     // inactive layers:
@@ -458,52 +406,4 @@ updateControlPanel()
             createInactiveLayerItem(s_imageBox, row++, i->first, i->second);
         }
     }
-
-#if 0
-    ImageLayerVector imageLayers;
-    mapf.getLayers(imageLayers);
-    int layerNum = imageLayers.size()-1;
-    for( ImageLayerVector::const_reverse_iterator i = imageLayers.rbegin(); i != imageLayers.rend(); ++i )
-        createLayerItem( s_imageBox, row++, layerNum--, imageLayers.size(), i->get(), true );
-
-    // inactive layers:
-    if (!_inactive.empty())
-    {
-        s_imageBox->setControl(0, row++, new LabelControl("Removed:", 18, osg::Vec4f(1,1,0,1)));
-        for (InactiveLayers::const_iterator i = _inactive.begin(); i != _inactive.end(); ++i)
-        {
-            createInactiveLayerItem(s_imageBox, row++, i->first, i->second);
-        }
-    }
-
-    //Rebuild the elevation layers
-    s_elevationBox->clearControls();
-
-    row = 0;
-
-    activeLabel = new LabelControl( "Elevation Layers", 20, osg::Vec4f(1,1,0,1) );
-    s_elevationBox->setControl( 1, row++, activeLabel );
-
-    // the active map layers:
-    ElevationLayerVector elevationLayers;
-    mapf.getLayers(elevationLayers);
-
-    layerNum = elevationLayers.size()-1;
-    for( ElevationLayerVector::const_reverse_iterator i = elevationLayers.rbegin(); i != elevationLayers.rend(); ++i )
-        createLayerItem( s_elevationBox, row++, layerNum--, elevationLayers.size(), i->get(), true );
-
-    //Rebuild the model layers
-    s_modelBox->clearControls();
-
-    row = 0;
-
-    activeLabel = new LabelControl( "Model Layers", 20, osg::Vec4f(1,1,0,1) );
-    s_modelBox->setControl( 1, row++, activeLabel );
-
-    // the active map layers:
-    ModelLayerVector modelLayers;
-    mapf.getLayers(modelLayers);
-    for( ModelLayerVector::const_reverse_iterator i = modelLayers.rbegin(); i != modelLayers.rend(); ++i )
-        createModelLayerItem( s_modelBox, row++, i->get(), true );
-#endif
 }

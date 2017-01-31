@@ -137,6 +137,19 @@ namespace osgEarth
          */
         virtual osg::Node* getNode() const { return 0L; }
 
+    public:
+        struct Callback : public osg::Referenced {
+            // NOP
+        };
+
+        /** Adds a property notification callback to this layer */
+        void addCallback(Callback* cb);
+
+        /** Removes a property notification callback from this layer */
+        void removeCallback(Callback* cb);
+
+
+    public:
 
         // *** NOTE *** Everything below this line is experimental and subject to change ***
 
@@ -226,6 +239,10 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         Status _status;
+
+    protected:
+        typedef std::vector<osg::ref_ptr<Callback> > CallbackVector;
+        CallbackVector _callbacks;
 
     private:
         LayerOptions* _layerOptions;

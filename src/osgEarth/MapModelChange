@@ -36,23 +36,12 @@ namespace osgEarth
     {
         enum ActionType
         {
-            BEGIN_BATCH_UPDATE,               // signals the start of multiple changes
-            END_BATCH_UPDATE,                 // signals the end of multiple changes
+            BEGIN_BATCH_UPDATE,         // signals the start of multiple changes
+            END_BATCH_UPDATE,           // signals the end of multiple changes
             ADD_LAYER,
             REMOVE_LAYER,
             MOVE_LAYER,
-            //ADD_IMAGE_LAYER,
-            //REMOVE_IMAGE_LAYER,
-            //MOVE_IMAGE_LAYER,
-            //ADD_ELEVATION_LAYER,
-            //REMOVE_ELEVATION_LAYER,
-            //MOVE_ELEVATION_LAYER,
             TOGGLE_ELEVATION_LAYER,     // visibilty toggle on elevation is a model change.
-            //ADD_MODEL_LAYER,
-            //REMOVE_MODEL_LAYER,
-            //MOVE_MODEL_LAYER,
-            //ADD_MASK_LAYER,
-            //REMOVE_MASK_LAYER,
             UNSPECIFIED
         };
 

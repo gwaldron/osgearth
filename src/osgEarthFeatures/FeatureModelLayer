@@ -37,7 +37,7 @@ namespace osgEarth { namespace Features
     /**
      * Serializable options to configure a FeatureModelLayerOptions.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public LayerOptions,
+    class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public VisibleLayerOptions,
                                                              public FeatureModelOptions
     {
     public:
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Features
     /**
      * Layer that creates a scene graph from feature data and symbology.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public Layer
+    class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
         // Create a layer with initial options.

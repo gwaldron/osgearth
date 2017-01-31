@@ -605,11 +605,8 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
             }
             else
             {
-                // if we get EVEN ONE invalid tile, we have to abort because there will be
-                // empty spots in the mosaic. (By "invalid" we mean a tile that could not
-                // even be resolved through the fallback procedure.)
-                return GeoImage::INVALID;
-                //TODO: probably need to change this so the mosaic uses alpha.
+                // We didn't get an image so pad the mosaic with a transparent image.
+                mosaic.getImages().push_back( TileImage(ImageUtils::createEmptyImage(getTileSize(), getTileSize()), *k));
             }
         }
 

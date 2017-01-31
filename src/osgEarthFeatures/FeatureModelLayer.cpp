@@ -45,7 +45,6 @@ void FeatureModelLayerOptions::mergeConfig(const Config& conf)
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
     conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "cache_policy",     _cachePolicy );
     conf.getObjIfSet( "fading",           _fading );
     conf.getObjIfSet( "feature_name",     _featureNameExpr );
     conf.getObjIfSet( "feature_indexing", _featureIndexing );
@@ -70,7 +69,6 @@ FeatureModelLayerOptions::getConfig() const
 
     conf.updateObjIfSet( "styles",           _styles );
     conf.updateObjIfSet( "layout",           _layout );
-    conf.updateObjIfSet( "cache_policy",     _cachePolicy );
     conf.updateObjIfSet( "fading",           _fading );
     conf.updateObjIfSet( "feature_name",     _featureNameExpr );
     conf.updateObjIfSet( "feature_indexing", _featureIndexing );
@@ -209,9 +207,9 @@ FeatureModelLayer::create()
             _session.get(),
             compilerOptions,
             nodeFactory,
-            0L,
-            0L,
-            0L);
+            0L,  // ModelSource not used by this layer
+            0L,  // TODO: support for preMerge callback
+            0L); // TODO: support for postMerge callback
         
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);

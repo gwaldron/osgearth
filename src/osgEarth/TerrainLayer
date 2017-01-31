@@ -102,20 +102,6 @@ namespace osgEarth
          */
         optional<unsigned int>& reprojectedTileSize() { return _reprojectedTileSize; }
         const optional<unsigned int>& reprojectedTileSize() const { return _reprojectedTileSize; }
-
-        /**
-         * Explicit cache ID to uniquely identify the cache that matched this
-         * layer's tile source properties. This is usually automatically
-         * generated but you can override it here.
-         */
-        optional<std::string>& cacheId() { return _cacheId; }
-        const optional<std::string>& cacheId() const { return _cacheId; }
-
-        /**
-         * Caching policy to use for this layer.
-         */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
         
         /**
          * The loading weight of this MapLayer (for threaded loading policies).
@@ -159,9 +145,6 @@ namespace osgEarth
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
         optional<unsigned>          _maxDataLevel;
-
-        optional<std::string>       _cacheId;
-        optional<CachePolicy>       _cachePolicy;
         optional<ProxySettings>     _proxySettings;
     };
 
@@ -322,7 +305,6 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
         unsigned                       _tileSize;  
-        osg::ref_ptr<osgDB::Options>   _readOptions;
         osg::ref_ptr<MemCache>         _memCache;
 
         // profile from tile source or cache, before any overrides applied

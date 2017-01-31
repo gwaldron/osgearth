@@ -44,6 +44,9 @@ Config LayerOptions::getConfig() const
     Config conf = ConfigOptions::newConfig();
     conf.addIfSet("name", _name);
     conf.addIfSet("enabled", _enabled);
+    conf.addIfSet("cacheid", _cacheId);
+    if (_cachePolicy.isSet() && !_cachePolicy->empty())
+        conf.addObjIfSet("cache_policy", _cachePolicy);
     return conf;
 }
 
@@ -53,6 +56,17 @@ void LayerOptions::fromConfig(const Config& conf)
 
     conf.getIfSet("name", _name);
     conf.getIfSet("enabled", _enabled);
+    conf.getIfSet("cache_id", _cacheId);
+    conf.getObjIfSet("cache_policy", _cachePolicy);
+
+    // legacy support:
+    if (!_cachePolicy.isSet())
+    {
+        if ( conf.value<bool>( "cache_only", false ) == true )
+            _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+        if ( conf.value<bool>( "cache_enabled", true ) == false )
+            _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
+    }
 }
 
 void LayerOptions::mergeConfig(const Config& conf)

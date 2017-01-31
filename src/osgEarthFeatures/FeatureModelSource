@@ -79,10 +79,6 @@ namespace osgEarth { namespace Features
         optional<bool>& alphaBlending() { return _alphaBlending; }
         const optional<bool>& alphaBlending() const { return _alphaBlending; }
 
-        /** Explicity caching policy for data from the underlying feature source */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
         /** Fading properties */
         optional<FadeOptions>& fading() { return _fading; }
         const optional<FadeOptions>& fading() const { return _fading; }
@@ -107,7 +103,6 @@ namespace osgEarth { namespace Features
         optional<bool>                      _clusterCulling;
         optional<bool>                      _backfaceCulling;
         optional<bool>                      _alphaBlending;
-        optional<CachePolicy>               _cachePolicy;
         optional<FadeOptions>               _fading;
         optional<FeatureSourceIndexOptions> _featureIndexing;
         optional<bool>                      _sessionWideResourceCache;

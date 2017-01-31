@@ -123,15 +123,7 @@ TerrainLayerOptions::mergeConfig(const Config& conf)
     conf.getIfSet( "vdatum", _vertDatum );
     conf.getIfSet( "vsrs", _vertDatum );    // back compat
 
-    conf.getIfSet   ( "cacheid",      _cacheId );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
     conf.getObjIfSet( "proxy",        _proxySettings );
-
-    // legacy support:
-    if ( conf.value<bool>( "cache_only", false ) == true )
-        _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
-    if ( conf.value<bool>( "cache_enabled", true ) == false )
-        _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
 
     if ( conf.hasValue("driver") )
         driver() = TileSourceOptions(conf);
@@ -455,7 +447,7 @@ TerrainLayer::getCacheSettings() const
             // if all it well, open and activate a caching bin for this layer.
             if (_cacheSettings->isCacheEnabled())
             {
-                CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId); //getTerrainLayerOptions().cacheId().get());
+                CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
                 if (bin)
                 {
                     _cacheSettings->setCacheBin(bin);

@@ -25,9 +25,9 @@
 #include <osgEarth/Status>
 #include <osgEarth/TileKey>
 #include <osgEarth/PluginLoader>
+#include <osgEarth/CachePolicy>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
-#include <osg/RenderInfo>
 #include <osgDB/Options>
 #include <vector>
 
@@ -45,9 +45,29 @@ namespace osgEarth
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
-        /** Whether to use this layer in the map */
+        /**
+         * Whether to open and use this layer in the map. When a layer
+         * is not enabled, osgEarth components will ignore it altogether.
+         * Layers are enabled by default.
+         */
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
+
+        /**
+         * Uniquely identifies the caching location to use for this
+         * layer if a cache is enabled and if this layer does any caching.
+         * By default, the cache system will automatically generate a
+         * cache ID for each Layer, but you can set one manually here.
+         */
+        optional<std::string>& cacheId() { return _cacheId; }
+        const optional<std::string>& cacheId() const { return _cacheId; }
+
+        /**
+         * The caching policy directs how to use caching for this layer
+         * if a cache is available.
+         */
+        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
+        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
     public:
         LayerOptions();
@@ -62,6 +82,8 @@ namespace osgEarth
 
         optional<std::string> _name;
         optional<bool> _enabled;
+        optional<std::string> _cacheId;
+        optional<CachePolicy> _cachePolicy;
     };
 
 

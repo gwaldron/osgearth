@@ -1,5 +1,6 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
+#include <osgEarth/Utils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -86,26 +87,24 @@ namespace
 
             unsigned lod, x, y;
             sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
-
-
-            SimplePager* pager =
-                dynamic_cast<SimplePager*>(
-                    const_cast<osg::Object*>(
-                        options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::this")));
-            
-            if (pager)
+             
+            osg::ref_ptr<SimplePager> pager;
+            if (!OptionsData<SimplePager>::lock(options, "osgEarth.SimplePager", pager))
             {
-                SimplePager::ProgressTracker* tracker =
-                    dynamic_cast<SimplePager::ProgressTracker*>(
-                        const_cast<osg::Object*>(
-                            options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::ProgressTracker")));
-
-                return pager->loadKey(
-                    TileKey(lod, x, y, pager->getProfile()),
-                    tracker);
+                OE_WARN << LC << "Internal error - no SimplePager object in OptionsData\n";
+                return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return ReadResult::ERROR_IN_READING_FILE;
+            osg::ref_ptr<SimplePager::ProgressTracker> tracker;
+            if (!OptionsData<SimplePager::ProgressTracker>::lock(options, "osgEarth.SimplePager.ProgressTracker", tracker))
+            {
+                OE_WARN << LC << "Internal error - no ProgressTracker object in OptionsData\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+            }
+
+            return pager->loadKey(
+                TileKey(lod, x, y, pager->getProfile()),
+                tracker);
         }
     };
 
@@ -281,8 +280,8 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
-        options->getOrCreateUserDataContainer()->addUserObject( this );
-        options->getOrCreateUserDataContainer()->addUserObject( tracker );
+        OptionsData<SimplePager>::set(options, "osgEarth.SimplePager", this);
+        OptionsData<ProgressTracker>::set(options, "osgEarth.SimplePager.ProgressTracker", tracker);
         plod->setDatabaseOptions( options );
         
         // Install an FLC if the caller provided one

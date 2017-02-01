@@ -265,6 +265,11 @@ oe_landcover_geom()
 
         // calculates normals:
         vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
+
+        // if we are looking straight-ish down on the billboard, don't bother with it
+        if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+            return;
+
         float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
         vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
         vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);

@@ -60,6 +60,10 @@ namespace osgEarth { namespace Symbology
         optional<osgEarth::TileKey>& tileKey() { return _tileKey; }
         const optional<osgEarth::TileKey>& tileKey() const { return _tileKey; }
 
+        /** The maximum number of features to be returned by this Query.  This is driver specific . */
+        optional<int>& limit() { return _limit; }
+        const optional<int>& limit() const { return _limit; }
+
         const MapFrame& getMap() const { return _mapFrame; }
 
         void setMap(const Map* map);
@@ -81,6 +85,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string> _expression;
         optional<std::string> _orderby;
         optional<osgEarth::TileKey> _tileKey;
+        optional<int> _limit;
         MapFrame _mapFrame;
     };
 

@@ -31,7 +31,8 @@ _bounds(rhs._bounds),
 _expression(rhs._expression),
 _orderby(rhs._orderby),
 _tileKey(rhs._tileKey),
-_mapFrame(rhs._mapFrame)
+_mapFrame(rhs._mapFrame),
+_limit(rhs._limit)
 {
     //nop
 }
@@ -55,6 +56,8 @@ Query::mergeConfig( const Config& conf )
             b.value<double>( "xmax", 0.0 ),
             b.value<double>( "ymax", 0.0 ) );
     }
+
+    conf.getIfSet("limit", _limit);
 }
 
 Config
@@ -63,6 +66,7 @@ Query::getConfig() const
     Config conf( "query" );
     conf.addIfSet( "expr", _expression );
     conf.addIfSet( "orderby", _orderby);
+    conf.addIfSet( "limit", _limit);
     if ( _bounds.isSet() ) {
         Config bc( "extent" );
         bc.add( "xmin", toString(_bounds->xMin()) );

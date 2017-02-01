@@ -179,7 +179,7 @@ _options(&_optionsConcrete),
 _optionsConcrete(options),
 _initOptions( options )
 {
-    copyOptions();
+    init();
 }
 
 ModelLayer::ModelLayer(const std::string& name, const ModelSourceOptions& options) :
@@ -188,7 +188,7 @@ _options(&_optionsConcrete),
 _optionsConcrete(ModelLayerOptions(name, options)),
 _initOptions(ModelLayerOptions(name, options)) // todo- remove
 {
-    copyOptions();
+    init();
 }
 
 ModelLayer::ModelLayer(const ModelLayerOptions& options, ModelSource* source) :
@@ -198,7 +198,7 @@ _optionsConcrete(options),
 _modelSource( source ),
 _initOptions( options )
 {
-    copyOptions();
+    init();
 }
 
 ModelLayer::ModelLayer(const std::string& name, osg::Node* node) :
@@ -208,7 +208,7 @@ _optionsConcrete(ModelLayerOptions(name)),
 _initOptions( ModelLayerOptions(name) ),
 _modelSource( new NodeModelSource(node) )
 {
-    copyOptions();
+    init();
 }
 
 ModelLayer::~ModelLayer()
@@ -227,17 +227,16 @@ ModelLayer::getConfig() const
 }
 
 void
-ModelLayer::copyOptions()
+ModelLayer::init()
 {
+    VisibleLayer::init();
+
     _runtimeOptions = _initOptions;
 
     _alphaEffect = new AlphaEffect();
     _alphaEffect->setAlpha( *_initOptions.opacity() );
-    
-    if (!_runtimeOptions.name()->empty())
-    {
-        setName(_runtimeOptions.name().get());
-    }
+
+    _sgCallbacks = new SceneGraphCallbacks();
 }
 
 void
@@ -374,6 +373,8 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
 
     if ( _modelSource.valid() )
     {
+        _modelSource->setSceneGraphCallbacks(_sgCallbacks.get());
+
         node = _modelSource->createNode( map, progress );
 
         if ( node )

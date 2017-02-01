@@ -110,6 +110,9 @@ FeatureModelLayer::init()
 
     // Set the status to ERROR until we get a valid node together.
     setStatus(Status::Error(Status::ConfigurationError, "Missing feature source"));
+
+    // Callbacks for paged data
+    _sgCallbacks = new SceneGraphCallbacks();
 }
 
 bool
@@ -210,6 +213,7 @@ FeatureModelLayer::create()
 {
     if (_featureSource.valid() && _session.valid())
     {
+        // connect the session to the features:
         _session->setFeatureSource(_featureSource.get());
 
         // the compiler options are a subset of the layer options
@@ -218,16 +222,15 @@ FeatureModelLayer::create()
         // the factory builds nodes for the model graph:
         FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(compilerOptions);
 
+        // group that will build all the feature geometry:
         FeatureModelGraph* fmg = new FeatureModelGraph(
             _session.get(),
-            compilerOptions,
-            nodeFactory,
-            0L,  // ModelSource not used by this layer
-            0L,  // TODO: support for preMerge callback
-            0L); // TODO: support for postMerge callback
+            options(),
+            nodeFactory);
 
-        OE_WARN << LC << "TODO: pre/post merge callbacks not implemented\n";
-        
+        // install the callbacks host:
+        fmg->setSceneGraphCallbacks(_sgCallbacks.get());
+
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);
 

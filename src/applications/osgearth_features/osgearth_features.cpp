@@ -33,8 +33,10 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/FeatureModelLayer>
 #include <osgEarthFeatures/ConvertTypeFilter>
 
+#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
@@ -84,16 +86,16 @@ int main(int argc, char** argv)
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
-
+    GDALOptions basemap;
+    basemap.url() = "../data/world.tif";
+    map->addLayer( new ImageLayer(ImageLayerOptions("basemap", basemap)));
+    
     // Next we add a feature layer. 
-    OGRFeatureOptions featureOptions;
+    OGRFeatureOptions ogrData;
     if ( !useMem )
     {
         // Configures the feature driver to load the vectors from a shapefile:
-        featureOptions.url() = "../data/world.shp";
+        ogrData.url() = "../data/world.shp";
     }
     else
     {
@@ -103,8 +105,14 @@ int main(int argc, char** argv)
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        featureOptions.geometry() = line;
+        ogrData.geometry() = line;
     }
+
+    // Make a feature source layer and add it to the Map:
+    FeatureSourceLayerOptions ogrLayer;
+    ogrLayer.name() = "vector-data";
+    ogrLayer.data() = ogrData;
+    map->addLayer(new FeatureSourceLayer(ogrLayer));
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -115,8 +123,11 @@ int main(int argc, char** argv)
     ls->stroke()->width() = 2.0f;
 
     // That's it, the map is ready; now create a MapNode to render the Map:
+    osgEarth::Drivers::RexTerrainEngine::RexTerrainEngineOptions rex;
+
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
+    mapNodeOptions.setTerrainOptions(rex);
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
 
     osg::Group* root = new osg::Group();
@@ -130,21 +141,21 @@ int main(int argc, char** argv)
     if (useRaster)
     {
         AGGLiteOptions rasterOptions;
-        rasterOptions.featureOptions() = featureOptions;
+        rasterOptions.featureOptions() = ogrData;
         rasterOptions.styles() = new StyleSheet();
         rasterOptions.styles()->addStyle( style );
-        map->addLayer(new ImageLayer("my features", rasterOptions) );
+        map->addLayer(new ImageLayer("My Features", rasterOptions) );
     }
     else //if (useGeom || useOverlay)
     {
-        FeatureGeomModelOptions geomOptions;
-        geomOptions.featureOptions() = featureOptions;
-        geomOptions.styles() = new StyleSheet();
-        geomOptions.styles()->addStyle( style );
-        geomOptions.enableLighting() = false;
+        FeatureModelLayerOptions fml;
+        fml.name() = "My Features";
+        fml.featureSourceLayer() = "vector-data";
+        fml.styles() = new StyleSheet();
+        fml.styles()->addStyle(style);
+        fml.enableLighting() = false;
 
-        ModelLayerOptions layerOptions( "my features", geomOptions );
-        map->addLayer( new ModelLayer(layerOptions) );
+        map->addLayer(new FeatureModelLayer(fml));
     }
 
     if ( useLabels )
@@ -163,12 +174,14 @@ int main(int argc, char** argv)
         text->halo()->color() = Color::DarkGray;
 
         // and configure a model layer:
-        FeatureGeomModelOptions geomOptions;
-        geomOptions.featureOptions() = featureOptions;
-        geomOptions.styles() = new StyleSheet();
-        geomOptions.styles()->addStyle( labelStyle );
+        FeatureModelLayerOptions fml;
+        fml.name() = "Labels";
+        fml.featureSourceLayer() = "vector-data";
+        //fml.featureSource() = featureOptions;
+        fml.styles() = new StyleSheet();
+        fml.styles()->addStyle( labelStyle );
 
-        map->addLayer( new ModelLayer("labels", geomOptions) );
+        map->addLayer(new FeatureModelLayer(fml));
     }
 
     

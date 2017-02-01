@@ -149,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     Registry
     ResourceReleaser
     Revisioning
+    SceneGraphCallback
     ScreenSpaceLayout
     Shaders
     ShaderFactory
@@ -314,6 +315,7 @@ set(TARGET_SRC
     Registry.cpp
     ResourceReleaser.cpp
     Revisioning.cpp
+    SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp

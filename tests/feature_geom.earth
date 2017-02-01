@@ -12,7 +12,7 @@ OSG geometry out of it.
     </image>
     
     <feature_model name="states">
-        <features name="world" driver="ogr">
+        <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
         </features>        
         <styles>
@@ -25,5 +25,4 @@ OSG geometry out of it.
             </style>
         </styles>        
     </feature_model>
-    
 </map>

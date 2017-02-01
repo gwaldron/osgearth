@@ -27,6 +27,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Status>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -112,28 +113,39 @@ namespace osgEarth
             ProgressCallback* progress );
 
         /**
+         * Access to the scene graph callbacks
+         */
+        void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sgCallbacks = value; }
+        SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sgCallbacks.get(); }
+
+        /**
+         * @deprecated - use SceneGraphCallbacks
          * Add a post processing operation that will run (possibly in a pager
          * thread) after a new node has been generated.
          */
         void addPreMergeOperation( NodeOperation* cb );
 
         /**
+         * @deprecated - use SceneGraphCallbacks
          * Add a post processing operation that will run (in the update thread)
          * after a node merges into the scene graph.
          */
         void addPostMergeOperation( NodeOperation* cb );
         
         /**
+         * @deprecated - use SceneGraphCallbacks
          * Remove a pre-merge processing operation
          */
         void removePreMergeOperation( NodeOperation* cb );
         
         /**
+         * @deprecated - use SceneGraphCallbacks
          * Remove a post-merge processing operation
          */
         void removePostMergeOperation( NodeOperation* cb );
 
         /**
+         * @deprecated - use SceneGraphCallbacks
          * The vector of post processor callback operations
          */
         const NodeOperationVector& preMergeOperations() const { return *_preMergeOps; }
@@ -196,6 +208,8 @@ namespace osgEarth
         optional<int>    _renderOrder;
         DataExtentList   _dataExtents;
         Status _status;
+
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         friend class Map;
         friend class MapEngine;

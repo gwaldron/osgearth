@@ -659,6 +659,7 @@ MapNode::onModelLayerAdded(ModelLayer* layer, unsigned int index)
     if ( !layer->getEnabled() )
         return;
 
+#if 0
     // install a noe operation that will associate this mapnode with
     // any MapNodeObservers loaded by the model layer:
     ModelSource* modelSource = layer->getModelSource();
@@ -668,6 +669,7 @@ MapNode::onModelLayerAdded(ModelLayer* layer, unsigned int index)
         // so we can update the MapNode on new data that comes in:
         modelSource->addPostMergeOperation( new MapNodeObserverInstaller(this) );
     }
+#endif
 
     // create the scene graph:
     osg::Node* node = layer->getOrCreateSceneGraph( _map.get(), _map->getReadOptions(), 0L );

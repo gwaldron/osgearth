@@ -94,6 +94,7 @@ namespace
                                 float maxRange, 
                                 const FeatureDisplayLayout& layout,
                                 RefNodeOperationVector* postMergeOps,
+                                SceneGraphCallbacks* sgCallbacks,
                                 osgDB::FileLocationCallback* flc,
                                 const osgDB::Options* readOptions,
                                 FeatureModelGraph* fmg)
@@ -107,7 +108,19 @@ namespace
         p->setPriorityOffset( 0, layout.priorityOffset().get() );
         p->setPriorityScale(0, layout.priorityScale().get() );
 #else
-        PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
+        osg::PagedLOD* p;
+
+        if (sgCallbacks)
+        {
+            PagedLODWithSceneGraphCallbacks* plod = new PagedLODWithSceneGraphCallbacks(sgCallbacks);
+            p = plod;
+        }
+        else
+        {
+            PagedLODWithNodeOperations* plod = new PagedLODWithNodeOperations(postMergeOps);
+            p = plod;
+        }
+            
         p->setCenter( bs.center() );
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
@@ -128,7 +141,9 @@ namespace
         p->setDatabaseOptions( options );
 
         // so we can find the FMG instance in the pseudoloader.
+        //TODO: fix
         options->getOrCreateUserDataContainer()->addUserObject(fmg);
+        //OptionsData<FeatureModelGraph>::set(options, "FeatureModelGraph", fmg);
 
         return p;
     }
@@ -204,9 +219,9 @@ namespace
     }
 
 
-    struct SetupFading : public NodeOperation
+    struct SetupFading : public SceneGraphCallback
     {
-        void operator()( osg::Node* node )
+        void onPostMerge( osg::Node* node )
         {
             osg::Uniform* u = FadeEffect::createStartTimeUniform();
             u->set( (float)osg::Timer::instance()->time_s() );
@@ -217,6 +232,20 @@ namespace
 
 
 //---------------------------------------------------------------------------
+
+FeatureModelGraph::FeatureModelGraph(Session*                         session,
+                                     const FeatureModelSourceOptions& options,
+                                     FeatureNodeFactory*              factory) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
+{
+    ctor();
+}
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
@@ -455,9 +484,10 @@ FeatureModelGraph::ctor()
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
     {
-        _postMergeOperations->mutex().writeLock();
-        _postMergeOperations->push_back( new SetupFading() );
-        _postMergeOperations->mutex().writeUnlock();
+        _sgCallbacks->add(new SetupFading());
+        //_postMergeOperations->mutex().writeLock();
+        //_postMergeOperations->push_back( new SetupFading() );
+        //_postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -469,6 +499,12 @@ FeatureModelGraph::ctor()
 FeatureModelGraph::~FeatureModelGraph()
 {
     //nop
+}
+
+void
+FeatureModelGraph::setSceneGraphCallbacks(SceneGraphCallbacks* host)
+{
+    _sgCallbacks = host;
 }
 
 void
@@ -598,6 +634,7 @@ FeatureModelGraph::setupPaging()
         maxRange, 
         _options.layout().get(),
         _postMergeOperations.get(),
+        _sgCallbacks.get(),
         _defaultFileLocationCallback.get(),
         getSession()->getDBOptions(),
         this);
@@ -843,6 +880,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     0.0f, maxRange, 
                     _options.layout().get(),
                     _postMergeOperations.get(),
+                    _sgCallbacks.get(),
                     _defaultFileLocationCallback.get(),
                     readOptions,
                     this);
@@ -1618,6 +1656,12 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 void
 FeatureModelGraph::runPreMergeOperations(osg::Node* node)
 {
+   if (_sgCallbacks.valid())
+   {
+       _sgCallbacks->firePreMergeNode(node);
+   }
+
+   // @deprecated
    if ( _preMergeOperations.valid() )
    {
       _preMergeOperations->mutex().readLock();
@@ -1632,6 +1676,12 @@ FeatureModelGraph::runPreMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 {
+   if (_sgCallbacks.valid())
+   {
+       _sgCallbacks->firePostMergeNode(node);
+   }
+
+   // @deprecated
    if ( _postMergeOperations.valid() )
    {
       _postMergeOperations->mutex().readLock();

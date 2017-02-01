@@ -27,7 +27,7 @@ namespace osgEarth { namespace Features
 {
     /** Options structure for serialization of the FeatureSourceLayer */
     typedef WrapperLayerOptions<FeatureSourceOptions> FeatureSourceLayerOptions;
-    
+
     /**
      * Layer holding a FeatureSource. Create one of these in the Map, and 
      * other Layers can find it and access the shared FeatureSource.

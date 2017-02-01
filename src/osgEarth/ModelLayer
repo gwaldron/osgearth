@@ -29,6 +29,7 @@
 #include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/Node>
 #include <osg/Array>
 #include <vector>
@@ -265,6 +266,8 @@ namespace osgEarth
          */
         virtual void setReadOptions(const osgDB::Options* readOptions);
 
+        virtual void init();
+
     public:
 
         struct Callback : public VisibleLayer::Callback {
@@ -287,6 +290,7 @@ namespace osgEarth
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
         Graphs _graphs;
@@ -294,8 +298,6 @@ namespace osgEarth
         mutable Threading::Mutex _mutex; // general-purpose mutex.
 
         void fireCallback(CallbackMethodPtr method);
-
-        void copyOptions();
 
         void setLightingEnabledNoLock(bool value);
     };

@@ -230,16 +230,24 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
     session->setName( this->getName() );
 
     // Graph that will render feature models. May included paged data.
-    FeatureModelGraph* graph = new FeatureModelGraph( 
-       session,
-       _options,
-       factory,
-       this,
-       _preMergeOps.get(),
-       _postMergeOps.get() );
-
-    //removed this because an FMG needs an internal name for pseudoloader
-    //graph->setName( session->getName() );
+    FeatureModelGraph* graph;
+    
+    if (_preMergeOps->empty() && _postMergeOps->empty())
+    {
+        graph = new FeatureModelGraph(session, _options, factory);
+        graph->setSceneGraphCallbacks(getSceneGraphCallbacks());
+    }
+    else
+    {
+        // @deprecated
+        graph = new FeatureModelGraph( 
+           session,
+           _options,
+           factory,
+           this,
+           _preMergeOps.get(),
+           _postMergeOps.get() );
+    }
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

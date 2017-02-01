@@ -28,6 +28,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/DepthOffset>
+#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
 #include <set>
@@ -53,12 +54,27 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new model graph.
          *
+         * @param session
+         *      Session under which to create elements in this graph
          * @param options
          *      Model source options
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
+         */
+        FeatureModelGraph(
+            Session*                         session,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory);
+
+        /**
+         * Constructs a new model graph.
+         *
          * @param session
          *      Session under which to create elements in this graph
+         * @param options
+         *      Model source options
+         * @param factory
+         *      Node factory that will be invoked to compile feature data into nodes
          * @param preMergeOperations
          *      Node operations that will execute in the pager thread after it finishes
          *      building a node
@@ -88,6 +104,11 @@ namespace osgEarth { namespace Features
             unsigned lod, unsigned tileX, unsigned tileY,
             const std::string& uri,
             const osgDB::Options* readOptions);
+
+        /**
+         * Set a scene graph callback host for this FMG
+         */
+        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
 
         /**
          * Style sheet associated with this feature graph.
@@ -233,6 +254,8 @@ namespace osgEarth { namespace Features
         osg::observer_ptr<ModelSource> _modelSource;
 
         osg::ref_ptr<FeatureSourceIndex> _featureIndex;
+
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

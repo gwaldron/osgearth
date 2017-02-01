@@ -276,7 +276,12 @@ public:
         if (_options.outputFormat().isSet()) outputFormat = _options.outputFormat().get();
         buf << "&OUTPUTFORMAT=" << outputFormat;
 
-        if (_options.maxFeatures().isSet())
+        // If the Query limit is set, use that.  Otherwise use the globally defined maxFeatures setting.
+        if (query.limit().isSet())
+        {
+            buf << "&MAXFEATURES=" << query.limit().get();
+        }
+        else if (_options.maxFeatures().isSet())
         {
             buf << "&MAXFEATURES=" << _options.maxFeatures().get();
         }

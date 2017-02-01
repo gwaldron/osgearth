@@ -226,6 +226,7 @@ SpatialReference::create( const Key& key, bool useCache )
     Threading::ScopedMutexLock exclusive(s_mutex);
 
     // first, check the SRS cache to see if it already exists:
+    /*
     if ( useCache )
     {
         SRSCache::iterator itr = getSRSCache().find(key);
@@ -234,6 +235,7 @@ SpatialReference::create( const Key& key, bool useCache )
             return itr->second.get();
         }
     }
+    */
 
     // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
@@ -336,13 +338,16 @@ SpatialReference::create( const Key& key, bool useCache )
 
     srs->_key = key;
 
+    // This breaks caching, whoops!
+    /*
     if ( useCache )
     {
         // cache it - each unique SRS only exists once.
         getSRSCache()[key] = srs;
     }
+    */
 
-    return useCache ? srs.get() : srs.release();
+    return srs.release();
 }
 
 SpatialReference*

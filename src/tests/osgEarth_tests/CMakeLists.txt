@@ -9,3 +9,5 @@ SET(TARGET_SRC
 
 #### end var setup  ###
 SETUP_APPLICATION(osgEarth_tests)
+
+add_test(NAME osgEarth_tests COMMAND osgEarth_tests)

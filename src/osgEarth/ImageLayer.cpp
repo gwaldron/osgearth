@@ -492,10 +492,10 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
         ImageMosaic mosaic;
         for( std::vector<TileKey>::iterator k = nativeKeys.begin(); k != nativeKeys.end(); ++k )
         {
-            bool isFallback = false;
             GeoImage image = createImageInKeyProfile( *k, progress );
             if ( image.valid() )
             {
+                foundAtLeastOneRealTile = true;
                 mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
             }
             else
@@ -506,7 +506,7 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
         }
 
         // bail out if we got nothing.
-        if ( mosaic.getImages().size() > 0 )
+        if ( foundAtLeastOneRealTile )
         {
             // assemble new GeoImage from the mosaic.
             double rxmin, rymin, rxmax, rymax;

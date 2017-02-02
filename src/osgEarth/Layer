@@ -49,6 +49,9 @@ namespace osgEarth
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
 
+        optional<std::string>& shaderDefine() { return _shaderDefine; }
+        const optional<std::string>& shaderDefine() const { return _shaderDefine; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
@@ -62,6 +65,7 @@ namespace osgEarth
 
         optional<std::string> _name;
         optional<bool> _enabled;
+        optional<std::string> _shaderDefine;
     };
 
 

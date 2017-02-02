@@ -50,13 +50,18 @@ namespace osgEarth
     };
 
 
+    struct VisibleLayerCallback : public LayerCallback
+    {
+        virtual void onVisibleChanged(class VisibleLayer* layer) { }
+        typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
+    };
+
+
     /**
      * Base class for a layer supporting visibility control.
      */
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
-
-
     protected:
         // Construcable from a base class only.
         VisibleLayer(VisibleLayerOptions*);
@@ -72,20 +77,13 @@ namespace osgEarth
         virtual void setVisible(bool value);
         bool getVisible() const;
 
-    public:
-        // Property change callback
-        struct Callback : public Layer::Callback {
-            virtual void onVisibleChanged(class VisibleLayer* layer) { }
-        };
-        typedef void (Callback::*CallbackMethodPtr)(class VisibleLayer* layer);
-
     private:
         VisibleLayerOptions* _options;
         VisibleLayerOptions  _optionsConcrete;
         VisibleLayerOptions& mutableOptions() { return *_options; }
         const VisibleLayerOptions& options() const { return *_options; }
 
-        void fireCallback(CallbackMethodPtr);
+        void fireCallback(VisibleLayerCallback::MethodPtr);
     };
 
 } // namespace TerrainLayer

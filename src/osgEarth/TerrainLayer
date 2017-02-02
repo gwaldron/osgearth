@@ -148,6 +148,12 @@ namespace osgEarth
         optional<ProxySettings>     _proxySettings;
     };
 
+
+    struct TerrainLayerCallback : public VisibleLayerCallback
+    {
+        typedef void(TerrainLayerCallback::*MethodPtr)(class TerrainLayer*);
+    };
+
     /**
      * A layer that comprises the terrain skin (image or elevation layer)
      */
@@ -242,12 +248,6 @@ namespace osgEarth
     public: // Layer interface
 
         virtual SequenceControl* getSequenceControl();
-
-    public:
-        struct TerrainLayerCallback : public VisibleLayer::Callback {
-            //placeholder
-        };
-        typedef void(Callback::*CallbackMethodPtr)(TerrainLayer*);
 
     public:
         
@@ -348,7 +348,7 @@ namespace osgEarth
 
         bool _openCalled;
 
-        //virtual void fireCallback(CallbackMethodPtr method) =0;
+        void fireCallback(TerrainLayerCallback::MethodPtr method);
 
         // methods accesible by Map:
         friend class Map;

@@ -94,7 +94,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Loader* getLoader() const { return _loader.get(); }
 
     //public:
-    //    class ElevationChangedCallback : public ElevationLayer::Callback
+    //    class ElevationChangedCallback : public ElevationLayerCallback
     //    {
     //    public:
     //        ElevationChangedCallback( RexTerrainEngineNode* terrain );

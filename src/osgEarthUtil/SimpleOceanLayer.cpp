@@ -41,26 +41,26 @@ REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 
 SimpleOceanLayer::SimpleOceanLayer() :
-VisibleLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete)
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
 {
-    ctor();
+    init();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-VisibleLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(options)
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
-    ctor();
+    init();
 }
 
 void
-SimpleOceanLayer::ctor()
+SimpleOceanLayer::init()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    //_mapCallback = 0L;
+    Layer::init();
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TILE);
@@ -75,6 +75,11 @@ SimpleOceanLayer::ctor()
 
     ss->setDefine("OE_TERRAIN_RENDER_ELEVATION", osg::StateAttribute::OFF);
     ss->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP", osg::StateAttribute::OFF);
+
+    if (options().useBathymetry() == true)
+    {
+        ss->setDefine("OE_OCEAN_USE_BATHYMETRY");
+    }
 
     // remove backface culling so we can see underwater
     // (use OVERRIDE since the terrain engine sets back face culling.)
@@ -94,8 +99,8 @@ SimpleOceanLayer::ctor()
     m->setUpdateCallback(new MaterialCallback());
 #endif
     
-    setColor(getOptions().color().get());
-    setMaxAltitude(getOptions().maxAltitude().get());
+    setColor(options().color().get());
+    setMaxAltitude(options().maxAltitude().get());
 }
 
 bool
@@ -180,7 +185,7 @@ SimpleOceanLayer::setMaxAltitude(float alt)
 float
 SimpleOceanLayer::getMaxAltitude() const
 {
-    return getOptions().maxAltitude().get();
+    return options().maxAltitude().get();
 }
 
 void 

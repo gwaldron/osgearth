@@ -52,7 +52,7 @@ using namespace osgEarth::QtGui;
 //---------------------------------------------------------------------------
 namespace
 {
-  class WidgetElevationLayerCallback : public ElevationLayer::Callback
+  class WidgetElevationLayerCallback : public ElevationLayerCallback
   {
   public:
     WidgetElevationLayerCallback(ElevationLayerControlWidget* widget) : _widget(widget) {}
@@ -67,7 +67,7 @@ namespace
     ElevationLayerControlWidget* _widget;
   };
 
-  class WidgetImageLayerCallback : public ImageLayer::Callback
+  class WidgetImageLayerCallback : public ImageLayerCallback
   {
   public:
     WidgetImageLayerCallback(ImageLayerControlWidget* widget) : _widget(widget) {}
@@ -88,7 +88,7 @@ namespace
     ImageLayerControlWidget* _widget;
   };
 
-  class WidgetModelLayerCallback : public ModelLayer::Callback
+  class WidgetModelLayerCallback : public ModelLayerCallback
   {
   public:
     WidgetModelLayerCallback(ModelLayerControlWidget* widget) : _widget(widget) {}

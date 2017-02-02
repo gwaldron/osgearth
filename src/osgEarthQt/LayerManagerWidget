@@ -125,7 +125,7 @@ namespace osgEarth { namespace QtGui
 
       osg::ref_ptr<ElevationLayer> _layer;
       osg::ref_ptr<Action> _doubleClick;
-      osg::ref_ptr<ElevationLayer::Callback> _layerCallback;
+      osg::ref_ptr<ElevationLayerCallback> _layerCallback;
       QCheckBox* _visibleCheckBox;
     };
 
@@ -162,7 +162,7 @@ namespace osgEarth { namespace QtGui
 
       osg::ref_ptr<osgEarth::ImageLayer> _layer;
       osg::ref_ptr<Action> _doubleClick;
-      osg::ref_ptr<ImageLayer::Callback> _layerCallback;
+      osg::ref_ptr<ImageLayerCallback> _layerCallback;
       QCheckBox* _visibleCheckBox;
       QSlider* _opacitySlider;
     };
@@ -198,7 +198,7 @@ namespace osgEarth { namespace QtGui
 
       osg::ref_ptr<ModelLayer> _layer;
       osg::ref_ptr<Map> _map;
-      osg::ref_ptr<ModelLayer::Callback> _layerCallback;
+      osg::ref_ptr<ModelLayerCallback> _layerCallback;
       osg::ref_ptr<Action> _doubleClick;
       QCheckBox* _visibleCheckBox;
     };

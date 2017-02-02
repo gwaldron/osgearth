@@ -383,7 +383,7 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
 
-        struct ElevationLayerCB : public VisibleLayer::Callback {
+        struct ElevationLayerCB : public VisibleLayerCallback {
             osg::observer_ptr<Map> _map;
             ElevationLayerCB(Map*);
             void onVisibleChanged(VisibleLayer* layer);

@@ -47,6 +47,7 @@ Config LayerOptions::getConfig() const
     conf.addIfSet("cacheid", _cacheId);
     if (_cachePolicy.isSet() && !_cachePolicy->empty())
         conf.addObjIfSet("cache_policy", _cachePolicy);
+    conf.addIfSet("shader_define", _shaderDefine);
     return conf;
 }
 
@@ -67,6 +68,7 @@ void LayerOptions::fromConfig(const Config& conf)
         if ( conf.value<bool>( "cache_enabled", true ) == false )
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
+    conf.getIfSet("shader_define", _shaderDefine);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)
@@ -119,6 +121,13 @@ Layer::init()
     if (getLayerOptions().name().isSet())
     {
         osg::Object::setName(getLayerOptions().name().get());
+    }
+    
+    if (getLayerOptions().shaderDefine().isSet() &&
+        !getLayerOptions().shaderDefine()->empty())
+    {
+        OE_INFO << LC << "Setting shader define " << getLayerOptions().shaderDefine().get() << "\n";
+        getOrCreateStateSet()->setDefine(getLayerOptions().shaderDefine().get());
     }
 }
 
@@ -190,13 +199,13 @@ Layer::getConfigOptions(const osgDB::Options* options)
 }
 
 void
-Layer::addCallback(Callback* cb)
+Layer::addCallback(LayerCallback* cb)
 {
     _callbacks.push_back( cb );
 }
 
 void
-Layer::removeCallback(Callback* cb)
+Layer::removeCallback(LayerCallback* cb)
 {
     CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
     if ( i != _callbacks.end() ) 

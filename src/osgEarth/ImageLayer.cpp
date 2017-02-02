@@ -379,11 +379,11 @@ ImageLayer::getConfig() const
 }
 
 void
-ImageLayer::fireCallback(CallbackMethodPtr method)
+ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
 {
     for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
     {
-        Callback* cb = dynamic_cast<Callback*>(i->get());
+        ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
 }
@@ -392,7 +392,7 @@ void
 ImageLayer::setOpacity( float value ) 
 {
     mutableImageLayerOptions().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
-    fireCallback( &Callback::onOpacityChanged );
+    fireCallback( &ImageLayerCallback::onOpacityChanged );
 }
 
 float
@@ -405,7 +405,7 @@ void
 ImageLayer::setMinVisibleRange( float minVisibleRange )
 {
     mutableImageLayerOptions().minVisibleRange() = minVisibleRange;
-    fireCallback( &Callback::onVisibleRangeChanged );
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
 }
 
 float
@@ -418,7 +418,7 @@ void
 ImageLayer::setMaxVisibleRange( float maxVisibleRange )
 {
     mutableImageLayerOptions().maxVisibleRange() = maxVisibleRange;
-    fireCallback( &Callback::onVisibleRangeChanged );
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
 }
 
 float
@@ -443,7 +443,7 @@ void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
     mutableImageLayerOptions().colorFilters().push_back( filter );
-    fireCallback( &Callback::onColorFiltersChanged );
+    fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
@@ -454,7 +454,7 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
     if ( i != filters.end() )
     {
         filters.erase( i );
-        fireCallback( &Callback::onColorFiltersChanged );
+        fireCallback( &ImageLayerCallback::onColorFiltersChanged );
     }
 }
 

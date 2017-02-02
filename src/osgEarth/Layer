@@ -69,6 +69,13 @@ namespace osgEarth
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
+        /**
+         * If set, calls setDefine() on the layer's stateset to make the
+         * #define available in shader code.
+         */
+        optional<std::string>& shaderDefine() { return _shaderDefine; }
+        const optional<std::string>& shaderDefine() const { return _shaderDefine; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
@@ -84,6 +91,16 @@ namespace osgEarth
         optional<bool> _enabled;
         optional<std::string> _cacheId;
         optional<CachePolicy> _cachePolicy;
+        optional<std::string> _shaderDefine;
+    };
+
+
+    /**
+     * Base callback for all Layer types
+     */
+    class LayerCallback : public osg::Referenced
+    {
+        //NOP
     };
 
 
@@ -160,15 +177,12 @@ namespace osgEarth
         virtual osg::Node* getNode() const { return 0L; }
 
     public:
-        struct Callback : public osg::Referenced {
-            // NOP
-        };
 
         /** Adds a property notification callback to this layer */
-        void addCallback(Callback* cb);
+        void addCallback(LayerCallback* cb);
 
         /** Removes a property notification callback from this layer */
-        void removeCallback(Callback* cb);
+        void removeCallback(LayerCallback* cb);
 
 
     public:
@@ -263,7 +277,7 @@ namespace osgEarth
         Status _status;
 
     protected:
-        typedef std::vector<osg::ref_ptr<Callback> > CallbackVector;
+        typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
 
     private:

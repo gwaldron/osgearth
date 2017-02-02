@@ -141,6 +141,13 @@ namespace osgEarth
         optional<std::string>        _cacheId;
     };
 
+    struct ModelLayerCallback : public VisibleLayerCallback
+    {
+        virtual void onOpacityChanged(class ModelLayer* layer) { }
+
+        typedef void (ModelLayerCallback::*MethodPtr)(class ModelLayer* layer);
+    };
+
 
     class OSGEARTH_EXPORT ModelLayer : public VisibleLayer
     {
@@ -267,14 +274,6 @@ namespace osgEarth
         virtual void setReadOptions(const osgDB::Options* readOptions);
 
         virtual void init();
-
-    public:
-
-        struct Callback : public VisibleLayer::Callback {
-            virtual void onOpacityChanged(class ModelLayer* layer) { }
-        };
-
-        typedef void (Callback::*CallbackMethodPtr)(class ModelLayer* layer);
        
     private:
         ModelLayerOptions* _options;
@@ -297,7 +296,7 @@ namespace osgEarth
 
         mutable Threading::Mutex _mutex; // general-purpose mutex.
 
-        void fireCallback(CallbackMethodPtr method);
+        void fireCallback(ModelLayerCallback::MethodPtr method);
 
         void setLightingEnabledNoLock(bool value);
     };

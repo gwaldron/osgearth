@@ -99,7 +99,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         static void getEngineByUID( UID uid, osg::ref_ptr<MPTerrainEngineNode>& output );
 
     public:
-        class ElevationChangedCallback : public VisibleLayer::Callback
+        class ElevationChangedCallback : public VisibleLayerCallback
         {
         public:
             ElevationChangedCallback( MPTerrainEngineNode* terrain );

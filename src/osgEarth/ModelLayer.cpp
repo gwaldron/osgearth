@@ -439,7 +439,7 @@ ModelLayer::setOpacity(float opacity)
 
         _alphaEffect->setAlpha(opacity);
 
-        fireCallback( &Callback::onOpacityChanged );
+        fireCallback( &ModelLayerCallback::onOpacityChanged );
     }
 }
 
@@ -482,11 +482,11 @@ ModelLayer::isLightingEnabled() const
 }
 
 void
-ModelLayer::fireCallback(CallbackMethodPtr method)
+ModelLayer::fireCallback(ModelLayerCallback::MethodPtr method)
 {
     for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
     {
-        Callback* cb = dynamic_cast<Callback*>(i->get());
+        ModelLayerCallback* cb = dynamic_cast<ModelLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
 }

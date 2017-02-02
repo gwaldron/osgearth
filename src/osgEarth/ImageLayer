@@ -193,7 +193,16 @@ namespace osgEarth
         bool                               _layerInTargetProfile;
     };
 
-    //--------------------------------------------------------------------
+
+    struct ImageLayerCallback : public TerrainLayerCallback
+    {
+        virtual void onOpacityChanged(class ImageLayer* layer) { }
+        virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
+        virtual void onColorFiltersChanged(class ImageLayer* layer) { }
+
+        typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
+    };
+
 
     /**
      * A map terrain layer containing bitmap image data.
@@ -226,12 +235,6 @@ namespace osgEarth
     public:
         /** Options governing this image layer */
         const ImageLayerOptions& getImageLayerOptions() const;
-
-        /** Adds a property notification callback to this layer */
-        //void addCallback( ImageLayerCallback* cb );
-
-        /** Removes a property notification callback from this layer */
-        //void removeCallback( ImageLayerCallback* cb );
 
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );
@@ -305,16 +308,6 @@ namespace osgEarth
         optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
         const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
         
-    public:
-        struct Callback : public TerrainLayer::Callback {
-            virtual void onOpacityChanged( ImageLayer* layer ) { }
-            virtual void onVisibleRangeChanged( ImageLayer* layer ) { }
-            virtual void onColorFiltersChanged( ImageLayer* layer ) { }
-        };
-
-        typedef void (Callback::*CallbackMethodPtr)(ImageLayer* layer);
-
-    //--------------------------------------------------------------------
 
     public: // methods
 
@@ -337,17 +330,14 @@ namespace osgEarth
          * Applies the texture compression options to a texture.
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
-
-
-    public: // TerrainLayer override
         
-        /** Opens the image layer and returns the status. */
-        virtual const Status& open();
-
+        typedef ImageLayerCallback Callback;
 
     public: // Layer
 
         virtual Config getConfig() const;
+        
+        virtual const Status& open();
 
     protected: // Layer
             
@@ -374,12 +364,11 @@ namespace osgEarth
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
-        //ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
         optional<std::string>                    _shareTexUniformName;
         optional<std::string>                    _shareTexMatUniformName;
 
-        virtual void fireCallback(CallbackMethodPtr method);
+        virtual void fireCallback(ImageLayerCallback::MethodPtr method);
 
 
         TileSource::ImageOperation* getOrCreatePreCacheOp();

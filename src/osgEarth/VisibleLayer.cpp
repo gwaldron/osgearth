@@ -84,7 +84,7 @@ VisibleLayer::setVisible(bool value)
         if (node)
             node->setNodeMask(value? ~0 : 0);
 
-        fireCallback(&Callback::onVisibleChanged);
+        fireCallback(&VisibleLayerCallback::onVisibleChanged);
     }
 }
 
@@ -95,11 +95,11 @@ VisibleLayer::getVisible() const
 }
 
 void
-VisibleLayer::fireCallback(CallbackMethodPtr method)
+VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
 {
     for (CallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
     {
-        Callback* cb = dynamic_cast<Callback*>(i->get());
+        VisibleLayerCallback* cb = dynamic_cast<VisibleLayerCallback*>(i->get());
         if (cb) (cb->*method)(this);
     }
 }

@@ -1,7 +1,7 @@
 #version 330
 #pragma vp_entryPoint ocean_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines(OE_OCEAN_MASK);
+#pragma import_defines(OE_OCEAN_MASK, OE_OCEAN_BATHYMETRY)
 
 float oe_terrain_getElevation();
 
@@ -24,12 +24,16 @@ float ocean_remap(float val, float vmin, float vmax, float r0, float r1)
 // entry point.
 void ocean_FS(inout vec4 color)
 {
+    float alpha = 1.0;
+
+#ifdef OE_OCEAN_BATHYMETRY
     const float lowF = -100.0;
     const float hiF = -10.0;
     const float seaLevel = 0.0;
 
     float elevation = oe_terrain_getElevation();
     float alpha = ocean_remap(elevation, seaLevel+lowF, seaLevel+hiF, 1.0, 0.0);
+#endif
 
 #ifdef OE_OCEAN_MASK
     float mask = texture(OE_OCEAN_MASK, ocean_maskCoord).a;

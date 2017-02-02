@@ -30,17 +30,33 @@
 
 namespace osgEarth
 {
-
+    /**
+     * Callback for getting notifications of scene graph events.
+     * Not all methods may be invoked in all situations. It's up to
+     * the implementation to call then when it wants.
+     */
     class SceneGraphCallback : public osg::Referenced
     {
     public:
+        // Called before a node is added to the live scene graph,
+        // possibly from a background pager thread
         virtual void onPreMergeNode(osg::Node*) { }
+
+        // Called after a node is added to the live scene graph
+        // in the main/update thread
         virtual void onPostMergeNode(osg::Node*) { }
+
+        // Called after a node is remoevd from the live scene graph
+        // in the main/update thread
         virtual void onRemoveNode(osg::Node*) { }
     };
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
-
+    /**
+     * Cotnainer for scene graph callbacks. Typically an object that 
+     * supports scene graph callbacks will host an instance of this
+     * object and use it register and fire callbacks at the appropriate times.
+     */
     class OSGEARTH_EXPORT SceneGraphCallbacks : public osg::Referenced
     {
     public:
@@ -59,7 +75,11 @@ namespace osgEarth
         Threading::Mutex _mutex;
     };
 
-
+    /**
+     * Extends the osg::PagedLOD class to invoke SceneGraphCallbacks
+     * when nodes are added or removed from the live scene graph.
+     * (Note, this object does not invoke the preMergeNode method.)
+     */
     class OSGEARTH_EXPORT PagedLODWithSceneGraphCallbacks : public osg::PagedLOD
     {
     public:

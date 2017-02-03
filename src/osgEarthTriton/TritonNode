@@ -25,6 +25,7 @@
 #include "TritonCallback"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/ResourceReleaser>
 #include <osg/Drawable>
 
@@ -42,6 +43,10 @@ namespace osgEarth { namespace Triton
             osgEarth::MapNode*   mapNode,
             const TritonOptions& options,
             Callback*            userCallback =0L);
+
+        void setMapNode(osgEarth::MapNode* mapNode);
+
+        void setMaskLayer(const ImageLayer* layer);
 
     protected: // OceanNode
 
@@ -63,6 +68,12 @@ namespace osgEarth { namespace Triton
         osg::Drawable*              _drawable;
         osg::ref_ptr<osg::Uniform>  _alphaUniform;
         osg::observer_ptr<ResourceReleaser> _releaser;
+        osg::observer_ptr<const ImageLayer> _maskLayer;
+        osg::observer_ptr<MapNode> _mapNode;
+        osg::ref_ptr<Callback> _callback;
+        bool _needsMapNode;
+
+        void create();
     };
 
 } } // namespace osgEarth::Triton

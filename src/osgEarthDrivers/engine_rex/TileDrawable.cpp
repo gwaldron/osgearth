@@ -392,11 +392,11 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             osg::Vec3d v10 = verts[i10] + normals[i10] * _heightCache[i10];
 
             f.vertex( verts[i00] + normals[i00] * _heightCache[i00] );
-            f.vertex( v01 );
             f.vertex( v10 );
+            f.vertex( v01 );
             
-            f.vertex( v10 );
             f.vertex( v01 );
+            f.vertex( v10 );
             f.vertex( verts[i11] + normals[i11] * _heightCache[i11] );
         }
     }

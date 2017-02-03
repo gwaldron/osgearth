@@ -60,7 +60,7 @@ SimpleOceanLayer::init()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    Layer::init();
+    VisibleLayer::init();
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TILE);

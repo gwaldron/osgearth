@@ -59,7 +59,7 @@ TritonLayer::init()
     setRenderType(RENDERTYPE_NONE);
 
     TritonOptions legacyOptions(options());
-    _tritonNode = new TritonNode(0L, legacyOptions);
+    _tritonNode = new TritonNode(legacyOptions);
 }
 
 osg::Node*

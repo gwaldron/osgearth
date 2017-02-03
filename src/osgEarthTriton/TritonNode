@@ -39,14 +39,14 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonNode : public osgEarth::Util::OceanNode
     {
     public:
-        TritonNode(
-            osgEarth::MapNode*   mapNode,
-            const TritonOptions& options,
-            Callback*            userCallback =0L);
+        TritonNode(const TritonOptions& options,
+                   Callback* userCallback =0L);
 
+        /** MapNode to use; will be discovered automatically if not set here */
         void setMapNode(osgEarth::MapNode* mapNode);
 
-        void setMaskLayer(const ImageLayer* layer);
+        /** Layer to use to mask the rendering of the ocean surface */
+        void setMaskLayer(const osgEarth::ImageLayer* layer);
 
     protected: // OceanNode
 

@@ -27,21 +27,15 @@
 using namespace osgEarth::Triton;
 
 
-TritonNode::TritonNode(osgEarth::MapNode*   mapNode,
-                       const TritonOptions& options,
-                       Callback*            callback) :
+TritonNode::TritonNode(const TritonOptions& options,
+                       Callback* callback) :
 OceanNode( options ),
 _options ( options ),
 _callback( callback ),
-_needsMapNode( false )
+_needsMapNode( true )
 {
     // Triton requires a constant update traversal.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-
-    if (mapNode)
-        setMapNode(mapNode);
-    else
-        _needsMapNode = true;
 }
 
 void
@@ -72,6 +66,9 @@ TritonNode::setMapNode(osgEarth::MapNode* mapNode)
 void
 TritonNode::create()
 {    
+    this->removeChildren(0, this->getNumChildren());
+    _drawable = 0L;
+
     osg::ref_ptr<MapNode> mapNode;
     if (!_mapNode.lock(mapNode))
         return;
@@ -85,7 +82,8 @@ TritonNode::create()
     _releaser = mapNode->getResourceReleaser();
 
     // create an object to house Triton data and resources.
-    _TRITON = new TritonContext(_options);
+    if (!_TRITON.valid())
+        _TRITON = new TritonContext(_options);
 
     if ( map )
         _TRITON->setSRS( map->getSRS() );

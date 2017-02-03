@@ -92,11 +92,12 @@ struct App
 
     osg::Group* getAttachPoint()
     {
-        SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(mapNode);
-        if (sky)
-            return sky;
-        else
-            return mapNode;
+        return mapNode;
+        //SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(mapNode);
+        //if (sky)
+        //    return sky;
+        //else
+        //    return mapNode;
     }
 
     void addTriton()
@@ -127,10 +128,9 @@ struct App
                 << std::endl;
         }
 
-        triton = new TritonNode(
-            mapNode,
-            tritonOptions,
-            new TritonCallback(settings));
+
+        triton = new TritonNode(tritonOptions, new TritonCallback(settings));
+        triton->setMapNode(mapNode);
 
         getAttachPoint()->addChild(triton);
     }

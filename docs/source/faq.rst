@@ -143,7 +143,7 @@ What is the best practice for using GitHub?
 	
 	1. Create your own GitHub account and log in.
 	2. Clone the osgEarth repo.
-	3. Work from your clone. Sync it to the main repository peridocially to get the
+	3. Work from your clone. Sync it to the main repository periodically to get the
 	   latest changes.
 
 

@@ -126,10 +126,12 @@ TEST_CASE( "ReadWriteMutex can handle mulitple read locks from the same thread w
         elapsedTime = osg::Timer::instance()->delta_s(startTime, osg::Timer::instance()->tick());
         if (elapsedTime >= maxTimeSeconds)
         {
+            OE_NOTICE << "Threads failed to complete in " << elapsedTime << " seconds" << std::endl;
             break;
         }
     }
 
+    OE_NOTICE << "Elapsed time = " << elapsedTime << std::endl;
     REQUIRE(!thread1.isRunning());
     REQUIRE(!thread2.isRunning());
     REQUIRE(elapsedTime < maxTimeSeconds);

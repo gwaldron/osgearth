@@ -111,6 +111,9 @@ TEST_CASE( "ReadWriteMutex can handle mulitple read locks from the same thread w
     // Start both threads
     thread1.start();
     thread2.start();
+
+    // Wait a couple of seconds for the threads to actually start.
+    OpenThreads::Thread::microSleep(2e6);
    
     // Let the threads go for up to 5 seconds.  If they don't finish in that amount of time they are deadlocked.
     double maxTimeSeconds = 5.0;

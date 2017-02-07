@@ -33,10 +33,6 @@ The basic steps to creating a Map with the API are:
 
 You can add layers to the map at any time::
 
-    using namespace osgEarth;
-    using namespace osgEarth::Drivers;
-    
-    #include <osgEarth/Map>
     #include <osgEarth/MapNode>
     #include <osgEarthDrivers/tms/TMSOptions>
     #include <osgEarthDrivers/gdal/GDALOptions>

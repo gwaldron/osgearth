@@ -73,7 +73,7 @@ main(int argc, char** argv)
     wms.layers() = "nexrad-n0r";
     wms.srs() = "EPSG:4326";
     wms.transparent() = true;
-    ImageLayerOptions wmsLayerOptions("WMS NEXRAD, wms");
+    ImageLayerOptions wmsLayerOptions("WMS NEXRAD", wms);
     wmsLayerOptions.cachePolicy() = CachePolicy::NO_CACHE;
     map->addLayer(new ImageLayer(wmsLayerOptions));
 

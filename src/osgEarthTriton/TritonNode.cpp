@@ -38,6 +38,22 @@ _needsMapNode( true )
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
+
+// @deprecated ctor
+TritonNode::TritonNode(osgEarth::MapNode* mapNode,
+                       const TritonOptions& options,
+                       Callback* callback) :
+OceanNode( options ),
+_options ( options ),
+_callback( callback )
+{
+    // Triton requires a constant update traversal.
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
+    setMapNode(mapNode);
+    _needsMapNode = (mapNode == 0L);
+}
+
 void
 TritonNode::setMaskLayer(const osgEarth::ImageLayer* maskLayer)
 {

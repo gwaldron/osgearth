@@ -39,8 +39,13 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonNode : public osgEarth::Util::OceanNode
     {
     public:
+        /** Consruct a TritonNode */
         TritonNode(const TritonOptions& options,
                    Callback* userCallback =0L);
+
+        /** @deprecated - place TritonNode under MapNode, or call setMapNode
+         *  Construct a TritonNode */
+        TritonNode(osgEarth::MapNode* mapNode, const TritonOptions& options, Callback* callback =0L);
 
         /** MapNode to use; will be discovered automatically if not set here */
         void setMapNode(osgEarth::MapNode* mapNode);

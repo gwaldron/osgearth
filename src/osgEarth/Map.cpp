@@ -735,3 +735,90 @@ Map::sync(MapFrame& frame) const
     }
     return result;
 }
+
+
+//......................................................................
+// @deprecated functions
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/MaskLayer>
+
+void 
+Map::addImageLayer(class ImageLayer* layer) {
+    OE_DEPRECATED(Map::addImageLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::insertImageLayer(class ImageLayer* layer, unsigned index) {
+    OE_DEPRECATED(Map::insertImageLayer, Map::insertLayer);
+    insertLayer(layer, index);
+}
+
+void 
+Map::removeImageLayer(class ImageLayer* layer) {
+    OE_DEPRECATED(Map::removeImageLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveImageLayer(class ImageLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::moveImageLayer, Map::removeLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addElevationLayer(class ElevationLayer* layer) {
+    OE_DEPRECATED(Map::addElevationLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::removeElevationLayer(class ElevationLayer* layer) {
+    OE_DEPRECATED(Map::removeElevationLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveElevationLayer(class ElevationLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::removeElevationLayer, Map::removeLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addModelLayer(class ModelLayer* layer) {
+    OE_DEPRECATED(Map::addModelLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::insertModelLayer(class ModelLayer* layer, unsigned index) {
+    OE_DEPRECATED(Map::insertModelLayer, Map::insertLayer);
+    insertLayer(layer, index);
+}
+
+void 
+Map::removeModelLayer(class ModelLayer* layer) {
+    OE_DEPRECATED(Map::removeModelLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveModelLayer(class ModelLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::moveModelLayer, Map::moveLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addTerrainMaskLayer(class MaskLayer* layer) {
+    OE_DEPRECATED(Map::addTerrainMaskLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::removeTerrainMaskLayer(class MaskLayer* layer) {
+    OE_DEPRECATED(Map::removeTerrainMaskLayer, Map::removeLayer);
+    removeLayer(layer);
+}

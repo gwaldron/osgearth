@@ -221,6 +221,8 @@ namespace osgEarth
          */
         bool isTerrainPatch() const { return options().terrainPatch().get(); }
 
+        /** Access scene graph callbacks */
+        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
 
     public:
 

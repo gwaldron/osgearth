@@ -59,4 +59,6 @@ namespace osgEarth
 #define OE_STOP_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 #define OE_GET_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 
+#define OE_DEPRECATED(A, B) OE_WARN << #A << " is deprecated; please use " << #B << std::endl
+
 #endif // OSGEARTH_NOTIFY_H

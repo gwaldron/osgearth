@@ -46,7 +46,7 @@ namespace osgEarth
         const optional<float>& maxRange() const { return _maxRange; }
 
         /** Distance over which to fade out geometry (from max range) */
-        optional<float>& attentuationDistance() { return _attenDist; }
+        optional<float>& attenuationDistance() { return _attenDist; }
         const optional<float>& attenuationDistance() const { return _attenDist; }
 
     public:

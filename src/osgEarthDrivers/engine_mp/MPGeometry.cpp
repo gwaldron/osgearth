@@ -391,13 +391,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         // assign the min range
                         if ( minRangeLocation >= 0 )
                         {
-                            ext->glUniform1f( minRangeLocation, layer._imageLayer->getImageLayerOptions().minVisibleRange().get() );
+                            ext->glUniform1f( minRangeLocation, layer._imageLayer->options().minVisibleRange().get() );
                         }
 
                         // assign the max range
                         if ( maxRangeLocation >= 0 )
                         {
-                            ext->glUniform1f( maxRangeLocation, layer._imageLayer->getImageLayerOptions().maxVisibleRange().get() );
+                            ext->glUniform1f( maxRangeLocation, layer._imageLayer->options().maxVisibleRange().get() );
                         }
                     }
 

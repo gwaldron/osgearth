@@ -170,11 +170,6 @@ namespace osgEarth
     public:
 
         /**
-         * Gets the initialization options for this layer.
-         */
-        const ModelLayerOptions& getModelLayerOptions() const { return options(); } //return _initOptions; }
-
-        /**
          * Access the underlying model source.
          */
         ModelSource* getModelSource() const { return _modelSource.get(); }

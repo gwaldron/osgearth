@@ -204,7 +204,7 @@ ModelLayer::getConfig() const
 {
     Config layerConf = Layer::getConfig(); //getModelLayerOptions().getConfig();
     layerConf.set("name", getName()); // redundant?
-    layerConf.set("driver", getModelLayerOptions().driver()->getDriver());
+    layerConf.set("driver", options().driver()->getDriver());
     layerConf.key() = "model";
     return layerConf;
 }

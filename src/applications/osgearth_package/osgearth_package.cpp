@@ -417,7 +417,7 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->getImageLayerOptions().getConfig( true ) );
+                layerOptions.mergeConfig( layer->options().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
                 outMap->addLayer( new ImageLayer( layerOptions ) );

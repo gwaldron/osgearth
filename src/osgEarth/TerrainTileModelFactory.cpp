@@ -392,9 +392,9 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     tex->setResizeNonPowerOfTwoHint(false);
 
     osg::Texture::FilterMode magFilter = 
-        layer ? layer->getImageLayerOptions().magFilter().get() : osg::Texture::LINEAR;
+        layer ? layer->options().magFilter().get() : osg::Texture::LINEAR;
     osg::Texture::FilterMode minFilter =
-        layer ? layer->getImageLayerOptions().minFilter().get() : osg::Texture::LINEAR;
+        layer ? layer->options().minFilter().get() : osg::Texture::LINEAR;
 
     tex->setFilter( osg::Texture::MAG_FILTER, magFilter );
     tex->setFilter( osg::Texture::MIN_FILTER, minFilter );

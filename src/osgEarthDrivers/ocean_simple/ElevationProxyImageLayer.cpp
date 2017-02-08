@@ -44,7 +44,7 @@ ElevationProxyImageLayer::createTileSource()
 bool
 ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
-    return key.getLevelOfDetail() <= getImageLayerOptions().maxLevel().get();
+    return key.getLevelOfDetail() <= options().maxLevel().get();
 }
 
 bool

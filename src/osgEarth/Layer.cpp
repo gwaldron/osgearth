@@ -111,7 +111,7 @@ Layer::setReadOptions(const osgDB::Options* options)
 Config
 Layer::getConfig() const
 {
-    return getLayerOptions().getConfig();
+    return options().getConfig();
 }
 
 void

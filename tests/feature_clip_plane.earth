@@ -27,6 +27,6 @@ way to mitigate z-fighting issues.
                 }                    
             </style>
         </styles>        
-    </model>
+    </feature_model>
 
 </map>

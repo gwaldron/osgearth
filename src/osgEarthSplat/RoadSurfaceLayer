@@ -62,6 +62,7 @@ namespace osgEarth { namespace Splat
         Config getConfig() const
         {
             Config conf;
+            conf.key() = "road_surface";
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("inner_width", _innerWidth);
             conf.addIfSet("outer_width", _outerWidth);
@@ -114,8 +115,6 @@ namespace osgEarth { namespace Splat
         osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress);
 
     protected: // Layer
-
-        virtual Config getConfig() const;
 
         virtual void addedToMap(const class Map*);
 

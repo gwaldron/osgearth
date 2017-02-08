@@ -155,17 +155,12 @@ namespace osgEarth
         /**
          * Returns a Config object serializing this layer, if applicable.
          */
-        virtual Config getConfig() const; 
-        
-        /**
-         * Layer options governing this layer
-         */
-        const LayerOptions& getLayerOptions() const { return options(); }
+        virtual Config getConfig() const;
 
         /**
          * Whether the layer is enabled (used in the map)
          */
-        virtual bool getEnabled() const { return getLayerOptions().enabled().get(); }
+        virtual bool getEnabled() const { return options().enabled().get(); }
 
         /**
          * Gets a optional scene graph provided by the layer (default is NULL).

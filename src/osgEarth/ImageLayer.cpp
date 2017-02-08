@@ -327,12 +327,6 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
     //init(); // will be called by subclass.
 }
 
-const ImageLayerOptions&
-ImageLayer::getImageLayerOptions() const
-{
-    return *_options;
-}
-
 const Status&
 ImageLayer::open()
 {

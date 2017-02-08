@@ -67,14 +67,6 @@ RoadSurfaceLayer::open()
         return getStatus();
 }
 
-Config
-RoadSurfaceLayer::getConfig() const
-{
-    Config conf = getLayerOptions().getConfig();
-    conf.key() = "road_surface";
-    return conf;
-}
-
 void
 RoadSurfaceLayer::addedToMap(const Map* map)
 {   

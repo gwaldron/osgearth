@@ -236,8 +236,6 @@ namespace osgEarth
         const ImageLayerOptions& options() const { return *_options; }
 
     public:
-        /** Options governing this image layer */
-        const ImageLayerOptions& getImageLayerOptions() const;
 
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );

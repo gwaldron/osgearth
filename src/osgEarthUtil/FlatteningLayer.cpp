@@ -603,22 +603,27 @@ const Status&
 FlatteningLayer::open()
 {
     // ensure the caller named a feature source:
-    if (!options().featureSourceOptions().isSet() &&
+    if (!options().featureSource().isSet() &&
         !options().featureSourceLayer().isSet())
     {
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
     }
 
     // If the feature source is inline, open it now.
-    if (options().featureSourceOptions().isSet())
+    if (options().featureSource().isSet())
     {
-        // open the feature source:
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSourceOptions().get());
+        // Create the feature source instance:
+        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
         if (!fs)
         {
             return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source as defined"));
         }
 
+        // Open it:
+        setStatus(fs->open(getReadOptions()));
+        if (getStatus().isError())
+            return getStatus();
+        
         setFeatureSource(fs);
 
         if (getStatus().isError())
@@ -634,6 +639,15 @@ FlatteningLayer::setFeatureSource(FeatureSource* fs)
     if (fs)
     {
         _featureSource = fs;
+        if (_featureSource)
+        {
+            if (!_featureSource->getFeatureProfile())
+            {
+                setStatus(Status::Error(Status::ConfigurationError, "No feature profile (is the source open?)"));
+                _featureSource = 0L;
+                return;
+            }
+        }
         if (_ts)
         {
             _ts->setFeatureSource(fs);

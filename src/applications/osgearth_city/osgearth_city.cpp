@@ -33,10 +33,13 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
+#include <osgEarthFeatures/FeatureModelLayer>
+
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -45,7 +48,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"
-#define ELEVATION_URL    "http://readymap.org/readymap/tiles/1.0.0/9/"
+#define ELEVATION_URL    "http://readymap.org/readymap/tiles/1.0.0/116/"
 #define BUILDINGS_URL    "../data/boston_buildings_utm19.shp"
 #define RESOURCE_LIB_URL "../data/resources/textures_us/catalog.xml"
 #define STREETS_URL      "../data/boston-scl-utm19n-meters.shp"
@@ -89,8 +92,13 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
 
+    // Pick a terrain engine expressly:
+    RexTerrainEngine::RexTerrainEngineOptions terrainOptions;
+    MapNodeOptions mapNodeOptions;
+    mapNodeOptions.setTerrainOptions(terrainOptions);
+
     // make the map scene graph:
-    MapNode* mapNode = new MapNode( map );
+    MapNode* mapNode = new MapNode(map, mapNodeOptions);
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -128,10 +136,10 @@ void addElevation(Map* map)
 void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "buildings";
-    feature_opt.url() = BUILDINGS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureOptions buildingData;
+    buildingData.name() = "buildings";
+    buildingData.url() = BUILDINGS_URL;
+    buildingData.buildSpatialIndex() = true;
     
     // a style for the building data:
     Style buildingStyle;
@@ -186,13 +194,13 @@ void addBuildings(Map* map)
     layout.tileSizeFactor() = 52.0;
     layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
-    // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.styles() = styleSheet;
-    fgm_opt.layout() = layout;
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setName("Buildings");
+    layer->options().featureSource() = buildingData;
+    layer->options().styles() = styleSheet;
+    layer->options().layout() = layout;
 
-    map->addLayer( new ModelLayer( "buildings", fgm_opt ) );
+    map->addLayer(layer);
 }
 
 

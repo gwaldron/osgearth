@@ -229,8 +229,11 @@ namespace osgEarth
          */
         ImageLayer(const ImageLayerOptions& options, TileSource* tileSource);
 
-        /** dtor */
-        virtual ~ImageLayer() { }
+        /**
+         * Options for this layer; only effective prior to calling open().
+         */
+        ImageLayerOptions& options() { return *_options; }
+        const ImageLayerOptions& options() const { return *_options; }
 
     public:
         /** Options governing this image layer */
@@ -345,6 +348,9 @@ namespace osgEarth
 
     protected:
 
+        /** dtor */
+        virtual ~ImageLayer() { }
+
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
 
@@ -374,10 +380,10 @@ namespace osgEarth
         TileSource::ImageOperation* getOrCreatePreCacheOp();
 
     private:
-        ImageLayerOptions* _layerOptions;
-        ImageLayerOptions  _layerOptionsConcrete;
-    protected:
-        ImageLayerOptions& mutableImageLayerOptions() { return *_layerOptions; }
+        ImageLayerOptions* _options;
+        ImageLayerOptions  _optionsConcrete;
+    //protected:
+    //    ImageLayerOptions& mutableImageLayerOptions() { return *_options; }
 
     };
 

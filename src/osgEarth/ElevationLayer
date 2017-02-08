@@ -82,6 +82,12 @@ namespace osgEarth
     {
     public:
         /**
+         * Constructs a blank Elevation Layer;
+         * Use options() to set up before calling open or adding to a Map.
+         */
+        ElevationLayer();
+
+        /**
          * Constructs a new elevation layer with the specified options. It expects
          * the layer options to contain a reference to the neccesary driver options.
          */
@@ -107,7 +113,8 @@ namespace osgEarth
         virtual ~ElevationLayer() { }
 
         /** Gets the initialization options with which the layer was created. */
-        const ElevationLayerOptions& getElevationLayerOptions() const { return *_layerOptions; }
+        ElevationLayerOptions& options() { return *_options; }
+        const ElevationLayerOptions& options() const { return *_options; }
 
     public: // methods
 
@@ -150,9 +157,8 @@ namespace osgEarth
             ProgressCallback*  progress );
         
     private:
-        ElevationLayerOptions* _layerOptions;
-        ElevationLayerOptions  _layerOptionsConcrete;
-        ElevationLayerOptions& mutableElevationLayerOptions() { return *_layerOptions; }
+        ElevationLayerOptions* _options;
+        ElevationLayerOptions  _optionsConcrete;
 
         mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
 

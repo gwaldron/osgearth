@@ -241,25 +241,24 @@ TerrainLayer::CacheBinMetadata::getConfig() const
 //------------------------------------------------------------------------
 
 TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
-VisibleLayer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
-_layerOptions(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
+VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
+_options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _openCalled(false),
 _tileSize(256),
 _runtimeEnabled(true)
 {
-    //nop
+    //nop - init() called by subclass
 }
 
 TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr, TileSource* tileSource) :
-VisibleLayer(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
-_layerOptions(optionsPtr ? optionsPtr : &_layerOptionsConcrete),
+VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
+_options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _tileSource(tileSource),
 _openCalled(false),
 _tileSize(256),
 _runtimeEnabled(true)
 {
-    //nop
-    // init() will be called by the subclass.
+    //nop - init() called by subclass
 }
 
 TerrainLayer::~TerrainLayer()
@@ -272,70 +271,8 @@ TerrainLayer::init()
 {    
     Layer::init();
 
-    // intiailize out read-options, which store caching and IO information.
+    // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
-
-    // Create an L2 mem cache that sits atop the main cache, if necessary.
-    // For now: use the same L2 cache size at the driver.
-    int l2CacheSize = getTerrainLayerOptions().driver()->L2CacheSize().get();
-    
-    // See if it was overridden with an env var.
-    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
-    if ( l2env )
-    {
-        l2CacheSize = as<int>( std::string(l2env), 0 );
-        OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
-    }
-
-    // Env cache-only mode also disables the L2 cache.
-    char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
-    if ( noCacheEnv )
-    {
-        l2CacheSize = 0;
-    }
-
-    // Initialize the l2 cache if it's size is > 0
-    if ( l2CacheSize > 0 )
-    {
-        _memCache = new MemCache( l2CacheSize );
-    }
-
-    // create the unique cache ID for the cache bin.
-    //std::string cacheId;
-
-    if (getTerrainLayerOptions().cacheId().isSet() &&
-        !getTerrainLayerOptions().cacheId()->empty())
-    {
-        // user expliticy set a cacheId in the terrain layer options.
-        // this appears to be a NOP; review for removal -gw
-        _runtimeCacheId = getTerrainLayerOptions().cacheId().get();
-    }
-    else
-    {
-        // system will generate a cacheId.
-        // technically, this is not quite right, we need to remove everything that's
-        // an image layer property and just use the tilesource properties.
-        Config layerConf = getTerrainLayerOptions().getConfig(true);
-        Config driverConf = getTerrainLayerOptions().driver()->getConfig();
-        Config hashConf = driverConf - layerConf;
-
-        // remove cache-control properties before hashing.
-        hashConf.remove("cache_only");
-        hashConf.remove("cache_enabled");
-        hashConf.remove("cache_policy");
-        hashConf.remove("cacheid");
-        hashConf.remove("l2_cache_size");
-
-        // need this, b/c data is vdatum-transformed before caching.
-        if (layerConf.hasValue("vdatum"))
-            hashConf.add("vdatum", layerConf.value("vdatum"));
-
-        unsigned hash = osgEarth::hashString(hashConf.toJSON());
-        _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
-    }
-
-    // copy this over since it might get changed.
-    _runtimeEnabled = getTerrainLayerOptions().enabled().get();
 }
 
 const Status&
@@ -343,6 +280,67 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        // Create an L2 mem cache that sits atop the main cache, if necessary.
+        // For now: use the same L2 cache size at the driver.
+        int l2CacheSize = options().driver()->L2CacheSize().get();
+    
+        // See if it was overridden with an env var.
+        char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+        if ( l2env )
+        {
+            l2CacheSize = as<int>( std::string(l2env), 0 );
+            OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
+        }
+
+        // Env cache-only mode also disables the L2 cache.
+        char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
+        if ( noCacheEnv )
+        {
+            l2CacheSize = 0;
+        }
+
+        // Initialize the l2 cache if it's size is > 0
+        if ( l2CacheSize > 0 )
+        {
+            _memCache = new MemCache( l2CacheSize );
+        }
+
+        // create the unique cache ID for the cache bin.
+        //std::string cacheId;
+
+        if (options().cacheId().isSet() && !options().cacheId()->empty())
+        {
+            // user expliticy set a cacheId in the terrain layer options.
+            // this appears to be a NOP; review for removal -gw
+            _runtimeCacheId = options().cacheId().get();
+        }
+        else
+        {
+            // system will generate a cacheId.
+            // technically, this is not quite right, we need to remove everything that's
+            // an image layer property and just use the tilesource properties.
+            Config layerConf = options().getConfig(true);
+            Config driverConf = options().driver()->getConfig();
+            Config hashConf = driverConf - layerConf;
+
+            // remove cache-control properties before hashing.
+            hashConf.remove("cache_only");
+            hashConf.remove("cache_enabled");
+            hashConf.remove("cache_policy");
+            hashConf.remove("cacheid");
+            hashConf.remove("l2_cache_size");
+
+            // need this, b/c data is vdatum-transformed before caching.
+            if (layerConf.hasValue("vdatum"))
+                hashConf.add("vdatum", layerConf.value("vdatum"));
+
+            unsigned hash = osgEarth::hashString(hashConf.toJSON());
+            _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
+        }
+
+        // copy this over since it might get changed.
+        _runtimeEnabled = options().enabled().get();
+
         CacheSettings* cacheSettings = getCacheSettings(); // guaranteed to return non-null
 
         Threading::ScopedMutexLock lock(_mutex);
@@ -376,7 +374,7 @@ TerrainLayer::open()
 
                         // Unless the user has already configured an expiration policy, use the "last modified"
                         // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-                        const CachePolicy& cp = getTerrainLayerOptions().cachePolicy().get();
+                        const CachePolicy& cp = options().cachePolicy().get();
                         if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
                         {
                             // The "effective" policy overrides the runtime policy, but it does not get serialized.
@@ -442,7 +440,7 @@ TerrainLayer::getCacheSettings() const
             _cacheSettings->cachePolicy()->mergeAndOverride(_runtimeCachePolicy);
 
             // install the layer policy
-            _cacheSettings->integrateCachePolicy(getTerrainLayerOptions().cachePolicy());
+            _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
             // if all it well, open and activate a caching bin for this layer.
             if (_cacheSettings->isCacheEnabled())
@@ -473,7 +471,7 @@ TerrainLayer::setTargetProfileHint( const Profile* profile )
 void
 TerrainLayer::refreshTileSourceCachePolicyHint(TileSource* ts)
 {
-    if ( ts && getCacheSettings() && !getTerrainLayerOptions().cachePolicy().isSet() )
+    if ( ts && getCacheSettings() && !options().cachePolicy().isSet() )
     {
         CachePolicy hint = ts->getCachePolicyHint( _targetProfileHint.get() );
 
@@ -685,11 +683,11 @@ TerrainLayer::getCacheBinMetadata(const Profile* profile)
 TileSource*
 TerrainLayer::createTileSource()
 {    
-    if (getTerrainLayerOptions().driver().isSet())
+    if (options().driver().isSet())
     {
-        OE_INFO << LC << "Creating \"" << getTerrainLayerOptions().driver()->getDriver() << "\" driver\n";
+        OE_INFO << LC << "Creating \"" << options().driver()->getDriver() << "\" driver\n";
 
-        return TileSourceFactory::create(getTerrainLayerOptions().driver().get());
+        return TileSourceFactory::create(options().driver().get());
     }
     else
     {
@@ -783,7 +781,7 @@ TerrainLayer::createAndOpenTileSource()
     // establish a profile from the metadata in the cache instead.
     else if (!tileSourceStatus.isError() && getCacheSettings()->isCacheEnabled())
     {
-        OE_NOTICE << LC << "Failed to create \"" << getTerrainLayerOptions().driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
+        OE_NOTICE << LC << "Failed to create \"" << options().driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
     }
 
@@ -803,9 +801,9 @@ TerrainLayer::applyProfileOverrides()
 {
     // Check for a vertical datum override.
     bool changed = false;
-    if ( _profile.valid() && getTerrainLayerOptions().verticalDatum().isSet() )
+    if ( _profile.valid() && options().verticalDatum().isSet() )
     {
-        std::string vdatum = getTerrainLayerOptions().verticalDatum().get();
+        std::string vdatum = options().verticalDatum().get();
         OE_INFO << "override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
         if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
         {
@@ -852,15 +850,15 @@ TerrainLayer::isKeyInRange(const TileKey& key) const
     }
 
     // First check the key against the min/max level limits, it they are set.
-    if ((getTerrainLayerOptions().maxLevel().isSet() && key.getLOD() > getTerrainLayerOptions().maxLevel().value()) ||
-        (getTerrainLayerOptions().minLevel().isSet() && key.getLOD() < getTerrainLayerOptions().minLevel().value()))
+    if ((options().maxLevel().isSet() && key.getLOD() > options().maxLevel().value()) ||
+        (options().minLevel().isSet() && key.getLOD() < options().minLevel().value()))
     {
         return false;
     }
 
     // Next, check against resolution limits (based on the source tile size).
-    if (getTerrainLayerOptions().minResolution().isSet() ||
-        getTerrainLayerOptions().maxResolution().isSet())
+    if (options().minResolution().isSet() ||
+        options().maxResolution().isSet())
     {
         const Profile* profile = getProfile();
         if ( profile )
@@ -870,14 +868,14 @@ TerrainLayer::isKeyInRange(const TileKey& key) const
             double resKey   = key.getExtent().width() / (double)getTileSize();
             double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
 
-            if (getTerrainLayerOptions().maxResolution().isSet() &&
-                getTerrainLayerOptions().maxResolution().value() > resLayer)
+            if (options().maxResolution().isSet() &&
+                options().maxResolution().value() > resLayer)
             {
                 return false;
             }
 
-            if (getTerrainLayerOptions().minResolution().isSet() &&
-                getTerrainLayerOptions().minResolution().value() < resLayer)
+            if (options().minResolution().isSet() &&
+                options().minResolution().value() < resLayer)
             {
                 return false;
             }
@@ -915,7 +913,7 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     storeProxySettings( _readOptions );
     
     // store the referrer for relative-path resolution
-    URIContext( getTerrainLayerOptions().referrer() ).store( _readOptions.get() );
+    URIContext( options().referrer() ).store( _readOptions.get() );
 
     Threading::ScopedMutexLock lock(_mutex);
     _cacheSettings = 0L;
@@ -943,9 +941,9 @@ void
 TerrainLayer::storeProxySettings(osgDB::Options* readOptions)
 {
     //Store the proxy settings in the options structure.
-    if (getTerrainLayerOptions().proxySettings().isSet())
+    if (options().proxySettings().isSet())
     {        
-        getTerrainLayerOptions().proxySettings()->apply( readOptions );
+        options().proxySettings()->apply( readOptions );
     }
 }
 

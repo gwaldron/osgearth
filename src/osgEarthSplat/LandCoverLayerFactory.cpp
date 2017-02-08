@@ -47,6 +47,7 @@ using namespace osgEarth::Splat;
 
 namespace
 {
+    //TODO: fix ambiguous inheritance issue here:
     class LandCoverPatchLayer : public PatchLayer,
                                 public PatchLayer::AcceptCallback
     {

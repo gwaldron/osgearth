@@ -55,8 +55,8 @@ namespace osgEarth { namespace Util
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
         /** Features that will drive the flattening process. */
-        optional<FeatureSourceOptions>& featureSourceOptions() { return _featureSourceOptions; }
-        const optional<FeatureSourceOptions>& featureSourceOptions() const { return _featureSourceOptions; }
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
         /** For line features, the width around the line to flatten. */
         optional<Distance>& lineWidth() { return _lineWidth; }
@@ -72,7 +72,7 @@ namespace osgEarth { namespace Util
         {
             Config conf;
             conf.addIfSet("base_layer", _elevationBaseLayer);
-            conf.addObjIfSet("features",  _featureSourceOptions);
+            conf.addObjIfSet("features",  _featureSource);
             conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("buffer_width", _bufferWidth);
@@ -83,15 +83,14 @@ namespace osgEarth { namespace Util
         void mergeConfig( const Config& conf )
         {
             conf.getIfSet("base_layer", _elevationBaseLayer);
-            conf.getObjIfSet("features",  _featureSourceOptions);
+            conf.getObjIfSet("features",  _featureSource);
             conf.getIfSet("feature_source", _featureSourceLayer);
             conf.getIfSet("line_width", _lineWidth);
             conf.getIfSet("buffer_width", _bufferWidth);
         }
         
     private:
-        //optional<ElevationLayerOptions> _elevationLayerOptions;
-        optional<FeatureSourceOptions>  _featureSourceOptions;
+        optional<FeatureSourceOptions>  _featureSource;
         optional<std::string> _featureSourceLayer;
         optional<Distance> _lineWidth;
         optional<Distance> _bufferWidth;

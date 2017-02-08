@@ -73,11 +73,27 @@ VisibleLayer::~VisibleLayer()
 }
 
 void
+VisibleLayer::init()
+{
+    Layer::init();
+}
+
+const Status&
+VisibleLayer::open()
+{
+    if (options().visible().isSet())
+    {
+        setVisible(options().visible().get());
+    }
+    return Layer::open();
+}
+
+void
 VisibleLayer::setVisible(bool value)
 {
     if (options().visible().get() != value)
     {
-        mutableOptions().visible() = value;
+        options().visible() = value;
 
         // if this layer has a scene graph node, toggle its node mask
         osg::Node* node = getNode();

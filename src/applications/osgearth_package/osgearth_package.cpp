@@ -456,7 +456,7 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->getElevationLayerOptions().getConfig( true ) );
+                layerOptions.mergeConfig( layer->options().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
                 outMap->addLayer( new ElevationLayer( layerOptions ) );

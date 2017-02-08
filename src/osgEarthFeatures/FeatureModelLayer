@@ -70,6 +70,9 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
+        // Create a feature layer with defaults. Use mutableOptions to set it up.
+        FeatureModelLayer();
+
         // Create a layer with initial options.
         FeatureModelLayer(const FeatureModelLayerOptions& options);
 
@@ -84,6 +87,10 @@ namespace osgEarth { namespace Features
 
         // access to scene graph callbacks
         SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
+        
+        // options for this layer; only effective prior to calling open().
+        FeatureModelLayerOptions& options() { return *_options;  }
+        const FeatureModelLayerOptions& options() const { return *_options; }
 
     public: // Layer
 
@@ -109,8 +116,6 @@ namespace osgEarth { namespace Features
         // options support.
         FeatureModelLayerOptions* _options;
         FeatureModelLayerOptions  _optionsConcrete;
-        const FeatureModelLayerOptions& options() const { return *_options; }
-        FeatureModelLayerOptions& mutableOptions() { return *_options;  }
 
     private:
         osg::ref_ptr<FeatureSource> _featureSource;

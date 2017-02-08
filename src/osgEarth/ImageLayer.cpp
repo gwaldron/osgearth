@@ -297,32 +297,32 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 //------------------------------------------------------------------------
 
 ImageLayer::ImageLayer(const ImageLayerOptions& options) :
-TerrainLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(options)
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
     init();
 }
 
 ImageLayer::ImageLayer(const std::string& name, const TileSourceOptions& tileSourceOptions) :
-TerrainLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(name, tileSourceOptions)
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(name, tileSourceOptions)
 {
     init();
 }
 
 ImageLayer::ImageLayer(const ImageLayerOptions& options, TileSource* tileSource) :
-TerrainLayer(&_layerOptionsConcrete, tileSource),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(options)
+TerrainLayer(&_optionsConcrete, tileSource),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
     init();
 }
 
 ImageLayer::ImageLayer(ImageLayerOptions* optionsPtr) :
-TerrainLayer(optionsPtr? optionsPtr : &_layerOptionsConcrete),
-_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
+TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
 {
     //init(); // will be called by subclass.
 }
@@ -330,12 +330,32 @@ _layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
 const ImageLayerOptions&
 ImageLayer::getImageLayerOptions() const
 {
-    return *_layerOptions;
+    return *_options;
 }
 
 const Status&
 ImageLayer::open()
 {
+    // Set the tile size to 256 if it's not explicitly set.
+    if (!options().driver()->tileSize().isSet())
+    {
+        options().driver()->tileSize().init( 256 );
+    }
+
+    if (!_emptyImage.valid())
+        _emptyImage = ImageUtils::createEmptyImage();
+
+    if ( options().shareTexUniformName().isSet() )
+        _shareTexUniformName = options().shareTexUniformName().get();
+    else
+        _shareTexUniformName.init( Stringify() << "layer_" << getUID() << "_tex" );
+
+    if ( options().shareTexMatUniformName().isSet() )
+        _shareTexMatUniformName = options().shareTexMatUniformName().get();
+    else
+        _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
+
+
     if (!createTextureSupported())
         return TerrainLayer::open();
     else
@@ -349,32 +369,14 @@ ImageLayer::init()
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TILE);
-
-    // Set the tile size to 256 if it's not explicitly set.
-    if (!getImageLayerOptions().driver()->tileSize().isSet())
-    {
-        mutableImageLayerOptions().driver()->tileSize().init( 256 );
-    }
-
-    _emptyImage = ImageUtils::createEmptyImage();
-
-    if ( getImageLayerOptions().shareTexUniformName().isSet() )
-        _shareTexUniformName = getImageLayerOptions().shareTexUniformName().get();
-    else
-        _shareTexUniformName.init( Stringify() << "layer_" << getUID() << "_tex" );
-
-    if ( getImageLayerOptions().shareTexMatUniformName().isSet() )
-        _shareTexMatUniformName = getImageLayerOptions().shareTexMatUniformName().get();
-    else
-        _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
 }
 
 Config
 ImageLayer::getConfig() const
 {    
-    Config conf = getImageLayerOptions().getConfig();
+    Config conf = options().getConfig();
     conf.key() = "image";
-    conf.set("driver", getImageLayerOptions().driver()->getDriver()); // need?
+    conf.set("driver", options().driver()->getDriver()); // need?
     return conf;
 }
 
@@ -391,65 +393,65 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
 void
 ImageLayer::setOpacity( float value ) 
 {
-    mutableImageLayerOptions().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
+    options().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
     fireCallback( &ImageLayerCallback::onOpacityChanged );
 }
 
 float
 ImageLayer::getOpacity() const
 {
-    return getImageLayerOptions().opacity().get();
+    return options().opacity().get();
 }
 
 void
 ImageLayer::setMinVisibleRange( float minVisibleRange )
 {
-    mutableImageLayerOptions().minVisibleRange() = minVisibleRange;
+    options().minVisibleRange() = minVisibleRange;
     fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
 }
 
 float
 ImageLayer::getMinVisibleRange() const
 {
-    return getImageLayerOptions().minVisibleRange().get();
+    return options().minVisibleRange().get();
 }
 
 void
 ImageLayer::setMaxVisibleRange( float maxVisibleRange )
 {
-    mutableImageLayerOptions().maxVisibleRange() = maxVisibleRange;
+    options().maxVisibleRange() = maxVisibleRange;
     fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
 }
 
 float
 ImageLayer::getMaxVisibleRange() const
 {
-    return getImageLayerOptions().maxVisibleRange().get();
+    return options().maxVisibleRange().get();
 }
 
 bool
 ImageLayer::isShared() const
 {
-    return getImageLayerOptions().shared().get();
+    return options().shared().get();
 }
 
 bool
 ImageLayer::isCoverage() const
 {
-    return getImageLayerOptions().coverage().get();
+    return options().coverage().get();
 }
 
 void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
-    mutableImageLayerOptions().colorFilters().push_back( filter );
+    options().colorFilters().push_back( filter );
     fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
 ImageLayer::removeColorFilter( ColorFilter* filter )
 {
-    ColorFilterChain& filters = mutableImageLayerOptions().colorFilters();
+    ColorFilterChain& filters = options().colorFilters();
     ColorFilterChain::iterator i = std::find(filters.begin(), filters.end(), filter);
     if ( i != filters.end() )
     {
@@ -461,7 +463,7 @@ ImageLayer::removeColorFilter( ColorFilter* filter )
 const ColorFilterChain&
 ImageLayer::getColorFilters() const
 {
-    return getImageLayerOptions().colorFilters();
+    return options().colorFilters();
 }
 
 void
@@ -487,7 +489,7 @@ ImageLayer::getOrCreatePreCacheOp()
                 _targetProfileHint->isEquivalentTo( getProfile() );
 
             ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
-            op->_processor.init( getImageLayerOptions(), _readOptions.get(), layerInTargetProfile );
+            op->_processor.init( options(), _readOptions.get(), layerInTargetProfile );
 
             _preCacheOp = op;
         }
@@ -763,7 +765,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // Process images with full alpha to properly support MP blending.    
     if (result.valid() && 
-        getImageLayerOptions().featherPixels() == true)
+        options().featherPixels() == true)
     {
         ImageUtils::featherAlphaRegions( result.get() );
     }    
@@ -792,9 +794,9 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
     // Scale the extent if necessary to apply an "edge buffer"
     GeoExtent ext = key.getExtent();
-    if ( getImageLayerOptions().edgeBufferRatio().isSet() )
+    if ( options().edgeBufferRatio().isSet() )
     {
-        double ratio = getImageLayerOptions().edgeBufferRatio().get();
+        double ratio = options().edgeBufferRatio().get();
         ext.scale(ratio, ratio);
     }
 
@@ -941,14 +943,14 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         result = mosaicedImage.reproject( 
             key.getProfile()->getSRS(),
             &key.getExtent(), 
-            getImageLayerOptions().reprojectedTileSize().get(),
-            getImageLayerOptions().reprojectedTileSize().get(),
-            getImageLayerOptions().driver()->bilinearReprojection().get());
+            options().reprojectedTileSize().get(),
+            options().reprojectedTileSize().get(),
+            options().driver()->bilinearReprojection().get());
     }
 
     // Process images with full alpha to properly support MP blending.
     if (result.valid() && 
-        getImageLayerOptions().featherPixels() == true &&
+        options().featherPixels() == true &&
         isCoverage() == false)
     {
         ImageUtils::featherAlphaRegions( result.getImage() );
@@ -971,7 +973,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     }
 
 
-    else if ( getImageLayerOptions().textureCompression() == (osg::Texture::InternalFormatMode)~0 )
+    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)~0 )
     {
         // auto mode:
         if ( Registry::capabilities().isGLES() )
@@ -992,7 +994,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
         }
     }
-    else if ( getImageLayerOptions().textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
+    else if ( options().textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
     {
         osg::Timer_t start = osg::Timer::instance()->tick();
         osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
@@ -1028,9 +1030,9 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
         }
 
     }
-    else if ( getImageLayerOptions().textureCompression().isSet() )
+    else if ( options().textureCompression().isSet() )
     {
         // use specifically picked a mode.
-        tex->setInternalFormatMode(getImageLayerOptions().textureCompression().get());
+        tex->setInternalFormatMode(options().textureCompression().get());
     }
 }

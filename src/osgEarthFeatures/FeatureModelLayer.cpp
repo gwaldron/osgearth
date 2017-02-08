@@ -89,6 +89,13 @@ FeatureModelLayerOptions::getConfig() const
 
 //...........................................................................
 
+FeatureModelLayer::FeatureModelLayer() :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
 FeatureModelLayer::FeatureModelLayer(const FeatureModelLayerOptions& options) :
 VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
@@ -106,6 +113,7 @@ void
 FeatureModelLayer::init()
 {
     VisibleLayer::init();
+
     _root = new osg::Group();
 
     // Set the status to ERROR until we get a valid node together.

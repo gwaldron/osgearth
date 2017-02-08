@@ -80,7 +80,7 @@ void LayerOptions::mergeConfig(const Config& conf)
 //.................................................................
 
 Layer::Layer() :
-_layerOptions(&_layerOptionsConcrete)
+_options(&_optionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -90,7 +90,7 @@ _layerOptions(&_layerOptionsConcrete)
 }
 
 Layer::Layer(LayerOptions* optionsPtr) :
-_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -118,24 +118,36 @@ void
 Layer::init()
 {
     // Copy the layer options name into the Object name.
-    if (getLayerOptions().name().isSet())
+    // This happens here AND in open.
+    if (options().name().isSet())
     {
-        osg::Object::setName(getLayerOptions().name().get());
+        osg::Object::setName(options().name().get());
+    }
+}
+
+const Status&
+Layer::open()
+{
+    // Copy the layer options name into the Object name.
+    if (options().name().isSet())
+    {
+        osg::Object::setName(options().name().get());
     }
     
-    if (getLayerOptions().shaderDefine().isSet() &&
-        !getLayerOptions().shaderDefine()->empty())
+    if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
-        OE_INFO << LC << "Setting shader define " << getLayerOptions().shaderDefine().get() << "\n";
-        getOrCreateStateSet()->setDefine(getLayerOptions().shaderDefine().get());
+        OE_INFO << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
+        getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
+
+    return _status;
 }
 
 void
 Layer::setName(const std::string& name)
 {
     osg::Object::setName(name);
-    mutableLayerOptions().name() = name;
+    options().name() = name;
 }
 
 const char*

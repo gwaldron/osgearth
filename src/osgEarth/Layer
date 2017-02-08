@@ -137,9 +137,9 @@ namespace osgEarth
 
         /**
          * Open a layer and return the status.
-         * The default implementation does nothing.
+         * The layer options are applied in open().
          */
-        virtual const Status& open() { return _status; }
+        virtual const Status& open();
 
         /**
          * Gets the status of this layer.
@@ -160,7 +160,7 @@ namespace osgEarth
         /**
          * Layer options governing this layer
          */
-        const LayerOptions& getLayerOptions() const { return *_layerOptions; }
+        const LayerOptions& getLayerOptions() const { return options(); }
 
         /**
          * Whether the layer is enabled (used in the map)
@@ -175,6 +175,12 @@ namespace osgEarth
          * method, since the MapNode may call it just to test for the node's existance.)
          */
         virtual osg::Node* getNode() const { return 0L; }
+
+        /**
+         * Options used to configure the layer before calling open()
+         */
+        LayerOptions& options() { return *_options; }
+        const LayerOptions& options() const { return *_options; }
 
     public:
 
@@ -281,9 +287,8 @@ namespace osgEarth
         CallbackVector _callbacks;
 
     private:
-        LayerOptions* _layerOptions;
-        LayerOptions  _layerOptionsConcrete;
-        LayerOptions& mutableLayerOptions() { return *_layerOptions; }
+        LayerOptions* _options;
+        LayerOptions  _optionsConcrete;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

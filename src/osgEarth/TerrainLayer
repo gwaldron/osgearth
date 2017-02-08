@@ -181,7 +181,8 @@ namespace osgEarth
         /**
          * The options used to initialize this layer.
          */
-        const TerrainLayerOptions& getTerrainLayerOptions() const { return *_layerOptions; }
+        TerrainLayerOptions& options() { return *_options; }
+        const TerrainLayerOptions& options() const { return *_options; }
 
         /**
          * Gets the profile of this MapLayer
@@ -320,9 +321,8 @@ namespace osgEarth
         std::string getMetadataKey(const Profile*) const;
 
     private:
-        TerrainLayerOptions* _layerOptions;
-        TerrainLayerOptions  _layerOptionsConcrete;
-        TerrainLayerOptions& mutableTerrainLayerOptions() { return *_layerOptions; }
+        TerrainLayerOptions* _options;
+        TerrainLayerOptions  _optionsConcrete;
 
         mutable Threading::Mutex       _initTileSourceMutex;
         osg::ref_ptr<TileSource>       _tileSource;

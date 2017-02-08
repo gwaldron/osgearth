@@ -70,18 +70,24 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual void init() { Layer::init(); }
+        virtual const Status& open();
+
+    protected: // Layer
+
+        virtual void init();
 
     public:
         /** Whether to draw this layer. */
         virtual void setVisible(bool value);
         bool getVisible() const;
 
+        /** options for setting up a visible layer */
+        VisibleLayerOptions& options() { return *_options; }
+        const VisibleLayerOptions& options() const { return *_options; }
+
     private:
         VisibleLayerOptions* _options;
         VisibleLayerOptions  _optionsConcrete;
-        VisibleLayerOptions& mutableOptions() { return *_options; }
-        const VisibleLayerOptions& options() const { return *_options; }
 
         void fireCallback(VisibleLayerCallback::MethodPtr);
     };

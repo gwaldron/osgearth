@@ -430,6 +430,7 @@ namespace osgEarth { namespace Splat
                 for(int i=0; i<_layers.size(); ++i) {
                     layers.add("layer", _layers[i].getConfig());
                 }
+                conf.update( layers );
             }
             return conf;
         }

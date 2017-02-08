@@ -5,6 +5,7 @@ SET(TARGET_SRC
     main.cpp
     ImageLayerTests.cpp
     SpatialReferenceTests.cpp
+    ThreadingTests.cpp
     )
 
 #### end var setup  ###

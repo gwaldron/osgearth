@@ -142,6 +142,7 @@ ModelNode::init()
                 // auto scaling?
                 if ( sym->autoScale() == true )
                 {
+                    this->setCullingActive(false);
                     this->addCullCallback( new GeoPositionNodeAutoScaler( osg::Vec3d(1,1,1), sym->minAutoScale().value(), sym->maxAutoScale().value() ));
                 } 
 

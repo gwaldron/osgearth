@@ -40,6 +40,13 @@ namespace
 
 //------------------------------------------------------------------------
 
+ClampableNode::ClampableNode() :
+OverlayNode(0L, true, &getTechniqueGroup),
+_updatePending(false)
+{
+    _adapter.setGraph( this );
+}
+
 ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
 OverlayNode( mapNode, active, &getTechniqueGroup ),
 _updatePending( false )

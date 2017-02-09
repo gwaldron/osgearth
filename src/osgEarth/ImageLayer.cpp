@@ -588,11 +588,6 @@ GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey&    key, 
                                     ProgressCallback* progress)
 {
-    if (getStatus().isError())
-    {
-        return GeoImage::INVALID;
-    }
-
     // If the layer is disabled, bail out.
     if ( !getEnabled() )
     {

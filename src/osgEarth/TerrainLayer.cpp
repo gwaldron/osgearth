@@ -347,8 +347,6 @@ TerrainLayer::open()
         // Integrate a cache policy from this Layer's options:
         _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
-        OE_WARN << LC << "CACHE POLICY LOCAL = " << options().cachePolicy()->usageString() << "\n";
-
         // If you created the layer with a pre-created tile source, it will already by set.
         if (!_tileSource.valid())
         {
@@ -439,7 +437,7 @@ TerrainLayer::close()
     _openCalled = false;
     setStatus(Status());
     _readOptions = 0L;
-    _cacheSettings = 0L;
+    _cacheSettings = new CacheSettings();
 }
 
 void
@@ -907,7 +905,7 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     URIContext( options().referrer() ).store( _readOptions.get() );
 
     Threading::ScopedMutexLock lock(_mutex);
-    _cacheSettings = 0L;
+    _cacheSettings = new CacheSettings();
     _cacheBinMetadata.clear();
 }
 

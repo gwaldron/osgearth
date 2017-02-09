@@ -79,7 +79,6 @@ _maxPolyTilingAngle    ( 45.0f )
 //-----------------------------------------------------------------------
 
 GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
-ConfigOptions          ( conf ),
 _maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
 _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
 _clustering            ( s_defaults.clustering().value() ),
@@ -93,7 +92,7 @@ _optimize              ( s_defaults.optimize().value() ),
 _validate              ( s_defaults.validate().value() ),
 _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
 {
-    fromConfig(_conf);
+    fromConfig(conf.getConfig());
 }
 
 void
@@ -121,7 +120,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
 Config
 GeometryCompilerOptions::getConfig() const
 {
-    Config conf = ConfigOptions::getConfig();
+    Config conf;
     conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
     conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
     conf.addIfSet   ( "clustering",       _clustering );
@@ -142,12 +141,6 @@ GeometryCompilerOptions::getConfig() const
     return conf;
 }
 
-void
-GeometryCompilerOptions::mergeConfig( const Config& conf )
-{
-    ConfigOptions::mergeConfig( conf );
-    fromConfig( conf );
-}
 
 //-----------------------------------------------------------------------
 

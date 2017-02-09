@@ -38,7 +38,8 @@ namespace osgEarth { namespace Features
      * Serializable options to configure a FeatureModelLayer
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public VisibleLayerOptions,
-                                                             public FeatureModelOptions
+                                                             public FeatureModelOptions,
+                                                             public GeometryCompilerOptions
     {
     public:
         // constructor
@@ -48,19 +49,15 @@ namespace osgEarth { namespace Features
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
-        /** Embedded feature source configuration. */
-        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
-        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
-
     public: // LayerOptions
         virtual Config getConfig() const;
 
     protected: // LayerOptions
         virtual void mergeConfig(const Config& conf);
+        void fromConfig(const Config& conf);
         
     private:
         optional<std::string> _featureSourceLayer;
-        optional<FeatureSourceOptions> _featureSource;
     };
 
 

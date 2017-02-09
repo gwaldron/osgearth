@@ -296,12 +296,13 @@ void addParks(Map* map)
     layout.maxRange()       = 2000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.layout() = layout;
-    fgm_opt.styles() = new StyleSheet();
-    fgm_opt.styles()->addStyle( style );
-    fgm_opt.compilerOptions().instancing() = true;
+    FeatureModelLayerOptions fml;
+    fml.name() = "parks";
+    fml.featureSource() = feature_opt;
+    fml.layout() = layout;
+    fml.styles() = new StyleSheet();
+    fml.styles()->addStyle( style );
+    fml.instancing() = true;
 
-    map->addLayer( new ModelLayer("parks", fgm_opt) );
+    map->addLayer(new FeatureModelLayer(fml));
 }

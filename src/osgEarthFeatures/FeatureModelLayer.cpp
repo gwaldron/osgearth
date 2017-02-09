@@ -31,60 +31,33 @@ REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer);
 
 FeatureModelLayerOptions::FeatureModelLayerOptions(const ConfigOptions& options) :
 VisibleLayerOptions(options),
-FeatureModelOptions()
+FeatureModelOptions(options),
+GeometryCompilerOptions(options)
 {
-    mergeConfig( _conf );
+    fromConfig(_conf);
 }
         
-void FeatureModelLayerOptions::mergeConfig(const Config& conf)
+void FeatureModelLayerOptions::fromConfig(const Config& conf)
 {
-    VisibleLayerOptions::mergeConfig(conf);
-
     conf.getIfSet("feature_source", _featureSourceLayer);
-    conf.getObjIfSet("features", _featureSource);
-
-    conf.getObjIfSet( "styles",           _styles );
-    conf.getObjIfSet( "layout",           _layout );
-    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "fading",           _fading );
-    conf.getObjIfSet( "feature_name",     _featureNameExpr );
-    conf.getObjIfSet( "feature_indexing", _featureIndexing );
-
-    conf.getIfSet( "lighting",         _lit );
-    conf.getIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet( "cluster_culling",  _clusterCulling );
-    conf.getIfSet( "backface_culling", _backfaceCulling );
-    conf.getIfSet( "alpha_blending",   _alphaBlending );
-    conf.getIfSet( "node_caching",     _nodeCaching );
-    
-    conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
 }
 
 Config
 FeatureModelLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
+    conf.merge(FeatureModelOptions::getConfig());
+    conf.merge(GeometryCompilerOptions::getConfig());
     conf.key() = "feature_model";
 
     conf.updateIfSet("feature_source", _featureSourceLayer);
-    conf.updateObjIfSet("features", _featureSource);
-
-    conf.updateObjIfSet( "styles",           _styles );
-    conf.updateObjIfSet( "layout",           _layout );
-    conf.updateObjIfSet( "fading",           _fading );
-    conf.updateObjIfSet( "feature_name",     _featureNameExpr );
-    conf.updateObjIfSet( "feature_indexing", _featureIndexing );
-
-    conf.updateIfSet( "lighting",         _lit );
-    conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.updateIfSet( "cluster_culling",  _clusterCulling );
-    conf.updateIfSet( "backface_culling", _backfaceCulling );
-    conf.updateIfSet( "alpha_blending",   _alphaBlending );
-    conf.updateIfSet( "node_caching",     _nodeCaching );
-    
-    conf.updateIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
-
     return conf;
+}
+
+void FeatureModelLayerOptions::mergeConfig(const Config& conf)
+{
+    VisibleLayerOptions::mergeConfig(conf);
+    fromConfig(conf);
 }
 
 //...........................................................................

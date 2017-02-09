@@ -58,7 +58,7 @@ namespace
 
         FeatureNodeFactory* createFeatureNodeFactory()
         {
-            return new GeomFeatureNodeFactory(_options.compilerOptions());
+            return new GeomFeatureNodeFactory(_options);
         }
 
     private:

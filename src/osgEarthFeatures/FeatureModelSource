@@ -43,6 +43,10 @@ namespace osgEarth { namespace Features
     {
     public: //properties
 
+        /** Embedded feature source configuration. */
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
 
@@ -92,10 +96,13 @@ namespace osgEarth { namespace Features
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
 
     public:
-        FeatureModelOptions();
+        FeatureModelOptions(const ConfigOptions& co =ConfigOptions());
+
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
 
     protected:
-        optional<FeatureSourceOptions>      _featureOptions;
+        optional<FeatureSourceOptions>      _featureSource;
         optional<FeatureDisplayLayout>      _layout;
         optional<StringExpression>          _featureNameExpr;
         optional<bool>                      _lit;

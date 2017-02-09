@@ -26,7 +26,7 @@
 #include "Coverage"
 #include "Zone"
 
-#include <osgEarth/Layer>
+#include <osgEarth/VisibleLayer>
 
 using namespace osgEarth;
 
@@ -35,7 +35,7 @@ namespace osgEarth { namespace Splat
     /**
      * Layer that renders splatted terrain tiles
      */
-    class OSGEARTHSPLAT_EXPORT SplatLayer : public Layer
+    class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
         /** constructor */

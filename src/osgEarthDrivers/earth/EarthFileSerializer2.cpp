@@ -544,7 +544,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         const Layer* layer = i->get();
 
         Config layerConf = layer->getConfig();
-        if (!layerConf.empty())
+        if (!layerConf.empty() && !layerConf.key().empty())
         {
             mapConf.add(layerConf);
         }

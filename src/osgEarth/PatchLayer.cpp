@@ -21,7 +21,7 @@
 using namespace osgEarth;
 
 PatchLayer::PatchLayer() :
-Layer()
+VisibleLayer()
 {
     setRenderType(RENDERTYPE_PATCH);
 }

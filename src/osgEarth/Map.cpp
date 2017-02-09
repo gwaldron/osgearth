@@ -765,7 +765,7 @@ Map::removeImageLayer(class ImageLayer* layer) {
 
 void 
 Map::moveImageLayer(class ImageLayer* layer, unsigned newIndex) {
-    OE_DEPRECATED(Map::moveImageLayer, Map::removeLayer);
+    OE_DEPRECATED(Map::moveImageLayer, Map::moveLayer);
     moveLayer(layer, newIndex);
 }
 
@@ -783,7 +783,7 @@ Map::removeElevationLayer(class ElevationLayer* layer) {
 
 void 
 Map::moveElevationLayer(class ElevationLayer* layer, unsigned newIndex) {
-    OE_DEPRECATED(Map::removeElevationLayer, Map::removeLayer);
+    OE_DEPRECATED(Map::moveElevationLayer, Map::moveLayer);
     moveLayer(layer, newIndex);
 }
 

@@ -194,11 +194,8 @@ FeatureModelLayer::create()
         // connect the session to the features:
         _session->setFeatureSource(_featureSource.get());
 
-        // the compiler options are a subset of the layer options
-        GeometryCompilerOptions compilerOptions(options());
-
         // the factory builds nodes for the model graph:
-        FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(compilerOptions);
+        FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(options());
 
         // group that will build all the feature geometry:
         FeatureModelGraph* fmg = new FeatureModelGraph(

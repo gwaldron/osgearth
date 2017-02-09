@@ -296,6 +296,13 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
 //------------------------------------------------------------------------
 
+ImageLayer::ImageLayer() :
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
 ImageLayer::ImageLayer(const ImageLayerOptions& options) :
 TerrainLayer(&_optionsConcrete),
 _options(&_optionsConcrete),

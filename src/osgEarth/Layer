@@ -104,13 +104,24 @@ namespace osgEarth
     };
 
 
+#define META_Layer(LIBRARY, TYPE, OPTIONS) \
+    private: \
+        OPTIONS * _options; \
+        OPTIONS   _optionsConcrete; \
+        TYPE ( const TYPE& rhs, const osg::CopyOp& op ) { } \
+    public: \
+        META_Object(LIBRARY, TYPE); \
+        OPTIONS& options() { return *_options; } \
+        const OPTIONS& options() const { return *_options; }
+
+
     /**
      * Base class for all Map layers. 
      */
     class OSGEARTH_EXPORT Layer : public osg::Object
     {
     public:
-        META_Object(osgEarth, Layer);
+        META_Layer(osgEarth, Layer, LayerOptions);
 
         /**
          * Constructs a map layer
@@ -170,12 +181,6 @@ namespace osgEarth
          * method, since the MapNode may call it just to test for the node's existance.)
          */
         virtual osg::Node* getNode() const { return 0L; }
-
-        /**
-         * Options used to configure the layer before calling open()
-         */
-        LayerOptions& options() { return *_options; }
-        const LayerOptions& options() const { return *_options; }
 
     public:
 
@@ -258,8 +263,6 @@ namespace osgEarth
         /** dtor */
         virtual ~Layer();
 
-        Layer(const Layer& rhs, const osg::CopyOp& op) { }
-
         // post-ctor initialization, chain to subclasses.
         virtual void init();
 
@@ -281,15 +284,10 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
 
-    private:
-        LayerOptions* _options;
-        LayerOptions  _optionsConcrete;
+        osg::ref_ptr<osgDB::Options> _readOptions;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;
-
-    protected:
-        osg::ref_ptr<osgDB::Options> _readOptions;
     };
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;

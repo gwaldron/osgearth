@@ -99,14 +99,16 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
-        RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
+        META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions);
 
-        const RoadSurfaceLayerOptions& getRoadSurfaceLayerOptions() const { return *_localOptions; }
+        RoadSurfaceLayer();
+
+        RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
 
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        const Status& open();
+        virtual const Status& open();
 
         // Use createTexture() instead of createImage() for this layer
         bool createTextureSupported() const { return true; }
@@ -120,6 +122,9 @@ namespace osgEarth { namespace Splat
 
         virtual void removedFromMap(const class Map*);
 
+        // post-ctor initialization
+        virtual void init();
+
     protected:
         virtual ~RoadSurfaceLayer() { }
 
@@ -127,13 +132,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Session> _session;
 
         GeoNode* createNode(const TileKey& key, ProgressCallback* progress);
-
-
-    private:
-        RoadSurfaceLayerOptions* _localOptions;
-        RoadSurfaceLayerOptions  _localOptionsConcrete;
-        RoadSurfaceLayerOptions& mutableOptions() { return *_localOptions; }
-        const RoadSurfaceLayerOptions& options() const { return *_localOptions; }
     };
 
 } } // namespace osgEarth::Splat

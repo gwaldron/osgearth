@@ -35,7 +35,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
 
     /**
-     * Serializable options to configure a FeatureModelLayerOptions.
+     * Serializable options to configure a FeatureModelLayer
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelLayerOptions : public VisibleLayerOptions,
                                                              public FeatureModelOptions
@@ -70,7 +70,10 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public:
-        // Create a feature layer with defaults. Use mutableOptions to set it up.
+        META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions);
+
+        // Create a feature layer with defaults. Use options() to set it up before adding
+        // the layer to a Map.
         FeatureModelLayer();
 
         // Create a layer with initial options.
@@ -87,35 +90,29 @@ namespace osgEarth { namespace Features
 
         // access to scene graph callbacks
         SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
-        
-        // options for this layer; only effective prior to calling open().
-        FeatureModelLayerOptions& options() { return *_options;  }
-        const FeatureModelLayerOptions& options() const { return *_options; }
 
     public: // Layer
 
         // opens the layer and returns the status
         virtual const Status& open();
 
+        // The Node representing this layer.
+        virtual osg::Node* getNode() const;
+
+    protected: // Layer
+        
         // called by the map when this layer is added
         virtual void addedToMap(const class Map*);
 
         // called by the map when this layer is removed
         virtual void removedFromMap(const class Map*);
 
-        // The Node representing this layer.
-        virtual osg::Node* getNode() const;
+        // post-ctor initialization
+        virtual void init();
 
     protected:
 
         virtual ~FeatureModelLayer();
-
-        virtual void init();
-
-    private:
-        // options support.
-        FeatureModelLayerOptions* _options;
-        FeatureModelLayerOptions  _optionsConcrete;
 
     private:
         osg::ref_ptr<FeatureSource> _featureSource;

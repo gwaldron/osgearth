@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     // Make a feature source layer and add it to the Map:
     FeatureSourceLayerOptions ogrLayer;
     ogrLayer.name() = "vector-data";
-    ogrLayer.data() = ogrData;
+    ogrLayer.featureSource() = ogrData;
     map->addLayer(new FeatureSourceLayer(ogrLayer));
 
     // Define a style for the feature data. Since we are going to render the

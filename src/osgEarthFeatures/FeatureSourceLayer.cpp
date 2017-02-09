@@ -31,6 +31,27 @@ namespace osgEarth {
     }
 }
 
+FeatureSourceLayer::FeatureSourceLayer() :
+Layer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
+FeatureSourceLayer::FeatureSourceLayer(const FeatureSourceLayerOptions& inOptions) :
+Layer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(inOptions)
+{
+    init();
+}
+
+void
+FeatureSourceLayer::setFeatureSource(FeatureSource* value)
+{
+    _featureSource = value;
+}
+
 FeatureSource*
 FeatureSourceLayer::getFeatureSource() const
 { 
@@ -43,9 +64,12 @@ FeatureSourceLayer::getFeatureSource() const
 const Status& 
 FeatureSourceLayer::open()
 {
-    _featureSource = FeatureSourceFactory::create(options());
     if (!_featureSource.valid())
-        return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source"));
+    {
+        _featureSource = FeatureSourceFactory::create(options());
+        if (!_featureSource.valid())
+            return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source"));
+    }
 
     Status fsStatus = _featureSource->open(_readOptions.get());
     if (fsStatus.isError())
@@ -53,8 +77,11 @@ FeatureSourceLayer::open()
         setStatus(fsStatus);
         _featureSource = 0L;
     }
-    
-    OE_INFO << LC << "Opened feature source OK.\n";
+    else
+    {
+        OE_INFO << LC << "Opened feature source OK.\n";
+    }
+
     return getStatus();
 }
 

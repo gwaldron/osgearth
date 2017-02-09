@@ -81,6 +81,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions);
+
         /**
          * Constructs a blank Elevation Layer;
          * Use options() to set up before calling open or adding to a Map.
@@ -111,10 +113,6 @@ namespace osgEarth
 
         /** dtor */
         virtual ~ElevationLayer() { }
-
-        /** Gets the initialization options with which the layer was created. */
-        ElevationLayerOptions& options() { return *_options; }
-        const ElevationLayerOptions& options() const { return *_options; }
 
     public: // methods
 
@@ -157,8 +155,6 @@ namespace osgEarth
             ProgressCallback*  progress );
         
     private:
-        ElevationLayerOptions* _options;
-        ElevationLayerOptions  _optionsConcrete;
 
         mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
 

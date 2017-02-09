@@ -94,14 +94,13 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions);
+
         /** Constructs a new ocean layer */
         SimpleOceanLayer();
 
         /** Constructs a new layer from an options structure. */
         SimpleOceanLayer(const SimpleOceanLayerOptions& options);
-
-        /** Options used to create this layer */
-        const SimpleOceanLayerOptions& getOptions() const { return *_options; }
 
     public:
 
@@ -137,11 +136,6 @@ namespace osgEarth { namespace Util
         virtual ~SimpleOceanLayer() { }
 
     private:
-
-        SimpleOceanLayerOptions* _options;
-        SimpleOceanLayerOptions  _optionsConcrete;
-        SimpleOceanLayerOptions& mutableOptions() { return *_options; }
-        const SimpleOceanLayerOptions& options() const { return *_options; }
 
         LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
     };

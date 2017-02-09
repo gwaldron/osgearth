@@ -123,6 +123,8 @@ namespace osgEarth { namespace Triton
     class OSGEARTHTRITON_EXPORT TritonLayer : public osgEarth::VisibleLayer
     {
     public:
+        META_Layer(osgEarth, TritonLayer, TritonLayerOptions);
+
         TritonLayer();
 
         TritonLayer(const TritonLayerOptions& options);
@@ -151,11 +153,6 @@ namespace osgEarth { namespace Triton
         osg::ref_ptr<TritonNode> _tritonNode;
 
     private:
-
-        TritonLayerOptions* _options;
-        TritonLayerOptions  _optionsConcrete;
-        TritonLayerOptions& mutableOptions() { return *_options; }
-        const TritonLayerOptions& options() const { return *_options; }
 
         LayerListener<TritonLayer, const osgEarth::ImageLayer> _layerListener;
     };

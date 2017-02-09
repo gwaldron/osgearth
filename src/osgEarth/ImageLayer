@@ -210,6 +210,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
     {
     public:
+        META_Layer(osgEarth, ImageLayer, ImageLayerOptions);
+
+        /**
+         * Construct a new ImageLayer. Use the options() to configure it
+         * before adding it to a Map.
+         */
+        ImageLayer();
+
         /**
          * Constructs a new image layer.
          */
@@ -228,12 +236,6 @@ namespace osgEarth
          * and thus the driver() member in ImageLayerOptions will not be used.
          */
         ImageLayer(const ImageLayerOptions& options, TileSource* tileSource);
-
-        /**
-         * Options for this layer; only effective prior to calling open().
-         */
-        ImageLayerOptions& options() { return *_options; }
-        const ImageLayerOptions& options() const { return *_options; }
 
     public:
 
@@ -374,15 +376,7 @@ namespace osgEarth
 
         virtual void fireCallback(ImageLayerCallback::MethodPtr method);
 
-
         TileSource::ImageOperation* getOrCreatePreCacheOp();
-
-    private:
-        ImageLayerOptions* _options;
-        ImageLayerOptions  _optionsConcrete;
-    //protected:
-    //    ImageLayerOptions& mutableImageLayerOptions() { return *_options; }
-
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

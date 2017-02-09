@@ -146,11 +146,10 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
     {
     public:
-        // Create a layer with initial options.
-        FlatteningLayer(const FlatteningLayerOptions& options);
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions);
 
-        // Options used to initialize this layer.
-        const FlatteningLayerOptions& getFlatteningLayerOptions() const { return *_localOptions; }
+        // Create a layer with initial options.
+        FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());
 
         // the elevation layer that we want to flatten
         bool setBaseLayer(ElevationLayer* layer);
@@ -180,10 +179,6 @@ namespace osgEarth { namespace Util
         virtual ~FlatteningLayer();
 
     private:
-        FlatteningLayerOptions* _localOptions;
-        FlatteningLayerOptions  _localOptionsConcrete;
-        FlatteningLayerOptions& mutableOptions() { return *_localOptions; }
-        const FlatteningLayerOptions& options() const { return *_localOptions; }
 
         MapCallback* _mapCallback;
         FlatteningTileSource* _ts;

@@ -26,7 +26,24 @@
 namespace osgEarth { namespace Features
 {
     /** Options structure for serialization of the FeatureSourceLayer */
-    typedef WrapperLayerOptions<FeatureSourceOptions> FeatureSourceLayerOptions;
+    class FeatureSourceLayerOptions : public LayerOptions
+    {
+    public:
+        FeatureSourceLayerOptions(const ConfigOptions& co = ConfigOptions()) : LayerOptions(co) {
+            _featureSource = co;
+        }
+
+        /** Feature source configuration */
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+
+    public:
+        Config getConfig() const {
+            return _featureSource->getConfig();
+        }
+    private:
+        optional<FeatureSourceOptions> _featureSource;
+    };
 
     /**
      * Layer holding a FeatureSource. Create one of these in the Map, and 
@@ -34,19 +51,27 @@ namespace osgEarth { namespace Features
 
      * <feature_source>...</feature_source>
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public WrapperLayer<FeatureSourceLayerOptions>
+    class OSGEARTHFEATURES_EXPORT FeatureSourceLayer : public Layer
     {
     public:
-        /**
-         * Construct a feature source layer.
-         */
-        FeatureSourceLayer(const FeatureSourceLayerOptions& options) :
-            WrapperLayer<FeatureSourceLayerOptions>(options) { }
+        META_Layer(osgEarth, FeatureSourceLayer, FeatureSourceLayerOptions);
 
         /**
-         * Access the underlying feature source.
-         * open() must be called before this is valid.
+         * Construct an empty feature source layer.
+         * Call setFeatureSource or configure with options() before adding to a Map.
          */
+        FeatureSourceLayer();
+
+        /**
+         * Construct a feature source layer with initialization options.
+         */
+        FeatureSourceLayer(const FeatureSourceLayerOptions& options);
+
+        /**
+         * The underlying feature source.
+         * open() must be called before getFeatureSource becomes available
+         */
+        void setFeatureSource(FeatureSource* value);
         FeatureSource* getFeatureSource() const;
 
     public: // Layer

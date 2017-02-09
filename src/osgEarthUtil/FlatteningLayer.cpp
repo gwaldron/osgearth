@@ -584,9 +584,9 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 #define LC "[FlatteningLayer] "
 
 FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
-ElevationLayer(&_localOptionsConcrete),
-_localOptions(&_localOptionsConcrete),
-_localOptionsConcrete(options),
+ElevationLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options),
 _mapCallback(0L)
 {
     // always call base class initialize

@@ -131,6 +131,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayer : public VisibleLayer
     {
     public:
+        META_Layer(osgEarth, ModelLayer, ModelLayerOptions);
+
         /**
          * Blank ModelLayer. Use options() to setup before calling open.
          */
@@ -159,12 +161,6 @@ namespace osgEarth
          * Constructs a new model layer with a user provided name and an existing node
          */
         ModelLayer(const std::string& name, osg::Node* node);
-
-        /**
-         * Options for this layer; only effective prior to calling open().
-         */
-        ModelLayerOptions& options() { return *_options; }
-        const ModelLayerOptions& options() const { return *_options; }
 
 
     public:
@@ -252,6 +248,8 @@ namespace osgEarth
          */
         virtual void setReadOptions(const osgDB::Options* readOptions);
 
+    protected:
+
         /** post-ctor initialization */
         virtual void init();
 
@@ -259,11 +257,6 @@ namespace osgEarth
     protected:
 
         virtual ~ModelLayer();
-
-       
-    private:
-        ModelLayerOptions* _options;
-        ModelLayerOptions  _optionsConcrete;
 
         osg::ref_ptr<ModelSource>     _modelSource;
         osg::ref_ptr<MaskSource>      _maskSource;

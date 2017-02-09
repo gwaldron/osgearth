@@ -143,17 +143,17 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
 void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
-    if (getOptions().maskLayer().isSet())
+    if (options().maskLayer().isSet())
     {
         // listen for the mask layer.
-        _layerListener.listen(map, getOptions().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
+        _layerListener.listen(map, options().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
     }      
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
-    if (getOptions().maskLayer().isSet())
+    if (options().maskLayer().isSet())
     {
         _layerListener.clear();
         setMaskLayer(0L);
@@ -163,7 +163,7 @@ SimpleOceanLayer::removedFromMap(const Map* map)
 void
 SimpleOceanLayer::setColor(const Color& color)
 {
-    mutableOptions().color() = color;
+    options().color() = color;
     getOrCreateStateSet()->getOrCreateUniform(
         "ocean_color", osg::Uniform::FLOAT_VEC4)->set(color);
 }
@@ -171,13 +171,13 @@ SimpleOceanLayer::setColor(const Color& color)
 const Color&
 SimpleOceanLayer::getColor() const
 {
-    return getOptions().color().get();
+    return options().color().get();
 }
 
 void
 SimpleOceanLayer::setMaxAltitude(float alt)
 {
-    mutableOptions().maxAltitude() = alt;
+    options().maxAltitude() = alt;
     getOrCreateStateSet()->getOrCreateUniform(
         "ocean_maxAltitude", osg::Uniform::FLOAT)->set(alt);
 }
@@ -198,7 +198,7 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
 Config
 SimpleOceanLayer::getConfig() const
 {
-    Config conf = getOptions().getConfig();
+    Config conf = options().getConfig();
     conf.key() = "simple_ocean";
     return conf;
 }

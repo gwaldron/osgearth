@@ -159,8 +159,11 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
+    public:
+        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions);
+
     protected:
-        TerrainLayer(TerrainLayerOptions*);
+        TerrainLayer(TerrainLayerOptions* =0L);
 
         TerrainLayer(TerrainLayerOptions*, TileSource*);
 
@@ -176,13 +179,6 @@ namespace osgEarth
          * status cannot be changed.
          */
         virtual bool getEnabled() const { return _runtimeEnabled; }
-
-
-        /**
-         * The options used to initialize this layer.
-         */
-        TerrainLayerOptions& options() { return *_options; }
-        const TerrainLayerOptions& options() const { return *_options; }
 
         /**
          * Gets the profile of this MapLayer
@@ -321,9 +317,6 @@ namespace osgEarth
         std::string getMetadataKey(const Profile*) const;
 
     private:
-        TerrainLayerOptions* _options;
-        TerrainLayerOptions  _optionsConcrete;
-
         mutable Threading::Mutex       _initTileSourceMutex;
         osg::ref_ptr<TileSource>       _tileSource;
 

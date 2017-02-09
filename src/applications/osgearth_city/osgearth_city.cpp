@@ -247,23 +247,24 @@ void addStreets(Map* map)
     layout.maxRange()       = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.layout() = layout;
-    fgm_opt.styles() = new StyleSheet();
-    fgm_opt.styles()->addStyle( style );
+    FeatureModelLayerOptions streets;
+    streets.name() = "streets";
+    streets.featureSource() = feature_opt;
+    streets.layout() = layout;
+    streets.styles() = new StyleSheet();
+    streets.styles()->addStyle( style );
 
-    map->addLayer( new ModelLayer("streets", fgm_opt) );
+    map->addLayer(new FeatureModelLayer(streets));
 }
 
 
 void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "parks";
-    feature_opt.url() = PARKS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureOptions parksData;
+    parksData.name() = "parks";
+    parksData.url() = PARKS_URL;
+    parksData.buildSpatialIndex() = true;
 
     // a style:
     Style style;
@@ -287,22 +288,25 @@ void addParks(Map* map)
     // that's sufficiently transparent; this will prevent depth-sorting anomolies
     // common when rendering lots of semi-transparent objects.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
+    render->transparent() = true;
     render->minAlpha() = 0.15f;
 
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 3.0f;
-    layout.maxRange()       = 2000.0f;
+    layout.tileSize() = 650;
+    layout.maxRange() = 2000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureModelLayerOptions fml;
-    fml.name() = "parks";
-    fml.featureSource() = feature_opt;
-    fml.layout() = layout;
-    fml.styles() = new StyleSheet();
-    fml.styles()->addStyle( style );
-    fml.instancing() = true;
+    FeatureModelLayerOptions parks;
+    parks.name() = "parks";
+    parks.featureSource() = parksData;
+    parks.layout() = layout;
+    parks.styles() = new StyleSheet();
+    parks.styles()->addStyle( style );
 
-    map->addLayer(new FeatureModelLayer(fml));
+    parks.instancing() = true;
+    parks.clusterCulling() = false;
+
+    map->addLayer(new FeatureModelLayer(parks));
 }

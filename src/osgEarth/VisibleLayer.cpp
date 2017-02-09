@@ -28,14 +28,14 @@ VisibleLayerOptions::VisibleLayerOptions() :
 LayerOptions()
 {
     setDefaults();
-    mergeConfig( _conf ); 
+    fromConfig( _conf ); 
 }
 
 VisibleLayerOptions::VisibleLayerOptions(const ConfigOptions& co) :
 LayerOptions(co)
 {
     setDefaults();
-    mergeConfig(_conf);
+    fromConfig(_conf);
 }
 
 void
@@ -53,9 +53,16 @@ VisibleLayerOptions::getConfig() const
 }
 
 void
-VisibleLayerOptions::mergeConfig(const Config& conf)
+VisibleLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet( "visible", _visible );
+}
+
+void
+VisibleLayerOptions::mergeConfig(const Config& conf)
+{
+    LayerOptions::mergeConfig(conf);
+    fromConfig(conf);
 }
 
 //........................................................................

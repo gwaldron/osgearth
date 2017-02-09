@@ -37,7 +37,7 @@ namespace osgEarth
      * arrives in or departs from the Map. The "setLayer" function signature
      * is
      * 
-     *   void setLayer(Layer*);
+     *   bool setLayer(Layer*);
      *
      * When "layerName" arrives in the map, the listener will call 
      * 
@@ -94,7 +94,7 @@ namespace osgEarth
         }
 
         void clear() {
-            for (std::vector<Entry>::iterator i = _entries.begin(); i != _entries.end(); ++i) {
+            for (typename std::vector<Entry>::iterator i = _entries.begin(); i != _entries.end(); ++i) {
                 if (i->_callback.valid()) {
                     osg::ref_ptr<const Map> map;
                     if (i->_map.lock(map)) {
@@ -105,7 +105,7 @@ namespace osgEarth
             _entries.clear();
         }
 
-        std::vector<Entry> _entries;
+        typename std::vector<Entry> _entries;
 
         ~LayerListener() {
             clear();

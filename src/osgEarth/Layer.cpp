@@ -114,6 +114,12 @@ Layer::getConfig() const
     return options().getConfig();
 }
 
+bool
+Layer::getEnabled() const
+{
+    return (options().enabled() == true) && getStatus().isOK();
+}
+
 void
 Layer::init()
 {

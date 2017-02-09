@@ -356,11 +356,14 @@ ImageLayer::open()
     else
         _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
 
+    // If we are using createTexture to make image tiles,
+    // we don't need to load a tile source plugin.
+    if (createTextureSupported())
+    {
+        setTileSourceExpected(false);
+    }
 
-    if (!createTextureSupported())
-        return TerrainLayer::open();
-    else
-        return getStatus();
+    return TerrainLayer::open();
 }
 
 void

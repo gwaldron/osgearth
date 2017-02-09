@@ -43,6 +43,7 @@ namespace osgEarth
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        void fromConfig(const Config& conf);
 
     private:
         void setDefaults();       

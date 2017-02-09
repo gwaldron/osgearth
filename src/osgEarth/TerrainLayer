@@ -174,14 +174,10 @@ namespace osgEarth
         /** Opens the layer and initializes the data source. */
         virtual const Status& open();
 
-        /**
-         * Whether to use this layer. Note, a layer is enabled/disabled once and its
-         * status cannot be changed.
-         */
-        virtual bool getEnabled() const { return _runtimeEnabled; }
+    public:
 
         /**
-         * Gets the profile of this MapLayer
+         * Gets the profile of this layer
          */
         const Profile* getProfile() const;
 
@@ -285,6 +281,11 @@ namespace osgEarth
          */
         CacheSettings* getCacheSettings() const;
 
+    protected: // Layer
+
+        // CTOR initialization; call from subclass.
+        virtual void init();
+
     protected:
 
         // Creates the driver the supplies the actual data.
@@ -310,23 +311,21 @@ namespace osgEarth
         // profile to use
         mutable osg::ref_ptr<const Profile> _profile;
 
-        // CTOR initialization; call from subclass.
-        virtual void init();
-
         // cache key for metadata
         std::string getMetadataKey(const Profile*) const;
 
+        // Called by a subclass before open() to indicate whether this
+        // layer should try to open a tile source and fail if unsuccesful.
+        void setTileSourceExpected(bool value) { _tileSourceExpected = value; }
+
     private:
-        mutable Threading::Mutex       _initTileSourceMutex;
-        osg::ref_ptr<TileSource>       _tileSource;
+        bool                     _tileSourceExpected;
+        mutable Threading::Mutex _initTileSourceMutex;
+        osg::ref_ptr<TileSource> _tileSource;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
         std::string _runtimeCacheId;
-
-        // Enabled flag that starts out as the enabled() in the options, but might
-        // get overridden.
-        bool _runtimeEnabled;
         
         // cache policy that may be automatically set by the layer and will 
         // override the runtime options policy if set.
@@ -335,7 +334,7 @@ namespace osgEarth
         typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
         CacheBinMetadataMap _cacheBinMetadata;
 
-        mutable Threading::Mutex    _mutex;
+        mutable Threading::Mutex  _mutex;
 
         mutable osg::ref_ptr<CacheSettings> _cacheSettings;
 
@@ -352,6 +351,9 @@ namespace osgEarth
         void refreshTileSourceCachePolicyHint(TileSource*);
 
         TileSource* createAndOpenTileSource();
+
+        // Figure out the cache settings for this layer.
+        void establishCacheSettings();
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

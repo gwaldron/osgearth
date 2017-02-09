@@ -169,9 +169,10 @@ namespace osgEarth
         virtual Config getConfig() const;
 
         /**
-         * Whether the layer is enabled (used in the map)
+         * Whether the layer is enabled (used in the map). This will return
+         * false if the layer is set to disabled OR if getStatus returns an error.
          */
-        virtual bool getEnabled() const { return options().enabled().get(); }
+        virtual bool getEnabled() const;
 
         /**
          * Gets a optional scene graph provided by the layer (default is NULL).

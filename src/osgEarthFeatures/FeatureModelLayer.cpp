@@ -116,9 +116,6 @@ FeatureModelLayer::init()
 
     _root = new osg::Group();
 
-    // Set the status to ERROR until we get a valid node together.
-    setStatus(Status::Error(Status::ConfigurationError, "Missing feature source"));
-
     // Callbacks for paged data
     _sgCallbacks = new SceneGraphCallbacks();
 }

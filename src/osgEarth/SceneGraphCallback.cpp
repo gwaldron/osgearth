@@ -39,9 +39,14 @@ SceneGraphCallbacks::remove(SceneGraphCallback* cb)
     if (cb)
     {
         Threading::ScopedMutexLock lock(_mutex);
-        SceneGraphCallbackVector::iterator i = std::find(_callbacks.begin(), _callbacks.end(), cb);
-        if (i != _callbacks.end())
-            _callbacks.erase(i);
+        for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+        {
+            if (i->get() == cb)
+            {
+                _callbacks.erase(i);
+                break;
+            }
+        }
     }
 }
 

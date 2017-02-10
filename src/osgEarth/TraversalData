@@ -83,7 +83,7 @@ namespace osgEarth
             std::string _key;
 
             Install(const std::string& key) : _key(key) { }
-            Install(const std::string& key, osg::Referenced* data) : _key(key), _data(data) { }
+            Install(const std::string& key, osg::Referenced* data) : _data(data), _key(key) { }
 
             void operator()(osg::Node* node, osg::NodeVisitor* nv)
             {

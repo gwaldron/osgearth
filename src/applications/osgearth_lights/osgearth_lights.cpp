@@ -27,6 +27,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Lighting>
 #include <osgEarth/PhongLightingEffect>
+#include <osgEarth/NodeUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Ephemeris>

@@ -11,14 +11,10 @@ OSG geometry out of it.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="states" driver="feature_geom">
-
-        <!-- Configure the OGR feature driver to read the shapefile -->
-        <features name="world" driver="ogr">
+    <feature_model name="states">
+        <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
-        </features>
-        
-        <!-- Appearance details -->
+        </features>        
         <styles>
             <style type="text/css">
                 states {
@@ -27,8 +23,6 @@ OSG geometry out of it.
 				   render-lighting: false;
                 }                    
             </style>
-        </styles>
-        
-    </model>
-  
+        </styles>        
+    </feature_model>
 </map>

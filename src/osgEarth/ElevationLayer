@@ -67,23 +67,13 @@ namespace osgEarth
         optional<bool>                  _offset;
         optional<ElevationNoDataPolicy> _noDataPolicy;
     };
+    
 
-    //--------------------------------------------------------------------
-
-    /**
-     * Callback for receiving notification of property changes on an ElevationLayer.
-     */
     struct ElevationLayerCallback : public TerrainLayerCallback
     {
-        //TODO
+        //EMPTY
+        typedef void (ElevationLayerCallback::*MethodPtr)(class ElevationLayer*);
     };
-
-    typedef void (ElevationLayerCallback::*ElevationLayerCallbackMethodPtr)(class ElevationLayer* layer);
-
-    typedef std::list< osg::ref_ptr<ElevationLayerCallback> > ElevationLayerCallbackList;
-
-
-    //--------------------------------------------------------------------
 
     /**
      * A map terrain layer containing elevation grid heightfields.
@@ -91,6 +81,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
+        META_Layer(osgEarth, ElevationLayer, ElevationLayerOptions);
+
+        /**
+         * Constructs a blank Elevation Layer;
+         * Use options() to set up before calling open or adding to a Map.
+         */
+        ElevationLayer();
+
         /**
          * Constructs a new elevation layer with the specified options. It expects
          * the layer options to contain a reference to the neccesary driver options.
@@ -115,16 +113,6 @@ namespace osgEarth
 
         /** dtor */
         virtual ~ElevationLayer() { }
-
-        /** Gets the initialization options with which the layer was created. */
-        const ElevationLayerOptions& getElevationLayerOptions() const { return *_layerOptions; }
-        //virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
-
-        /** Adds a property notification callback to this layer */
-        void addCallback( ElevationLayerCallback* cb );
-
-        /** Removes a property notification callback from this layer */
-        void removeCallback( ElevationLayerCallback* cb );
 
     public: // methods
 
@@ -167,13 +155,6 @@ namespace osgEarth
             ProgressCallback*  progress );
         
     private:
-        ElevationLayerOptions* _layerOptions;
-        ElevationLayerOptions  _layerOptionsConcrete;
-        ElevationLayerOptions& mutableElevationLayerOptions() { return *_layerOptions; }
-
-        ElevationLayerCallbackList _callbacks;
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
-        virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
 
         mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
 

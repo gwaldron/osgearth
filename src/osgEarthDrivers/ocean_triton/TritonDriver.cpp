@@ -77,7 +77,9 @@ namespace osgEarth { namespace Triton
     public: // OceanNodeFactory
 
         OceanNode* createOceanNode(MapNode* mapNode) {
-            return new TritonNode(mapNode, *this);
+            TritonNode* node = new TritonNode(*this);
+            node->setMapNode(mapNode);
+            return node;
         }
 
     protected:

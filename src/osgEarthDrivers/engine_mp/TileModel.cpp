@@ -159,8 +159,8 @@ _order       ( order ),
 _locator     ( locator ),
 _fallbackData( fallbackData )
 {
-    osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
-    osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
+    osg::Texture::FilterMode minFilter = layer->options().minFilter().get();
+    osg::Texture::FilterMode magFilter = layer->options().magFilter().get();
 
     if (image->r() <= 1)
     {

@@ -33,31 +33,15 @@ namespace osgEarth
     /**
      * Configuration options for a MaskLayer.
      */
-    class OSGEARTH_EXPORT MaskLayerOptions : public ConfigOptions
+    class OSGEARTH_EXPORT MaskLayerOptions : public LayerOptions
     {
-    public:        
-        MaskLayerOptions(const ConfigOptions& options =ConfigOptions() );
-
-        MaskLayerOptions(const std::string& name, const MaskSourceOptions& driverOptions =MaskSourceOptions() );
+    public:
+        MaskLayerOptions(const ConfigOptions& options =ConfigOptions());
 
         /** dtor */
         virtual ~MaskLayerOptions() { }
 
-        /**
-         * The readable name of the layer.
-         */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
-
-        /**
-         * Options for the underlying model source driver.
-         */
-        optional<MaskSourceOptions>& driver() { return _driver; }
-        const optional<MaskSourceOptions>& driver() const { return _driver; }
-
-        /**
-         * Gets or sets the minimum of detail for which this layer should generate data.
-         */
+        /** Minimum of detail for which this layer should apply. */
         optional<unsigned>& minLevel() { return _minLevel; }
         const optional<unsigned>& minLevel() const { return _minLevel; }
 
@@ -69,7 +53,6 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<std::string>       _name;
         optional<MaskSourceOptions> _driver;
         optional<unsigned>          _minLevel;
     };
@@ -83,68 +66,29 @@ namespace osgEarth
     class OSGEARTH_EXPORT MaskLayer : public Layer
     {
     public:
-        /**
-         * Constructs a new mask layer based on a configuration setup.
-         */
-        MaskLayer( const MaskLayerOptions& options =MaskLayerOptions() );
-
-        /**
-         * Constructs a new mask layer with a user-provided driver options.
-         */
-        MaskLayer( const std::string& name, const MaskSourceOptions& options );
-        
-        /**
-         * Constructs a new mask layer with a user-provided mask source.
-         */
-        MaskLayer(const MaskLayerOptions& options, MaskSource* source );
-
-        /** dtor */
-        virtual ~MaskLayer() { }
-
-        /**
-         * Access the underlying mask source.
-         */
-        MaskSource* getMaskSource() const { return _maskSource.get(); }
+        META_Layer(osgEarth, MaskLayer, MaskLayerOptions);
 
         /**
          * Minimum terrain LOD at which masking should occur
          */
-        unsigned getMinLevel() const { return *_runtimeOptions.minLevel(); }
+        unsigned getMinLevel() const { return options().minLevel().get(); }
 
         /** 
          * Gets the geometric boundary polygon representing the area of the
          * terrain to mask out.
          */
-        osg::Vec3dArray* getOrCreateMaskBoundary(
+        virtual osg::Vec3dArray* getOrCreateMaskBoundary(
             float                   heightScale,
             const SpatialReference* srs,
-            ProgressCallback*       progress );
-
-    public: // osg::Object
-        
-        /** Name of the layer */
-        virtual void setName(const std::string& name);
-
-    public:
-
-        void setReadOptions(const osgDB::Options* readOptions);
-
-        const Status& open();
+            ProgressCallback*       progress) { return 0L; }
 
     protected:
 
-        Status initialize();
+        /** Create from subclass. */
+        MaskLayer(MaskLayerOptions* =0L);
 
-    private:
-        MaskLayerOptions              _initOptions;
-        MaskLayerOptions              _runtimeOptions;
-        osg::ref_ptr<MaskSource>      _maskSource;
-        Revision                      _maskSourceRev;
-        osg::ref_ptr<osg::Vec3dArray> _boundary;
-        osg::ref_ptr<osgDB::Options>  _readOptions;
-        OpenThreads::Mutex            _mutex;
-
-        void copyOptions();
+        /** dtor */
+        virtual ~MaskLayer() { }
     };
 
     typedef std::vector< osg::ref_ptr<MaskLayer> > MaskLayerVector;

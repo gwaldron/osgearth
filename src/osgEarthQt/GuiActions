@@ -23,6 +23,7 @@
 #include <osgEarthQt/Actions>
 
 #include <osgEarth/Viewpoint>
+#include <osgEarth/ModelLayer>
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgViewer/Viewer>

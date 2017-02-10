@@ -40,7 +40,7 @@ _map(map)
 }
 
 void
-Map::ElevationLayerCB::onVisibleChanged(TerrainLayer* layer)
+Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer)
 {
     osg::ref_ptr<Map> map;
     if ( _map.lock(map) )
@@ -143,7 +143,7 @@ Map::getElevationPool() const
 }
 
 void
-Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
+Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
 {
     // bump the revision safely:
     Revision newRevision;
@@ -267,22 +267,21 @@ Map::addLayer(Layer* layer)
     {
         if (layer->getEnabled())
         {
+            // Pass along the Read Options (including the cache settings, etc.) to the layer:
+            layer->setReadOptions(_readOptions.get());
+            
+            // If this is a terrain layer, tell it about the Map profile.
             TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-            if (terrainLayer)
+            if (terrainLayer && _profile.valid())
             {
-                // Set the DB options for the map from the layer, including the cache policy.
-                terrainLayer->setReadOptions( _readOptions.get() );
+                terrainLayer->setTargetProfileHint( _profile.get() );
+            }            
 
-                // Tell the layer the map profile, if supported:
-                if ( _profile.valid() )
-                {
-                    terrainLayer->setTargetProfileHint( _profile.get() );
-                }
+            // Attempt to open the layer. Don't check the status here.
+            layer->open();
 
-                // open the layer:
-                terrainLayer->open();
-            }
-
+            // If this is an elevation layer, install a callback so we know when
+            // it's visibility changes:
             ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
             if (elevationLayer)
             {
@@ -290,26 +289,6 @@ Map::addLayer(Layer* layer)
 
                 // invalidate the elevation pool
                 getElevationPool()->clear();
-            }
-
-            ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-            if (modelLayer)
-            {
-                // initialize the model layer
-                modelLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                modelLayer->open();
-            }
-
-            MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
-            if (maskLayer)
-            {
-                // initialize the model layer
-                maskLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                maskLayer->open();
             }
         }
 
@@ -567,7 +546,7 @@ Map::getLayerAt(unsigned index) const
 }
 
 unsigned
-Map::getIndexOfLayer(Layer* layer) const
+Map::getIndexOfLayer(const Layer* layer) const
 {
     Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
     unsigned index = 0;
@@ -755,4 +734,91 @@ Map::sync(MapFrame& frame) const
         result = true;
     }
     return result;
+}
+
+
+//......................................................................
+// @deprecated functions
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/MaskLayer>
+
+void 
+Map::addImageLayer(class ImageLayer* layer) {
+    OE_DEPRECATED(Map::addImageLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::insertImageLayer(class ImageLayer* layer, unsigned index) {
+    OE_DEPRECATED(Map::insertImageLayer, Map::insertLayer);
+    insertLayer(layer, index);
+}
+
+void 
+Map::removeImageLayer(class ImageLayer* layer) {
+    OE_DEPRECATED(Map::removeImageLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveImageLayer(class ImageLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::moveImageLayer, Map::moveLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addElevationLayer(class ElevationLayer* layer) {
+    OE_DEPRECATED(Map::addElevationLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::removeElevationLayer(class ElevationLayer* layer) {
+    OE_DEPRECATED(Map::removeElevationLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveElevationLayer(class ElevationLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::moveElevationLayer, Map::moveLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addModelLayer(class ModelLayer* layer) {
+    OE_DEPRECATED(Map::addModelLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::insertModelLayer(class ModelLayer* layer, unsigned index) {
+    OE_DEPRECATED(Map::insertModelLayer, Map::insertLayer);
+    insertLayer(layer, index);
+}
+
+void 
+Map::removeModelLayer(class ModelLayer* layer) {
+    OE_DEPRECATED(Map::removeModelLayer, Map::removeLayer);
+    removeLayer(layer);
+}
+
+void 
+Map::moveModelLayer(class ModelLayer* layer, unsigned newIndex) {
+    OE_DEPRECATED(Map::moveModelLayer, Map::moveLayer);
+    moveLayer(layer, newIndex);
+}
+
+void 
+Map::addTerrainMaskLayer(class MaskLayer* layer) {
+    OE_DEPRECATED(Map::addTerrainMaskLayer, Map::addLayer);
+    addLayer(layer);
+}
+
+void 
+Map::removeTerrainMaskLayer(class MaskLayer* layer) {
+    OE_DEPRECATED(Map::removeTerrainMaskLayer, Map::removeLayer);
+    removeLayer(layer);
 }

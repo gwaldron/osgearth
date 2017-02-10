@@ -22,13 +22,14 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/AlphaEffect>
-#include <osgEarth/Layer>
+#include <osgEarth/VisibleLayer>
 #include <osgEarth/Cache>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/Node>
 #include <osg/Array>
 #include <vector>
@@ -40,7 +41,7 @@ namespace osgEarth
     /**
      * Configuration options for a ModelLayer.
      */
-    class OSGEARTH_EXPORT ModelLayerOptions : public ConfigOptions
+    class OSGEARTH_EXPORT ModelLayerOptions : public VisibleLayerOptions
     {
     public:        
         /** Construct or deserialize new model layer options. */
@@ -62,12 +63,6 @@ namespace osgEarth
         ModelLayerOptions& operator = (const ModelLayerOptions&);
 
         /**
-         * The readable name of the layer.
-         */
-        optional<std::string>& name() { return _name; }
-        const optional<std::string>& name() const { return _name; }
-
-        /**
          * Options for the underlying model source driver.
          */
         optional<ModelSourceOptions>& driver() { return _driver; }
@@ -80,18 +75,6 @@ namespace osgEarth
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
         /**
-         * Whether this layer is active
-         */
-        optional<bool>& enabled() { return _enabled; }
-        const optional<bool>& enabled() const { return _enabled; }
-
-        /**
-         * Whether this layer is visible
-         */
-        optional<bool>& visible() { return _visible; }
-        const optional<bool>& visible() const { return _visible; }
-
-        /**
          * The opacity of this layer
          */
         optional<float>& opacity() { return _opacity; }
@@ -102,8 +85,8 @@ namespace osgEarth
          * Note; the mask will NOT honor any visibility or opacity settings on the
          * model layer.
          */
-        optional<MaskSourceOptions>& maskOptions() { return _maskOptions; }
-        const optional<MaskSourceOptions>& maskOptions() const { return _maskOptions; }
+        optional<MaskSourceOptions>& mask() { return _maskOptions; }
+        const optional<MaskSourceOptions>& mask() const { return _maskOptions; }
 
         /**
          * Minimum terrain LOD at which to apply the mask (if there if one)
@@ -118,18 +101,6 @@ namespace osgEarth
         optional<bool>& terrainPatch() { return _terrainPatch; }
         const optional<bool>& terrainPatch() const { return _terrainPatch; }
 
-        /**
-         * Caching policy for the layer
-         */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
-        /**
-         * Express cacheid (overrides an automatically generated cache id)
-         */
-        optional<std::string>& cacheId() { return _cacheId; }
-        const optional<std::string>& cacheId() const { return _cacheId; }
-
 
     public:
         virtual Config getConfig() const;
@@ -139,10 +110,7 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<std::string>        _name;
         optional<ModelSourceOptions> _driver;
-        optional<bool>               _enabled;
-        optional<bool>               _visible;
         optional<float>              _opacity;
         optional<bool>               _lighting;
         optional<MaskSourceOptions>  _maskOptions;
@@ -152,33 +120,33 @@ namespace osgEarth
         optional<std::string>        _cacheId;
     };
 
-    /**
-    * Callback for receiving notification of property changes on a ModelLayer.
-    */
-    struct ModelLayerCallback : public osg::Referenced
+    struct ModelLayerCallback : public VisibleLayerCallback
     {
-        virtual void onVisibleChanged( class ModelLayer* layer ) { }
-        virtual void onOpacityChanged( class ModelLayer* layer ) { }
-        virtual ~ModelLayerCallback() { }
+        virtual void onOpacityChanged(class ModelLayer* layer) { }
+
+        typedef void (ModelLayerCallback::*MethodPtr)(class ModelLayer* layer);
     };
 
-    typedef void (ModelLayerCallback::*ModelLayerCallbackMethodPtr)(class ModelLayer* layer);
 
-    typedef std::list< osg::ref_ptr<ModelLayerCallback> > ModelLayerCallbackList;
-
-
-    class OSGEARTH_EXPORT ModelLayer : public Layer
+    class OSGEARTH_EXPORT ModelLayer : public VisibleLayer
     {
     public:
+        META_Layer(osgEarth, ModelLayer, ModelLayerOptions);
+
+        /**
+         * Blank ModelLayer. Use options() to setup before calling open.
+         */
+        ModelLayer();
+
         /**
          * Constructs a new model layer.
          */
-        ModelLayer( const ModelLayerOptions& options );
+        ModelLayer(const ModelLayerOptions& options);
 
         /**
          * Constructs a new model layer with a user-provided driver options.
          */
-        ModelLayer( const std::string& name, const ModelSourceOptions& options );
+        ModelLayer(const std::string& name, const ModelSourceOptions& options);
         
         /**
          * Constructs a new model layer with a user-provided model source.
@@ -194,21 +162,8 @@ namespace osgEarth
          */
         ModelLayer(const std::string& name, osg::Node* node);
 
-        /** dtor */
-        virtual ~ModelLayer();
-
-    public: // osg::Object
-        /** 
-         * Gets the name of this model layer
-         */
-        virtual void setName(const std::string& name);
 
     public:
-
-        /**
-         * Gets the initialization options for this layer.
-         */
-        const ModelLayerOptions& getModelLayerOptions() const { return _initOptions; }
 
         /**
          * Access the underlying model source.
@@ -223,7 +178,7 @@ namespace osgEarth
         /**
          * The minimum terrain LOD at which to apply the mask.
          */
-        unsigned getMaskMinLevel() const { return _initOptions.maskMinLevel().get(); }
+        unsigned getMaskMinLevel() const { return options().maskMinLevel().get(); }
         
         /**
          * The boundary geometry for the mask.
@@ -237,21 +192,12 @@ namespace osgEarth
          * Whether this model layer is a terrain patch for the purposes of 
          * intersection testing. (convenience function)
          */
-        bool isTerrainPatch() const { return _initOptions.terrainPatch().get(); }
+        bool isTerrainPatch() const { return options().terrainPatch().get(); }
 
+        /** Access scene graph callbacks */
+        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
 
     public:
-
-        /**
-         * Sets the read options for this layer to user; this includes
-         * Cache and CachePolicy information potentially.
-         */
-        void setReadOptions(const osgDB::Options* readOptions);
-
-        /**
-         * Perform one-time initialization of the model layer.
-         */
-        const Status& open();
 
         /**
          * Creates the scene graph representing this model layer for the given Map,
@@ -274,13 +220,6 @@ namespace osgEarth
 
     public: // properties
 
-        /** Whether this layer is rendered. */
-        bool getVisible() const;
-        void setVisible(bool value);
-
-        /** Whether this layer is used at all. */
-        virtual bool getEnabled() const;
-
         /** whether to apply lighting to the model layer's root node */
         void setLightingEnabled( bool value );
         bool isLightingEnabled() const;
@@ -294,37 +233,45 @@ namespace osgEarth
 
     public: // Layer
 
+        /** Open the layer and return its status */
+        virtual const Status& open();
+
+        /** Serialize this layer */
         virtual Config getConfig() const;
 
-    public:
+        /** Node creates by this model layer */
+        virtual osg::Node* getNode() const;
 
-        /** Adds a property notification callback to this layer */
-        void addCallback( ModelLayerCallback* cb );
+        /**
+         * Sets the read options for this layer to user; this includes
+         * Cache and CachePolicy information potentially.
+         */
+        virtual void setReadOptions(const osgDB::Options* readOptions);
 
-        /** Removes a property notification callback from this layer */
-        void removeCallback( ModelLayerCallback* cb );
+    protected:
+
+        /** post-ctor initialization */
+        virtual void init();
 
 
-    private:
+    protected:
+
+        virtual ~ModelLayer();
+
         osg::ref_ptr<ModelSource>     _modelSource;
         osg::ref_ptr<MaskSource>      _maskSource;
-        const ModelLayerOptions       _initOptions;
-        ModelLayerOptions             _runtimeOptions;
         Revision                      _modelSourceRev;
-        ModelLayerCallbackList        _callbacks;
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
-        osg::ref_ptr<osgDB::Options>  _readOptions;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
         Graphs _graphs;
 
         mutable Threading::Mutex _mutex; // general-purpose mutex.
 
-        virtual void fireCallback( ModelLayerCallbackMethodPtr method );
-
-        void copyOptions();
+        void fireCallback(ModelLayerCallback::MethodPtr method);
 
         void setLightingEnabledNoLock(bool value);
     };

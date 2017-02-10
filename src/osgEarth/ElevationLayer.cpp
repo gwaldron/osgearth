@@ -30,6 +30,10 @@ using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(elevation, osgEarth::ElevationLayer);
+}
+
 //------------------------------------------------------------------------
 
 ElevationLayerOptions::ElevationLayerOptions() :
@@ -71,6 +75,8 @@ Config
 ElevationLayerOptions::getConfig( bool isolate ) const
 {
     Config conf = TerrainLayerOptions::getConfig( isolate );
+    conf.key() = "elevation";
+
     conf.updateIfSet("offset", _offset);
     conf.updateIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
@@ -148,33 +154,40 @@ namespace
 
 //------------------------------------------------------------------------
 
+ElevationLayer::ElevationLayer() :
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
 ElevationLayer::ElevationLayer(const ElevationLayerOptions& options) :
-TerrainLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(options)
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
     init();
 }
 
 ElevationLayer::ElevationLayer(const std::string& name, const TileSourceOptions& driverOptions) :
-TerrainLayer(&_layerOptionsConcrete),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(name, driverOptions)
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(name, driverOptions)
 {
     init();
 }
 
 ElevationLayer::ElevationLayer(const ElevationLayerOptions& options, TileSource* tileSource) :
-TerrainLayer(&_layerOptionsConcrete, tileSource),
-_layerOptions(&_layerOptionsConcrete),
-_layerOptionsConcrete(options)
+TerrainLayer(&_optionsConcrete, tileSource),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
     init();
 }
 
 ElevationLayer::ElevationLayer(ElevationLayerOptions* optionsPtr) :
-TerrainLayer(optionsPtr? optionsPtr : &_layerOptionsConcrete),
-_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
+TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
 {
     //init(); // will be called by subclass.
 }
@@ -192,51 +205,16 @@ ElevationLayer::init()
 bool
 ElevationLayer::isOffset() const
 {
-    return getElevationLayerOptions().offset().get();
+    return options().offset().get();
 }
 
 Config
 ElevationLayer::getConfig() const
 {
-    Config layerConf = getElevationLayerOptions().getConfig();
-    //layerConf.set("name", getName());
-    layerConf.set("driver", getElevationLayerOptions().driver()->getDriver());
+    Config layerConf = options().getConfig();
+    layerConf.set("driver", options().driver()->getDriver());
     layerConf.key() = "elevation";
     return layerConf;
-}
-
-void
-ElevationLayer::addCallback( ElevationLayerCallback* cb )
-{
-    _callbacks.push_back( cb );
-}
-
-void
-ElevationLayer::removeCallback( ElevationLayerCallback* cb )
-{
-    ElevationLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
-        _callbacks.erase( i );
-}
-
-void
-ElevationLayer::fireCallback( TerrainLayerCallbackMethodPtr method )
-{
-    for( ElevationLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ElevationLayerCallback* cb = i->get();
-        (cb->*method)( this );
-    }
-}
-
-void
-ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
-{
-    for( ElevationLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ElevationLayerCallback* cb = i->get();
-        (cb->*method)( this );
-    }
 }
 
 TileSource::HeightFieldOperation*
@@ -570,7 +548,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // post-processing:
     if ( result.valid() )
     {
-        if ( getElevationLayerOptions().noDataPolicy() == NODATA_MSL )
+        if ( options().noDataPolicy() == NODATA_MSL )
         {
             // requested VDatum:
             const VerticalDatum* outputVDatum = key.getExtent().getSRS()->getVerticalDatum();

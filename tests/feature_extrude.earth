@@ -6,20 +6,12 @@ Footprint Extrusion using the "feature_geom" driver.
 
 <map name="Extrusion Demo" type="geocentric" version="2">
       
-	
-    <!-- Our features layer. The "feature_geom" driver will analyze the
-         style sheet and determine how to render the feature data. -->
-         
-    <model name="buildings" driver="feature_geom">
-          
-        <!-- Feature data set to load. This is a set of polygons representing
-             some buildings in Washington DC -->
-             
-        <features name="buildings" driver="ogr">
-            <url>../data/dcbuildings.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-             
+    <feature_source name="buildings-data" driver="ogr">
+        <url>../data/dcbuildings.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </feature_source>
+	         
+    <feature_model name="buildings" feature_source="buildings-data">
         <styles>
             <style type="text/css">
                 buildings {
@@ -27,10 +19,10 @@ Footprint Extrusion using the "feature_geom" driver.
                     extrusion-height:  15;
                     extrusion-flatten: true;
                     altitude-clamping: terrain;
-                }            
+                }
             </style>
         </styles>
-    </model>
+    </feature_model>
     
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
@@ -39,10 +31,6 @@ Footprint Extrusion using the "feature_geom" driver.
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-	
-	<options>
-		<terrain normalize_edges="true"/>
-	</options>
     
     <viewpoints>
         <viewpoint name="Zoom to Buildings" heading="12.4" lat="38.8982" long="-77.0365" height="20.67" pitch="-51.4" range="4500" />

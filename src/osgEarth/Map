@@ -25,10 +25,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/MapCallback>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ElevationPool>
@@ -111,7 +107,7 @@ namespace osgEarth
          * Gets the index of the specified layer, or returns
          * getNumLayers() if the layer is not found.
          */
-        unsigned getIndexOfLayer(Layer* layer) const;
+        unsigned getIndexOfLayer(const Layer* layer) const;
 
         /**
          * Copies references of the map layers into the output list.
@@ -198,100 +194,6 @@ namespace osgEarth
          */
         void setLayersFromMap( const Map* map );
 
-
-    public: // backwards-compatibility - to be deprecated
-
-        /**
-         * Adds an image layer to the map.
-         */
-        void addImageLayer(ImageLayer* layer) {
-            addLayer(layer);
-        }
-
-        /**
-        * Adds an image layer to the map at the specified index.
-        */
-        void insertImageLayer(ImageLayer* layer, unsigned index) {
-            insertLayer(layer, index);
-        }
-
-        /**
-         * Removes an image layer from the map.
-         */
-        void removeImageLayer(ImageLayer* layer) {
-            removeLayer(layer);
-        }
-
-        /**
-         * Moves (re-orders) an image layer to another index position in its list.
-         */
-        void moveImageLayer(ImageLayer* layer, unsigned newIndex) {
-            moveLayer(layer, newIndex);
-        }
-
-        /**
-         * Adds an elevation layer to the map.
-         */
-        void addElevationLayer(ElevationLayer* layer) {
-            addLayer(layer);
-        }
-
-        /**
-         * Removes an elevation layer from the map.
-         */
-        void removeElevationLayer(ElevationLayer* layer) {
-            removeLayer(layer);
-        }
-
-        /**
-         * Moves (re-orders) an elevation layer to another index position in its list.
-         */
-        void moveElevationLayer(ElevationLayer* layer, unsigned newIndex) {
-            moveLayer(layer, newIndex);
-        }
-
-        /**
-         * Adds a new model layer to the map.
-         */
-        void addModelLayer(ModelLayer* layer) {
-            addLayer(layer);
-        }
-
-        /**
-         * Adds a new model layer to the map at the specified index.
-         */
-        void insertModelLayer(ModelLayer* layer, unsigned index) {
-            insertLayer(layer, index);
-        }
-
-        /**
-         * Removes a model layer from the map.
-         */
-        void removeModelLayer(ModelLayer* layer) {
-            removeLayer(layer);
-        }
-
-        /**
-         * Moves (re-orders) an image layer to another index position in its list.
-         */
-        void moveModelLayer(ModelLayer* layer, unsigned newIndex) {
-            moveLayer(layer, newIndex);
-        }
-
-        /**
-         * Adds a new layer to use as a terrain mask.
-         */
-        void addTerrainMaskLayer(MaskLayer* layer) {
-            addLayer(layer);
-        }
-
-        /**
-         * Removed a terrain mask layer that was set with setTerrainMaskLayer().
-         */
-        void removeTerrainMaskLayer(MaskLayer* layer) {
-            removeLayer(layer);
-        }
-
     public:
         /**
          * Gets the user-provided options structure stored in this map.
@@ -339,16 +241,6 @@ namespace osgEarth
          */    
         bool sync( class MapFrame& frame ) const;
 
-        enum ModelParts {
-            IMAGE_LAYERS     = 1 << 0,
-            ELEVATION_LAYERS = 1 << 1,
-            TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
-            MODEL_LAYERS     = 1 << 2,
-            MASK_LAYERS      = 1 << 3,
-            MASKED_TERRAIN_LAYERS = TERRAIN_LAYERS | MASK_LAYERS,
-            ENTIRE_MODEL     = 0xff
-        };
-
         /**
          * Gets the database options associated with this map.
          */
@@ -386,15 +278,15 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
 
-        struct ElevationLayerCB : public ElevationLayerCallback {
+        struct ElevationLayerCB : public VisibleLayerCallback {
             osg::observer_ptr<Map> _map;
             ElevationLayerCB(Map*);
-            void onVisibleChanged(TerrainLayer* layer);
+            void onVisibleChanged(VisibleLayer* layer);
         };
         osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
         friend struct ElevationLayerCB;
 
-        void notifyElevationLayerVisibleChanged(TerrainLayer*);
+        void notifyElevationLayerVisibleChanged(VisibleLayer*);
 
 
     private:
@@ -402,6 +294,23 @@ namespace osgEarth
         void calculateProfile();
 
         friend class MapInfo;
+
+
+    public: // deprecated functions (for backwards compatibility)
+        void addImageLayer(class ImageLayer* layer);
+        void insertImageLayer(class ImageLayer* layer, unsigned index);
+        void removeImageLayer(class ImageLayer* layer);
+        void moveImageLayer(class ImageLayer* layer, unsigned newIndex);
+        void addElevationLayer(class ElevationLayer* layer);
+        void removeElevationLayer(class ElevationLayer* layer);
+        void moveElevationLayer(class ElevationLayer* layer, unsigned newIndex);
+        void addModelLayer(class ModelLayer* layer);
+        void insertModelLayer(class ModelLayer* layer, unsigned index);
+        void removeModelLayer(class ModelLayer* layer);
+        void moveModelLayer(class ModelLayer* layer, unsigned newIndex);
+        void addTerrainMaskLayer(class MaskLayer* layer);
+        void removeTerrainMaskLayer(class MaskLayer* layer);
+
     };
     
 

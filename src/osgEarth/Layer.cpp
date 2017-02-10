@@ -44,6 +44,9 @@ Config LayerOptions::getConfig() const
     Config conf = ConfigOptions::newConfig();
     conf.addIfSet("name", _name);
     conf.addIfSet("enabled", _enabled);
+    conf.addIfSet("cacheid", _cacheId);
+    if (_cachePolicy.isSet() && !_cachePolicy->empty())
+        conf.addObjIfSet("cache_policy", _cachePolicy);
     conf.addIfSet("shader_define", _shaderDefine);
     return conf;
 }
@@ -54,6 +57,17 @@ void LayerOptions::fromConfig(const Config& conf)
 
     conf.getIfSet("name", _name);
     conf.getIfSet("enabled", _enabled);
+    conf.getIfSet("cache_id", _cacheId);
+    conf.getObjIfSet("cache_policy", _cachePolicy);
+
+    // legacy support:
+    if (!_cachePolicy.isSet())
+    {
+        if ( conf.value<bool>( "cache_only", false ) == true )
+            _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+        if ( conf.value<bool>( "cache_enabled", true ) == false )
+            _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
+    }
     conf.getIfSet("shader_define", _shaderDefine);
 }
 
@@ -66,7 +80,7 @@ void LayerOptions::mergeConfig(const Config& conf)
 //.................................................................
 
 Layer::Layer() :
-_layerOptions(&_layerOptionsConcrete)
+_options(&_optionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -76,7 +90,7 @@ _layerOptions(&_layerOptionsConcrete)
 }
 
 Layer::Layer(LayerOptions* optionsPtr) :
-_layerOptions(optionsPtr? optionsPtr : &_layerOptionsConcrete)
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
 {
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
@@ -88,38 +102,73 @@ Layer::~Layer()
     OE_DEBUG << LC << "~Layer\n";
 }
 
+void
+Layer::setReadOptions(const osgDB::Options* options)
+{
+    _readOptions = Registry::cloneOrCreateOptions(options);
+}
+
 Config
 Layer::getConfig() const
 {
-    return getLayerOptions().getConfig();
+    return options().getConfig();
+}
+
+bool
+Layer::getEnabled() const
+{
+    return (options().enabled() == true) && getStatus().isOK();
 }
 
 void
 Layer::init()
 {
     // Copy the layer options name into the Object name.
-    if (getLayerOptions().name().isSet())
+    // This happens here AND in open.
+    if (options().name().isSet())
     {
-        osg::Object::setName(getLayerOptions().name().get());
+        osg::Object::setName(options().name().get());
+    }
+}
+
+const Status&
+Layer::open()
+{
+    // Copy the layer options name into the Object name.
+    if (options().name().isSet())
+    {
+        osg::Object::setName(options().name().get());
     }
     
-    if (getLayerOptions().shaderDefine().isSet() &&
-        !getLayerOptions().shaderDefine()->empty())
+    if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
-        OE_INFO << LC << "Setting shader define " << getLayerOptions().shaderDefine().get() << "\n";
-        getOrCreateStateSet()->setDefine(getLayerOptions().shaderDefine().get());
+        OE_INFO << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
+        getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
+
+    return _status;
 }
 
 void
 Layer::setName(const std::string& name)
 {
     osg::Object::setName(name);
-    mutableLayerOptions().name() = name;
+    options().name() = name;
 }
 
+const char*
+Layer::getTypeName() const
+{
+    return typeid(*this).name();
+}
 
 #define LAYER_OPTIONS_TAG "osgEarth.LayerOptions"
+
+Layer*
+Layer::create(const ConfigOptions& options)
+{
+    return create(options.getConfig().key(), options);
+}
 
 Layer*
 Layer::create(const std::string& name, const ConfigOptions& options)
@@ -165,4 +214,18 @@ Layer::getConfigOptions(const osgDB::Options* options)
     static ConfigOptions s_default;
     const void* data = options->getPluginData(LAYER_OPTIONS_TAG);
     return data ? *static_cast<const ConfigOptions*>(data) : s_default;
+}
+
+void
+Layer::addCallback(LayerCallback* cb)
+{
+    _callbacks.push_back( cb );
+}
+
+void
+Layer::removeCallback(LayerCallback* cb)
+{
+    CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
+    if ( i != _callbacks.end() ) 
+        _callbacks.erase( i );
 }

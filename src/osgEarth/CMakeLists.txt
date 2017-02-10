@@ -107,6 +107,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    LayerListener
     Lighting
     LineFunctor
     Locators
@@ -148,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     Registry
     ResourceReleaser
     Revisioning
+    SceneGraphCallback
     ScreenSpaceLayout
     Shaders
     ShaderFactory
@@ -190,6 +192,8 @@ SET(LIB_PUBLIC_HEADERS
     VerticalDatum
     Viewpoint
     VirtualProgram
+    VisibleLayer
+    WrapperLayer
     XmlUtils
 )
 
@@ -311,6 +315,7 @@ set(TARGET_SRC
     Registry.cpp
     ResourceReleaser.cpp
     Revisioning.cpp
+    SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
@@ -348,6 +353,7 @@ set(TARGET_SRC
     VerticalDatum.cpp
     Viewpoint.cpp
     VirtualProgram.cpp
+    VisibleLayer.cpp
     XmlUtils.cpp
     ${SHADERS_CPP} )
 

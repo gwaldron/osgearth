@@ -93,17 +93,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Access to the asychronous data loader */
         Loader* getLoader() const { return _loader.get(); }
 
-    public:
-        class ElevationChangedCallback : public ElevationLayerCallback
-        {
-        public:
-            ElevationChangedCallback( RexTerrainEngineNode* terrain );
+    //public:
+    //    class ElevationChangedCallback : public ElevationLayerCallback
+    //    {
+    //    public:
+    //        ElevationChangedCallback( RexTerrainEngineNode* terrain );
 
-           virtual void onVisibleChanged( TerrainLayer* layer );
+    //       virtual void onVisibleChanged( VisibleLayer* layer );
 
-            RexTerrainEngineNode* _terrain;
-            friend class RexTerrainEngineNode;
-        };
+    //        RexTerrainEngineNode* _terrain;
+    //        friend class RexTerrainEngineNode;
+    //    };
 
     protected:
         // override from TerrainEngineNode
@@ -152,7 +152,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool               _refreshRequired;
         bool               _stateUpdateRequired;
 
-        osg::ref_ptr<ElevationChangedCallback> _elevationCallback;
+        //osg::ref_ptr<ElevationChangedCallback> _elevationCallback;
 
         MapFrame _mapFrame;
 

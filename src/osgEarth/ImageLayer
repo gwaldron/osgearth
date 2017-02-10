@@ -171,23 +171,6 @@ namespace osgEarth
     //--------------------------------------------------------------------
 
     /**
-     * Callback for receiving notification of property changes on an ImageLayer.
-     */
-    struct ImageLayerCallback : public TerrainLayerCallback
-    {
-        virtual void onOpacityChanged( class ImageLayer* layer ) { }
-        virtual void onVisibleRangeChanged( class ImageLayer* layer ) {}
-        virtual void onColorFiltersChanged( class ImageLayer* layer ) { }
-        virtual ~ImageLayerCallback() { }
-    };
-
-    typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(class ImageLayer* layer);
-
-    typedef std::list< osg::ref_ptr<ImageLayerCallback> > ImageLayerCallbackList;
-
-    //--------------------------------------------------------------------
-
-    /**
      * Internal utility class for post-processing image tiles that come from 
      * a TileSource
      */
@@ -210,7 +193,16 @@ namespace osgEarth
         bool                               _layerInTargetProfile;
     };
 
-    //--------------------------------------------------------------------
+
+    struct ImageLayerCallback : public TerrainLayerCallback
+    {
+        virtual void onOpacityChanged(class ImageLayer* layer) { }
+        virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
+        virtual void onColorFiltersChanged(class ImageLayer* layer) { }
+
+        typedef void (ImageLayerCallback::*MethodPtr)(class ImageLayer* layer);
+    };
+
 
     /**
      * A map terrain layer containing bitmap image data.
@@ -218,6 +210,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
     {
     public:
+        META_Layer(osgEarth, ImageLayer, ImageLayerOptions);
+
+        /**
+         * Construct a new ImageLayer. Use the options() to configure it
+         * before adding it to a Map.
+         */
+        ImageLayer();
+
         /**
          * Constructs a new image layer.
          */
@@ -237,18 +237,7 @@ namespace osgEarth
          */
         ImageLayer(const ImageLayerOptions& options, TileSource* tileSource);
 
-        /** dtor */
-        virtual ~ImageLayer() { }
-
     public:
-        /** Options governing this image layer */
-        const ImageLayerOptions& getImageLayerOptions() const;
-
-        /** Adds a property notification callback to this layer */
-        void addCallback( ImageLayerCallback* cb );
-
-        /** Removes a property notification callback from this layer */
-        void removeCallback( ImageLayerCallback* cb );
 
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );
@@ -321,7 +310,7 @@ namespace osgEarth
          */
         optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
         const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
-
+        
 
     public: // methods
 
@@ -344,23 +333,23 @@ namespace osgEarth
          * Applies the texture compression options to a texture.
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
-
-
-    public: // TerrainLayer override
         
-        /** Opens the image layer and returns the status. */
-        virtual const Status& open();
-
+        typedef ImageLayerCallback Callback;
 
     public: // Layer
 
         virtual Config getConfig() const;
+        
+        virtual const Status& open();
 
     protected: // Layer
             
         virtual void init();
 
     protected:
+
+        /** dtor */
+        virtual ~ImageLayer() { }
 
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
@@ -381,23 +370,13 @@ namespace osgEarth
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
-        ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
         optional<std::string>                    _shareTexUniformName;
         optional<std::string>                    _shareTexMatUniformName;
 
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
-        virtual void fireCallback( ImageLayerCallbackMethodPtr method );
-
+        virtual void fireCallback(ImageLayerCallback::MethodPtr method);
 
         TileSource::ImageOperation* getOrCreatePreCacheOp();
-
-    private:
-        ImageLayerOptions* _layerOptions;
-        ImageLayerOptions  _layerOptionsConcrete;
-    protected:
-        ImageLayerOptions& mutableImageLayerOptions() { return *_layerOptions; }
-
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

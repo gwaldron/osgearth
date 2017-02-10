@@ -23,6 +23,7 @@
 #include <osgEarthUtil/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Lighting>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Map>
 #include <osg/CullFace>
 #include <osg/Material>
@@ -38,54 +39,16 @@ using namespace osgEarth::Util;
 REGISTER_OSGEARTH_LAYER(simple_ocean, SimpleOceanLayer);
 
 
-namespace
-{
-    struct MapCallbackAdapter : public MapCallback
-    {
-        MapCallbackAdapter(SimpleOceanLayer* obj) : _ocean(obj) { }
-        
-        void onImageLayerAdded(ImageLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<SimpleOceanLayer> ocean;
-            if (_ocean.lock(ocean))
-            {
-                if (ocean->getOptions().maskLayer().isSetTo(layer->getName()))
-                {
-                    if (ocean->setMaskLayer(layer))
-                    {
-                        _activeMaskLayerName = layer->getName();
-                    }
-                }
-            }
-        }
-
-        void onImageLayerRemoved(ImageLayer* layer, unsigned index)
-        {
-            osg::ref_ptr<SimpleOceanLayer> ocean;
-            if (_ocean.lock(ocean))
-            {
-                if (layer->getName() == _activeMaskLayerName)
-                {
-                    ocean->setMaskLayer(0L);
-                }
-            }
-        }
-
-        osg::observer_ptr<SimpleOceanLayer> _ocean;
-        std::string _activeMaskLayerName;
-    };
-}
-
 
 SimpleOceanLayer::SimpleOceanLayer() :
-Layer(&_optionsConcrete),
+VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
 {
     init();
 }
 
 SimpleOceanLayer::SimpleOceanLayer(const SimpleOceanLayerOptions& options) :
-Layer(&_optionsConcrete),
+VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
@@ -97,9 +60,7 @@ SimpleOceanLayer::init()
 {
     OE_INFO << LC << "Creating a Simple Ocean Layer\n";
 
-    Layer::init();
-
-    _mapCallback = 0L;
+    VisibleLayer::init();
 
     this->setName("Simple Ocean");
     setRenderType(RENDERTYPE_TILE);
@@ -182,30 +143,19 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
 void
 SimpleOceanLayer::addedToMap(const Map* map)
 {    
-    if (getOptions().maskLayer().isSet())
+    if (options().maskLayer().isSet())
     {
-        // subscribe so we know if the mask layer arrives or departs:
-        _mapCallback = map->addMapCallback(new MapCallbackAdapter(this));
-
-        // see if it's already there. If so, try to install it; 
-        // if not, rely on the MapCallback to let us know if and when
-        // it arrives.
-        ImageLayer* maskLayer = map->getLayerByName<ImageLayer>(options().maskLayer().get());
-        if (maskLayer)
-        {
-            setMaskLayer(maskLayer);
-        }
+        // listen for the mask layer.
+        _layerListener.listen(map, options().maskLayer().get(), this, &SimpleOceanLayer::setMaskLayer);
     }      
 }
 
 void
 SimpleOceanLayer::removedFromMap(const Map* map)
 {
-    if (getOptions().maskLayer().isSet())
+    if (options().maskLayer().isSet())
     {
-        if (_mapCallback)
-            map->removeMapCallback(_mapCallback);
-        _mapCallback = 0L;
+        _layerListener.clear();
         setMaskLayer(0L);
     }
 }
@@ -213,7 +163,7 @@ SimpleOceanLayer::removedFromMap(const Map* map)
 void
 SimpleOceanLayer::setColor(const Color& color)
 {
-    mutableOptions().color() = color;
+    options().color() = color;
     getOrCreateStateSet()->getOrCreateUniform(
         "ocean_color", osg::Uniform::FLOAT_VEC4)->set(color);
 }
@@ -221,13 +171,13 @@ SimpleOceanLayer::setColor(const Color& color)
 const Color&
 SimpleOceanLayer::getColor() const
 {
-    return getOptions().color().get();
+    return options().color().get();
 }
 
 void
 SimpleOceanLayer::setMaxAltitude(float alt)
 {
-    mutableOptions().maxAltitude() = alt;
+    options().maxAltitude() = alt;
     getOrCreateStateSet()->getOrCreateUniform(
         "ocean_maxAltitude", osg::Uniform::FLOAT)->set(alt);
 }
@@ -248,7 +198,7 @@ SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& bo
 Config
 SimpleOceanLayer::getConfig() const
 {
-    Config conf = getOptions().getConfig();
+    Config conf = options().getConfig();
     conf.key() = "simple_ocean";
     return conf;
 }

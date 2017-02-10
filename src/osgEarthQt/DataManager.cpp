@@ -24,6 +24,9 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
 
 using namespace osgEarth::QtGui;
 using namespace osgEarth::Annotation;

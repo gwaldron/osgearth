@@ -23,23 +23,15 @@
 #define LC "[MaskLayer] "
 
 using namespace osgEarth;
+
 //------------------------------------------------------------------------
 
-MaskLayerOptions::MaskLayerOptions( const ConfigOptions& options ) :
-ConfigOptions( options ),
+MaskLayerOptions::MaskLayerOptions(const ConfigOptions& options) :
+LayerOptions(options),
 _minLevel( 0 )
 {
     setDefaults();
     fromConfig( _conf ); 
-}
-
-MaskLayerOptions::MaskLayerOptions( const std::string& name, const MaskSourceOptions& driverOptions ) :
-ConfigOptions()
-{
-    setDefaults();
-    fromConfig( _conf );
-    _name = name;
-    _driver = driverOptions;
 }
 
 void
@@ -51,18 +43,15 @@ MaskLayerOptions::setDefaults()
 Config
 MaskLayerOptions::getConfig() const
 {
-    Config conf = ConfigOptions::getConfig();
-
-    conf.updateIfSet( "name", _name );
-    conf.updateIfSet( "min_level", _minLevel );
-
+    Config conf = LayerOptions::getConfig();
+    conf.key() = "mask";
+    conf.addIfSet( "min_level", _minLevel );
     return conf;
 }
 
 void
 MaskLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "name", _name );
     conf.getIfSet( "min_level", _minLevel );
 }
 
@@ -75,114 +64,86 @@ MaskLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-MaskLayer::MaskLayer( const MaskLayerOptions& options ) :
-_initOptions( options )
+//MaskLayer::MaskLayer(const MaskLayerOptions& options) :
+//Layer(&_optionsConcrete),
+//_options(&_optionsConcrete),
+//_optionsConcrete(options)
+//{
+//    init();
+//}
+
+//MaskLayer::MaskLayer(const MaskLayerOptions& options, MaskSource* source) :
+//Layer(&_optionsConcrete),
+//_options(&_optionsConcrete),
+//_optionsConcrete(options),
+//_maskSource(source)
+//{
+//    init();
+//}
+
+MaskLayer::MaskLayer(MaskLayerOptions* optionsPtr) :
+Layer(optionsPtr),
+_options(optionsPtr)
 {
-    copyOptions();
+    //nop - init will be called by base class
 }
 
-MaskLayer::MaskLayer( const std::string& name, const MaskSourceOptions& options ) :
-_initOptions( MaskLayerOptions( name, options ) )
-{
-    copyOptions();
-}
+//const Status&
+//MaskLayer::open()
+//{
+//    if (!_maskSource.valid() && !options().driver().isSet())
+//    {
+//        return setStatus(Status::Error(Status::ConfigurationError, "Missing data source for mask geometry"));
+//    }
+//
+//    if (!_maskSource.valid() && options().driver().isSet())
+//    {
+//        _maskSource = MaskSourceFactory::create(options());
+//        if (!_maskSource.valid())
+//        {
+//            return setStatus(Status::Error(Status::ServiceUnavailable, 
+//                Stringify() << "Failed to load mask driver" << options().name()));
+//        }
+//    }
+//
+//    return setStatus(_maskSource->open(getReadOptions()));
+//}
 
-MaskLayer::MaskLayer( const MaskLayerOptions& options, MaskSource* source ) :
-_maskSource( source ),
-_initOptions( options )
-{
-    copyOptions();
-}
-
-void
-MaskLayer::copyOptions()
-{
-    _runtimeOptions = _initOptions;
-    if (!_runtimeOptions.name()->empty())
-    {
-        setName(_runtimeOptions.name().get());
-    }
-}
-
-void
-MaskLayer::setReadOptions(const osgDB::Options* readOptions)
-{
-    _readOptions = Registry::cloneOrCreateOptions(readOptions);
-}
-
-void
-MaskLayer::setName(const std::string& name)
-{
-    Layer::setName(name);
-    _runtimeOptions.name() = name;
-}
-
-const Status&
-MaskLayer::open()
-{
-    setStatus(initialize());
-    return getStatus();
-}
-
-Status
-MaskLayer::initialize()
-{
-    if ( !_maskSource.valid() && _initOptions.driver().isSet() )
-    {
-        _maskSource = MaskSourceFactory::create( *_initOptions.driver() );
-        if (!_maskSource.valid())
-        {
-            return Status::Error(Status::ServiceUnavailable, Stringify()<<"Failed to create mask driver (" << _initOptions.driver()->getDriver() << ")");
-        }
-    }
-
-    if ( _maskSource.valid() )
-    {
-        const Status& sourceStatus = _maskSource->open(_readOptions.get());  
-        if (sourceStatus.isError())
-        {
-            return sourceStatus;
-        }
-    }
-
-    return Status::OK();
-}
-
-osg::Vec3dArray*
-MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
-{
-    if (getStatus().isError())
-    {
-        return 0L;
-    }
-
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
-    if ( _maskSource.valid() )
-    {
-        // if the model source has changed, regenerate the node.
-        if ( _boundary.valid() && !_maskSource->inSyncWith(_maskSourceRev) )
-        {
-            _boundary = 0L;
-        }
-
-        if ( !_boundary.valid() )
-        {
-			_boundary = _maskSource->createBoundary( srs, progress );
-            
-            if (_boundary.valid())
-            {
-			    for (osg::Vec3dArray::iterator vIt = _boundary->begin(); vIt != _boundary->end(); ++vIt)
-    				vIt->z() = vIt->z() * heightScale;
-
-                _maskSource->sync( _maskSourceRev );
-            }
-        }
-    }
-
-    if (!_boundary.valid())
-    {
-        setStatus(Status::Error("Failed to create masking boundary"));
-    }
-
-    return _boundary.get();
-}
+//osg::Vec3dArray*
+//MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
+//{
+//    if (getStatus().isError())
+//    {
+//        return 0L;
+//    }
+//
+//    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
+//    if ( _maskSource.valid() )
+//    {
+//        // if the model source has changed, regenerate the node.
+//        if ( _boundary.valid() && !_maskSource->inSyncWith(_maskSourceRev) )
+//        {
+//            _boundary = 0L;
+//        }
+//
+//        if ( !_boundary.valid() )
+//        {
+//			_boundary = _maskSource->createBoundary( srs, progress );
+//            
+//            if (_boundary.valid())
+//            {
+//			    for (osg::Vec3dArray::iterator vIt = _boundary->begin(); vIt != _boundary->end(); ++vIt)
+//    				vIt->z() = vIt->z() * heightScale;
+//
+//                _maskSource->sync( _maskSourceRev );
+//            }
+//        }
+//    }
+//
+//    if (!_boundary.valid())
+//    {
+//        setStatus(Status::Error("Failed to create masking boundary"));
+//    }
+//
+//    return _boundary.get();
+//}

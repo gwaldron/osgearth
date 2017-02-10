@@ -28,6 +28,7 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgViewer/CompositeViewer>
 #include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/ImageLayer>
 
 #define LC "[viewer] "
 
@@ -48,7 +49,7 @@ MapNode* makeMiniMapNode( ) {
 
     GDALOptions basemapOpt;
     basemapOpt.url() = "../data/world.tif";
-    map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+    map->addLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;

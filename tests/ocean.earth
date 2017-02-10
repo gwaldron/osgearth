@@ -26,15 +26,13 @@ http://readymap.org
     </elevation>
     
     <simple_ocean>      
-        <color>#1D2C4FE7</color>
+        <color>#1D2C4FF7</color>
         <max_altitude>500000</max_altitude>
         <mask_layer>ocean_mask</mask_layer>
     </simple_ocean>
     
     <image name="ocean_mask" visible="false" shared="true" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
-        <shared_sampler>ocean_mask</shared_sampler>
-        <shared_matrix>ocean_mask_matrix</shared_matrix>
     </image>
         
     <viewpoints>

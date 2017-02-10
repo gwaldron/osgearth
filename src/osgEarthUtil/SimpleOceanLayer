@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Layer>
-#include <osgEarth/MapCallback>
+#include <osgEarth/LayerListener>
 #include <osgEarthSymbology/Color>
 
 namespace osgEarth {
@@ -35,7 +35,7 @@ namespace osgEarth { namespace Util
     /**
      * Serializable configuation options for the SimpleOceanLayer.
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public LayerOptions
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
     {
     public:
         /** Color of the ocean surface */
@@ -56,7 +56,7 @@ namespace osgEarth { namespace Util
         const optional<bool>& useBathymetry() const { return _useBathymetry; }
 
     public:
-        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : LayerOptions(op) {
+        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : VisibleLayerOptions(op) {
             _color.init(Color("#1D2C4FE7"));
             _maxAltitude.init(500000.f);
             _useBathymetry.init(false);
@@ -91,17 +91,16 @@ namespace osgEarth { namespace Util
      * A Rex map layer that renders a simple ocean surface.
      * This layer requires that the map include bathymetric data (ocean floor).
      */
-    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public Layer
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
     {
     public:
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions);
+
         /** Constructs a new ocean layer */
         SimpleOceanLayer();
 
         /** Constructs a new layer from an options structure. */
         SimpleOceanLayer(const SimpleOceanLayerOptions& options);
-
-        /** Options used to create this layer */
-        const SimpleOceanLayerOptions& getOptions() const { return *_options; }
 
     public:
 
@@ -113,7 +112,7 @@ namespace osgEarth { namespace Util
         void setMaxAltitude(float altitude_m);
         float getMaxAltitude() const;
 
-        /** Sets a masking layer (returns true upon success) */
+        /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
         bool setMaskLayer(const ImageLayer* layer);
 
     public: // Layer
@@ -138,12 +137,7 @@ namespace osgEarth { namespace Util
 
     private:
 
-        SimpleOceanLayerOptions* _options;
-        SimpleOceanLayerOptions  _optionsConcrete;
-        SimpleOceanLayerOptions& mutableOptions() { return *_options; }
-        const SimpleOceanLayerOptions& options() const { return *_options; }
-
-        MapCallback* _mapCallback;
+        LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
     };
     
 

@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_VISIBLE_LAYER_H
+#define OSGEARTH_VISIBLE_LAYER_H 1
+
+#include <osgEarth/Layer>
+
+namespace osgEarth
+{
+    /**
+     * Serializable configuration options for a VisibleLayer.
+     */
+    class OSGEARTH_EXPORT VisibleLayerOptions : public LayerOptions
+    {
+    public:
+        VisibleLayerOptions();
+        VisibleLayerOptions(const ConfigOptions& options);
+
+        /** dtor */
+        virtual ~VisibleLayerOptions() { }
+
+        /** Whether the layer is initially visible. */
+        optional<bool>& visible() { return _visible; }
+        const optional<bool>& visible() const { return _visible; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        void fromConfig(const Config& conf);
+
+    private:
+        void setDefaults();       
+        optional<bool> _visible;
+    };
+
+
+    struct VisibleLayerCallback : public LayerCallback
+    {
+        virtual void onVisibleChanged(class VisibleLayer* layer) { }
+        typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
+    };
+
+
+    /**
+     * Base class for a layer supporting visibility control.
+     */
+    class OSGEARTH_EXPORT VisibleLayer : public Layer
+    {
+    public:
+        META_Layer(osgEarth, VisibleLayer, VisibleLayerOptions);
+
+    protected:
+        // Construcable from a base class only.
+        VisibleLayer(VisibleLayerOptions* ptr =0L);
+
+        virtual ~VisibleLayer();
+
+    public:
+        /** Whether to draw this layer. */
+        virtual void setVisible(bool value);
+        bool getVisible() const;
+
+    public: // Layer
+
+        virtual const Status& open();
+
+    protected: // Layer
+
+        virtual void init();
+
+    private:
+        void fireCallback(VisibleLayerCallback::MethodPtr);
+    };
+
+} // namespace TerrainLayer
+
+#endif // OSGEARTH_RENDER_LAYER_H

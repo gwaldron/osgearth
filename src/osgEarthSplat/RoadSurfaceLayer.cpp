@@ -33,14 +33,27 @@ using namespace osgEarth::Symbology;
 #define LC "[RoadSurfaceLayer] "
 
 
+REGISTER_OSGEARTH_LAYER(road_surface, RoadSurfaceLayer);
+
+RoadSurfaceLayer::RoadSurfaceLayer() :
+ImageLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
 
 RoadSurfaceLayer::RoadSurfaceLayer(const RoadSurfaceLayerOptions& options) :
-ImageLayer(&_localOptionsConcrete),
-_localOptions(&_localOptionsConcrete),
-_localOptionsConcrete(options)
+ImageLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
+{
+    init();
+}
+
+void
+RoadSurfaceLayer::init()
 {
     ImageLayer::init();
-
     if (getName().empty())
         setName("Road surface");
 }

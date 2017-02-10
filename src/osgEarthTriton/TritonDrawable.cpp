@@ -16,10 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <Triton.h>
-
-#include "TritonDrawable"
 #include "TritonContext"
+#include "TritonDrawable"
 #include <osg/MatrixTransform>
 #include <osg/FrameBufferObject>
 
@@ -347,6 +345,12 @@ TritonDrawable::~TritonDrawable()
     {
         _mapNode->getTerrain()->removeTerrainCallback( callback );
     }
+}
+
+void
+TritonDrawable::setMaskLayer(const osgEarth::ImageLayer* layer)
+{
+    _maskLayer = layer;
 }
 
 void
@@ -741,22 +745,24 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     heightProgram->setIsAbstract(true);
 
     // If we're using a mask layer, enable that in the shader:
-    if (!_TRITON->getMaskLayerName().empty())
+    osg::ref_ptr<const ImageLayer> maskLayer;
+    _maskLayer.lock(maskLayer);
+
+    if (!maskLayer.valid() && !_TRITON->getMaskLayerName().empty())
     {
-        const ImageLayer* maskLayer = _mapNode->getMap()->getLayerByName<ImageLayer>(_TRITON->getMaskLayerName());
-        if (maskLayer)
-        {
-            stateSet->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());
-            stateSet->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
-            OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->shareTexUniformName().get() << ", matrix=" << maskLayer->shareTexMatUniformName().get() << std::endl;
-        }
-        else
+        maskLayer = _mapNode->getMap()->getLayerByName<ImageLayer>(_TRITON->getMaskLayerName());
+        if (!maskLayer)
         {
             OE_WARN << LC << "Mask Layer \"" << _TRITON->getMaskLayerName() << "\" not found in Map!\n";
         }
-
     }
 
+    if (maskLayer.valid())
+    {
+        stateSet->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->shareTexUniformName().get());
+        stateSet->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->shareTexMatUniformName().get());
+        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->shareTexUniformName().get() << ", matrix=" << maskLayer->shareTexMatUniformName().get() << std::endl;
+    }
 
     _heightCamera->addChild( mapNode->getTerrainEngine() );
 

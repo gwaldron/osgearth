@@ -26,6 +26,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
@@ -52,12 +53,12 @@ main(int argc, char** argv)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
-    map->addImageLayer( new ImageLayer("ReadyMap Imagery", imagery) );
+    map->addLayer( new ImageLayer("ReadyMap Imagery", imagery) );
 
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
-    map->addElevationLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
+    map->addLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
     
     // add a local GeoTIFF inset layer:
     GDALOptions gdal;
@@ -72,7 +73,7 @@ main(int argc, char** argv)
     wms.layers() = "nexrad-n0r";
     wms.srs() = "EPSG:4326";
     wms.transparent() = true;
-    ImageLayerOptions wmsLayerOptions("WMS NEXRAD, wms");
+    ImageLayerOptions wmsLayerOptions("WMS NEXRAD", wms);
     wmsLayerOptions.cachePolicy() = CachePolicy::NO_CACHE;
     map->addLayer(new ImageLayer(wmsLayerOptions));
 

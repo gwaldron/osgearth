@@ -52,41 +52,47 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings,
         ++i)
     {
         Layer* layer = i->get();
-        if (layer->getRenderType() != Layer::RENDERTYPE_NONE && layer->getEnabled())
+        if (layer->getEnabled())
         {
-            bool render = true;
-
-            // If this is an image layer, check the enabled/visible states.
-            ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
-            if (imageLayer)
+            if (layer->getRenderType() == Layer::RENDERTYPE_TILE ||
+                layer->getRenderType() == Layer::RENDERTYPE_PATCH)
             {
-                render = imageLayer->getVisible();
-            }
+                bool render = true;
 
-            if (render)
-            {
-                // Make a list of "global" layers. There are layers whose data is not
-                // represented in the TerrainTileModel, like a splatting layer or a patch
-                // layer. The data for these is dynamic and not based on data fetched.
-                if (imageLayer == 0 && layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                // If this is an image layer, check the enabled/visible states.
+                VisibleLayer* visLayer = dynamic_cast<VisibleLayer*>(layer);
+                if (visLayer)
                 {
-                    tileLayers().push_back(layer);
-                    addLayerDrawable(layer);
+                    render = visLayer->getVisible();
                 }
-                else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
-                {
-                    PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
 
-                    if (patchLayer->getAcceptCallback() != 0L &&
-                        patchLayer->getAcceptCallback()->acceptLayer(nv, camera))
+                if (render)
+                {
+                    ImageLayer* imgLayer = dynamic_cast<ImageLayer*>(layer);
+
+                    // Make a list of "global" layers. There are layers whose data is not
+                    // represented in the TerrainTileModel, like a splatting layer or a patch
+                    // layer. The data for these is dynamic and not based on data fetched.
+                    if (imgLayer == 0L && layer->getRenderType() == Layer::RENDERTYPE_TILE)
                     {
-                        patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
+                        tileLayers().push_back(layer);
                         addLayerDrawable(layer);
                     }
-                }
-                else
-                {
-                    addLayerDrawable(layer);
+                    else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+                    {
+                        PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
+
+                        if (patchLayer->getAcceptCallback() != 0L &&
+                            patchLayer->getAcceptCallback()->acceptLayer(nv, camera))
+                        {
+                            patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
+                            addLayerDrawable(layer);
+                        }
+                    }
+                    else
+                    {
+                        addLayerDrawable(layer);
+                    }
                 }
             }
         }

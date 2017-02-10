@@ -16,23 +16,79 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#include <Triton.h>
 #include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
 #include <osgEarth/CullingUtils>
+#include <osgEarth/NodeUtils>
 
 #define LC "[TritonNode] "
 
 using namespace osgEarth::Triton;
 
-TritonNode::TritonNode(osgEarth::MapNode*   mapNode,
-                       const TritonOptions& options,
-                       Callback*            callback) :
+
+TritonNode::TritonNode(const TritonOptions& options,
+                       Callback* callback) :
 OceanNode( options ),
-_options ( options )
+_options ( options ),
+_callback( callback ),
+_needsMapNode( true )
 {
+    // Triton requires a constant update traversal.
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+}
+
+
+// @deprecated ctor
+TritonNode::TritonNode(osgEarth::MapNode* mapNode,
+                       const TritonOptions& options,
+                       Callback* callback) :
+OceanNode( options ),
+_options ( options ),
+_callback( callback )
+{
+    // Triton requires a constant update traversal.
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
+    setMapNode(mapNode);
+    _needsMapNode = (mapNode == 0L);
+}
+
+void
+TritonNode::setMaskLayer(const osgEarth::ImageLayer* maskLayer)
+{
+    _maskLayer = maskLayer;
+    create();
+}
+
+void
+TritonNode::setMapNode(osgEarth::MapNode* mapNode)
+{
+    if (!mapNode)
+    {
+        this->removeChildren(0, this->getNumChildren());
+        _drawable = 0L;
+        _TRITON = 0L;
+        setSRS(0L);
+        _needsMapNode = true;
+    }
+    else
+    {
+        _mapNode = mapNode;
+        create();
+    }
+}
+
+void
+TritonNode::create()
+{    
+    this->removeChildren(0, this->getNumChildren());
+    _drawable = 0L;
+
+    osg::ref_ptr<MapNode> mapNode;
+    if (!_mapNode.lock(mapNode))
+        return;
+
     const osgEarth::Map* map = mapNode->getMap();
     if ( map )
         setSRS( map->getSRS() );
@@ -42,28 +98,30 @@ _options ( options )
     _releaser = mapNode->getResourceReleaser();
 
     // create an object to house Triton data and resources.
-    _TRITON = new TritonContext( options );
+    if (!_TRITON.valid())
+        _TRITON = new TritonContext(_options);
 
     if ( map )
         _TRITON->setSRS( map->getSRS() );
 
-    if ( callback )
-        _TRITON->setCallback( callback );
+    if ( _callback.valid() )
+        _TRITON->setCallback( _callback.get() );
 
     TritonDrawable* drawable = new TritonDrawable(mapNode, _TRITON);
     _drawable = drawable;
     _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
     _alphaUniform->set(getAlpha());
     _drawable->setNodeMask( TRITON_OCEAN_MASK );
+    drawable->setMaskLayer(_maskLayer.get());
     this->addChild(_drawable);
 
     drawable->_heightCameraParent = this;
 
-    this->setNumChildrenRequiringUpdateTraversal(1);
+    //this->setNumChildrenRequiringUpdateTraversal(1);
 
     // Place in the depth-sorted bin and set a rendering order.
     // We want Triton to render after the terrain.
-    _drawable->getOrCreateStateSet()->setRenderBinDetails( options.renderBinNumber().get(), "DepthSortedBin" );
+    _drawable->getOrCreateStateSet()->setRenderBinDetails( _options.renderBinNumber().get(), "DepthSortedBin" );
 }
 
 TritonNode::~TritonNode()
@@ -105,9 +163,25 @@ TritonNode::computeBound() const
 void
 TritonNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _TRITON->ready() )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        _TRITON->update(nv.getFrameStamp()->getSimulationTime());
+        // Find a MapNode in the traversal path if necessary:
+        if (_needsMapNode)
+        {
+            MapNode* mapNode = osgEarth::findInNodePath<MapNode>(nv);
+            if (mapNode)
+            {
+                setMapNode(mapNode);
+                _needsMapNode = false;
+            }
+        }
+
+        // Tick Triton each frame:
+        if (_TRITON->ready())
+        {
+            _TRITON->update(nv.getFrameStamp()->getSimulationTime());
+        }
     }
+
     osgEarth::Util::OceanNode::traverse(nv);
 }

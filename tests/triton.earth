@@ -16,12 +16,12 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
         <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
     </image>
 
-    <ocean driver="triton">
+    <triton>
         <user> my_user_name </user>
         <license_code> my_license_code </license_code>
         <max_altitude> 500000 </max_altitude>
         <mask_layer>ocean_mask</mask_layer>
-    </ocean>
+    </triton>
 
     <viewpoints>
         <viewpoint name="Hawaii"   heading="-29" height="-204" lat="20.6714" long="-156.5384" pitch="-4" range="3270"/>

@@ -24,9 +24,13 @@
 #include <osgEarth/Lighting>
 #include <osg/Depth>
 
-#define LC "[ModelLayer] "
+#define LC "[ModelLayer] Layer \"" << getName() << "\" "
 
 using namespace osgEarth;
+
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(model, ModelLayer);
+}
 
 //------------------------------------------------------------------------
 
@@ -53,53 +57,42 @@ namespace
 
 //------------------------------------------------------------------------
 
-ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
-ConfigOptions( options )
+ModelLayerOptions::ModelLayerOptions(const ConfigOptions& options) :
+VisibleLayerOptions( options )
 {
     setDefaults();
     fromConfig( _conf ); 
 }
 
-ModelLayerOptions::ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions ) :
-ConfigOptions()
+ModelLayerOptions::ModelLayerOptions(const std::string& in_name, const ModelSourceOptions& driverOptions) :
+VisibleLayerOptions()
 {
     setDefaults();
     fromConfig( _conf );
-    _name = name;
     _driver = driverOptions;
+    name() = in_name;
 }
 
 ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
-ConfigOptions(rhs.getConfig())
+VisibleLayerOptions(rhs)
 {
-    _name = optional<std::string>(rhs._name);
     _driver = optional<ModelSourceOptions>(rhs._driver);
-    _enabled = optional<bool>(rhs._enabled);
-    _visible = optional<bool>(rhs._visible);
     _opacity = optional<float>(rhs._opacity);
     _lighting = optional<bool>(rhs._lighting);
     _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
     _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
     _terrainPatch = optional<bool>(rhs._terrainPatch);
-    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
-    _cacheId = optional<std::string>(rhs._cacheId);
 }
 
 ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
 {
-    ConfigOptions::operator =(rhs);
-
-    _name = optional<std::string>(rhs._name);
+    VisibleLayerOptions::operator =(rhs);
     _driver = optional<ModelSourceOptions>(rhs._driver);
-    _enabled = optional<bool>(rhs._enabled);
-    _visible = optional<bool>(rhs._visible);
     _opacity = optional<float>(rhs._opacity);
     _lighting = optional<bool>(rhs._lighting);
     _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
     _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
     _terrainPatch = optional<bool>(rhs._terrainPatch);
-    _cachePolicy = optional<CachePolicy>(rhs._cachePolicy);
-    _cacheId = optional<std::string>(rhs._cacheId);
 
     return *this;
 }
@@ -107,8 +100,6 @@ ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
 void
 ModelLayerOptions::setDefaults()
 {
-    _enabled.init     ( true );
-    _visible.init     ( true );
     _lighting.init    ( true );
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
@@ -118,26 +109,22 @@ ModelLayerOptions::setDefaults()
 Config
 ModelLayerOptions::getConfig() const
 {
-    Config conf = ConfigOptions::newConfig();
+    Config conf = VisibleLayerOptions::newConfig();
+    conf.key() = "model";
 
     conf.updateIfSet( "name",           _name );
-    conf.updateIfSet( "enabled",        _enabled );
-    conf.updateIfSet( "visible",        _visible );
     conf.updateIfSet( "lighting",       _lighting );
     conf.updateIfSet( "opacity",        _opacity );
     conf.updateIfSet( "mask_min_level", _maskMinLevel );
     conf.updateIfSet( "patch",          _terrainPatch );  
-
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );  
-    conf.updateIfSet("cacheid", _cacheId);
 
     // Merge the ModelSource options
     if ( driver().isSet() )
         conf.merge( driver()->getConfig() );
 
     // Merge the MaskSource options
-    if ( maskOptions().isSet() )
-        conf.add( "mask", maskOptions()->getConfig() );
+    if ( mask().isSet() )
+        conf.add( "mask", mask()->getConfig() );
 
     return conf;
 }
@@ -145,22 +132,16 @@ ModelLayerOptions::getConfig() const
 void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "name",           _name );
-    conf.getIfSet( "enabled",        _enabled );
-    conf.getIfSet( "visible",        _visible );
     conf.getIfSet( "lighting",       _lighting );
     conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "mask_min_level", _maskMinLevel );
     conf.getIfSet( "patch",          _terrainPatch );
 
-    conf.getObjIfSet( "cache_policy", _cachePolicy );  
-    conf.getIfSet("cacheid", _cacheId);
-
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
 
     if ( conf.hasChild("mask") )
-        maskOptions() = MaskSourceOptions(conf.child("mask"));
+        mask() = MaskSourceOptions(conf.child("mask"));
 }
 
 void
@@ -172,30 +153,45 @@ ModelLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-ModelLayer::ModelLayer( const ModelLayerOptions& options ) :
-_initOptions( options )
+ModelLayer::ModelLayer() :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
 {
-    copyOptions();
+    init();
 }
 
-ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
-_initOptions( ModelLayerOptions( name, options ) )
+ModelLayer::ModelLayer(const ModelLayerOptions& options) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
-    copyOptions();
+    init();
 }
 
-ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
-_modelSource( source ),
-_initOptions( options )
+ModelLayer::ModelLayer(const std::string& name, const ModelSourceOptions& options) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(ModelLayerOptions(name, options))
 {
-    copyOptions();
+    init();
 }
 
-ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
-_initOptions( ModelLayerOptions(name) ),
+ModelLayer::ModelLayer(const ModelLayerOptions& options, ModelSource* source) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options),
+_modelSource( source )
+{
+    init();
+}
+
+ModelLayer::ModelLayer(const std::string& name, osg::Node* node) :
+VisibleLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(ModelLayerOptions(name)),
 _modelSource( new NodeModelSource(node) )
 {
-    copyOptions();
+    init();
 }
 
 ModelLayer::~ModelLayer()
@@ -206,45 +202,31 @@ ModelLayer::~ModelLayer()
 Config
 ModelLayer::getConfig() const
 {
-    Config layerConf = getModelLayerOptions().getConfig();
-    layerConf.set("name", getName());
-    layerConf.set("driver", getModelLayerOptions().driver()->getDriver());
+    Config layerConf = Layer::getConfig(); //getModelLayerOptions().getConfig();
+    layerConf.set("name", getName()); // redundant?
+    layerConf.set("driver", options().driver()->getDriver());
     layerConf.key() = "model";
     return layerConf;
 }
 
 void
-ModelLayer::copyOptions()
+ModelLayer::init()
 {
-    _runtimeOptions = _initOptions;
-
-    _alphaEffect = new AlphaEffect();
-    _alphaEffect->setAlpha( *_initOptions.opacity() );
-    
-    if (!_runtimeOptions.name()->empty())
-    {
-        setName(_runtimeOptions.name().get());
-    }
-}
-
-void
-ModelLayer::setName(const std::string& name)
-{
-    Layer::setName(name);
-    _runtimeOptions.name() = name;
+    VisibleLayer::init();
+    _sgCallbacks = new SceneGraphCallbacks();
 }
 
 const Status&
 ModelLayer::open()
 {
-    if ( !_modelSource.valid() && _initOptions.driver().isSet() )
+    if ( !_modelSource.valid() && options().driver().isSet() )
     {
-        std::string driverName = _initOptions.driver()->getDriver();
+        std::string driverName = options().driver()->getDriver();
 
-        OE_INFO << LC << "Opening model layer \"" << getName() << "\", driver=\"" << driverName << "\"" << std::endl;
+        OE_INFO << LC << "Opening; driver=\"" << driverName << "\"" << std::endl;
         
         // Try to create the model source:
-        _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
+        _modelSource = ModelSourceFactory::create( options().driver().get() );
         if ( _modelSource.valid() )
         {
             _modelSource->setName( this->getName() );
@@ -253,11 +235,11 @@ ModelLayer::open()
             if (modelStatus.isOK())
             {
                 // the mask, if there is one:
-                if ( !_maskSource.valid() && _initOptions.maskOptions().isSet() )
+                if ( !_maskSource.valid() && options().mask().isSet() )
                 {
                     OE_INFO << LC << "...initializing mask, driver=" << driverName << std::endl;
 
-                    _maskSource = MaskSourceFactory::create( *_initOptions.maskOptions() );
+                    _maskSource = MaskSourceFactory::create( options().mask().get() );
                     if ( _maskSource.valid() )
                     {
                         const Status& maskStatus = _maskSource->open(_readOptions.get());
@@ -268,7 +250,7 @@ ModelLayer::open()
                     }
                     else
                     {
-                        setStatus(Status::Error(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << _initOptions.maskOptions()->getDriver() << "\""));
+                        setStatus(Status::Error(Status::ServiceUnavailable, Stringify() << "Cannot find mask driver \"" << options().mask()->getDriver() << "\""));
                     }
                 }
             }
@@ -290,26 +272,26 @@ ModelLayer::open()
 void
 ModelLayer::setReadOptions(const osgDB::Options* readOptions)
 {
-    _readOptions = Registry::cloneOrCreateOptions(readOptions);
+    Layer::setReadOptions(readOptions);
 
     // Create some local cache settings for this layer:
     CacheSettings* oldSettings = CacheSettings::get(readOptions);
     _cacheSettings = oldSettings ? new CacheSettings(*oldSettings) : new CacheSettings();
 
     // bring in the new policy for this layer if there is one:
-    _cacheSettings->integrateCachePolicy(_initOptions.cachePolicy());
+    _cacheSettings->integrateCachePolicy(options().cachePolicy());
 
     // if caching is a go, install a bin.
     if (_cacheSettings->isCacheEnabled())
     {
         std::string binID;
-        if (_initOptions.cacheId().isSet() && !_initOptions.cacheId()->empty())
+        if (options().cacheId().isSet() && !options().cacheId()->empty())
         {
-            binID = _initOptions.cacheId().get();
+            binID = options().cacheId().get();
         }
         else
         {
-            Config conf = _initOptions.driver()->getConfig();
+            Config conf = options().driver()->getConfig();
             binID = hashToString(conf.toJSON(false));
         }
 
@@ -317,13 +299,13 @@ ModelLayer::setReadOptions(const osgDB::Options* readOptions)
         CacheBin* bin = _cacheSettings->getCache()->addBin(binID);
         if (bin)
         {
-            OE_INFO << LC << "Layer \"" << getName() << "\" cache bin is [" << binID << "]\n";
+            OE_INFO << LC << "Cache bin is [" << binID << "]\n";
             _cacheSettings->setCacheBin( bin );
         }
         else
         {
             // failed to create the bin, so fall back on no cache mode.
-            OE_WARN << LC << "Layer " << getName() << " failed to open a cache bin [" << binID << "], disabling caching\n";
+            OE_WARN << LC << "Failed to open a cache bin [" << binID << "], disabling caching\n";
             _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
         }
     }
@@ -361,13 +343,15 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
 
     if ( _modelSource.valid() )
     {
+        _modelSource->setSceneGraphCallbacks(_sgCallbacks.get());
+
         node = _modelSource->createNode( map, progress );
 
         if ( node )
         {
-            if ( _runtimeOptions.lightingEnabled().isSet() )
+            if ( options().lightingEnabled().isSet() )
             {
-                setLightingEnabledNoLock( *_runtimeOptions.lightingEnabled() );
+                setLightingEnabledNoLock( options().lightingEnabled().get() );
             }
 
             _modelSource->sync( _modelSourceRev );
@@ -376,13 +360,16 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
             // add a parent group for shaders/effects to attach to without overwriting any model programs directly
             osg::Group* group = new osg::Group();
             group->addChild(node);
+            
+            _alphaEffect = new AlphaEffect();
+            _alphaEffect->setAlpha( options().opacity().get() );
             _alphaEffect->attach( group->getOrCreateStateSet() );
             node = group;
 
             // Toggle visibility if necessary
-            if ( _runtimeOptions.visible().isSet() )
+            if ( options().visible().isSet() )
             {
-                node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
+                node->setNodeMask( options().visible().get() ? ~0 : 0 );
             }
 
             // Handle disabling depth testing
@@ -401,49 +388,27 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
     return node;
 }
 
-bool
-ModelLayer::getEnabled() const
+osg::Node*
+ModelLayer::getNode() const
 {
-    return *_runtimeOptions.enabled();
-}
-
-bool
-ModelLayer::getVisible() const
-{
-    return getEnabled() && *_runtimeOptions.visible();
-}
-
-void
-ModelLayer::setVisible(bool value)
-{
-    if ( _runtimeOptions.visible() != value )
-    {
-        _runtimeOptions.visible() = value;
-
-        _mutex.lock();
-        for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
-        {
-            if ( i->second.valid() )
-                i->second->setNodeMask( value ? ~0 : 0 );
-        }
-        _mutex.unlock();
-
-        fireCallback( &ModelLayerCallback::onVisibleChanged );
-    }
+    if (!_graphs.empty())
+        return _graphs.begin()->second.get();
+    else
+        return 0L;
 }
 
 float
 ModelLayer::getOpacity() const
 {
-    return *_runtimeOptions.opacity();
+    return options().opacity().get();
 }
 
 void
 ModelLayer::setOpacity(float opacity)
 {
-    if ( _runtimeOptions.opacity() != opacity )
+    if ( options().opacity() != opacity )
     {
-        _runtimeOptions.opacity() = opacity;
+        options().opacity() = opacity;
 
         _alphaEffect->setAlpha(opacity);
 
@@ -461,7 +426,7 @@ ModelLayer::setLightingEnabled( bool value )
 void
 ModelLayer::setLightingEnabledNoLock(bool value)
 {
-    _runtimeOptions.lightingEnabled() = value;
+    options().lightingEnabled() = value;
 
     for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
     {
@@ -476,8 +441,6 @@ ModelLayer::setLightingEnabledNoLock(bool value)
             if ( Registry::capabilities().supportsGLSL() )
             {
                 stateset->setDefine(OE_LIGHTING_DEFINE, value);
-                //stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
-                //    GL_LIGHTING, value ) );
             }
         }
     }
@@ -486,31 +449,16 @@ ModelLayer::setLightingEnabledNoLock(bool value)
 bool
 ModelLayer::isLightingEnabled() const
 {
-    return *_runtimeOptions.lightingEnabled();
+    return options().lightingEnabled().get();
 }
 
 void
-ModelLayer::addCallback( ModelLayerCallback* cb )
+ModelLayer::fireCallback(ModelLayerCallback::MethodPtr method)
 {
-    _callbacks.push_back( cb );
-}
-
-void
-ModelLayer::removeCallback( ModelLayerCallback* cb )
-{
-    ModelLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
-        _callbacks.erase( i );
-}
-
-
-void
-ModelLayer::fireCallback( ModelLayerCallbackMethodPtr method )
-{
-    for( ModelLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
     {
-        ModelLayerCallback* cb = i->get();
-        (cb->*method)( this );
+        ModelLayerCallback* cb = dynamic_cast<ModelLayerCallback*>(i->get());
+        if (cb) (cb->*method)( this );
     }
 }
 

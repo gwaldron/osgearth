@@ -47,13 +47,29 @@ using namespace osgEarth::Splat;
 
 namespace
 {
-    class LandCoverPatchLayer : public PatchLayer,
-                                public PatchLayer::AcceptCallback
+    //TODO: fix ambiguous inheritance issue here:
+    class LandCoverPatchLayer : public PatchLayer
     {
+    public:
+        struct AcceptCallbackAdapter : public PatchLayer::AcceptCallback
+        {
+            LandCoverPatchLayer* _owner;
+
+            AcceptCallbackAdapter(LandCoverPatchLayer* owner) : _owner(owner) { }
+
+            bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const {
+                return _owner->acceptLayer(nv, camera);
+            }
+
+            bool acceptKey(const TileKey& key) const { 
+                return _owner->acceptKey(key);
+            }
+        };
+
     public:
         LandCoverPatchLayer() : PatchLayer()
         {
-            this->setAcceptCallback(this);
+            this->setAcceptCallback(new AcceptCallbackAdapter(this));
         }
 
         void setZoneAndLayer(const Zone* zone, const LandCoverLayer* layer)
@@ -62,7 +78,7 @@ namespace
             _landCoverLayer = layer;
         }
 
-    public: // AcceptCallback
+    public: // AcceptCallbackAdapter
 
         /**
          * Whether to cull this layer. We only want to cull this layer if 

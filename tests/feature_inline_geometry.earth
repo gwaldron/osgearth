@@ -24,7 +24,7 @@ display. The options are:
     </image>
     
     
-    <model name="great_circle" driver="feature_geom">
+    <feature_model name="great_circle">
 	    <features driver="ogr">
 			<geometry>
 				POLYGON((-120 30, -120 50, -70 50, -70 30))
@@ -37,14 +37,15 @@ display. The options are:
             <style type="text/css">
                 default {
                    fill: #ffff006f;
+                   stroke: #ffff00;
+                   stroke-width: 3px;
 				   altitude-clamping: terrain-drape;
                 }                    
             </style>
-        </styles>
-        
-    </model>
+        </styles>        
+    </feature_model>
     
-    <model name="rhumb_line" driver="feature_geom">
+    <feature_model name="rhumb_line">
 	    <features driver="ogr">
 			<geometry>
 				POLYGON((-68 30, -68 50, -20 50, -20 30))
@@ -57,11 +58,12 @@ display. The options are:
             <style type="text/css">
                 default {
                    fill: #ff00ff6f;
+                   stroke: #ff00ff;
+                   stroke-width: 3px;
 				   altitude-clamping: terrain-drape;
                 }                    
             </style>
-        </styles>
-        
-    </model>
+        </styles>        
+    </feature_model>
   
 </map>

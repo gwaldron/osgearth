@@ -22,6 +22,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthSilverLining/SilverLiningNode>
+#include <osgEarth/NodeUtils>
 
 #define LC "[osgearth_silverlining] "
 

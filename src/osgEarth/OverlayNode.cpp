@@ -163,6 +163,13 @@ _getGroup ( provider )
             OE_WARN << LC << "Overlay technique not available; disabled." << std::endl;
         }
     }
+
+    // If we don't have a map node, try to find one during UPDATE
+    if (mapNode == 0L)
+    {
+        _needsMapNode = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    }
 }
 
 OverlayNode::~OverlayNode()
@@ -309,6 +316,17 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
                 applyChanges();
                 _dirty = false;
                 ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+            }
+
+            if (_needsMapNode)
+            {
+                MapNode* m = osgEarth::findInNodePath<MapNode>(nv);
+                if (m)
+                {
+                    _needsMapNode = false;
+                    ADJUST_UPDATE_TRAV_COUNT(this, -1);
+                    setMapNode(m);
+                }
             }
             
             // traverse children directly, regardles of active status

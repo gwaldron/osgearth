@@ -136,20 +136,6 @@ namespace
 
 //------------------------------------------------------------------------
 
-RexTerrainEngineNode::ElevationChangedCallback::ElevationChangedCallback( RexTerrainEngineNode* terrain ):
-_terrain( terrain )
-{
-    //nop
-}
-
-void
-RexTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
-{
-    _terrain->refresh(true); // true => force a dirty
-}
-
-//------------------------------------------------------------------------
-
 RexTerrainEngineNode::RexTerrainEngineNode() :
 TerrainEngineNode     ( ),
 _terrain              ( 0L ),
@@ -169,7 +155,7 @@ _stateUpdateRequired  ( false )
     _requireElevationTextures = true;
 
     // install an elevation callback so we can update elevation data
-    _elevationCallback = new ElevationChangedCallback( this );
+    //_elevationCallback = new ElevationChangedCallback( this );
 
     // static shaders.
     if ( Registry::capabilities().supportsGLSL() )
@@ -1001,7 +987,7 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
     if ( layer == 0L || layer->getEnabled() == false )
         return;
 
-    layer->addCallback( _elevationCallback.get() );
+    //layer->addCallback( _elevationCallback.get() );
 
     // only need to refresh is the elevation layer is visible.
     if (layer->getVisible())
@@ -1016,7 +1002,7 @@ RexTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
     if ( layerRemoved->getEnabled() == false )
         return;
 
-    layerRemoved->removeCallback( _elevationCallback.get() );
+    //layerRemoved->removeCallback( _elevationCallback.get() );
 
     // only need to refresh is the elevation layer is visible.
     if (layerRemoved->getVisible())

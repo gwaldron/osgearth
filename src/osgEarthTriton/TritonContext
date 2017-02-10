@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_TRITON_CONTEXT_H
 #define OSGEARTH_TRITON_CONTEXT_H
 
+#include <Triton.h>
 #include "Common"
 #include "TritonOptions"
 #include "TritonAPIWrapper"
@@ -26,7 +27,6 @@
 #include <osg/Referenced>
 #include <osg/Light>
 #include <osgEarth/ThreadingUtils>
-#include <Triton.h>
 
 namespace osgEarth {
     class SpatialReference;

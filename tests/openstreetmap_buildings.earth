@@ -9,24 +9,23 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <options>
         <terrain driver="rex"/>
     </options>
+    
+    <feature_source name="buildings-data" driver="tfs">
+        <url>http://readymap.org/osm-buildings/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script>
+             <![CDATA[
+               ("building" in feature.properties);
+             ]]>
+            </script>
+        </filters>
+    </feature_source>
 
-    <model name="buildings" driver="feature_geom">
-
-        <features name="buildings" driver="tfs">
-            <url>http://readymap.org/osm-buildings/</url>
-            <min_level>14</min_level>
-            <max_level>14</max_level>
-            <profile>spherical-mercator</profile>
-            <format>pbf</format>
-            <filters>
-                <script>
-                 <![CDATA[
-                   ("building" in feature.properties);
-                 ]]>
-                </script>
-            </filters>
-        </features>
-
+    <feature_model name="buildings" feature_source="buildings-data">
         <styles>
             <library name="us_resources">
                 <url>../data/resources/textures_us/catalog.xml</url>
@@ -74,7 +73,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
                 }
             </script>
         </styles>
-    </model>
+    </feature_model>
 
     <image name="osm_mapnik" driver="xyz">
         <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>

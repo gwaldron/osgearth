@@ -40,6 +40,11 @@ namespace osgEarth
     {
     public:
         /**
+         * Constructs a new Clampable Node.
+         */
+        ClampableNode();
+
+        /**
          * Constructs a new clampable node.
          */
         ClampableNode( MapNode* mapNode, bool clamped =true );

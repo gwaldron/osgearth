@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
-#include <osgEarth/Layer>
+#include <osgEarth/VisibleLayer>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
@@ -39,7 +39,7 @@ namespace osgEarth
     /**
      * Initialization (and serializable) options for a terrain layer.
      */
-    class OSGEARTH_EXPORT TerrainLayerOptions : public LayerOptions
+    class OSGEARTH_EXPORT TerrainLayerOptions : public VisibleLayerOptions
     {
     public:
         TerrainLayerOptions();
@@ -90,20 +90,6 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
-        
-        /**
-         * Whether to use this layer with the map. Setting this to false means that 
-         * the layer will remain in its map model but will not be used by the 
-         * terrain engine. You cannot change the "enabled" state at runtime.
-         */        
-        //optional<bool>& enabled() { return _enabled; }
-        //const optional<bool>& enabled() const { return _enabled; }
-
-        /**
-         * Whether to render (or otherwise use) the layer.
-         */
-        optional<bool>& visible() { return _visible; }
-        const optional<bool>& visible() const { return _visible; }
 
         /**
          * Whether to use exact cropping if image cropping is necessary
@@ -116,20 +102,6 @@ namespace osgEarth
          */
         optional<unsigned int>& reprojectedTileSize() { return _reprojectedTileSize; }
         const optional<unsigned int>& reprojectedTileSize() const { return _reprojectedTileSize; }
-
-        /**
-         * Explicit cache ID to uniquely identify the cache that matched this
-         * layer's tile source properties. This is usually automatically
-         * generated but you can override it here.
-         */
-        optional<std::string>& cacheId() { return _cacheId; }
-        const optional<std::string>& cacheId() const { return _cacheId; }
-
-        /**
-         * Caching policy to use for this layer.
-         */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
         
         /**
          * The loading weight of this MapLayer (for threaded loading policies).
@@ -170,36 +142,28 @@ namespace osgEarth
         optional<double>            _maxResolution;
         optional<float>             _loadingWeight;
         optional<bool>              _exactCropping;
-        //optional<bool>              _enabled;
-        optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
         optional<unsigned>          _maxDataLevel;
-
-        optional<std::string>       _cacheId;
-        optional<CachePolicy>       _cachePolicy;
         optional<ProxySettings>     _proxySettings;
     };
 
-    /**
-     * Runtime property notification callback for TerrainLayers.
-     */
-    struct TerrainLayerCallback : public osg::Referenced
+
+    struct TerrainLayerCallback : public VisibleLayerCallback
     {
-        virtual void onVisibleChanged( class TerrainLayer* layer ) { }
-        virtual ~TerrainLayerCallback() { }
+        typedef void(TerrainLayerCallback::*MethodPtr)(class TerrainLayer*);
     };
-
-    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(class TerrainLayer* layer);
-
 
     /**
      * A layer that comprises the terrain skin (image or elevation layer)
      */
-    class OSGEARTH_EXPORT TerrainLayer : public Layer
+    class OSGEARTH_EXPORT TerrainLayer : public VisibleLayer
     {
+    public:
+        META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions);
+
     protected:
-        TerrainLayer(TerrainLayerOptions*);
+        TerrainLayer(TerrainLayerOptions* =0L);
 
         TerrainLayer(TerrainLayerOptions*, TileSource*);
 
@@ -210,26 +174,10 @@ namespace osgEarth
         /** Opens the layer and initializes the data source. */
         virtual const Status& open();
 
-        /**
-         * Whether to use this layer. Note, a layer is enabled/disabled once and its
-         * status cannot be changed.
-         */
-        virtual bool getEnabled() const { return _runtimeEnabled; }
-
+    public:
 
         /**
-         * The options used to initialize this layer.
-         */
-        const TerrainLayerOptions& getTerrainLayerOptions() const { return *_layerOptions; }
-
-        /**
-         * Whether to draw (or otherwise use) this layer.
-         */
-        void setVisible( bool value );
-        bool getVisible() const { return getEnabled() && getTerrainLayerOptions().visible() == true; }
-
-        /**
-         * Gets the profile of this MapLayer
+         * Gets the profile of this layer
          */
         const Profile* getProfile() const;
 
@@ -282,7 +230,6 @@ namespace osgEarth
          * Sets the I/O options to use. This data may include cache information.
          */
         void setReadOptions(const osgDB::Options* readOptions);
-        const osgDB::Options* getReadOptions() const { return _readOptions.get(); }
 
         /**
          * Data Extents reported for this layer are copied into output.
@@ -294,7 +241,6 @@ namespace osgEarth
     public: // Layer interface
 
         virtual SequenceControl* getSequenceControl();
-
 
     public:
         
@@ -335,6 +281,11 @@ namespace osgEarth
          */
         CacheSettings* getCacheSettings() const;
 
+    protected: // Layer
+
+        // CTOR initialization; call from subclass.
+        virtual void init();
+
     protected:
 
         // Creates the driver the supplies the actual data.
@@ -352,7 +303,6 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
         unsigned                       _tileSize;  
-        osg::ref_ptr<osgDB::Options>   _readOptions;
         osg::ref_ptr<MemCache>         _memCache;
 
         // profile from tile source or cache, before any overrides applied
@@ -361,27 +311,21 @@ namespace osgEarth
         // profile to use
         mutable osg::ref_ptr<const Profile> _profile;
 
-        // CTOR initialization; call from subclass.
-        virtual void init();
-
         // cache key for metadata
         std::string getMetadataKey(const Profile*) const;
 
-    private:
-        TerrainLayerOptions* _layerOptions;
-        TerrainLayerOptions  _layerOptionsConcrete;
-        TerrainLayerOptions& mutableTerrainLayerOptions() { return *_layerOptions; }
+        // Called by a subclass before open() to indicate whether this
+        // layer should try to open a tile source and fail if unsuccesful.
+        void setTileSourceExpected(bool value) { _tileSourceExpected = value; }
 
-        mutable Threading::Mutex       _initTileSourceMutex;
-        osg::ref_ptr<TileSource>       _tileSource;
+    private:
+        bool                     _tileSourceExpected;
+        mutable Threading::Mutex _initTileSourceMutex;
+        osg::ref_ptr<TileSource> _tileSource;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
         std::string _runtimeCacheId;
-
-        // Enabled flag that starts out as the enabled() in the options, but might
-        // get overridden.
-        bool _runtimeEnabled;
         
         // cache policy that may be automatically set by the layer and will 
         // override the runtime options policy if set.
@@ -390,13 +334,13 @@ namespace osgEarth
         typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
         CacheBinMetadataMap _cacheBinMetadata;
 
-        mutable Threading::Mutex    _mutex;
+        mutable Threading::Mutex  _mutex;
 
         mutable osg::ref_ptr<CacheSettings> _cacheSettings;
 
         bool _openCalled;
 
-        virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
+        void fireCallback(TerrainLayerCallback::MethodPtr method);
 
         // methods accesible by Map:
         friend class Map;
@@ -407,6 +351,9 @@ namespace osgEarth
         void refreshTileSourceCachePolicyHint(TileSource*);
 
         TileSource* createAndOpenTileSource();
+
+        // Figure out the cache settings for this layer.
+        void establishCacheSettings();
 
     protected:
         /** Closes the layer, deleting its tile source and any other resources. */

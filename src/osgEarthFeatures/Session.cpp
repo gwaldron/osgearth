@@ -48,9 +48,9 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
-    // if the caller did not provide a dbOptions, take it from the map.
-    if ( map && !dbOptions )
-        _dbOptions = map->getReadOptions();
+    //// if the caller did not provide a dbOptions, take it from the map.
+    //if ( map && !dbOptions )
+    //    _dbOptions = map->getReadOptions();
 
     // A new cache to optimize state changes. Since the cache lives in the Session, any
     // geometry created under this session takes advantage of it. That's reasonable since
@@ -68,7 +68,16 @@ Session::~Session()
 const osgDB::Options*
 Session::getDBOptions() const
 {
-    return _dbOptions.get();
+    // local options if they were set:
+    if (_dbOptions.valid())
+        return _dbOptions.get();
+
+    // otherwise get them from the map if possible:
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+        return map->getReadOptions();
+
+    return 0L;
 }
 
 void
@@ -128,6 +137,12 @@ ScriptEngine*
 Session::getScriptEngine() const
 {
     return _styleScriptEngine.get();
+}
+
+void
+Session::setFeatureSource(FeatureSource* fs)
+{
+    _featureSource = fs;
 }
 
 FeatureSource*

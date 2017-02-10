@@ -33,6 +33,8 @@
 #include <osgEarth/Registry>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 
 #include <osgEarth/TileVisitor>
 

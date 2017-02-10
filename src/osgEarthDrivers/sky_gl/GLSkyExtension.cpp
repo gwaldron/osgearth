@@ -23,6 +23,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>

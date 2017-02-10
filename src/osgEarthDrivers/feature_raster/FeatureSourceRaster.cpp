@@ -22,6 +22,7 @@
 #include <osgDB/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ImageLayer>
 #include <osgEarthFeatures/FeatureSource>
 
 #define LC "[Raster FeatureSource] "

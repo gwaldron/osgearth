@@ -25,16 +25,21 @@
 #include <osgViewer/Viewer>
 
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ModelLayer>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
+#include <osgEarthFeatures/FeatureModelLayer>
+
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -43,7 +48,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
 #define IMAGERY_URL      "http://readymap.org/readymap/tiles/1.0.0/22/"
-#define ELEVATION_URL    "http://readymap.org/readymap/tiles/1.0.0/9/"
+#define ELEVATION_URL    "http://readymap.org/readymap/tiles/1.0.0/116/"
 #define BUILDINGS_URL    "../data/boston_buildings_utm19.shp"
 #define RESOURCE_LIB_URL "../data/resources/textures_us/catalog.xml"
 #define STREETS_URL      "../data/boston-scl-utm19n-meters.shp"
@@ -87,8 +92,13 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );
 
+    // Pick a terrain engine expressly:
+    RexTerrainEngine::RexTerrainEngineOptions terrainOptions;
+    MapNodeOptions mapNodeOptions;
+    mapNodeOptions.setTerrainOptions(terrainOptions);
+
     // make the map scene graph:
-    MapNode* mapNode = new MapNode( map );
+    MapNode* mapNode = new MapNode(map, mapNodeOptions);
     root->addChild( mapNode );
 
     // zoom to a good startup position
@@ -110,7 +120,7 @@ void addImagery(Map* map)
     // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = IMAGERY_URL;
-    map->addImageLayer( new ImageLayer("ReadyMap imagery", imagery) );
+    map->addLayer( new ImageLayer("ReadyMap imagery", imagery) );
 }
 
 
@@ -119,17 +129,17 @@ void addElevation(Map* map)
     // add a TMS elevation layer:
     TMSOptions elevation;
     elevation.url() = ELEVATION_URL;
-    map->addElevationLayer( new ElevationLayer("ReadyMap elevation", elevation) );
+    map->addLayer( new ElevationLayer("ReadyMap elevation", elevation) );
 }
 
 
 void addBuildings(Map* map)
 {
     // create a feature source to load the building footprint shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "buildings";
-    feature_opt.url() = BUILDINGS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureOptions buildingData;
+    buildingData.name() = "buildings";
+    buildingData.url() = BUILDINGS_URL;
+    buildingData.buildSpatialIndex() = true;
     
     // a style for the building data:
     Style buildingStyle;
@@ -184,13 +194,13 @@ void addBuildings(Map* map)
     layout.tileSizeFactor() = 52.0;
     layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
-    // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.styles() = styleSheet;
-    fgm_opt.layout() = layout;
+    FeatureModelLayer* layer = new FeatureModelLayer();
+    layer->setName("Buildings");
+    layer->options().featureSource() = buildingData;
+    layer->options().styles() = styleSheet;
+    layer->options().layout() = layout;
 
-    map->addModelLayer( new ModelLayer( "buildings", fgm_opt ) );
+    map->addLayer(layer);
 }
 
 
@@ -237,23 +247,24 @@ void addStreets(Map* map)
     layout.maxRange()       = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.layout() = layout;
-    fgm_opt.styles() = new StyleSheet();
-    fgm_opt.styles()->addStyle( style );
+    FeatureModelLayerOptions streets;
+    streets.name() = "streets";
+    streets.featureSource() = feature_opt;
+    streets.layout() = layout;
+    streets.styles() = new StyleSheet();
+    streets.styles()->addStyle( style );
 
-    map->addModelLayer( new ModelLayer("streets", fgm_opt) );
+    map->addLayer(new FeatureModelLayer(streets));
 }
 
 
 void addParks(Map* map)
 {
     // create a feature source to load the shapefile.
-    OGRFeatureOptions feature_opt;
-    feature_opt.name() = "parks";
-    feature_opt.url() = PARKS_URL;
-    feature_opt.buildSpatialIndex() = true;
+    OGRFeatureOptions parksData;
+    parksData.name() = "parks";
+    parksData.url() = PARKS_URL;
+    parksData.buildSpatialIndex() = true;
 
     // a style:
     Style style;
@@ -277,21 +288,25 @@ void addParks(Map* map)
     // that's sufficiently transparent; this will prevent depth-sorting anomolies
     // common when rendering lots of semi-transparent objects.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
+    render->transparent() = true;
     render->minAlpha() = 0.15f;
 
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 3.0f;
-    layout.maxRange()       = 2000.0f;
+    layout.tileSize() = 650;
+    layout.maxRange() = 2000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
-    FeatureGeomModelOptions fgm_opt;
-    fgm_opt.featureOptions() = feature_opt;
-    fgm_opt.layout() = layout;
-    fgm_opt.styles() = new StyleSheet();
-    fgm_opt.styles()->addStyle( style );
-    fgm_opt.compilerOptions().instancing() = true;
+    FeatureModelLayerOptions parks;
+    parks.name() = "parks";
+    parks.featureSource() = parksData;
+    parks.layout() = layout;
+    parks.styles() = new StyleSheet();
+    parks.styles()->addStyle( style );
 
-    map->addModelLayer( new ModelLayer("parks", fgm_opt) );
+    parks.instancing() = true;
+    parks.clusterCulling() = false;
+
+    map->addLayer(new FeatureModelLayer(parks));
 }

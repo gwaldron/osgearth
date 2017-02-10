@@ -28,11 +28,12 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Features;
 
-    class FeatureGeomModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
+    class FeatureGeomModelOptions : public FeatureModelSourceOptions,
+                                    public GeometryCompilerOptions // NO EXPORT; header only
     {
-    public:
-        GeometryCompilerOptions& compilerOptions() { return _compilerOptions; }
-        const GeometryCompilerOptions& compilerOptions() const { return _compilerOptions; }
+    //public:
+    //    GeometryCompilerOptions& compilerOptions() { return _compilerOptions; }
+    //    const GeometryCompilerOptions& compilerOptions() const { return _compilerOptions; }
 
     public:
         FeatureGeomModelOptions( const ConfigOptions& options =ConfigOptions() ) :
@@ -50,8 +51,7 @@ namespace osgEarth { namespace Drivers
 
             // merges the configurations together, so you can still specify 
             // compiler options at the model level
-            Config compilerConfig = _compilerOptions.getConfig();
-            conf.merge( compilerConfig );
+            conf.merge( GeometryCompilerOptions::getConfig() );
 
             return conf;
         }
@@ -59,16 +59,13 @@ namespace osgEarth { namespace Drivers
     protected:
         virtual void mergeConfig( const Config& conf ) {
             FeatureModelSourceOptions::mergeConfig( conf );
-            _compilerOptions.mergeConfig( conf );
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
-            _compilerOptions.mergeConfig(conf);
+            GeometryCompilerOptions::fromConfig(conf);
         }
-
-        GeometryCompilerOptions _compilerOptions;
     };
 
 } } // namespace osgEarth::Drivers

@@ -5,7 +5,6 @@ osgEarth Sample
 <map name="Wordwide Line Vectors" type="geocentric">
   
     <options>
-        <lighting>false</lighting>
         <terrain min_lod="16"/>
     </options>
 
@@ -13,14 +12,14 @@ osgEarth Sample
         <url>../data/world.tif</url>
         <cache_policy usage="no_cache"/>
     </image>
-    
-    <model name="world_boundaries" driver="feature_geom">
             
-        <features name="world" driver="ogr">
-            <url>../data/world.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-            <convert type="line"/>
-        </features>
+    <feature_source name="world-data" driver="ogr">
+        <url>../data/world.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+        <convert type="line"/>
+    </feature_source>
+    
+    <feature_model name="world_boundaries" feature_source="world-data">
         
         <layout tile_size="500000" crop_features="true">
             <level max_range="1e10"/>
@@ -37,6 +36,6 @@ osgEarth Sample
             </style>
         </styles>
         
-    </model>
+    </feature_model>
   
 </map>

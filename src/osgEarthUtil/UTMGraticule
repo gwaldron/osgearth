@@ -22,6 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapNodeObserver>
+#include <osgEarth/ModelLayer>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osg/ClipPlane>
@@ -205,7 +206,8 @@ namespace osgEarth { namespace Util
         }
 
         bool disconnect(MapNode* mapNode) {
-            mapNode->onModelLayerRemoved(_layer.get());
+            mapNode->getMap()->removeLayer(_layer.get());
+            //mapNode->onModelLayerRemoved(_layer.get());
             return true;
         }
 

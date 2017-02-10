@@ -28,11 +28,11 @@ using namespace osgEarth::SimpleOcean;
 
 
 ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
-                                                   const ImageLayerOptions& options ) :
-ImageLayer( options ),
+                                                   const ImageLayerOptions& inoptions ) :
+ImageLayer( inoptions ),
 _mapf     ( sourceMap )
 {
-    mutableImageLayerOptions().cachePolicy() = CachePolicy::NO_CACHE;
+    options().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 TileSource*
@@ -44,7 +44,7 @@ ElevationProxyImageLayer::createTileSource()
 bool
 ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
-    return key.getLevelOfDetail() <= getImageLayerOptions().maxLevel().get();
+    return key.getLevelOfDetail() <= options().maxLevel().get();
 }
 
 bool

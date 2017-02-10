@@ -334,7 +334,7 @@ CompositeTileSource::add( ImageLayer* layer )
     _imageLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
     comp._layer = layer;
-    comp._imageLayerOptions = layer->getImageLayerOptions();
+    comp._imageLayerOptions = layer->options();
     _options._components.push_back( comp );    
 
     return true;
@@ -358,7 +358,7 @@ CompositeTileSource::add( ElevationLayer* layer )
     _elevationLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
     comp._layer = layer;
-    comp._elevationLayerOptions = layer->getElevationLayerOptions();
+    comp._elevationLayerOptions = layer->options();
     _options._components.push_back( comp );    
 
     return true;

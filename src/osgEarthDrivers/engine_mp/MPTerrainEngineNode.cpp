@@ -172,7 +172,7 @@ _terrain( terrain )
 }
 
 void
-MPTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
+MPTerrainEngineNode::ElevationChangedCallback::onVisibleChanged(VisibleLayer* layer)
 {
     _terrain->refresh(true); // true => force a dirty
 }

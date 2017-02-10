@@ -30,6 +30,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/Locators>
 #include <osgEarth/Progress>
+#include <osgEarth/MaskLayer>
+#include <osgEarth/ModelLayer>
 
 #include <osg/Node>
 #include <osg/StateSet>

@@ -24,7 +24,7 @@
 using namespace osgEarth::Splat;
 
 SplatLayer::SplatLayer() :
-Layer()
+VisibleLayer()
 {
     setName("Splat");
     setRenderType(osgEarth::Layer::RENDERTYPE_TILE);

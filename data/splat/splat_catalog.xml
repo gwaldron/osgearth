@@ -1,41 +1,14 @@
 <catalog name="Default" version="1">
 	<description>Default texture splatting catalog</description>
 	<classes>
-		<class name="cropland1">
+		<class name="cropland">
 			<image>cropland2.jpg</image>
-		</class>
-		<class name="cropland2">
-			<image>cropland5.jpg</image>
-		</class>
-		<class name="cropland3">
-			<image>cropland6.jpg</image>
-		</class>
-		<class name="cropland4">
-			<image>cropland6.jpg</image>
 		</class>
 		<class name="forest">
 			<image>forest5.jpg</image>
 		</class>
-		<class name="forest1">
-			<image>forest5.jpg</image>
-		</class>
-		<class name="forest2">
-			<image>forest6.jpg</image>
-		</class>
-		<class name="forest3">
-			<image>forest7.jpg</image>
-		</class>
-		<class name="forest4">
-			<image>forest8.jpg</image>
-		</class>
-		<class name="forest5">
-			<image>forest9.jpg</image>
-		</class>
 		<class name="grassland">
 			<image>grass5.jpg</image>
-		</class>
-		<class name="grassland2">
-			<image>grass6.jpg</image>
 		</class>
 		<class name="savanna">
 			<image>savanna1.jpg</image>
@@ -52,7 +25,7 @@
 				<scale>9.0</scale>
 			</detail>
 		</class>
-		<class name="mountain">
+		<class name="rock">
 			<image>rock_dark.jpg</image>
 		</class>
 		<class name="tundra">

@@ -1,0 +1,97 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_LAND_COVER_LAYER
+#define OSGEARTH_LAND_COVER_LAYER 1
+
+#include <osgEarth/ImageLayer>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT LandCoverLayerOptions : public ImageLayerOptions
+    {
+    public:
+        LandCoverLayerOptions(const ConfigOptions& co = ConfigOptions());
+        
+        /**
+         * Images layer from which to read source coverage data.
+         */
+        std::vector<ImageLayerOptions>& imageLayers() { return _imageLayers; }
+        const std::vector<ImageLayerOptions>& imageLayers() const { return _imageLayers; }
+
+        /**
+         * Amount by which to warp texture coordinates of coverage data.
+         * Try 0.01 as a starting point.
+         */
+        //optional<float>& warpFactor() { return _warp; }
+        //const optional<float>& warpFactor() const { return _warp; }
+
+        /**
+         * LOD at which to calculate the noise function for warping.
+         */
+        //optional<unsigned>& baseLOD() { return _baseLOD; }
+        //const optional<unsigned>& baseLOD() const { return _baseLOD; }
+
+        /**
+         * Bit size of the encoded data. The default is 32 (for a 32-bit signed
+         * floating point value) but you can set it to 16 if you know your data
+         * values are all within the range of a signed 16-bit float.
+         */
+        optional<unsigned>& bits() { return _bits; }
+        const optional<unsigned>& bits() const { return _bits; }
+
+    public:
+        virtual Config getConfig() const;
+
+    protected:
+        void fromConfig(const Config& conf);
+        virtual void mergeConfig(const Config& conf) {
+            ImageLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+
+        optional<float>                _warp;
+        optional<unsigned>             _baseLOD;
+        optional<unsigned>             _bits;
+        std::vector<ImageLayerOptions> _imageLayers;
+    };
+
+
+    class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
+    {
+    public:
+        META_Layer(osgEarth, LandCoverLayer, LandCoverLayerOptions);
+
+        /** Construct an emptry land cover layer. Use options() to configure */
+        LandCoverLayer();
+
+        /** Construct a land cover layer from options. */
+        LandCoverLayer(const LandCoverLayerOptions& options);
+
+    protected: // Layer
+
+        virtual void init();
+
+    protected: // TerrainLayer
+
+        virtual TileSource* createTileSource();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_LAND_COVER_LAYER

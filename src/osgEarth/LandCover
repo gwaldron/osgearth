@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_LAND_COVER_H
+#define OSGEARTH_LAND_COVER_H 1
+
+#include <osgEarth/Config>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * A single classification definition of land cover.
+     * For example, "forest" or "water".
+     * A set of these makes up a land cover dictionary.
+     */
+    class OSGEARTH_EXPORT LandCoverClass : public osg::Object
+    {
+    public:
+        META_Object(osgEarth, LandCoverClass);
+
+        LandCoverClass();
+        LandCoverClass(const Config& conf);
+        LandCoverClass(const LandCoverClass& rhs, const osg::CopyOp& op);
+
+    public:
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+    };
+    typedef std::vector< osg::ref_ptr<LandCoverClass> > LandCoverClassVector;
+
+
+    /**
+     * A complete set of available land cover classes.
+     */
+    class OSGEARTH_EXPORT LandCoverDictionary : public osg::Object
+    {
+    public:
+        META_Object(osgEarth, LandCoverDictionary);
+
+        LandCoverDictionary();
+        LandCoverDictionary(const LandCoverDictionary& rhs, const osg::CopyOp& op);
+        
+    public:
+        LandCoverClassVector& getClasses() { return _landCoverClasses; }
+        const LandCoverClassVector& getClasses() const { return _landCoverClasses; }
+
+    public:
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+
+    private:
+        LandCoverClassVector _landCoverClasses;
+    };
+
+
+    /**
+     * Maps an integral value from a land cover data source to one of the 
+     * land cover classes in the dictionary.
+     * For example, 42 --> "tundra".
+     */
+    class OSGEARTH_EXPORT LandCoverValueMapping : public osg::Object
+    {
+    public:
+        META_Object(osgEarth, LandCoverValueMapping);
+
+        LandCoverValueMapping();
+        LandCoverValueMapping(const Config& conf);
+        LandCoverValueMapping(const LandCoverValueMapping& rhs, const osg::CopyOp& op);
+
+    public:
+        void setValue(int value) { _value = value; }
+        int getValue() const { return _value.get(); }
+
+        void setLandCoverClass(LandCoverClass* lcClass) { _lcClass = lcClass; }
+        const LandCoverClass* getLandCoverClass() const { return _lcClass.get(); }
+
+        void fromConfig(const Config&);
+        Config getConfig() const;
+
+    private:
+        optional<int> _value;
+        osg::ref_ptr<LandCoverClass> _lcClass;
+    };
+    typedef std::vector< osg::ref_ptr<LandCoverValueMapping> > LandCoverValueMappingVector;
+
+
+    /**
+     * Defines a particular data source for land cover data, and stores
+     * the set of mappings from the source's values to the dictionary's 
+     * classes.
+     */
+    class OSGEARTH_EXPORT LandCoverDataSource : public osg::Object
+    {
+    public:
+        META_Object(osgEarth, LandCoverDataSource);
+
+        LandCoverDataSource();
+        LandCoverDataSource(const Config& conf);
+        LandCoverDataSource(const LandCoverDataSource& rhs, const osg::CopyOp& op);
+
+        LandCoverValueMappingVector& getMappings() { return _valueMappings; }
+        const LandCoverValueMappingVector& getMappings() const { return _valueMappings; }
+
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+
+    private:
+        LandCoverValueMappingVector _valueMappings;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_LAND_COVER_H

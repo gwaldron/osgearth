@@ -106,6 +106,8 @@ SET(LIB_PUBLIC_HEADERS
     IntersectionPicker
     IOTypes
     JsonUtils
+    LandCover
+    LandCoverLayer
     Layer
     LayerListener
     Lighting
@@ -279,6 +281,8 @@ set(TARGET_SRC
     IntersectionPicker.cpp
     IOTypes.cpp
     JsonUtils.cpp
+    LandCover.cpp
+    LandCoverLayer.cpp
     Layer.cpp
     Lighting.cpp
     Locators.cpp

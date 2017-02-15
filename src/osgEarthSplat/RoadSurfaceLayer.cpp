@@ -53,7 +53,13 @@ _optionsConcrete(options)
 void
 RoadSurfaceLayer::init()
 {
+    setTileSourceExpected(false);
+
+    // Create a rasterizer for rendering nodes to images.
+    _rasterizer = new TileRasterizer(); 
+
     ImageLayer::init();
+
     if (getName().empty())
         setName("Road surface");
 }
@@ -104,34 +110,15 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
     _session = 0L;
 }
 
-osg::Texture*
-RoadSurfaceLayer::createTexture(const TileKey& key, ProgressCallback* progress)
+osg::Node*
+RoadSurfaceLayer::getNode() const
 {
-    //OE_INFO << LC << key.str() << std::endl;
-
-    osg::Texture2D* tex = 0L;
-    
-    osg::ref_ptr<GeoNode> node = createNode(key, progress);
-    if (node.valid())
-    {
-        tex = new osg::Texture2D();
-        tex->setTextureSize(256, 256);
-        tex->setInternalFormat(GL_RGBA);
-        tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-        tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR); //LINEAR_MIPMAP_LINEAR);
-        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-        tex->setResizeNonPowerOfTwoHint(false);
-        tex->setMaxAnisotropy(4.0f);
-        tex->setUnRefImageDataAfterApply(true);
-        tex->setName(key.str());
-        tex->setUserData(node.get());
-    }
-    return tex;
+    // adds the Rasterizer to the scene graph so we can rasterize tiles
+    return _rasterizer.get();
 }
 
-GeoNode*
-RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
+GeoImage
+RoadSurfaceLayer::createImage(const TileKey& key, ProgressCallback* progress)
 {        
     // Resolve the list of tile keys that intersect the incoming extent:
     std::vector<TileKey> featureKeys;
@@ -155,6 +142,8 @@ RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
     {        
         if (featureKeys[i].getLOD() > featureProfile->getMaxLevel())
             fkeys.insert(featureKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
+        else
+            fkeys.insert(featureKeys[i]);
     }
 
     for (std::set<TileKey>::const_iterator i = fkeys.begin(); i != fkeys.end(); ++i)
@@ -192,11 +181,14 @@ RoadSurfaceLayer::createNode(const TileKey& key, ProgressCallback* progress)
     
     if (node && node->getBound().valid())
     {
-        // return that new node.
-        return new GeoNode(node.release(), outputExtent);
+        // Schedule the rasterization and get the future:
+        Threading::Future<osg::Image> futureImage = _rasterizer->push(node.release(), getTileSize(), outputExtent);
+
+        // Wait for rasterization to complete and return the image.
+        return GeoImage(futureImage.get(), key.getExtent());
     }
     else
     {
-        return 0L;
+        return GeoImage::INVALID;
     }
 }

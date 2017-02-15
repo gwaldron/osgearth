@@ -110,28 +110,29 @@ namespace osgEarth { namespace Splat
         // Opens the layer and returns a status
         virtual const Status& open();
 
-        // Use createTexture() instead of createImage() for this layer
-        bool createTextureSupported() const { return true; }
-
-        // Creates a texture for the given tile key
-        osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress);
+        // Creates an image for a tile key
+        virtual GeoImage createImage(const TileKey& key, ProgressCallback* progress);
 
     protected: // Layer
 
+        // Called by Map when it adds this layer
         virtual void addedToMap(const class Map*);
 
+        // Called by Map when it removes this layer
         virtual void removedFromMap(const class Map*);
 
         // post-ctor initialization
         virtual void init();
+
+        // A node to add to the scene graph for this layer.
+        virtual osg::Node* getNode() const;
 
     protected:
         virtual ~RoadSurfaceLayer() { }
 
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<Session> _session;
-
-        GeoNode* createNode(const TileKey& key, ProgressCallback* progress);
+        osg::ref_ptr<TileRasterizer> _rasterizer;
     };
 
 } } // namespace osgEarth::Splat

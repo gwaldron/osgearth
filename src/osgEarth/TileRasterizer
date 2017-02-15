@@ -27,6 +27,8 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
 #include <osg/Camera>
+#include <osg/BufferObject>
+#include <osg/Texture2D>
 #include <queue>
 
 namespace osgEarth
@@ -49,6 +51,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileRasterizer : public osg::Camera
     {
     public:
+        class Callback : public osg::Referenced
+        {
+        public:
+            virtual void operator()(osg::Image* image) =0;
+        };
+
+    public:
         /** Construct a new tile rasterizer camera */
         TileRasterizer();
 
@@ -60,6 +69,8 @@ namespace osgEarth
          */
         void push(osg::Node* node, osg::Texture* texture, const GeoExtent& extent);
 
+        Threading::Future<osg::Image> push(osg::Node* node, unsigned size, const GeoExtent& extent);
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);
@@ -69,13 +80,23 @@ namespace osgEarth
 
         struct Job {
             osg::ref_ptr<osg::Node> _node;
-            osg::ref_ptr<osg::Texture> _texture;
             GeoExtent _extent;
+            osg::ref_ptr<osg::Texture> _texture;
+            osg::ref_ptr<osg::Image> _image;
+            osg::ref_ptr<osg::PixelBufferObject> _imagePBO;
+            Threading::Promise<osg::Image> _imagePromise;
         };
 
         mutable Threading::Mutex _mutex;
         typedef std::queue<Job> JobQueue;
-        JobQueue _jobs;
+        mutable JobQueue _pendingJobs;  // queue for jobs waiting to render
+        mutable JobQueue _readbackJobs; // queue for jobs waiting for rtt/glReadPixels to finish
+        mutable JobQueue _finishedJobs; // queue for jobs waiting for the promise to resolve
+
+    public: // internal
+
+        void preDraw(osg::RenderInfo&) const;
+        void postDraw(osg::RenderInfo&) const;
     };
 
 } // namespace osgEarth

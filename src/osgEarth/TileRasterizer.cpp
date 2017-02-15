@@ -21,12 +21,35 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
-#include <osg/Texture2D>
+#include <osg/FrameBufferObject>
 #include <osgDB/ReadFile>
 
 #define LC "[TileRasterizer] "
 
 using namespace osgEarth;
+
+namespace
+{
+    template<typename T>
+    struct PreDrawRouter : public osg::Camera::DrawCallback
+    {
+        T* _object;
+        PreDrawRouter(T* object) : _object(object) { }
+        void operator()(osg::RenderInfo& renderInfo) const {
+            _object->preDraw(renderInfo);
+        }
+    };
+
+    template<typename T>
+    struct PostDrawRouter : public osg::Camera::DrawCallback
+    {
+        T* _object;
+        PostDrawRouter(T* object) : _object(object) { }
+        void operator()(osg::RenderInfo& renderInfo) const {
+            _object->postDraw(renderInfo);
+        }
+    };
+}
 
 TileRasterizer::TileRasterizer() :
 osg::Camera()
@@ -47,24 +70,14 @@ osg::Camera()
     setViewMatrix(osg::Matrix::identity());
 
     osg::StateSet* ss = getOrCreateStateSet();
-    //VirtualProgram::getOrCreate(ss)->setInheritShaders(false);
     ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     ss->setMode(GL_BLEND, 0);
     ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
     
-#if 0
-    osg::Image* image = osgDB::readImageFile("H:/data/textures/road.jpg");
-    osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    tex->setMaxAnisotropy( 4.0f );
-    tex->setResizeNonPowerOfTwoHint( false );
-    ss->setTextureAttribute(0, tex);
-#endif
+    this->setPreDrawCallback(new PreDrawRouter<TileRasterizer>(this));
+    this->setPostDrawCallback(new PostDrawRouter<TileRasterizer>(this));
 }
 
 TileRasterizer::~TileRasterizer()
@@ -77,11 +90,59 @@ TileRasterizer::push(osg::Node* node, osg::Texture* texture, const GeoExtent& ex
 {
     Threading::ScopedMutexLock lock(_mutex);
 
-    _jobs.push(Job());
-    Job& job = _jobs.back();
+    _pendingJobs.push(Job());
+    Job& job = _pendingJobs.back();
     job._node = node;
     job._texture = texture;
     job._extent = extent;
+}
+
+namespace
+{
+    struct AsyncReadbackImage : public osg::Image
+    {
+        osg::RenderInfo* _ri;
+
+        virtual void readPixels(
+            int x, int y, int width, int height,
+            GLenum pixelFormat, GLenum type, int packing)
+        {
+            glPixelStorei(GL_PACK_ALIGNMENT, _packing);
+            glPixelStorei(GL_PACK_ROW_LENGTH, _rowLength);
+
+            if (getPixelBufferObject())
+            {
+                _ri->getState()->bindPixelBufferObject(getPixelBufferObject()->getOrCreateGLBufferObject(_ri->getContextID()));
+                glReadPixels(x, y, width, height, getPixelFormat(), getDataType(), 0L);
+            }
+            else
+            {
+                glReadPixels(x, y, width, height, getPixelFormat(), getDataType(), _data);
+            }
+        }
+    };
+}
+
+
+Threading::Future<osg::Image>
+TileRasterizer::push(osg::Node* node, unsigned size, const GeoExtent& extent)
+{    
+    Threading::ScopedMutexLock lock(_mutex);
+
+    _pendingJobs.push(Job());
+    Job& job = _pendingJobs.back();
+
+    job._node = node;
+    job._extent = extent;
+    job._image = new AsyncReadbackImage();
+    job._image->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    //job._imagePBO = new osg::PixelBufferObject(job._image.get());
+    //job._imagePBO->setTarget(GL_PIXEL_PACK_BUFFER);
+    //job._imagePBO->setUsage(GL_STREAM_READ);
+    //job._image->setPixelBufferObject(job._imagePBO.get());
+
+    return job._imagePromise.getFuture();
 }
 
 void
@@ -99,38 +160,102 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
             removeChildren(0, 1);
         }
 
-        if (!_jobs.empty())
+        if (!_finishedJobs.empty())
         {
-            Job& job = _jobs.front();
+            Job& job = _finishedJobs.front();
+            job._imagePromise.resolve(job._image.get());
+            _finishedJobs.pop(); 
+        }
 
-            // Get the next texture
-            osg::Texture* texture = job._texture.get();
+        if (!_pendingJobs.empty())
+        {
+            Job& job = _pendingJobs.front();
 
-            // Setup the viewport and attach to the new texture
-            setViewport(0, 0, job._texture->getTextureWidth(), job._texture->getTextureHeight());
+            // Configure a top-down orothographic camera:
+            setProjectionMatrixAsOrtho(
+                job._extent.xMin(), job._extent.xMax(),
+                job._extent.yMin(), job._extent.yMax(),
+                -100, 100);
 
-            setProjectionMatrixAsOrtho(job._extent.xMin(), job._extent.xMax(), job._extent.yMin(), job._extent.yMax(), -100, 100);
+            // Job includes a texture to populate:
+            if (job._texture.valid())
+            {
+                // Setup the viewport and attach to the new texture
+                setViewport(0, 0, job._texture->getTextureWidth(), job._texture->getTextureHeight());
+                attach(COLOR_BUFFER, job._texture.get(), 0u, 0u, /*mipmap=*/false);
+                dirtyAttachmentMap();
+            }
 
-            bool mipmap = false;
-            //osg::Texture::FilterMode mode = job._texture->getFilter(osg::Texture::MIN_FILTER);
-            //bool mipmap =
-            //    (mode == osg::Texture::LINEAR_MIPMAP_LINEAR) || 
-            //    (mode == osg::Texture::LINEAR_MIPMAP_NEAREST) ||
-            //    (mode == osg::Texture::NEAREST_MIPMAP_LINEAR) ||
-            //    (mode == osg::Texture::NEAREST_MIPMAP_NEAREST);
+            // Job includes an image to populate, so use the built-in FBO target texture:
+            else if (job._image.valid())
+            {
+                setViewport(0, 0, job._image->s(), job._image->t());
+                attach(COLOR_BUFFER, job._image.get(), 0u, 0u);
+                dirtyAttachmentMap();
+            }
 
-            attach(COLOR_BUFFER, job._texture.get(), 0u, 0u, mipmap);
-            dirtyAttachmentMap();
+            // Add the node to the scene graph so it'll get rendered.
+            addChild(_pendingJobs.front()._node.get());
 
-            addChild(_jobs.front()._node.get());
+            // If this job has a readback image, push the job to the next queue
+            // where it will be picked up for readback.
+            if (job._image.valid())
+                _readbackJobs.push(job);
 
             // Remove the texture from the queue.
-            _jobs.pop();
+            _pendingJobs.pop();
         }
     }
 
     if (!getBufferAttachmentMap().empty())
     {
         osg::Camera::traverse(nv);
+    }
+}
+
+void
+TileRasterizer::preDraw(osg::RenderInfo& ri) const
+{
+    if (!_readbackJobs.empty())
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        Job& job = _readbackJobs.front();
+        if (job._image.valid())
+        {
+            dynamic_cast<AsyncReadbackImage*>(job._image.get())->_ri = &ri;
+        }
+    }
+}
+
+void
+TileRasterizer::postDraw(osg::RenderInfo& ri) const
+{
+    if (!_readbackJobs.empty())
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        Job& job = _readbackJobs.front();
+
+        //ri.getState()->bindPixelBufferObject(
+        //    job._imagePBO->getOrCreateGLBufferObject(ri.getContextID()));
+
+        // Bind the PBO to activate asychronous readback:
+        //if (job._imagePBO->getGLBufferObject(ri.getContextID()) == 0L)
+        //{
+        //    job._imagePBO->getOrCreateGLBufferObject(ri.getContextID());
+        //    job._imagePBO->setImage(job._image.get());
+        //}
+        //job._imagePBO->getGLBufferObject(ri.getContextID())->bindBuffer();
+
+        
+
+        //// Start the readback (should return immediately)
+        //glPixelStorei(GL_PACK_ALIGNMENT, job._image->getPacking());
+        //glPixelStorei(GL_PACK_ROW_LENGTH, job._image->getRowLength());
+        ////glReadPixels(0, 0, job._image->s(), job._image->t(), job._image->getPixelFormat(), job._image->getDataType(), 0L);
+        //
+        //glReadPixels(0, 0, job._image->s(), job._image->t(), job._image->getPixelFormat(), job._image->getDataType(), job._image->data());
+
+        _finishedJobs.push(job);
+        _readbackJobs.pop();
     }
 }

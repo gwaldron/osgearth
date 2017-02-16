@@ -24,6 +24,7 @@
 
 namespace osgEarth
 {
+#if 0
     class LandCoverDataSourceOptions : public ImageLayerOptions
     {
     public:
@@ -44,6 +45,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<LandCoverDataSource> _dataSource;
     };
+#endif
 
     class OSGEARTH_EXPORT LandCoverLayerOptions : public ImageLayerOptions
     {
@@ -53,8 +55,8 @@ namespace osgEarth
         /**
          * Images layer from which to read source coverage data.
          */
-        std::vector<LandCoverDataSourceOptions>& dataSources() { return _dataSources; }
-        const std::vector<LandCoverDataSourceOptions>& dataSources() const { return _dataSources; }
+        std::vector<LandCoverCoverageLayerOptions>& coverages() { return _coverages; }
+        const std::vector<LandCoverCoverageLayerOptions>& coverages() const { return _coverages; }
 
         /**
          * Amount by which to warp texture coordinates of coverage data.
@@ -80,8 +82,8 @@ namespace osgEarth
         /**
          * Dictionary that defines all land cover types.
          */
-        osg::ref_ptr<LandCoverDictionary>& dictionary() { return _dictionary; }
-        const osg::ref_ptr<LandCoverDictionary>& dictionary() const { return _dictionary; }
+        //osg::ref_ptr<LandCoverDictionary>& dictionary() { return _dictionary; }
+        //const osg::ref_ptr<LandCoverDictionary>& dictionary() const { return _dictionary; }
 
     public:
         virtual Config getConfig() const;
@@ -96,8 +98,7 @@ namespace osgEarth
         optional<float>                _warp;
         optional<unsigned>             _baseLOD;
         optional<unsigned>             _bits;
-        std::vector<LandCoverDataSourceOptions> _dataSources;
-        osg::ref_ptr<LandCoverDictionary> _dictionary;
+        std::vector<LandCoverCoverageLayerOptions> _coverages;
     };
 
 
@@ -116,9 +117,13 @@ namespace osgEarth
 
         virtual void init();
 
+        virtual void addedToMap(const class Map*);
+
     protected: // TerrainLayer
 
         virtual TileSource* createTileSource();
+
+        osg::ref_ptr<LandCoverDictionary> _lcDictionary;
     };
 
 } // namespace osgEarth

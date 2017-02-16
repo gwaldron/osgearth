@@ -20,6 +20,8 @@
 #define OSGEARTH_LAND_COVER_H 1
 
 #include <osgEarth/Config>
+#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
 #include <vector>
 
 namespace osgEarth
@@ -52,25 +54,50 @@ namespace osgEarth
 
 
     /**
-     * A complete set of available land cover classes.
+     * Configures a LandCoverDictionary layer.
      */
-    class OSGEARTH_EXPORT LandCoverDictionary : public osg::Object
+    class OSGEARTH_EXPORT LandCoverDictionaryOptions : public LayerOptions
     {
     public:
-        META_Object(osgEarth, LandCoverDictionary);
+        LandCoverDictionaryOptions(const ConfigOptions& co = ConfigOptions()) :
+            LayerOptions(co) { fromConfig(_conf); }
+        
+        LandCoverClassVector& classes() { return _landCoverClasses; }
+        const LandCoverClassVector& classes() const { return _landCoverClasses; }
+        
+        virtual Config getConfig() const;
+        
+    protected:
+        virtual void mergeConfig(const Config& conf) {
+            LayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+        void fromConfig(const Config& conf);
 
+        
+        LandCoverClassVector _landCoverClasses;
+    };
+
+
+    /**
+     * A complete set of available land cover classes.
+     */
+    class OSGEARTH_EXPORT LandCoverDictionary : public Layer
+    {
+    public:
+        META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions);
+
+        /** Constructs an empty dictionary */
         LandCoverDictionary();
-        LandCoverDictionary(const Config& conf);
-        LandCoverDictionary(const LandCoverDictionary& rhs, const osg::CopyOp& op); // =osg::CopyOp::SHALLOW_COPY);
+
+        /** Constructs a dictionary from serializable options. */
+        LandCoverDictionary(const LandCoverDictionaryOptions&);
         
     public:
-        LandCoverClassVector& getClasses() { return _landCoverClasses; }
+        LandCoverClassVector& getClasses() { return options().classes(); }
         const LandCoverClassVector& getClasses() const { return _landCoverClasses; }
 
         const LandCoverClass* getClass(const std::string& name) const;
-    public:
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
 
     private:
         LandCoverClassVector _landCoverClasses;
@@ -108,9 +135,10 @@ namespace osgEarth
     typedef std::vector< osg::ref_ptr<LandCoverValueMapping> > LandCoverValueMappingVector;
 
 
+#if 0
     /**
-     * Defines a particular data source for land cover data, and stores
-     * the set of mappings from the source's values to the dictionary's 
+     * Data source for land cover coverage data.
+     * Stores the set of mappings from the source's values to the dictionary's 
      * classes.
      */
     class OSGEARTH_EXPORT LandCoverDataSource : public osg::Object
@@ -130,6 +158,57 @@ namespace osgEarth
 
     private:
         LandCoverValueMappingVector _valueMappings;
+    };
+#endif
+
+
+    class OSGEARTH_EXPORT LandCoverCoverageLayerOptions : public ImageLayerOptions
+    {
+    public:
+        LandCoverCoverageLayerOptions(const ConfigOptions& co = ConfigOptions());
+
+        LandCoverValueMappingVector& mappings() { return _valueMappings; }
+        const LandCoverValueMappingVector& mappings() const { return _valueMappings; }
+
+        virtual Config getConfig() const;
+
+    protected:
+        void fromConfig(const Config& conf);
+
+        virtual void mergeConfig(const Config& conf) {
+            ImageLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+
+    private:
+        LandCoverValueMappingVector _valueMappings;
+    };
+
+    /**
+     * Component coverage layer of a LandCoverLayer.
+     * This layer only lives inside a LandCoverLayer - don't add it to a Map directly.
+     */
+    class OSGEARTH_EXPORT LandCoverCoverageLayer : public ImageLayer
+    {
+    public:
+        META_Layer(osgEarth, LandCoverCoverageLayer, LandCoverCoverageLayerOptions);
+
+        /** Construct an empty land cover coverage layer. */
+        LandCoverCoverageLayer();
+
+        /** Deserialize a land cover coverage layer. */
+        LandCoverCoverageLayer(const LandCoverCoverageLayerOptions& options);
+
+        //! Code mappings.
+        LandCoverValueMappingVector& getMappings() { return options().mappings(); }
+        const LandCoverValueMappingVector& getMappings() const { return options().mappings(); }
+
+        //! Land cover dictionary to use.
+        void setDictionary(LandCoverDictionary* value) { _lcDictionary = value; }
+        LandCoverDictionary* getDictionary() const { return _lcDictionary.get(); }
+
+    private:
+        osg::ref_ptr<LandCoverDictionary> _lcDictionary;
     };
 
 } // namespace osgEarth

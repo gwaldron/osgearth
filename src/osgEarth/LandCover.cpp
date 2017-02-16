@@ -64,43 +64,11 @@ LandCoverClass::getConfig() const
 #undef  LC
 #define LC "[LandCoverDictionary] "
 
-LandCoverDictionary::LandCoverDictionary() :
-osg::Object()
-{
-    //nop
-}
-
-LandCoverDictionary::LandCoverDictionary(const Config& conf) :
-osg::Object()
-{
-    fromConfig(conf);
-}
-
-LandCoverDictionary::LandCoverDictionary(const LandCoverDictionary& rhs, const osg::CopyOp& op) :
-osg::Object(rhs, op),
-_landCoverClasses(rhs._landCoverClasses)
-{
-    //nop
-}
-
-const LandCoverClass*
-LandCoverDictionary::getClass(const std::string& name) const
-{
-    for (LandCoverClassVector::const_iterator i = _landCoverClasses.begin();
-        i != _landCoverClasses.end();
-        ++i)
-    {
-        if (i->get()->getName() == name)
-            return i->get();
-    }
-    return 0L;
-}
+REGISTER_OSGEARTH_LAYER(land_cover_dictionary, LandCoverDictionary);
 
 void
-LandCoverDictionary::fromConfig(const Config& conf)
+LandCoverDictionaryOptions::fromConfig(const Config& conf)
 {
-    setName(conf.value("name"));
-
     const Config* classes = conf.child_ptr("classes");
     if (classes)
     {
@@ -121,10 +89,11 @@ LandCoverDictionary::fromConfig(const Config& conf)
 }
 
 Config
-LandCoverDictionary::getConfig() const
+LandCoverDictionaryOptions::getConfig() const
 {
-    Config conf("land_cover_dictionary");
-    if (!_landCoverClasses.empty())
+    Config conf = LayerOptions::getConfig();
+    conf.key() = "land_cover_dictionary";
+    if (!classes().empty())
     {
         Config classes("classes");
         conf.add(classes);
@@ -140,6 +109,34 @@ LandCoverDictionary::getConfig() const
         }
     }
     return conf;
+}
+
+LandCoverDictionary::LandCoverDictionary() :
+Layer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
+LandCoverDictionary::LandCoverDictionary(const LandCoverDictionaryOptions& options) :
+Layer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
+{
+    init();
+}
+
+const LandCoverClass*
+LandCoverDictionary::getClass(const std::string& name) const
+{
+    for (LandCoverClassVector::const_iterator i = options().classes().begin();
+        i != options().classes().end();
+        ++i)
+    {
+        if (i->get()->getName() == name)
+            return i->get();
+    }
+    return 0L;
 }
 
 //...........................................................................
@@ -185,51 +182,31 @@ LandCoverValueMapping::getConfig() const
 //...........................................................................
 
 #undef  LC
-#define LC "[LandCoverDataSource] "
+#define LC "[LandCoverCoverageLayer] "
 
-LandCoverDataSource::LandCoverDataSource() :
-osg::Object()
+LandCoverCoverageLayerOptions::LandCoverCoverageLayerOptions(const ConfigOptions& co) :
+ImageLayerOptions(co)
 {
-    //nop
-}
-
-LandCoverDataSource::LandCoverDataSource(const Config& conf) :
-osg::Object()
-{
-    fromConfig(conf);
-}
-
-LandCoverDataSource::LandCoverDataSource(const LandCoverDataSource& rhs, const osg::CopyOp& op) :
-osg::Object(rhs, op)
-{
-    _valueMappings = rhs._valueMappings;
+    fromConfig(_conf);
 }
 
 void
-LandCoverDataSource::fromConfig(const Config& conf)
+LandCoverCoverageLayerOptions::fromConfig(const Config& conf)
 {
-    setName(conf.value("name"));
-
-    const Config* mappings = conf.child_ptr("mappings");
-    if (mappings)
+    ConfigSet mappings = conf.child("land_cover_mappings").children("mapping");
+    for (ConfigSet::const_iterator i = mappings.begin(); i != mappings.end(); ++i)
     {
-        for (ConfigSet::const_iterator i = mappings->children().begin();
-            i != mappings->children().end();
-            ++i)
-        {
-            osg::ref_ptr<LandCoverValueMapping> mapping = new LandCoverValueMapping(*i);
-            _valueMappings.push_back(mapping.get());
-        }
+        osg::ref_ptr<LandCoverValueMapping> mapping = new LandCoverValueMapping(*i);
+        _valueMappings.push_back(mapping.get());
     }
-
-    OE_INFO << LC << _valueMappings.size() << " mappings loaded for " << getName() << "\n";
 }
 
 Config
-LandCoverDataSource::getConfig() const
+LandCoverCoverageLayerOptions::getConfig() const
 {
-    Config conf("land_cover_data_source");
-    Config mappings("mappings");
+    Config conf = ImageLayerOptions::getConfig();
+    conf.key() = "coverage";
+    Config mappings("land_cover_mappings");
     conf.add(mappings);
     for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
         i != _valueMappings.end();
@@ -240,4 +217,19 @@ LandCoverDataSource::getConfig() const
             mappings.add(mapping->getConfig());
     }
     return conf;
+}
+
+LandCoverCoverageLayer::LandCoverCoverageLayer() :
+ImageLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
+{
+    init();
+}
+
+LandCoverCoverageLayer::LandCoverCoverageLayer(const LandCoverCoverageLayerOptions& options) :
+ImageLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
+{
+    init();
 }

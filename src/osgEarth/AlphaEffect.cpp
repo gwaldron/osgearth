@@ -21,10 +21,7 @@
 */
 
 #include <osgEarth/AlphaEffect>
-#include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgEarth/Shaders>
 
 using namespace osgEarth;

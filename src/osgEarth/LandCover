@@ -38,9 +38,15 @@ namespace osgEarth
         LandCoverClass(const Config& conf);
         LandCoverClass(const LandCoverClass& rhs, const osg::CopyOp& op);
 
+        void setValue(int value) { _value = value; }
+        int getValue() const { return _value; }
+
     public:
         void fromConfig(const Config& conf);
         Config getConfig() const;
+
+    private:
+        int _value;
     };
     typedef std::vector< osg::ref_ptr<LandCoverClass> > LandCoverClassVector;
 
@@ -54,12 +60,14 @@ namespace osgEarth
         META_Object(osgEarth, LandCoverDictionary);
 
         LandCoverDictionary();
-        LandCoverDictionary(const LandCoverDictionary& rhs, const osg::CopyOp& op);
+        LandCoverDictionary(const Config& conf);
+        LandCoverDictionary(const LandCoverDictionary& rhs, const osg::CopyOp& op); // =osg::CopyOp::SHALLOW_COPY);
         
     public:
         LandCoverClassVector& getClasses() { return _landCoverClasses; }
         const LandCoverClassVector& getClasses() const { return _landCoverClasses; }
 
+        const LandCoverClass* getClass(const std::string& name) const;
     public:
         void fromConfig(const Config& conf);
         Config getConfig() const;
@@ -87,15 +95,15 @@ namespace osgEarth
         void setValue(int value) { _value = value; }
         int getValue() const { return _value.get(); }
 
-        void setLandCoverClass(LandCoverClass* lcClass) { _lcClass = lcClass; }
-        const LandCoverClass* getLandCoverClass() const { return _lcClass.get(); }
+        void setLandCoverClassName(const std::string& name) { _lcClassName = name; }
+        const std::string& getLandCoverClassName() const { return _lcClassName.get(); }
 
         void fromConfig(const Config&);
         Config getConfig() const;
 
     private:
         optional<int> _value;
-        osg::ref_ptr<LandCoverClass> _lcClass;
+        optional<std::string> _lcClassName;
     };
     typedef std::vector< osg::ref_ptr<LandCoverValueMapping> > LandCoverValueMappingVector;
 
@@ -112,7 +120,7 @@ namespace osgEarth
 
         LandCoverDataSource();
         LandCoverDataSource(const Config& conf);
-        LandCoverDataSource(const LandCoverDataSource& rhs, const osg::CopyOp& op);
+        LandCoverDataSource(const LandCoverDataSource& rhs, const osg::CopyOp& op =osg::CopyOp::SHALLOW_COPY);
 
         LandCoverValueMappingVector& getMappings() { return _valueMappings; }
         const LandCoverValueMappingVector& getMappings() const { return _valueMappings; }

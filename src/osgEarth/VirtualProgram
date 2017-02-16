@@ -23,10 +23,9 @@
 #define OSGEARTH_VIRTUAL_PROGRAM_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/ColorFilter>
 #include <osgEarth/Containers>
+#include <osgEarth/optional>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>

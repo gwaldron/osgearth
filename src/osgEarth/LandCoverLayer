@@ -20,9 +20,31 @@
 #define OSGEARTH_LAND_COVER_LAYER 1
 
 #include <osgEarth/ImageLayer>
+#include <osgEarth/LandCover>
 
 namespace osgEarth
 {
+    class LandCoverDataSourceOptions : public ImageLayerOptions
+    {
+    public:
+        LandCoverDataSourceOptions(const ConfigOptions& co = ConfigOptions());
+
+        osg::ref_ptr<LandCoverDataSource>& dataSource() { return _dataSource; }
+        const osg::ref_ptr<LandCoverDataSource>& dataSource() const { return _dataSource; }
+
+        virtual Config getConfig() const;
+
+    protected:
+        void fromConfig(const Config& conf);
+
+        virtual void mergeConfig(const Config& conf) {
+            ImageLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+    private:
+        osg::ref_ptr<LandCoverDataSource> _dataSource;
+    };
+
     class OSGEARTH_EXPORT LandCoverLayerOptions : public ImageLayerOptions
     {
     public:
@@ -31,8 +53,8 @@ namespace osgEarth
         /**
          * Images layer from which to read source coverage data.
          */
-        std::vector<ImageLayerOptions>& imageLayers() { return _imageLayers; }
-        const std::vector<ImageLayerOptions>& imageLayers() const { return _imageLayers; }
+        std::vector<LandCoverDataSourceOptions>& dataSources() { return _dataSources; }
+        const std::vector<LandCoverDataSourceOptions>& dataSources() const { return _dataSources; }
 
         /**
          * Amount by which to warp texture coordinates of coverage data.
@@ -55,6 +77,12 @@ namespace osgEarth
         optional<unsigned>& bits() { return _bits; }
         const optional<unsigned>& bits() const { return _bits; }
 
+        /**
+         * Dictionary that defines all land cover types.
+         */
+        osg::ref_ptr<LandCoverDictionary>& dictionary() { return _dictionary; }
+        const osg::ref_ptr<LandCoverDictionary>& dictionary() const { return _dictionary; }
+
     public:
         virtual Config getConfig() const;
 
@@ -68,7 +96,8 @@ namespace osgEarth
         optional<float>                _warp;
         optional<unsigned>             _baseLOD;
         optional<unsigned>             _bits;
-        std::vector<ImageLayerOptions> _imageLayers;
+        std::vector<LandCoverDataSourceOptions> _dataSources;
+        osg::ref_ptr<LandCoverDictionary> _dictionary;
     };
 
 

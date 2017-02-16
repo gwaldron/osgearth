@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/ColorFilter>
 
 namespace osgEarth
 {

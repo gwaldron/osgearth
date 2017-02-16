@@ -516,7 +516,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
 {
     if ( !_openCalled )
     {
-        OE_WARN << LC << "Illegal- called getCacheBin() before calling open()\n";
+        OE_WARN << LC << "Illegal- called getCacheBin() before layer is open.. did you call open()?\n";
         return 0L;
     }
 

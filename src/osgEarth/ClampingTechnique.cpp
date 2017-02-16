@@ -36,8 +36,6 @@
 #include <osg/ValueObject>
 #include <osg/Timer>
 
-#include <osgDB/WriteFile>
-
 #define LC "[ClampingTechnique] "
 
 //#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)

@@ -54,6 +54,8 @@ namespace
 
         return out;
     }
+    
+    typedef std::vector<int> CodeMap;
 
     struct ILayer 
     {
@@ -63,6 +65,7 @@ namespace
         bool      valid;
         float     warp;
         ImageUtils::PixelReader* read;
+        unsigned* codeTable;
 
         ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f) { }
 
@@ -96,6 +99,27 @@ namespace
         }
     };
 
+    void buildCodeMap(const LandCoverDataSource* ds, const LandCoverDictionary* dict, CodeMap& codemap)
+    {
+        if (!ds) return;
+        if (!dict) return;
+
+        for (LandCoverValueMappingVector::const_iterator k = ds->getMappings().begin();
+            k != ds->getMappings().end();
+            ++k)
+        {
+            const LandCoverValueMapping* mapping = k->get();
+            int value = mapping->getValue();
+            const LandCoverClass* lcClass = dict->getClass(mapping->getLandCoverClassName());
+            if (lcClass)
+            {
+                if (value + 1 > codemap.size())
+                    codemap.resize(value+1);
+                codemap[value] = lcClass->getValue();
+            }
+        }
+    }
+
     class LandCoverTileSource : public TileSource
     {
     public:
@@ -111,12 +135,11 @@ namespace
 
         const LandCoverLayerOptions* _options;
         const LandCoverLayerOptions& options() const { return *_options; }
-
+        
         ImageLayerVector _imageLayers;
+        std::vector<CodeMap> _codemaps;
         std::vector<float> _warps;
-        osg::ref_ptr<osgDB::Options> _readOptions;   
-        //osg::ref_ptr<ImageLayer> _imageLayer;
-        //osgEarth::Util::SimplexNoise _noiseGen;
+        osg::ref_ptr<osgDB::Options> _readOptions;  
 
     };
 
@@ -139,14 +162,17 @@ namespace
         }
 
         // load all the image layers:
-        _imageLayers.assign( options().imageLayers().size(), 0L );
-        _warps.assign( options().imageLayers().size(), 0.0f );
+        _imageLayers.assign( options().dataSources().size(), 0L );
 
-        for(unsigned i=0; i<options().imageLayers().size(); ++i)
+        _warps.assign( options().dataSources().size(), 0.0f );
+
+        _codemaps.resize(options().dataSources().size());
+
+        for(unsigned i=0; i<options().dataSources().size(); ++i)
         {
-            ImageLayerOptions ilo = options().imageLayers()[i];
-            ilo.cachePolicy() = CachePolicy::NO_CACHE;
-            ImageLayer* layer = new ImageLayer( ilo );
+            LandCoverDataSourceOptions dsOptions = options().dataSources()[i];
+            dsOptions.cachePolicy() = CachePolicy::NO_CACHE;
+            ImageLayer* layer = new ImageLayer( dsOptions );
             layer->setTargetProfileHint( profile );
             layer->setReadOptions(readOptions);
             const Status& s = layer->open();
@@ -154,6 +180,10 @@ namespace
             {
                 _imageLayers[i] = layer;
                 OE_INFO << "Opened layer \"" << layer->getName() << std::endl;
+
+                // Make a code mapping based on the data source metadata:
+                LandCoverDataSource* ds = dsOptions.dataSource().get();
+                buildCodeMap(ds, options().dictionary().get(), _codemaps[i]);
             }
             else
             {
@@ -264,6 +294,20 @@ namespace
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
                         if ( texel.r() != NO_DATA_VALUE )
                         {
+                            if (texel.r() < 1.0f)
+                            {
+                                // normalized code; convert
+                                int code = (int)(texel.r()*255.0f);
+                                if (code < _codemaps[L].size())
+                                    texel.r() = ((float)_codemaps[L][code])/255.0f;
+                            }
+                            else
+                            {
+                                // unnormalized
+                                int code = (int)texel.r();
+                                if (code <_codemaps[L].size())
+                                    texel.r() = (float)_codemaps[L][code];
+                            }
                             write.f(texel, u, v);
                             wrotePixel = true;
                         }
@@ -283,6 +327,32 @@ namespace
 
 //........................................................................
 
+LandCoverDataSourceOptions::LandCoverDataSourceOptions(const ConfigOptions& co) :
+ImageLayerOptions(co)
+{
+    fromConfig(_conf);
+}
+
+void
+LandCoverDataSourceOptions::fromConfig(const Config& conf)
+{
+    _dataSource = new LandCoverDataSource(conf.child("land_cover_data_source"));
+}
+
+Config
+LandCoverDataSourceOptions::getConfig() const
+{
+    Config conf = ImageLayerOptions::getConfig();
+    if (_dataSource.valid())
+        conf.add(_dataSource->getConfig());
+    return conf;
+}
+
+//........................................................................
+
+#undef  LC
+#define LC "[LandCoverLayerOptions] "
+
 LandCoverLayerOptions::LandCoverLayerOptions(const ConfigOptions& options) :
 ImageLayerOptions(options)
 {
@@ -292,14 +362,16 @@ ImageLayerOptions(options)
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("warp", _warp);
-    conf.getIfSet("base_lod", _baseLOD);
+    //conf.getIfSet("warp", _warp);
+    //conf.getIfSet("base_lod", _baseLOD);
     conf.getIfSet("bits", _bits);
+    
+    _dictionary = new LandCoverDictionary(conf.child("land_cover_dictionary"));
 
     ConfigSet layerConfs = conf.child("images").children("image");
     for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
     {
-        _imageLayers.push_back(ImageLayerOptions(*i));
+        _dataSources.push_back(LandCoverDataSourceOptions(*i));
     }
 }
 
@@ -309,16 +381,20 @@ LandCoverLayerOptions::getConfig() const
     Config conf = ImageLayerOptions::getConfig();
     conf.key() = "land_cover";
 
-    conf.addIfSet("warp", _warp);
-    conf.addIfSet("base_lod", _baseLOD);
-    conf.addIfSet("bits", _bits);
+    //conf.addIfSet("warp", _warp);
+    //conf.addIfSet("base_lod", _baseLOD);
+    conf.addIfSet("bits", _bits);    
+    
+    if (_dictionary.valid())
+    {
+        conf.add(_dictionary->getConfig());
+    }
 
-    // multiple
-    if (_imageLayers.size() > 0)
+    if (_dataSources.size() > 0)
     {
         Config images("images");
-        for (std::vector<ImageLayerOptions>::const_iterator i = _imageLayers.begin();
-            i != _imageLayers.end();
+        for (std::vector<LandCoverDataSourceOptions>::const_iterator i = _dataSources.begin();
+            i != _dataSources.end();
             ++i)
         {
             images.add("image", i->getConfig());
@@ -362,15 +438,5 @@ LandCoverLayer::init()
 TileSource*
 LandCoverLayer::createTileSource()
 {
-    OE_WARN << LC << "LandCoverLayer::createTileSource\n";
-
-    osg::ref_ptr<LandCoverTileSource> ts = new LandCoverTileSource(options());
-
-    Status tsStatus = ts->initialize(getReadOptions());
-    if (tsStatus.isError())
-    {
-        setStatus(tsStatus);
-        return 0L;
-    }
-    return ts.release();
+    return new LandCoverTileSource(options());
 }

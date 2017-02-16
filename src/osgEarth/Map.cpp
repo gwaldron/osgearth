@@ -304,14 +304,17 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
-        // tell the layer it was just added.
-        layer->addedToMap(this);
-
-        // a separate block b/c we don't need the mutex
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        if (layer->getEnabled())
         {
-            i->get()->onMapModelChanged(MapModelChange(
-                MapModelChange::ADD_LAYER, newRevision, layer, index));
+            // tell the layer it was just added.
+            layer->addedToMap(this);
+
+            // a separate block b/c we don't need the mutex
+            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+            {
+                i->get()->onMapModelChanged(MapModelChange(
+                    MapModelChange::ADD_LAYER, newRevision, layer, index));
+            }
         }
     }
 }
@@ -324,46 +327,28 @@ Map::insertLayer(Layer* layer, unsigned index)
     {
         if (layer->getEnabled())
         {
+            // Pass along the Read Options (including the cache settings, etc.) to the layer:
+            layer->setReadOptions(_readOptions.get());
+            
+            // If this is a terrain layer, tell it about the Map profile.
             TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-            if (terrainLayer)
+            if (terrainLayer && _profile.valid())
             {
-                // Set the DB options for the map from the layer, including the cache policy.
-                terrainLayer->setReadOptions( _readOptions.get() );
+                terrainLayer->setTargetProfileHint( _profile.get() );
+            }            
 
-                // Tell the layer the map profile, if supported:
-                if ( _profile.valid() )
-                {
-                    terrainLayer->setTargetProfileHint( _profile.get() );
-                }
+            // Attempt to open the layer. Don't check the status here.
+            layer->open();
 
-                // open the layer:
-                terrainLayer->open();
-            }
-
-            ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-            if (modelLayer)
-            {
-                // initialize the model layer
-                modelLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                modelLayer->open();
-            }
-
+            // If this is an elevation layer, install a callback so we know when
+            // it's visibility changes:
             ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
             if (elevationLayer)
             {
                 elevationLayer->addCallback(_elevationLayerCB.get());
-            }
 
-            MaskLayer* maskLayer = dynamic_cast<MaskLayer*>(layer);
-            if (maskLayer)
-            {
-                // initialize the model layer
-                maskLayer->setReadOptions(_readOptions.get());
-
-                // open it and check the status
-                maskLayer->open();
+                // invalidate the elevation pool
+                getElevationPool()->clear();
             }
         }
 
@@ -381,17 +366,20 @@ Map::insertLayer(Layer* layer, unsigned index)
             newRevision = ++_dataModelRevision;
         }
 
-        // tell the layer it was just added.
-        layer->addedToMap(this);
-
-        // a separate block b/c we don't need the mutex
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        if (layer->getEnabled())
         {
-            //i->get()->onMapModelChanged( MapModelChange(
-            //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+            // tell the layer it was just added.
+            layer->addedToMap(this);
 
-            i->get()->onMapModelChanged(MapModelChange(
-                MapModelChange::ADD_LAYER, newRevision, layer, index));
+            // a separate block b/c we don't need the mutex
+            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+            {
+                //i->get()->onMapModelChanged( MapModelChange(
+                //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+
+                i->get()->onMapModelChanged(MapModelChange(
+                    MapModelChange::ADD_LAYER, newRevision, layer, index));
+            }
         }
     }
 }

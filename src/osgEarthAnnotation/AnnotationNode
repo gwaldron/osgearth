@@ -72,6 +72,8 @@ namespace osgEarth { namespace Annotation
     public:
 
         const std::string& getName() const { return osg::Group::getName(); }
+
+        void traverse(osg::NodeVisitor& nv);
         
         /**
          * Priority of the item. A negative Priority means "never occlude me".
@@ -140,6 +142,9 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
+        // override to prevent render-order symbology from taking effect.
+        virtual bool supportsRenderBinDetails() const { return true; }
+
     protected:
         
         osg::ref_ptr<HorizonCullCallback> _horizonCuller;
@@ -148,6 +153,7 @@ namespace osgEarth { namespace Annotation
             
         osg::observer_ptr<MapNode> _mapNode;
         static Style s_emptyStyle;
+        bool _mapNodeRequired;
 
     public:
 

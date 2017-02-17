@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Capabilities>
+#include <osgEarth/Version>
 #include <osg/FragmentProgram>
 #include <osg/GraphicsContext>
 #include <osg/GL>
@@ -165,6 +166,8 @@ _maxTextureBufferSize   ( 0 )
         osg::GraphicsContext* gc = mgc._gc.get();
         unsigned int id = gc->getState()->getContextID();
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
+
+        OE_INFO << LC << "osgEarth Version: " << osgEarthGetVersion() << std::endl;
         
         if ( ::getenv("OSGEARTH_NO_GLSL") )
         {

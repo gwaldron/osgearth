@@ -13,7 +13,7 @@ way to mitigate z-fighting issues.
         <url>../data/world.tif</url>
     </image>
 
-    <model name="boundaries" driver="feature_geom">
+    <feature_model name="boundaries">
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
         </features>        
@@ -27,6 +27,6 @@ way to mitigate z-fighting issues.
                 }                    
             </style>
         </styles>        
-    </model>
+    </feature_model>
 
 </map>

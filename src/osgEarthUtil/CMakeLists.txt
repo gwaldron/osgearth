@@ -9,9 +9,9 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
-	ActivityMonitorTool
+    ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler	
+    AutoClipPlaneHandler    
     ArcGIS
     AtlasBuilder
     Common
@@ -20,10 +20,11 @@ SET(HEADERS_ROOT
     ClampCallback
     DataScanner
     EarthManipulator
-	Ephemeris
+    Ephemeris
     ExampleResources
     Export
     FeatureQueryTool
+    FlatteningLayer
     Fog
     Formatter
     GeodeticGraticule
@@ -36,7 +37,7 @@ SET(HEADERS_ROOT
     LineOfSight
     LinearLineOfSight
     LODBlending
-	LogarithmicDepthBuffer
+    LogarithmicDepthBuffer
     MeasureTool
     MGRSFormatter
     MGRSGraticule
@@ -47,8 +48,9 @@ SET(HEADERS_ROOT
     RadialLineOfSight
     RTTPicker
     Shaders
-	Shadowing
-	SimplexNoise
+    Shadowing
+    SimplexNoise
+    SimpleOceanLayer
     SimplePager
     Sky
     SpatialData
@@ -84,7 +86,9 @@ set(TARGET_GLSL
     LogDepthBuffer.VertOnly.vert.glsl    
     LogDepthBuffer.frag.glsl
     Shadowing.vert.glsl
-    Shadowing.frag.glsl)
+    Shadowing.frag.glsl
+    SimpleOceanLayer.vert.glsl
+    SimpleOceanLayer.frag.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)
@@ -96,7 +100,7 @@ configure_shaders(
 
 
 SET(SOURCES_ROOT
-	ActivityMonitorTool.cpp
+    ActivityMonitorTool.cpp
     AnnotationEvents.cpp
     ArcGIS.cpp
     AtlasBuilder.cpp
@@ -106,9 +110,10 @@ SET(SOURCES_ROOT
     ContourMap.cpp
     DataScanner.cpp
     EarthManipulator.cpp
-	Ephemeris.cpp
+    Ephemeris.cpp
     ExampleResources.cpp
     FeatureQueryTool.cpp
+    FlatteningLayer.cpp
     Fog.cpp
     GeodeticGraticule.cpp
     GraticuleExtension.cpp
@@ -117,7 +122,7 @@ SET(SOURCES_ROOT
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
-	LogarithmicDepthBuffer.cpp
+    LogarithmicDepthBuffer.cpp
     LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
@@ -128,8 +133,9 @@ SET(SOURCES_ROOT
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     RTTPicker.cpp
-	Shadowing.cpp
-	SimplexNoise.cpp
+    Shadowing.cpp
+    SimplexNoise.cpp
+    SimpleOceanLayer.cpp
     SimplePager.cpp
     SpatialData.cpp
     Sky.cpp

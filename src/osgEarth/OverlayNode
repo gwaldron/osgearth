@@ -85,6 +85,7 @@ namespace osgEarth
         bool                          _newActive;
         osg::observer_ptr<MapNode>    _mapNode;
         TechniqueProvider             _getGroup;
+        bool                          _needsMapNode;
 
         void applyChanges();
     };

@@ -50,6 +50,8 @@ namespace osgEarth
         bool exists(osg::Referenced* owner, const std::string& key) const;
 
         int size() const;
+
+        void remove(osg::Referenced* owner, const std::string& key);
         
     protected:
         typedef fast_map<std::string, osg::ref_ptr<osg::Referenced> > StringTable;
@@ -81,7 +83,7 @@ namespace osgEarth
             std::string _key;
 
             Install(const std::string& key) : _key(key) { }
-            Install(const std::string& key, osg::Referenced* data) : _key(key), _data(data) { }
+            Install(const std::string& key, osg::Referenced* data) : _data(data), _key(key) { }
 
             void operator()(osg::Node* node, osg::NodeVisitor* nv)
             {
@@ -95,6 +97,8 @@ namespace osgEarth
 
         template<typename T> static T* fetch(osg::NodeVisitor& nv, const std::string& key) {
             return dynamic_cast<T*>( _fetch(nv, key) ); }
+
+        static void remove(osg::NodeVisitor& nv, const std::string& key);
 
         static osg::Referenced* _fetch(osg::NodeVisitor& nv, const std::string& key);
     };

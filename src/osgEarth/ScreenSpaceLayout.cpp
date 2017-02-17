@@ -122,9 +122,8 @@ namespace
     // TODO: a way to clear out this list when drawables go away
     struct DrawableInfo
     {
-        DrawableInfo() : _lastAlpha(1.0), _lastScale(1.0), _lastXY(-1.0, -1.0) { }
+        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f) { }
         float _lastAlpha, _lastScale;
-        osg::Vec2d _lastXY;
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
@@ -147,6 +146,7 @@ namespace
         // time stamp of the previous pass, for calculating animation speed
         osg::Timer_t _lastTimeStamp;
         bool _firstFrame;
+        osg::Matrix _lastCamVPW;
     };
 
     static bool s_declutteringEnabledGlobally = true;
@@ -172,6 +172,7 @@ ScreenSpaceLayoutOptions::fromConfig( const Config& conf )
     conf.getIfSet( "sort_by_priority",    _sortByPriority );
     conf.getIfSet( "snap_to_pixel",       _snapToPixel );
     conf.getIfSet( "max_objects",         _maxObjects );
+    conf.getIfSet( "render_order",        _renderBinNumber );
 }
 
 Config
@@ -185,6 +186,7 @@ ScreenSpaceLayoutOptions::getConfig() const
     conf.addIfSet( "sort_by_priority",    _sortByPriority );
     conf.addIfSet( "snap_to_pixel",       _snapToPixel );
     conf.addIfSet( "max_objects",         _maxObjects );
+    conf.addIfSet( "render_order",        _renderBinNumber );
     return conf;
 }
 
@@ -307,8 +309,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         camVPW.postMult(cam->getViewMatrix());
         camVPW.postMult(cam->getProjectionMatrix());
         camVPW.postMult(refWindowMatrix);
-        //if (cam->getViewport())
-        //    camVPW.postMult(cam->getViewport()->computeWindowMatrix());
+
+        // has the camera moved?
+        bool camChanged = camVPW != local._lastCamVPW;
+        local._lastCamVPW = camVPW;
 
         // Go through each leaf and test for visibility.
         // Enforce the "max objects" limit along the way.
@@ -404,22 +408,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             // if snapping is enabled, only snap when the camera stops moving.
             bool quantize = snapToPixel;
-            if ( quantize )
+            if ( quantize && !camChanged )
             {
-                DrawableInfo& info = local._memory[drawable];
-                
-                if ( info._lastXY.x() == winPos.x() && info._lastXY.y() == winPos.y() )
-                {
-                    // Quanitize the window draw coordinates to mitigate text rendering filtering anomalies.
-                    // Drawing text glyphs on pixel boundaries mitigates aliasing.
-                    // Adding 0.5 will cause the GPU to sample the glyph texels exactly on center.
-                    winPos.x() = floor(winPos.x()) + 0.5;
-                    winPos.y() = floor(winPos.y()) + 0.5;
-                }
-                else
-                {
-                    info._lastXY.set( winPos.x(), winPos.y() );
-                }
+                // Quanitize the window draw coordinates to mitigate text rendering filtering anomalies.
+                // Drawing text glyphs on pixel boundaries mitigates aliasing.
+                // Adding 0.5 will cause the GPU to sample the glyph texels exactly on center.
+                winPos.x() = floor(winPos.x()) + 0.5;
+                winPos.y() = floor(winPos.y()) + 0.5;
             }            
 
             if ( s_declutteringEnabledGlobally )
@@ -817,10 +812,12 @@ bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 //----------------------------------------------------------------------------
 
 void
-ScreenSpaceLayout::activate(osg::StateSet* stateSet, int binNum)
+ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
 {
     if ( stateSet )
     {
+        int binNum = getOptions().renderOrder().get();
+
         // the OVERRIDE prevents subsequent statesets from disabling the layout bin
         stateSet->setRenderBinDetails(
             binNum,

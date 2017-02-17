@@ -29,6 +29,7 @@
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Lighting>
+#include <osgEarth/NodeUtils>
 
 #undef  LC
 #define LC "[SilverLiningNode] "

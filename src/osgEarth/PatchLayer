@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_PATCH_LAYER_H
 #define OSGEARTH_PATCH_LAYER_H 1
 
-#include <osgEarth/Layer>
+#include <osgEarth/VisibleLayer>
 #include <osg/RenderInfo>
 #include <osg/Texture>
 
@@ -30,7 +30,7 @@ namespace osgEarth
      * PatchLayer is a layer that can render terrain tiles using either
      * a geometry shader patch (GL_PATCHES) or a custom draw callback.
      */
-    class OSGEARTH_EXPORT PatchLayer : public Layer
+    class OSGEARTH_EXPORT PatchLayer : public VisibleLayer
     {
     public:
         struct TileData : public osg::Referenced
@@ -63,15 +63,16 @@ namespace osgEarth
          */
         struct AcceptCallback : public osg::Referenced
         {
-            virtual bool accept(const TileKey& key) const =0;
+            /** Whether to accept the entire layer. Innvoked during Cull. */
+            virtual bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const { return true; }
+
+            /** Whether to accept a specific tile. Invoked during Cull. */
+            virtual bool acceptKey(const TileKey& key) const { return true; }
         };
 
 
     public:
         PatchLayer();
-
-        /** dtor */
-        virtual ~PatchLayer() { }
 
         /**
          * Draw callback to use to render tiles in this layer
@@ -87,6 +88,11 @@ namespace osgEarth
 
 
         TileData* createTileData(const TileKey& key) { return 0L; }
+
+    protected:
+
+        /** dtor */
+        virtual ~PatchLayer() { }
 
     private:
         osg::ref_ptr<DrawCallback> _drawCallback;

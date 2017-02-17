@@ -18,7 +18,7 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
     </image>
 
     <!--Load a folder full of terrain data as an elevation source-->
-    <heightfield name="terrain" driver="gdal">
+    <elevation name="terrain" driver="gdal">
 
         <!--To load the files in a directory, just point the URL to a directory instead of a file-->
         <url>..\data\terrain</url>
@@ -33,6 +33,6 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
 	    <!--Tell the GDAL driver to just look for tifs-->
 	    <extensions>tif</extensions>  
 
-    </heightfield>
+    </elevation>
     
 </map>

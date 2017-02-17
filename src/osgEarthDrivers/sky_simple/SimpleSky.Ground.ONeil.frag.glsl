@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.8
 
-#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
 
 uniform bool oe_mode_GL_LIGHTING; 
 uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
@@ -21,10 +21,10 @@ in vec3 atmos_vert;
 vec3 vp_Normal;          // surface normal (from osgEarth)
 
 
-#define MAX_LIGHTS 8
+//#define MAX_LIGHTS 8
 
 // Total number of lights in the scene
-uniform int osg_NumLights;
+//uniform int osg_NumLights;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -43,7 +43,7 @@ struct osg_LightSourceParameters
 
    bool enabled;
 };  
-uniform osg_LightSourceParameters osg_LightSource[MAX_LIGHTS];
+uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];
 
 // Surface material:
 struct osg_MaterialParameters  
@@ -83,7 +83,7 @@ void atmos_fragment_main(inout vec4 color)
         osg_FrontMaterial.emission.rgb;
         // + osg_FrontMaterial.ambient.rgb * osg_LightModel.ambient.rgb;
 
-    int numLights = min(osg_NumLights, MAX_LIGHTS);
+    int numLights = OE_NUM_LIGHTS; //min(osg_NumLights, MAX_LIGHTS);
 
     for (int i=0; i<numLights; ++i)
     {

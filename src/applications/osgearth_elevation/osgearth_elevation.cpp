@@ -35,7 +35,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/ModelNode>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -51,7 +51,7 @@ static LabelControl*  s_haeLabel    = 0L;
 static LabelControl*  s_egm96Label  = 0L;
 static LabelControl*  s_mapLabel    = 0L;
 static LabelControl*  s_resLabel    = 0L;
-static PlaceNode*     s_marker      = 0L;
+static ModelNode*     s_marker      = 0L;
 
 
 // An event handler that will print out the elevation at the clicked point
@@ -136,6 +136,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
             // and move the marker.
             s_marker->setPosition(mapPoint);
+
+            // normal test.
+            osg::Quat q;
+            q.makeRotate(osg::Vec3(0,0,1), hits.begin()->getLocalIntersectNormal());
+            s_marker->setLocalRotation(q);
         }
 
         if (!yes)
@@ -166,6 +171,22 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     bool             _mouseDown;
     ElevationQuery   _query;
     osg::NodePath    _path;
+};
+
+
+struct ClickToRemoveElevation : public ControlEventHandler
+{
+    void onClick(Control*)
+    {
+        Map* map = s_mapNode->getMap();
+        ElevationLayerVector layers;
+        map->getLayers(layers);
+        map->beginUpdate();
+        for (ElevationLayerVector::iterator i = layers.begin(); i != layers.end(); ++i) {
+            map->removeLayer(i->get());
+        }
+        map->endUpdate();
+    }
 };
 
 
@@ -207,6 +228,7 @@ int main(int argc, char** argv)
     grid->setControl(0,r++,new LabelControl("Scene graph intersection:"));
     grid->setControl(0,r++,new LabelControl("EGM96 elevation:"));
     grid->setControl(0,r++,new LabelControl("Query resolution:"));
+    grid->setControl(0, r++, new ButtonControl("Click to remove all elevation data", new ClickToRemoveElevation()));
 
     r = 1;
     s_posLabel = grid->setControl(1,r++,new LabelControl(""));
@@ -217,11 +239,15 @@ int main(int argc, char** argv)
     s_egm96Label = grid->setControl(1,r++,new LabelControl(""));
     s_resLabel = grid->setControl(1,r++,new LabelControl(""));
 
-    s_marker = new PlaceNode();
-    s_marker->setMapNode( s_mapNode );
-    s_marker->setIconImage(osgDB::readImageFile("../data/placemark32.png"));
+    
+    Style markerStyle;
+    markerStyle.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/axes.osgt.64.scale");
+    markerStyle.getOrCreate<ModelSymbol>()->autoScale() = true;
+    s_marker = new ModelNode(s_mapNode, markerStyle);
+    //s_marker->setMapNode( s_mapNode );
+    //s_marker->setIconImage(osgDB::readImageFile("../data/placemark32.png"));
     s_marker->setDynamic(true);
-    root->addChild( s_marker );
+    s_mapNode->addChild( s_marker );
 
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
     s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 

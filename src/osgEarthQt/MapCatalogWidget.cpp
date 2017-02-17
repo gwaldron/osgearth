@@ -23,8 +23,11 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/GuiActions>
 
-
 #include <osgEarth/Map>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/MaskLayer>
 #include <osgEarth/Viewpoint>
 #include <osgEarthAnnotation/AnnotationNode>
 

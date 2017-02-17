@@ -7,7 +7,7 @@ FOREACH( lib
          osgEarthUtil )
 
     ADD_SUBDIRECTORY(${lib})
-    
+
     SET_PROPERTY(TARGET ${lib} PROPERTY FOLDER "Core")
 
 ENDFOREACH( lib )
@@ -18,7 +18,7 @@ FOREACH( lib
          osgEarthSplat
          osgEarthSilverLining
          osgEarthTriton )
-    add_subdirectory( ${lib} )    
+    add_subdirectory( ${lib} )
 ENDFOREACH( lib )
 
 ADD_SUBDIRECTORY( osgEarthDrivers )
@@ -26,6 +26,8 @@ ADD_SUBDIRECTORY( osgEarthDrivers )
 IF(NOT OSG_BUILD_PLATFORM_IPHONE AND NOT OSG_BUILD_PLATFORM_IPHONE_SIMULATOR AND NOT ANDROID)
     ADD_SUBDIRECTORY( applications )
 ENDIF()
+
+ADD_SUBDIRECTORY( tests )
 
 #IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
 #    ADD_SUBDIRECTORY(osgEarthQt)

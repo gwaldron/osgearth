@@ -29,17 +29,18 @@ TerrainCuller::TerrainCuller() :
 _frame(0L),
 _context(0L),
 _camera(0L),
-_currentTileNode(0L)
+_currentTileNode(0L),
+_orphanedPassesDetected(0u)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings, osg::StateSet* defaultStateSet)
+TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
-    _terrain.setup(frame, bindings, defaultStateSet, frameNum);
+    _terrain.setup(frame, bindings, frameNum, *this, _camera);
 }
 
 float
@@ -50,16 +51,14 @@ TerrainCuller::getDistanceToViewPoint(const osg::Vec3& pos, bool withLODScale) c
 }
 
 DrawTileCommand*
-TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tileNode)
+TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const RenderingPass* pass, TileNode* tileNode)
 {
     SurfaceNode* surface = tileNode->getSurfaceNode();
 
     const RenderBindings&  bindings = _context->getRenderBindings();
 
-    //UID uid = pass._sourceUID;
-
     // skip layers that are not visible:
-    if (pass._imageLayer.valid() && !pass._imageLayer->getVisible())
+    if (pass && pass->_imageLayer.valid() && !pass->_imageLayer->getVisible())
         return 0L;
 
     // add a new Draw command to the appropriate layer
@@ -70,7 +69,8 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         DrawTileCommand& tile = layer->_tiles.back();
 
         // install everything we need in the Draw Command:
-        tile._pass = &pass;
+        tile._colorSamplers = pass ? &pass->_samplers : 0L;
+        tile._sharedSamplers = &model->_sharedSamplers;
         tile._matrix = surface->getMatrix();
         tile._modelViewMatrix = *this->getModelViewMatrix();
         tile._keyValue = tileNode->getTileKeyValue();
@@ -90,8 +90,6 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
         if (elevRaster)
         {
             float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
-            //float size = (float)elevRaster->s();
-            //tile._elevTexelCoeff.set((size - 1.0f) / size, 0.5 / size);
 
             // Compute an elevation texture sampling scale/bias so we sample elevation data on center
             // instead of on edge (as we do with color, etc.)
@@ -108,11 +106,14 @@ TerrainCuller::addDrawCommand(UID uid, const RenderingPass& pass, TileNode* tile
 
         return &tile;
     }
-    else
+    else if (pass)
     {
-        OE_WARN << LC << "Internal error - _terrain.layer(uid=" << uid << ") returned NULL\n";
-        return 0L;
+        // The pass exists but it's layer doesn't - remember this so we can run
+        // a visitor to clean up the rendering models.
+        ++_orphanedPassesDetected;
     }
+
+    return 0L;
 }
 
 void
@@ -125,6 +126,7 @@ TerrainCuller::apply(osg::Node& node)
     if (tileNode)
     {
         _currentTileNode = tileNode;
+        _currentTileDrawCommands = 0u;
         
         if (!_terrain.patchLayers().empty())
         {
@@ -133,16 +135,12 @@ TerrainCuller::apply(osg::Node& node)
             TileRenderModel& renderModel = _currentTileNode->renderModel();
 
             bool pushedMatrix = false;
-
-            // Patch layers will use the default (empty) pass for now.
-            // TODO: allow access to other passes.
-            const RenderingPass* defaultPass = renderModel.getPass(-1);
             
             for (PatchLayerVector::const_iterator i = _terrain.patchLayers().begin(); i != _terrain.patchLayers().end(); ++i)
             {
                 PatchLayer* layer = i->get();
                 if (layer->getAcceptCallback() == 0L ||
-                    layer->getAcceptCallback()->accept(_currentTileNode->getKey()))
+                    layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
                 {
                     // Push this tile's matrix if we haven't already done so:
                     if (!pushedMatrix)
@@ -157,9 +155,13 @@ TerrainCuller::apply(osg::Node& node)
                     }
 
                     // Add the draw command:
-                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), *defaultPass, tileNode);
-                    cmd->_drawPatch = true;
-                    cmd->_drawCallback = layer->getDrawCallback();
+                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, tileNode);
+                    if (cmd)
+                    {
+                        cmd->_drawPatch = true;
+                        cmd->_drawCallback = layer->getDrawCallback();
+                        ++_currentTileDrawCommands;
+                    }
                 }
             }
 
@@ -174,16 +176,14 @@ TerrainCuller::apply(osg::Node& node)
     {
         SurfaceNode* surface = dynamic_cast<SurfaceNode*>(&node);
         if (surface)
-        {            
+        {
             TileRenderModel& renderModel = _currentTileNode->renderModel();
 
             // push the surface matrix:
             osg::Matrix mvm = *getModelViewMatrix();
             surface->computeLocalToWorldMatrix(mvm, this);
             pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
-
-            unsigned count = 0;
-            
+                        
             // First go through any legit rendering pass data in the Tile and
             // and add a DrawCommand for each.
             for (unsigned p = 0; p < renderModel._passes.size(); ++p)
@@ -192,20 +192,29 @@ TerrainCuller::apply(osg::Node& node)
                 
                 if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
-                    addDrawCommand(pass._sourceUID, pass, _currentTileNode);
-                    ++count;
+                    if (addDrawCommand(pass._sourceUID, &renderModel, &pass, _currentTileNode))
+                    {
+                        ++_currentTileDrawCommands;
+                    }
                 }
             }
 
-            // Next, add a DrawCommand for each "global" tile layer (i.e. layers that are
-            // not represented in the TerrainTileModel for whatever reason).
-            // These use the "default" rendering pass samplers (UID -1) for rendering.
-            // (TODO: make this configuration, so one of these layers can use a specific
-            // color layer's samplers)
+            // Next, add a DrawCommand for each tile layer not represented in the TerrainTileModel
+            // as a rendering pass.
             for (LayerVector::const_iterator i = _terrain.tileLayers().begin(); i != _terrain.tileLayers().end(); ++i)
             {
                 Layer* layer = i->get();
-                addDrawCommand(layer->getUID(), *renderModel.getPass(-1), _currentTileNode);
+                if (addDrawCommand(layer->getUID(), &renderModel, 0L, _currentTileNode))
+                {
+                    ++_currentTileDrawCommands;
+                }
+            }
+
+            // If the culler added no draw commands for this tile... do something!
+            if (_currentTileDrawCommands == 0)
+            {
+                //OE_INFO << LC << "Adding blank render.\n";
+                addDrawCommand(-1, &renderModel, 0L, _currentTileNode);
             }
 
             popModelViewMatrix();

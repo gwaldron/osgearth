@@ -103,9 +103,11 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageToHeightFieldConverter
     ImageUtils
+    IntersectionPicker
     IOTypes
     JsonUtils
     Layer
+    LayerListener
     Lighting
     LineFunctor
     Locators
@@ -124,6 +126,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskSource
     Memory
     MemCache
+    Metrics
     ModelLayer
     ModelSource
     NativeProgramAdapter
@@ -136,7 +139,7 @@ SET(LIB_PUBLIC_HEADERS
     PatchLayer
     PhongLightingEffect
     Picker
-    IntersectionPicker
+    PluginLoader
     PrimitiveIntersector
     Profile
     Profiler
@@ -146,6 +149,7 @@ SET(LIB_PUBLIC_HEADERS
     Registry
     ResourceReleaser
     Revisioning
+    SceneGraphCallback
     ScreenSpaceLayout
     Shaders
     ShaderFactory
@@ -175,6 +179,7 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TileKey
     TileHandler
+    TileRasterizer
     TileSource
     TileVisitor
     TimeControl
@@ -187,6 +192,8 @@ SET(LIB_PUBLIC_HEADERS
     VerticalDatum
     Viewpoint
     VirtualProgram
+    VisibleLayer
+    WrapperLayer
     XmlUtils
 )
 
@@ -195,7 +202,7 @@ IF (NOT TINYXML_FOUND)
     SET(LIB_PUBLIC_HEADERS
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
-        tinyxml.h 
+        tinyxml.h
     )
 ENDIF (NOT TINYXML_FOUND)
 
@@ -212,14 +219,14 @@ ENDIF (NOT TINYXML_FOUND)
 SET(VERSION_GIT_SOURCE "")
 IF (OSGEARTH_EMBED_GIT_SHA)
 	ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
-	
+
 	# auto-generate the VersionGit file to include the git SHA1 variable.
 	configure_file(
 		"${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
+		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp"
 		@ONLY)
-    
-	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")	
+
+	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
@@ -269,6 +276,7 @@ set(TARGET_SRC
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    IntersectionPicker.cpp
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
@@ -287,6 +295,7 @@ set(TARGET_SRC
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
+    Metrics.cpp
     MimeTypes.cpp
     ModelLayer.cpp
     ModelSource.cpp
@@ -297,7 +306,6 @@ set(TARGET_SRC
     OverlayNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
-    IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp
@@ -307,6 +315,7 @@ set(TARGET_SRC
     Registry.cpp
     ResourceReleaser.cpp
     Revisioning.cpp
+    SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
@@ -331,6 +340,7 @@ set(TARGET_SRC
     TileKey.cpp
     TileHandler.cpp
     TilePatchCallback.cpp
+    TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp
@@ -343,6 +353,7 @@ set(TARGET_SRC
     VerticalDatum.cpp
     Viewpoint.cpp
     VirtualProgram.cpp
+    VisibleLayer.cpp
     XmlUtils.cpp
     ${SHADERS_CPP} )
 

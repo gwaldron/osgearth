@@ -11,10 +11,14 @@ YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
 http://readymap.org
 
 -->
-<map name="readymap.org" type="geocentric">
+<map name="readymap.org" type="projected">    
     
     <options>
-        <terrain first_lod="1" tile_pixel_size="256" range_mode="PIXEL_SIZE_ON_SCREEN"/>
+        <profile>
+            <srs>+proj=utm +zone=31 +units=m +no_defs</srs>
+        </profile>
+        
+        <terrain driver="rex" tile_size="2" morph_terrain="false"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">
@@ -24,8 +28,4 @@ http://readymap.org
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-    
-    <extensions>
-        <xi:include href="viewpoints.xml"/>
-    </extensions>
 </map>

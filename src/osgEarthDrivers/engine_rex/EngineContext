@@ -33,6 +33,7 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TileRasterizer>
 
 #include <osgUtil/CullVisitor>
 
@@ -57,6 +58,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             GeometryPool*                       geometryPool,
             Loader*                             loader,
             Unloader*                           unloader,
+            TileRasterizer*                     rasterizer,
             TileNodeRegistry*                   liveTiles,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options,
@@ -71,12 +73,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         GeometryPool* getGeometryPool() const { return _geometryPool; }
 
-        //const MapFrame& getMapFrame();
-        const Map* getMap() const { return _map.get(); }
+        // Raw pointer to the Map. Only call this from the MAIN thread. DO NOT access this
+        // from a pager thread. Instead, create a MapFrame from it in the MAIN thread and
+        // use THAT from the pager thread.
+        const Map* getMap() const;
 
-        TerrainEngineNode* getEngine() const { return _terrainEngine; }
+        // only call this variant when it's safe to do so (update, cull).
+        TerrainEngineNode* getEngine() const { return _terrainEngine.get(); }
 
-        TileNodeRegistry* liveTiles() const { return _liveTiles.get(); }
+        TileNodeRegistry* liveTiles() const { return _liveTiles; }
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
@@ -92,34 +97,34 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool maxLiveTilesExceeded() const;
 
-        void unloadChildrenOf(const TileNode*);
-
         double getExpirationRange2() const { return _expirationRange2; }
 
         ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB; }
 
         bool getUseTextureBorder() const { return false; }
 
+        TileRasterizer* getTileRasterizer() const { return _tileRasterizer; }
+
     protected:
 
         virtual ~EngineContext() { }
 
     public:
-
-        osg::ref_ptr<const Map>               _map;
-        //MapFrame                              _frame;
-        osg::ref_ptr<TileNodeRegistry>        _liveTiles;
+        
+        osg::observer_ptr<TerrainEngineNode>  _terrainEngine;
+        int                                   _mainThreadId;
+        const Map*                            _map;
+        TileNodeRegistry*                     _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;
-        TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
         Unloader*                             _unloader;
+        TileRasterizer*                       _tileRasterizer;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
         osg::ref_ptr<ProgressCallback>        _progress;    
-        std::vector<TileKey>                  _tilesWithChildrenToUnload;
         double                                _expirationRange2;
         ModifyBoundingBoxCallback*            _bboxCB;
     };

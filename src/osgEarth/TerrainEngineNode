@@ -34,8 +34,10 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 #include <osgUtil/RenderBin>
+#include <set>
 
 #define OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER "OSGEARTH_TERRAIN_ENGINE"
+
 
 namespace osgUtil {
     class CullVisitor;
@@ -75,15 +77,15 @@ namespace osgEarth
          * Creates a new data model for a terrain tile, calling any registered
          * CreateTileModelCallbacks before returning the new object.
          *
-         * @param frame Map frame from which to create the new tile model
-         * @param key   Key for which to create the new tile model
-         * @param modelStore Optional interface for accessing other previously
-         *                   created tile models (see TerrainTileModelFactory)
+         * @param frame  Map frame from which to create the new tile model
+         * @param key    Key for which to create the new tile model
+         * @param layers UIDs of layers to fetch data for; NULL => all layers
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             ProgressCallback*            progress ) =0;
 
         
@@ -169,10 +171,10 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        /** Adds a tile patch callback. */
+        /** @deprecated Adds a tile patch callback. */
         virtual void addTilePatchCallback(TilePatchCallback*);
 
-        /** Removes a tile patch callback. */
+        /** @deprecated Removes a tile patch callback. */
         virtual void removeTilePatchCallback(TilePatchCallback*);
 
         /** Gets the ComputeRangeCallback for this TerrainEngineNode */
@@ -191,6 +193,7 @@ namespace osgEarth
         TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             ProgressCallback*            progress );
 
         void notifyOfTerrainTileNodeCreation(
@@ -223,7 +226,8 @@ namespace osgEarth
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
-        bool elevationBorderRequired() const { return _elevationBorderRequired; }
+        bool elevationBorderRequired() const { return _requireElevationBorder; }
+        bool fullDataAtFirstLodRequired() const { return _requireFullDataAtFirstLOD; }
             
 
     public: // Runtime properties
@@ -260,9 +264,7 @@ namespace osgEarth
         friend class MapNode;
         friend class TerrainEngineNodeFactory;
 
-        /** Attaches a map to the terrain engine and initialized it.*/
-        virtual void preInitialize( const Map* map, const TerrainOptions& options );
-        virtual void postInitialize( const Map* map, const TerrainOptions& options );
+        virtual void setMap(const Map* map, const TerrainOptions& options);
 
         // signals that a redraw is needed because something changed.
         virtual void requestRedraw();
@@ -271,13 +273,13 @@ namespace osgEarth
         // shaders, state, etc.
         virtual void dirtyState() { }
 
-        // allow subclasses direct access for convenience.
-        osg::ref_ptr<TextureCompositor> _texCompositor;
+        osg::ref_ptr<TextureCompositor> _textureResourceTracker;
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;
         bool _requireParentTextures;
-        bool _elevationBorderRequired;
+        bool _requireElevationBorder;
+        bool _requireFullDataAtFirstLOD;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
@@ -369,7 +371,7 @@ namespace osgEarth
     class TerrainEngineNodeFactory
     {
     public:
-        static TerrainEngineNode* create( Map* map, const TerrainOptions& options );
+        static TerrainEngineNode* create(const TerrainOptions& options );
     };
 
     /**

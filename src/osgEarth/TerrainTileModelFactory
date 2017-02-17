@@ -23,11 +23,46 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TerrainEngineRequirements>
-#include <osgEarth/MapFrame>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Progress>
 
 namespace osgEarth
 {
+    class MapFrame;
+
+    /**
+     * Filter you can pass to TerrainTileModelFactory::createTileModel
+     */
+    class CreateTileModelFilter
+    {
+    public:
+        CreateTileModelFilter() : _elevation(false) { }
+
+        /** Whether to fetch elevation data and normal maps */
+        optional<bool>& elevation() { return _elevation; }
+        const optional<bool>& elevation() const { return _elevation; }
+
+        /** List of other layers to accept */
+        std::set<UID>& layers() { return _layers; }
+        const std::set<UID>& layers() const { return _layers; }
+
+        bool accept(const Layer* layer) const {
+            return empty() || _layers.find(layer->getUID()) != _layers.end();
+        }
+
+        bool empty() const {
+            return !_elevation.isSet() && _layers.empty();
+        }
+
+        void clear() {
+            _elevation.unset();
+            _layers.clear();
+        }
+    protected:
+        optional<bool> _elevation;
+        std::set<UID> _layers;
+    };
+
     /**
      * Builds a TerrainTileModel from a map frame.
      */
@@ -43,28 +78,32 @@ namespace osgEarth
          *
          * @param frame        Map frame from which to read source data
          * @param key          Tile key for which to create the model
+         * @param layers       Set of layer UIDs for which to fetch data; NULL => all layers
          * @param requirements Hints that tell the factory what types of data to add
-         * @param border       Size of a texture border to add to elevation and normal maps
          * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
             const MapFrame&                  frame,
             const TileKey&                   key,
+            const CreateTileModelFilter&     filter,
             const TerrainEngineRequirements* requirements,
             ProgressCallback*                progress);
 
     protected:
 
         virtual void addImageLayers(
-            TerrainTileModel*            model,
-            const MapFrame&              frame,
-            const TileKey&               key,
-            ProgressCallback*            progress);
+            TerrainTileModel*                model,
+            const MapFrame&                  frame,
+            const TerrainEngineRequirements* reqs,
+            const TileKey&                   key,
+            const CreateTileModelFilter&     filter,
+            ProgressCallback*                progress);
 
         virtual void addElevation(
             TerrainTileModel*            model,
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             unsigned                     border,
             ProgressCallback*            progress);
 
@@ -78,6 +117,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const MapFrame&              frame,
             const TileKey&               key,
+            const CreateTileModelFilter& filter,
             ProgressCallback*            progress);
 
     protected:
@@ -129,6 +169,7 @@ namespace osgEarth
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;
+        osg::ref_ptr<osg::Texture> _emptyTexture;
     };
 }
 

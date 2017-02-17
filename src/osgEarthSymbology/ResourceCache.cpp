@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/ResourceCache>
+#include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -30,6 +31,35 @@ _instanceCache( false ),
 _resourceLibraryCache( false )
 {
     //nop
+}
+
+bool
+ResourceCache::getOrCreateLineTexture(const URI& uri, osg::ref_ptr<osg::Texture>& output, const osgDB::Options* readOptions)
+{
+    Threading::ScopedMutexLock lock(_texMutex);
+    TextureCache::Record rec;
+    if (_texCache.get(uri.full(), rec) && rec.value().valid())
+    {
+        output = rec.value().get();
+    }
+    else
+    {
+        osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
+        if (image.valid())
+        {
+            osg::Texture2D* tex = new osg::Texture2D(image);
+            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+            tex->setMaxAnisotropy( 4.0f );
+            tex->setResizeNonPowerOfTwoHint( false );
+            output = tex;
+            _texCache.insert(uri.full(), output.get());
+        }
+    }
+
+    return output.valid();
 }
 
 bool

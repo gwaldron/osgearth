@@ -6,10 +6,7 @@
 <map>
         
     <options>
-        <terrain driver="rex" 
-                 tile_size="17"
-                 high_resolution_first="true" 
-                 merges_per_frame="25">
+        <terrain driver="rex" merges_per_frame="1">
         </terrain>
     </options>
     

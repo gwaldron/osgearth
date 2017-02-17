@@ -23,7 +23,6 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #undef  LC
 #define LC "[DrawTileCommand] "
 
-
 void
 DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const
 {
@@ -61,35 +60,58 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layer
     }
 
     // Apply samplers for this tile draw:
-    const Samplers& samplers = _pass->_surrogateSamplers ? *_pass->_surrogateSamplers : _pass->_samplers;
+    unsigned s = 0;
 
-
-    for(unsigned s=0; s<samplers.size(); ++s)
+    if (_colorSamplers)
     {
-        const Sampler& sampler = samplers[s];
-
-        SamplerState& samplerState = ds._samplerState._samplers[s];
-
-        if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+        for (s = 0; s <= SamplerBinding::COLOR_PARENT; ++s)
         {
-            state.setActiveTextureUnit((*ds._bindings)[s].unit());
-            sampler._texture->apply(state);
-            samplerState._texture = sampler._texture.get();
-        }
+            const Sampler& sampler = (*_colorSamplers)[s];
+            SamplerState& samplerState = ds._samplerState._samplers[s];
 
-        if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
-        {
-            ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
-            samplerState._matrix = sampler._matrix;
-        }
-
-        // Need a special uniform for color parents.
-        if (s == SamplerBinding::COLOR_PARENT)
-        {
-            if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
             {
-                ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
-                ds._parentTextureExists = sampler._texture.valid();
+                state.setActiveTextureUnit((*ds._bindings)[s].unit());
+                sampler._texture->apply(state);
+                samplerState._texture = sampler._texture.get();
+            }
+
+            if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
+            {
+                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                samplerState._matrix = sampler._matrix;
+            }
+
+            // Need a special uniform for color parents.
+            if (s == SamplerBinding::COLOR_PARENT)
+            {
+                if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
+                {
+                    ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
+                    ds._parentTextureExists = sampler._texture.valid();
+                }
+            }
+        }
+    }
+
+    if (_sharedSamplers)
+    {
+        for (; s < _sharedSamplers->size(); ++s)
+        {
+            const Sampler& sampler = (*_sharedSamplers)[s];
+            SamplerState& samplerState = ds._samplerState._samplers[s];
+
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+            {
+                state.setActiveTextureUnit((*ds._bindings)[s].unit());
+                sampler._texture->apply(state);
+                samplerState._texture = sampler._texture.get();
+            }
+
+            if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
+            {
+                ds._ext->glUniformMatrix4fv(samplerState._matrixUL, 1, GL_FALSE, sampler._matrix.ptr());
+                samplerState._matrix = sampler._matrix;
             }
         }
     }
@@ -97,10 +119,15 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layer
     if (_drawCallback)
     {
         PatchLayer::DrawContext dc;
-        dc.colorTexture = samplers[SamplerBinding::COLOR]._texture.get();
-        dc.elevationTexture = samplers[SamplerBinding::ELEVATION]._texture.get();
-        dc.normalTexture = samplers[SamplerBinding::NORMAL]._texture.get();
-        dc.coverageTexture = samplers[SamplerBinding::COVERAGE]._texture.get();
+
+        //TODO: might not need any of this. review. -gw
+        dc.colorTexture = _colorSamplers? (*_colorSamplers)[SamplerBinding::COLOR]._texture.get() : 0L;
+        if (_sharedSamplers)
+        {
+            dc.elevationTexture = (*_sharedSamplers)[SamplerBinding::ELEVATION]._texture.get();
+            dc.normalTexture    = (*_sharedSamplers)[SamplerBinding::NORMAL]._texture.get();
+            dc.coverageTexture  = (*_sharedSamplers)[SamplerBinding::COVERAGE]._texture.get();
+        }
         dc.key = &_key;
         dc.range = _range;
         _drawCallback->draw(ri, dc, layerData);

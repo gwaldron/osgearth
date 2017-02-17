@@ -46,7 +46,10 @@ namespace osgEarth { namespace Util
             LogDepthBuffer_VertOnly_VertFile,
 
             Shadowing_Vertex,
-            Shadowing_Fragment;
+            Shadowing_Fragment,
+
+            SimpleOceanLayer_Vertex,
+            SimpleOceanLayer_Fragment;
 	};	
 } } // namespace osgEarth::Util
 

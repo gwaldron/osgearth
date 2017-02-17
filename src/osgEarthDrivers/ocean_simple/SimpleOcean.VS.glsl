@@ -3,7 +3,20 @@
 #pragma vp_name       SimpleOcean with Proxy VS
 #pragma vp_entryPoint oe_ocean_vertex
 #pragma vp_location   vertex_view
-#pragma vp_define     USE_OCEAN_MASK
+
+#pragma import_defines(OE_SIMPLE_OCEAN_USE_TEXTURE, OE_SIMPLE_OCEAN_USE_MASK)
+
+// uniforms
+uniform mat4 osg_ViewMatrixInverse;  
+uniform float osg_FrameTime;  
+uniform float ocean_seaLevel;                 // sea level offset
+
+// outputs to fragment stage 
+out float ocean_v_msl;                      // elevation (MSL) of camera
+out float ocean_v_range;                    // distance from camera to current vertex
+
+#ifdef OE_SIMPLE_OCEAN_USE_TEXTURE
+out vec4 ocean_surface_tex_coord;       // tex coords for surface texture
 
 // convert an ecef coordinate to lon/lat (low precision)
 vec2 ocean_xyz_to_spherical(in vec3 xyz)  
@@ -14,25 +27,14 @@ vec2 ocean_xyz_to_spherical(in vec3 xyz)
     return vec2(lon,lat);  
 }  
 
-// uniforms
-uniform mat4 osg_ViewMatrixInverse;  
-uniform float osg_FrameTime;  
-uniform sampler2D ocean_data;                 // heightfield encoded into 16 bit texture
-uniform float ocean_seaLevel;                 // sea level offset
-uniform sampler2D ocean_surface_tex;          // surface texture
-uniform bool ocean_has_surface_tex;           // whether there's a surface texture
+#endif
 
-// outputs to fragment stage
-out vec4 ocean_surface_tex_coord;  
-out float ocean_v_msl;                      // elevation (MSL) of camera
-out float ocean_v_range;                    // distance from camera to current vertex
-out float ocean_v_enorm;                    // normalized terrain height at vertex [0..1]
 
 // stage global
 vec3 vp_Normal;
 
 
-#ifdef USE_OCEAN_MASK
+#ifdef OE_SIMPLE_OCEAN_USE_MASK
 out vec4 ocean_mask_tex_coord;
 
 // Ocean mask version:
@@ -57,16 +59,23 @@ void oe_ocean_vertex(inout vec4 VertexMODEL)
 
     // disatnce to camera:
     ocean_v_range = ocean_v_msl;  
-
+    
+#ifdef OE_SIMPLE_OCEAN_USE_TEXTURE
     // scale the texture mapping to something reasonable:
     vec4 worldVertex = osg_ViewMatrixInverse * mvVertex;  
     vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w );  
     ocean_surface_tex_coord.xy = lonlat/0.0005;
     ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy;  
     ocean_surface_tex_coord.w -= mod(0.1*osg_FrameTime,25.0)/25.0; 
+#endif
 }
 
 #else
+
+uniform sampler2D oe_ocean_proxyTex; // heightfield encoded into 16 bit texture
+uniform mat4 oe_ocean_proxyMat;      // texture matrix for elevation data
+vec4 oe_layer_tilec;                // stage global tile coordinates
+out float ocean_terrainHeight;      // terrain height at proxy Map vertex.
 
 // Proxy layer version:
 void oe_ocean_vertex(inout vec4 VertexVIEW)  
@@ -79,8 +88,8 @@ void oe_ocean_vertex(inout vec4 VertexVIEW)
 
     VertexVIEW = mvVertex2;  
 
-    // read normalized [0..1] elevation data from the height texture:
-    ocean_v_enorm = texture( ocean_data, gl_MultiTexCoord0.st ).r;  
+    // read elevation data from proxy height texture
+    ocean_terrainHeight = texture(oe_ocean_proxyTex, (oe_ocean_proxyMat*oe_layer_tilec).st).r;
 
     // send interpolated params to the fs:
     vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1);  
@@ -91,12 +100,14 @@ void oe_ocean_vertex(inout vec4 VertexVIEW)
     // disatnce to camera:
     ocean_v_range = ocean_v_msl;  
 
+#ifdef OE_SIMPLE_OCEAN_USE_TEXTURE
     // scale the texture mapping to something reasonable:
     vec4 worldVertex = osg_ViewMatrixInverse * mvVertex;  
     vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w );  
     ocean_surface_tex_coord.xy = lonlat/0.0005;
     ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy;  
     ocean_surface_tex_coord.w -= mod(0.1*osg_FrameTime,25.0)/25.0; 
+#endif
  }
 
 #endif

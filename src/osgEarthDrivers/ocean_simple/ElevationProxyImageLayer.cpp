@@ -19,6 +19,7 @@
 #include "ElevationProxyImageLayer"
 
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/ImageUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::SimpleOcean;
@@ -27,11 +28,11 @@ using namespace osgEarth::SimpleOcean;
 
 
 ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
-                                                   const ImageLayerOptions& options ) :
-ImageLayer( options ),
+                                                   const ImageLayerOptions& inoptions ) :
+ImageLayer( inoptions ),
 _mapf     ( sourceMap )
 {
-    _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    options().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 TileSource*
@@ -43,7 +44,7 @@ ElevationProxyImageLayer::createTileSource()
 bool
 ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
-    return key.getLevelOfDetail() <= *_runtimeOptions.maxLevel();
+    return key.getLevelOfDetail() <= options().maxLevel().get();
 }
 
 bool
@@ -64,21 +65,30 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
         }
     }
 
-    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), 257,257, true );
+    osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), 64, 64, 0, true );
 
     if ( _mapf.populateHeightField(hf, key, true, 0L) )
     {
         // encode the heightfield as a 16-bit normalized LUNIMANCE image
         osg::Image* image = new osg::Image();
-        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, GL_UNSIGNED_SHORT);
-        image->setInternalTextureFormat( GL_LUMINANCE16 );
+        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT); //GL_LUMINANCE, GL_UNSIGNED_SHORT);
+        image->setInternalTextureFormat( GL_R32F );
         const osg::FloatArray* floats = hf->getFloatArray();
-        for( unsigned int i = 0; i < floats->size(); ++i  )
-        {
-            int col = i % hf->getNumColumns();
-            int row = i / hf->getNumColumns();
-            *(unsigned short*)image->data( col, row ) = (unsigned short)(32768 + (short)floats->at(i));
+        ImageUtils::PixelWriter write(image);
+        for (unsigned t = 0; t < image->t(); ++t) {
+            for (unsigned s = 0; s < image->s(); ++s) {
+                float v = floats->at(t*image->s()+s);
+                write(osg::Vec4(v,v,v,v), s, t);
+            }
         }
+
+        //for( unsigned int i = 0; i < floats->size(); ++i  )
+        //{
+        //    int col = i % hf->getNumColumns();
+        //    int row = i / hf->getNumColumns();
+        //    *(float*)image->data(col, row) = floats->at(i);
+        //    //*(unsigned short*)image->data( col, row ) = (unsigned short)(32768 + (short)floats->at(i));
+        //}
 
         return GeoImage( image, key.getExtent() );
     }

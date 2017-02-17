@@ -165,6 +165,13 @@ CompositeTileSource::createImage(const TileKey&    key,
             {
                 imageInfo.image = image.getImage();
             }
+
+            // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+            if (progress && (progress->isCanceled() || progress->needsRetry()))
+            {
+                OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
+                return 0L;
+            }
         }
 
         images.push_back(imageInfo);
@@ -205,6 +212,14 @@ CompositeTileSource::createImage(const TileKey&    key,
                     {
                         break;
                     }
+
+                    // If the progress got cancelled or it needs a retry then return NULL to prevent this tile from being built and cached with incomplete or partial data.
+                    if (progress && (progress->isCanceled() || progress->needsRetry()))
+                    {
+                        OE_DEBUG << LC << " createImage was cancelled or needs retry for " << key.str() << std::endl;
+                        return 0L;
+                    }
+
                     parentKey = parentKey.createParentKey();
                 }
 
@@ -319,7 +334,7 @@ CompositeTileSource::add( ImageLayer* layer )
     _imageLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
     comp._layer = layer;
-    comp._imageLayerOptions = layer->getImageLayerOptions();
+    comp._imageLayerOptions = layer->options();
     _options._components.push_back( comp );    
 
     return true;
@@ -343,7 +358,7 @@ CompositeTileSource::add( ElevationLayer* layer )
     _elevationLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
     comp._layer = layer;
-    comp._elevationLayerOptions = layer->getElevationLayerOptions();
+    comp._elevationLayerOptions = layer->options();
     _options._components.push_back( comp );    
 
     return true;

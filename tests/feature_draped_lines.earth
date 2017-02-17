@@ -5,10 +5,9 @@ Demonstrates feature draping using projective texturing,
 i.e. "altitude-clamping: terrain-drape".
 -->
 
-<map name="Geometry Rasterizer Demo" type="round" version="2">
+<map name="Draped Lines Demo">
   
     <options>
-        <lighting>false</lighting>
         <terrain min_lod="16"/>
     </options>
 
@@ -17,7 +16,7 @@ i.e. "altitude-clamping: terrain-drape".
         <cache_policy usage="no_cache"/>
     </image>
     
-    <model name="world_boundaries" driver="feature_geom">
+    <feature_model name="world_boundaries">
             
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
@@ -34,6 +33,6 @@ i.e. "altitude-clamping: terrain-drape".
             </style>
         </styles>
         
-    </model>
+    </feature_model>
   
 </map>

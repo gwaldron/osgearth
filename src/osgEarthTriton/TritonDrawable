@@ -30,6 +30,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
 #include <osgEarth/NativeProgramAdapter>
+#include <osgEarth/ImageLayer>
 
 const unsigned int TRITON_OCEAN_MASK = 0x4; // 0100
 
@@ -45,6 +46,8 @@ namespace osgEarth { namespace Triton
     public:
         TritonDrawable(osgEarth::MapNode* mapNode=NULL, TritonContext* TRITON =0L);
         META_Object(Triton, TritonDrawable);
+
+        void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
 
     public: // osg::Drawable
 
@@ -67,17 +70,20 @@ namespace osgEarth { namespace Triton
         void SetPlanarReflectionMap(osg::Texture2D* map) {_planarReflectionMap = map;};
         void SetPlanarReflectionProjection(osg::RefMatrix * proj) {_planarReflectionProjection = proj;};
 
+        osg::Group* _heightCameraParent;
+
     protected:
         virtual ~TritonDrawable();
 
         osg::observer_ptr<TritonContext>  _TRITON;
         osg::observer_ptr<osgEarth::MapNode> _mapNode;
+        osg::observer_ptr<const osgEarth::ImageLayer> _maskLayer;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
         osg::BoundingBox                  _bbox;
         osg::ref_ptr<osg::Texture2D> _heightMap;
         osg::ref_ptr<osg::Camera> _heightCamera;
         osg::observer_ptr<osgEarth::TerrainCallback> _terrainChangedCallback;
-
+        
         osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
         osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
 

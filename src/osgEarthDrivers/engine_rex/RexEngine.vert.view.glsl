@@ -22,11 +22,9 @@ uniform float oe_layer_minRange;
 uniform float oe_layer_maxRange;
 uniform float oe_layer_attenuationRange;
 
-// SDK functions:
-float oe_terrain_getElevation(in vec2 uv);
-
 out float oe_layer_rangeOpacity;
 
+// SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
 
 // Vertex Markers:

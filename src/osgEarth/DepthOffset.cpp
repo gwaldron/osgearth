@@ -28,6 +28,7 @@
 
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/Depth>
 
 #define LC "[DepthOffset] "
 
@@ -185,6 +186,8 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->removeUniform( _maxRangeUniform.get() );
         
         shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
+
+        s->removeAttribute(osg::StateAttribute::DEPTH);
     }
 
     if ( install )
@@ -198,7 +201,10 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->addUniform( _minRangeUniform.get() );
         s->addUniform( _maxRangeUniform.get() );
         
-        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
+        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);    
+
+        // disable depth writes
+        s->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false), 1);
     }
 
     if ( graphChanging )

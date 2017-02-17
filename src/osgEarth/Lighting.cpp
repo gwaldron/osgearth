@@ -25,6 +25,7 @@
 #include <osgDB/ObjectWrapper>
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
+#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
 
@@ -62,19 +63,23 @@ GenerateGL3LightingUniforms::apply(osg::Node& node)
                     // error messages on the console.
                     if (dynamic_cast<MaterialGL3*>(material) == 0L)
                     {
-                        mat = new MaterialGL3(*material), rap->second;
-                        stateset->setAttributeAndModes(mat);    
+                        mat = new MaterialGL3(*material);
+                        stateset->setAttributeAndModes(mat, rap->second);
                     }
     #endif
 
                     // Install the MaterialCallback so uniforms are updated.
                     if (!mat->getUpdateCallback())
                     {
-                        mat->setUpdateCallback(new MaterialCallback());
+                        if (stateset->getDataVariance() == osg::Object::DYNAMIC)
+                            mat->setUpdateCallback(new MaterialCallback());
+                        else
+                        {
+                            MaterialCallback mc;
+                            mc.operator()(mat, NULL);
+                        }
                     }
-
                 }
-
 
                 // mark this stateset as visited.
                 _statesets.insert(stateset);
@@ -88,7 +93,7 @@ void
 GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
 {
     if (lightSource.getLight())
-    {        
+    {
         if (!alreadyInstalled<LightSourceGL3UniformGenerator>(lightSource.getCullCallback()))
         {
             lightSource.addCullCallback(new LightSourceGL3UniformGenerator());
@@ -111,7 +116,7 @@ GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
 
 bool
 LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
-{    
+{
     osg::LightSource* lightSource = dynamic_cast<osg::LightSource*>(obj);
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(data);
 
@@ -120,54 +125,68 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         osg::Light* light = lightSource->getLight();
 
         // replace the index with the light number:
-        std::string prefix(UPREFIX "LightSource[#].");
-        prefix.at(prefix.length()-3) = (char)('0' + light->getLightNum());
+        //std::string prefix = Stringify() << UPREFIX << "LightSource[" << light->getLightNum() << "].";
+        std::string prefix;
+        if (light->getLightNum() < 10)
+        {
+            prefix = UPREFIX "LightSource[#].";
+            prefix.at(prefix.length() - 3) = (char)('0' + light->getLightNum());
+        }
+        else
+        {
+            prefix = UPREFIX "LightSource[##].";
+            int lightNumTens = light->getLightNum()/10;
+            prefix.at(prefix.length() - 4) = (char)('0'+lightNumTens);
+            prefix.at(prefix.length() - 3) = (char)('0' +(light->getLightNum()-(10*lightNumTens)));
+        }
 
         // Lights are positional state so their location in the scene graph is only important
         // in terms of model transformation, and not in terms of what gets lit.
         // Place these uniforms at the root stateset so they affect the entire graph:
         osg::StateSet* ss = cv->getCurrentRenderStage()->getStateSet();
         if (ss == 0L)
-            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());        
+            cv->getCurrentRenderStage()->setStateSet(ss = new osg::StateSet());
 
-        ss->addUniform(new osg::Uniform((prefix + "ambient").c_str(), light->getAmbient()));
-        ss->addUniform(new osg::Uniform((prefix + "diffuse").c_str(), light->getDiffuse()));
-        ss->addUniform(new osg::Uniform((prefix + "specular").c_str(), light->getSpecular()));
+        ss->getOrCreateUniform(prefix + "ambient", osg::Uniform::FLOAT_VEC4)->set(light->getAmbient());
+        ss->getOrCreateUniform(prefix + "diffuse", osg::Uniform::FLOAT_VEC4)->set(light->getDiffuse());
+        ss->getOrCreateUniform(prefix + "specular", osg::Uniform::FLOAT_VEC4)->set(light->getSpecular());
 
         // add the positional elements:
         const osg::Matrix& mvm = *cv->getModelViewMatrix();
-        ss->addUniform(new osg::Uniform((prefix + "position").c_str(), light->getPosition() * mvm));
+        ss->getOrCreateUniform(prefix + "position", osg::Uniform::FLOAT_VEC4)->set(light->getPosition() * mvm);
         osg::Vec3 directionLocal = osg::Matrix::transform3x3(light->getDirection(), mvm);
         directionLocal.normalize();
-        ss->addUniform(new osg::Uniform((prefix + "spotDirection").c_str(), directionLocal));
+        ss->getOrCreateUniform(prefix + "spotDirection", osg::Uniform::FLOAT_VEC3)->set(directionLocal);
 
-        ss->addUniform(new osg::Uniform((prefix + "spotExponent").c_str(), light->getSpotExponent()));
-        ss->addUniform(new osg::Uniform((prefix + "spotCutoff").c_str(), light->getSpotCutoff()));
-        ss->addUniform(new osg::Uniform((prefix + "spotCosCutoff").c_str(), cosf(light->getSpotCutoff())));
-        ss->addUniform(new osg::Uniform((prefix + "constantAttenuation").c_str(), light->getConstantAttenuation()));
-        ss->addUniform(new osg::Uniform((prefix + "linearAttenuation").c_str(), light->getLinearAttenuation()));
-        ss->addUniform(new osg::Uniform((prefix + "quadraticAttenuation").c_str(), light->getQuadraticAttenuation()));
+        ss->getOrCreateUniform(prefix + "spotExponent", osg::Uniform::FLOAT)->set(light->getSpotExponent());
+        ss->getOrCreateUniform(prefix + "spotCutoff", osg::Uniform::FLOAT)->set(light->getSpotCutoff());
+        ss->getOrCreateUniform(prefix + "spotCosCutoff", osg::Uniform::FLOAT)->set(cosf(light->getSpotCutoff()));
+        ss->getOrCreateUniform(prefix + "constantAttenuation", osg::Uniform::FLOAT)->set(light->getConstantAttenuation());
+        ss->getOrCreateUniform(prefix + "linearAttenuation", osg::Uniform::FLOAT)->set(light->getLinearAttenuation());
+        ss->getOrCreateUniform(prefix + "quadraticAttenuation", osg::Uniform::FLOAT)->set(light->getQuadraticAttenuation());
 
         LightGL3* lightGL3 = dynamic_cast<LightGL3*>(light);
         bool enabled = lightGL3 ? lightGL3->getEnabled() : true;
-        ss->addUniform(new osg::Uniform((prefix + "enabled").c_str(), enabled));
-        
+        ss->getOrCreateUniform(prefix + "enabled", osg::Uniform::BOOL)->set(enabled);
+
         osg::Uniform* fsu = ss->getOrCreateUniform("oe_lighting_framestamp", osg::Uniform::UNSIGNED_INT);
         unsigned fs;
         fsu->get(fs);
 
-        osg::Uniform* numLights = ss->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
+        osg::StateSet::DefinePair* numLights = ss->getDefinePair("OE_NUM_LIGHTS");
 
         if (fs != cv->getFrameStamp()->getFrameNumber())
         {
-            numLights->set(1);
+            ss->setDefine("OE_NUM_LIGHTS", "1", osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
             fsu->set(cv->getFrameStamp()->getFrameNumber());
         }
         else
         {
-            int value;
-            numLights->get(value);
-            numLights->set(value + 1);
+            int value = 1;
+            if (numLights) {
+                value = ::atoi(numLights->first.c_str()) + 1;
+            }
+            ss->setDefine("OE_NUM_LIGHTS", Stringify() << value, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
         }
     }
     return traverse(obj, data);
@@ -176,16 +195,22 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
 //............................................................................
 void MaterialCallback::operator() (osg::StateAttribute* attr, osg::NodeVisitor* nv)
 {
+    static const std::string AMBIENT = UPREFIX "FrontMaterial.ambient";
+    static const std::string DIFFUSE = UPREFIX "FrontMaterial.diffuse";
+    static const std::string SPECULAR = UPREFIX "FrontMaterial.specular";
+    static const std::string EMISSION = UPREFIX "FrontMaterial.emission";
+    static const std::string SHININESS = UPREFIX "FrontMaterial.shininess";
+
     osg::Material* material = static_cast<osg::Material*>(attr);
     for (unsigned int i = 0; i < attr->getNumParents(); i++)
     {
         osg::StateSet* stateSet = attr->getParent(i);
 
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.ambient", osg::Uniform::FLOAT_VEC4)->set(material->getAmbient(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.diffuse", osg::Uniform::FLOAT_VEC4)->set(material->getDiffuse(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.specular", osg::Uniform::FLOAT_VEC4)->set(material->getSpecular(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.emission", osg::Uniform::FLOAT_VEC4)->set(material->getEmission(osg::Material::FRONT));
-        stateSet->getOrCreateUniform(UPREFIX "FrontMaterial.shininess", osg::Uniform::FLOAT)->set(material->getShininess(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(AMBIENT, osg::Uniform::FLOAT_VEC4)->set(material->getAmbient(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(DIFFUSE, osg::Uniform::FLOAT_VEC4)->set(material->getDiffuse(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(SPECULAR, osg::Uniform::FLOAT_VEC4)->set(material->getSpecular(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(EMISSION, osg::Uniform::FLOAT_VEC4)->set(material->getEmission(osg::Material::FRONT));
+        stateSet->getOrCreateUniform(SHININESS, osg::Uniform::FLOAT)->set(material->getShininess(osg::Material::FRONT));
 
         //TODO: back-face materials
     }

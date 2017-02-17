@@ -26,6 +26,8 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/TileHandler>
 #include <osgEarth/TileVisitor>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osg/ArgumentParser>
 #include <osg/Timer>
 #include <iomanip>

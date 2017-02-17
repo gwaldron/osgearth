@@ -29,6 +29,7 @@ namespace osgEarth
 {
     /**
      * Utility for picking objects from the scene.
+     * @deprecated - please consider the RTTPicker instead
      */
     class OSGEARTH_EXPORT IntersectionPicker
     {

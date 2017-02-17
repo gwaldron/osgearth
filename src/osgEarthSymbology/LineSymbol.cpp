@@ -22,6 +22,22 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    std::string stripQuotes(const std::string& s) {
+        bool q0 = (s.length() > 0 && (s.at(0) == '\"' || s.at(0) == '\''));
+        bool q1 = (s.length() > 1 && (s.at(s.length()-1) == '\"' || s.at(s.length()-1) == '\''));
+        if (q0 && q1) 
+            return s.substr(1, s.length()-2);
+        else if (q0)
+            return s.substr(1);
+        else if (q1)
+            return s.substr(0, s.length()-1);
+        else
+            return s;
+    }
+}
+
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
 
 LineSymbol::LineSymbol( const Config& conf ) :
@@ -38,7 +54,8 @@ Symbol(rhs, copyop),
 _stroke          (rhs._stroke),
 _tessellation    (rhs._tessellation),
 _creaseAngle     (rhs._creaseAngle),
-_tessellationSize(rhs._tessellationSize)
+_tessellationSize(rhs._tessellationSize),
+_imageURI        (rhs._imageURI)
 {
     //nop
 }
@@ -52,6 +69,7 @@ LineSymbol::getConfig() const
     conf.addIfSet   ("tessellation", _tessellation);
     conf.addIfSet   ("crease_angle", _creaseAngle);
     conf.addObjIfSet("tessellation_size", _tessellationSize );
+    conf.addIfSet   ("image", _imageURI);
     return conf;
 }
 
@@ -62,6 +80,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ("tessellation", _tessellation);
     conf.getIfSet   ("crease_angle", _creaseAngle);
     conf.getObjIfSet("tessellation_size", _tessellationSize);
+    conf.getIfSet   ("image", _imageURI);
 }
 
 void
@@ -122,5 +141,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "stroke-script") ) {
         style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value());
+    }
+    else if (match(c.key(), "stroke-image")) {
+        style.getOrCreate<LineSymbol>()->imageURI() = URI(stripQuotes(c.value()), c.referrer());
     }
 }

@@ -24,6 +24,9 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarth/Map>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
 
 #include <QCheckBox>
 #include <QDropEvent>

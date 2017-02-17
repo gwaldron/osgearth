@@ -63,31 +63,6 @@ _minTime( rhs._minTime )
     //nop
 }
 
-//optional<CachePolicy>
-//CachePolicy::get(const osgDB::Options* readOptions)
-//{
-//    optional<CachePolicy> policy;
-//    if (readOptions)
-//    {
-//        CacheSettings* settings = CacheSettings::get(readOptions);
-//        if (settings)
-//        {
-//            policy = settings->cachePolicy().get();
-//        }
-//    }
-//    return policy;
-//}
-
-//void
-//CachePolicy::store(osgDB::Options* dbOptions) const
-//{
-//    if ( dbOptions )
-//    {
-//        Config conf = getConfig();
-//        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
-//    }
-//}
-
 void
 CachePolicy::mergeAndOverride(const CachePolicy& rhs)
 {

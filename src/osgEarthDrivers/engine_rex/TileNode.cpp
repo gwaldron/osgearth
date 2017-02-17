@@ -85,6 +85,11 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _context = context;
 
     _key = key;
+    
+    // create a data load request for this new tile:
+    _loadRequest = new LoadTileData( this, context );
+    _loadRequest->setName( _key.str() );
+    _loadRequest->setTileKey( _key );
 
     // whether the stitch together normal maps for adjacent tiles.
     _stitchNormalMap = context->_options.normalizeEdges() == true;
@@ -149,60 +154,51 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
         const RenderBindings& bindings = context->getRenderBindings();
 
-        // Copy the parent's rendering model.
-        //_renderModel = parent->_renderModel;
-
         bool setElevation = false;
 
         for (unsigned p = 0; p < parent->_renderModel._passes.size(); ++p)
         {
             const RenderingPass& parentPass = parent->_renderModel._passes[p];
 
-            if (parentPass.inheritable())
+            // Copy the parent pass:
+            _renderModel._passes.push_back(parentPass);
+            RenderingPass& myPass = _renderModel._passes.back();
+
+            // Scale/bias each matrix for this key quadrant.
+            for (unsigned s = 0; s < myPass._samplers.size(); ++s)
             {
-                // Copy the parent pass:
-                _renderModel._passes.push_back(parentPass);
-                RenderingPass& myPass = _renderModel._passes.back();
+                Sampler& sampler = myPass._samplers[s];
+                sampler._matrix.preMult(scaleBias[quadrant]);
+            }
 
-                // Scale/bias each matrix for this key quadrant.
-                for (unsigned s = 0; s < myPass._samplers.size(); ++s)
-                {
-                    Sampler& sampler = myPass._samplers[s];
-                    sampler._matrix.preMult(scaleBias[quadrant]);
-                }
-
-                // Are we using image blending? If so, initialize the color_parent 
-                // to the color texture.
-                if (bindings[SamplerBinding::COLOR_PARENT].isActive())
-                {
-                    myPass._samplers[SamplerBinding::COLOR_PARENT] = myPass._samplers[SamplerBinding::COLOR];
-                }
-
-                // Use the elevation sampler in the first pass to initialize
-                // the elevation raster (used for primitive functors, intersection, etc.)
-                if (!setElevation && bindings[SamplerBinding::ELEVATION].isActive())
-                {
-                    const Sampler& elevation = myPass._samplers[SamplerBinding::ELEVATION];
-                    if (elevation._texture.valid())
-                    {
-                        setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
-                        setElevation = true;
-                    }
-                }
+            // Are we using image blending? If so, initialize the color_parent 
+            // to the color texture.
+            if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+            {
+                myPass._samplers[SamplerBinding::COLOR_PARENT] = myPass._samplers[SamplerBinding::COLOR];
             }
         }
-    }
 
-    else
-    {
-        // If there's no parent, create a default rendering pass with no source.
-        // Otherwise we won't get any tiles at all. This will always happen when
-        // creating the top-level tiles, so therefore every tile is guaranteed 
-        // to have this "default" pass that can be referenced by other layers if
-        // need be.
-        RenderingPass& defaultPass = _renderModel.addPass();
-        defaultPass._sourceUID = -1;
-        defaultPass._valid = true;
+        // Copy the parent's shared samplers and scale+bias each matrix to the new quadrant:
+        _renderModel._sharedSamplers = parent->_renderModel._sharedSamplers;
+
+        for (unsigned s = 0; s<_renderModel._sharedSamplers.size(); ++s)
+        {
+            Sampler& sampler = _renderModel._sharedSamplers[s];
+            sampler._matrix.preMult(scaleBias[quadrant]);
+        }
+
+        // Use the elevation sampler to initialize the elevation raster
+        // (used for primitive functors, intersection, etc.)
+        if (!setElevation && bindings[SamplerBinding::ELEVATION].isActive())
+        {
+            const Sampler& elevation = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
+            if (elevation._texture.valid())
+            {
+                setElevationRaster(elevation._texture->getImage(0), elevation._matrix);
+                setElevation = true;
+            }
+        }
     }
 
     // need to recompute the bounds after adding payload:
@@ -213,6 +209,10 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     // register me.
     context->liveTiles()->add( this );
+
+    // tell the world.
+    OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
+    context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
 }
 
 osg::BoundingSphere
@@ -274,6 +274,14 @@ void
 TileNode::setDirty(bool value)
 {
     _dirty = value;
+    
+    if (_dirty == false && !_newLayers.empty())
+    {
+        _loadRequest->filter().clear();
+        _loadRequest->filter().layers() = _newLayers;
+        _newLayers.clear();
+        _dirty = true;
+    }
 }
 
 void
@@ -538,6 +546,8 @@ TileNode::createChildren(EngineContext* context)
 void
 TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 {
+    bool newElevationData = false;
+
     // Add color passes:
     const SamplerBinding& color = bindings[SamplerBinding::COLOR];
     if (color.isActive())
@@ -556,41 +566,50 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     pass->_layer = layer->getImageLayer();
                     pass->_imageLayer = layer->getImageLayer();
                     pass->_sourceUID = layer->getImageLayer()->getUID();
-                    pass->_valid = true;
 
                     // This is a new pass that just showed up at this LOD
                     // Since it just arrived at this LOD, make the parent the same as the color.
-                    pass->_samplers[SamplerBinding::COLOR_PARENT]._texture = layer->getTexture();
-                    pass->_samplers[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
+                    if (bindings[SamplerBinding::COLOR_PARENT].isActive())
+                    {
+                        pass->_samplers[SamplerBinding::COLOR_PARENT]._texture = layer->getTexture();
+                        pass->_samplers[SamplerBinding::COLOR_PARENT]._matrix.makeIdentity();
+                    }
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
                 pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+
+                // Handle an RTT image layer:
+                if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())
+                {
+                    // Check the texture's userdata for a Node. If there is one there,
+                    // render it to the texture using the Tile Rasterizer service.
+                    // TODO: consider hanging on to this texture and not applying it to
+                    // the live tile until the RTT is complete. (Prevents unsightly flashing)
+                    GeoNode* rttNode = dynamic_cast<GeoNode*>(layer->getTexture()->getUserData());
+                    if (rttNode)
+                    {
+                        _context->getTileRasterizer()->push(rttNode->_node.get(), layer->getTexture(), rttNode->_extent);
+                    }
+                }
             }
         }
     }
-    //else
-    //{
-    //    // No color layers? We need a rendering pass with a null texture then
-    //    // to accomadate the other samplers.
-    //    RenderingPass& pass = _renderModel.addPass();
-    //    pass._valid = true;
-    //    OE_INFO << LC << "Added default rendering pass..\n";
-    //}
 
     // Elevation:
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
     if (elevation.isActive() && model->elevationModel().valid() && model->elevationModel()->getTexture())
     {
         osg::Texture* tex = model->elevationModel()->getTexture();
+
         // always keep the elevation image around because we use it for bounding box computation:
         tex->setUnRefImageDataAfterApply(false);
-        for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
-        {
-            _renderModel._passes[p]._samplers[SamplerBinding::ELEVATION]._texture = tex;
-            _renderModel._passes[p]._samplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
-        }
+
+        _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._texture = tex;
+        _renderModel._sharedSamplers[SamplerBinding::ELEVATION]._matrix.makeIdentity();
 
         setElevationRaster(tex->getImage(0), osg::Matrixf::identity());
+
+        newElevationData = true;
     } 
 
     // Normals:
@@ -600,37 +619,41 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         osg::Texture* tex = model->normalModel()->getTexture();
         // keep the normal map around because we might update it later in "ping"
         tex->setUnRefImageDataAfterApply(false);
-        for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
-        {
-            _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._texture = tex;
-            _renderModel._passes[p]._samplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
-        }
+
+        _renderModel._sharedSamplers[SamplerBinding::NORMAL]._texture = tex;
+        _renderModel._sharedSamplers[SamplerBinding::NORMAL]._matrix.makeIdentity();
 
         updateNormalMap();
+    }
+
+    // Other Shared Layers:
+    for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
+    {
+        TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
+        if (layerModel->getTexture())
+        {
+            // locate the shared binding corresponding to this layer:
+            UID uid = layerModel->getImageLayer()->getUID();
+            unsigned bindingIndex = INT_MAX;
+            for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i) {
+                if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid)) {
+                    bindingIndex = i;
+                }                   
+            }
+
+            if (bindingIndex < INT_MAX)
+            {
+                osg::Texture* tex = layerModel->getTexture();
+                _renderModel._sharedSamplers[bindingIndex]._texture = tex;
+                _renderModel._sharedSamplers[bindingIndex]._matrix.makeIdentity();
+            }
+        }
     }
 
     // Patch Layers
     for (unsigned i = 0; i < model->patchLayers().size(); ++i)
     {
         TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
-    }
-
-    // Shared Layers:
-    for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
-    {
-        unsigned bindingIndex = SamplerBinding::SHARED + i;
-        const SamplerBinding& binding = bindings[bindingIndex];
-
-        TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
-        if (layerModel->getTexture())
-        {
-            osg::Texture* tex = layerModel->getTexture();
-            for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
-            {
-                _renderModel._passes[p]._samplers[bindingIndex]._texture = tex;
-                _renderModel._passes[p]._samplers[bindingIndex]._matrix.makeIdentity();
-            }
-        }
     }
 
     if (_childrenReady)
@@ -641,26 +664,11 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
         getSubTile(3)->refreshInheritedData(this, bindings);
     }
 
-    copyCommonSamplers();
-
-#if 0
-    // VALIDATION STEP
-    for (unsigned p = 0; p < _renderModel._passes.size(); ++p)
+    if (newElevationData)
     {
-        const RenderingPass& pass = _renderModel._passes[p];
-        for (unsigned s = SamplerBinding::ELEVATION; s < pass._samplers.size(); ++s)
-        {
-            for (unsigned k = 0; k < _renderModel._passes.size(); ++k)
-            {
-                const RenderingPass& kpass = _renderModel._passes[k];
-                if (pass._samplers[s]._texture.get() != kpass._samplers[s]._texture.get())
-                    OE_WARN << "ERROR: Pass[" << p << "] and Pass[" << k << "] have mismatched texture in sampler[" << s << "]\n";
-                if (pass._samplers[s]._matrix != kpass._samplers[s]._matrix)
-                    OE_WARN << "ERROR: Pass[" << p << "] and Pass[" << k << "] have mismatched matrix in sampler[" << s << "]\n";
-            }
-        }
+        OE_DEBUG << LC << "notify (merge) key " << getKey().str() << std::endl;
+        _context->getEngine()->getTerrain()->notifyTileAdded(getKey(), this);
     }
-#endif
 }
 
 void TileNode::loadChildren()
@@ -670,7 +678,7 @@ void TileNode::loadChildren()
     if ( !_childrenReady )
     {        
         // Create the children
-        createChildren( _context );        
+        createChildren( _context.get() );        
         _childrenReady = true;        
         int numChildren = getNumChildren();
         if ( numChildren > 0 )
@@ -681,7 +689,7 @@ void TileNode::loadChildren()
                 if (child)
                 {
                     // Load the children's data.
-                    child->loadSync(_context);
+                    child->loadSync();
                 }
             }
         }
@@ -706,77 +714,96 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     // down the Tile tree.
     unsigned changes = 0;
 
-    RenderingPassSet& parentPasses = parent->_renderModel._passes;
+    RenderingPasses& parentPasses = parent->_renderModel._passes;
 
     for (unsigned p = 0; p<parentPasses.size(); ++p)
     {
         const RenderingPass& parentPass = parentPasses[p];
 
-        if (parentPass.inheritable())
+        RenderingPass* myPass = _renderModel.getPass(parentPass._sourceUID);
+
+        // Inherit the samplers for this pass.
+        if (myPass)
         {
-            RenderingPass* myPass = _renderModel.getPass(parentPass._sourceUID);
-
-            // Inherit the samplers for this pass.
-            if (myPass)
+            for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
             {
-                for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
-                {
-                    Sampler& mySampler = myPass->_samplers[s];
+                Sampler& mySampler = myPass->_samplers[s];
                 
-                    // the color-parent gets special treatment, since it is not included
-                    // in the TileModel (rather it is always derived here).
-                    if (s == SamplerBinding::COLOR_PARENT)
-                    {
-                        const Sampler& parentSampler = parentPass._samplers[SamplerBinding::COLOR];
-                        osg::Matrixf newMatrix = parentSampler._matrix;
-                        newMatrix.preMult(scaleBias[quadrant]);
+                // the color-parent gets special treatment, since it is not included
+                // in the TileModel (rather it is always derived here).
+                if (s == SamplerBinding::COLOR_PARENT && bindings[SamplerBinding::COLOR_PARENT].isActive())
+                {
+                    const Sampler& parentSampler = parentPass._samplers[SamplerBinding::COLOR];
+                    osg::Matrixf newMatrix = parentSampler._matrix;
+                    newMatrix.preMult(scaleBias[quadrant]);
 
-                        // Did something change?
-                        if (mySampler._texture.get() != parentSampler._texture.get() ||
-                            mySampler._matrix != newMatrix)
+                    // Did something change?
+                    if (mySampler._texture.get() != parentSampler._texture.get() ||
+                        mySampler._matrix != newMatrix)
+                    {
+                        if (parentSampler._texture.valid())
                         {
-                            if (parentSampler._texture.valid())
-                            {
-                                // set the parent-color texture to the parent's color texture
-                                // and scale/bias the matrix.
-                                mySampler._texture = parentSampler._texture.get();
-                                mySampler._matrix = newMatrix;
-                            }
-                            else
-                            {
-                                // parent has no color texture? Then set our parent-color
-                                // equal to our normal color texture.
-                                mySampler._texture = myPass->_samplers[SamplerBinding::COLOR]._texture.get();
-                                mySampler._matrix = myPass->_samplers[SamplerBinding::COLOR]._matrix;
-                            }
-                            ++changes;
+                            // set the parent-color texture to the parent's color texture
+                            // and scale/bias the matrix.
+                            mySampler._texture = parentSampler._texture.get();
+                            mySampler._matrix = newMatrix;
                         }
-                    }
-
-                    // all other samplers just need to inherit from their parent 
-                    // and scale/bias their texture matrix.
-                    else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
-                    {
-                        const Sampler& parentSampler = parentPass._samplers[s];
-                        mySampler._texture = parentSampler._texture.get();
-                        mySampler._matrix = parentSampler._matrix;
-                        mySampler._matrix.preMult(scaleBias[quadrant]);
+                        else
+                        {
+                            // parent has no color texture? Then set our parent-color
+                            // equal to our normal color texture.
+                            mySampler._texture = myPass->_samplers[SamplerBinding::COLOR]._texture.get();
+                            mySampler._matrix = myPass->_samplers[SamplerBinding::COLOR]._matrix;
+                        }
                         ++changes;
                     }
                 }
-            }
-            else
-            {
-                // Pass exists in the parent node, but not in this node, so add it now.
-                myPass = &_renderModel.addPass();
-                *myPass = parentPass;
 
-                for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
+                // all other samplers just need to inherit from their parent 
+                // and scale/bias their texture matrix.
+                else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
                 {
-                    Sampler& sampler = myPass->_samplers[s];
-                    sampler._matrix.preMult(scaleBias[quadrant]);
+                    const Sampler& parentSampler = parentPass._samplers[s];
+                    mySampler._texture = parentSampler._texture.get();
+                    mySampler._matrix = parentSampler._matrix;
+                    mySampler._matrix.preMult(scaleBias[quadrant]);
+                    ++changes;
                 }
-                ++changes;
+            }
+        }
+        else
+        {
+            // Pass exists in the parent node, but not in this node, so add it now.
+            myPass = &_renderModel.addPass();
+            *myPass = parentPass;
+
+            for (unsigned s = 0; s < myPass->_samplers.size(); ++s)
+            {
+                Sampler& sampler = myPass->_samplers[s];
+                sampler._matrix.preMult(scaleBias[quadrant]);
+            }
+            ++changes;
+        }
+    }
+
+    // Handle all the shared samples (elevation, normal, etc.)
+    const Samplers& parentSharedSamplers = parent->_renderModel._sharedSamplers;
+    Samplers& mySharedSamplers = _renderModel._sharedSamplers;
+    for (unsigned s = 0; s<mySharedSamplers.size(); ++s)
+    {        
+        Sampler& mySampler = mySharedSamplers[s];
+        if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
+        {
+            const Sampler& parentSampler = parentSharedSamplers[s];
+            mySampler._texture = parentSampler._texture.get();
+            mySampler._matrix = parentSampler._matrix;
+            mySampler._matrix.preMult(scaleBias[quadrant]);
+            ++changes;
+
+            // Update the local elevation raster cache (for culling and intersection testing).
+            if (s == SamplerBinding::ELEVATION && mySampler._texture.valid())
+            {
+                this->setElevationRaster(mySampler._texture->getImage(0), mySampler._matrix);
             }
         }
     }
@@ -785,8 +812,6 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
     {
         dirtyBound(); // only for elev/patch changes maybe?
 
-        copyCommonSamplers();
-        
         if (_childrenReady)
         {
             getSubTile(0)->refreshInheritedData(this, bindings);
@@ -802,52 +827,15 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 }
 
 void
-TileNode::copyCommonSamplers()
-{
-    const RenderingPass* firstPass = !_renderModel._passes.empty() ? &_renderModel._passes[0] : 0L;
-    if (firstPass)
-    {
-        // Share all "common" samplers, i.e. samplers that are the same across 
-        // all rendering passes. This is everything except COLOR and COLOR_PARENT.
-        for (unsigned p = 1; p < _renderModel._passes.size(); ++p)
-        {
-            RenderingPass& pass = _renderModel._passes[p];
-            for (unsigned s = SamplerBinding::COLOR_PARENT + 1; s < pass._samplers.size(); ++s)
-            {
-                pass._samplers[s] = firstPass->_samplers[s];
-            }
-        }
-    }
-}
-
-void
 TileNode::load(TerrainCuller* culler)
-{
-    // Access the context:
-    EngineContext* context = culler->getEngineContext();
-
-    // Create a new load request on demand:
-    if ( !_loadRequest.valid() )
-    {
-        Threading::ScopedMutexLock lock(_mutex);
-        if ( !_loadRequest.valid() )
-        {
-            _loadRequest = new LoadTileData( this, context );
-            _loadRequest->setName( _key.str() );
-            _loadRequest->setTileKey( _key );
-        }
-    }
-
-    
-    // Construct the load PRIORITY: 0=lowest, 1=highest.
-    
-    const SelectionInfo& si = context->getSelectionInfo();
+{    
+    const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
     int numLods = si.numLods();
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
-    if ( context->getOptions().highResolutionFirst() == false )
+    if ( _context->getOptions().highResolutionFirst() == false )
         lodPriority = (float)(numLods - lod);
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
@@ -863,13 +851,14 @@ TileNode::load(TerrainCuller* culler)
     //priority /= (float)(numLods+1); // GW: moved this to the PagerLoader.
 
     // Submit to the loader.
-    context->getLoader()->load( _loadRequest.get(), priority, *culler );
+    _context->getLoader()->load( _loadRequest.get(), priority, *culler );
 }
 
 void
-TileNode::loadSync(EngineContext* context)
+TileNode::loadSync()
 {
-    osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, context);
+    osg::ref_ptr<LoadTileData> loadTileData = new LoadTileData(this, _context.get());
+    loadTileData->setEnableCancelation(false);
     loadTileData->invoke();
     loadTileData->apply(0L);
 }
@@ -911,11 +900,7 @@ TileNode::updateNormalMap()
     if ( !_stitchNormalMap )
         return;
 
-    if (_renderModel._passes.empty())
-        return;
-
-    RenderingPass& thisPass = _renderModel._passes[0];
-    Sampler& thisNormalMap = thisPass._samplers[SamplerBinding::NORMAL];
+    Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
     if (!thisNormalMap._texture.valid() || !thisNormalMap._matrix.isIdentity() || !thisNormalMap._texture->getImage(0))
         return;
 
@@ -925,11 +910,7 @@ TileNode::updateNormalMap()
     osg::ref_ptr<TileNode> east;
     if (_eastNeighbor.lock(east))
     {
-        if (east->_renderModel._passes.empty())
-            return;
-
-        const RenderingPass& thatPass = east->_renderModel._passes[0];
-        const Sampler& thatNormalMap = thatPass._samplers[SamplerBinding::NORMAL];
+        const Sampler& thatNormalMap = east->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
         if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
             return;
 
@@ -959,11 +940,7 @@ TileNode::updateNormalMap()
     osg::ref_ptr<TileNode> south;
     if (_southNeighbor.lock(south))
     {
-        if (south->_renderModel._passes.empty())
-            return;
-
-        const RenderingPass& thatPass = south->_renderModel._passes[0];
-        const Sampler& thatNormalMap = thatPass._samplers[SamplerBinding::NORMAL];
+        const Sampler& thatNormalMap = south->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
         if (!thatNormalMap._texture.valid() || !thatNormalMap._matrix.isIdentity() || !thatNormalMap._texture->getImage(0))
             return;
 

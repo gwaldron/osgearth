@@ -18,6 +18,7 @@
  */
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 
 using namespace osgEarth;
@@ -27,8 +28,7 @@ using namespace osgEarth;
 MapFrame::MapFrame() :
 _initialized    ( false ),
 _highestMinLevel( 0 ),
-_mapInfo       ( 0L ),
-_parts(Map::ENTIRE_MODEL)
+_mapInfo        ( 0L )
 {
     //nop
 }
@@ -37,14 +37,10 @@ MapFrame::MapFrame(const MapFrame& rhs) :
 _initialized         ( rhs._initialized ),
 _map                 ( rhs._map.get() ),
 _mapInfo             ( rhs._mapInfo ),
-_parts               ( rhs._parts ),
 _highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
-_layers              ( rhs._layers )
-//_imageLayers         ( rhs._imageLayers ),
-//_elevationLayers     ( rhs._elevationLayers ),
-//_modelLayers         ( rhs._modelLayers ),
-//_maskLayers          ( rhs._maskLayers )
+_layers              ( rhs._layers ),
+_pool                ( rhs._pool.get() )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -53,17 +49,6 @@ MapFrame::MapFrame(const Map* map) :
 _initialized    ( false ),
 _map            ( map ),
 _mapInfo        ( map ),
-_parts          ( Map::ENTIRE_MODEL ),
-_highestMinLevel( 0 )
-{
-    sync();
-}
-
-MapFrame::MapFrame(const Map* map, Map::ModelParts parts) :
-_initialized    ( false ),
-_map            ( map ),
-_mapInfo        ( map ),
-_parts          ( parts ),
 _highestMinLevel( 0 )
 {
     sync();
@@ -79,58 +64,50 @@ void
 MapFrame::setMap(const Map* map)
 {
     _layers.clear();
-    //_imageLayers.clear();
-    //_elevationLayers.clear();
-    //_modelLayers.clear();
-    //_maskLayers.clear();
+    _pool = 0L;
 
     _map = map;
     if ( map )
-        _mapInfo = MapInfo(map);
+    {
+        _mapInfo.setMap(map);
+    }
 
     _initialized = false;
     _highestMinLevel = 0;
 
-    sync();
+    if (map)
+    {
+        sync();
+    }
 }
 
 ElevationPool*
 MapFrame::getElevationPool() const
 {
-    return _map->getElevationPool();
+    return static_cast<ElevationPool*>(_pool.get());
 }
 
 bool
 MapFrame::sync()
 {
     bool changed = false;
-    _elevationLayers.clear();
 
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {
-        changed = _map->sync( *this );
+        changed = map->sync( *this );
         if ( changed )
         {
             refreshComputedValues();
         }
+        _pool = map->getElevationPool();
     }
     else
     {
         _layers.clear();
-        //_imageLayers.clear();
-        //_elevationLayers.clear();
-        //_modelLayers.clear();
-        //_maskLayers.clear();
-    }
-
-    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        ElevationLayer* e = dynamic_cast<ElevationLayer*>(i->get());
-        if (e)
-            _elevationLayers.push_back(e);
-    }
-    
+        _elevationLayers.clear();
+        changed = true;
+    }    
 
     return changed;
 }
@@ -148,6 +125,15 @@ MapFrame::needsSync() const
         (map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
 }
 
+void
+MapFrame::release()
+{
+    _layers.clear();
+    _pool = 0L;
+    _initialized = false;
+    _highestMinLevel = 0;
+}
+
 UID
 MapFrame::getUID() const
 {
@@ -158,42 +144,40 @@ MapFrame::getUID() const
         return (UID)0;
 }
 
+bool
+MapFrame::containsLayer(UID uid) const
+{
+    for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
+        if (i->get()->getUID() == uid)
+            return true;
+    return false;
+}
+
 void
 MapFrame::refreshComputedValues()
 {
-    // cache the min LOD based on all image/elev layers
     _highestMinLevel = 0;
+
+    _elevationLayers.clear();
 
     for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
         TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(i->get());
         if (terrainLayer)
         {
-            const optional<unsigned>& minLevel = terrainLayer->getTerrainLayerRuntimeOptions().minLevel();
+            const optional<unsigned>& minLevel = terrainLayer->options().minLevel();
             if (minLevel.isSet() && minLevel.value() > _highestMinLevel)
             {
                 _highestMinLevel = minLevel.value();
             }
+            
+            ElevationLayer* elevation = dynamic_cast<ElevationLayer*>(terrainLayer);
+            if (elevation)
+            {
+                _elevationLayers.push_back(elevation);
+            }
         }
     }
-
-    //for(ImageLayerVector::const_iterator i = _imageLayers.begin(); 
-    //    i != _imageLayers.end();
-    //    ++i)
-    //{
-    //    const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
-    //    if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
-    //        _highestMinLevel = minLevel.value();
-    //}
-
-    //for(ElevationLayerVector::const_iterator i = _elevationLayers.begin(); 
-    //    i != _elevationLayers.end();
-    //    ++i)
-    //{
-    //    const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
-    //    if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
-    //        _highestMinLevel = minLevel.value();
-    //}
 }
 
 bool
@@ -219,55 +203,12 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
     }
 }
 
-
-//int
-//MapFrame::indexOf( ImageLayer* layer ) const
-//{
-//    ImageLayerVector::const_iterator i = std::find( _imageLayers.begin(), _imageLayers.end(), layer );
-//    return i != _imageLayers.end() ? i - _imageLayers.begin() : -1;
-//}
-//
-//
-//int
-//MapFrame::indexOf( ElevationLayer* layer ) const
-//{
-//    ElevationLayerVector::const_iterator i = std::find( _elevationLayers.begin(), _elevationLayers.end(), layer );
-//    return i != _elevationLayers.end() ? i - _elevationLayers.begin() : -1;
-//}
-//
-//
-//int
-//MapFrame::indexOf( ModelLayer* layer ) const
-//{
-//    ModelLayerVector::const_iterator i = std::find( _modelLayers.begin(), _modelLayers.end(), layer );
-//    return i != _modelLayers.end() ? i - _modelLayers.begin() : -1;
-//}
-
-//ImageLayer*
-//MapFrame::getImageLayerByUID( UID uid ) const
-//{
-//    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
-//        if ( i->get()->getUID() == uid )
-//            return i->get();
-//    return 0L;
-//}
-//
-//
-//ImageLayer*
-//MapFrame::getImageLayerByName( const std::string& name ) const
-//{
-//    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
-//        if ( i->get()->getName() == name )
-//            return i->get();
-//    return 0L;
-//}
-
-
 bool
 MapFrame::isCached( const TileKey& key ) const
 {
     // is there a map cache at all?
-    if ( _map.valid() && _map->getCache() == 0L )
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map) && map->getCache() == 0L)
         return false;
 
     for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
@@ -309,5 +250,10 @@ MapFrame::isCached( const TileKey& key ) const
 const MapOptions&
 MapFrame::getMapOptions() const
 {
-    return _map->getMapOptions();
+    static MapOptions defaultMapOptions;
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+        return map->getMapOptions();
+    else
+        return defaultMapOptions;
 }

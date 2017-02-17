@@ -35,6 +35,7 @@ namespace osgEarth
     class TerrainEngineNode;
     class MapNodeCullData;
     class SpatialReference;
+    class ResourceReleaser;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -131,14 +132,20 @@ namespace osgEarth
         bool isGeocentric() const;
 
         /**
-         * Accesses the group node that contains all the ModelLayers.
+         * Accesses the group node that contains all the nodes added by Layers.
          */
-        osg::Group* getModelLayerGroup() const;
+        osg::Group* getLayerNodeGroup() const;
+
+        // @deprecated - use getLayerNodeGroup
+        osg::Group* getModelLayerGroup() const { return getLayerNodeGroup(); }
 
         /**
          * Accesses the root node for a specific ModelLayer.
          */
-        osg::Node* getModelLayerNode( ModelLayer* layer ) const;
+        osg::Node* getLayerNode(Layer* layer) const;
+
+        // @deprecated - use getLayerNode
+        //osg::Node* getModelLayerNode(ModelLayer* layer) const { return getLayerNode(layer); }
 
         /**
          * Adds a node that decorates the terrain groups
@@ -166,6 +173,11 @@ namespace osgEarth
          * Gets the underlying terrain engine that renders the terrain surface of the map.
          */
         TerrainEngineNode* getTerrainEngine() const;
+
+        /**
+         * Gets a service that you can use to release GL objects.
+         */
+        ResourceReleaser* getResourceReleaser() const;
 
         /**
          * Gets the Config object serializing external data. External data is information
@@ -237,20 +249,23 @@ namespace osgEarth
 
         unsigned int               _id;
         osg::ref_ptr<Map>          _map;
-        osg::ref_ptr< osg::Group > _models;
-        osg::ref_ptr< osg::Group > _overlayModels;
+        osg::Group*                _models;
         OverlayDecorator*          _overlayDecorator;
         MapNodeOptions             _mapNodeOptions;
         Config                     _externalConf;
 
-        // keep track of nodes created by model layers
-        typedef std::map<ModelLayer*, osg::ref_ptr< osg::Node > > ModelLayerNodeMap;
-        ModelLayerNodeMap        _modelLayerNodes;
+        // keep track of nodes created bylayers
+        typedef std::map<Layer*, osg::ref_ptr<osg::Node> > LayerNodeMap;
+        LayerNodeMap _layerNodes;
+
+        //typedef std::map<ModelLayer*, osg::ref_ptr< osg::Node > > ModelLayerNodeMap;
+        //ModelLayerNodeMap        _modelLayerNodes;
         osg::Group*              _maskLayerNode;
         unsigned                 _lastNumBlacklistedFilenames;
-        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
+        TerrainEngineNode*       _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
+        ResourceReleaser*        _resourceReleaser;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
@@ -258,9 +273,11 @@ namespace osgEarth
 
     public: // MapCallback proxy
 
-        void onModelLayerAdded( ModelLayer*, unsigned int );
-        void onModelLayerRemoved( ModelLayer* );
-        void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+        void onLayerAdded(Layer* layer, unsigned index);
+        void onLayerRemoved(Layer* layer, unsigned index);
+        void onModelLayerAdded( ModelLayer*, unsigned index);
+        void onModelLayerRemoved( ModelLayer*, unsigned index);
+        void onModelLayerMoved( ModelLayer* layer, unsigned oldIndex, unsigned newIndex );
 
     public:
         struct TileRangeData : public osg::Referenced {
@@ -271,16 +288,9 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr< MapCallback >        _mapCallback;
+        osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
-
-#if 0
-        MapNodeCullData* getCullData(osg::Camera* camera) const;
-        typedef std::map<osg::Camera*, osg::ref_ptr<MapNodeCullData> > CullDataMap;
-        mutable CullDataMap _cullData;
-        mutable Threading::ReadWriteMutex _cullDataMutex;
-#endif
     };
 
 } // namespace osgEarth

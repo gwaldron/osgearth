@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
 #include <osgEarthSymbology/Color>
+#include <osg/LOD>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {

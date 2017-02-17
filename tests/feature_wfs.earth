@@ -5,14 +5,14 @@ Demonstrates how to read feature data from a WFS server
 
 <map name="WFS Feature Demo" type="geocentric" version="2">
         
-    <image driver="gdal">
+    <image name="World image" driver="gdal">
         <url>../data/world.tif</url>
     </image>
     
-    <model name="states" driver="feature_geom">
+    <model name="States" driver="feature_geom">
         <features name="states" driver="wfs">
             <url>http://demo.opengeo.org/geoserver/wfs</url>           
-            <typename>states</typename>
+            <typename>topp:states</typename>
             <outputformat>json</outputformat>
         </features>
                   
@@ -24,6 +24,21 @@ Demonstrates how to read feature data from a WFS server
                    stroke-width:      3.0;
                    altitude-clamping: terrain-drape;
                 }                       
+            </style>
+        </styles>
+    </model>
+    
+    <model name="Labels" driver="feature_geom">
+        <features name="states" driver="wfs">
+            <url>http://demo.opengeo.org/geoserver/wfs</url>           
+            <typename>topp:states</typename>
+            <outputformat>json</outputformat>
+        </features>
+        <styles>
+            <style type="text/css">              
+                names {
+                    text-content: feature.properties.STATE_NAME;
+                }     
             </style>
         </styles>
     </model>

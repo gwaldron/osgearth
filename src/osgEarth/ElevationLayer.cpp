@@ -21,6 +21,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
+#include <osgEarth/Metrics>
 #include <osg/Version>
 #include <iterator>
 
@@ -29,16 +30,34 @@ using namespace OpenThreads;
 
 #define LC "[ElevationLayer] \"" << getName() << "\" : "
 
+namespace osgEarth {
+    REGISTER_OSGEARTH_LAYER(elevation, osgEarth::ElevationLayer);
+}
+
 //------------------------------------------------------------------------
 
-ElevationLayerOptions::ElevationLayerOptions( const ConfigOptions& options ) :
+ElevationLayerOptions::ElevationLayerOptions() :
+TerrainLayerOptions()
+{
+    setDefaults();
+    fromConfig(_conf);
+}
+
+ElevationLayerOptions::ElevationLayerOptions(const ConfigOptions& options) :
 TerrainLayerOptions( options )
 {
     setDefaults();
     fromConfig( _conf );
 }
 
-ElevationLayerOptions::ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions ) :
+ElevationLayerOptions::ElevationLayerOptions(const std::string& name) :
+TerrainLayerOptions( name )
+{
+    setDefaults();
+    fromConfig( _conf );
+}
+
+ElevationLayerOptions::ElevationLayerOptions(const std::string& name, const TileSourceOptions& driverOptions) :
 TerrainLayerOptions( name, driverOptions )
 {
     setDefaults();
@@ -56,6 +75,8 @@ Config
 ElevationLayerOptions::getConfig( bool isolate ) const
 {
     Config conf = TerrainLayerOptions::getConfig( isolate );
+    conf.key() = "elevation";
+
     conf.updateIfSet("offset", _offset);
     conf.updateIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
@@ -133,25 +154,42 @@ namespace
 
 //------------------------------------------------------------------------
 
-ElevationLayer::ElevationLayer( const ElevationLayerOptions& options ) :
-TerrainLayer   ( options, &_runtimeOptions ),
-_runtimeOptions( options )
+ElevationLayer::ElevationLayer() :
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete)
 {
     init();
 }
 
-ElevationLayer::ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer   ( ElevationLayerOptions(name, driverOptions), &_runtimeOptions ),
-_runtimeOptions( ElevationLayerOptions(name, driverOptions) )
+ElevationLayer::ElevationLayer(const ElevationLayerOptions& options) :
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
     init();
 }
 
-ElevationLayer::ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer   ( options, &_runtimeOptions, tileSource ),
-_runtimeOptions( options )
+ElevationLayer::ElevationLayer(const std::string& name, const TileSourceOptions& driverOptions) :
+TerrainLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(name, driverOptions)
 {
     init();
+}
+
+ElevationLayer::ElevationLayer(const ElevationLayerOptions& options, TileSource* tileSource) :
+TerrainLayer(&_optionsConcrete, tileSource),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
+{
+    init();
+}
+
+ElevationLayer::ElevationLayer(ElevationLayerOptions* optionsPtr) :
+TerrainLayer(optionsPtr? optionsPtr : &_optionsConcrete),
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
+{
+    //init(); // will be called by subclass.
 }
 
 void
@@ -164,48 +202,19 @@ ElevationLayer::init()
     setRenderType(RENDERTYPE_NONE);
 }
 
+bool
+ElevationLayer::isOffset() const
+{
+    return options().offset().get();
+}
+
 Config
 ElevationLayer::getConfig() const
 {
-    Config layerConf = getElevationLayerOptions().getConfig();
-    layerConf.set("name", getName());
-    layerConf.set("driver", getInitialOptions().driver()->getDriver());
+    Config layerConf = options().getConfig();
+    layerConf.set("driver", options().driver()->getDriver());
     layerConf.key() = "elevation";
     return layerConf;
-}
-
-void
-ElevationLayer::addCallback( ElevationLayerCallback* cb )
-{
-    _callbacks.push_back( cb );
-}
-
-void
-ElevationLayer::removeCallback( ElevationLayerCallback* cb )
-{
-    ElevationLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
-        _callbacks.erase( i );
-}
-
-void
-ElevationLayer::fireCallback( TerrainLayerCallbackMethodPtr method )
-{
-    for( ElevationLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ElevationLayerCallback* cb = i->get();
-        (cb->*method)( this );
-    }
-}
-
-void
-ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
-{
-    for( ElevationLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ElevationLayerCallback* cb = i->get();
-        (cb->*method)( this );
-    }
 }
 
 TileSource::HeightFieldOperation*
@@ -384,6 +393,10 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
+    METRIC_SCOPED_EX("ElevationLayer::createHeightField", 2,
+                     "key", key.str().c_str(),
+                     "name", getName().c_str());
+
     if (getStatus().isError())
     {
         return GeoHeightField::INVALID;
@@ -535,7 +548,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // post-processing:
     if ( result.valid() )
     {
-        if ( _runtimeOptions.noDataPolicy() == NODATA_MSL )
+        if ( options().noDataPolicy() == NODATA_MSL )
         {
             // requested VDatum:
             const VerticalDatum* outputVDatum = key.getExtent().getSRS()->getVerticalDatum();
@@ -599,6 +612,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     // heightfield must already exist.
     if ( !hf )
         return false;
+
+    METRIC_SCOPED("ElevationLayer.populateHeightField");
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D

@@ -8,5 +8,5 @@ uniform float oe_alphaEffect_alpha;
 
 void oe_alphaEffect_frag(inout vec4 color)
 {
-    color = color * oe_alphaEffect_alpha;
+    color.a = color.a * oe_alphaEffect_alpha;
 }

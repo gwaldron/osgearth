@@ -162,6 +162,10 @@ namespace osgEarth
             const std::string&     source,
             const std::string&     key,
             std::set<std::string>& output);
+
+        static void split(
+            const std::string& multisource,
+            std::vector<std::string>& out_sources);
     };
 
 } // namespace osgEarth

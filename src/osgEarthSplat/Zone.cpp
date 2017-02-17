@@ -154,6 +154,8 @@ void
 ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osg::StateSet* stateset = 0L;
+    
+    Zone* finalZone = 0L;
 
     if ( _zones.size() > 0 )
     {
@@ -168,7 +170,8 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
             if ( _zones[z]->contains(vp) )
             {
                 stateset = _zones[z]->getStateSet();
-                finalZoneIndex      = zoneIndex;
+                finalZoneIndex = zoneIndex;
+                finalZone = _zones[z].get();
             }
             if ( _zones[z]->getLandCover() )
             {
@@ -182,8 +185,9 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
             finalZoneIndex = 0;
         }                
         
-        // Relays the zone index to the Patch callback.
-        VisitorData::store(*nv, "oe.LandCover.zoneIndex", new RefUID(finalZoneIndex));
+        // Relays the zone to the LandCoverPatchLayer.
+        //VisitorData::store(*nv, "oe.LandCover.zoneIndex", new RefUID(finalZoneIndex));
+        VisitorData::store(*nv, "oe.landcover.zone", finalZone );
     }
 
     if ( stateset )
@@ -193,4 +197,9 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if ( stateset )
         static_cast<osgUtil::CullVisitor*>(nv)->popStateSet();
+
+    if (finalZone)
+    {
+        VisitorData::remove(*nv, "oe.landcover.zone");
+    }
 }

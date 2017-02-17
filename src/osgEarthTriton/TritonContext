@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_TRITON_CONTEXT_H
 #define OSGEARTH_TRITON_CONTEXT_H
 
+#include <Triton.h>
 #include "Common"
 #include "TritonOptions"
 #include "TritonAPIWrapper"
@@ -26,7 +27,6 @@
 #include <osg/Referenced>
 #include <osg/Light>
 #include <osgEarth/ThreadingUtils>
-#include <Triton.h>
 
 namespace osgEarth {
     class SpatialReference;
@@ -37,9 +37,11 @@ namespace osgEarth { namespace Triton
     /**
      * Contains all the Triton SDK handles.
      */
-    class TritonContext : public osg::Referenced
+    class TritonContext : public osg::Object
     {
     public:
+        META_Object(osgEarth, TritonContext);
+
         TritonContext(const TritonOptions& options);
 
         /** Sets the spatial reference system of the map */
@@ -72,10 +74,20 @@ namespace osgEarth { namespace Triton
 
         const std::string& getMaskLayerName() const;
 
+    public: // osg::Object
+
+        /** If State is non-zero, this function releases any associated OpenGL objects for
+           * the specified graphics context. Otherwise, releases OpenGL objects
+           * for all graphics contexts. */
+        void releaseGLObjects(osg::State* state) const;
+
     protected:
 
         virtual ~TritonContext();
 
+        // hidden ctors (for META_Object)
+        TritonContext() { }
+        TritonContext(const TritonContext&, const osg::CopyOp&) { }
 
     private:
         TritonOptions    _options;
@@ -86,9 +98,9 @@ namespace osgEarth { namespace Triton
 
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
-        ::Triton::ResourceLoader* _resourceLoader;
-        ::Triton::Environment*    _environment;
-        ::Triton::Ocean*          _ocean;
+        mutable ::Triton::ResourceLoader* _resourceLoader;
+        mutable ::Triton::Environment*    _environment;
+        mutable ::Triton::Ocean*          _ocean;
 
         Environment* _environmentWrapper;
         Ocean*       _oceanWrapper;

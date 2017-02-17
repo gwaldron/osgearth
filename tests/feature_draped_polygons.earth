@@ -16,20 +16,11 @@ the feature data.
         <terrain min_lod="8"/>
     </options>
 
-    <image name="world" driver="gdal">
+    <image name="Imagery" driver="gdal">
         <url>../data/world.tif</url>
     </image>
     
-    <model name="countries" driver="feature_geom">
-                          
-        <features name="states" driver="ogr">
-            <url>../data/world.shp</url>
-            <filters>
-                <resample max_length="5.0"/>
-                <buffer distance="-0.05"/>
-            </filters>
-        </features>
-        
+    <feature_model name="Countries" feature_source="world-data">
         <styles>        
             <style type="text/css">
                 p1 {
@@ -91,5 +82,13 @@ the feature data.
             
         </styles>
         
-    </model>
+    </feature_model>
+    
+    <feature_source name="world-data" driver="ogr">
+        <url>../data/world.shp</url>
+        <filters>
+            <resample max_length="5.0"/>
+            <buffer distance="-0.05"/>
+        </filters>
+    </feature_source>
 </map>

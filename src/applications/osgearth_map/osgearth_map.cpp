@@ -26,11 +26,14 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthSymbology/Color>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/wms/WMSOptions>
+#include <osgEarthDrivers/gdal/GDALOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -44,18 +47,35 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    // create the map.
+    // create the empty map.
     Map* map = new Map();
 
-    // add a TMS imager layer:
+    // add a TMS imagery layer:
     TMSOptions imagery;
     imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
-    map->addImageLayer( new ImageLayer("Imagery", imagery) );
+    map->addLayer( new ImageLayer("ReadyMap Imagery", imagery) );
 
     // add a TMS elevation layer:
     TMSOptions elevation;
-    elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/9/";
-    map->addElevationLayer( new ElevationLayer("Elevation", elevation) );
+    elevation.url() = "http://readymap.org/readymap/tiles/1.0.0/116/";
+    map->addLayer( new ElevationLayer("ReadyMap Elevation", elevation) );
+    
+    // add a local GeoTIFF inset layer:
+    GDALOptions gdal;
+    gdal.url() = "../data/boston-inset.tif";
+    map->addLayer(new ImageLayer("Boston", gdal));
+
+    // add a WMS radar layer with transparency, and disable caching since
+    // this layer updates on the server periodically.
+    WMSOptions wms;
+    wms.url() = "http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi";
+    wms.format() = "png";
+    wms.layers() = "nexrad-n0r";
+    wms.srs() = "EPSG:4326";
+    wms.transparent() = true;
+    ImageLayerOptions wmsLayerOptions("WMS NEXRAD", wms);
+    wmsLayerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    map->addLayer(new ImageLayer(wmsLayerOptions));
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );

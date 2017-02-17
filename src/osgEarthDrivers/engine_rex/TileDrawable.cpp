@@ -130,8 +130,8 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             int i01 = i00 + _tileSize;
             int i11 = i01 + 1;
 
-            f.vertex(_mesh[i00]);  f.vertex(_mesh[i01]);  f.vertex(_mesh[i10]);
-            f.vertex(_mesh[i10]);  f.vertex(_mesh[i01]);  f.vertex(_mesh[i11]);
+            f.vertex(_mesh[i00]);  f.vertex(_mesh[i10]);  f.vertex(_mesh[i01]);
+            f.vertex(_mesh[i01]);  f.vertex(_mesh[i10]);  f.vertex(_mesh[i11]);
         }
     }
 

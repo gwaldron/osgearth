@@ -325,7 +325,6 @@ ImageOverlay::init()
         style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         applyStyle( style );
         setLightingIfNotSet( false );
-        //clampMesh( getMapNode()->getTerrain()->getGraph() );
 
         if ( Registry::capabilities().supportsGLSL() )
         {
@@ -334,7 +333,7 @@ ImageOverlay::init()
         }
 
         getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
-        clamp( getMapNode()->getTerrain(), getMapNode()->getTerrain()->getGraph() );
+        clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
     }
 }
 
@@ -741,12 +740,12 @@ ImageOverlay::removeCallback( ImageOverlayCallback* cb )
 }
 
 void
-ImageOverlay::clamp(const Terrain* terrain, osg::Node* patch)
+ImageOverlay::clamp(osg::Node* graph, const Terrain* terrain)
 {
-    if ( terrain && patch )
+    if ( terrain && graph )
     {
         GeometryClamper clamper;
-        clamper.setTerrainPatch( patch );
+        clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain->getSRS() );
 
         this->accept( clamper );
@@ -756,11 +755,11 @@ ImageOverlay::clamp(const Terrain* terrain, osg::Node* patch)
 
 void
 ImageOverlay::onTileAdded(const TileKey&          key, 
-                          osg::Node*              tile, 
+                          osg::Node*              graph, 
                           TerrainCallbackContext& context)
 {
-    if ( tile == 0L || _boundingPolytope.contains(tile->getBound()) )
+    if ( graph == 0L || !key.valid() || _boundingPolytope.contains(graph->getBound()) )
     {
-        clamp( context.getTerrain(), tile );
+        clamp( graph, context.getTerrain() );
     }
 }

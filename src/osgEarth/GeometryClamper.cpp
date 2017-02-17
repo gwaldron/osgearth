@@ -54,9 +54,13 @@ GeometryClamper::apply(osg::Transform& xform)
 }
 
 void
-GeometryClamper::apply(osg::Geode& geode)
+GeometryClamper::apply(osg::Drawable& drawable)
 {
     if ( !_terrainSRS.valid() )
+        return;
+
+    osg::Geometry* geom = drawable.asGeometry();
+    if ( !geom )
         return;
 
     const osg::Matrixd& local2world = _matrixStack.back();
@@ -74,119 +78,111 @@ GeometryClamper::apply(osg::Geode& geode)
 
     unsigned count = 0;
 
-    for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+bool geomDirty = false;
+    osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+    osg::FloatArray* zOffsets = 0L;
+
+    // if preserve-Z is on, check for our elevations array. Create it if is doesn't
+    // already exist.
+    bool buildZOffsets = false;
+    if ( _preserveZ )
     {
-        bool geomDirty = false;
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-        if ( geom )
+        osg::UserDataContainer* udc = geom->getOrCreateUserDataContainer();
+        unsigned n = udc->getUserObjectIndex( ZOFFSETS_NAME );
+        if ( n < udc->getNumUserObjects() )
         {
-            osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-            osg::FloatArray* zOffsets = 0L;
+            zOffsets = dynamic_cast<osg::FloatArray*>(udc->getUserObject(n));
+        }
 
-            // if preserve-Z is on, check for our elevations array. Create it if is doesn't
-            // already exist.
-            bool buildZOffsets = false;
-            if ( _preserveZ )
+        else
+        {
+            zOffsets = new osg::FloatArray();
+            zOffsets->setName( ZOFFSETS_NAME );
+            zOffsets->reserve( verts->size() );
+            udc->addUserObject( zOffsets );
+            buildZOffsets = true;
+        }
+    }
+
+    for( unsigned k=0; k<verts->size(); ++k )
+    {
+        osg::Vec3d vw = (*verts)[k];
+        vw = vw * local2world;
+
+        if ( isGeocentric )
+        {
+            // normal to the ellipsoid:
+            n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
+
+            // if we need to build to z-offsets array, calculate the z offset now:
+            if ( buildZOffsets || _scale != 1.0 )
             {
-                osg::UserDataContainer* udc = geom->getOrCreateUserDataContainer();
-                unsigned n = udc->getUserObjectIndex( ZOFFSETS_NAME );
-                if ( n < udc->getNumUserObjects() )
+                double lat,lon,hae;
+                em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
+
+                if ( buildZOffsets )
                 {
-                    zOffsets = dynamic_cast<osg::FloatArray*>(udc->getUserObject(n));
+                    zOffsets->push_back( (*verts)[k].z() );
                 }
 
-                else
+                if ( _scale != 1.0 )
                 {
-                    zOffsets = new osg::FloatArray();
-                    zOffsets->setName( ZOFFSETS_NAME );
-                    zOffsets->reserve( verts->size() );
-                    udc->addUserObject( zOffsets );
-                    buildZOffsets = true;
+                    msl = vw - n_vector*hae;
                 }
             }
+        }
 
-            for( unsigned k=0; k<verts->size(); ++k )
+        else if ( buildZOffsets ) // flat map
+        {
+            zOffsets->push_back( float(vw.z()) );
+        }
+
+        _lsi->reset();
+        _lsi->setStart( vw + n_vector*r*_scale );
+        _lsi->setEnd( vw - n_vector*r );
+        _lsi->setIntersectionLimit( _lsi->LIMIT_NEAREST );
+
+        _terrainPatch->accept( iv );
+
+        if ( _lsi->containsIntersections() )
+        {
+            osg::Vec3d fw = _lsi->getFirstIntersection().getWorldIntersectPoint();
+            if ( _scale != 1.0 )
             {
-                osg::Vec3d vw = (*verts)[k];
-                vw = vw * local2world;
-
-                if ( isGeocentric )
-                {
-                    // normal to the ellipsoid:
-                    n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
-
-                    // if we need to build to z-offsets array, calculate the z offset now:
-                    if ( buildZOffsets || _scale != 1.0 )
-                    {
-                        double lat,lon,hae;
-                        em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, hae);
-
-                        if ( buildZOffsets )
-                        {
-                            zOffsets->push_back( (*verts)[k].z() );
-                        }
-
-                        if ( _scale != 1.0 )
-                        {
-                            msl = vw - n_vector*hae;
-                        }
-                    }
-                }
-
-                else if ( buildZOffsets ) // flat map
-                {
-                    zOffsets->push_back( float(vw.z()) );
-                }
-
-                _lsi->reset();
-                _lsi->setStart( vw + n_vector*r*_scale );
-                _lsi->setEnd( vw - n_vector*r );
-                _lsi->setIntersectionLimit( _lsi->LIMIT_NEAREST );
-
-                _terrainPatch->accept( iv );
-
-                if ( _lsi->containsIntersections() )
-                {
-                    osg::Vec3d fw = _lsi->getFirstIntersection().getWorldIntersectPoint();
-                    if ( _scale != 1.0 )
-                    {
-                        osg::Vec3d delta = fw - msl;
-                        fw += delta*_scale;
-                    }
-                    if ( _offset != 0.0 )
-                    {
-                        fw += n_vector*_offset;
-                    }
-                    if ( _preserveZ && (zOffsets != 0L) )
-                    {
-                        fw += n_vector * (*zOffsets)[k];
-                    }
-
-                    (*verts)[k] = (fw * world2local);
-                    geomDirty = true;
-                    ++count;
-                }
+                osg::Vec3d delta = fw - msl;
+                fw += delta*_scale;
+            }
+            if ( _offset != 0.0 )
+            {
+                fw += n_vector*_offset;
+            }
+            if ( _preserveZ && (zOffsets != 0L) )
+            {
+                fw += n_vector * (*zOffsets)[k];
             }
 
-            if ( geomDirty )
-            {
-                geom->dirtyBound();
-                if ( geom->getUseVertexBufferObjects() )
-                {
-                    verts->getVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW_ARB );
-                    verts->dirty();
-                }
-                else
-                {
-                    geom->dirtyDisplayList();
-                }
-            }
+            (*verts)[k] = (fw * world2local);
+            geomDirty = true;
+            ++count;
+        }
+    }
+
+    if ( geomDirty )
+    {
+        geom->dirtyBound();
+        if ( geom->getUseVertexBufferObjects() )
+        {
+            verts->getVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW_ARB );
+            verts->dirty();
+        }
+        else
+        {
+            geom->dirtyDisplayList();
         }
 
         OE_DEBUG << LC << "clamped " << count << " verts." << std::endl;
     }
 }
-
 
 
 void

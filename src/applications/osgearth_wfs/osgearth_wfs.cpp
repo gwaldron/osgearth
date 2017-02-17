@@ -27,6 +27,7 @@
 
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
+#include <osgEarth/ModelLayer>
 
 // include for WFS feature driver:
 #include <osgEarthDrivers/feature_wfs/WFSFeatureOptions>
@@ -104,7 +105,7 @@ main(int argc, char** argv)
         // Make the new layer and add it to the map.
         ModelLayerOptions layerOptions("states", geom); 
         ModelLayer* layer = new ModelLayer(layerOptions); 
-        mapNode->getMap()->addModelLayer(layer);
+        mapNode->getMap()->addLayer(layer);
         
         viewer.setSceneData( node );
         return viewer.run();

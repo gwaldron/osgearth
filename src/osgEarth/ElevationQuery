@@ -20,8 +20,9 @@
 #define OSGEARTH_ELEVATION_QUERY_H 1
 
 #include <osgEarth/MapFrame>
-#include <osgEarth/Containers>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/Containers>
+#include <osgEarth/ModelLayer>
 #include <osgEarth/DPLineSegmentIntersector>
 
 namespace osgEarth
@@ -29,7 +30,7 @@ namespace osgEarth
     /**
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
      *
-     * Rather than intersecting with a loaded scene graph, EQ uses the osgEarth
+     * Rather than intersecting with a loadeEd scene graph, EQ uses the osgEarth
      * engine to directly access the best terrain tile for elevation query. You
      * give it the DEM resolution at which you want an elevation point, and it will
      * access the necessary tile and sample it.

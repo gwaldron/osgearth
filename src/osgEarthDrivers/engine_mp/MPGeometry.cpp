@@ -125,6 +125,10 @@ _supportsGLSL(false)
     // we will set these later (in TileModelCompiler)
     this->setUseDisplayList(false);
     this->setUseVertexBufferObjects(true);
+    
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) this->setUseVertexArrayObject(true);
+#endif
 }
 
 
@@ -387,13 +391,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         // assign the min range
                         if ( minRangeLocation >= 0 )
                         {
-                            ext->glUniform1f( minRangeLocation, layer._imageLayer->getImageLayerOptions().minVisibleRange().get() );
+                            ext->glUniform1f( minRangeLocation, layer._imageLayer->options().minVisibleRange().get() );
                         }
 
                         // assign the max range
                         if ( maxRangeLocation >= 0 )
                         {
-                            ext->glUniform1f( maxRangeLocation, layer._imageLayer->getImageLayerOptions().maxVisibleRange().get() );
+                            ext->glUniform1f( maxRangeLocation, layer._imageLayer->options().maxVisibleRange().get() );
                         }
                     }
 
@@ -582,6 +586,20 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
     osg::Geometry::compileGLObjects( renderInfo );
 }
 
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+osg::VertexArrayState*
+MPGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
+{
+    osg::VertexArrayState* vas = osg::Geometry::createVertexArrayState(renderInfo);
+    
+    // make sure we have array dispatchers for the multipass coords
+    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT)
+        vas->assignTexCoordArrayDispatcher(_texCoordList.size() + 2);
+
+    return vas;
+}
+#endif
+
 
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
@@ -632,7 +650,11 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     }
 
     // dispatch any attributes that are bound overall
+#if OSG_VERSION_LESS_THAN(3,5,6)
     dispatchers.dispatch(BIND_OVERALL,0);
+#else
+    dispatchers.dispatch(0);
+#endif
     state.lazyDisablingOfVertexAttributes();
 
 
@@ -688,8 +710,13 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     renderPrimitiveSets(state, renderColor, true);
 
     // unbind the VBO's if any are used.
-    state.unbindVertexBufferObject();
-    state.unbindElementBufferObject();
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+    if (!state.useVertexArrayObject(_useVertexArrayObject) || state.getCurrentVertexArrayState()->getRequiresSetArrays())
+#endif
+    {
+        state.unbindVertexBufferObject();
+        state.unbindElementBufferObject();
+    }
 }
 
 void

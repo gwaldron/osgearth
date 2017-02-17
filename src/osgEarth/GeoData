@@ -246,6 +246,11 @@ namespace osgEarth
 
         Config getConfig() const;
 
+        /**
+         * Represent this point as a string
+         */
+        std::string toString() const;
+
     public:
         static GeoPoint INVALID;
 

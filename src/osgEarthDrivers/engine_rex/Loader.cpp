@@ -20,6 +20,8 @@
 #include "RexTerrainEngineNode"
 
 #include <osgEarth/Registry>
+#include <osgEarth/Utils>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -113,28 +115,31 @@ namespace
         {
             Location result = REMOTE_FILE;
 
-            osgEarth::UID requestUID, engineUID;
-
-            sscanf(filename.c_str(), "%d.%d", &requestUID, &engineUID);
-
-            osg::ref_ptr<RexTerrainEngineNode> engine;
-            RexTerrainEngineNode::getEngineByUID( (UID)engineUID, engine );
-
-            if ( engine.valid() )
+            if (dboptions)
             {
-                PagerLoader* loader = dynamic_cast<PagerLoader*>( engine->getLoader() );
-                if ( loader )
+                osgEarth::UID requestUID;
+
+                const RexTerrainEngineNode* engine = dynamic_cast<const RexTerrainEngineNode*>(
+                    osg::getUserObject(dboptions, "osgEarth.RexTerrainEngineNode"));
+
+                sscanf(filename.c_str(), "%u", &requestUID);
+
+                if ( engine )
                 {
-                    TileKey key = loader->getTileKeyForRequest(requestUID);
-
-                    MapFrame frame(engine->getMap());
-                    if ( frame.isCached(key) )
+                    PagerLoader* loader = dynamic_cast<PagerLoader*>( engine->getLoader() );
+                    if ( loader )
                     {
-                        result = LOCAL_FILE;
-                    }
-                }
+                        TileKey key = loader->getTileKeyForRequest(requestUID);
 
-                //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
+                        MapFrame frame(engine->getMap());
+                        if ( frame.isCached(key) )
+                        {
+                            result = LOCAL_FILE;
+                        }
+                    }
+
+                    //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
+                }
             }
 
             return result;
@@ -173,8 +178,7 @@ namespace
 }
 
 
-PagerLoader::PagerLoader(TerrainEngine* engine) :
-_engineUID     ( engine->getUID() ),
+PagerLoader::PagerLoader(TerrainEngineNode* engine) :
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 ),
 _frameNumber   ( 0 ),
@@ -184,6 +188,8 @@ _numLODs       ( 20u )
 
     _dboptions = new osgDB::Options();
     _dboptions->setFileLocationCallback( new FileLocationCallback() );
+
+    OptionsData<PagerLoader>::set(_dboptions.get(), "osgEarth.PagerLoader", this);
 
     // initialize the LOD priority scales and offsets
     for (unsigned i = 0; i < 64; ++i)
@@ -263,7 +269,8 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         request->unlock();
 
         char filename[64];
-        sprintf(filename, "%u.%u.osgearth_rex_loader", request->_uid, _engineUID);
+        //sprintf(filename, "%u.%u.osgearth_rex_loader", request->_uid, _engineUID);
+        sprintf(filename, "%u.osgearth_rex_loader", request->_uid);
 
         nv.getDatabaseRequestHandler()->requestNodeFile(
             filename,
@@ -480,20 +487,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             {
                 // parse the tile key and engine ID:
                 std::string requestdef = osgDB::getNameLessExtension(uri);
-                unsigned requestUID, engineUID;
-                sscanf(requestdef.c_str(), "%u.%u", &requestUID, &engineUID);
+                unsigned requestUID;
+                sscanf(requestdef.c_str(), "%u", &requestUID);
 
-                // find the appropriate engine:
-                osg::ref_ptr<RexTerrainEngineNode> engineNode;
-                RexTerrainEngineNode::getEngineByUID( (UID)engineUID, engineNode );
-                if ( engineNode.valid() )
+                osg::ref_ptr<PagerLoader> loader;
+                if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                    PagerLoader* loader = dynamic_cast<PagerLoader*>(engineNode->getLoader());
-                    if ( loader )
-                    {
-                        Loader::Request* req = loader->invokeAndRelease( requestUID );
-                        return new RequestResultNode(req);
-                    }
+                    Loader::Request* req = loader->invokeAndRelease( requestUID );
+                    return new RequestResultNode(req);
                 }
                 return ReadResult::FILE_NOT_FOUND;
             }

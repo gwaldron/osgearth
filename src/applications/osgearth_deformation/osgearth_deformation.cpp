@@ -579,7 +579,7 @@ int main(int argc, char** argv)
 
     ElevationLayer* layer = new ElevationLayer(elevationOpt, s_deformations);
     layer->open();
-    s_mapNode->getMap()->addElevationLayer(layer);
+    s_mapNode->getMap()->addLayer(layer);
 
     osg::Group* root = new osg::Group();
     viewer.setSceneData( root );

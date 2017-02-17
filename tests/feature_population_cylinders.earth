@@ -79,14 +79,12 @@ Shows how to use JavaScript to create geometry parametrically.
         
     </model>
     
-    <external>
-        <decluttering>
-            <out_animation_time>  0.0  </out_animation_time>
-            <in_animation_time>   0.25 </in_animation_time>
-            <min_animation_scale> 0.45 </min_animation_scale>
-            <min_animation_alpha> 0.35 </min_animation_alpha>
-            <sort_by_priority>    true </sort_by_priority>
-        </decluttering>
-    </external>
+    <screen_space_layout>
+        <out_animation_time>  0.0  </out_animation_time>
+        <in_animation_time>   0.25 </in_animation_time>
+        <min_animation_scale> 0.45 </min_animation_scale>
+        <min_animation_alpha> 0.35 </min_animation_alpha>
+        <sort_by_priority>    true </sort_by_priority>
+    </screen_space_layout>
   
 </map>

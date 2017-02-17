@@ -13,33 +13,28 @@ http://readymap.org
 -->
 <map name="readymap.org" type="geocentric" version="2">
 
+    <options>
+        <terrain driver="rex"/>
+    </options>
+    
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
+    <simple_ocean>      
+        <color>#1D2C4FF7</color>
+        <max_altitude>500000</max_altitude>
+        <mask_layer>ocean_mask</mask_layer>
+    </simple_ocean>
     
-    <!-- Ocean parameters. -->
-    <ocean driver="simple">
+    <image name="ocean_mask" visible="false" shared="true" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+    </image>
         
-        <!-- Masking layer to use (optional...without a masking layer, osgEarth will sample the
-             terrain elevation data to determine where the ocean is.
-        -->
-        <mask_layer driver="tms">
-            <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
-        </mask_layer>
-        
-        <!-- surface color -->
-        <base_color>#1c6ba0f7</base_color>
-        
-        <max_altitude>250000</max_altitude>
-        
-    </ocean>
-    
-    
     <viewpoints>
         <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
         <viewpoint name="Above water" heading="-76.17264538992794" height="-199.5569639196619" lat="33.27975381179682" long="-118.3307776586542" pitch="-10.06523772274543" range="3739.161570538204"/>

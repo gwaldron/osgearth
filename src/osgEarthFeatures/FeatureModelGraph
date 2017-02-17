@@ -28,6 +28,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/DepthOffset>
+#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
 #include <set>
@@ -53,12 +54,27 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new model graph.
          *
+         * @param session
+         *      Session under which to create elements in this graph
          * @param options
          *      Model source options
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
+         */
+        FeatureModelGraph(
+            Session*                         session,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory);
+
+        /**
+         * Constructs a new model graph.
+         *
          * @param session
          *      Session under which to create elements in this graph
+         * @param options
+         *      Model source options
+         * @param factory
+         *      Node factory that will be invoked to compile feature data into nodes
          * @param preMergeOperations
          *      Node operations that will execute in the pager thread after it finishes
          *      building a node
@@ -90,6 +106,11 @@ namespace osgEarth { namespace Features
             const osgDB::Options* readOptions);
 
         /**
+         * Set a scene graph callback host for this FMG
+         */
+        void setSceneGraphCallbacks(SceneGraphCallbacks* callbacks);
+
+        /**
          * Style sheet associated with this feature graph.
          */
         StyleSheet* getStyles() { return _session->styles(); }
@@ -103,11 +124,6 @@ namespace osgEarth { namespace Features
          * Session associated with this feature graph.
          */
         Session* getSession() { return _session; }
-
-        /**
-         * UID given to this feature graph when registered with the pseudo-loader
-         */
-        UID getUID() const { return _uid; }
 
         /**
          * Mark the feature graph dirty and in need of regeneration 
@@ -201,7 +217,6 @@ namespace osgEarth { namespace Features
         FeatureModelSourceOptions        _options;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
-        UID                              _uid;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;
         GeoExtent                        _usableFeatureExtent;
@@ -213,7 +228,7 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
-        OpenThreads::Mutex               _clampableMutex;
+        OpenThreads::ReentrantMutex      _clampableMutex;
 
         osg::Group*                      _overlayInstalled;
         osg::ref_ptr<osg::Group>         _overlayPlaceholder;
@@ -239,6 +254,8 @@ namespace osgEarth { namespace Features
         osg::observer_ptr<ModelSource> _modelSource;
 
         osg::ref_ptr<FeatureSourceIndex> _featureIndex;
+
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

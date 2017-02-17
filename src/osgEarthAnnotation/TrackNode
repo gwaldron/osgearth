@@ -151,6 +151,10 @@ namespace osgEarth { namespace Annotation
 
         void init( const TrackNodeFieldSchema& schema );
 
+    protected: // AnnotationNode override
+        
+        virtual bool supportsRenderBinDetails() const { return false; }
+
     private:
         // required by META_Node, but this object is not cloneable
         TrackNode() { }

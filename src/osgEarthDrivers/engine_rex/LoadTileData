@@ -34,6 +34,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         LoadTileData(TileNode* tilenode, EngineContext* factory);
 
+        CreateTileModelFilter& filter() { return _filter; }
+
+        void setEnableCancelation(bool value) { _enableCancel = value; }
+
     public: // Loader::Request
 
         /** Fetches the data for the tile node. */
@@ -48,9 +52,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;
+        osg::observer_ptr<TerrainEngineNode> _engine;
         EngineContext* _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
         TileRenderModel _renderModel;
+        CreateTileModelFilter _filter;
+        MapFrame _mapFrame;
+        bool _enableCancel;
 
         virtual ~LoadTileData() { }
     };

@@ -23,6 +23,7 @@
 #include <osgEarth/Cube>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Bounds>
 #include <osgDB/FileNameUtils>
 #include <algorithm>
 #include <sstream>
@@ -210,7 +211,30 @@ Profile::create(const std::string& srsInitString,
     }
     else if ( srs.valid() )
     {
-        OE_WARN << LC << "Failed to create profile; you must provide extents with a projected SRS." << std::endl;
+        OE_INFO << LC << "No extents given, making some up.\n";
+        Bounds bounds;
+        if (srs->guessBounds(bounds))
+        {
+            if (numTilesWideAtLod0 == 0 || numTilesHighAtLod0 == 0)
+            {
+                double ar = (bounds.width() / bounds.height());
+                if (ar >= 1.0) {
+                    int ari = (int)ar;
+                    numTilesHighAtLod0 = 1;
+                    numTilesWideAtLod0 = ari;
+                }
+                else {
+                    int ari = (int)(1.0/ar);
+                    numTilesWideAtLod0 = 1;
+                    numTilesHighAtLod0 = ari;
+                }
+            }            
+            return Profile::create(srs.get(), bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax(), numTilesWideAtLod0, numTilesHighAtLod0);
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to create profile; you must provide extents with a projected SRS." << std::endl;
+        }
     }
     else
     {

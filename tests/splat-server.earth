@@ -79,27 +79,23 @@
 
         <lighting>true</lighting>        
     </model>
-
-    <extensions>
    
-        <splat>        
-            <coverage>
-                <layer> CLASSMAP </layer>
-                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-            </coverage>
-            
-            <zones>
-                <zone name="default" doc="Default Climate Zone">            
-                    <surface>
-                        <catalog>../data/splat/splat_catalog.xml</catalog>
-                    </surface>
-                </zone>                
-            </zones>
-            
-        </splat>
-            
-        <xi:include href="viewpoints.xml"/>
+    <splat>        
+        <coverage>
+            <layer> CLASSMAP </layer>
+            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+        </coverage>
         
-    </extensions>
+        <zones>
+            <zone name="default" doc="Default Climate Zone">            
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>                
+        </zones>
+        
+    </splat>
+            
+    <xi:include href="viewpoints.xml"/>
 
 </map>

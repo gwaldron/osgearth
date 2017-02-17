@@ -671,7 +671,8 @@ _inherit           ( true ),
 _inheritSet        ( false ),
 _logShaders        ( false ),
 _logPath           ( "" ),
-_acceptCallbacksVaryPerFrame( false )
+_acceptCallbacksVaryPerFrame( false ),
+_isAbstract        ( false )
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -704,7 +705,8 @@ _inheritSet        ( rhs._inheritSet ),
 _logShaders        ( rhs._logShaders ),
 _logPath           ( rhs._logPath ),
 _template          ( osg::clone(rhs._template.get()) ),
-_acceptCallbacksVaryPerFrame( rhs._acceptCallbacksVaryPerFrame )
+_acceptCallbacksVaryPerFrame( rhs._acceptCallbacksVaryPerFrame ),
+_isAbstract        ( rhs._isAbstract )
 {    
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
@@ -729,6 +731,7 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
     // compare each parameter in turn against the rhs.
     COMPARE_StateAttribute_Parameter(_mask);
     COMPARE_StateAttribute_Parameter(_inherit);
+    COMPARE_StateAttribute_Parameter(_isAbstract);
 
     // compare the shader maps. Need to lock them while comparing.
     {
@@ -1108,6 +1111,12 @@ VirtualProgram::apply( osg::State& state ) const
     {
         // cannot use capabilities here; it breaks serialization.
         _active = true; //Registry::capabilities().supportsGLSL();
+    }
+
+    // An abstract (pure virtual) program cannot be applied.
+    if (_isAbstract)
+    {
+        return;
     }
     
     const unsigned contextID = state.getContextID();
@@ -1978,7 +1987,8 @@ namespace
         ADD_UINT_SERIALIZER( Mask, ~0 );
 
         ADD_USER_SERIALIZER( AttribBinding );
-        //ADD_USER_SERIALIZER( FragDataBinding );
         ADD_USER_SERIALIZER( Functions );
+
+        ADD_BOOL_SERIALIZER( IsAbstract, false );
     }
 }

@@ -22,6 +22,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MaskLayer>
+#include <osgEarth/Map>
 
 #define LC "[MapCallback] "
 
@@ -50,6 +51,36 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
 }
 
 void
+MapCallback::invokeOnLayerAdded(const Map* map)
+{
+    LayerVector layers;
+    map->getLayers(layers);
+    unsigned index = 0;
+    if (layers.size() > 0)
+    {
+        onBeginUpdate();
+        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
+            onLayerAdded(i->get(), index++);
+        onEndUpdate();
+    }
+}
+
+void
+MapCallback::invokeOnLayerRemoved(const Map* map)
+{
+    LayerVector layers;
+    map->getLayers(layers);
+    unsigned index = 0;
+    if (layers.size() > 0)
+    {
+        onBeginUpdate();
+        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
+            onLayerRemoved(i->get(), index++);
+        onEndUpdate();
+    }
+}
+
+void
 MapCallback::onLayerAdded(Layer* layer, unsigned index)
 {
     if (dynamic_cast<ImageLayer*>(layer))
@@ -70,7 +101,7 @@ MapCallback::onLayerRemoved(Layer* layer, unsigned index)
     else if (dynamic_cast<ElevationLayer*>(layer))
         onElevationLayerRemoved(static_cast<ElevationLayer*>(layer), index);
     else if (dynamic_cast<ModelLayer*>(layer))
-        onModelLayerRemoved(static_cast<ModelLayer*>(layer));
+        onModelLayerRemoved(static_cast<ModelLayer*>(layer), index);
     else if (dynamic_cast<MaskLayer*>(layer))
         onMaskLayerRemoved(static_cast<MaskLayer*>(layer));
 }

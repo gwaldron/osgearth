@@ -5,10 +5,6 @@ Demonstrates use of the "agglite" feature rasterization driver.
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
 
-    <external>
-        <lod_blending/>
-    </external>
-
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
         <cache_policy usage="no_cache"/>

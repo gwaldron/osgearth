@@ -1,5 +1,6 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
+#include <osgEarth/Utils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -21,6 +22,7 @@ namespace
     struct ProgressMaster : public osg::NodeCallback
     {
         unsigned _frame;
+        bool _canCancel;
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
@@ -45,7 +47,10 @@ namespace
         // override from ProgressCallback
         bool isCanceled()
         {
-            return (!_master.valid()) || (_master->_frame - _lastFrame > 1u);
+            osg::ref_ptr<ProgressMaster> master;
+            if (!_master.lock(master)) return true;
+            if (!_master->_canCancel) return false;
+            return (master->_frame - _lastFrame > 1u);
         }
 
         // called by ProgressUpdater
@@ -83,25 +88,23 @@ namespace
             unsigned lod, x, y;
             sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
 
-
-            SimplePager* pager =
-                dynamic_cast<SimplePager*>(
-                    const_cast<osg::Object*>(
-                        options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::this")));
-            
-            if (pager)
+            osg::ref_ptr<SimplePager> pager;
+            if (!OptionsData<SimplePager>::lock(options, "osgEarth.SimplePager", pager))
             {
-                SimplePager::ProgressTracker* tracker =
-                    dynamic_cast<SimplePager::ProgressTracker*>(
-                        const_cast<osg::Object*>(
-                            options->getUserDataContainer()->getUserObject("osgEarth::Util::SimplerPager::ProgressTracker")));
-
-                return pager->loadKey(
-                    TileKey(lod, x, y, pager->getProfile()),
-                    tracker);
+                OE_WARN << LC << "Internal error - no SimplePager object in OptionsData\n";
+                return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return ReadResult::ERROR_IN_READING_FILE;
+            osg::ref_ptr<SimplePager::ProgressTracker> tracker;
+            if (!OptionsData<SimplePager::ProgressTracker>::lock(options, "osgEarth.SimplePager.ProgressTracker", tracker))
+            {
+                OE_WARN << LC << "Internal error - no ProgressTracker object in OptionsData\n";
+                return ReadResult::ERROR_IN_READING_FILE;
+            }
+
+            return pager->loadKey(
+                TileKey(lod, x, y, pager->getProfile()),
+                tracker);
         }
     };
 
@@ -131,7 +134,8 @@ _additive(false),
 _minLevel(0),
 _maxLevel(30),
 _priorityScale(1.0f),
-_priorityOffset(0.0f)
+_priorityOffset(0.0f),
+_canCancel(true)
 {
     // required in order to pass our "this" pointer to the pseudo loader:
     this->setName( "osgEarth::Util::SimplerPager::this" );
@@ -139,6 +143,16 @@ _priorityOffset(0.0f)
     // install the master framestamp tracker:
     _progressMaster = new ProgressMaster();
     addCullCallback( _progressMaster.get() );
+}
+
+void SimplePager::setEnableCancelation(bool value)
+{
+    static_cast<ProgressMaster*>(_progressMaster.get())->_canCancel = value;
+}
+
+bool SimplePager::getEnableCancalation() const
+{
+    return static_cast<ProgressMaster*>(_progressMaster.get())->_canCancel;
 }
 
 void SimplePager::build()
@@ -266,8 +280,8 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();
-        options->getOrCreateUserDataContainer()->addUserObject( this );
-        options->getOrCreateUserDataContainer()->addUserObject( tracker );
+        OptionsData<SimplePager>::set(options, "osgEarth.SimplePager", this);
+        OptionsData<ProgressTracker>::set(options, "osgEarth.SimplePager.ProgressTracker", tracker);
         plod->setDatabaseOptions( options );
         
         // Install an FLC if the caller provided one

@@ -2,6 +2,8 @@
 #pragma vp_name       LandCover geometry shader
 #pragma vp_entryPoint oe_landcover_geom
 #pragma vp_location   geometry
+
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
                 
 layout(triangles)        in;        // triangles from the TileDrawable
 layout(triangle_strip)   out;       // output a triangle-strip billboard
@@ -27,8 +29,6 @@ uniform float oe_landcover_brightness;
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
-
-uniform bool oe_isShadowCamera;
 
 // Noise texture:
 uniform sampler2D oe_splat_noiseTex;
@@ -240,22 +240,23 @@ oe_landcover_geom()
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;
     
-    if ( oe_isShadowCamera == false )
+
+#ifdef OE_IS_SHADOW_CAMERA
+    
+    // generate cross-hatch geometry for shadowing/depth:
+
+    vec3 eastVector = gl_NormalMatrix * vec3(1,0,0);
+    vec3 halfWidthTangentVector = cross(eastVector, up_view) * 0.5 * width;
+    vec3 heightVector = up_view*height;
+
+    vp_Color = vec4(1,1,1,falloff);
+
+    for(int i=0; i<2; ++i)
     {
-        vec3 tangentVector = normalize(cross(vec3(0,0,-1), up_view));
-        vec3 halfWidthTangentVector = tangentVector * 0.5 * width;
-        vec3 heightVector = up_view*height;
-        
         LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
         LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
         UL = vec4(LL.xyz + heightVector, 1.0);
         UR = vec4(LR.xyz + heightVector, 1.0);
-                      
-        // TODO: animate based on wind parameters.
-        float nw = noise[NOISE_SMOOTH];
-        float wind = width*oe_landcover_windFactor*nw;
-        UL.x += oe_landcover_applyWind(osg_FrameTime*(1+nw), wind, UL.x);
-        UR.x += oe_landcover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
     
         // Color variation, brightness, and contrast:
         vec3 color = vec3( noise[NOISE_RANDOM_2] );
@@ -265,70 +266,93 @@ oe_landcover_geom()
 
         // calculates normals:
         vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
+
+        // if we are looking straight-ish down on the billboard, don't bother with it
+        if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+            return;
+
         float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
         vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
         vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);
 
         gl_Position = LL;
         oe_landcover_texCoord = vec2(0,0);
-        vp_Normal = Lnormal;
         VP_EmitViewVertex();
     
         gl_Position = LR;
         oe_landcover_texCoord = vec2(1,0);
-        vp_Normal = Rnormal;
-        VP_EmitViewVertex();
-
-        vp_Color = vec4(color, falloff);      
+        VP_EmitViewVertex();    
 
         gl_Position = UL;
         oe_landcover_texCoord = vec2(0,1);
-        vp_Normal = Lnormal;
         VP_EmitViewVertex();
 
         oe_landcover_texCoord = vec2(1,1);
-        vp_Normal = Rnormal;
         gl_Position = UR;
         VP_EmitViewVertex();
                     
         EndPrimitive();
+
+        halfWidthTangentVector = cross(halfWidthTangentVector, up_view);
     }
-    else
-    {
-        // generating cross-hatch geometry (for shadowing)
 
-        vec3 eastVector = gl_NormalMatrix * vec3(1,0,0);
-        vec3 halfWidthTangentVector = cross(eastVector, up_view) * 0.5 * width;
-        vec3 heightVector = up_view*height;
+#else // normal render camera - draw as a billboard:
 
-        vp_Color = vec4(1,1,1,falloff);
-
-        for(int i=0; i<2; ++i)
-        {
-            LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
-            LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
-            UL = vec4(LL.xyz + heightVector, 1.0);
-            UR = vec4(LR.xyz + heightVector, 1.0);
+    vec3 tangentVector = normalize(cross(vec3(0,0,-1), up_view));
+    vec3 halfWidthTangentVector = tangentVector * 0.5 * width;
+    vec3 heightVector = up_view*height;
+        
+    LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
+    LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
+    UL = vec4(LL.xyz + heightVector, 1.0);
+    UR = vec4(LR.xyz + heightVector, 1.0);
+                      
+    // TODO: animate based on wind parameters.
+    float nw = noise[NOISE_SMOOTH];
+    float wind = width*oe_landcover_windFactor*nw;
+    UL.x += oe_landcover_applyWind(osg_FrameTime*(1+nw), wind, UL.x);
+    UR.x += oe_landcover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
     
-            gl_Position = LL;
-            oe_landcover_texCoord = vec2(0,0);
-            VP_EmitViewVertex();
+    // Color variation, brightness, and contrast:
+    vec3 color = vec3( noise[NOISE_RANDOM_2] );
+    color = ( ((color - 0.5) * oe_landcover_contrast + 0.5) * oe_landcover_brightness);
+
+    vp_Color = vec4(color*oe_landcover_ao, falloff);
+
+    // calculates normals:
+    vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
+
+    // if we are looking straight-ish down on the billboard, don't bother with it
+    if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
+        return;
+
+    float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
+    vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
+    vec3 Rnormal = mix( tangentVector, faceNormalVector, blend);
+
+    gl_Position = LL;
+    oe_landcover_texCoord = vec2(0,0);
+    vp_Normal = Lnormal;
+    VP_EmitViewVertex();
     
-            gl_Position = LR;
-            oe_landcover_texCoord = vec2(1,0);
-            VP_EmitViewVertex();    
+    gl_Position = LR;
+    oe_landcover_texCoord = vec2(1,0);
+    vp_Normal = Rnormal;
+    VP_EmitViewVertex();
 
-            gl_Position = UL;
-            oe_landcover_texCoord = vec2(0,1);
-            VP_EmitViewVertex();
+    vp_Color = vec4(color, falloff);      
 
-            oe_landcover_texCoord = vec2(1,1);
-            gl_Position = UR;
-            VP_EmitViewVertex();
+    gl_Position = UL;
+    oe_landcover_texCoord = vec2(0,1);
+    vp_Normal = Lnormal;
+    VP_EmitViewVertex();
+
+    oe_landcover_texCoord = vec2(1,1);
+    vp_Normal = Rnormal;
+    gl_Position = UR;
+    VP_EmitViewVertex();
                     
-            EndPrimitive();
-
-            halfWidthTangentVector = cross(halfWidthTangentVector, up_view);
-        }
-    }
+    EndPrimitive();
+    
+#endif // !OE_IS_SHADOW_CAMERA
 }

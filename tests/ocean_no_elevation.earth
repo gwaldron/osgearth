@@ -1,0 +1,70 @@
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric" version="2">
+
+    <options>
+        <terrain driver="rex"/>
+    </options>
+    
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <!--
+    <elevation name="ReadyMap.org - Elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    -->
+    
+    <simple_ocean>      
+        <color>#1D2C4FFF</color>
+        <max_altitude>1e10</max_altitude>
+        <mask_layer>ocean_mask</mask_layer>
+        <use_bathymetry>false</use_bathymetry>
+        <shader_define>IS_OCEAN</shader_define>
+    </simple_ocean>
+    
+    <image name="ocean_mask" visible="false" shared="true" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+        <shared_sampler>ocean_mask</shared_sampler>
+        <shared_matrix>ocean_mask_matrix</shared_matrix>
+    </image>
+    
+    <terrainshader>
+        <code><![CDATA[
+            #version 330
+            #pragma vp_entryPoint discardTheOcean
+            #pragma vp_location fragment_coloring
+            #pragma import_defines(IS_OCEAN)
+            
+            uniform sampler2D ocean_mask;
+            uniform mat4 ocean_mask_matrix;
+            vec4 oe_layer_tilec;
+            
+            void discardTheOcean(inout vec4 color) {
+              #ifndef IS_OCEAN
+                vec4 mask = texture(ocean_mask, (ocean_mask_matrix*oe_layer_tilec).st);
+                if (mask.a > 0.75)
+                    discard;
+              #endif
+            }
+        ]]></code>
+    </terrainshader>
+        
+    <viewpoints>
+        <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
+        <viewpoint name="Above water" heading="-76.17264538992794" height="-199.5569639196619" lat="33.27975381179682" long="-118.3307776586542" pitch="-10.06523772274543" range="3739.161570538204"/>
+        <viewpoint name="Below water" heading="-24.96310172368127" height="-1300.000076910481" lat="33.27360337088133" long="-118.5514448058582" pitch="-10.0770016631354" range="6375.084038302656"/>
+    </viewpoints>
+</map>

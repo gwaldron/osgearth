@@ -21,6 +21,7 @@
 #include <osgEarth/Version>
 #include <osgEarth/Progress>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Metrics>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -110,7 +111,7 @@ ProxySettings::apply( osgDB::Options* dbOptions ) const
 }
 
 /****************************************************************************/
-   
+
 namespace osgEarth
 {
     struct StreamObject
@@ -123,13 +124,13 @@ namespace osgEarth
         }
 
         void writeHeader(const char* ptr, size_t realsize)
-        {            
-            std::string header(ptr);            
+        {
+            std::string header(ptr);
             StringTokenizer tok(":");
             StringVector tized;
-            tok.tokenize(header, tized);            
+            tok.tokenize(header, tized);
             if ( tized.size() >= 2 )
-                _headers[tized[0]] = tized[1];                
+                _headers[tized[0]] = tized[1];
         }
 
         std::ostream* _stream;
@@ -150,8 +151,8 @@ namespace osgEarth
     StreamObjectHeaderCallback(void* ptr, size_t size, size_t nmemb, void* data)
     {
         size_t realsize = size* nmemb;
-        StreamObject* sp = (StreamObject*)data;                
-        sp->writeHeader((const char*)ptr, realsize);        
+        StreamObject* sp = (StreamObject*)data;
+        sp->writeHeader((const char*)ptr, realsize);
         return realsize;
     }
 
@@ -224,7 +225,7 @@ HTTPRequest::addParameter( const std::string& name, double value )
 const HTTPRequest::Parameters&
 HTTPRequest::getParameters() const
 {
-    return _parameters; 
+    return _parameters;
 }
 
 void
@@ -236,11 +237,11 @@ HTTPRequest::addHeader( const std::string& name, const std::string& value )
 const Headers&
 HTTPRequest::getHeaders() const
 {
-    return _headers; 
+    return _headers;
 }
 
 void HTTPRequest::setLastModified( const DateTime &lastModified)
-{    
+{
     addHeader("If-Modified-Since", lastModified.asRFC1123());
 }
 
@@ -327,7 +328,7 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
     std::string streamStr;
-    streamStr = _parts[n]->_stream.str();    
+    streamStr = _parts[n]->_stream.str();
     return streamStr;
 }
 
@@ -588,9 +589,9 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     line = tempbuf;
     if ( line != bstr )
     {
-        OE_INFO << LC 
+        OE_INFO << LC
             << "decodeMultipartStream: protocol violation; "
-            << "expecting boundary; instead got: \"" 
+            << "expecting boundary; instead got: \""
             << line
             << "\"" << std::endl;
         return false;
@@ -620,12 +621,12 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
                     done = true;
                 }
                 else
-                {                    
+                {
                     StringTokenizer tok(":");
                     StringVector tized;
-                    tok.tokenize(line, tized);            
+                    tok.tokenize(line, tized);
                     if ( tized.size() >= 2 )
-                        next_part->_headers[tized[0]] = tized[1];                        
+                        next_part->_headers[tized[0]] = tized[1];
                 }
             }
         }
@@ -670,7 +671,7 @@ HTTPClient::get( const HTTPRequest&    request,
     return getClient().doGet( request, options, progress );
 }
 
-HTTPResponse 
+HTTPResponse
 HTTPClient::get( const std::string&    url,
                  const osgDB::Options* options,
                  ProgressCallback*     progress)
@@ -746,13 +747,16 @@ namespace
 
 HTTPResponse
 HTTPClient::doGet(const HTTPRequest&    request,
-                  const osgDB::Options* options, 
+                  const osgDB::Options* options,
                   ProgressCallback*     progress) const
 {
+    METRIC_BEGIN("HTTPClient::doGet", 1,
+                   "url", request.getURL().c_str());
+
     OE_START_TIMER(http_get);
 
     std::string url = request.getURL();
-    // Rewrite the url if the url rewriter is available  
+    // Rewrite the url if the url rewriter is available
     osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
     if ( rewriter.valid() )
     {
@@ -764,7 +768,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     HINTERNET hInternet = InternetOpen(
         getUserAgent().c_str(),
         //"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
-        INTERNET_OPEN_TYPE_PRECONFIG, 
+        INTERNET_OPEN_TYPE_PRECONFIG,
         NULL,       // proxy
         NULL,       // proxy bypass
         0);         // flags
@@ -776,8 +780,9 @@ HTTPClient::doGet(const HTTPRequest&    request,
     }
 
     // clears any session cookies..?
-    InternetSetOption( 0, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0 );
-    
+    // Commented this out, because is invalidates authorization caching:
+    //InternetSetOption( 0, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0 );
+
     // parse the URL:
     URL_COMPONENTS urlcomp;
     ZeroMemory(&urlcomp, sizeof(urlcomp));
@@ -793,7 +798,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         InternetCloseHandle( hInternet );
         return HTTPResponse(0);
     }
-    
+
     WORD port =
         urlcomp.nPort != 0 ? urlcomp.nPort :
         urlcomp.nScheme == INTERNET_SCHEME_HTTPS ? INTERNET_DEFAULT_HTTPS_PORT :
@@ -809,7 +814,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         << "Host name = " << hostName << "\n"
         << "Url path = " << urlcomp.lpszUrlPath << "\n"
         << "Port = " << port << "\n";
-    
+
     DWORD openFlags =
         //INTERNET_FLAG_PRAGMA_NOCACHE |
         INTERNET_FLAG_RELOAD |
@@ -824,7 +829,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     // InternetOpenUrl is a lot less code, but we have to use the InternetConnnect +
     // HttpOpenRequest + HttpSendRequest approach in order to support system dialogs
     // for PKI certificates and username/password queries.
-    
+
     HINTERNET hConnection = InternetConnect(
         hInternet,
         hostName.c_str(),
@@ -863,7 +868,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     while( !HttpSendRequest(hRequest, NULL, 0, NULL, 0) )
     {
         DWORD errorNum = GetLastError();
-            
+
         // Request for client cert; open system dialog.
         if ( errorNum == ERROR_INTERNET_CLIENT_AUTH_CERT_NEEDED )
         {
@@ -871,10 +876,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
             // Return ERROR_SUCCESS regardless of clicking on OK or Cancel
             DWORD dialogResult = InternetErrorDlg(
-                GetDesktopWindow(), 
+                GetDesktopWindow(),
                 hRequest,
                 ERROR_INTERNET_CLIENT_AUTH_CERT_NEEDED,
-                FLAGS_ERROR_UI_FILTER_FOR_ERRORS | FLAGS_ERROR_UI_FLAGS_GENERATE_DATA | FLAGS_ERROR_UI_FLAGS_CHANGE_OPTIONS, 
+                FLAGS_ERROR_UI_FILTER_FOR_ERRORS | FLAGS_ERROR_UI_FLAGS_GENERATE_DATA | FLAGS_ERROR_UI_FLAGS_CHANGE_OPTIONS,
                 NULL );
 
             if ( dialogResult != ERROR_SUCCESS )
@@ -905,10 +910,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
     DWORD index = 0;
 
     if ( HttpQueryInfo(hRequest, HTTP_QUERY_STATUS_CODE, buffer, &bufferLen, &index) )
-    {             
+    {
         statusCode = as<int>( std::string(buffer, bufferLen), 0 );
     }
-    
+
     HTTPResponse response(statusCode);
 
     bufferLen = 4096, index = 0;
@@ -926,7 +931,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     response._mimeType = contentType;
 
     if ( statusCode == 200 )
-    {    
+    {
         osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
 
         DWORD numBytesRead = 0;
@@ -951,7 +956,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
         if ( response._cancelled )
             progress->stats("http_cancel_count") += 1;
     }
-    
+
+    METRIC_END("HTTPClient::doGet", 1,
+                 "response_code", toString<int>(response.getCode()).c_str());
+
     return response;
 }
 
@@ -959,16 +967,19 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
 HTTPResponse
 HTTPClient::doGet(const HTTPRequest&    request,
-                  const osgDB::Options* options, 
+                  const osgDB::Options* options,
                   ProgressCallback*     progress) const
-{    
+{
+    METRIC_BEGIN("HTTPClient::doGet", 1,
+                   "url", request.getURL().c_str());
+
     initialize();
 
     OE_START_TIMER(http_get);
-    
+
     std::string url = request.getURL();
 
-    const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
+    const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ?
             options->getAuthenticationMap() :
             osgDB::Registry::instance()->getAuthenticationMap();
 
@@ -977,7 +988,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     std::string proxy_auth;
 
-    //TODO: don't do all this proxy setup on every GET. Just do it once per client, or only when 
+    //TODO: don't do all this proxy setup on every GET. Just do it once per client, or only when
     // the proxy information changes.
 
     //Try to get the proxy settings from the global settings
@@ -1002,7 +1013,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     optional< ProxySettings > proxySettings;
     ProxySettings::fromOptions( options, proxySettings );
     if (proxySettings.isSet())
-    {       
+    {
         proxy_host = proxySettings.get().hostName();
         proxy_port = toString<int>(proxySettings.get().port());
         OE_DEBUG << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
@@ -1036,13 +1047,13 @@ HTTPClient::doGet(const HTTPRequest&    request,
         std::string bufStr;
         bufStr = buf.str();
         proxy_addr = bufStr;
-    
+
         if ( s_HTTP_DEBUG )
         {
             OE_NOTICE << LC << "Using proxy: " << proxy_addr << std::endl;
         }
 
-        //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
+        //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 );
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
         //Setup the proxy authentication if setup
@@ -1062,7 +1073,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
-    // Rewrite the url if the url rewriter is available  
+    // Rewrite the url if the url rewriter is available
     osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
     if ( rewriter.valid() )
     {
@@ -1087,8 +1098,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
 #if LIBCURL_VERSION_NUM >= 0x070a07
         if (details->httpAuthentication != _previousHttpAuthentication)
-        { 
-            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, details->httpAuthentication); 
+        {
+            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, details->httpAuthentication);
             const_cast<HTTPClient*>(this)->_previousHttpAuthentication = details->httpAuthentication;
         }
 #endif
@@ -1105,11 +1116,11 @@ HTTPClient::doGet(const HTTPRequest&    request,
         // need to reset if previously set.
         if (_previousHttpAuthentication!=0)
         {
-            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, 0); 
+            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, 0);
             const_cast<HTTPClient*>(this)->_previousHttpAuthentication = 0;
         }
 #endif
-    }  
+    }
 
 
     // Set any headers
@@ -1126,8 +1137,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     // Disable the default Pragma: no-cache that curl adds by default.
     headers = curl_slist_append(headers, "Pragma: ");
-    curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers); 
-    
+    curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers);
+
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
 
@@ -1154,7 +1165,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
         //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
         curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
-        
+
         osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
         if (curlConfigHandler.valid()) {
             curlConfigHandler->onGet(_curl_handle);
@@ -1175,7 +1186,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
             }
         }
 
-        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );        
+        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
     }
     else
     {
@@ -1184,26 +1195,26 @@ HTTPClient::doGet(const HTTPRequest&    request,
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
     }
 
-    HTTPResponse response( response_code );    
-    
+    HTTPResponse response( response_code );
+
     // read the response content type:
     char* content_type_cp;
 
-    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );    
+    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
 
     if ( content_type_cp != NULL )
     {
-        response._mimeType = content_type_cp;    
-    } 
+        response._mimeType = content_type_cp;
+    }
 
     // read the file time:
     response._lastModified = getCurlFileTime( _curl_handle );
 
     // upon success, parse the data:
     if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
-    {        
+    {
         // check for multipart content
-        if (response._mimeType.length() > 9 && 
+        if (response._mimeType.length() > 9 &&
             ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
         {
             OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
@@ -1216,10 +1227,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
             }
         }
         else
-        {            
+        {
             for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
-            {                
-                part->_headers[itr->first] = itr->second;                
+            {
+                part->_headers[itr->first] = itr->second;
             }
 
             // Write the headers to the metadata
@@ -1227,7 +1238,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         }
     }
     else  /*if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT) */
-    {        
+    {
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
     }
@@ -1246,8 +1257,8 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         TimeStamp filetime = getCurlFileTime(_curl_handle);
 
-        OE_NOTICE << LC 
-            << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
+        OE_NOTICE << LC
+            << "GET(" << response_code << ", " << response._mimeType << ") : \""
             << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
             << std::setprecision(4) << response.getDuration() << "s" << std::endl;
 
@@ -1298,6 +1309,10 @@ HTTPClient::doGet(const HTTPRequest&    request,
         }
     }
 
+    METRIC_END("HTTPClient::doGet", 2,
+               "response_code", toString<int>(response.getCode()).c_str(),
+               "canceled", toString<bool>(response.isCancelled()).c_str());
+
     return response;
 }
 
@@ -1335,14 +1350,14 @@ HTTPClient::doDownload(const std::string& url, const std::string& filename)
         OE_WARN << LC << "Error downloading file " << filename
             << " (" << response.getCode() << ")" << std::endl;
         return false;
-    } 
+    }
 }
 
 namespace
 {
     osgDB::ReaderWriter*
     getReader( const std::string& url, const HTTPResponse& response )
-    {        
+    {
         osgDB::ReaderWriter* reader = 0L;
 
         // try extension first:
@@ -1393,23 +1408,23 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
     {
         osgDB::ReaderWriter* reader = getReader(request.getURL(), response);
         if (!reader)
-        {            
+        {
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
-        else 
+        else
         {
             osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
             if ( rr.validImage() )
             {
                 result = ReadResult(rr.takeImage());
             }
-            else 
+            else
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << reader->className() 
-                        << " failed to read image from " << request.getURL() 
+                    OE_WARN << LC << reader->className()
+                        << " failed to read image from " << request.getURL()
                         << "; message = " << rr.message()
                         <<  std::endl;
                 }
@@ -1417,10 +1432,10 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
                 result.setErrorDetail( rr.message() );
             }
         }
-        
+
         // last-modified (file time)
         result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
-        
+
         // Time of query
         result.setDuration( response.getDuration() );
     }
@@ -1435,16 +1450,19 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
-        {            
+        {
             if (callback)
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
-        }        
+        }
     }
 
     // encode headers
@@ -1476,19 +1494,19 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
-        else 
+        else
         {
             osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
             if ( rr.validNode() )
             {
                 result = ReadResult(rr.takeNode());
             }
-            else 
+            else
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << reader->className() 
-                        << " failed to read node from " << request.getURL() 
+                    OE_WARN << LC << reader->className()
+                        << " failed to read node from " << request.getURL()
                         << "; message = " << rr.message()
                         <<  std::endl;
                 }
@@ -1496,7 +1514,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
                 result.setErrorDetail( rr.message() );
             }
         }
-        
+
         // last-modified (file time)
         result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
     }
@@ -1516,7 +1534,10 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1548,19 +1569,19 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
-        else 
+        else
         {
             osgDB::ReaderWriter::ReadResult rr = reader->readObject(response.getPartStream(0), options);
             if ( rr.validObject() )
             {
                 result = ReadResult(rr.takeObject());
             }
-            else 
+            else
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << reader->className() 
-                        << " failed to read object from " << request.getURL() 
+                    OE_WARN << LC << reader->className()
+                        << " failed to read object from " << request.getURL()
                         << "; message = " << rr.message()
                         <<  std::endl;
                 }
@@ -1568,7 +1589,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
                 result.setErrorDetail( rr.message() );
             }
         }
-        
+
         // last-modified (file time)
         result.setLastModifiedTime( response._lastModified ); //getCurlFileTime(_curl_handle) );
     }
@@ -1588,7 +1609,10 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1620,7 +1644,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
     {
         // for request errors, return an error result with the part data intact
         // so the user can parse it as needed. We only do this for readString.
-        result = ReadResult( 
+        result = ReadResult(
             ReadResult::RESULT_SERVER_ERROR,
             new StringObject(response.getPartAsString(0)) );
     }
@@ -1636,12 +1660,15 @@ HTTPClient::doReadString(const HTTPRequest&    request,
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
-        {            
+        {
             if (callback)
             {
                 if ( s_HTTP_DEBUG )
                 {
-                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    if (response.isCancelled())
+                        OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    else
+                        OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
                 }
                 callback->setNeedsRetry( true );
             }

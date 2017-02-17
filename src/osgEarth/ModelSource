@@ -27,6 +27,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Status>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -112,32 +113,10 @@ namespace osgEarth
             ProgressCallback* progress );
 
         /**
-         * Add a post processing operation that will run (possibly in a pager
-         * thread) after a new node has been generated.
+         * Access to the scene graph callbacks
          */
-        void addPreMergeOperation( NodeOperation* cb );
-
-        /**
-         * Add a post processing operation that will run (in the update thread)
-         * after a node merges into the scene graph.
-         */
-        void addPostMergeOperation( NodeOperation* cb );
-        
-        /**
-         * Remove a pre-merge processing operation
-         */
-        void removePreMergeOperation( NodeOperation* cb );
-        
-        /**
-         * Remove a post-merge processing operation
-         */
-        void removePostMergeOperation( NodeOperation* cb );
-
-        /**
-         * The vector of post processor callback operations
-         */
-        const NodeOperationVector& preMergeOperations() const { return *_preMergeOps; }
-        const NodeOperationVector& postMergeOperations() const { return *_postMergeOps; }
+        void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sgCallbacks = value; }
+        SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sgCallbacks.get(); }
 
 
     public: // META_Object specialization
@@ -175,16 +154,7 @@ namespace osgEarth
             const Map*        map,
             ProgressCallback* progress ) =0;
 
-        /**
-         * Fire the callbacks. The implementation class should call this whenever it adds
-         * a new node.
-         */
-        void firePostProcessors( osg::Node* node );
-
     protected:
-
-        osg::ref_ptr<RefNodeOperationVector> _postMergeOps;
-        osg::ref_ptr<RefNodeOperationVector> _preMergeOps;
         
         /** Subclass can set the status with this */
         void setStatus(const Status& value) { _status = value; }
@@ -197,9 +167,12 @@ namespace osgEarth
         DataExtentList   _dataExtents;
         Status _status;
 
+        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;        
+
         friend class Map;
         friend class MapEngine;
         friend class ModelSourceFactory;
+
     };
 
     //--------------------------------------------------------------------

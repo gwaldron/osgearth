@@ -50,7 +50,6 @@ namespace osgEarth
             : ConfigOptions          ( options ),
               _cachePolicy           ( ),
               _cstype                ( CSTYPE_GEOCENTRIC ),
-              _referenceURI          ( "" ),
               _elevationInterpolation( INTERP_BILINEAR )
         {
             fromConfig(_conf);
@@ -66,7 +65,10 @@ namespace osgEarth
         const optional<std::string>& name() const { return _name; }
 
         /**
-         * The coordinate system type of the map (default is CSTYPE_GEOCENTRIC)
+         * The coordinate system type of the map.
+         * By default this is "geocentric" (round earth), unless you specify a profile
+         * below, in which case it will be "projected" if the profile contains a 
+         * projected SRS.
          */
         optional<CoordinateSystemType>& coordSysType() { return _cstype; }
         const optional<CoordinateSystemType>& coordSysType() const { return _cstype; }
@@ -96,15 +98,6 @@ namespace osgEarth
          */
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
         const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
-
-        
-    public:
-        /**
-         * A reference location that drivers can use to load data from relative locations.
-         * NOTE: this is a runtime-only property and is NOT serialized in the ConfigOptions.
-         */
-        optional<std::string>& referenceURI() { return _referenceURI; }
-        const optional<std::string>& referenceURI() const { return _referenceURI; }
     
     public:
         Config getConfig() const;
@@ -122,7 +115,6 @@ namespace osgEarth
         optional<CacheOptions>           _cacheOptions;
         optional<CachePolicy>            _cachePolicy;
         optional<CoordinateSystemType>   _cstype;
-        optional<std::string>            _referenceURI;
         optional<ElevationInterpolation> _elevationInterpolation;
     };
 }

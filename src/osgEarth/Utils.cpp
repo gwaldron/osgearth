@@ -446,12 +446,11 @@ GeometryValidator::apply(osg::Geometry& geom)
         return;
     }
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,9)
-
     std::set<osg::BufferObject*> _vbos;
 
     osg::Geometry::ArrayList arrays;
     geom.getArrayList(arrays);
+
     for(unsigned i=0; i<arrays.size(); ++i)
     {
         osg::Array* a = arrays[i].get();
@@ -479,34 +478,6 @@ GeometryValidator::apply(osg::Geometry& geom)
     {
         OE_NOTICE << LC << "Found a Geometry that uses more than one VBO (non-optimal sharing)\n";
     }
-
-#else // pre-3.1.9 ... phase out.
-
-    if ( geom.getColorArray() )
-    {
-        if ( geom.getColorBinding() == osg::Geometry::BIND_OVERALL && geom.getColorArray()->getNumElements() != 1 )
-        {
-            OE_NOTICE << "Color: BIND_OVERALL with wrong number of elements" << std::endl;
-        }
-        else if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getColorArray()->getNumElements() != numVerts )
-        {
-            OE_NOTICE << "Color: BIND_PER_VERTEX with colors.size != verts.size" << std::endl;
-        }
-    }
-
-    if ( geom.getNormalArray() )
-    {
-        if ( geom.getNormalBinding() == osg::Geometry::BIND_OVERALL && geom.getNormalArray()->getNumElements() != 1 )
-        {
-            OE_NOTICE << "Normal: BIND_OVERALL with wrong number of elements" << std::endl;
-        }
-        else if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getNormalArray()->getNumElements() != numVerts )
-        {
-            OE_NOTICE << "Normal: BIND_PER_VERTEX with normals.size != verts.size" << std::endl;
-        }
-    }
-
-#endif
 
     const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
     

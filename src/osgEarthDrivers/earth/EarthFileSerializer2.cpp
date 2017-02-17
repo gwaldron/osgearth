@@ -22,6 +22,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <stdio.h>
@@ -83,17 +84,20 @@ namespace
 		return std::find_first_of(it, end, PATH_SEPARATORS, PATH_SEPARATORS+PATH_SEPARATORS_LEN);
 	}
 
+    // Config tags that we handle specially (versus just letting the plugin mechanism
+    // take take of them)
     bool isReservedWord(const std::string& k)
     {
         return
             k == "options" ||
-            k == "image" ||
+            //k == "image" ||
             k == "elevation" ||
             k == "heightfield" ||
-            k == "model" ||
-            k == "mask" ||
+            //k == "model" ||
+            //k == "mask" ||
             k == "external" ||
-            k == "extensions";
+            k == "extensions" ||
+            k == "libraries";
     }
 
     /**
@@ -314,50 +318,8 @@ namespace
 
 namespace
 {
-    void addImageLayer(const Config& conf, Map* map)
-    {
-        ImageLayerOptions options( conf );
-        options.name() = conf.value("name");
-        ImageLayer* layer = new ImageLayer(options);
-        map->addImageLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addElevationLayer(const Config& conf, Map* map)
-    {
-        ElevationLayerOptions options( conf );
-        options.name() = conf.value( "name" );
-        ElevationLayer* layer = new ElevationLayer(options);
-        map->addElevationLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addModelLayer(const Config& conf, Map* map)
-    {
-        ModelLayerOptions options( conf );
-        options.name() = conf.value( "name" );
-        options.driver() = ModelSourceOptions( conf );
-        ModelLayer* layer = new ModelLayer(options);
-        map->addModelLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
-    void addMaskLayer(const Config& conf, Map* map)
-    {
-        MaskLayerOptions options(conf);
-        options.name() = conf.value( "name" );
-        options.driver() = MaskSourceOptions(options);
-        MaskLayer* layer = new MaskLayer(options);
-        map->addTerrainMaskLayer(layer);
-        if (layer->getStatus().isError())
-            OE_WARN << LC << "Layer \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
-    }
-
     // support for "special" extension names (convenience and backwards compat)
-    Extension* createSpecialExtension(const Config& conf, MapNode* mapNode)
+    Extension* createSpecialExtension(const Config& conf)
     {
         // special support for the default sky extension:
         if (conf.key() == "sky" && !conf.hasValue("driver"))
@@ -369,7 +331,18 @@ namespace
         return 0L;
     }
 
-    void addExtension(const Config& conf, MapNode* mapNode)
+    bool addLayer(const Config& conf, Map* map)
+    {
+        std::string name = conf.key();
+        Layer* layer = Layer::create(name, conf);
+        if (layer)
+        {
+            map->addLayer(layer);
+        }
+        return layer != 0L;
+    }
+
+    Extension* loadExtension(const Config& conf)
     {
         std::string name = conf.key();
         Extension* extension = Extension::create( conf.key(), conf );
@@ -379,16 +352,26 @@ namespace
             extension = Extension::create(name, conf);
 
             if (!extension)
-                extension = createSpecialExtension(conf, mapNode);
+                extension = createSpecialExtension(conf);
         }
 
-        if (extension)
+        if (!extension)
         {
-            mapNode->addExtension(extension);
-        }
-        else
-        {            
             OE_INFO << LC << "Failed to find an extension for \"" << name << "\"\n";
+        }
+
+        return extension;
+    }
+
+    void reportErrors(const Map* map)
+    {
+        for (unsigned i = 0; i < map->getNumLayers(); ++i)
+        {
+            const Layer* layer = map->getLayerAt(i);
+            if (layer->getStatus().isError())
+            {
+                OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
+            }
         }
     }
 }
@@ -422,21 +405,30 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
 
     Map* map = new Map( mapOptions );
 
-    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
-    MapNodeOptions mapNodeOptions( conf.child( "options" ) );
-
-    // Create a map node.
-    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
+    // Start a batch update of the map:
+    map->beginUpdate();
 
     // Read all the elevation layers in FIRST so other layers can access them for things like clamping.
+    // TODO: revisit this since we should really be listening for elevation data changes and
+    // re-clamping based on that..
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
     {
-        if ( i->key() == "elevation" || i->key() == "heightfield" )
+        // for backwards compatibility:
+        if (i->key() == "heightfield")
         {
-            addElevationLayer( *i, map );
+            Config temp = *i;
+            temp.key() = "elevation";
+            addLayer(temp, map);
+        }
+
+        else if ( i->key() == "elevation" ) // || i->key() == "heightfield" )
+        {
+            addLayer(*i, map);
         }
     }
 
+    Config externalConfig;
+    std::vector<osg::ref_ptr<Extension> > extensions;
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
     for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
@@ -446,12 +438,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             // nop - handled earlier
         }
 
+#if 0
         else if ( i->key() == "image" )
         {
             addImageLayer( *i, map );
         }
 
-        else if ( i->key() == "model" )
+        else */if ( i->key() == "model" )
         {
             addModelLayer( *i, map );
         }
@@ -460,20 +453,58 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         {
             addMaskLayer( *i, map );
         }
+#endif
 
         else if ( i->key() == "external" || i->key() == "extensions" )
         {
-            mapNode->externalConfig() = *i;
+            externalConfig = *i;
+            
             for(ConfigSet::const_iterator e = i->children().begin(); e != i->children().end(); ++e)
             {
-                addExtension( *e, mapNode.get() );
+                Extension* extension = loadExtension(*e);
+                if (extension)
+                    extensions.push_back(extension);
+                //addExtension( *e, mapNode.get() );
             }
         }
 
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
-            addExtension( *i, mapNode.get() );
+            // try to add as a plugin Layer first:
+            bool addedLayer = addLayer(*i, map); 
+
+            // failing that, try to load as an extension:
+            if ( !addedLayer )
+            {
+                Extension* extension = loadExtension(*i);
+                if (extension)
+                    extensions.push_back(extension);
+            }
         }
+    }
+
+    // Complete the batch update of the map
+    map->endUpdate();
+
+    // If any errors occurred, report them now.
+    reportErrors(map);
+
+    // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
+    MapNodeOptions mapNodeOptions( conf.child("options") );
+
+    // Create a map node.
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
+
+    // Apply the external conf if there is one.
+    if (!externalConfig.empty())
+    {
+        mapNode->externalConfig() = externalConfig;
+    }
+
+    // Install the extensions
+    for (unsigned i = 0; i < extensions.size(); ++i)
+    {
+        mapNode->addExtension(extensions.at(i).get());
     }
 
     // return the topmost parent of the mapnode. It's possible that
@@ -497,7 +528,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         return mapConf; 
 
     const Map* map = input->getMap();
-    MapFrame mapf( map, Map::ENTIRE_MODEL );
+    MapFrame mapf( map );
 
     // the map and node options:
     Config optionsConf = map->getInitialMapOptions().getConfig();
@@ -513,7 +544,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         const Layer* layer = i->get();
 
         Config layerConf = layer->getConfig();
-        if (!layerConf.empty())
+        if (!layerConf.empty() && !layerConf.key().empty())
         {
             mapConf.add(layerConf);
         }

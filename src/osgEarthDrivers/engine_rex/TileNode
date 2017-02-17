@@ -40,6 +40,7 @@ namespace osgUtil {
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class LoadTileData;
     class EngineContext;
     class SurfaceNode;
     class SelectionInfo;
@@ -113,7 +114,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const osg::Vec2f& getMorphConstants() const { return _morphConstants; }
 
-        void loadSync(EngineContext* context);
+        void loadSync();
+
+        std::set<UID>& newLayers() { return _newLayers; }
         
     public: // osg::Node
 
@@ -127,8 +130,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileKey                            _key;
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<SurfaceNode>          _patch;
-        osg::ref_ptr<Loader::Request>      _loadRequest;
-        osg::ref_ptr<Loader::Request>      _expireRequest;
+        osg::ref_ptr<LoadTileData>         _loadRequest;
+        //EngineContext*                     _context;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
         bool                               _dirty;
@@ -141,8 +144,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         double                             _minExpiryTime;
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;
-
         TileRenderModel                    _renderModel;
+        std::set<UID>                      _newLayers;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;
@@ -170,8 +173,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Ensure that inherited data from the parent node is up to date. */
         void refreshInheritedData(TileNode* parent, const RenderBindings& bindings);
-
-        void copyCommonSamplers();
 
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;

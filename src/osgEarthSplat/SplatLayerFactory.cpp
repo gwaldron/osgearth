@@ -22,6 +22,7 @@
 #include "SplatLayerFactory"
 #include "SplatOptions"
 #include "NoiseTextureFactory"
+#include "SplatLayer"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -207,14 +208,13 @@ SplatLayerFactory::install(MapNode* mapNode)
                 osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
                 vp->setShader("oe_splat_noiseshaders", noiseShader);
             }
-
-
-            osgEarth::Layer* layer = new osgEarth::Layer();
-            layer->setName("Splat");
-            layer->setRenderType(osgEarth::Layer::RENDERTYPE_TILE);
-            layer->setStateSet(stateset);
             
-            //mapNode->getMap()->addLayer(layer);
+            SplatLayer* layer = new SplatLayer();
+            layer->setStateSet(stateset);
+            layer->setCoverage(getCoverage());
+            layer->setZones(getZones());
+            
+            // insert at the top.
             mapNode->getMap()->insertLayer(layer, 0);
         }
     }

@@ -11,6 +11,7 @@
                  morph_terrain         = "true"
                  morph_imagery         = "true"
                  high_resolution_first = "true"
+                 progressive           = "false"
                  skirt_ratio           = "0.0"
                  normal_maps           = "true">
         </terrain>
@@ -24,8 +25,6 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <extensions>
-        <xi:include href="viewpoints.xml"/>
-    </extensions>
+    <xi:include href="viewpoints.xml"/>
     
 </map>

@@ -33,6 +33,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+#define LC "[MVT] "
+
 #define CMD_BITS 3
 #define CMD_MOVETO 1
 #define CMD_LINETO 2
@@ -104,7 +106,11 @@ Geometry* decodeLine(const mapnik::vector::tile_feature& feature, const TileKey&
 
                 double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
                 double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
-                currentLine->push_back(geoX, geoY, 0);
+
+                if (currentLine.valid())
+                {
+                    currentLine->push_back(geoX, geoY, 0);
+                }
             }
         }
     }
@@ -256,9 +262,18 @@ Geometry* decodePolygon(const mapnik::vector::tile_feature& feature, const  Tile
                 else if (orientation == Geometry::ORIENTATION_CCW)
                 // Counter clockwise means a hole, add it to the existing polygon.
                 {
-                    // osgearth orientations are reversed from mvt
-                    currentRing->rewind(Geometry::ORIENTATION_CW);
-                    currentPolygon->getHoles().push_back( currentRing );
+                    if (currentPolygon.valid())
+                    {
+                        // osgearth orientations are reversed from mvt
+                        currentRing->rewind(Geometry::ORIENTATION_CW);
+                        currentPolygon->getHoles().push_back( currentRing );
+                    }
+                    else
+                    {
+                        // this means we encountered a "hole" without a parent outer ring,
+                        // discard for now -gw
+                        OE_INFO << LC << "Discarding improperly wound polygon (hole without an outer ring)\n";
+                    }
                 }
 
                 // Start a new ring

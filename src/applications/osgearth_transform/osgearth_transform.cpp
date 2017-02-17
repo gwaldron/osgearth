@@ -169,12 +169,13 @@ main(int argc, char** argv)
     App app;
     app.srs = mapNode->getMapSRS();
     app.geo = new GeoTransform();
-    app.geo->setTerrain( mapNode->getTerrain() );
     app.pat = new osg::PositionAttitudeTransform();
     app.pat->addChild( model );
     app.geo->addChild( app.pat );
 
-    root->addChild( app.geo );
+    // Place your GeoTransform under the map node and it will automatically support clamping.
+    // If you don't do this, you must call setTerrain to get terrain clamping.
+    mapNode->addChild( app.geo );
     
     viewer.setSceneData( root );
     viewer.getCamera()->setNearFarRatio(0.00002);

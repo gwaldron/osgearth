@@ -55,6 +55,10 @@ namespace osgEarth { namespace Symbology
         optional<float>& creaseAngle() { return _creaseAngle; }
         const optional<float>& creaseAngle() const { return _creaseAngle; }
 
+        /** URI of an image to load and use to texture lines */
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -65,6 +69,7 @@ namespace osgEarth { namespace Symbology
         optional<unsigned> _tessellation;
         optional<float>    _creaseAngle;
         optional<Distance> _tessellationSize;
+        optional<URI>      _imageURI;
     };
 
 } } // namespace osgEarth::Symbology

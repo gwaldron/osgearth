@@ -143,9 +143,12 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osg
 {
     if ( context.isGeoreferenced() )
     {
-        if ( context.getSession()->getMapInfo().isGeocentric() )
+        bool ecef = context.getOutputSRS()->isGeographic();
+
+        if (ecef)
         {
-            const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
+
+            const SpatialReference* geogSRS = context.getOutputSRS()->getGeographicSRS();
             GeoExtent geodExtent = extent.transform( geogSRS );
             if ( geodExtent.width() < 180.0 )
             {

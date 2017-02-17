@@ -33,14 +33,14 @@
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::getGDALMutex() )\
 
 namespace osgText {
     class Font;
 }
 
 namespace osgEarth
-{    
+{
     class Cache;
     class Capabilities;
     class Profile;
@@ -51,8 +51,11 @@ namespace osgEarth
     class StateSetCache;
     class ObjectIndex;
     class Units;
-    
+
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
+
+
+    extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
 
     /**
      * Application-wide global repository.
@@ -62,6 +65,8 @@ namespace osgEarth
     public:
         /** Access the global Registry singleton. */
         static Registry* instance(bool erase = false);
+
+
 
         /** Gets a well-known named profile instance. */
         const Profile* getNamedProfile( const std::string& name ) const;
@@ -175,12 +180,12 @@ namespace osgEarth
         static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
-         * A shared cache for osg::Program objects created by the shader 
+         * A shared cache for osg::Program objects created by the shader
          * composition subsystem (VirtualProgram).
          */
         ProgramSharedRepo* getProgramSharedRepo();
         static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
-        
+
         /**
          * Gets a reference to the global task service manager.
          */
@@ -267,7 +272,6 @@ namespace osgEarth
 
         void destruct();
 
-        OpenThreads::ReentrantMutex _gdal_mutex;
         bool _gdal_registered;
 
         osg::ref_ptr<const Profile> _global_geodetic_profile;
@@ -275,7 +279,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        mutable Threading::Mutex _regMutex;  
+        mutable Threading::Mutex _regMutex;
         int _numGdalMutexGets;
 
         mutable osg::ref_ptr<Cache>   _defaultCache;
@@ -325,7 +329,7 @@ namespace osgEarth
         };
         std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
-        
+
         ProgramSharedRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;

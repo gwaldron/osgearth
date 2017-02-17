@@ -18,21 +18,22 @@
 */
 #include <osgViewer/Viewer>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/NodeUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
 #include <osgEarthTriton/TritonNode>
 
-#define LC "[osgearth_sundog] "
+#define LC "[osgearth_triton] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Triton;
 namespace ui = osgEarth::Util::Controls;
 
+
 struct Settings
 {
-    TritonNode* triton;
     optional<double> chop;
     optional<double> seaState;
     optional<float> alpha;
@@ -51,13 +52,98 @@ struct Settings
             seaState.clear();
         }
 
-        if (alpha.isSet())
-        {
-            triton->setAlpha( alpha.get() );
-        }
+        //if (alpha.isSet())
+        //{
+        //    triton->setAlpha( alpha.get() );
+        //}
     }
 };
-Settings s_settings;
+
+class TritonCallback : public osgEarth::Triton::Callback
+{
+public:
+    TritonCallback(Settings& settings) : _settings(settings) { }
+
+    void onInitialize(Environment& env, Ocean& ocean)
+    {
+        //todo
+    }
+
+    void onDrawOcean(Environment& env, Ocean& ocean)
+    {
+        _settings.apply(env, ocean);
+    }
+
+    Settings& _settings;
+};
+
+
+struct App
+{
+    App()
+    {
+        triton = NULL;
+        mapNode = NULL;        
+    }
+
+    MapNode*    mapNode;
+    TritonNode* triton;
+    Settings    settings;
+
+    osg::Group* getAttachPoint()
+    {
+        return mapNode;
+        //SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(mapNode);
+        //if (sky)
+        //    return sky;
+        //else
+        //    return mapNode;
+    }
+
+    void addTriton()
+    {
+        // Create TritonNode from TritonOptions
+        osgEarth::Triton::TritonOptions tritonOptions;
+        tritonOptions.user()        = "my_user_name";
+        tritonOptions.licenseCode() = "my_license_code";
+        tritonOptions.maxAltitude() = 10000;
+        tritonOptions.useHeightMap() = true;
+
+        const char* ev_t = ::getenv("TRITON_PATH");
+        if ( ev_t )
+        {
+            tritonOptions.resourcePath() = osgDB::concatPaths(
+                std::string(ev_t),
+                "Resources" );
+
+            OE_INFO << LC 
+                << "Setting resource path to << " << tritonOptions.resourcePath().get()
+                << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC
+                << "No resource path! Triton might not initialize properly. "
+                << "Consider setting the TRITON_PATH environment variable."
+                << std::endl;
+        }
+
+
+        triton = new TritonNode(tritonOptions, new TritonCallback(settings));
+        triton->setMapNode(mapNode);
+
+        getAttachPoint()->addChild(triton);
+    }
+
+    void removeTriton()
+    {
+        getAttachPoint()->removeChild(triton);
+        triton = 0L;
+    }
+};
+
+App s_app;
+
 
 
 template<typename T> struct Set : public ui::ControlEventHandler
@@ -67,6 +153,15 @@ template<typename T> struct Set : public ui::ControlEventHandler
     void onValueChanged(ui::Control*, double value) { _var = value; }
 };
 
+struct Toggle : public ui::ControlEventHandler
+{
+    void onValueChanged(ui::Control*, bool value) {
+        if (s_app.triton)
+            s_app.removeTriton();
+        else
+            s_app.addTriton();
+    }
+};
 
 Container* createUI()
 {
@@ -75,32 +170,21 @@ Container* createUI()
     Grid* grid = box->addControl(new Grid());
     int r=0;
     grid->setControl(0, r, new LabelControl("Chop"));
-    grid->setControl(1, r, new HSliderControl(0, 3, 0, new Set<double>(s_settings.chop)));
+    grid->setControl(1, r, new HSliderControl(0, 3, 0, new Set<double>(s_app.settings.chop)));
     ++r;
     grid->setControl(0, r, new LabelControl("Sea State"));
-    grid->setControl(1, r, new HSliderControl(0, 12, 5, new Set<double>(s_settings.seaState)));
+    grid->setControl(1, r, new HSliderControl(0, 12, 5, new Set<double>(s_app.settings.seaState)));
     ++r;  
     grid->setControl(0, r, new LabelControl("Alpha"));
-    grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_settings.alpha)));
+    grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_app.settings.alpha)));
     ++r;
+    grid->setControl(0, r, new LabelControl("Toggle"));
+    grid->setControl(1, r, new CheckBoxControl(false, new Toggle()));
+
     grid->getControl(1, r-1)->setHorizFill(true,200);
 
     return box;
 }
-
-class TritonCallback : public osgEarth::Triton::Callback
-{
-public:
-    void onInitialize(Environment& env, Ocean& ocean)
-    {
-        //todo
-    }
-
-    void onDrawOcean(Environment& env, Ocean& ocean)
-    {
-        s_settings.apply(env, ocean);
-    }
-};
 
 
 int
@@ -141,44 +225,8 @@ main(int argc, char** argv)
 
         viewer.setSceneData( node );
 
-        MapNode* mapNode = MapNode::findMapNode( node );
-
-        // Create TritonNode from TritonOptions
-        osgEarth::Triton::TritonOptions tritonOptions;
-        tritonOptions.user()        = "my_user_name";
-        tritonOptions.licenseCode() = "my_license_code";
-        tritonOptions.maxAltitude() = 10000;
-
-        const char* ev_t = ::getenv("TRITON_PATH");
-        if ( ev_t )
-        {
-            tritonOptions.resourcePath() = osgDB::concatPaths(
-                std::string(ev_t),
-                "Resources" );
-
-            OE_INFO << LC 
-                << "Setting resource path to << " << tritonOptions.resourcePath().get()
-                << std::endl;
-        }
-        else
-        {
-            OE_WARN << LC
-                << "No resource path! Triton might not initialize properly. "
-                << "Consider setting the TRITON_PATH environment variable."
-                << std::endl;
-        }
-
-        s_settings.triton = new TritonNode(
-            mapNode,
-            tritonOptions,
-            new TritonCallback() );
-
-        // Insert under a sky if there is one.
-        SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
-        if (sky)
-            sky->addChild( s_settings.triton );
-        else
-            node->addChild( s_settings.triton );
+        s_app.mapNode = MapNode::get( node );
+        //s_app.addTriton();
 
         return viewer.run();
     }

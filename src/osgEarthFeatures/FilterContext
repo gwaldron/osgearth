@@ -65,6 +65,14 @@ namespace osgEarth { namespace Features
          */
         void setProfile( const FeatureProfile* profile );
 
+        /**
+         * Sets the output SRS for feature processing. This is optional.
+         * If you do not set this, the output SRS will be that of the
+         * session's Map.
+         */
+        void setOutputSRS(const SpatialReference* srs) { _outputSRS = srs; }
+        const SpatialReference* getOutputSRS() const;
+
 
     public: // properties
 
@@ -191,6 +199,7 @@ namespace osgEarth { namespace Features
         FeatureIndexBuilder*               _index;
         optional<ShaderPolicy>             _shaderPolicy;
         std::vector<std::string>           _history;
+        osg::ref_ptr<const SpatialReference> _outputSRS;
     };
 
 } } // namespace osgEarth::Features

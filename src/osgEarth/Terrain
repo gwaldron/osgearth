@@ -72,14 +72,15 @@ namespace osgEarth
          * A tile was added to the terrain graph.
          * @param key
          *      Tile key of the new tile, including the geographic extents
-         * @param tile
-         *      Geometry of the new tile
+         * @param graph
+         *      Scene graph that can be used to intersect the tile (though it
+         *      may include more than just the new tile)
          * @param context
          *      Contextual information about the callback
          */
         virtual void onTileAdded(
             const TileKey&          key, 
-            osg::Node*              tile, 
+            osg::Node*              graph, 
             TerrainCallbackContext& context) { }
 
         /** dtor */
@@ -254,22 +255,25 @@ namespace osgEarth
         void accept( osg::NodeVisitor& nv );
 
         // access the raw terrain graph
-        osg::Node* getGraph() { return _graph.get(); }
+        osg::Node* getGraph() const { return _graph.get(); }
         
         // queues the onTileAdded callback (internal)
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
-        // fires the onTileAdded callback (internal)
-        void fireTileAdded( const TileKey& key, osg::Node* tile );
 
         // queues the onTileRemoved callback (internal)
         void notifyTilesRemoved(const std::vector<TileKey>& keys);
-        void fireTilesRemoved(const std::vector<TileKey>& keys);
+
+        // internal
+        void notifyMapElevationChanged();
 
         /** dtor */
         virtual ~Terrain() { }
 
     private:
         Terrain( osg::Node* graph, const Profile* profile, bool geocentric, const TerrainOptions& options );
+
+        /** update traversal. */
+        void update();
 
         friend class TerrainEngineNode;
 
@@ -284,39 +288,23 @@ namespace osgEarth
         bool                         _geocentric;
         const TerrainOptions&        _terrainOptions;
 
-        osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
+        osg::ref_ptr<osg::OperationQueue> _updateQueue;
+        
+        void fireMapElevationChanged();
+        void fireTileAdded( const TileKey& key, osg::Node* tile );
+        void fireTilesRemoved(const std::vector<TileKey>& keys);
+
+        struct OnTileAddedOperation : public osg::Operation {
+            osg::observer_ptr<Terrain> _terrain;
+            TileKey _key;
+            osg::observer_ptr<osg::Node> _node;
+            unsigned _count;
+            OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain);
+            void operator()(osg::Object*);
+            int _delay;
+        };
     };
 
-
-    /**
-     * A TerrainPatch is a standalone subset of terrain that you can use for 
-     * height queries. The intention is that this be used for a "disconnected"
-     * terrain tile, i.e. one that is not in the scene graph yet -- making it
-     * MT-safe.
-     */
-    class OSGEARTH_EXPORT TerrainPatch : public TerrainResolver
-    {
-    public:
-        TerrainPatch( osg::Node* patch, const Terrain* terrain );
-
-
-    public: // TerrainResolver interface
-
-        /**
-        * Queries the elevation under the specified point. This method is
-        * identical to calling Terrain::getHeight with the specified patch.
-        */
-        bool getHeight(
-            const SpatialReference* srs,
-            double                  x,
-            double                  y,
-            double*                 out_heightAboveMSL,
-            double*                 out_heightAboveEllipsoid =0L) const;
-
-    protected:
-        osg::ref_ptr<osg::Node>     _patch;
-        osg::ref_ptr<const Terrain> _terrain;
-    };
 }
 
 #endif // OSGEARTH_COMPOSITING_H

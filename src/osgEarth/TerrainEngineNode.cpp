@@ -41,19 +41,20 @@ namespace osgEarth
     struct TerrainEngineNodeCallbackProxy : public MapCallback
     {
         TerrainEngineNodeCallbackProxy(TerrainEngineNode* node) : _node(node) { }
+
         osg::observer_ptr<TerrainEngineNode> _node;
 
         void onMapInfoEstablished( const MapInfo& mapInfo )
         {
-            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-            if ( safeNode.valid() )
+            osg::ref_ptr<TerrainEngineNode> safeNode;
+            if (_node.lock(safeNode))
                 safeNode->onMapInfoEstablished( mapInfo );
         }
 
         void onMapModelChanged( const MapModelChange& change )
         {
-            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-            if ( safeNode.valid() )
+            osg::ref_ptr<TerrainEngineNode> safeNode;
+            if (_node.lock(safeNode))
                 safeNode->onMapModelChanged( change );
         }
     };
@@ -65,9 +66,9 @@ namespace osgEarth
 
 TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*         map,
                                                               TerrainEngineNode* engine) :
-_mapf  ( map, Map::IMAGE_LAYERS ),
+_mapf  ( map ),
 _engine( engine )
-{
+{    
     //nop
 }
 
@@ -101,7 +102,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 TextureCompositor*
 TerrainEngineNode::getResources() const
 {
-    return _texCompositor.get();
+    return _textureResourceTracker.get();
 }
 
 void
@@ -121,20 +122,25 @@ _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
 _requireParentTextures   ( false ),
-_elevationBorderRequired ( false ),
+_requireElevationBorder  ( false ),
+_requireFullDataAtFirstLOD( false ),
 _redrawRequired          ( true )
 {
     // register for event traversals so we can properly reset the dirtyCount
-    ADJUST_EVENT_TRAV_COUNT( this, 1 );
+    ADJUST_EVENT_TRAV_COUNT(this, 1);
+
+    // register for update traversals so we can process terrain callbacks
+    ADJUST_UPDATE_TRAV_COUNT(this, 1);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
 {
+    OE_DEBUG << LC << "~TerrainEngineNode\n";
+
     //Remove any callbacks added to the image layers
     if (_map.valid())
     {
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        
+        MapFrame mapf( _map.get() );        
         ImageLayerVector imageLayers;
         mapf.getLayers(imageLayers);
 
@@ -185,73 +191,60 @@ TerrainEngineNode::dirtyTerrain()
     requestRedraw();
 }
 
-
 void
-TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
+TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
+    if (!map) return;
+
     _map = map;
     
-    // fire up a terrain utility interface
+    // Create a terrain utility interface. This interface can be used
+    // to query the in-memory terrain graph, subscribe to tile events, etc.
     _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
 
-    // set up the CSN values   
+    // Set up the CSN values. We support this because some manipulators look for it,
+    // but osgEarth itself doesn't use it.
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( !_map->isGeocentric() )
         this->setEllipsoidModel( NULL );
     
-    // install an object to manage texture image unit usage:
-    _texCompositor = new TextureCompositor();
+    // Install an object to manage texture image unit usage:
+    _textureResourceTracker = new TextureCompositor();
     std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
     for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
-        _texCompositor->setTextureImageUnitOffLimits( *i );
+        _textureResourceTracker->setTextureImageUnitOffLimits( *i );
 
-    // then register the callback so we can process further map model changes
-    _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+    // Register a callback so we can process further map model changes
+    _map->addMapCallback( new TerrainEngineNodeCallbackProxy(this) );
 
-    // apply render bin if necessary
+    // Force a render bin if specified in the options
     if ( options.binNumber().isSet() )
     {
         osg::StateSet* set = getOrCreateStateSet();
         set->setRenderBinDetails( options.binNumber().get(), "RenderBin" );
     }
-
-    if ( options.enableMercatorFastPath().isSet() )
-    {
-        OE_INFO 
-            << LC << "Mercator fast path " 
-            << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
-    }
-    
-    // a default factory - this is the object that creates the data model for
-    // each terrain tile.
+   
+    // This is the object that creates the data model for each terrain tile.
     _tileModelFactory = new TerrainTileModelFactory(options);
 
-    _initStage = INIT_PREINIT_COMPLETE;
-}
+    // Manually trigger the map callbacks the first time:
+    if (_map->getProfile())
+        onMapInfoEstablished(MapInfo(_map));
 
-void
-TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
-{
-    if ( _map.valid() ) // i think this is always true [gw]
+    // Create a layer controller. This object affects the uniforms
+    // that control layer appearance properties
+    _imageLayerController = new ImageLayerController(_map, this);
+
+    // register the layer Controller it with all pre-existing image layers:
+    MapFrame mapf(_map);
+    ImageLayerVector imageLayers;
+    mapf.getLayers(imageLayers);
+
+    for (ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i)
     {
-        // manually trigger the map callbacks the first time:
-        if ( _map->getProfile() )
-            onMapInfoEstablished( MapInfo(_map.get()) );
-
-        // create a layer controller. This object affects the uniforms that control layer appearance properties
-        _imageLayerController = new ImageLayerController( _map.get(), this );
-
-        // register the layer Controller it with all pre-existing image layers:
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-        ImageLayerVector imageLayers;
-        mapf.getLayers(imageLayers);
-
-        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-        {
-            i->get()->addCallback( _imageLayerController.get() );
-        }
+        i->get()->addCallback(_imageLayerController.get());
     }
 
     _initStage = INIT_POSTINIT_COMPLETE;
@@ -295,18 +288,20 @@ TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 void
 TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
-    if ( _initStage == INIT_POSTINIT_COMPLETE )
+    if (change.getAction() == MapModelChange::ADD_LAYER &&
+        change.getImageLayer() != 0L)
     {
-        if (change.getAction() == MapModelChange::ADD_LAYER &&
-            change.getImageLayer() != 0L)
-        {
-            change.getImageLayer()->addCallback( _imageLayerController.get() );
-        }
-        else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
-            change.getImageLayer() != 0L)
-        {
-            change.getImageLayer()->removeCallback( _imageLayerController.get() );
-        }
+        change.getImageLayer()->addCallback( _imageLayerController.get() );
+    }
+    else if (change.getAction() == MapModelChange::REMOVE_LAYER &&
+        change.getImageLayer() != 0L)
+    {
+        change.getImageLayer()->removeCallback( _imageLayerController.get() );
+    }
+
+    if (change.getElevationLayer() != 0L)
+    {
+        getTerrain()->notifyMapElevationChanged();
     }
 
     // notify that a redraw is required.
@@ -314,9 +309,10 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 TerrainTileModel*
-TerrainEngineNode::createTileModel(const MapFrame&   frame,
-                                   const TileKey&    key,
-                                   ProgressCallback* progress)
+TerrainEngineNode::createTileModel(const MapFrame&              frame,
+                                   const TileKey&               key,
+                                   const CreateTileModelFilter& filter,
+                                   ProgressCallback*            progress)
 {
     TerrainEngineRequirements* requirements = this;
 
@@ -324,6 +320,7 @@ TerrainEngineNode::createTileModel(const MapFrame&   frame,
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
         frame, 
         key, 
+        filter,
         requirements, 
         progress);
 
@@ -372,6 +369,7 @@ namespace
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
+#if 0
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         // see if we need to set up the Terrain object with an update ops queue.
@@ -399,9 +397,17 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    else 
+#endif
+    
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         _dirtyCount = 0;
+    }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        _terrainInterface->update();
     }
 
     osg::CoordinateSystemNode::traverse( nv );
@@ -449,7 +455,7 @@ TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCal
 #define LC "[TerrainEngineNodeFactory] "
 
 TerrainEngineNode*
-TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
+TerrainEngineNodeFactory::create(const TerrainOptions& options )
 {
     TerrainEngineNode* result = 0L;
 

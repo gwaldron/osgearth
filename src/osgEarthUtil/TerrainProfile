@@ -190,7 +190,7 @@ namespace osgEarth { namespace Util {
          */
         void setStartEnd(const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end);
 
-        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&);
+        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* graph, TerrainCallbackContext&);
 
         /**
          * Recomputes the terrain profile

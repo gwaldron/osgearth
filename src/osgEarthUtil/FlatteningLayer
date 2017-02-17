@@ -1,0 +1,196 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_FLATTENING_LAYER
+#define OSGEARTH_UTIL_FLATTENING_LAYER 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/TileSource>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ElevationPool>
+#include <osgEarth/LayerListener>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgDB/FileNameUtils>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Serializable options to configure a FlatteningLayer.
+     */
+    class OSGEARTHUTIL_EXPORT FlatteningLayerOptions : public ElevationLayerOptions
+    {
+    public:
+        // constructor
+        FlatteningLayerOptions(const ConfigOptions& co = ConfigOptions()) :
+            ElevationLayerOptions(co)
+        {
+            mergeConfig(_conf);
+        }
+        
+        /** Name of the elevation layer to sample when flattening. */
+        optional<std::string>& elevationBaseLayer() { return _elevationBaseLayer; }
+        const optional<std::string>& elevationBaseLayer() const { return _elevationBaseLayer; }
+
+        /** Name of the feature source layer to use for flattening. */
+        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
+        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
+
+        /** Features that will drive the flattening process. */
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
+
+        /** For line features, the width around the line to flatten. */
+        optional<Distance>& lineWidth() { return _lineWidth; }
+        const optional<Distance>& lineWidth() const { return _lineWidth; }
+
+        /** Width of the buffer between the flattened terrain and the natural terrain,
+            which will serve as a transition area. */
+        optional<Distance>& bufferWidth() { return _bufferWidth; }
+        const optional<Distance>& bufferWidth() const { return _bufferWidth; }
+
+    public:
+        Config getConfig() const
+        {
+            Config conf;
+            conf.addIfSet("base_layer", _elevationBaseLayer);
+            conf.addObjIfSet("features",  _featureSource);
+            conf.addIfSet("feature_source", _featureSourceLayer);
+            conf.addIfSet("line_width", _lineWidth);
+            conf.addIfSet("buffer_width", _bufferWidth);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf )
+        {
+            conf.getIfSet("base_layer", _elevationBaseLayer);
+            conf.getObjIfSet("features",  _featureSource);
+            conf.getIfSet("feature_source", _featureSourceLayer);
+            conf.getIfSet("line_width", _lineWidth);
+            conf.getIfSet("buffer_width", _bufferWidth);
+        }
+        
+    private:
+        optional<FeatureSourceOptions>  _featureSource;
+        optional<std::string> _featureSourceLayer;
+        optional<Distance> _lineWidth;
+        optional<Distance> _bufferWidth;
+        optional<std::string> _elevationBaseLayer;
+    };
+
+
+    /**
+     * Tile source that will take elevation data (from elsewhere in the map)
+     * and flatten it according to feature data. For example, given a feature
+     * source defining roads, this driver will generate elevation tiles for
+     * which the elevation around the roads is flat.
+     *
+     * This driver is only suitable for internal use by FlatteningLayer.
+     * It is not exported.
+     */
+    class FlatteningTileSource : public TileSource, FlatteningLayerOptions
+    {
+    public:
+        /** constructor */
+        FlatteningTileSource(const FlatteningLayerOptions& layerOptions);
+
+        /** Elevation pool from which to source elevation samples */
+        void setElevationPool(ElevationPool* pool) { _pool = pool; }
+
+        /** Source of feature data that will drive the flattening. */
+        void setFeatureSource(FeatureSource* fs) { _featureSource = fs; }
+
+
+    public: // TileSource
+
+        // Make sure everything is OK and return open status
+        Status initialize(const osgDB::Options* readOptions);
+
+        // Generate a flattening heightfield for a key
+        osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress);
+
+    protected:
+        virtual ~FlatteningTileSource() { }
+
+        osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<FeatureSource>  _featureSource;
+
+        ElevationPool* _pool;
+    };
+
+
+    /**
+     * Elevation layer that overlays modified elevation samples intended to
+     * flatten the terrain around vector features. The use case is to make
+     * roads flat or prevent rivers and lakes from sloping with the terrain.
+     */
+    class OSGEARTHUTIL_EXPORT FlatteningLayer : public ElevationLayer
+    {
+    public:
+        META_Layer(osgEarth, FlatteningLayer, FlatteningLayerOptions);
+
+        // Create a layer with initial options.
+        FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());
+
+        // the elevation layer that we want to flatten
+        bool setBaseLayer(ElevationLayer* layer);
+
+        // Feature source layer to get a FeatureSource from
+        bool setFeatureSourceLayer(FeatureSourceLayer* layer);    
+        
+        // the feature source from which to read flattening geometry
+        void setFeatureSource(FeatureSource* fs);
+
+    public: // ElevationLayer
+
+        // opens the layer and returns the status
+        virtual const Status& open();
+
+    protected: // ElevationLayer
+
+        // called by the elevation layer to create our custom tile source
+        virtual TileSource* createTileSource();
+
+        // called by the map when this layer is added/removed
+        virtual void addedToMap(const class Map*);
+        virtual void removedFromMap(const class Map*);
+
+    protected:
+
+        virtual ~FlatteningLayer();
+
+    private:
+
+        MapCallback* _mapCallback;
+        FlatteningTileSource* _ts;
+        ElevationPool _pool;
+        osg::ref_ptr<FeatureSource> _featureSource;
+
+        LayerListener<FlatteningLayer, ElevationLayer> _baseLayerListener;
+        LayerListener<FlatteningLayer, FeatureSourceLayer> _featureLayerListener;
+    };
+
+    REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_FLATTENING_LAYER

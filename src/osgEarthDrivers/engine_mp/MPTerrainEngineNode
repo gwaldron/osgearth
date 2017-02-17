@@ -79,14 +79,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public: // internal TerrainEngineNode
 
-        virtual void preInitialize( const Map* map, const TerrainOptions& options );
-        virtual void postInitialize( const Map* map, const TerrainOptions& options );
-        virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
-        virtual osg::BoundingSphere computeBound() const;
+        void setMap(const Map* map, const TerrainOptions& options);
+        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
 
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv);
+        osg::BoundingSphere computeBound() const;
 
     public: // MapCallback adapter functions
 
@@ -100,12 +99,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         static void getEngineByUID( UID uid, osg::ref_ptr<MPTerrainEngineNode>& output );
 
     public:
-        class ElevationChangedCallback : public ElevationLayerCallback
+        class ElevationChangedCallback : public VisibleLayerCallback
         {
         public:
             ElevationChangedCallback( MPTerrainEngineNode* terrain );
 
-           virtual void onVisibleChanged( TerrainLayer* layer );
+            void onVisibleChanged(VisibleLayer* layer);
 
             MPTerrainEngineNode* _terrain;
             friend class MPTerrainEngineNode;
@@ -133,7 +132,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void toggleElevationLayer( ElevationLayer* layer );
 
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
-        void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveElevationLayer( ElevationLayer* layer );
         
         void updateState(); 
 

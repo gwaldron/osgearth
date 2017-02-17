@@ -38,13 +38,14 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-
-    class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions
+    
+    class FeatureModelOptions
     {
     public: //properties
 
-        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        /** Embedded feature source configuration. */
+        optional<FeatureSourceOptions>& featureSource() { return _featureSource; }
+        const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
@@ -82,17 +83,50 @@ namespace osgEarth { namespace Features
         optional<bool>& alphaBlending() { return _alphaBlending; }
         const optional<bool>& alphaBlending() const { return _alphaBlending; }
 
-        /** Explicity caching policy for data from the underlying feature source */
-        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
-        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
         /** Fading properties */
         optional<FadeOptions>& fading() { return _fading; }
         const optional<FadeOptions>& fading() const { return _fading; }
 
+        /** Whether to enable caching of actual OSG nodes. default = false. */
+        optional<bool>& nodeCaching() { return _nodeCaching; }
+        const optional<bool>& nodeCaching() const { return _nodeCaching; }
+
         /** Debug: whether to enable a session-wide resource cache (default=true) */
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
+
+    public:
+        FeatureModelOptions(const ConfigOptions& co =ConfigOptions());
+
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+
+    protected:
+        optional<FeatureSourceOptions>      _featureSource;
+        optional<FeatureDisplayLayout>      _layout;
+        optional<StringExpression>          _featureNameExpr;
+        optional<bool>                      _lit;
+        optional<double>                    _maxGranularity_deg;
+        optional<bool>                      _clusterCulling;
+        optional<bool>                      _backfaceCulling;
+        optional<bool>                      _alphaBlending;
+        optional<FadeOptions>               _fading;
+        optional<FeatureSourceIndexOptions> _featureIndexing;
+        optional<bool>                      _sessionWideResourceCache;
+        optional<std::string>               _featureSourceLayer;
+        optional<bool>                      _nodeCaching;
+        osg::ref_ptr<StyleSheet>            _styles;
+    };
+
+
+
+    class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions,
+                                                              public FeatureModelOptions
+    {
+    public: //properties
+
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
@@ -115,21 +149,8 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        optional<FeatureSourceOptions>      _featureOptions;
-        optional<FeatureDisplayLayout>      _layout;
-        optional<StringExpression>          _featureNameExpr;
-        optional<bool>                      _lit;
-        optional<double>                    _maxGranularity_deg;
-        optional<bool>                      _clusterCulling;
-        optional<bool>                      _backfaceCulling;
-        optional<bool>                      _alphaBlending;
-        optional<CachePolicy>               _cachePolicy;
-        optional<FadeOptions>               _fading;
-        optional<FeatureSourceIndexOptions> _featureIndexing;
-        optional<bool>                      _sessionWideResourceCache;
-
-        osg::ref_ptr<StyleSheet>            _styles;
-        osg::ref_ptr<FeatureSource>         _featureSource;
+        optional<FeatureSourceOptions> _featureOptions;
+        osg::ref_ptr<FeatureSource>    _featureSource;
     };
 
 

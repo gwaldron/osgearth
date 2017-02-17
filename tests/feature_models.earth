@@ -22,10 +22,8 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 	
-    <external>	  
-		<viewpoints>
-			<viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>
-		</viewpoints>
-    </external>
+    <viewpoints>
+        <viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>
+    </viewpoints>
   
 </map>

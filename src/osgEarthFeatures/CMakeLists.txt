@@ -28,10 +28,13 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDrawSet
     FeatureIndex
     FeatureListSource
+    FeatureMaskLayer
     FeatureModelGraph
+    FeatureModelLayer
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
+    FeatureSourceLayer
     FeatureTileSource
     Filter
     FilterContext
@@ -70,10 +73,13 @@ SET(TARGET_SRC
     FeatureDisplayLayout.cpp
     FeatureDrawSet.cpp
     FeatureListSource.cpp
+    FeatureMaskLayer.cpp
     FeatureModelGraph.cpp
+    FeatureModelLayer.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
+    FeatureSourceLayer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

@@ -141,7 +141,7 @@ private slots:
           std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
           osg::ref_ptr<osgEarth::ImageLayer> newLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions(fileName, layerOpt));
 
-          _manager->map()->addImageLayer(newLayer.get());
+          _manager->map()->addLayer(newLayer.get());
         }
       }
 
@@ -178,7 +178,7 @@ private slots:
           std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
           osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
 
-          _manager->map()->addElevationLayer(newLayer.get());
+          _manager->map()->addLayer(newLayer.get());
         }
       }
 

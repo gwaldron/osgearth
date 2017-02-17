@@ -44,38 +44,31 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     typedef AutoArray<Sampler> Samplers;
 
     /**
-     * All the samplers (one per RenderBinding) needed to render one pass 
-     * of a tile. The UID is the UID of the image layer that necessitated
-     * this rendering pass. A UID of -1 means there is no image layer.
+     * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
+     * Typically this is just the color and color parent samplers.
      */
     struct RenderingPass
     {
-        bool _valid;
+        bool _orphaned;
+
+        /** UID of the layer responsible for this rendering pass (usually an ImageLayer) */
         UID _sourceUID;
+
+        /** Samplers specific to this rendering pass (COLOR, COLOR_PARENT) */
         Samplers _samplers;
-        int _surrogatePass;
-        const Samplers* _surrogateSamplers;
+
+        /** Layer respsonible for this rendering pass */
         osg::ref_ptr<const Layer> _layer;
+
+        /** ImageLayer responsible for this rendering pass (if _layer is an image layer) */
         osg::ref_ptr<const ImageLayer> _imageLayer;
-        osg::ref_ptr<const PatchLayer> _patchLayer;
 
         RenderingPass() :
-            _valid(false), _sourceUID(-1), _surrogatePass(-1), _samplers(SamplerBinding::SHARED), _surrogateSamplers(0L) { }
-
-        /** Whether this constitues a valid rendering pass and should be included in a tile */
-        bool valid() const {
-            return _valid;
-        }
-
-        /** Whether this rendering pass should be inherited from parent to child node. */
-        bool inheritable() const {
-            if (_patchLayer.valid())
-            //if (_layer.valid() && _layer->getRenderType() == Layer::RENDERTYPE_PATCH)
-                return false;
-            return true;
-        }
-        bool usesSurrogateSamplers() const {
-            return _surrogateSamplers != 0L;
+            _orphaned(false), _sourceUID(-1), _samplers(SamplerBinding::COLOR_PARENT+1) { }
+        
+        /** Whether this pass is no longer usable because it's source layer disappeared from the map */
+        bool orphaned() const {
+            return _orphaned;
         }
 
         void releaseGLObjects(osg::State* state) const
@@ -96,14 +89,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     /**
      * Unordered collection of rendering passes.
      */
-    typedef std::vector<RenderingPass> RenderingPassSet;
+    typedef std::vector<RenderingPass> RenderingPasses;
 
     /**
      * Everything necessary to render a single terrain tile.
+     * REX renders the terrain in multiple passes, one pass for each visible layer.
      */
     struct TileRenderModel
     {
-        RenderingPassSet _passes;
+        /** Samplers that are bound for every rendering pass (elevation, normal map, etc.) */
+        Samplers _sharedSamplers;
+
+        /** Samplers bound for each visible layer (color) */
+        RenderingPasses _passes;
 
         /** Add a new rendering pass to the end of the list. */
         RenderingPass& addPass()
@@ -135,6 +133,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Deallocate GPU objects associated with this model */
         void releaseGLObjects(osg::State* state) const
         {
+            for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
+                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                    _sharedSamplers[s]._texture->releaseGLObjects(state);
+
             for (unsigned p = 0; p<_passes.size(); ++p)
                 _passes[p].releaseGLObjects(state);
         }
@@ -142,6 +144,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Resize GL buffers associated with thie model */
         void resizeGLObjectBuffers(unsigned size)
         {
+            for (unsigned s = 0; s<_sharedSamplers.size(); ++s)
+                if (_sharedSamplers[s]._texture.valid() && _sharedSamplers[s]._matrix.isIdentity())
+                    _sharedSamplers[s]._texture->resizeGLObjectBuffers(size);
+
             for (unsigned p = 0; p<_passes.size(); ++p)
                 _passes[p].resizeGLObjectBuffers(size);
         }

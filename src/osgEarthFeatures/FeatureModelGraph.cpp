@@ -37,6 +37,8 @@
 #include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
+#include <osg/PolygonOffset>
+#include <osg/Depth>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
@@ -54,6 +56,8 @@ using namespace osgEarth::Symbology;
 #undef USE_PROXY_NODE_FOR_TESTING
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
+
+#define USER_OBJECT_NAME "osgEarth.FeatureModelGraph"
 
 namespace
 {
@@ -75,15 +79,10 @@ namespace
 
 namespace
 {
-    UID                               _uid         = 0;
-    Threading::ReadWriteMutex         _fmgMutex;
-    typedef std::map<UID, osg::observer_ptr<FeatureModelGraph> > FMGRegistry;
-    FMGRegistry _fmgRegistry;
-
-    static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
+    static std::string s_makeURI(unsigned lod, unsigned x, unsigned y)
     {
         std::stringstream buf;
-        buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
+        buf << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
         std::string str;
         str = buf.str();
         return str;
@@ -95,8 +94,10 @@ namespace
                                 float maxRange, 
                                 const FeatureDisplayLayout& layout,
                                 RefNodeOperationVector* postMergeOps,
+                                SceneGraphCallbacks* sgCallbacks,
                                 osgDB::FileLocationCallback* flc,
-                                const osgDB::Options* readOptions)
+                                const osgDB::Options* readOptions,
+                                FeatureModelGraph* fmg)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         ProxyNode* p = new ProxyNode();
@@ -107,7 +108,19 @@ namespace
         p->setPriorityOffset( 0, layout.priorityOffset().get() );
         p->setPriorityScale(0, layout.priorityScale().get() );
 #else
-        PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
+        osg::PagedLOD* p;
+
+        if (sgCallbacks)
+        {
+            PagedLODWithSceneGraphCallbacks* plod = new PagedLODWithSceneGraphCallbacks(sgCallbacks);
+            p = plod;
+        }
+        else
+        {
+            PagedLODWithNodeOperations* plod = new PagedLODWithNodeOperations(postMergeOps);
+            p = plod;
+        }
+            
         p->setCenter( bs.center() );
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
@@ -126,6 +139,11 @@ namespace
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions(readOptions);
         options->setFileLocationCallback( flc );
         p->setDatabaseOptions( options );
+
+        // so we can find the FMG instance in the pseudoloader.
+        //TODO: fix
+        options->getOrCreateUserDataContainer()->addUserObject(fmg);
+        //OptionsData<FeatureModelGraph>::set(options, "FeatureModelGraph", fmg);
 
         return p;
     }
@@ -152,16 +170,20 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
             return ReadResult::FILE_NOT_HANDLED;
 
-        UID uid;
+        //UID uid;
         unsigned lod, x, y;
-        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &lod, &x, &y );
+        sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
 
-        osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
+        osg::ref_ptr<FeatureModelGraph> graph =
+            dynamic_cast<FeatureModelGraph*>(const_cast<osg::Object*>(
+                osg::getUserObject(readOptions, USER_OBJECT_NAME)));
+
+        //osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
         if ( graph.valid() )
         {
             // Take a reference on the map to avoid map destruction during thread operation
-            osg::ref_ptr<const Map> map = graph->getSession()->getMap();
-            if (map.valid() == true)
+            //osg::ref_ptr<const Map> map = graph->getSession()->getMap();
+            //if (map.valid() == true)
             {
                 Registry::instance()->startActivity(uri);
                 osg::Node* node = graph->load(lod, x, y, uri, readOptions);
@@ -171,29 +193,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         }
 
         return ReadResult::ERROR_IN_READING_FILE;
-    }
-
-    static UID registerGraph( FeatureModelGraph* graph )
-    {
-        Threading::ScopedWriteLock lock( _fmgMutex );
-        UID key = ++_uid;
-        _fmgRegistry[key] = graph;
-        OE_TEST << "Registered FMG " << key << std::endl;
-        return key;
-    }
-
-    static void unregisterGraph( UID uid )
-    {
-        Threading::ScopedWriteLock lock( _fmgMutex );
-        _fmgRegistry.erase( uid );
-        OE_TEST << "UNregistered FMG " << uid << std::endl;
-    }
-
-    static FeatureModelGraph* getGraph( UID uid ) 
-    {
-        Threading::ScopedReadLock lock( _fmgMutex );
-        FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
-        return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
 };
 
@@ -220,9 +219,9 @@ namespace
     }
 
 
-    struct SetupFading : public NodeOperation
+    struct SetupFading : public SceneGraphCallback
     {
-        void operator()( osg::Node* node )
+        void onPostMerge( osg::Node* node )
         {
             osg::Uniform* u = FadeEffect::createStartTimeUniform();
             u->set( (float)osg::Timer::instance()->time_s() );
@@ -233,6 +232,20 @@ namespace
 
 
 //---------------------------------------------------------------------------
+
+FeatureModelGraph::FeatureModelGraph(Session*                         session,
+                                     const FeatureModelSourceOptions& options,
+                                     FeatureNodeFactory*              factory) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
+{
+    ctor();
+}
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
@@ -276,7 +289,8 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
 void
 FeatureModelGraph::ctor()
 {
-    _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+    // So we can pass it to the pseudoloader
+    setName(USER_OBJECT_NAME);
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
@@ -470,9 +484,10 @@ FeatureModelGraph::ctor()
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
     {
-        _postMergeOperations->mutex().writeLock();
-        _postMergeOperations->push_back( new SetupFading() );
-        _postMergeOperations->mutex().writeUnlock();
+        _sgCallbacks->add(new SetupFading());
+        //_postMergeOperations->mutex().writeLock();
+        //_postMergeOperations->push_back( new SetupFading() );
+        //_postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -483,7 +498,13 @@ FeatureModelGraph::ctor()
 
 FeatureModelGraph::~FeatureModelGraph()
 {
-    osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
+    //nop
+}
+
+void
+FeatureModelGraph::setSceneGraphCallbacks(SceneGraphCallbacks* host)
+{
+    _sgCallbacks = host;
 }
 
 void
@@ -517,15 +538,19 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     workingExtent.getCentroid( center.x(), center.y() );
     
-    double centerZ = 0.0;    
     if ( mapf )
     {
         // Use an appropriate resolution for this extents width
         double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
-        center.z() = query.getElevation( p, resolution );
-        centerZ = center.z();
+        float elevation = query.getElevation( p, resolution );
+        // Check for NO_DATA_VALUE and use zero instead.
+        if (elevation == NO_DATA_VALUE)
+        {
+            elevation = 0.0f;
+        }
+        center.z() = elevation;
     }    
 
     corner.x() = workingExtent.xMin();
@@ -599,7 +624,7 @@ FeatureModelGraph::setupPaging()
         bs.radius() * _options.layout()->tileSizeFactor().value();
 
     // build the URI for the top-level paged LOD:
-    std::string uri = s_makeURI( _uid, 0, 0, 0 );
+    std::string uri = s_makeURI( 0, 0, 0 );
 
     // bulid the top level Paged LOD:
     osg::Group* pagedNode = createPagedNode( 
@@ -608,11 +633,11 @@ FeatureModelGraph::setupPaging()
         0.0f, 
         maxRange, 
         _options.layout().get(),
-        //*_options.layout()->priorityOffset(), 
-        //*_options.layout()->priorityScale(),
         _postMergeOperations.get(),
+        _sgCallbacks.get(),
         _defaultFileLocationCallback.get(),
-        getSession()->getDBOptions() );
+        getSession()->getDBOptions(),
+        this);
 
     return pagedNode;
 }
@@ -646,6 +671,9 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
 
             // Calculate the bounds of this new tile:
             MapFrame mapf = _session->createMapFrame();
+            if (!mapf.isValid())
+                return 0L;
+
             osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
 
             // Apply the tile range multiplier to calculate a max camera range. The max range is
@@ -827,7 +855,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                 maxRange = subtile_bs.radius() * _options.layout()->tileSizeFactor().value();
             }
 
-            std::string uri = s_makeURI( _uid, subtileLOD, u, v );
+            std::string uri = s_makeURI( subtileLOD, u, v );
 
             // check the blacklist to make sure we haven't unsuccessfully tried
             // this URI before
@@ -851,11 +879,11 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     uri, 
                     0.0f, maxRange, 
                     _options.layout().get(),
-                    //*_options.layout()->priorityOffset(), 
-                    //*_options.layout()->priorityScale(),
                     _postMergeOperations.get(),
+                    _sgCallbacks.get(),
                     _defaultFileLocationCallback.get(),
-                    readOptions);
+                    readOptions,
+                    this);
 
                 parent->addChild( pagedNode );
             }
@@ -1012,7 +1040,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         if ( key )
             query.tileKey() = *key;
 
-        query.setMap( _session->getMap() );
+        query.setMap(_session->createMapFrame());// _session->getMap() );
 
         // does the level have a style name set?
         if ( level.styleName().isSet() )
@@ -1053,7 +1081,10 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         }
 
         // cache it if appropriate.
-        writeTileToCache(cacheKey, group.get(), readOptions);
+        if (_options.nodeCaching() == true)
+        {
+            writeTileToCache(cacheKey, group.get(), readOptions);
+        }
     }
 
     if ( group->getNumChildren() > 0 )
@@ -1182,7 +1213,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                 {
                     // merge the selector's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap( _session->getMap() );
+                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // query, sort, and add each style group to th parent:
                     queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group, readOptions );
@@ -1197,7 +1228,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
                     // .. and merge it's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap( _session->getMap() );
+                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // then create the node.
                     osg::Group* styleGroup = createStyleGroup( combinedStyle, combinedQuery, index, readOptions );
@@ -1266,7 +1297,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
     {
         // merge the selector's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap( _session->getMap() );
+        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // query, sort, and add each style group to the parent:
         queryAndSortIntoStyleGroups( combinedQuery, *selector->styleExpression(), index, parent, readOptions );
@@ -1283,7 +1314,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
 
         // .. and merge it's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap( _session->getMap() );
+        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // then create the node.
         osg::Node* node = createStyleGroup(style, combinedQuery, index, readOptions);
@@ -1481,7 +1512,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
 void
 FeatureModelGraph::checkForGlobalStyles( const Style& style )
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
 
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
@@ -1518,39 +1549,6 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             _clampable->setDepthOffsetOptions(*render->depthOffset());
         }
     }
-
-#if 0
-    else 
-    {
-        if ( render && render->depthOffset().isSet() )
-        {
-            _depthOffsetAdapter.setGraph( this );
-            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
-        }
-
-        if ( render && render->renderBin().isSet() )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderBinDetails(
-                ss->getBinNumber(),
-                render->renderBin().get() );
-        }
-
-        if ( render && render->order().isSet() )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderBinDetails(
-                (int)render->order()->eval(),
-                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
-        }
-
-        if ( render && render->transparent() == true )
-        {
-            osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderingHint( ss->TRANSPARENT_BIN );
-        }
-    }
-#endif
 }
 
 void
@@ -1585,6 +1583,15 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
         {
             osg::StateSet* ss = node->getOrCreateStateSet();
             ss->setRenderingHint( ss->TRANSPARENT_BIN );
+        }
+        
+        if (render->decal() == true)
+        {
+            getOrCreateStateSet()->setAttributeAndModes(
+                new osg::PolygonOffset(-1,-1), 1);
+
+            getOrCreateStateSet()->setAttributeAndModes(
+                new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
         }
     }
 }
@@ -1649,6 +1656,12 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 void
 FeatureModelGraph::runPreMergeOperations(osg::Node* node)
 {
+   if (_sgCallbacks.valid())
+   {
+       _sgCallbacks->firePreMergeNode(node);
+   }
+
+   // @deprecated
    if ( _preMergeOperations.valid() )
    {
       _preMergeOperations->mutex().readLock();
@@ -1663,6 +1676,12 @@ FeatureModelGraph::runPreMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 {
+   if (_sgCallbacks.valid())
+   {
+       _sgCallbacks->firePostMergeNode(node);
+   }
+
+   // @deprecated
    if ( _postMergeOperations.valid() )
    {
       _postMergeOperations->mutex().readLock();
@@ -1678,7 +1697,7 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 void
 FeatureModelGraph::changeOverlay()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
 
     if (_overlayChange == OVERLAY_INSTALL_CLAMPABLE &&
         _clampable.valid()                          && 
@@ -1723,7 +1742,7 @@ FeatureModelGraph::changeOverlay()
 void
 FeatureModelGraph::redraw()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_clampableMutex);
+    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
 
     // clear it out
     removeChildren( 0, getNumChildren() );

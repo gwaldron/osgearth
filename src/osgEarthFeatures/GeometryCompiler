@@ -31,7 +31,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
-    class OSGEARTHFEATURES_EXPORT GeometryCompilerOptions : public ConfigOptions
+    class OSGEARTHFEATURES_EXPORT GeometryCompilerOptions
     {
     public:
         /**
@@ -40,9 +40,10 @@ namespace osgEarth { namespace Features
         static void setDefaults(const GeometryCompilerOptions& defaults);
 
     public:
+        /**
+         * Construct new copiler options, optionally deserializing them
+         */
         GeometryCompilerOptions(const ConfigOptions& conf =ConfigOptions());
-        
-        virtual ~GeometryCompilerOptions() { }
 
     public:
         /** Maximum span of a generated edge, in degrees. Applicable to geocentric maps only */
@@ -108,7 +109,9 @@ namespace osgEarth { namespace Features
 
     public:
         Config getConfig() const;
-        void mergeConfig( const Config& conf );
+
+    protected:
+        void fromConfig( const Config& conf );
 
     private:
         optional<double>               _maxGranularity_deg;
@@ -127,13 +130,13 @@ namespace osgEarth { namespace Features
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
 
-        void fromConfig( const Config& conf );
 
         static GeometryCompilerOptions s_defaults;
 
     public:
        GeometryCompilerOptions(bool); // internal
     };
+
 
     /**
      * Compiles a collection of features against a style.

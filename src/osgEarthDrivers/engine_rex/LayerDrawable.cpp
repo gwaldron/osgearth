@@ -25,6 +25,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 LayerDrawable::LayerDrawable() :
+_renderType(Layer::RENDERTYPE_TILE),
 _order(0),
 _layer(0L),
 _clearOsgState(false)

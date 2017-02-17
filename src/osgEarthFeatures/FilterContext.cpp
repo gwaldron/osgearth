@@ -79,7 +79,8 @@ _inverseReferenceFrame( rhs._inverseReferenceFrame ),
 _resourceCache        ( rhs._resourceCache.get() ),
 _index                ( rhs._index ),
 _shaderPolicy         ( rhs._shaderPolicy ),
-_history              ( rhs._history )
+_history              ( rhs._history ),
+_outputSRS            ( rhs._outputSRS.get() )
 {
     //nop
 }
@@ -88,6 +89,24 @@ void
 FilterContext::setProfile(const FeatureProfile* value)
 {
     _profile = value;
+}
+
+const SpatialReference*
+FilterContext::getOutputSRS() const
+{
+    if (_outputSRS.valid())
+        return _outputSRS.get();
+
+    if (_session.valid() && _session->getMapSRS())
+        return _session->getMapSRS();
+
+    if (_profile.valid() && _profile->getSRS())
+        return _profile->getSRS();
+
+    if (_extent.isSet())
+        return _extent->getSRS();
+
+    return SpatialReference::get("wgs84");
 }
 
 const osgDB::Options*

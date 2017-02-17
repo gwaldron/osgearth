@@ -151,9 +151,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     const Session* session = cx.getSession();
 
     // the map against which we'll be doing elevation clamping
-    //MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
-    MapFrame mapf = session->createMapFrame( 
-        (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) );
+    MapFrame mapf = session->createMapFrame();
 
     const SpatialReference* mapSRS = mapf.getProfile()->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
@@ -217,6 +215,11 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         if (!perVertex)
         {
             centroidElevation = eq.getElevation( centroid, _maxRes );
+            // Check for NO_DATA_VALUE and use zero instead.
+            if (centroidElevation == NO_DATA_VALUE)
+            {
+                centroidElevation = 0.0;
+            }
         }
         
         GeometryIterator gi( feature->getGeometry() );

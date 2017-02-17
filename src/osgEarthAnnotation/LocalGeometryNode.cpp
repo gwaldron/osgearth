@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 
 #define LC "[GeometryNode] "
 
@@ -37,14 +38,16 @@ using namespace osgEarth::Features;
 
 LocalGeometryNode::LocalGeometryNode() :
 GeoPositionNode(),
-_clampRelative(false)
+_clampRelative(false),
+_clampDirty(false)
 {
     //nop - unused
 }
 
 LocalGeometryNode::LocalGeometryNode(MapNode* mapNode) :
 GeoPositionNode(),
-_clampRelative(false)
+_clampRelative(false),
+_clampDirty(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -56,7 +59,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
 GeoPositionNode(),
 _geom    ( geom ),
 _style   ( style ),
-_clampRelative(false)
+_clampRelative(false),
+_clampDirty(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -69,7 +73,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
 GeoPositionNode(),
 _node    ( node ),
 _style   ( style ),
-_clampRelative(false)
+_clampRelative(false),
+_clampDirty(false)
 {
     LocalGeometryNode::setMapNode( mapNode );
     init( 0L );
@@ -218,30 +223,75 @@ LocalGeometryNode::applyAltitudeSymbology(const Style& style)
 
 void
 LocalGeometryNode::onTileAdded(const TileKey&          key, 
-                               osg::Node*              patch, 
+                               osg::Node*              graph, 
                                TerrainCallbackContext& context)
 {
-    // if key and data intersect then
-    if ( _boundingPT.contains(patch->getBound()) )
-    {    
-        clampToScene( patch, context.getTerrain() );
-        this->dirtyBound();
+    // If we are already set to clamp, ignore this
+    if (_clampDirty)
+        return;
+
+    bool needsClamp;
+
+    // This was faster, but less precise and resulted in a lot of unnecessary clamp attempts:
+    //if ( _boundingPT.contains(patch->getBound()) )
+
+    // Does the tile key's polytope intersect the world bounds or this object?
+    // (taking getParent(0) gives the world-tranformed bounds vs. local bounds)
+    if (key.valid())
+    {
+        osg::Polytope tope;
+        key.getExtent().createPolytope(tope);
+        needsClamp = tope.contains(this->getParent(0)->getBound());
+    }
+    else
+    {
+        // with no key, must clamp no matter what
+        needsClamp = true;
+    }
+
+    if (needsClamp)
+    {   
+        //clamp(graph, context.getTerrain());
+        _clampDirty = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        OE_DEBUG << LC << "LGN: clamp requested b/c of key " << key.str() << std::endl;
     }
 }
 
 void
-LocalGeometryNode::clampToScene(osg::Node* patch, const Terrain* terrain)
+LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
 {
-    GeometryClamper clamper;
+    if (terrain && graph)
+    {
+        GeometryClamper clamper;
 
-    clamper.setTerrainPatch( patch );
-    clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
-    clamper.setPreserveZ( _clampRelative );
-    clamper.setOffset( getPosition().alt() );
+        clamper.setTerrainPatch( graph );
+        clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
+        clamper.setPreserveZ( _clampRelative );
+        clamper.setOffset( getPosition().alt() );
 
-    this->accept( clamper );
+        this->accept( clamper );
+
+        OE_DEBUG << LC << "LGN: clamped.\n";
+    }
 }
 
+void
+LocalGeometryNode::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR && _clampDirty)
+    {
+        osg::ref_ptr<Terrain> terrain = getGeoTransform()->getTerrain();
+        if (terrain.valid())
+            clamp(terrain->getGraph(), terrain.get());
+
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        _clampDirty = false;
+    }
+    GeoPositionNode::traverse(nv);
+}
+
+#if 0
 osg::BoundingSphere
 LocalGeometryNode::computeBound() const
 {
@@ -288,6 +338,7 @@ LocalGeometryNode::computeBound() const
 
     return bs;
 }
+#endif
 
 void
 LocalGeometryNode::dirty()
@@ -297,7 +348,7 @@ LocalGeometryNode::dirty()
     // re-clamp the geometry if necessary.
     if ( _clampCallback.valid() && getMapNode() )
     {
-        clampToScene( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
+        clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );
     }
 }
 
@@ -310,7 +361,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
 GeoPositionNode( mapNode, conf ),
-_clampRelative(false)
+_clampRelative(false),
+_clampDirty(false)
 {
     if ( conf.hasChild("geometry") )
     {

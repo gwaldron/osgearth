@@ -26,7 +26,8 @@ before_install:
 # Debug print out osgversion
 - osgversion
 script:
-- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j3 ; fi
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j3 && sudo make install && sudo ldconfig; fi
+- if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cd tests && osgEarth_tests ; fi
 notifications:
   email:
     recipients:

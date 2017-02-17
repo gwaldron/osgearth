@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
 
 //uniform bool oe_mode_GL_LIGHTING; 
 
@@ -42,7 +42,7 @@ vec3 vp_Normal;             // surface normal (from osgEarth)
 
 
 // Toatl number of lights in the scene
-uniform int osg_NumLights;
+//uniform int osg_NumLights;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 
@@ -64,7 +64,7 @@ struct osg_LightSourceParameters
 
    bool enabled;
 };  
-uniform osg_LightSourceParameters osg_LightSource[8];
+uniform osg_LightSourceParameters osg_LightSource[1];
 
 
 

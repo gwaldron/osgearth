@@ -900,8 +900,13 @@ MultiGeometry::~MultiGeometry()
 Geometry::Type
 MultiGeometry::getComponentType() const
 {
-    // dicey.
-    return _parts.size() > 0 ? _parts.front()->getType() : TYPE_UNKNOWN;
+    if (_parts.size() == 0)
+        return TYPE_UNKNOWN;
+
+    if (_parts.front()->getType() == TYPE_MULTI)
+        return _parts.front()->getComponentType();
+
+    return _parts.front()->getType();
 }
 
 int

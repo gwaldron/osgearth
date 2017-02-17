@@ -1,0 +1,146 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_SIMPLE_OCEAN_LAYER
+#define OSGEARTH_UTIL_SIMPLE_OCEAN_LAYER 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Layer>
+#include <osgEarth/LayerListener>
+#include <osgEarthSymbology/Color>
+
+namespace osgEarth {
+    class ImageLayer;
+}
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Serializable configuation options for the SimpleOceanLayer.
+     */
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
+    {
+    public:
+        /** Color of the ocean surface */
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+
+        /** Maximum altitude at which the ocean is visible */
+        optional<float>& maxAltitude() { return _maxAltitude; }
+        const optional<float>& maxAltitude() const { return _maxAltitude; }
+
+        /** Name of a Map Layer to use as an ocean mask. */
+        optional<std::string>& maskLayer() { return _maskLayer; }
+        const optional<std::string>& maskLayer() const { return _maskLayer; }
+
+        /** Whether to sample the terrain bathymetry and only draw the ocean
+        where it's negative (default = true) */
+        optional<bool>& useBathymetry() { return _useBathymetry; }
+        const optional<bool>& useBathymetry() const { return _useBathymetry; }
+
+    public:
+        SimpleOceanLayerOptions(const ConfigOptions& op =ConfigOptions()) : VisibleLayerOptions(op) {
+            _color.init(Color("#1D2C4FE7"));
+            _maxAltitude.init(500000.f);
+            _useBathymetry.init(false);
+            mergeConfig(_conf);
+        }
+
+        void mergeConfig(const Config& conf) {
+            conf.getIfSet("color", _color);
+            conf.getIfSet("max_altitude", _maxAltitude);
+            conf.getIfSet("mask_layer", _maskLayer);
+            conf.getIfSet("use_bathymetry", _useBathymetry);
+        }
+
+        Config getConfig() const {
+            Config conf;
+            conf.addIfSet("color", _color);
+            conf.addIfSet("max_altitude", _maxAltitude);
+            conf.addIfSet("mask_layer", _maskLayer);
+            conf.addIfSet("use_bathymetry", _useBathymetry);
+            return conf;
+        }
+
+    private:
+        optional<Color> _color;
+        optional<float> _maxAltitude;
+        optional<std::string> _maskLayer;
+        optional<bool> _useBathymetry;
+    };
+
+
+    /**
+     * A Rex map layer that renders a simple ocean surface.
+     * This layer requires that the map include bathymetric data (ocean floor).
+     */
+    class OSGEARTHUTIL_EXPORT SimpleOceanLayer : public VisibleLayer
+    {
+    public:
+        META_Layer(osgEarth, SimpleOceanLayer, SimpleOceanLayerOptions);
+
+        /** Constructs a new ocean layer */
+        SimpleOceanLayer();
+
+        /** Constructs a new layer from an options structure. */
+        SimpleOceanLayer(const SimpleOceanLayerOptions& options);
+
+    public:
+
+        /** Ocean surface color (including transparency in the alpha channel) */
+        void setColor(const Color& color);
+        const Color& getColor() const;
+
+        /** Maximum altitude at which the ocean layer is visible */
+        void setMaxAltitude(float altitude_m);
+        float getMaxAltitude() const;
+
+        /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
+        bool setMaskLayer(const ImageLayer* layer);
+
+    public: // Layer
+
+        /** serialize */
+        virtual Config getConfig() const;
+
+        /** callback that ensures proper culling */
+        void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const;
+
+    protected: // Layer
+
+        virtual void addedToMap(const class Map*);
+
+        virtual void removedFromMap(const class Map*);
+
+        virtual void init();
+
+    protected:
+
+        virtual ~SimpleOceanLayer() { }
+
+    private:
+
+        LayerListener<SimpleOceanLayer, const ImageLayer> _layerListener;
+    };
+    
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_SIMPLE_OCEAN_LAYER

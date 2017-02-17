@@ -38,8 +38,8 @@ namespace
     struct TerrainChangedCallback : public osgEarth::TerrainCallback
     {
         TerrainChangedCallback( PolyhedralLineOfSightNode* los ) : _los(los) { }
-        void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext& ) {
-            _los->terrainChanged( tileKey, terrain );
+        void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* graph, TerrainCallbackContext& ) {
+            _los->terrainChanged( tileKey, graph );
         }
         PolyhedralLineOfSightNode* _los;
     };

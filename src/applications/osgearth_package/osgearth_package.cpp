@@ -29,6 +29,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/TileVisitor>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarthUtil/TMSPackager>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
@@ -415,10 +417,10 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.mergeConfig( layer->options().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-                outMap->addImageLayer( new ImageLayer( layerOptions ) );
+                outMap->addLayer( new ImageLayer( layerOptions ) );
             }
         }    
 
@@ -454,10 +456,10 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.mergeConfig( layer->options().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-                outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+                outMap->addLayer( new ElevationLayer( layerOptions ) );
             }
         }
 

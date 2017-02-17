@@ -69,7 +69,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("filename", _filename);            
+            conf.updateIfSet("filename", _filename);    
             conf.updateIfSet("format", _format);            
             conf.updateIfSet("compute_levels", _computeLevels);
             conf.updateIfSet("compress", _compress);
@@ -83,6 +83,7 @@ namespace osgEarth { namespace Drivers
 
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "filename", _filename );
+            conf.getIfSet( "url", _filename ); // compat for consistency with other drivers
             conf.getIfSet( "format", _format );
             conf.getIfSet( "compute_levels", _computeLevels );
             conf.getIfSet( "compress", _compress );

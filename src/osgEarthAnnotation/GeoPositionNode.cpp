@@ -92,7 +92,6 @@ void
 GeoPositionNode::init()
 {    
     _geoxform = new GeoTransform();
-    _geoxform->setAutoRecomputeHeights( true );
     this->addChild( _geoxform );
 
     _paxform = new osg::PositionAttitudeTransform();
@@ -217,8 +216,9 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
 
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
-AnnotationNode          ( conf ),
-_horizonCullingRequested( true )
+AnnotationNode            ( conf ),
+_occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
+_horizonCullingRequested  ( DEFAULT_HORIZON_CULLING )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -229,6 +229,10 @@ void
 GeoPositionNode::setConfig(const Config& conf)
 {
     //AnnotationNode::setConfig(conf);
+    if (conf.hasValue("name"))
+    {
+        setName(conf.value("name"));
+    }
 
     if ( conf.hasChild( "position" ) )
     {

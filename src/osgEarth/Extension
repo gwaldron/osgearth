@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/PluginLoader>
 #include <osg/Object>
 #include <osgDB/Options>
 #include <osgDB/ReaderWriter>
@@ -134,62 +135,10 @@ namespace osgEarth
     CLASS (const CLASS & rhs, const osg::CopyOp& op) { } \
     virtual ~ CLASS() { }
 
-    
-    template<class T>
-    class RegisterExtensionLoader
-    {
-        public:
-            RegisterExtensionLoader(const std::string& name)
-            {
-                if (osgDB::Registry::instance())
-                {
-                    _rw = new T(name);
-                    osgDB::Registry::instance()->addReaderWriter(_rw.get());
-                }
-            }
-
-            ~RegisterExtensionLoader()
-            {
-                if (osgDB::Registry::instance())
-                {
-                    osgDB::Registry::instance()->removeReaderWriter(_rw.get());
-                }
-            }
-
-            T* get() { return _rw.get(); }
-
-        protected:
-            osg::ref_ptr<T> _rw;
-    };
-
-    /**
-     * This template declares and registers an extension-loading plugin.
-     */
-    template<typename T>
-    class ExtensionLoader : public osgDB::ReaderWriter
-    {
-    public: // Plugin stuff
-        ExtensionLoader(const std::string& name) {
-            supportsExtension( name, name );
-        }
-
-        virtual ~ExtensionLoader() { }
-
-        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
-        {
-          if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-          return ReadResult( new T(Extension::getConfigOptions(dbOptions)) );
-        }
-    };
-
 } // namespace osgEarth
-
 
 #define REGISTER_OSGEARTH_EXTENSION(NAME,CLASS) \
     extern "C" void osgdb_##NAME(void) {} \
-    static osgEarth::RegisterExtensionLoader< osgEarth::ExtensionLoader<CLASS> > g_proxy_##CLASS_##NAME( #NAME );
-
+    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Extension> > g_proxy_##CLASS_##NAME( #NAME );
 
 #endif

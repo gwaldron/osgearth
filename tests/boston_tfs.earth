@@ -40,11 +40,8 @@ Demonstrates TFS feature source.
         <lighting>false</lighting>
     </options> 
     
-    <external>
-        <viewpoints>
-            <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
-        </viewpoints>
-        <sky hours="21.0"/>
-    </external>
+    <viewpoints>
+        <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+    </viewpoints>
   
 </map>

@@ -268,15 +268,22 @@ public:
 
     std::string createURL(const Symbology::Query& query)
     {
+        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
+
         std::stringstream buf;
-        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
+        buf << _options.url()->full() << sep << "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
         buf << "&TYPENAME=" << _options.typeName().get();
         
         std::string outputFormat = "geojson";
         if (_options.outputFormat().isSet()) outputFormat = _options.outputFormat().get();
         buf << "&OUTPUTFORMAT=" << outputFormat;
 
-        if (_options.maxFeatures().isSet())
+        // If the Query limit is set, use that.  Otherwise use the globally defined maxFeatures setting.
+        if (query.limit().isSet())
+        {
+            buf << "&MAXFEATURES=" << query.limit().get();
+        }
+        else if (_options.maxFeatures().isSet())
         {
             buf << "&MAXFEATURES=" << _options.maxFeatures().get();
         }

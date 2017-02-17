@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/ImageLayer>
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>

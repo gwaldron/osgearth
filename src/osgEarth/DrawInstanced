@@ -69,8 +69,8 @@ namespace osgEarth
 
         protected:
             unsigned _numInstances;
-            bool     _optimize;
-            osg::ref_ptr<osg::Drawable::ComputeBoundingBoxCallback> _staticBBoxCallback;
+            osg::BoundingBox _bbox;
+            bool _optimize;
             std::list<osg::PrimitiveSet*> _primitiveSets;
         };
 

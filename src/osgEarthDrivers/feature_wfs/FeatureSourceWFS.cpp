@@ -268,8 +268,10 @@ public:
 
     std::string createURL(const Symbology::Query& query)
     {
+        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
+
         std::stringstream buf;
-        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
+        buf << _options.url()->full() << sep << "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
         buf << "&TYPENAME=" << _options.typeName().get();
         
         std::string outputFormat = "geojson";

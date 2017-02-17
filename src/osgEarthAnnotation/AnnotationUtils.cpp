@@ -99,6 +99,14 @@ namespace
         x |= x >> 16;
         return x+1;
     }
+    
+    osg::Geometry* newGeometry() {
+        osg::Geometry* g = new osg::Geometry();
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+        if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) g->setUseVertexArrayObject(true);
+#endif
+        return g;
+    }
 }
 
 osg::Drawable*
@@ -291,7 +299,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);
 
     // set up the geoset.
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
     geom->setStateSet(dstate);
 
@@ -330,7 +338,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorArray(colors);
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
-    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
+    GLushort indices[] = {0,1,2,0,2,3};
+    geom->addPrimitiveSet( new osg::DrawElementsUShort( GL_TRIANGLES, 6, indices ) );
 
     return geom;
 }
@@ -354,7 +363,7 @@ AnnotationUtils::createHighlightUniform()
 osg::Node*
 AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
@@ -413,7 +422,7 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 osg::Node*
 AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAngle )
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
@@ -475,7 +484,7 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
                                          float minLon,
                                          float maxLon)
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     float latSpan = maxLat - minLat;
@@ -603,7 +612,7 @@ AnnotationUtils::createEllipsoid(float xRadius,
 osg::Node*
 AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
@@ -650,7 +659,7 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 osg::Drawable*
 AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
@@ -686,7 +695,7 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
 osg::Drawable*
 AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
-    osg::Geometry* geom = new osg::Geometry();
+    osg::Geometry* geom = newGeometry();
     geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();

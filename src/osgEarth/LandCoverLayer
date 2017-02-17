@@ -24,29 +24,9 @@
 
 namespace osgEarth
 {
-#if 0
-    class LandCoverDataSourceOptions : public ImageLayerOptions
-    {
-    public:
-        LandCoverDataSourceOptions(const ConfigOptions& co = ConfigOptions());
-
-        osg::ref_ptr<LandCoverDataSource>& dataSource() { return _dataSource; }
-        const osg::ref_ptr<LandCoverDataSource>& dataSource() const { return _dataSource; }
-
-        virtual Config getConfig() const;
-
-    protected:
-        void fromConfig(const Config& conf);
-
-        virtual void mergeConfig(const Config& conf) {
-            ImageLayerOptions::mergeConfig(conf);
-            fromConfig(conf);
-        }
-    private:
-        osg::ref_ptr<LandCoverDataSource> _dataSource;
-    };
-#endif
-
+    /**
+     * Serializable configuration for a LandCoverLayer.
+     */
     class OSGEARTH_EXPORT LandCoverLayerOptions : public ImageLayerOptions
     {
     public:
@@ -101,7 +81,12 @@ namespace osgEarth
         std::vector<LandCoverCoverageLayerOptions> _coverages;
     };
 
-
+    
+    /**
+     * Layer that provides land cover raster data, in which each texel 
+     * contains a land cover code as defined in the LandCoverDictionary.
+     * This appears in a Map as a shared, non-visible Layer.
+     */
     class OSGEARTH_EXPORT LandCoverLayer : public ImageLayer
     {
     public:

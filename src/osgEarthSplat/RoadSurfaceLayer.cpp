@@ -182,10 +182,9 @@ RoadSurfaceLayer::createImage(const TileKey& key, ProgressCallback* progress)
     if (node && node->getBound().valid())
     {
         // Schedule the rasterization and get the future:
-        Threading::Future<osg::Image> futureImage = _rasterizer->push(node.release(), getTileSize(), outputExtent);
-
+        Threading::Future<osg::Image> image = _rasterizer->push(node.release(), getTileSize(), outputExtent);
         // Wait for rasterization to complete and return the image.
-        return GeoImage(futureImage.get(), key.getExtent());
+        return GeoImage(image.get(), key.getExtent());
     }
     else
     {

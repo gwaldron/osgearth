@@ -102,6 +102,8 @@ namespace
         }
     };
 
+    // Constructs a code map (int to int) for a coverage layer. We will use this
+    // code map to map coverage layer codes to dictionary codes.
     void buildCodeMap(const LandCoverCoverageLayer* coverage, CodeMap& codemap)
     {
         if (!coverage) {
@@ -143,12 +145,15 @@ namespace
 
     typedef std::vector<osg::ref_ptr<LandCoverCoverageLayer> > LandCoverCoverageLayerVector;
 
-
+    /*
+     * TileSource that provides GeoImage's to the LandCoverLayer.
+     */
     class LandCoverTileSource : public TileSource
     {
     public:
         LandCoverTileSource(const LandCoverLayerOptions& options);
 
+    public: // TileSource
         Status initialize(const osgDB::Options* readOptions);
 
         osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
@@ -157,6 +162,7 @@ namespace
             return CachePolicy::NO_CACHE;
         }
 
+    private:
         const LandCoverLayerOptions* _options;
         const LandCoverLayerOptions& options() const { return *_options; }
 
@@ -174,6 +180,8 @@ namespace
         osg::ref_ptr<osgDB::Options> _readOptions;  
 
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
+
+        friend class LandCoverLayer;
     };
 
 
@@ -193,13 +201,6 @@ namespace
             profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
             setProfile( profile );
         }
-
-        // load all the image layers:
-        //_coverages.assign( options().coverages().size(), 0L );
-
-        //_warps.assign( options().coverages().size(), 0.0f );
-
-        //_codemaps.resize(options().coverages().size());
 
         for(unsigned i=0; i<options().coverages().size(); ++i)
         {
@@ -221,9 +222,6 @@ namespace
                 _coverages.push_back(layer);
                 _codemaps.resize(_codemaps.size()+1);
                 OE_INFO << LC << "Opened coverage \"" << layer->getName() << "\"\n";
-
-                // Make a code mapping based on the data source metadata:
-                //buildCodeMap(layer, _codemaps[i]);
             }
             else
             {
@@ -264,6 +262,8 @@ namespace
         }
     }
     
+    //TODO: overriding createImage directly like this will bypass caching.
+    //      This is a temporary solution; need to refactor.
     osg::Image*
     LandCoverTileSource::createImage(const TileKey& key, ProgressCallback* progress)
     {
@@ -372,8 +372,6 @@ namespace
                                     wrotePixel = true;
                                 }
                             }
-                            //write.f(texel, u, v);
-                            //wrotePixel = true;
                         }
                     }
                 }
@@ -388,31 +386,6 @@ namespace
         return out;
     }
 }
-
-#if 0
-//........................................................................
-
-LandCoverDataSourceOptions::LandCoverDataSourceOptions(const ConfigOptions& co) :
-ImageLayerOptions(co)
-{
-    fromConfig(_conf);
-}
-
-void
-LandCoverDataSourceOptions::fromConfig(const Config& conf)
-{
-    _dataSource = new LandCoverDataSource(conf.child("land_cover_data_source"));
-}
-
-Config
-LandCoverDataSourceOptions::getConfig() const
-{
-    Config conf = ImageLayerOptions::getConfig();
-    if (_dataSource.valid())
-        conf.add(_dataSource->getConfig());
-    return conf;
-}
-#endif
 
 //........................................................................
 
@@ -450,11 +423,6 @@ LandCoverLayerOptions::getConfig() const
     //conf.addIfSet("warp", _warp);
     //conf.addIfSet("base_lod", _baseLOD);
     conf.addIfSet("bits", _bits);    
-    
-    //if (_dictionary.valid())
-    //{
-    //    conf.add(_dictionary->getConfig());
-    //}
 
     if (_coverages.size() > 0)
     {
@@ -506,10 +474,9 @@ LandCoverLayer::addedToMap(const Map* map)
 {
     // Find a land cover dictionary if there is one.
     // There had better be one, or we are not going to get very far!
-    // This is called after createTileSource, so the TileSource should exist
-    // at this point.
+    // This is called after createTileSource, so the TileSource should exist at this point.
     // Note. If the land cover dictionary isn't already in the Map...this will fail! (TODO)
-    // Consider a LayerListener.
+    // Consider a LayerListener. (TODO)
     _lcDictionary = map->getLayer<LandCoverDictionary>();
     if (_lcDictionary.valid() && getTileSource())
     {

@@ -45,7 +45,8 @@ Config::setReferrer( const std::string& referrer )
         return;
 
     std::string absReferrer;
-    if( !osgDB::containsServerAddress( referrer ) ) {
+    if( !osgDB::containsServerAddress( referrer ) && !osgDB::isAbsolutePath( referrer ) ) {
+
         absReferrer = osgEarth::getAbsolutePath( referrer );
 
         if( osgEarth::isRelativePath( absReferrer ) )

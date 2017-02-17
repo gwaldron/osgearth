@@ -304,8 +304,9 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 	int maxTBOSize = Registry::capabilities().getMaxTextureBufferSize();
 	// This is the total number of instances it can store
 	// We will iterate below. If the number of instances is larger than the buffer can store
-	// we make more tbos
-	int maxTBOInstancesSize = maxTBOSize/4;// 4 vec4s per matrix.
+    // we make more tbos
+    int matrixSize = 4 * 4 * sizeof(float); // 4 vec4's.
+    int maxTBOInstancesSize = maxTBOSize / matrixSize;
 
     // For each model:
     for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
@@ -336,7 +337,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
 		if (instances.size()<maxTBOInstancesSize)
 		{
-			tboSize = nextPowerOf2(instances.size());
+			tboSize = instances.size();
 			numInstancesToStore = instances.size();
 		}
 		else

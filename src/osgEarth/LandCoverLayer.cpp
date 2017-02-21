@@ -162,7 +162,6 @@ namespace
             return CachePolicy::NO_CACHE;
         }
 
-    private:
         const LandCoverLayerOptions* _options;
         const LandCoverLayerOptions& options() const { return *_options; }
 

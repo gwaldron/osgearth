@@ -208,6 +208,8 @@ namespace osgEarth
         void setDictionary(LandCoverDictionary* value) { _lcDictionary = value; }
         LandCoverDictionary* getDictionary() const { return _lcDictionary.get(); }
 
+    public: // Layer
+
     private:
         osg::ref_ptr<LandCoverDictionary> _lcDictionary;
     };

@@ -21,7 +21,9 @@
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileRasterizer>
+#include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgEarthFeatures/Session>
 #include "Export"
 
@@ -46,8 +48,13 @@ namespace osgEarth { namespace Splat
 
     public:
 
-        optional<FeatureSourceOptions>& featureSourceOptions() { return _featureSourceOptions; }
-        const optional<FeatureSourceOptions>& featureSourceOptions() const { return _featureSourceOptions; }
+        //! Inline feature specification
+        optional<FeatureSourceOptions>& features() { return _featureSourceOptions; }
+        const optional<FeatureSourceOptions>& features() const { return _featureSourceOptions; }
+
+        //! Name of feature source layer containing features
+        optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
+        const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
         optional<double>& innerWidth() { return _innerWidth; }
         const optional<double>& innerWidth() const { return _innerWidth; }
@@ -64,6 +71,7 @@ namespace osgEarth { namespace Splat
             Config conf;
             conf.key() = "road_surface";
             conf.addObjIfSet("features",  _featureSourceOptions);
+            conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("inner_width", _innerWidth);
             conf.addIfSet("outer_width", _outerWidth);
             conf.addObjIfSet("style", _style);
@@ -80,6 +88,7 @@ namespace osgEarth { namespace Splat
         void fromConfig( const Config& conf )
         {
             conf.getObjIfSet("features",  _featureSourceOptions);
+            conf.getIfSet("feature_source", _featureSourceLayer);
             conf.getIfSet("inner_width", _innerWidth);
             conf.getIfSet("outer_width", _outerWidth);
             conf.getObjIfSet("style", _style);
@@ -87,6 +96,7 @@ namespace osgEarth { namespace Splat
         
     private:
         optional<FeatureSourceOptions> _featureSourceOptions;
+        optional<std::string> _featureSourceLayer;
         optional<double> _innerWidth;
         optional<double> _outerWidth;
         optional<Style> _style;
@@ -101,9 +111,21 @@ namespace osgEarth { namespace Splat
     public:
         META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions);
 
+        //! Create a blank layer to be configured with options()
         RoadSurfaceLayer();
 
+        //! Create a layer from deserialized options
         RoadSurfaceLayer(const RoadSurfaceLayerOptions& options);
+
+    public:
+
+        //! Sets the map layer from which to pull feature data. Call either
+        //! This or setFeatureSource
+        void setFeatureSourceLayer(FeatureSourceLayer* layer);
+
+        //! Sets the feature source to get road data from; call either this
+        //! or setFeatureSourceLayer
+        void setFeatureSource(FeatureSource* source);
 
     public: // ImageLayer
 
@@ -128,11 +150,15 @@ namespace osgEarth { namespace Splat
         virtual osg::Node* getNode() const;
 
     protected:
+
         virtual ~RoadSurfaceLayer() { }
 
+    private:
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<TileRasterizer> _rasterizer;
+
+        LayerListener<RoadSurfaceLayer, FeatureSourceLayer> _layerListener;
     };
 
 } } // namespace osgEarth::Splat

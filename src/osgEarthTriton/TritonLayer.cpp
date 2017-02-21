@@ -68,11 +68,10 @@ TritonLayer::getNode() const
     return _tritonNode.get();
 }
 
-bool
+void
 TritonLayer::setMaskLayer(const osgEarth::ImageLayer* maskLayer)
 {
     _tritonNode->setMaskLayer(maskLayer);
-    return true;
 }
 
 void

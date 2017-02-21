@@ -113,7 +113,7 @@ namespace osgEarth { namespace Util
         float getMaxAltitude() const;
 
         /** Sets a masking layer, or pass NULL to clear the masking layer. Returns true upon success */
-        bool setMaskLayer(const ImageLayer* layer);
+        void setMaskLayer(const ImageLayer* layer);
 
     public: // Layer
 

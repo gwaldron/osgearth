@@ -130,7 +130,7 @@ namespace osgEarth { namespace Triton
         TritonLayer(const TritonLayerOptions& options);
 
         /** Masking layer for the ocean */
-        bool setMaskLayer(const osgEarth::ImageLayer* maskLayer);
+        void setMaskLayer(const osgEarth::ImageLayer* maskLayer);
 
         /** Maximum visibility altitude */
         void setMaxAltitude(float alt);

@@ -103,7 +103,7 @@ SimpleOceanLayer::init()
     setMaxAltitude(options().maxAltitude().get());
 }
 
-bool
+void
 SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
 {
     if (maskLayer)
@@ -111,13 +111,13 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
         if (!maskLayer->getEnabled())
         {
             OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" disabled\n";
-            return false;
+            return;
         }
 
         if (!maskLayer->isShared())
         {
             OE_WARN << LC << "Mask layer \"" << maskLayer->getName() << "\" is not a shared\n";
-            return false;
+            return;
         }
 
         // activate the mask.
@@ -136,8 +136,6 @@ SimpleOceanLayer::setMaskLayer(const ImageLayer* maskLayer)
 
         OE_INFO << LC << "Uninstalled mask layer\n";
     }
-
-    return true;
 }
 
 void

@@ -49,7 +49,7 @@ namespace osgEarth
     class LayerListener
     {
     public:
-        typedef bool(LISTENER::*Function)(LAYERTYPE*);
+        typedef void(LISTENER::*Function)(LAYERTYPE*);
 
         struct Entry {
             Entry() { }

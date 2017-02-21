@@ -73,7 +73,7 @@ namespace osgEarth { namespace Features
         FeatureMaskLayer(const FeatureMaskLayerOptions& options =FeatureMaskLayerOptions());
 
         /** The feature source layer from which to get boundary features */
-        bool setFeatureSourceLayer(FeatureSourceLayer* layer);
+        void setFeatureSourceLayer(FeatureSourceLayer* layer);
 
         /** The feature source from which to get boundary features */
         void setFeatureSource(FeatureSource* source);

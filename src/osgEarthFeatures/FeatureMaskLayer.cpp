@@ -75,20 +75,19 @@ _options(optionsPtr)
     //nop - init called from base class
 }
 
-bool
+void
 FeatureMaskLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 {
     if (layer && layer->getStatus().isError())
     {
         setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
-        return false;
+        return;
     }
 
     if (layer)
         OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
 
     setFeatureSource(layer ? layer->getFeatureSource() : 0L);
-    return true;
 }
 
 void

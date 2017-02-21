@@ -152,10 +152,10 @@ namespace osgEarth { namespace Util
         FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());
 
         // the elevation layer that we want to flatten
-        bool setBaseLayer(ElevationLayer* layer);
+        void setBaseLayer(ElevationLayer* layer);
 
         // Feature source layer to get a FeatureSource from
-        bool setFeatureSourceLayer(FeatureSourceLayer* layer);    
+        void setFeatureSourceLayer(FeatureSourceLayer* layer);    
         
         // the feature source from which to read flattening geometry
         void setFeatureSource(FeatureSource* fs);

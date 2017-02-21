@@ -11,14 +11,29 @@
 
     <elevation name="ReadyMap elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>  
+    </elevation>
 
+    <!--
     <feature_source name="roads-data" driver="ogr">
         <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
         <build_spatial_index>true</build_spatial_index>
     </feature_source>
+    -->
+    
+    <feature_source name="roads-data" driver="tfs">
+        <url>http://readymap.org/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script language="javascript">
+              <![CDATA[ ("highway" in feature.properties); ]]>
+            </script>
+        </filters>
+    </feature_source>
 
-    <flattened_elevation name="Road Flattener" min_level="13" max_level="13">
+    <flattened_elevation name="Road Flattener" min_level="14" max_level="14">
         <cache_policy usage="none"/>
         <base_layer>ReadyMap elevation</base_layer>
         <feature_source>roads-data</feature_source>
@@ -30,14 +45,10 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 
-    <road_surface min_level="13">
+    <road_surface min_level="14">
         <tile_size>256</tile_size>
         <cache_policy usage="none"/>
         <feature_source>roads-data</feature_source>
-        <features name="roads" driver="ogr">
-            <url>H:/data/fhwa/nhpn2005_08/NHPNLine.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
         <style type="text/css">
             default {
                stroke: #ffffff;

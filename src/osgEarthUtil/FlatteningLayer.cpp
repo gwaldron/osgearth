@@ -671,7 +671,7 @@ FlatteningLayer::~FlatteningLayer()
     _featureLayerListener.clear();
 }
 
-bool
+void
 FlatteningLayer::setBaseLayer(ElevationLayer* layer)
 {
     OE_INFO << LC << "Setting base layer to "
@@ -688,25 +688,20 @@ FlatteningLayer::setBaseLayer(ElevationLayer* layer)
     }
 
     _pool.setElevationLayers(layers);
-
-    return true;
 }
 
-bool
+void
 FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 {
     if (layer)
     {
         if (layer->getStatus().isOK())
             setFeatureSource(layer->getFeatureSource());
-        else
-            return false;
     }
     else
     {
         setFeatureSource(0L);
     }
-    return true;
 }
 
 void

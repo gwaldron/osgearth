@@ -68,15 +68,30 @@ const Status&
 RoadSurfaceLayer::open()
 {
     // assert a feature source:
-    if (!options().featureSourceOptions().isSet())
+    if (!options().features().isSet() && !options().featureSourceLayer().isSet())
+    {
         return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
+    }
 
-    // create and attempt to open that feature source:
-    _features = FeatureSourceFactory::create(options().featureSourceOptions().get());
-    if (!_features)
-        return setStatus(Status::Error(Status::ServiceUnavailable, "Cannot load feature source"));
+    if (options().features().isSet())
+    {
+        // create and attempt to open that feature source:
+        osg::ref_ptr<FeatureSource> features = FeatureSourceFactory::create(options().features().get());
+        if (features.valid())
+        {
+            setStatus(features->open());
 
-    setStatus(_features->open());
+            if (getStatus().isOK())
+            {
+                setFeatureSource(features.get());
+            }
+        }
+        else
+        {
+            return setStatus(Status::Error(Status::ServiceUnavailable, "Cannot load feature source"));
+        }
+    }
+
 
     if (getStatus().isOK())
         return ImageLayer::open();
@@ -86,21 +101,33 @@ RoadSurfaceLayer::open()
 
 void
 RoadSurfaceLayer::addedToMap(const Map* map)
-{   
-    if (_features.valid())
+{
+    // create a session for feature processing based in the Map,
+    // but don't set the feature source yet.
+    _session = new Session(map, new StyleSheet(), 0L, getReadOptions());
+    _session->setResourceCache(new ResourceCache());
+    
+    if (options().style().isSet())
     {
-        // create a session for feature processing based in the Map:
-        _session = new Session(map, new StyleSheet(), _features.get(), getReadOptions());
-        _session->setResourceCache(new ResourceCache());
-
-        if (options().style().isSet())
-            _session->styles()->addStyle(options().style().get());
-        else
-            OE_WARN << LC << "No style available\n";
+        _session->styles()->addStyle(options().style().get());
     }
     else
     {
-        OE_WARN << LC << "Added to map before opening features\n";
+        OE_WARN << LC << "No style available\n";
+        setStatus(Status::Error(Status::ConfigurationError, "No styles provided"));
+    }
+
+    if (options().featureSourceLayer().isSet())
+    {
+        _layerListener.listen(
+            map,
+            options().featureSourceLayer().get(),
+            this,
+            &RoadSurfaceLayer::setFeatureSourceLayer);
+    }
+    else if (!_features.valid())
+    {
+        setStatus(Status::Error(Status::ConfigurationError, "No features"));
     }
 }
 
@@ -117,9 +144,40 @@ RoadSurfaceLayer::getNode() const
     return _rasterizer.get();
 }
 
+void
+RoadSurfaceLayer::setFeatureSource(FeatureSource* fs)
+{
+    if (fs != _features.get())
+    {
+        _features = fs;
+        if (_features.valid())
+        {
+            setStatus(_features->getStatus());
+        }
+    }
+}
+
+void
+RoadSurfaceLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+{
+    if (layer && layer->getStatus().isError())
+    {
+        setStatus(Status::Error(Status::ResourceUnavailable, "Feature source layer is unavailable; check for error"));
+        return;
+    }
+
+    if (layer)
+        OE_INFO << LC << "Feature source layer is \"" << layer->getName() << "\"\n";
+
+    setFeatureSource(layer ? layer->getFeatureSource() : 0L);
+}
+
 GeoImage
 RoadSurfaceLayer::createImage(const TileKey& key, ProgressCallback* progress)
-{        
+{
+    if (getStatus().isError() || !_features.valid())
+        return GeoImage::INVALID;
+
     // Resolve the list of tile keys that intersect the incoming extent:
     std::vector<TileKey> featureKeys;
     if (_features->getFeatureProfile() && _features->getFeatureProfile()->getProfile())

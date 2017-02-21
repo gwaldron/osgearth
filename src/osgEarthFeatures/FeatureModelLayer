@@ -80,7 +80,7 @@ namespace osgEarth { namespace Features
         const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
 
         // Feature source layer from which to get a feature source
-        bool setFeatureSourceLayer(FeatureSourceLayer* layer);
+        void setFeatureSourceLayer(FeatureSourceLayer* layer);
         
         // the feature source from which to read flattening geometry
         void setFeatureSource(FeatureSource* fs);

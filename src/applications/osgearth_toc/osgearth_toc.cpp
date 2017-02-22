@@ -23,6 +23,8 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/ElevationPool>
+#include <osgEarth/ElevationQuery>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
@@ -32,6 +34,7 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
 void createControlPanel( osgViewer::View* );
@@ -44,6 +47,7 @@ static Grid* s_elevationBox;
 static Grid* s_modelBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
+static ElevationQuery s_eq;
 
 typedef std::map<std::string, ConfigOptions> InactiveLayers;
 static InactiveLayers _inactive;
@@ -101,6 +105,29 @@ struct UpdateOperation : public osg::Operation
     }
 };
 
+
+struct DumpElevation : public osgGA::GUIEventHandler
+{
+    DumpElevation(MapNode* mapNode, char c) : _mapNode(mapNode), _c(c) { }
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _c)
+        {
+            osg::Vec3d world;
+            _mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world);
+            GeoPoint coords;
+            coords.fromWorld(s_activeMap->getSRS(), world);
+            osg::ref_ptr<ElevationEnvelope> env = s_activeMap->getElevationPool()->createEnvelope(s_activeMap->getSRS(), 23u);
+            float ep_elev = env->getElevation(coords.x(), coords.y());
+            float eq_elev = s_eq.getElevation(coords);
+            OE_NOTICE << "Elevations under mouse. EP=" << ep_elev << "; EQ=" << eq_elev << "\n";
+        }
+        return false;
+    }
+    char _c;
+    MapNode* _mapNode;
+};
+
 //------------------------------------------------------------------------
 
 int
@@ -143,6 +170,9 @@ main( int argc, char** argv )
 
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
+
+    s_eq.setMap(s_activeMap);
+    viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
 
     viewer.run();
 }

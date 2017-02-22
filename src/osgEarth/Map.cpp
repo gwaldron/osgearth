@@ -304,17 +304,14 @@ Map::addLayer(Layer* layer)
             newRevision = ++_dataModelRevision;
         }
 
-        if (layer->getEnabled())
-        {
-            // tell the layer it was just added.
-            layer->addedToMap(this);
+        // tell the layer it was just added.
+        layer->addedToMap(this);
 
-            // a separate block b/c we don't need the mutex
-            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-            {
-                i->get()->onMapModelChanged(MapModelChange(
-                    MapModelChange::ADD_LAYER, newRevision, layer, index));
-            }
+        // a separate block b/c we don't need the mutex
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged(MapModelChange(
+                MapModelChange::ADD_LAYER, newRevision, layer, index));
         }
     }
 }
@@ -366,20 +363,17 @@ Map::insertLayer(Layer* layer, unsigned index)
             newRevision = ++_dataModelRevision;
         }
 
-        if (layer->getEnabled())
+        // tell the layer it was just added.
+        layer->addedToMap(this);
+
+        // a separate block b/c we don't need the mutex
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            // tell the layer it was just added.
-            layer->addedToMap(this);
+            //i->get()->onMapModelChanged( MapModelChange(
+            //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
 
-            // a separate block b/c we don't need the mutex
-            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-            {
-                //i->get()->onMapModelChanged( MapModelChange(
-                //    MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-
-                i->get()->onMapModelChanged(MapModelChange(
-                    MapModelChange::ADD_LAYER, newRevision, layer, index));
-            }
+            i->get()->onMapModelChanged(MapModelChange(
+                MapModelChange::ADD_LAYER, newRevision, layer, index));
         }
     }
 }

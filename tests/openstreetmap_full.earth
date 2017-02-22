@@ -101,7 +101,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             <selector name="default" style_expr="selectStyle()"/>
 
             <script language="javascript">
-              <![CDATA[
+                <![CDATA[
 
                 function selectStyle() {
                     if ("building" in feature.properties) {
@@ -184,9 +184,9 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 
     <image name="osm_roads" driver="agglite" min_level="14">
 
-       <max_data_level>14</max_data_level>
+        <max_data_level>14</max_data_level>
 
-       <profile>spherical-mercator</profile>
+        <profile>spherical-mercator</profile>
 
         <features name="osm" driver="tfs">
             <url>http://readymap.org/osm/</url>
@@ -194,23 +194,12 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>
             <format>pbf</format>
-
-                <filters>
-                  <script language="javascript">
-                      <![CDATA[
-                      function filter() {
-                          if ("highway" in feature.properties) {
-                              return true;
-                          }
-                          return false;
-                      }
-
-                      filter();
-
-                      ]]>
-                  </script>
-                </filters>
-            </features>
+            <filters>
+                <script language="javascript">
+                    <![CDATA[ ("highway" in feature.properties) ]]>
+                </script>
+            </filters>
+        </features>
         <styles>
             <style type="text/css">
                 roads {

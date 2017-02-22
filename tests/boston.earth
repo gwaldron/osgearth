@@ -80,7 +80,7 @@ to extruded buildings.
         </layout>        
         <styles>
             <style type="text/css">
-                streets {
+                default {
                     stroke:                       #ffff7f7f;
                     stroke-width:                 7.5m;
                     altitude-clamping:            terrain;
@@ -131,7 +131,7 @@ to extruded buildings.
         
         <styles>
             <style type="text/css">
-                parks {
+                default {
                    model:                  "../data/loopix/tree4.osgb";
 				   model-scale:            0.15 + 0.1*Math.random();
                    model-placement:        random;

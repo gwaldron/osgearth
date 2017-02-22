@@ -18,9 +18,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <format>pbf</format>
         <filters>
             <script>
-             <![CDATA[
-               ("building" in feature.properties);
-             ]]>
+              <![CDATA[ ("building" in feature.properties); ]]>
             </script>
         </filters>
     </feature_source>
@@ -32,7 +30,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
             </library>
 
             <style type="text/css">
-                buildings {
+                default {
                     extrusion-height:      getHeight();
                     extrusion-flatten:     true;
                     extrusion-wall-style:  building-wall;

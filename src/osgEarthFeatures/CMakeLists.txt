@@ -79,6 +79,7 @@ SET(TARGET_SRC
     FilterContext.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
+    InitGDAL.cpp
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
@@ -121,7 +122,13 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${TARGET_SRC}
 )
 
-INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(
+	${GDAL_INCLUDE_DIR}
+	${GDAL_INCLUDE_DIR}/gcore
+	${GDAL_INCLUDE_DIR}/frmts
+	${GDAL_INCLUDE_DIR}/port
+	${GDAL_INCLUDE_DIR}/ogr
+	${GDAL_INCLUDE_DIR}/alg )
 
 
 IF (WIN32)

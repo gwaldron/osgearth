@@ -30,6 +30,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/GDALInitializer>
 
 #include <osgEarth/Units>
 #include <osg/Notify>
@@ -38,8 +39,6 @@
 #include <osgDB/Options>
 #include <osgText/Font>
 
-#include <gdal_priv.h>
-#include <ogr_api.h>
 #include <stdlib.h>
 #include <locale>
 
@@ -66,13 +65,8 @@ _terrainEngineDriver( "mp" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false )
 {
-    // set up GDAL and OGR.
-    OGRRegisterAll();
-    GDALAllRegister();
-    
-    // support Chinese character in the file name and attributes in ESRI's shapefile
-    CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
-    CPLSetConfigOption("SHAPE_ENCODING","");
+    // Initialize GDAL globals
+    InitGDAL();
 
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();

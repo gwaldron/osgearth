@@ -44,6 +44,13 @@
 
 #include "GDALOptions"
 
+#include "osgEarth/GDALInitializer"
+
+namespace
+{
+    osgEarth::GDALInitializer gGdalInitializer;
+}
+
 #define LC "[GDAL driver] "
 
 #define INDENT ""

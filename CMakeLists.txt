@@ -326,6 +326,19 @@ ELSE (INSTALL_TO_OSG_DIR)
     SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
 ENDIF(INSTALL_TO_OSG_DIR)
 
+# Whether or not to link GDAL and cURL statically
+OPTION(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
+IF(NRL_STATIC_LIBRARIES)
+    SET(OSGEARTH_NRL_STATIC_LIBRARIES TRUE)
+ELSE()
+    SET(OSGEARTH_NRL_STATIC_LIBRARIES FALSE)
+ENDIF()
+
+# If osgEarth is dynamic but GDAL is static, each osgEarth shared library that uses GDAL will have its own instance
+# of the GDAL globals.  This define is to let GDALInitializer know it must deal with this.
+IF(OSGEARTH_NRL_STATIC_LIBRARIES AND DYNAMIC_OSGEARTH)
+    ADD_DEFINITIONS(-DREGISTER_GDAL_FOR_EACH_SHARED_OBJECT)
+ENDIF()
 
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)

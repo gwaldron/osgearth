@@ -35,7 +35,12 @@
 
 #include <ogr_api.h>
 
+#include "osgEarth/GDALInitializer"
 
+namespace osgEarthUtil
+{
+    GDALInitializer gGdalInitializer;
+}
 
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO

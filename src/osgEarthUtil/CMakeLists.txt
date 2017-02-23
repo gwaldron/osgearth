@@ -115,6 +115,7 @@ SET(SOURCES_ROOT
     GraticuleTerrainEffect.cpp
     GraticuleNode.cpp
     HTM.cpp
+    InitGDAL.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
 	LogarithmicDepthBuffer.cpp

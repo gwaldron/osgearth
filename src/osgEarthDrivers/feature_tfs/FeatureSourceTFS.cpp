@@ -41,6 +41,13 @@
 #include <windows.h>
 #endif
 
+#include "osgEarth/GDALInitializer"
+
+namespace osgEarthUtil
+{
+    GDALInitializer gGdalInitializer;
+}
+
 #define LC "[TFS FeatureSource] "
 
 using namespace osgEarth;

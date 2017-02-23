@@ -1,0 +1,54 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_GDALINITIALIZER
+#define OSGEARTH_GDALINITIALIZER 1
+
+#include <gdal_priv.h>
+#include <ogr_api.h>
+
+namespace osgEarth
+{
+    // Initialize GDAL globals -- this must be called before using any GDAL or OGR routines!
+    inline void InitGDAL()
+    {
+        // set up GDAL and OGR.
+        OGRRegisterAll();
+        GDALAllRegister();
+
+        // support Chinese character in the file name and attributes in ESRI's shapefile
+        CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");
+        CPLSetConfigOption("SHAPE_ENCODING", "");
+    }
+
+    // Initializes GDAL if the appropriate #define is set.
+    // Instructions: Declare a global instance of this class in each shared library that uses GDAL.
+    class GDALInitializer
+    {
+    public:
+        inline GDALInitializer()
+        {
+#ifdef REGISTER_GDAL_FOR_EACH_SHARED_OBJECT
+            InitGDAL();
+#endif
+        }
+    };
+}
+
+#endif  // OSGEARTH_GDALINITIALIZER

@@ -71,11 +71,19 @@ namespace
             // Configure the noise function:
             SimplexNoise noise;
             noise.setNormalize(true);
-            noise.setRange(0.0, 1.0);
+            noise.setRange(-1.0, 1.0);
             noise.setFrequency(_options.frequency().get());
             noise.setPersistence(_options.persistence().get());
             noise.setLacunarity(_options.lacunarity().get());
             noise.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
+            
+            SimplexNoise noise2;
+            noise2.setNormalize(true);
+            noise2.setRange(-1.0, 1.0);
+            noise2.setFrequency(_options.frequency().get() * 2.0);
+            noise2.setPersistence(_options.persistence().get());
+            noise2.setLacunarity(_options.lacunarity().get());
+            noise2.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
 
             osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), getPixelsPerTile(), getPixelsPerTile(), 0u);
             for (int s = 0; s < getPixelsPerTile(); ++s)
@@ -85,12 +93,29 @@ namespace
                     double u = (double)s / (double)(getPixelsPerTile() - 1);
                     double v = (double)t / (double)(getPixelsPerTile() - 1);
 
+                    float h = 0;
+                    double n;
+
                     scaleCoordsToLOD(u, v, _options.baseLOD().get(), key);
 
-                    // The 4.0 multiplier stretched the amplitude into +/-.
-                    double n = 4.0*(noise.getTiledValue(u, v)-0.5);
+                    // Step 1: apply a general, rolling bumpiness
+                    n = noise.getTiledValue(u, v);
+                    h = n * _options.amplitude().get();
 
-                    hf->setHeight(s, t, n * _options.amplitude().get());
+                    // Adjust the persistence based on... 
+                    // here it's the first noise value, but later it might be the slope
+                    // or the land class classification.
+                    double f = 0.5*(n+1.0);
+                    noise2.setPersistence(_options.persistence().get() + 0.5*f);
+
+                    // Step 2: apply periodic permutations
+                    const double threshold = 0.15;
+                    n = noise2.getTiledValue(u, v);
+                    if (n > threshold) {
+                        h += (n-threshold) * _options.amplitude().get() * (1.0+threshold);
+                    }
+
+                    hf->setHeight(s, t, h);
 
                     if (_debug)
                     {

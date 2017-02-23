@@ -42,9 +42,8 @@ void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
 static Grid* s_masterGrid;
-static Grid* s_imageBox;
-static Grid* s_elevationBox;
-static Grid* s_modelBox;
+static Grid* s_activeBox;
+static Grid* s_inactiveBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
 static ElevationQuery s_eq;
@@ -266,38 +265,27 @@ createControlPanel( osgViewer::View* view )
     s_masterGrid->setAbsorbEvents( true );
     s_masterGrid->setVertAlign( Control::ALIGN_TOP );
 
-    //The image layers
-    s_imageBox = new Grid();
-    s_imageBox->setBackColor(0,0,0,0.5);
-    s_imageBox->setMargin( 10 );
-    s_imageBox->setPadding( 10 );
-    s_imageBox->setChildSpacing( 10 );
-    s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
-    s_imageBox->setAbsorbEvents( true );
-    s_imageBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 0, 0, s_imageBox );
+    //The Map layers
+    s_activeBox = new Grid();
+    s_activeBox->setBackColor(0,0,0,0.5);
+    s_activeBox->setMargin( 10 );
+    s_activeBox->setPadding( 10 );
+    s_activeBox->setChildSpacing( 10 );
+    s_activeBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_activeBox->setAbsorbEvents( true );
+    s_activeBox->setVertAlign( Control::ALIGN_TOP );
+    s_masterGrid->setControl( 0, 0, s_activeBox );
 
-    //the elevation layers
-    s_elevationBox = new Grid();
-    s_elevationBox->setBackColor(0,0,0,0.5);
-    s_elevationBox->setMargin( 10 );
-    s_elevationBox->setPadding( 10 );
-    s_elevationBox->setChildSpacing( 10 );
-    s_elevationBox->setChildVertAlign( Control::ALIGN_CENTER );
-    s_elevationBox->setAbsorbEvents( true );
-    s_elevationBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 1, 0, s_elevationBox );
-
-    //The image layers
-    s_modelBox = new Grid();
-    s_modelBox->setBackColor(0,0,0,0.5);
-    s_modelBox->setMargin( 10 );
-    s_modelBox->setPadding( 10 );
-    s_modelBox->setChildSpacing( 10 );
-    s_modelBox->setChildVertAlign( Control::ALIGN_CENTER );
-    s_modelBox->setAbsorbEvents( true );
-    s_modelBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 2, 0, s_modelBox );
+    //the removed layers
+    s_inactiveBox = new Grid();
+    s_inactiveBox->setBackColor(0,0,0,0.5);
+    s_inactiveBox->setMargin( 10 );
+    s_inactiveBox->setPadding( 10 );
+    s_inactiveBox->setChildSpacing( 10 );
+    s_inactiveBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_inactiveBox->setAbsorbEvents( true );
+    s_inactiveBox->setVertAlign( Control::ALIGN_TOP );
+    s_masterGrid->setControl( 0, 1, s_inactiveBox );
 
     canvas->addControl( s_masterGrid );
 }
@@ -409,12 +397,12 @@ updateControlPanel()
     // erase all child controls and just rebuild them b/c we're lazy.
 
     //Rebuild all the image layers    
-    s_imageBox->clearControls();
+    s_activeBox->clearControls();
 
     int row = 0;
 
     LabelControl* activeLabel = new LabelControl( "Map Layers", 20, osg::Vec4f(1,1,0,1) );
-    s_imageBox->setControl( 1, row++, activeLabel );
+    s_activeBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
     MapFrame mapf( s_activeMap.get() );
@@ -423,7 +411,7 @@ updateControlPanel()
     for (int i = layers.size()-1; i >= 0; --i)
     {
         Layer* layer = layers[i].get();
-        addLayerItem(s_imageBox, i, layers.size(), layer, true);
+        addLayerItem(s_activeBox, i, layers.size(), layer, true);
 
         if (layer->getStatus().isError())
         {
@@ -432,12 +420,14 @@ updateControlPanel()
     }
 
     // inactive layers:
+    s_inactiveBox->clearControls();
+
     if (!_inactive.empty())
     {
-        s_imageBox->setControl(0, row++, new LabelControl("Removed:", 18, osg::Vec4f(1,1,0,1)));
+        s_inactiveBox->setControl(0, row++, new LabelControl("Removed:", 18, osg::Vec4f(1,1,0,1)));
         for (InactiveLayers::const_iterator i = _inactive.begin(); i != _inactive.end(); ++i)
         {
-            createInactiveLayerItem(s_imageBox, row++, i->first, i->second);
+            createInactiveLayerItem(s_inactiveBox, row++, i->first, i->second);
         }
     }
 }

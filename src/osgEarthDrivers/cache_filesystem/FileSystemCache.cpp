@@ -42,6 +42,8 @@ using namespace osgEarth::Threading;
 #define OSG_EXT   ".osgb"
 #define OSG_COMPRESS
 
+#define OE_TEST OE_DEBUG
+
 namespace
 {
     /** 
@@ -124,7 +126,7 @@ namespace
         std::string                       _binPath;        // full path to the bin's root folder
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
-        mutable Threading::Mutex          _mutex;
+        mutable Threading::ReadWriteMutex _mutex;
     };
 
     void writeMeta( const std::string& fullPath, const Config& meta )
@@ -344,7 +346,7 @@ namespace
 
         osgDB::ReaderWriter::ReadResult r;
         {
-            ScopedMutexLock lock(_mutex);
+            ScopedReadLock lock(_mutex);
 
             r = _rw->readImage( path, dbo.get() );
             if ( !r.success() )
@@ -381,7 +383,7 @@ namespace
 
         osgDB::ReaderWriter::ReadResult r;
         {
-            ScopedMutexLock lock(_mutex);
+            ScopedReadLock lock(_mutex);
 
             r = _rw->readObject( path, dbo.get() );
             if ( !r.success() )
@@ -395,6 +397,7 @@ namespace
 
             ReadResult rr( r.getObject(), meta );
             rr.setLastModifiedTime(timeStamp);
+            OE_TEST << LC << "Read \"" << key << "\" from cache bin " << _binID << "\n";
             return rr;            
         }
     }
@@ -430,7 +433,7 @@ namespace
         bool objWriteOK = false;
         {
             // prevent cache contention:
-            ScopedMutexLock lock(_mutex);
+            ScopedWriteLock lock(_mutex);
 
             // make a home for it..
             if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
@@ -467,7 +470,7 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
+            OE_TEST << LC << "Wrote \"" << key << "\" to cache bin [" << getID() << "] path=" << fileURI.full() << "." << OSG_EXT << std::endl;
         }
         else
         {
@@ -499,7 +502,7 @@ namespace
         URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
-        ScopedMutexLock lock(_mutex);
+        ScopedWriteLock lock(_mutex);
         return ::unlink( path.c_str() ) == 0;
     }
 
@@ -510,7 +513,7 @@ namespace
         URI fileURI( getHashedKey(key), _metaPath );
         std::string path( fileURI.full() + OSG_EXT );
 
-        ScopedMutexLock lock(_mutex);
+        ScopedWriteLock lock(_mutex);
         return osgEarth::touchFile( path );
     }
 
@@ -518,8 +521,6 @@ namespace
     FileSystemCacheBin::purgeDirectory( const std::string& dir )
     {
         if ( !binValidForReading() ) return false;
-
-        ScopedMutexLock lock(_mutex);
 
         bool allOK = true;
         osgDB::DirectoryContents dc = osgDB::getDirectoryContents( dir );
@@ -563,7 +564,7 @@ namespace
         if ( !binValidForReading() )
             return false;
 
-        ScopedMutexLock lock(_mutex);
+        ScopedWriteLock lock(_mutex);
         std::string binDir = osgDB::getFilePath( _metaPath );
         return purgeDirectory( binDir );
     }
@@ -573,7 +574,7 @@ namespace
     {
         if ( !binValidForReading() ) return Config();
         
-        ScopedMutexLock lock(_mutex);
+        ScopedReadLock lock(_mutex);
 
         Config conf;
         conf.fromJSON( URI(_metaPath).getString(_zlibOptions.get()) );
@@ -586,7 +587,7 @@ namespace
     {
         if ( !binValidForWriting() ) return false;
         
-        ScopedMutexLock lock(_mutex);
+        ScopedWriteLock lock(_mutex);
 
         std::fstream output( _metaPath.c_str(), std::ios_base::out );
         if ( output.is_open() )

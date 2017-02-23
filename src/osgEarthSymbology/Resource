@@ -23,6 +23,8 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Tags>
 #include <osgEarth/Config>
+#include <osgEarth/Status>
+#include <osgEarth/ThreadingUtils>
 #include <vector>
 
 namespace osgEarth { namespace Symbology
@@ -36,6 +38,8 @@ namespace osgEarth { namespace Symbology
     protected:
         Resource(const Resource& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) {};
         Resource( const Config& config =Config() );
+
+        const Status& getStatus() const { return _status; }
 
         /** dtor */
         virtual ~Resource() { }
@@ -57,6 +61,11 @@ namespace osgEarth { namespace Symbology
 
         virtual Config getConfig() const;
         void mergeConfig( const Config& conf );
+
+    protected:
+
+        mutable Threading::Mutex _mutex;
+        mutable Status _status;
 
     private:
         std::string _name;

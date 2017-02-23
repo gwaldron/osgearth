@@ -23,7 +23,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osg/Depth>
 
-#define LC "[ModelLayer] "
+#define LC "[ModelLayer] \"" << getName() << "\" "
 
 using namespace osgEarth;
 
@@ -114,7 +114,7 @@ ModelLayerOptions::setDefaults()
     _terrainPatch.init( false );
 
     // Expressly set it here since we want no caching by default on a model layer.
-    _cachePolicy = CachePolicy::NO_CACHE;
+    //_cachePolicy = CachePolicy::NO_CACHE;
 }
 
 Config
@@ -203,6 +203,7 @@ _modelSource( new NodeModelSource(node) )
 ModelLayer::~ModelLayer()
 {
     //nop
+    OE_DEBUG << LC << "~ModelLayer\n";
 }
 
 void

@@ -127,16 +127,6 @@ namespace
     };
 
     typedef std::map< osg::ref_ptr<osg::Node>, std::vector<ModelInstance> > ModelInstanceMap;
-    
-    /**
-     * Simple bbox callback to return a static bbox.
-     */
-    struct StaticBoundingBox : public osg::Drawable::ComputeBoundingBoxCallback
-    {
-        osg::BoundingBox _bbox;
-        StaticBoundingBox( const osg::BoundingBox& bbox ) : _bbox(bbox) { }
-        osg::BoundingBox computeBound(const osg::Drawable&) const { return _bbox; }
-    };
 
     // assume x is positive
     static int nextPowerOf2(int x)
@@ -158,12 +148,11 @@ ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstan
                                                const osg::BoundingBox& bbox,
                                                bool                    optimize ) :
 _numInstances    ( numInstances ),
+_bbox(bbox),
 _optimize        ( optimize )
 {
     setTraversalMode( TRAVERSE_ALL_CHILDREN );
     setNodeMaskOverride( ~0 );
-
-    _staticBBoxCallback = new StaticBoundingBox(bbox);
 }
 
 
@@ -182,11 +171,7 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
                 geom->setUseVertexBufferObjects( true );
             }
 
-            if ( _staticBBoxCallback.valid() )
-            {
-                geom->setComputeBoundingBoxCallback( _staticBBoxCallback.get() ); 
-                geom->dirtyBound();
-            }
+            geom->setInitialBound(_bbox);
 
             // convert to use DrawInstanced
             for( unsigned p=0; p<geom->getNumPrimitiveSets(); ++p )
@@ -278,7 +263,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     // place a static bounding sphere on the graph since we intend to alter
     // the structure of the subgraph.
     const osg::BoundingSphere& bs = parent->getBound();
-    parent->setComputeBoundingSphereCallback( new StaticBound(bs) );
+    parent->setInitialBound(bs);
     parent->dirtyBound();
 
     ModelInstanceMap models;
@@ -319,8 +304,9 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 	int maxTBOSize = Registry::capabilities().getMaxTextureBufferSize();
 	// This is the total number of instances it can store
 	// We will iterate below. If the number of instances is larger than the buffer can store
-	// we make more tbos
-	int maxTBOInstancesSize = maxTBOSize/4;// 4 vec4s per matrix.
+    // we make more tbos
+    int matrixSize = 4 * 4 * sizeof(float); // 4 vec4's.
+    int maxTBOInstancesSize = maxTBOSize / matrixSize;
 
     // For each model:
     for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
@@ -351,7 +337,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
 		if (instances.size()<maxTBOInstancesSize)
 		{
-			tboSize = nextPowerOf2(instances.size());
+			tboSize = instances.size();
 			numInstancesToStore = instances.size();
 		}
 		else

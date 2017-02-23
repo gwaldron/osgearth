@@ -70,7 +70,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         GeometryPool* getGeometryPool() const { return _geometryPool; }
 
-        const MapFrame& getMapFrame();
+        void createMapFrame(MapFrame& frame) const;
+
+        MapInfo getMapInfo() const;
 
         TerrainEngineNode* getEngine() const { return _terrainEngine; }
 
@@ -110,7 +112,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     public:
 
-        MapFrame                              _frame;
+        osg::observer_ptr<const Map>          _map;
         osg::ref_ptr<TileNodeRegistry>        _liveTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;

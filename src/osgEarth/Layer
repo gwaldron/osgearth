@@ -247,6 +247,12 @@ namespace osgEarth
          */
         const char* getTypeName() const;
 
+        //! Map will call this function when this Layer is added to a Map.
+        virtual void addedToMap(const class Map*) { }
+
+        //! Map will call this function when this Layer is removed from a Map.
+        virtual void removedFromMap(const class Map*) { }
+
     public: // osg::Object
 
         virtual void setName(const std::string& name);
@@ -268,12 +274,6 @@ namespace osgEarth
         virtual void init();
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
-
-        // Map will call this function when this Layer is added to a Map.
-        virtual void addedToMap(const class Map*) { }
-
-        // Map will call this function when this Layer is removed from a Map.
-        virtual void removedFromMap(const class Map*) { }
 
     private:
         UID _uid;

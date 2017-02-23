@@ -597,10 +597,16 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
     if ( !key.valid() )
         return false;
 
+
+    const optional<unsigned>& MDL = getOptions().maxDataLevel();
+
     // trivial accept: no data extents = not enough info.
     if (_dataExtents.size() == 0)
     {
-        output = key;
+        if (MDL.isSet() && key.getLOD() > MDL.get())
+            output = key.createAncestorKey(MDL.get());
+        else
+            output = key;
         return true;
     }
 
@@ -626,12 +632,15 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
             {
                 // Got an intersetion; now test the LODs:
                 intersects = true;
-                
+
                 // Is the high-LOD set? If not, there's not enough information
                 // so just assume our key might be good.
                 if ( itr->maxLevel().isSet() == false )
                 {
-                    output = key;
+                    if (MDL.isSet() && layerLOD > MDL.get())
+                        output = key.createAncestorKey(MDL.get());
+                    else
+                        output = key;
                     return true;
                 }
 
@@ -639,7 +648,10 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
                 // If so, our key is good.
                 else if ( layerLOD <= (int)itr->maxLevel().get() )
                 {
-                    output = key;
+                    if (MDL.isSet() && layerLOD > MDL.get())
+                        output = key.createAncestorKey(MDL.get());
+                    else
+                        output = key;
                     return true;
                 }
 
@@ -655,6 +667,9 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
 
     if ( intersects )
     {
+        if (MDL.isSet() && highestLOD > MDL.get())
+            highestLOD = MDL.get();
+
         output = key.createAncestorKey( highestLOD );
         return true;
     }

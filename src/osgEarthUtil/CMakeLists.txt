@@ -27,6 +27,7 @@ SET(HEADERS_ROOT
     FlatteningLayer
     Fog
     Formatter
+    FractalElevationLayer
     GeodeticGraticule
     GraticuleExtension
     GraticuleNode
@@ -42,6 +43,7 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
+    MultiElevationLayer
     ObjectLocator
     Ocean
     PolyhedralLineOfSight
@@ -115,6 +117,7 @@ SET(SOURCES_ROOT
     FeatureQueryTool.cpp
     FlatteningLayer.cpp
     Fog.cpp
+    FractalElevationLayer.cpp
     GeodeticGraticule.cpp
     GraticuleExtension.cpp
     GraticuleTerrainEffect.cpp
@@ -128,6 +131,7 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
+    MultiElevationLayer.cpp
     ObjectLocator.cpp
     Ocean.cpp
     PolyhedralLineOfSight.cpp

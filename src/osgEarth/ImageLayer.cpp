@@ -517,6 +517,11 @@ ImageLayer::createImage(const TileKey&    key,
     return createImageInKeyProfile( key, progress );
 }
 
+GeoImage
+ImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+{
+    return createImageFromTileSource(key, progress);
+}
 
 GeoImage
 ImageLayer::createImageInNativeProfile(const TileKey&    key,
@@ -621,13 +626,18 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
 
     // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
+    
 
-    // validate that we have either a valid tile source, or we're cache-only.
-    if (getTileSource() || (cacheBin && policy.isCacheOnly()))
-    {
-        //nop = OK.
-    }
-    else
+    // Can we continue? Only if either:
+    //  a) there is a valid tile source plugin;
+    //  b) a tile source is not expected, meaning the subclass overrides getHeightField; or
+    //  c) we are in cache-only mode and there is a valid cache bin.
+    bool canContinue =
+        getTileSource() ||
+        !isTileSourceExpected() ||
+        (policy.isCacheOnly() && cacheBin != 0L);
+
+    if (!canContinue)
     {
         disable("Error: layer does not have a valid TileSource, cannot create image");
         return GeoImage::INVALID;
@@ -678,9 +688,16 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
             return GeoImage::INVALID;
         }
     }
-
-    // Get an image from the underlying TileSource.
-    result = createImageFromTileSource( key, progress );
+    
+    if (key.getProfile()->isHorizEquivalentTo(getProfile()))
+    {
+        result = createImageImplementation(key, progress);
+    }
+    else
+    {
+        // If the profiles are different, use a compositing method to assemble the tile.
+        result = assembleImage( key, progress );
+    }
 
     // Normalize the image if necessary
     if ( result.valid() )
@@ -740,7 +757,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isHorizEquivalentTo( getProfile() ) )
     {
-        return assembleImageFromTileSource( key, progress );
+        return assembleImage( key, progress );
     }
 
     // Good to go, ask the tile source for an image:
@@ -786,8 +803,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
 
 GeoImage
-ImageLayer::assembleImageFromTileSource(const TileKey&    key,
-                                        ProgressCallback* progress)
+ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
     GeoImage mosaicedImage, result;
 
@@ -818,7 +834,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            GeoImage image = createImageFromTileSource( *k, progress );
+            GeoImage image = createImageImplementation( *k, progress );
 
             if ( image.valid() )
             {
@@ -877,7 +893,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
                 parentKey.valid() && !image.valid();
                 parentKey = parentKey.createParentKey())
             {
-                image = createImageFromTileSource( parentKey, progress );
+                image = createImageImplementation( parentKey, progress );
                 if ( image.valid() )
                 {
                     GeoImage cropped;
@@ -928,7 +944,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
     }
     else
     {
-        OE_DEBUG << LC << "assembleImageFromTileSource: no intersections (" << key.str() << ")" << std::endl;
+        OE_DEBUG << LC << "assembleImage: no intersections (" << key.str() << ")" << std::endl;
     }
 
     // Final step: transform the mosaic into the requesting key's extent.

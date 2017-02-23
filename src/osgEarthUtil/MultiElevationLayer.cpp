@@ -109,6 +109,12 @@ MultiElevationLayer::open()
                     return setStatus(s);
                 }
 
+                // Take profile from the first successfully opened layer.
+                if (!getProfile())
+                {
+                    setProfile(elayer->getProfile());
+                }
+
                 _layers.push_back(elayer);
             }
             else
@@ -140,10 +146,10 @@ MultiElevationLayer::removedFromMap(const Map* map)
     }
 }
 
-GeoHeightField
-MultiElevationLayer::createHeightField(const TileKey& key, ProgressCallback* progress)
+osg::HeightField*
+MultiElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress)
 {
-    osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
+    osg::ref_ptr<osg::HeightField> heightField = new osg::HeightField();
     heightField->allocate(257, 257);
 
     // Initialize the heightfield to nodata
@@ -151,11 +157,11 @@ MultiElevationLayer::createHeightField(const TileKey& key, ProgressCallback* pro
 
     // Populate the heightfield and return it if it's valid
     if (_layers.populateHeightField(heightField.get(), key, 0, INTERP_BILINEAR, progress))
-    {                
-        return GeoHeightField(heightField.get(), key.getExtent());
+    {             
+        return heightField.release();
     }
     else
     {        
-        return GeoHeightField::INVALID;
+        return 0L;
     }
 }

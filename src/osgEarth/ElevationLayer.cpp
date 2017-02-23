@@ -231,6 +231,11 @@ ElevationLayer::getOrCreatePreCacheOp()
     return _preCacheOp.get();
 }
 
+osg::HeightField*
+ElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress)
+{
+    return createHeightFieldFromTileSource(key, progress);
+}
 
 osg::HeightField*
 ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
@@ -293,7 +298,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     else
     {
         // note: this method takes care of the vertical datum shift internally.
-        result = assembleHeightFieldFromTileSource( key, progress );
+        result = assembleHeightField( key, progress );
     }
 
     return result;
@@ -301,8 +306,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
 
 
 osg::HeightField*
-ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
-                                                  ProgressCallback* progress)
+ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progress)
 {			
     osg::HeightField* result = 0L;
 
@@ -324,7 +328,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
 
             if ( isKeyInRange(layerKey) )
             {
-                osg::HeightField* hf = createHeightFieldFromTileSource( layerKey, progress );
+                osg::HeightField* hf = createHeightFieldImplementation( layerKey, progress );
                 if ( hf )
                 {
                     heightFields.push_back( GeoHeightField(hf, layerKey.getExtent()) );
@@ -390,6 +394,12 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
 
 
 GeoHeightField
+ElevationLayer::createHeightField(const TileKey& key)
+{
+    return createHeightField(key, 0L);
+}
+
+GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
@@ -437,8 +447,16 @@ ElevationLayer::createHeightField(const TileKey&    key,
         // See if there's a persistent cache.
         CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
-        // validate that we have either a valid tile source, or we're cache-only.
-        if ( ! (getTileSource() || (policy.isCacheOnly() && cacheBin) ) )
+        // Can we continue? Only if either:
+        //  a) there is a valid tile source plugin;
+        //  b) a tile source is not expected, meaning the subclass overrides getHeightField; or
+        //  c) we are in cache-only mode and there is a valid cache bin.
+        bool canContinue =
+            getTileSource() ||
+            !isTileSourceExpected() ||
+            (policy.isCacheOnly() && cacheBin != 0L);
+
+        if (!canContinue)
         {
             disable("Error: layer does not have a valid TileSource, cannot create heightfield");
             return GeoHeightField::INVALID;
@@ -447,7 +465,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         // validate the existance of a valid layer profile.
         if ( !policy.isCacheOnly() && !getProfile() )
         {
-            disable("Could not establish a valid profile");
+            disable("Could not establish a valid profile.. did you set one?");
             return GeoHeightField::INVALID;
         }
 
@@ -483,15 +501,25 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
         if ( !hf.valid() )
         {
-            // bad tilesource? fail
-            if ( !getTileSource() || !getTileSource()->isOK() )
-                return GeoHeightField::INVALID;
+            // If no tile source is expected, create a height field by calling
+            // the raw inheritable method.
+            if (!isTileSourceExpected())
+            {
+                hf = createHeightFieldImplementation(key, progress);
+            }
 
-            if ( !isKeyInRange(key) )
-                return GeoHeightField::INVALID;
+            else
+            {
+                // bad tilesource? fail
+                if ( !getTileSource() || !getTileSource()->isOK() )
+                    return GeoHeightField::INVALID;
 
-            // build a HF from the TileSource.
-            hf = createHeightFieldFromTileSource( key, progress );
+                if ( !isKeyInRange(key) )
+                    return GeoHeightField::INVALID;
+
+                // build a HF from the TileSource.
+                hf = createHeightFieldImplementation( key, progress );
+            }
 
             // validate it to make sure it's legal.
             if ( hf.valid() && !validateHeightField(hf.get()) )

@@ -454,14 +454,15 @@ TileMap::create(const std::string& url,
 
 
 TileMap* 
-TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWriter::Options* options )
+TileMapReaderWriter::read( const std::string& location, const osgDB::Options* options )
 {
     TileMap* tileMap = NULL;
 
-    ReadResult r = URI(location).readString();
+    ReadResult r = URI(location).readString(options);
     if ( r.failed() )
     {
-        OE_DEBUG << LC << "Failed to read TMS tile map file from " << location << std::endl;
+        OE_DEBUG << LC << "Failed to read TMS tile map file from " << location
+            << " ... " << r.errorDetail() << std::endl;
         return 0L;
     }
     

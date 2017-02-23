@@ -133,7 +133,7 @@ namespace osgEarth { namespace Splat
         virtual const Status& open();
 
         // Creates an image for a tile key
-        virtual GeoImage createImage(const TileKey& key, ProgressCallback* progress);
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress);
 
     protected: // Layer
 

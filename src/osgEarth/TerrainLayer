@@ -318,6 +318,12 @@ namespace osgEarth
         // layer should try to open a tile source and fail if unsuccesful.
         void setTileSourceExpected(bool value) { _tileSourceExpected = value; }
 
+        //! Whether this layer expected a tilesource to be installed
+        bool isTileSourceExpected() const { return _tileSourceExpected; }
+
+        //! Subclass can set a profile on this layer before opening
+        void setProfile(const Profile* profile);
+
     private:
         bool                     _tileSourceExpected;
         mutable Threading::Mutex _initTileSourceMutex;

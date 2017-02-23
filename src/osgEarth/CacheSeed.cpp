@@ -56,7 +56,7 @@ bool CacheTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
     }
     else if (elevationLayer )
     {
-        GeoHeightField hf = elevationLayer->createHeightField( key );
+        GeoHeightField hf = elevationLayer->createHeightField(key, 0L);
         if (hf.valid())
         {                
             return true;

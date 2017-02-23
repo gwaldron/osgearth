@@ -596,7 +596,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Simple sky model:
     if (args.read("--sky"))
     {
-        mapNode->addExtension(Extension::create("sky_simple", ConfigOptions()) );
+        std::string ext = mapNode->getMap()->isGeocentric() ? "sky_simple" : "sky_gl";
+        mapNode->addExtension(Extension::create(ext, ConfigOptions()) );
     }
 
     // Simple ocean model:

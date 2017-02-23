@@ -423,8 +423,12 @@ updateControlPanel()
     for (int i = layers.size()-1; i >= 0; --i)
     {
         Layer* layer = layers[i].get();
-
         addLayerItem(s_imageBox, i, layers.size(), layer, true);
+
+        if (layer->getStatus().isError())
+        {
+            OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << "\n";
+        }
     }
 
     // inactive layers:

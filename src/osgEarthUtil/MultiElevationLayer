@@ -70,7 +70,10 @@ namespace osgEarth { namespace Util
 
     public: // ElevationLayer
 
-        virtual GeoHeightField createHeightField(const TileKey& key, ProgressCallback* progress);
+        // override to generate custom heightfield
+        virtual osg::HeightField* createHeightFieldImplementation(
+            const TileKey& key, 
+            ProgressCallback* progress);
 
     protected: // Layer
 

@@ -57,7 +57,8 @@ void LayerOptions::fromConfig(const Config& conf)
 
     conf.getIfSet("name", _name);
     conf.getIfSet("enabled", _enabled);
-    conf.getIfSet("cache_id", _cacheId);
+    conf.getIfSet("cache_id", _cacheId); // compat
+    conf.getIfSet("cacheid", _cacheId);
     conf.getObjIfSet("cache_policy", _cachePolicy);
 
     // legacy support:

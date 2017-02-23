@@ -55,6 +55,8 @@ RoadSurfaceLayer::init()
 {
     setTileSourceExpected(false);
 
+    setProfile(Profile::create("global-geodetic"));
+
     // Create a rasterizer for rendering nodes to images.
     _rasterizer = new TileRasterizer(); 
 
@@ -173,7 +175,7 @@ RoadSurfaceLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 }
 
 GeoImage
-RoadSurfaceLayer::createImage(const TileKey& key, ProgressCallback* progress)
+RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
 {
     if (getStatus().isError() || !_features.valid())
         return GeoImage::INVALID;

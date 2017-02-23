@@ -130,7 +130,7 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
     }
     else if (elevationLayer )
     {
-        GeoHeightField hf = elevationLayer->createHeightField( key );
+        GeoHeightField hf = elevationLayer->createHeightField(key, NULL);
         if (hf.valid())
         {
             // convert the HF to an image

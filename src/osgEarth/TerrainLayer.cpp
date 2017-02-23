@@ -357,7 +357,7 @@ TerrainLayer::open()
             {
                 OE_INFO << LC << "Opening in cache-only mode\n";
             }
-            else if (_tileSourceExpected)
+            else if (isTileSourceExpected())
             {
                 // Initialize the tile source once and only once.
                 ts = createAndOpenTileSource();
@@ -398,7 +398,7 @@ TerrainLayer::open()
         else
         {
             // User supplied the tile source, so attempt to get its profile:
-            _profile = _tileSource->getProfile();
+            setProfile(_tileSource->getProfile() );
             if (!_profile.valid())
             {
                 setStatus( Status::Error(getName(), "Cannot establish profile") );
@@ -432,7 +432,7 @@ TerrainLayer::open()
 void
 TerrainLayer::close()
 {
-    _profile = 0L;
+    setProfile(0L);
     _tileSource = 0L;
     _openCalled = false;
     setStatus(Status());
@@ -487,6 +487,12 @@ const Profile*
 TerrainLayer::getProfile() const
 {
     return _profile.get();
+}
+
+void
+TerrainLayer::setProfile(const Profile* profile)
+{
+    _profile = profile;
 }
 
 unsigned
@@ -580,7 +586,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
                 {
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
-                    _profile = Profile::create( meta->_sourceProfile.get() );
+                    setProfile( Profile::create(meta->_sourceProfile.get()) );
                     _tileSize = meta->_sourceTileSize.get();
                 }
 
@@ -594,20 +600,24 @@ TerrainLayer::getCacheBin(const Profile* profile)
 
         if (!metadataOK)
         {
-            // cache metadata does not exist, so try to create it. A valid TileSource is necessary for this.
-            if ( getTileSource() && getProfile() )
+            // cache metadata does not exist, so try to create it.
+            if ( getProfile() )
             {
                 meta = new CacheBinMetadata();
 
                 // no existing metadata; create some.
                 meta->_cacheBinId      = _runtimeCacheId;
                 meta->_sourceName      = this->getName();
-                meta->_sourceDriver    = getTileSource()->getOptions().getDriver();
                 meta->_sourceTileSize  = getTileSize();
                 meta->_sourceProfile   = getProfile()->toProfileOptions();
                 meta->_cacheProfile    = profile->toProfileOptions();
                 meta->_cacheCreateTime = DateTime().asTimeStamp();
-                meta->_dataExtents     = getTileSource()->getDataExtents();
+
+                if (getTileSource())
+                {
+                    meta->_sourceDriver    = getTileSource()->getOptions().getDriver();
+                    meta->_dataExtents     = getTileSource()->getDataExtents();
+                }
 
                 // store it in the cache bin.
                 std::string data = meta->getConfig().toJSON(false);
@@ -630,7 +640,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
             {
                 OE_WARN << LC <<
                     "Failed to create cache bin [" << _runtimeCacheId << "] "
-                    "because there is no valid tile source."
+                    "because there is no valid profile."
                     << std::endl;
 
                 cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
@@ -750,14 +760,14 @@ TerrainLayer::createAndOpenTileSource()
     // Set the profile from the TileSource if possible:
     if ( ts.valid() )
     {
-        if ( !_profile.valid() )
+        if (!_profile.valid())
         {
             OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
-            _profile = ts->getProfile();
+            setProfile(ts->getProfile());
         }
 
 
-        if ( _profile.valid() )
+        if (_profile.valid())
         {
             // create the final profile from any overrides:
             applyProfileOverrides();
@@ -798,7 +808,7 @@ TerrainLayer::applyProfileOverrides()
         {
             ProfileOptions po = _profile->toProfileOptions();
             po.vsrsString() = vdatum;
-            _profile = Profile::create(po);
+            setProfile( Profile::create(po) );
             changed = true;
         }
     }

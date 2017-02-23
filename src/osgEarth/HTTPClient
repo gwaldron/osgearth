@@ -173,7 +173,9 @@ namespace osgEarth
         const std::string& getMimeType() const;
 
         /** How long did it take to fetch this response (in seconds) */
-        double getDuration() const { return _duration_s; }        
+        double getDuration() const { return _duration_s; }     
+
+        const std::string& getMessage() const { return _message; }
 
     private:
         struct Part : public osg::Referenced
@@ -190,6 +192,7 @@ namespace osgEarth
         bool        _cancelled;
         double      _duration_s;
         TimeStamp   _lastModified;
+        std::string _message;
 
         Config getHeadersAsConfig() const;
 

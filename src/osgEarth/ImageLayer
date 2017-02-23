@@ -322,7 +322,7 @@ namespace osgEarth
          * image is in the profile of the key and will be reprojected, mosaiced and
          * cropped automatically.
          */
-        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+        GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
         /**
          * Creates an image that is in the image layer's native profile.
@@ -354,6 +354,11 @@ namespace osgEarth
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
 
+        //! Subclass can override this when not using a TileSource
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
+
+    private:
+
         // Creates an image that's in the same profile as the provided key.
         GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
 
@@ -364,9 +369,8 @@ namespace osgEarth
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+        GeoImage assembleImage(const TileKey& key, ProgressCallback* progress);
 
-        //ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;

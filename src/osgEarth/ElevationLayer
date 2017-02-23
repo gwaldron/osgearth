@@ -115,15 +115,25 @@ namespace osgEarth
         virtual ~ElevationLayer() { }
 
     public: // methods
+        
+        /**
+         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD 
+         * in the specified TileKey. The returned HeightField will always match the geospatial
+         * extents of that TileKey.
+         *
+         * @param key TileKey for which to create a heightfield.
+         */
+        GeoHeightField createHeightField(const TileKey& key);
 
         /**
          * Creates a GeoHeightField for this layer that corresponds to the extents and LOD 
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
+         *
+         * @param key TileKey for which to create a heightfield.
+         * @param progress Callback for tracking progress and cancelation
          */
-        virtual GeoHeightField createHeightField(
-            const TileKey&    key,
-            ProgressCallback* progress =0L );
+        GeoHeightField createHeightField(const TileKey& key, ProgressCallback* progress);
 
         /**
          * Whether this layer contains offsets instead of absolute heights
@@ -142,6 +152,18 @@ namespace osgEarth
 
         // ctor called by a subclass that owns the options structure
         ElevationLayer(ElevationLayerOptions* optionsPtr);
+
+        // Subclass can override this if setTileSourceExpected(true) was called.
+        virtual osg::HeightField* createHeightFieldImplementation(
+            const TileKey& key,
+            ProgressCallback* progress);
+        
+    private:
+
+        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
+
+        TileSource::HeightFieldOperation* getOrCreatePreCacheOp();
+        Threading::Mutex _mutex;
         
         // creates a geoHF directly from the tile source
         osg::HeightField* createHeightFieldFromTileSource( 
@@ -150,16 +172,9 @@ namespace osgEarth
 
         // assembles tiles from a layer that is not in the same profile as the map, and
         // returns a single tile in the map's profile.
-        osg::HeightField* assembleHeightFieldFromTileSource(
+        osg::HeightField* assembleHeightField(
             const TileKey&     key,
             ProgressCallback*  progress );
-        
-    private:
-
-        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
-
-        TileSource::HeightFieldOperation* getOrCreatePreCacheOp();
-        Threading::Mutex _mutex;
     };
 
 

@@ -303,7 +303,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
 
     // a checkbox to enable/disable the layer:
-    if (visibleLayer)
+    if (visibleLayer && layer->getEnabled())
     {
         CheckBoxControl* enabled = new CheckBoxControl( visibleLayer->getVisible() );
         enabled->addEventHandler( new ToggleLayerVisibility(visibleLayer) );
@@ -313,6 +313,8 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
 
     // the layer name
     LabelControl* name = new LabelControl( layer->getName() );
+    if (!layer->getEnabled())
+        name->setForeColor(osg::Vec4f(1,1,1,0.35));
     grid->setControl( gridCol, gridRow, name );
     gridCol++;
 
@@ -324,13 +326,14 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // status indicator
-    LabelControl* statusLabel = layer->getStatus().isOK()
-        ? new LabelControl("[ok]", osg::Vec4(0,1,0,1))
-        : new LabelControl("[error]", osg::Vec4(1,0,0,1));
+    LabelControl* statusLabel =
+        layer->getStatus().isError() ? new LabelControl("[error]", osg::Vec4(1,0,0,1)) :
+        !layer->getEnabled()?          new LabelControl("[disabled]", osg::Vec4(1,1,1,0.35)) :
+                                       new LabelControl("[ok]", osg::Vec4(0,1,0,1)) ;
     grid->setControl( gridCol, gridRow, statusLabel );
     gridCol++;
 
-    if (imageLayer)
+    if (imageLayer && layer->getEnabled() && imageLayer->getVisible())
     {
         // an opacity slider
         HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, imageLayer->getOpacity() );

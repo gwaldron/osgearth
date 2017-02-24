@@ -19,6 +19,7 @@
 #include <osgEarthUtil/FractalElevationLayer>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Map>
+#include <osgEarth/ImageUtils>
 #include <osgEarthUtil/SimplexNoise>
 #include <cstdlib> // for getenv
 
@@ -52,8 +53,17 @@ namespace
         // Make sure everything is OK and return open status
         Status initialize(const osgDB::Options* readOptions)
         {
-
             setProfile(Profile::createNamed("global-geodetic"));
+
+            // Try to load a secondary noise image:
+            if (options().noiseImageURI().isSet())
+            {
+                _noiseImage = options().noiseImageURI()->getImage(readOptions);
+                if (!_noiseImage.valid())
+                {
+                    return Status::Error(Status::ServiceUnavailable, "Failed to load noise image");
+                }
+            }
 
             return Status::OK();
         }
@@ -85,6 +95,9 @@ namespace
             noise2.setLacunarity(_options.lacunarity().get());
             noise2.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
 
+            ImageUtils::PixelReader noise3(_noiseImage.get());
+            noise3.setBilinear(true);
+
             osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), getPixelsPerTile(), getPixelsPerTile(), 0u);
             for (int s = 0; s < getPixelsPerTile(); ++s)
             {
@@ -96,12 +109,18 @@ namespace
                     float h = 0;
                     double n;
 
-                    scaleCoordsToLOD(u, v, _options.baseLOD().get(), key);
+                    double uScaled = u;
+                    double vScaled = v;
+                    scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get(), key);
 
+#if 1
                     // Step 1: apply a general, rolling bumpiness
-                    n = noise.getTiledValue(u, v);
+                    n = noise.getTiledValue(uScaled, vScaled);
                     h = n * _options.amplitude().get();
-
+#endif
+                    
+                    const double threshold = 0.15;
+#if 0
                     // Adjust the persistence based on... 
                     // here it's the first noise value, but later it might be the slope
                     // or the land class classification.
@@ -109,11 +128,21 @@ namespace
                     noise2.setPersistence(_options.persistence().get() + 0.5*f);
 
                     // Step 2: apply periodic permutations
-                    const double threshold = 0.15;
-                    n = noise2.getTiledValue(u, v);
+                    n = noise2.getTiledValue(u1, v1);
                     if (n > threshold) {
                         h += (n-threshold) * _options.amplitude().get() * (1.0+threshold);
                     }
+#endif
+
+                    uScaled = u, vScaled = v;
+                    scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get()+3, key);
+
+                    float uMod, vMod;
+                    uMod = fmod(uScaled, 1.0f);
+                    vMod = fmod(vScaled, 1.0f);
+                    float n3 = noise3(uMod, vMod).r();
+                    h += n3 * _options.amplitude().get();
+
 
                     hf->setHeight(s, t, h);
 
@@ -139,7 +168,7 @@ namespace
         void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
         {
             double dL = (double)((int)key.getLOD() - baseLOD);
-            double factor = pow(2.0, dL); //exp2(dL);
+            double factor = exp2(dL); // pow(2.0, dL); //exp2(dL);
             double invFactor = 1.0/factor;
 
             u *= invFactor;
@@ -167,9 +196,12 @@ namespace
             }
         }
 
+        const FractalElevationLayerOptions& options() const { return _options; }
+
         const FractalElevationLayerOptions& _options;
         SimplexNoise _noise;
         bool _debug;
+        osg::ref_ptr<osg::Image> _noiseImage;
     };
 }
 
@@ -194,6 +226,7 @@ FractalElevationLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("frequency", _frequency);
     conf.getIfSet("persistence", _persistence);
     conf.getIfSet("lacunarity", _lacunarity);
+    conf.getIfSet("noise_image", _noiseImageURI);
 }
 
 Config
@@ -206,6 +239,7 @@ FractalElevationLayerOptions::getConfig() const
     conf.addIfSet("frequency", _frequency);
     conf.addIfSet("persistence", _persistence);
     conf.addIfSet("lacunarity", _lacunarity);
+    conf.addIfSet("noise_image", _noiseImageURI);
     return conf;
 }
 

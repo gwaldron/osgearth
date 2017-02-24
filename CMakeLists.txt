@@ -334,6 +334,15 @@ ELSE()
     SET(OSGEARTH_NRL_STATIC_LIBRARIES FALSE)
 ENDIF()
 
+SET(ALL_GDAL_INCLUDES
+	${GDAL_INCLUDE_DIR}
+	${GDAL_INCLUDE_DIR}/gcore
+	${GDAL_INCLUDE_DIR}/frmts
+	${GDAL_INCLUDE_DIR}/frmts/vrt
+	${GDAL_INCLUDE_DIR}/port
+	${GDAL_INCLUDE_DIR}/ogr
+	${GDAL_INCLUDE_DIR}/alg )
+
 # If osgEarth is dynamic but GDAL is static, each osgEarth shared library that uses GDAL will have its own instance
 # of the GDAL globals.  This define is to let GDALInitializer know it must deal with this.
 IF(OSGEARTH_NRL_STATIC_LIBRARIES AND DYNAMIC_OSGEARTH)

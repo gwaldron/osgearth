@@ -18,6 +18,8 @@
  */
 
 #include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/ImageUtils>
+#include <osg/Image>
 #include <algorithm>
 
 #define POW2(x) ((double)(x==0 ? 1 : (2 << (x-1))))
@@ -135,6 +137,21 @@ _lacunarity( DefaultLacunarity ),
 _low       ( DefaultRangeLow ),
 _high      ( DefaultRangeHigh ),
 _normalize ( DefaultNormalize )
+{
+    for(unsigned int i=0; i<512; i++)
+    {
+        permMod12[i] = (unsigned char)(perm[i] % 12);
+    }
+}
+
+SimplexNoise::SimplexNoise(const SimplexNoise& rhs) :
+_octaves   ( rhs._octaves ),
+_freq      ( rhs._freq ),
+_pers      ( rhs._pers ),
+_lacunarity( rhs._lacunarity ),
+_low       ( rhs._low ),
+_high      ( rhs._high ),
+_normalize ( rhs._normalize )
 {
     for(unsigned int i=0; i<512; i++)
     {
@@ -636,4 +653,61 @@ double SimplexNoise::Noise(double x, double y, double z, double w) const
     }
     // Sum up and scale the result to cover the range [-1,1]
     return 27.0 * (n0 + n1 + n2 + n3 + n4);
+}
+
+osg::Image*
+SimplexNoise::createSeamlessImage(unsigned dim) const
+{
+    if (dim == 0) return 0L;
+
+    // Copy this generator and set a [0..1] range.
+    SimplexNoise noise(*this);
+    noise.setRange(0.0, 1.0);
+    noise.setNormalize(true);
+
+    osg::Image* image = new osg::Image();
+    image->allocateImage(dim, dim, 1, GL_RED, GL_UNSIGNED_BYTE);
+    ImageUtils::PixelWriter write(image);
+
+    float minN =  FLT_MAX;
+    float maxN = -FLT_MAX;
+
+    // populate the image, tracking the min and max noise readings:
+    osg::Vec4f value;
+    for (unsigned s = 0; s < dim; ++s)
+    {
+        double u = (double)s / (double)dim;
+        for (unsigned t = 0; t < dim; ++t)
+        {
+            double v = (double)t / (double)dim;
+            value.r() = noise.getTiledValue(u, v);
+            minN = std::min(minN, value.r());
+            maxN = std::max(maxN, value.r());
+            write(value, s, t);
+        }        
+    }
+
+    if (getNormalize())
+    {
+        // Histogram stretch to [0..1]
+        float scale = 1.0/(maxN-minN);
+        float bias = -minN;
+
+        OE_INFO << "minN=" << minN << "; maxN=" << maxN << "; scale=" << scale << "; bias=" << bias << "\n";
+
+        ImageUtils::PixelReader read(image);
+        read.setBilinear(false);
+
+        for (unsigned s = 0; s < dim; ++s)
+        {
+            for (unsigned t = 0; t < dim; ++t)
+            {
+                value = read(s, t);
+                value.r() = (value.r()+bias)*scale;
+                write(value, s, t);
+            }
+        }
+    }
+
+    return image;
 }

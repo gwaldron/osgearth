@@ -34,6 +34,7 @@ namespace osgEarth { namespace Util
     {
     public:
         SimplexNoise();
+        SimplexNoise(const SimplexNoise& rhs);
         virtual ~SimplexNoise() { }
 
         static const double DefaultFrequency;
@@ -128,6 +129,12 @@ namespace osgEarth { namespace Util
         double getTiledValue(double x, double y) const;
         
         double getTiledValueWithTurbulence(double x, double y, double F) const;
+
+        /**
+         * Creates a tileable image of the requested dimensions.
+         * The image will be histogram-stretched in the range [0..1].
+         */
+        class osg::Image* createSeamlessImage(unsigned dim) const;
 
     private:
         // Inner class to speed up gradient computations

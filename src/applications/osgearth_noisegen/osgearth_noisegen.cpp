@@ -41,6 +41,16 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 
+int usage()
+{
+    OE_WARN << "\n"
+        "osgearth_noisegen --size n             ; image dimension\n"
+        "                  --out string         ; output filename\n"
+        "                  [--frequency n]      ; default = 16\n"
+        "                  [--octaves n]        ; default = 12\n"
+        ;
+    return -1;
+}
 /**
  * How to create a simple osgEarth map and display it.
  */
@@ -50,18 +60,22 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
 
     int dim;
-    if (!arguments.read("--size", dim)) {
-        OE_WARN << "Require --size\n";
-        return -1;
-    }
+    if (!arguments.read("--size", dim))
+        return usage();
 
     std::string out;
     if (!arguments.read("--out", out))
-        return -1;
+        return usage();
+
+    double freq = 16.0;
+    arguments.read("--frequency", freq);
+
+    int octaves = 12;
+    arguments.read("--octaves", octaves);
 
     SimplexNoise noise;
-    noise.setFrequency(16.0);
-    noise.setOctaves(12);
+    noise.setFrequency(freq);
+    noise.setOctaves(octaves);
     noise.setNormalize(true);
     osg::Image* image = noise.createSeamlessImage(dim);
     osgDB::writeImageFile(*image, out);

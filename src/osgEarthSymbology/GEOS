@@ -26,6 +26,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/Geometry>
 #include <geos/geom/Geometry.h>
+#include <geos/geom/GeometryFactory.h>
 
 namespace osgEarth { namespace Symbology
 {
@@ -45,7 +46,7 @@ namespace osgEarth { namespace Symbology
         void disposeGeometry(geos::geom::Geometry* input);
 
     protected:
-        geos::geom::GeometryFactory* _factory;
+        geos::geom::GeometryFactory::unique_ptr _factory;
     };
 
 } } // namespace osgEarth::Features

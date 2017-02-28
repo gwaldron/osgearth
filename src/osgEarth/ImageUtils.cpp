@@ -1931,16 +1931,19 @@ ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
 _image     (image),
 _bilinear  (false)
 {
-    _normalized = ImageUtils::isNormalized(image);
-    _colMult = _image->getPixelSizeInBits() / 8;
-    _rowMult = _image->getRowSizeInBytes();
-    _imageSize = _image->getImageSizeInBytes();
-    GLenum dataType = _image->getDataType();
-    _reader = getReader( _image->getPixelFormat(), dataType );
-    if ( !_reader )
+    if (image)
     {
-        OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
-        _reader = &ColorReader<0,GLbyte>::read;
+        _normalized = ImageUtils::isNormalized(image);
+        _colMult = _image->getPixelSizeInBits() / 8;
+        _rowMult = _image->getRowSizeInBytes();
+        _imageSize = _image->getImageSizeInBytes();
+        GLenum dataType = _image->getDataType();
+        _reader = getReader( _image->getPixelFormat(), dataType );
+        if ( !_reader )
+        {
+            OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
+            _reader = &ColorReader<0,GLbyte>::read;
+        }
     }
 }
 
@@ -2062,16 +2065,19 @@ namespace
 ImageUtils::PixelWriter::PixelWriter(osg::Image* image) :
 _image(image)
 {
-    _normalized = ImageUtils::isNormalized(image);
-    _colMult = _image->getPixelSizeInBits() / 8;
-    _rowMult = _image->getRowSizeInBytes();
-    _imageSize = _image->getImageSizeInBytes();
-    GLenum dataType = _image->getDataType();
-    _writer = getWriter( _image->getPixelFormat(), dataType );
-    if ( !_writer )
+    if (image)
     {
-        OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
-        _writer = &ColorWriter<0, GLbyte>::write;
+        _normalized = ImageUtils::isNormalized(image);
+        _colMult = _image->getPixelSizeInBits() / 8;
+        _rowMult = _image->getRowSizeInBytes();
+        _imageSize = _image->getImageSizeInBytes();
+        GLenum dataType = _image->getDataType();
+        _writer = getWriter( _image->getPixelFormat(), dataType );
+        if ( !_writer )
+        {
+            OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
+            _writer = &ColorWriter<0, GLbyte>::write;
+        }
     }
 }
 

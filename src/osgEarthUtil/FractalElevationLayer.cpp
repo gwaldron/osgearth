@@ -34,7 +34,7 @@ REGISTER_OSGEARTH_LAYER(fractal_elevation, FractalElevationLayer);
 
 namespace
 {
-    //! TileSource that provided elevation fiends to the FratalElevationLayer.
+    //! TileSource that provided elevation fiends to the FractalElevationLayer.
     class FractalElevationTileSource : public TileSource
     {
     public:
@@ -55,13 +55,21 @@ namespace
         {
             setProfile(Profile::createNamed("global-geodetic"));
 
+            // Build the first noise image in memory.
+            SimplexNoise noise;
+            noise.setFrequency(_options.frequency().get());
+            noise.setPersistence(_options.persistence().get());
+            noise.setLacunarity(_options.lacunarity().get());
+            noise.setOctaves(12u);
+            _noiseImage1 = noise.createSeamlessImage(1024u);
+
             // Try to load a secondary noise image:
             if (options().noiseImageURI().isSet())
             {
-                _noiseImage = options().noiseImageURI()->getImage(readOptions);
-                if (!_noiseImage.valid())
+                _noiseImage2 = options().noiseImageURI()->getImage(readOptions);
+                if (!_noiseImage2.valid())
                 {
-                    return Status::Error(Status::ServiceUnavailable, "Failed to load noise image");
+                    //return Status::Error(Status::ServiceUnavailable, "Failed to load noise image");
                 }
             }
 
@@ -78,25 +86,20 @@ namespace
         {
             double min_n = FLT_MAX, max_n = -FLT_MAX;
 
-            // Configure the noise function:
-            SimplexNoise noise;
-            noise.setNormalize(true);
-            noise.setRange(-1.0, 1.0);
-            noise.setFrequency(_options.frequency().get());
-            noise.setPersistence(_options.persistence().get());
-            noise.setLacunarity(_options.lacunarity().get());
-            noise.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
-            
-            SimplexNoise noise2;
-            noise2.setNormalize(true);
-            noise2.setRange(-1.0, 1.0);
-            noise2.setFrequency(_options.frequency().get() * 2.0);
-            noise2.setPersistence(_options.persistence().get());
-            noise2.setLacunarity(_options.lacunarity().get());
-            noise2.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
+            //// Configure the noise function:
+            //SimplexNoise noise;
+            //noise.setNormalize(true);
+            //noise.setRange(-1.0, 1.0);
+            //noise.setFrequency(_options.frequency().get());
+            //noise.setPersistence(_options.persistence().get());
+            //noise.setLacunarity(_options.lacunarity().get());
+            //noise.setOctaves(std::min(12u, key.getLOD() - _options.baseLOD().get()));
 
-            ImageUtils::PixelReader noise3(_noiseImage.get());
-            noise3.setBilinear(true);
+            ImageUtils::PixelReader noise1(_noiseImage1.get());
+            noise1.setBilinear(true);
+
+            ImageUtils::PixelReader noise2(_noiseImage2.get());
+            noise2.setBilinear(true);
 
             osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), getPixelsPerTile(), getPixelsPerTile(), 0u);
             for (int s = 0; s < getPixelsPerTile(); ++s)
@@ -108,41 +111,37 @@ namespace
 
                     float h = 0;
                     double n;
+                    double uScaled, vScaled;
 
-                    double uScaled = u;
-                    double vScaled = v;
-                    scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get(), key);
+                    // Step 1
+                    if (_noiseImage1.valid())
+                    {
+                        uScaled = u, vScaled = v;
+                        scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get(), key);
 
-#if 1
-                    // Step 1: apply a general, rolling bumpiness
-                    n = noise.getTiledValue(uScaled, vScaled);
-                    h = n * _options.amplitude().get();
-#endif
-                    
-                    const double threshold = 0.15;
-#if 0
-                    // Adjust the persistence based on... 
-                    // here it's the first noise value, but later it might be the slope
-                    // or the land class classification.
-                    double f = 0.5*(n+1.0);
-                    noise2.setPersistence(_options.persistence().get() + 0.5*f);
+                        float uMod, vMod;
+                        uMod = fmod(uScaled, 1.0f);
+                        vMod = fmod(vScaled, 1.0f);
 
-                    // Step 2: apply periodic permutations
-                    n = noise2.getTiledValue(u1, v1);
-                    if (n > threshold) {
-                        h += (n-threshold) * _options.amplitude().get() * (1.0+threshold);
+                        n = noise1(uMod, vMod).r();
+                        h += n * _options.amplitude().get();
                     }
-#endif
 
-                    uScaled = u, vScaled = v;
-                    scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get()+3, key);
+                    //// Step 1: apply a general, rolling bumpiness
+                    //n = noise.getTiledValue(uScaled, vScaled);
+                    //h = n * _options.amplitude().get();
 
-                    float uMod, vMod;
-                    uMod = fmod(uScaled, 1.0f);
-                    vMod = fmod(vScaled, 1.0f);
-                    float n3 = noise3(uMod, vMod).r();
-                    h += n3 * _options.amplitude().get();
+                    if (_noiseImage2.valid())
+                    {
+                        uScaled = u, vScaled = v;
+                        scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get() + 3, key);
 
+                        float uMod, vMod;
+                        uMod = fmod(uScaled, 1.0f);
+                        vMod = fmod(vScaled, 1.0f);
+                        float n3 = noise2(uMod, vMod).r();
+                        h += n3 * _options.amplitude().get();
+                    }
 
                     hf->setHeight(s, t, h);
 
@@ -201,7 +200,8 @@ namespace
         const FractalElevationLayerOptions& _options;
         SimplexNoise _noise;
         bool _debug;
-        osg::ref_ptr<osg::Image> _noiseImage;
+        osg::ref_ptr<osg::Image> _noiseImage1;
+        osg::ref_ptr<osg::Image> _noiseImage2;
     };
 }
 

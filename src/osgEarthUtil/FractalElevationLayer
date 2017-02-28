@@ -81,7 +81,7 @@ namespace osgEarth { namespace Util
 
 
     /**
-     * Elevation layer that...
+     * Elevation layer that adds fractal noise offset values.
      */
     class OSGEARTHUTIL_EXPORT FractalElevationLayer : public ElevationLayer
     {

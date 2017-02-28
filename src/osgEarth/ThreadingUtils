@@ -198,12 +198,17 @@ namespace osgEarth { namespace Threading
     class Promise
     {
     public:
-        const Future<T>& getFuture() const { return _future; }
+        const Future<T> getFuture() const { return _future; }
 
         void resolve(T* value) {
             _future._objRef->_obj = value;
             _future._ev->set();
         }
+
+        bool isAbandoned() const {
+            return _future._objRef->refereneCount() == 1;
+        }
+
     private:
         Future<T> _future;
     };

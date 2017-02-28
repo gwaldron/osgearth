@@ -50,6 +50,8 @@ using namespace osgEarth::ShaderComp;
 
 #define MAX_PROGRAM_CACHE_SIZE 128
 
+//#define PREALLOCATE_APPLY_VARS
+
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
 //------------------------------------------------------------------------
@@ -692,6 +694,10 @@ _isAbstract        ( false )
     // a template object to hold program data (so we don't have to dupliate all the 
     // osg::Program methods..)
     _template = new osg::Program();
+
+#ifdef PREALLOCATE_APPLY_VARS
+    _apply.resize(64u);
+#endif
 }
 
 
@@ -714,6 +720,10 @@ _isAbstract        ( rhs._isAbstract )
     {
         addBindAttribLocation( attribute->first, attribute->second );
     }
+    
+#ifdef PREALLOCATE_APPLY_VARS
+    _apply.resize(64u);
+#endif
 }
 
 VirtualProgram::~VirtualProgram()
@@ -833,7 +843,7 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
     }
 
     // Resize the buffered_object
-    _apply.resize(maxSize);
+    //_apply.resize(maxSize);
 
     _vpStackMemory._item.resize(maxSize);
 
@@ -1169,6 +1179,7 @@ VirtualProgram::apply( osg::State& state ) const
 
     if ( !program.valid() )
     {
+#ifdef PREALLOCATE_APPLY_VARS
         // Access the resuable shader map for this context. Bypasses reallocation overhead.
         ApplyVars& local = _apply[contextID];
 
@@ -1176,6 +1187,9 @@ VirtualProgram::apply( osg::State& state ) const
         local.accumAttribBindings.clear();
         local.accumAttribAliases.clear();
         local.programKey.clear();
+#else
+        ApplyVars local;
+#endif
     
         // If we are inheriting, build the active shader map up to this point
         // (but not including this VP).

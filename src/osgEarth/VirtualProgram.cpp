@@ -50,7 +50,9 @@ using namespace osgEarth::ShaderComp;
 
 #define MAX_PROGRAM_CACHE_SIZE 128
 
-//#define PREALLOCATE_APPLY_VARS
+#define PREALLOCATE_APPLY_VARS 1
+
+#define MAX_CONTEXTS 16
 
 #define MAKE_SHADER_ID(X) osgEarth::hashString( X )
 
@@ -696,7 +698,11 @@ _isAbstract        ( false )
     _template = new osg::Program();
 
 #ifdef PREALLOCATE_APPLY_VARS
-    _apply.resize(64u);
+    _apply.resize(MAX_CONTEXTS);
+#endif
+
+#ifdef USE_STACK_MEMORY
+    _vpStackMemory._item.resize(MAX_CONTEXTS);
 #endif
 }
 
@@ -722,7 +728,11 @@ _isAbstract        ( rhs._isAbstract )
     }
     
 #ifdef PREALLOCATE_APPLY_VARS
-    _apply.resize(64u);
+    _apply.resize(MAX_CONTEXTS);
+#endif
+
+#ifdef USE_STACK_MEMORY
+    _vpStackMemory._item.resize(MAX_CONTEXTS);
 #endif
 }
 
@@ -845,7 +855,7 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
     // Resize the buffered_object
     //_apply.resize(maxSize);
 
-    _vpStackMemory._item.resize(maxSize);
+    //_vpStackMemory._item.resize(maxSize);
 
     _programCacheMutex.unlock();
 }

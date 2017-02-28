@@ -141,6 +141,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _bindings(0L)
         {
             //nop
+            _pcds.resize(64);
         }
 
         PerContextDrawState& getPCDS(unsigned contextID) { return _pcds[contextID]; }

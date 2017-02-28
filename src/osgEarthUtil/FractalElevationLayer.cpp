@@ -86,7 +86,7 @@ namespace
             noise.setPersistence(_options.persistence().get());
             noise.setLacunarity(_options.lacunarity().get());
             noise.setOctaves(std::min(12u, key.getLOD()-_options.baseLOD().get()));
-            
+
             SimplexNoise noise2;
             noise2.setNormalize(true);
             noise2.setRange(-1.0, 1.0);
@@ -118,10 +118,10 @@ namespace
                     n = noise.getTiledValue(uScaled, vScaled);
                     h = n * _options.amplitude().get();
 #endif
-                    
+
                     const double threshold = 0.15;
 #if 0
-                    // Adjust the persistence based on... 
+                    // Adjust the persistence based on...
                     // here it's the first noise value, but later it might be the slope
                     // or the land class classification.
                     double f = 0.5*(n+1.0);
@@ -168,7 +168,11 @@ namespace
         void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
         {
             double dL = (double)((int)key.getLOD() - baseLOD);
-            double factor = exp2(dL); // pow(2.0, dL); //exp2(dL);
+#ifdef HAVE_EXP2
+            double factor = exp2(dL); // pow(2.0, dL);
+#else
+            double factor = pow(2.0, dL); //exp2(dL);
+#endif
             double invFactor = 1.0/factor;
 
             u *= invFactor;
@@ -184,10 +188,10 @@ namespace
 
                 double ax = floor(tx * invFactor);
                 double ay = floor(ty * invFactor);
-            
+
                 double bx = ax * factor;
                 double by = ay * factor;
-            
+
                 double cx = bx + factor;
                 double cy = by + factor;
 

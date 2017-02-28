@@ -11,7 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
     ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler    
+    AutoClipPlaneHandler
     ArcGIS
     AtlasBuilder
     Common
@@ -85,7 +85,7 @@ set(TARGET_GLSL
     Graticule.vert.glsl
     Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
-    LogDepthBuffer.VertOnly.vert.glsl    
+    LogDepthBuffer.VertOnly.vert.glsl
     LogDepthBuffer.frag.glsl
     Shadowing.vert.glsl
     Shadowing.frag.glsl
@@ -95,7 +95,7 @@ set(TARGET_GLSL
 set(TARGET_IN
     Shaders.cpp.in)
 
-configure_shaders(            
+configure_shaders(
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
@@ -192,7 +192,7 @@ SET(LIB_PUBLIC_HEADERS
     ${HEADERS_COLORFILTER}
 )
 
-SET(LIB_COMMON_FILES 
+SET(LIB_COMMON_FILES
     ${SOURCES_ROOT} ${SOURCES_COLORFILTER}
 )
 
@@ -206,6 +206,13 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
 # Setting this tells ModuleInstall not to set source groups (since we're doing it here)
 SET(USE_CUSTOM_SOURCE_GROUPS 1)
 
+# Detect presence of exp2() (not available on all platforms)
+INCLUDE(CheckFunctionExists)
+SET(CMAKE_REQUIRED_INCLUDES cmath)
+CHECK_FUNCTION_EXISTS(exp2 HAVE_EXP2)
+IF(HAVE_EXP2)
+  ADD_DEFINITIONS(-DHAVE_EXP2)
+ENDIF()
 
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${GDAL_INCLUDE_DIR})

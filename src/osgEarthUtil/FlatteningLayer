@@ -43,6 +43,9 @@ namespace osgEarth { namespace Util
         FlatteningLayerOptions(const ConfigOptions& co = ConfigOptions()) :
             ElevationLayerOptions(co)
         {
+            _fill.init(true);
+            _lineWidth.init(40);
+            _bufferWidth.init(25);
             mergeConfig(_conf);
         }
         
@@ -67,6 +70,11 @@ namespace osgEarth { namespace Util
         optional<Distance>& bufferWidth() { return _bufferWidth; }
         const optional<Distance>& bufferWidth() const { return _bufferWidth; }
 
+        //! Whether to write all samples (default=false) with source elev instead of
+        //! writing NO_DATA_VALUE where no features exist
+        optional<bool>& fill() { return _fill; }
+        const optional<bool>& fill() const { return _fill; }
+
     public:
         Config getConfig() const
         {
@@ -76,6 +84,7 @@ namespace osgEarth { namespace Util
             conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("buffer_width", _bufferWidth);
+            conf.addIfSet("fill", _fill);
             return conf;
         }
 
@@ -87,6 +96,7 @@ namespace osgEarth { namespace Util
             conf.getIfSet("feature_source", _featureSourceLayer);
             conf.getIfSet("line_width", _lineWidth);
             conf.getIfSet("buffer_width", _bufferWidth);
+            conf.getIfSet("fill", _fill);
         }
         
     private:
@@ -95,6 +105,7 @@ namespace osgEarth { namespace Util
         optional<Distance> _lineWidth;
         optional<Distance> _bufferWidth;
         optional<std::string> _elevationBaseLayer;
+        optional<bool> _fill;
     };
 
 

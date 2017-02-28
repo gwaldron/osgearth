@@ -173,7 +173,8 @@ namespace
     // The height of the area is found by sampling a point internal to the polygon.
     // bufferWidth = width of transition from flat area to natural terrain.
     bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                           double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+                           double bufferWidth, ElevationEnvelope* envelope, 
+                           bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -258,6 +259,12 @@ namespace
                     wroteChanges = true;
                 }
 
+                else if (fillAllPixels)
+                {
+                    float h = envelope->getElevation(P.x(), P.y());
+                    hf->setHeight(col, row, h);
+                    // do not set wroteChanges
+                }
             }
         }
 
@@ -269,7 +276,8 @@ namespace
     // lineWidth = width of completely flat area
     // bufferWidth = width of transition from flat area to natural terrain
     bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                        double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+                        double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+                        bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
 
@@ -402,7 +410,14 @@ namespace
                     hf->setHeight(col, row, h);
 
                     wroteChanges = true;
-                }                
+                }
+
+                else if (fillAllPixels)
+                {
+                    float h = envelope->getElevation(P.x(), P.y());
+                    hf->setHeight(col, row, h);
+                    // do not set wroteChanges
+                }
             }
         }
 
@@ -410,12 +425,13 @@ namespace
     }
     
     bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                   double lineWidth, double bufferWidth, ElevationEnvelope* envelope, ProgressCallback* progress)
+                   double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+                   bool fillAllPixels, ProgressCallback* progress)
     {
         if (geom->isLinear())
-            return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, progress);
+            return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, fillAllPixels, progress);
         else
-            return integratePolygons(key, hf, geom, geomSRS, bufferWidth, envelope, progress);
+            return integratePolygons(key, hf, geom, geomSRS, bufferWidth, envelope, fillAllPixels, progress);
     }
 }
 
@@ -562,8 +578,10 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
         // Resolve the buffering widths:
         double lineWidthLocal = lineWidth()->as(workingSRS->getUnits());
         double bufferWidthLocal = bufferWidth()->as(workingSRS->getUnits());
+
+        bool fill = (this->fill() == true);
         
-        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, progress) || (progress && progress->isCanceled()))
+        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress) || (progress && progress->isCanceled()))
         {
             //double t_create = OE_GET_TIMER(create);
             //OE_INFO << LC << key.str() << " : t=" << t_create << "s\n";
@@ -586,10 +604,9 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
 ElevationLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
-_optionsConcrete(options),
-_mapCallback(0L)
+_optionsConcrete(options)
 {
-    // always call base class initialize
+    // always call base class initializes
     ElevationLayer::init();
     
     // Experiment with this and see what will work.
@@ -715,13 +732,10 @@ FlatteningLayer::addedToMap(const Map* map)
 
         // Listen for our specified base layer to arrive/depart the map.
         // setBaseLayer will be automatically called.
-        if (options().elevationBaseLayer().isSet())
-        {
-            _baseLayerListener.listen(
-                map, 
-                options().elevationBaseLayer().get(), 
-                this, &FlatteningLayer::setBaseLayer);
-        }
+        _baseLayerListener.listen(
+            map, 
+            options().elevationBaseLayer().get(), 
+            this, &FlatteningLayer::setBaseLayer);
         
         // Listen for our feature source layer to arrive, if there is one.
         if (options().featureSourceLayer().isSet())
@@ -737,8 +751,6 @@ FlatteningLayer::addedToMap(const Map* map)
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
-    if (_mapCallback)
-        map->removeMapCallback(_mapCallback);
-    _mapCallback = 0L;
+    _baseLayerListener.clear();
+    _featureLayerListener.clear();
 }
-

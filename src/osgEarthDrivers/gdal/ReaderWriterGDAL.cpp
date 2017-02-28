@@ -119,7 +119,7 @@ typedef struct
 } BandProperty;
 
 static void
-getFiles(const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
+getFiles(const osgDB::Options& options, const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
 {
     if (osgDB::fileType(file) == osgDB::DIRECTORY)
     {
@@ -128,7 +128,7 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, const st
         {
             if (*itr == "." || *itr == "..") continue;
             std::string f = osgDB::concatPaths(file, *itr);
-            getFiles(f, exts, blackExts, files);
+            getFiles(options, f, exts, blackExts, files);
         }
     }
     else
@@ -165,7 +165,14 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, const st
 
         if (fileValid)
         {
-          files.push_back(osgDB::convertFileNameToNativeStyle(file));
+            std::string fullFilename = file;
+            if (!osgDB::fileExists(file))
+            {
+                fullFilename = osgDB::findDataFile(file, &options);
+                if (fullFilename.empty())
+                    fullFilename = file;
+            }
+            files.push_back(osgDB::convertFileNameToNativeStyle(fullFilename));
         }
     }
 }
@@ -771,7 +778,7 @@ public:
 					OE_DEBUG << LC << "Blacklisting Extension: " << blackExts[i] << std::endl;
 				}
 
-                getFiles(source, exts, blackExts, files);
+                                getFiles(*_dbOptions, source, exts, blackExts, files);
 
                 OE_INFO << LC << "Identified " << files.size() << " files:" << std::endl;
                 for (unsigned int i = 0; i < files.size(); ++i)

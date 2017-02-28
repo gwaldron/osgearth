@@ -23,11 +23,8 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #undef  LC
 #define LC "[DrawState] "
 
-
-// Ensures that the Uniform Locations in the DrawState correspond to
-// the currently applied program object.
 void
-DrawState::refresh(osg::RenderInfo& ri)
+PerContextDrawState::refresh(osg::RenderInfo& ri, const RenderBindings* bindings)
 {
     // Establish a GL Extensions handle:
     if (!_ext.valid())
@@ -36,9 +33,9 @@ DrawState::refresh(osg::RenderInfo& ri)
     }
 
     // Size the sampler states property:
-    if (_samplerState._samplers.size() < _bindings->size())
+    if (_samplerState._samplers.size() < bindings->size())
     {
-        _samplerState._samplers.resize(_bindings->size());
+        _samplerState._samplers.resize(bindings->size());
     }
 
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
@@ -53,9 +50,9 @@ DrawState::refresh(osg::RenderInfo& ri)
 
         // for each sampler binding, initialize its state tracking structure 
         // and resolve its matrix uniform location:
-        for (unsigned i = 0; i < _bindings->size(); ++i)
+        for (unsigned i = 0; i < bindings->size(); ++i)
         {
-            const SamplerBinding& binding = (*_bindings)[i];
+            const SamplerBinding& binding = (*bindings)[i];
             _samplerState._samplers[i]._matrixUL = pcp->getUniformLocation(osg::Uniform::getNameID(binding.matrixName()));
         }
 
@@ -75,7 +72,7 @@ DrawState::refresh(osg::RenderInfo& ri)
 }
 
 void
-DrawState::clear()
+PerContextDrawState::clear()
 {
     _samplerState.clear();
     _pcp = 0L;

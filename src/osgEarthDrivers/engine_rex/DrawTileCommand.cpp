@@ -24,8 +24,10 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #define LC "[DrawTileCommand] "
 
 void
-DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const
+DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced* layerData) const
 {
+    PerContextDrawState& ds = dsMaster.getPCDS(ri.getContextID());
+
     osg::State& state = *ri.getState();
 
     //OE_INFO << LC << "      TILE: " << _geom << std::endl;
@@ -71,7 +73,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layer
 
             if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
             {
-                state.setActiveTextureUnit((*ds._bindings)[s].unit());
+                state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
                 samplerState._texture = sampler._texture.get();
             }
@@ -103,7 +105,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layer
 
             if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
             {
-                state.setActiveTextureUnit((*ds._bindings)[s].unit());
+                state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
                 samplerState._texture = sampler._texture.get();
             }

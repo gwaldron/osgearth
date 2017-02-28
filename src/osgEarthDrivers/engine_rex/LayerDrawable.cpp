@@ -38,10 +38,10 @@ _clearOsgState(false)
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {    
-    DrawState& ds = *_drawState;
+    // Get this context's state values:
+    PerContextDrawState& ds = _drawState->getPCDS(ri.getContextID());
 
-    // Make sure the draw state is up to date:
-    ds.refresh(ri);
+    ds.refresh(ri, _drawState->_bindings);
 
     if (ds._layerOrderUL >= 0)
     {
@@ -73,7 +73,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, ds, 0L);
+        tile->draw(ri, *_drawState, 0L);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes

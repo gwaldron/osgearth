@@ -206,7 +206,7 @@ namespace osgEarth { namespace Threading
         }
 
         bool isAbandoned() const {
-            return _future._objRef->refereneCount() == 1;
+            return _future._objRef->referenceCount() == 1;
         }
 
     private:

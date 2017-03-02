@@ -354,7 +354,7 @@ ImageLayer::open()
     if ( options().shareTexMatUniformName().isSet() )
         _shareTexMatUniformName = options().shareTexMatUniformName().get();
     else
-        _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
+        _shareTexMatUniformName.init(Stringify() << _shareTexUniformName.get() << "_matrix");
 
     // If we are using createTexture to make image tiles,
     // we don't need to load a tile source plugin.

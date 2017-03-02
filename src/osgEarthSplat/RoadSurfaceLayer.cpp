@@ -243,6 +243,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     {
         // Schedule the rasterization and get the future:
         Threading::Future<osg::Image> image = _rasterizer->push(node.release(), getTileSize(), outputExtent);
+
         // Wait for rasterization to complete and return the image.
         return GeoImage(image.get(), key.getExtent());
     }

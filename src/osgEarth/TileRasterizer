@@ -33,6 +33,7 @@
 
 namespace osgEarth
 {
+    // placeholder - might go away -gw
     class OSGEARTH_EXPORT GeoNode : public osg::Object
     {
     public:
@@ -51,39 +52,41 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileRasterizer : public osg::Camera
     {
     public:
-        class Callback : public osg::Referenced
-        {
-        public:
-            virtual void operator()(osg::Image* image) =0;
-        };
-
-    public:
         /** Construct a new tile rasterizer camera */
         TileRasterizer();
 
         /**
-         * Schedule a rasterization.
+         * Schedule a rasterization to an osg::Image.
+         * @param node Node to render to the image
+         * @param size of the target image (both dimensions)
+         * @param extent geospatial extent of the node to render.
+         * @return Future image - blocks on .get()
+         */
+        Threading::Future<osg::Image> push(osg::Node* node, unsigned size, const GeoExtent& extent);
+
+        /**
+         * Schedule a rasterization to a texture.
          * @param node    Node to render to the texture
          * @param texture Texture to which to render the node
          * @param extent  Geographic extent of the output texture
          */
         void push(osg::Node* node, osg::Texture* texture, const GeoExtent& extent);
 
-        Threading::Future<osg::Image> push(osg::Node* node, unsigned size, const GeoExtent& extent);
-
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);
 
-    protected:
+    private:
         virtual ~TileRasterizer();
 
+        // internal - image with custom readback
         struct ReadbackImage : public osg::Image
         {
             osg::RenderInfo* _ri;
             void readPixels(int x, int y, int width, int height, GLenum pixelFormat, GLenum type, int packing);
         };
 
+        // internal - scheduled rasterization job
         struct Job
         {
             osg::ref_ptr<osg::Node> _node;

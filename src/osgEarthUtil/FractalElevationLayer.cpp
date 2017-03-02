@@ -119,9 +119,8 @@ namespace
                         uScaled = u, vScaled = v;
                         scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get(), key);
 
-                        float uMod, vMod;
-                        uMod = fmod(uScaled, 1.0f);
-                        vMod = fmod(vScaled, 1.0f);
+                        float uMod = (float)fmod(uScaled, 1.0);
+                        float vMod = (float)fmod(vScaled, 1.0);
 
                         n = noise1(uMod, vMod).r();
                         h += n * _options.amplitude().get();
@@ -136,9 +135,8 @@ namespace
                         uScaled = u, vScaled = v;
                         scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get() + 3, key);
 
-                        float uMod, vMod;
-                        uMod = fmod(uScaled, 1.0f);
-                        vMod = fmod(vScaled, 1.0f);
+                        float uMod = (float)fmod(uScaled, 1.0);
+                        float vMod = (float)fmod(vScaled, 1.0);
                         float n3 = noise2(uMod, vMod).r();
                         h += n3 * _options.amplitude().get();
                     }
@@ -167,7 +165,7 @@ namespace
         void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
         {
             double dL = (double)((int)key.getLOD() - baseLOD);
-            double factor = exp2(dL); // pow(2.0, dL); //exp2(dL);
+            double factor = pow(2.0, dL); //exp2(dL) .. exp2 not available on some platforms
             double invFactor = 1.0/factor;
 
             u *= invFactor;

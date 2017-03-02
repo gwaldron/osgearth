@@ -687,7 +687,7 @@ _north  ( north )
     if ( isValid() )
         recomputeCircle();
 
-    if (_srs->isGeographic())
+    if (_srs->isGeographic() && (_east-_west < 360.0))
     {
         _west = s_normalizeLongitude(_west);
         _east = s_normalizeLongitude(_east);
@@ -705,7 +705,7 @@ _north  ( bounds.yMax() )
     if ( isValid() )
         recomputeCircle();
 
-    if (_srs->isGeographic())
+    if (_srs->isGeographic() && (_east-_west < 360.0))
     {
         _west = s_normalizeLongitude(_west);
         _east = s_normalizeLongitude(_east);

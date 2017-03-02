@@ -48,7 +48,7 @@
             uniform mat4 CLASSMAP_matrix;
             vec4 oe_layer_tilec;
             void colorize(inout vec4 color) {
-                int c = int(255.0 * texture(CLASSMAP, (CLASSMAP_matrix*oe_layer_tilec).st).r);
+                int c = int(texture(CLASSMAP, (CLASSMAP_matrix*oe_layer_tilec).st).r);
                 ivec3 v;
                 if      (c == 0)  v.rgb = ivec3(0, 64, 0);      // forest
                 else if (c == 1)  v.rgb = ivec3(0, 127, 0);     // cropland

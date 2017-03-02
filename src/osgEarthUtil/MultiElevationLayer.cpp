@@ -87,8 +87,6 @@ MultiElevationLayer::init()
 const Status&
 MultiElevationLayer::open()
 {
-    OE_INFO << LC << "Opening\n";
-
     for (std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
         i != options().layers().end();
         ++i)
@@ -97,7 +95,7 @@ MultiElevationLayer::open()
         osg::ref_ptr<Layer> layer = Layer::create(co);
         if (layer.valid())
         {
-            OE_INFO << LC << "Created layer " << layer->getName() << "...\n";
+            OE_INFO << LC << "Adding layer \"" << layer->getName() << "\"...\n";
             ElevationLayer* elayer = dynamic_cast<ElevationLayer*>(layer.get());
             if (elayer)
             {

@@ -686,6 +686,12 @@ _north  ( north )
 {
     if ( isValid() )
         recomputeCircle();
+
+    if (_srs->isGeographic())
+    {
+        _west = s_normalizeLongitude(_west);
+        _east = s_normalizeLongitude(_east);
+    }
 }
 
 
@@ -698,6 +704,12 @@ _north  ( bounds.yMax() )
 {    
     if ( isValid() )
         recomputeCircle();
+
+    if (_srs->isGeographic())
+    {
+        _west = s_normalizeLongitude(_west);
+        _east = s_normalizeLongitude(_east);
+    }
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :

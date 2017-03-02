@@ -78,11 +78,18 @@ namespace osgEarth
     protected:
         virtual ~TileRasterizer();
 
-        struct Job {
+        struct ReadbackImage : public osg::Image
+        {
+            osg::RenderInfo* _ri;
+            void readPixels(int x, int y, int width, int height, GLenum pixelFormat, GLenum type, int packing);
+        };
+
+        struct Job
+        {
             osg::ref_ptr<osg::Node> _node;
             GeoExtent _extent;
             osg::ref_ptr<osg::Texture> _texture;
-            osg::ref_ptr<osg::Image> _image;
+            osg::ref_ptr<ReadbackImage> _image;
             osg::ref_ptr<osg::PixelBufferObject> _imagePBO;
             Threading::Promise<osg::Image> _imagePromise;
         };

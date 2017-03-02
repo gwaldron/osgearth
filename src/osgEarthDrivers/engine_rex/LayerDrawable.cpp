@@ -37,11 +37,11 @@ _clearOsgState(false)
 
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
-{    
-    DrawState& ds = *_drawState;
+{
+    // Get this context's state values:
+    PerContextDrawState& ds = _drawState->getPCDS(ri.getContextID());
 
-    // Make sure the draw state is up to date:
-    ds.refresh(ri);
+    ds.refresh(ri, _drawState->_bindings);
 
     if (ds._layerOrderUL >= 0)
     {
@@ -73,7 +73,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     for (DrawTileCommands::const_iterator tile = _tiles.begin(); tile != _tiles.end(); ++tile)
     {
-        tile->draw(ri, ds, 0L);
+        tile->draw(ri, *_drawState, 0L);
     }
 
     // If set, dirty all OSG state to prevent any leakage - this is sometimes
@@ -87,6 +87,12 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // unbind local buffers when finished.
         ds._ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ds._ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+
+        // When using a custom graphics context, this somehow gets set incorrectly.
+        // You can also set it when initializing the camera, but since we cannot
+        // count on the user doing that we have to restore it here.
+        glDrawBuffer(GL_BACK);
+        glReadBuffer(GL_BACK);
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the

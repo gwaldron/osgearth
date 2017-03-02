@@ -395,10 +395,8 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             if ( _proxy.lock(proxy) )
             {
                 if ( isVisible(proxy.get(), nv) )
-                {
                     traverse(node, nv);
-                    return;
-                }
+                return;
             }
         }
 

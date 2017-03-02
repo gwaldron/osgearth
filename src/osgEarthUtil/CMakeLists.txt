@@ -206,6 +206,13 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
 # Setting this tells ModuleInstall not to set source groups (since we're doing it here)
 SET(USE_CUSTOM_SOURCE_GROUPS 1)
 
+# Detect presence of exp2() (not available on all platforms)
+INCLUDE(CheckFunctionExists)
+SET(CMAKE_REQUIRED_INCLUDES cmath)
+CHECK_FUNCTION_EXISTS(exp2 HAVE_EXP2)
+IF(HAVE_EXP2)
+  ADD_DEFINITIONS(-DHAVE_EXP2)
+ENDIF()
 
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${GDAL_INCLUDE_DIR})

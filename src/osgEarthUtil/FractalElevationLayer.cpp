@@ -167,7 +167,11 @@ namespace
         void scaleCoordsToLOD(double& u, double& v, int baseLOD, const TileKey& key)
         {
             double dL = (double)((int)key.getLOD() - baseLOD);
-            double factor = exp2(dL); // pow(2.0, dL); //exp2(dL);
+#ifdef HAVE_EXP2
+            double factor = exp2(dL); // pow(2.0, dL);
+#else
+            double factor = pow(2.0, dL); //exp2(dL);
+#endif
             double invFactor = 1.0/factor;
 
             u *= invFactor;

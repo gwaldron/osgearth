@@ -354,7 +354,8 @@ namespace
                                     int value = _codemaps[L][code];
                                     if (value >= 0)
                                     {
-                                        texel.r() = ((float)value)/255.0f;
+                                        texel.r() = (float)value;
+                                        //texel.r() = ((float)value)/255.0f;
                                         write.f(texel, u, v);
                                         wrotePixel = true;
                                     }

@@ -77,7 +77,8 @@ namespace
         {
             if ( object ) 
             {
-                _lru.insert( key, std::make_pair(object, meta) );
+                osg::ref_ptr<const osg::Object> cloned = osg::clone(object, osg::CopyOp::DEEP_COPY_ALL);
+                _lru.insert( key, std::make_pair(cloned.get(), meta) );
                 return true;
             }
             else

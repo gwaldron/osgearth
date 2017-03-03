@@ -339,10 +339,10 @@ struct DeformationHandler : public osgGA::GUIEventHandler
         _tool(TOOL_CIRCLE),
         _root(root),
         _offset(-100.0f),
-        _radius(100.0),
-        _query( s_mapNode->getMap() )
+        _radius(100.0)
     {
         _map = s_mapNode->getMap();
+        _envelope = _map->getElevationPool()->createEnvelope(_map->getSRS(), 12u);
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -362,18 +362,15 @@ struct DeformationHandler : public osgGA::GUIEventHandler
             mapPoint.z() = 0;
 
             // do an elevation query:
-            double query_resolution = 0.0;  // max.
-            double out_resolution   = 0.0;
-            float  out_hamsl        = 0.0f;
+            typedef std::pair<float, float> ElAndRes;
+            ElAndRes elAndRes = _envelope->getElevationAndResolution(mapPoint.x(), mapPoint.y());
 
-            out_hamsl = _query.getElevation( 
-                mapPoint,
-                query_resolution, 
-                &out_resolution );
+            float hamsl = elAndRes.first;
+            float res = elAndRes.second;
 
-            if (out_hamsl != NO_DATA_VALUE)
+            if (hamsl != NO_DATA_VALUE)
             {
-                mapPoint.z() = out_hamsl;
+                mapPoint.z() = hamsl;
             }
 
             _mapPoint = mapPoint;
@@ -545,7 +542,8 @@ struct DeformationHandler : public osgGA::GUIEventHandler
     double _radius;
     GeoPoint _mapPoint;
     osg::ref_ptr < FeatureNode > _featureNode;
-    ElevationQuery   _query;
+    //ElevationQuery   _query;
+    osg::ref_ptr<ElevationEnvelope> _envelope;
 };
 
 

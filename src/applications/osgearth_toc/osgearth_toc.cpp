@@ -24,7 +24,6 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/ElevationPool>
-#include <osgEarth/ElevationQuery>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
@@ -46,7 +45,6 @@ static Grid* s_activeBox;
 static Grid* s_inactiveBox;
 static bool s_updateRequired = true;
 static MapModelChange s_change;
-static ElevationQuery s_eq;
 
 typedef std::map<std::string, ConfigOptions> InactiveLayers;
 static InactiveLayers _inactive;
@@ -118,8 +116,7 @@ struct DumpElevation : public osgGA::GUIEventHandler
             coords.fromWorld(s_activeMap->getSRS(), world);
             osg::ref_ptr<ElevationEnvelope> env = s_activeMap->getElevationPool()->createEnvelope(s_activeMap->getSRS(), 23u);
             float ep_elev = env->getElevation(coords.x(), coords.y());
-            float eq_elev = s_eq.getElevation(coords);
-            OE_NOTICE << "Elevations under mouse. EP=" << ep_elev << "; EQ=" << eq_elev << "\n";
+            OE_NOTICE << "Elevations under mouse. EP=" << ep_elev << "\n";
         }
         return false;
     }
@@ -170,7 +167,6 @@ main( int argc, char** argv )
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
 
-    s_eq.setMap(s_activeMap);
     viewer.addEventHandler(new DumpElevation(mapNode, 'E'));
 
     viewer.run();

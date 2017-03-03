@@ -234,14 +234,10 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                     c->_maxFar = DBL_MAX;
                 }
 
-                // get the height-above-ellipsoid. If we need to be more accurate, we can use 
-                // ElevationQuery in the future..
-                //osg::Vec3d loc;
                 GeoPoint loc;
                 if ( map )
                 {
                     loc.fromWorld( map->getSRS(), eye );
-                    //map->worldPointToMapPoint( eye, loc );
                 }
                 else
                 {

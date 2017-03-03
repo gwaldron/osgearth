@@ -28,6 +28,10 @@
 namespace osgEarth
 {
     /**
+     * @deprecated - Use ElevationPool instead, via Map::getElevationPool to
+     *    query elevation data, and use Terrain::getHeight to query the in-scene
+     *    terrain graph.
+     *
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
      *
      * Rather than intersecting with a loadeEd scene graph, EQ uses the osgEarth

@@ -21,6 +21,7 @@
 
 #include "TileRenderModel"
 #include "DrawState"
+#include "GeometryPool"
 #include <osgEarth/PatchLayer>
 #include <osgEarth/TileKey>
 #include <osg/Matrix>
@@ -49,7 +50,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const Samplers* _colorSamplers;
 
         // Tile geometry, if present
-        osg::ref_ptr<osg::Geometry> _geom;
+        osg::ref_ptr<SharedGeometry> _geom;
 
         // Tile key - just for debugging
         TileKey _key;

@@ -119,7 +119,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     MapInfo mapInfo(context->getMap());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
-    osg::ref_ptr<osg::Geometry> geom;
+    osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(key, mapInfo, geom, masks.get());
 
     // Create the drawable for the terrain surface:

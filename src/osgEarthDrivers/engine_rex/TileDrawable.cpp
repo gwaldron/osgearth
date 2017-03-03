@@ -32,7 +32,7 @@ using namespace osgEarth;
 
 
 TileDrawable::TileDrawable(const TileKey& key,
-                           osg::Geometry* geometry,
+                           SharedGeometry* geometry,
                            int            tileSize) :
 osg::Drawable( ),
 _key         ( key ),

@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "TileRenderModel"
+#include "GeometryPool"
 #include <osg/Geometry>
 #include <osg/Image>
 #include <osg/Matrixf>
@@ -74,7 +75,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         // underlying geometry, possibly shared between this tile and other.
-        osg::ref_ptr<osg::Geometry> _geom;
+        osg::ref_ptr<SharedGeometry> _geom;
 
         // tile dimensions
         int _tileSize;
@@ -94,7 +95,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
             const TileKey& key,
-            osg::Geometry* geometry,
+            SharedGeometry* geometry,
             int            tileSize);
 
     public:

@@ -28,9 +28,83 @@
 #include <osgEarth/ResourceReleaser>
 #include <osg/Geometry>
 
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+#define SUPPORTS_VAO 1
+#endif
+
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
+
+    // Adapted from osgTerrain shared geometry class.
+    class /*internal*/ SharedGeometry : public osg::Drawable
+    {
+    public:
+        SharedGeometry();
+
+        SharedGeometry(const SharedGeometry&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Node(osgEarthRex, SharedGeometry);
+
+        void setVertexArray(osg::Array* array) { _vertexArray = array; }
+        osg::Array* getVertexArray() { return _vertexArray.get(); }
+        const osg::Array* getVertexArray() const  { return _vertexArray.get(); }
+
+        void setNormalArray(osg::Array* array) { _normalArray = array; }
+        osg::Array* getNormalArray() { return _normalArray.get(); }
+        const osg::Array* getNormalArray() const { return _normalArray.get(); }
+
+        void setTexCoordArray(osg::Array* array) { _texcoordArray = array; }
+        osg::Array* getTexCoordArray() { return _texcoordArray.get(); }
+        const osg::Array* getTexCoordArray() const { return _texcoordArray.get(); }
+
+        void setNeighborArray(osg::Array* array) { _neighborArray = array; }
+        osg::Array* getNeighborArray() { return _neighborArray.get(); }
+        const osg::Array* getNeighborArray() const { return _neighborArray.get(); }
+
+        void setDrawElements(osg::DrawElements* array) { _drawElements = array; }
+        osg::DrawElements* getDrawElements() { return _drawElements.get(); }
+        const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
+
+        void setMaskElements(osg::DrawElements* array) { _maskElements = array; }
+        osg::DrawElements* getMaskElements() { return _maskElements.get(); }
+        const osg::DrawElements* getMaskElements() const { return _maskElements.get(); }
+
+#ifdef SUPPORTS_VAO
+        osg::VertexArrayState* createVertexArrayState(osg::RenderInfo& renderInfo) const;
+#endif
+
+        void compileGLObjects(osg::RenderInfo& renderInfo) const;
+
+        void render(GLenum primitiveType, osg::RenderInfo& renderInfo) const;
+
+        void resizeGLObjectBuffers(unsigned int maxSize);
+        void releaseGLObjects(osg::State* state) const;
+        
+        virtual bool supports(const osg::Drawable::AttributeFunctor&) const { return true; }
+        virtual void accept(osg::Drawable::AttributeFunctor&);
+
+        virtual bool supports(const osg::Drawable::ConstAttributeFunctor&) const { return true; }
+        virtual void accept(osg::Drawable::ConstAttributeFunctor&) const;
+
+        virtual bool supports(const osg::PrimitiveFunctor&) const { return true; }
+        virtual void accept(osg::PrimitiveFunctor&) const;
+
+        virtual bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
+        virtual void accept(osg::PrimitiveIndexFunctor&) const;
+
+    protected:
+
+        virtual ~SharedGeometry();
+
+        osg::ref_ptr<osg::Array>        _vertexArray;
+        osg::ref_ptr<osg::Array>        _normalArray;
+        osg::ref_ptr<osg::Array>        _colorArray;
+        osg::ref_ptr<osg::Array>        _texcoordArray;
+        osg::ref_ptr<osg::Array>        _neighborArray;
+        osg::ref_ptr<osg::DrawElements> _drawElements;
+        osg::ref_ptr<osg::DrawElements> _maskElements;
+    };
 
     /**
      * Pool of terrain tile geometries.
@@ -62,7 +136,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         {
             GeometryKey() :
                 lod(-1),
-                yMin(0.0),
+                tileY(0),
                 patch(false),
                 size(0u)
                 {
@@ -72,20 +146,21 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             {
                 if (lod < rhs.lod) return true;
                 if (lod > rhs.lod) return false;
-                if (yMin < rhs.yMin) return true;
-                if (yMin > rhs.yMin) return false;
+                if (tileY < rhs.tileY) return true;
+                if (tileY > rhs.tileY) return false;
                 if (size < rhs.size) return true;
                 if (size > rhs.size) return false;
-                return patch == false && rhs.patch == true;
+                if (patch == false && rhs.patch == true) return true;
+                return false;
             }
 
             int      lod;
-            double   yMin;
+            int      tileY;
             bool     patch;
             unsigned size;
         };
 
-        typedef std::map<GeometryKey, osg::ref_ptr<osg::Geometry> > GeometryMap;
+        typedef std::map<GeometryKey, osg::ref_ptr<SharedGeometry> > GeometryMap;
 
         /**
          * Gets the Geometry associated with a tile key, creating a new one if
@@ -94,7 +169,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void getPooledGeometry(
             const TileKey&               tileKey,
             const MapInfo&               mapInfo,
-            osg::ref_ptr<osg::Geometry>& out,
+            osg::ref_ptr<SharedGeometry>& out,
             MaskGenerator*               maskSet=0L);
 
         /**
@@ -135,7 +210,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const MapInfo& mapInfo,
             GeometryKey&   out) const;
 
-        osg::Geometry* createGeometry(
+        SharedGeometry* createGeometry(
             const TileKey& tileKey,
             const MapInfo& mapInfo,
             MaskGenerator* maskSet ) const;

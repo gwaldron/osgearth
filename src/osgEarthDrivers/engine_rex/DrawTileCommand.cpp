@@ -140,8 +140,12 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
     else
     // If there's a geometry, draw it now:
-    if (_geom)
+    if (_geom.valid())
     {
+        GLenum ptype = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
+
+        _geom->render(ptype, ri);
+#if 0
         // Set up the vertex arrays:
         _geom->drawVertexArraysImplementation(ri);
 
@@ -159,8 +163,21 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
 
         else
         {
+            if (_geom->referenceCount() <= 1)
+            {
+                OE_WARN << LC << "Big trouble\n";
+                exit(-1);
+            }
+
             for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-                _geom->getPrimitiveSet(i)->draw(*ri.getState(), true);
+            {
+                osg::PrimitiveSet* ps = _geom->getPrimitiveSet(i);
+                if (ps)
+                {
+                    ps->draw(*ri.getState(), true);
+                }
+            }
         }
+#endif
     }    
 }

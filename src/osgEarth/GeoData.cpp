@@ -685,12 +685,13 @@ _south  ( south ),
 _north  ( north )
 {
     if ( isValid() )
-        recomputeCircle();
-
-    if (_srs->isGeographic() && (_east-_west < 360.0))
     {
-        _west = s_normalizeLongitude(_west);
-        _east = s_normalizeLongitude(_east);
+        if (_srs->isGeographic() && (_east-_west < 360.0))
+        {
+            _west = s_normalizeLongitude(_west);
+            _east = s_normalizeLongitude(_east);
+        }
+        recomputeCircle();
     }
 }
 
@@ -703,12 +704,13 @@ _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
 {    
     if ( isValid() )
-        recomputeCircle();
-
-    if (_srs->isGeographic() && (_east-_west < 360.0))
     {
-        _west = s_normalizeLongitude(_west);
-        _east = s_normalizeLongitude(_east);
+        if (_srs->isGeographic() && (_east-_west < 360.0))
+        {
+            _west = s_normalizeLongitude(_west);
+            _east = s_normalizeLongitude(_east);
+        }
+        recomputeCircle();
     }
 }
 

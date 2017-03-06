@@ -45,7 +45,7 @@ namespace
 
         return row*xdim + col;
     }
-    
+
 
     osg::Geode* makeClusterGeode( const GeoExtent& cellExtent, unsigned num )
     {
@@ -53,11 +53,11 @@ namespace
 
         double clat, clon;
         cellExtent.getCentroid( clon, clat );
-        osg::Vec3d xyz;        
+        osg::Vec3d xyz;
         cellExtent.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
             osg::DegreesToRadians( clat ), osg::DegreesToRadians( clon ), 0, xyz.x(), xyz.y(), xyz.z() );
         t->setPosition( xyz );
-        
+
         std::stringstream buf;
         buf << num;
         std::string str;
@@ -66,7 +66,7 @@ namespace
         t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
         t->setCharacterSize( 22.0f );
         t->setAutoRotateToScreen( true );
-        
+
         t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
 
         t->setBackdropType( osgText::Text::OUTLINE );
@@ -144,7 +144,7 @@ GeoCell( extent, maxRange, maxObjects, splitDim, splitRangeFactor, 0 )
 
                 this->addChild( child, 0, maxRange ); //FLT_MAX );
             }
-        }                    
+        }
     }
 }
 
@@ -222,8 +222,8 @@ GeoCell::generateBoundaries()
             corner[i].x(), corner[i].y(), corner[i].z() );
         cornerVec[i] = corner[i];
         cornerVec[i].normalize();
-    }   
-    
+    }
+
     // now extrude the center and corners up and down to get the boundary points:
     unsigned p = 0;
     _boundaryPoints[p++] = center + centerVec*hae;
@@ -256,12 +256,13 @@ GeoCell::generateBoundaryGeometry()
     g->setVertexArray( v );
 
     osg::DrawElementsUByte* el = new osg::DrawElementsUByte( GL_QUADS );
+    // Faces are inward
     el->push_back( 7 ); el->push_back( 5 ); el->push_back( 4 ); el->push_back( 6 );
     el->push_back( 9 ); el->push_back( 7 ); el->push_back( 6 ); el->push_back( 8 );
-    el->push_back( 3 ); el->push_back( 9 ); el->push_back( 8 ); el->push_back( 2 );
-    el->push_back( 5 ); el->push_back( 3 ); el->push_back( 2 ); el->push_back( 4 );
-    //el->push_back( 2 ); el->push_back( 8 ); el->push_back( 6 ); el->push_back( 4 ); //top
-    //el->push_back( 9 ); el->push_back( 3 ); el->push_back( 5 ); el->push_back( 7 ); // bottom
+    el->push_back( 3 ); el->push_back( 2 ); el->push_back( 8 ); el->push_back( 9 );
+    el->push_back( 5 ); el->push_back( 4 ); el->push_back( 2 ); el->push_back( 3 );
+    //el->push_back( 2 ); el->push_back( 4 ); el->push_back( 6 ); el->push_back( 8 ); //top
+    //el->push_back( 9 ); el->push_back( 7 ); el->push_back( 5 ); el->push_back( 3 ); // bottom
     g->addPrimitiveSet( el );
 
     osg::Vec4Array* c = new osg::Vec4Array(1);
@@ -277,23 +278,12 @@ GeoCell::generateBoundaryGeometry()
 
     osg::StateSet* set = g->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
+    set->setMode( GL_CULL_FACE, 1 );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     set->setAttribute( new osg::PolygonOffset(1,1), 1 );
 
     _boundaryGeode = new osg::Geode();
     _boundaryGeode->addDrawable( g );
-}
-
-bool
-GeoCell::intersects( const osg::Polytope& tope ) const
-{
-    const osg::Polytope::PlaneList& planes = tope.getPlaneList();
-    for( osg::Polytope::PlaneList::const_iterator i = planes.begin(); i != planes.end(); ++i )
-    {
-        if ( i->intersect( _boundaryPoints ) < 0 )
-            return false;
-    }
-    return true;
 }
 
 void
@@ -306,7 +296,7 @@ GeoCell::traverse( osg::NodeVisitor& nv )
         if ( isCull )
         {
             // process boundary geometry, if present.
-            if ( _boundaryGeode.valid() ) 
+            if ( _boundaryGeode.valid() )
             {
                 if ( _count > 0 )
                     (*_boundaryColor)[0].set(1,0,0,0.35);
@@ -317,16 +307,9 @@ GeoCell::traverse( osg::NodeVisitor& nv )
                 _boundaryGeode->accept( nv );
             }
 
-            // custom BSP culling function. this checks that the set of boundary points
-            // for this cell intersects the viewing frustum.
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv )
             {
-                if (!intersects( cv->getCurrentCullingSet().getFrustum() ) )
-                {
-                    return;
-                }
-
                 // passed cull, so record the framestamp.
                 _frameStamp = cv->getFrameStamp()->getFrameNumber();
             }
@@ -379,7 +362,7 @@ GeoCell::insertObject( GeoObject* object )
         {
             GeoObjectCollection::iterator low = _objects.begin();
             GeoObject* lowPriObject = low->second.get();
-            
+
             if ( getNumChildren() == 0 )
                 split();
 
@@ -427,8 +410,10 @@ GeoCell::split()
                 _extent.xMin() + xInterval*(double)(col+1),
                 _extent.yMin() + yInterval*(double)(row+1) );
 
+            GeoCell* cell = new GeoCell(cellExtent, newRange, _maxObjects, _splitDim, _splitRangeFactor, _depth+1);
+            cell->addCullCallback(new osgEarth::HorizonCullCallback);
             this->addChild(
-                new GeoCell(cellExtent, newRange, _maxObjects, _splitDim, _splitRangeFactor, _depth+1),
+                cell,
                 0.0f,
                 newRange );
         }

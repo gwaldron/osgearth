@@ -97,7 +97,6 @@ namespace osgEarth { namespace Util
         void split();
         void merge();
         void adjustCount( int delta );
-        bool intersects( const class osg::Polytope& tope ) const;
         void generateBoundaries();
         void generateBoundaryGeometry();
 

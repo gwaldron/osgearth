@@ -1301,12 +1301,12 @@ HTTPClient::doGet(const HTTPRequest&    request,
                 << std::endl;
         }
 #endif
+    }
 
-        // Free the headers
-        if (headers)
-        {
-            curl_slist_free_all(headers);
-        }
+    // Free the headers
+    if (headers)
+    {
+        curl_slist_free_all(headers);
     }
 
     METRIC_END("HTTPClient::doGet", 2,

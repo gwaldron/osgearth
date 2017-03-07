@@ -19,7 +19,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -51,8 +50,8 @@ PhongLightingEffect::PhongLightingEffect(osg::StateSet* stateset)
 void
 PhongLightingEffect::init()
 {
+    _supported = Registry::capabilities().supportsGLSL();
     // Replaced with setDefine
-    //_supported = Registry::capabilities().supportsGLSL();
     //if ( _supported )
     //{
     //    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );

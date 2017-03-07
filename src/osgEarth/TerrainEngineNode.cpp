@@ -459,7 +459,9 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
 {
     TerrainEngineNode* result = 0L;
 
-    std::string driver = options.getDriver();
+    std::string driver =
+        Registry::instance()->overrideTerrainEngineDriverName().getOrUse(options.getDriver());
+
     if ( driver.empty() )
         driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
@@ -471,18 +473,5 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
     }
 
     return result;
-}
-
-//------------------------------------------------------------------------
-TerrainDecorator::~TerrainDecorator()
-{
-}
-
-void TerrainDecorator::onInstall( TerrainEngineNode* engine )
-{
-}
-
-void TerrainDecorator::onUninstall( TerrainEngineNode* engine )
-{
 }
 

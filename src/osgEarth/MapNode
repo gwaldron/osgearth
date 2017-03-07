@@ -146,17 +146,7 @@ namespace osgEarth
 
         // @deprecated - use getLayerNode
         //osg::Node* getModelLayerNode(ModelLayer* layer) const { return getLayerNode(layer); }
-
-        /**
-         * Adds a node that decorates the terrain groups
-         */
-        void addTerrainDecorator( osg::Group* decorator );
-
-        /**
-         * Removes a node previously added via addTerrainDecorator.
-         */
-        void removeTerrainDecorator( osg::Group* decorator );
-
+        
         /**
          * Gets the overlay decorator in this mapnode. Usually you do not need to
          * access this directly. Instead install a DrapeableNode in the scene graph.

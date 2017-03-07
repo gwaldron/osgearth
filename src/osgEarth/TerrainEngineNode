@@ -374,19 +374,6 @@ namespace osgEarth
         static TerrainEngineNode* create(const TerrainOptions& options );
     };
 
-    /**
-     * Base class for a node that "decorates" the terrain engine node within a map node.
-     */
-    class TerrainDecorator : public osg::Group
-    {
-    public:
-        virtual void onInstall( TerrainEngineNode* engine );
-        virtual void onUninstall( TerrainEngineNode* engine );
-
-    protected:
-        virtual ~TerrainDecorator();
-    };
-
 } // namespace osgEarth
 
 #endif // OSGEARTH_TERRAIN_ENGINE_NODE_H

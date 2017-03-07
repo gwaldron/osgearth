@@ -228,8 +228,15 @@ namespace osgEarth
         /**
          * The name of the default terrain engine driver
          */
-        void setDefaultTerrainEngineDriverName( const std::string& name );
+        //void setDefaultTerrainEngineDriverName( const std::string& name );
         const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
+
+        /**
+         * If set, all MapNodes will use the terrain driver specified here regardless
+         * of the driver in the TerrainOptions/earth file.
+         */
+        optional<std::string>& overrideTerrainEngineDriverName() { return _overrideTerrainEngineDriverName; }
+        const optional<std::string>& overrideTerrainEngineDriverName() const { return _overrideTerrainEngineDriverName; }
 
         /**
          * For debugging - tracks activities in progress.
@@ -318,6 +325,7 @@ namespace osgEarth
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
         std::string _terrainEngineDriver;
+        optional<std::string> _overrideTerrainEngineDriverName;
 
         mutable optional<std::string> _cacheDriver;
 

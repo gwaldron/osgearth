@@ -112,6 +112,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
         // copmpute the slice size in feature units.
         double latitude = feature->getGeometry()->getBounds().center().y();
         sliceSize = SpatialReference::transformUnits( _maxDistance.value(), feature->getSRS(), latitude );
+        sliceSize = _maxDistance->as(Units::METERS);
     }
 
     GeometryIterator i( feature->getGeometry(), true );
@@ -131,7 +132,10 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
             {
                 // calculate slice count
                 if ( sliceSize > 0.0 )
-                    slices = std::max( 1u, (unsigned)((*v - *(v+1)).length() / sliceSize) );
+                {
+                    double dist = GeoMath::distance(*v, *(v + 1), feature->getSRS());
+                    slices = std::max( 1u, (unsigned)(dist / sliceSize) );
+                }
 
                 if ( isGeo )
                     tessellateGeo( *v, *(v+1), slices, geoInterp, newVerts );
@@ -142,7 +146,10 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
             {
                 // calculate slice count
                 if ( sliceSize > 0.0 )
-                    slices = std::max( 1u, (unsigned)((*v - *g->begin()).length() / sliceSize) );
+                {
+                    double dist = GeoMath::distance(*v, *g->begin(), feature->getSRS());
+                    slices = std::max( 1u, (unsigned)(dist / sliceSize) );
+                }
 
                 if ( isGeo )
                     tessellateGeo( *v, *g->begin(), slices, geoInterp, newVerts );

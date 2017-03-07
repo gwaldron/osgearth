@@ -122,7 +122,7 @@ _overrideCachePolicyInitialized( false )
     const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);
     if ( teStr )
     {
-        _defaultTerrainEngineDriverName = std::string(teStr);
+        _terrainEngineDriver = std::string(teStr);
         _overrideTerrainEngineDriverName = std::string(teStr);
     }
 

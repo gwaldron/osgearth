@@ -71,7 +71,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 }
                 else
                 {
-                    MPTerrainEngineOptions terrainOpts;
                     OE_INFO << LC << "Activated!" << std::endl;
                     return ReadResult( new MPTerrainEngineNode() );
                 }

@@ -124,6 +124,7 @@ _overrideCachePolicyInitialized( false )
     {
         _terrainEngineDriver = std::string(teStr);
         _overrideTerrainEngineDriverName = std::string(teStr);
+        OE_INFO << LC << "Terrain engine set from environment: " << _terrainEngineDriver << std::endl;
     }
 
     // load a default font
@@ -131,6 +132,7 @@ _overrideCachePolicyInitialized( false )
     if ( envFont )
     {
         _defaultFont = osgText::readFontFile( std::string(envFont) );
+        OE_INFO << LC << "Default font set from environment: " << envFont << std::endl;
     }
     if ( !_defaultFont.valid() )
     {
@@ -353,6 +355,7 @@ Registry::overrideCachePolicy() const
                 {
                     TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
                     _overrideCachePolicy->maxAge() = maxAge;
+                    OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
                 }
             }
 

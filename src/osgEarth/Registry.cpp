@@ -64,7 +64,8 @@ _caps               ( 0L ),
 _defaultFont        ( 0L ),
 _terrainEngineDriver( "mp" ),
 _cacheDriver        ( "filesystem" ),
-_overrideCachePolicyInitialized( false )
+_overrideCachePolicyInitialized( false ),
+_threadPoolSize(2u)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -149,11 +150,26 @@ _overrideCachePolicyInitialized( false )
 
     // register the system stock Units.
     Units::registerAll( this );
+
+    // intiailize the async operations queue.
+    _opQueue = new osg::OperationQueue();
+
+    // create the thread pool and tie it to the queue.
+    for (unsigned i = 0; i < _threadPoolSize; ++i)
+    {
+        osg::OperationThread* t = new osg::OperationThread();
+        t->setOperationQueue(_opQueue.get());
+        t->start();
+        _opThreadPool.push_back(t);
+    }
 }
 
 Registry::~Registry()
 {
-    //nop
+    for (unsigned i = 0; i < _opThreadPool.size(); ++i)
+    {
+        _opThreadPool[i]->cancel();
+    }
 }
 
 Registry*

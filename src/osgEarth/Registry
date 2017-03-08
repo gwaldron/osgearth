@@ -30,6 +30,7 @@
 #include <OpenThreads/ScopedLock>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
+#include <osg/OperationThread>
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
@@ -273,6 +274,9 @@ namespace osgEarth
         TransientUserDataStore& dataStore() { return _dataStore; }
         const TransientUserDataStore& dataStore() const { return _dataStore; }
 
+        //! Access to the general-purpose async operations queue
+        osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -347,6 +351,12 @@ namespace osgEarth
         std::set<int> _offLimitsTextureImageUnits;
 
         TransientUserDataStore _dataStore;
+
+        osg::ref_ptr<osg::OperationQueue> _opQueue;
+
+        typedef std::vector< osg::ref_ptr<osg::OperationThread> > ThreadPool;
+        ThreadPool _opThreadPool;
+        unsigned _threadPoolSize;
     };
 }
 

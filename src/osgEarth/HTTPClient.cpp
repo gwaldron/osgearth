@@ -1182,6 +1182,13 @@ HTTPClient::doGet(const HTTPRequest&    request,
             if ( r != CURLE_OK )
             {
                 OE_WARN << LC << "Proxy connect error: " << curl_easy_strerror(r) << std::endl;
+
+                // Free the headers
+                if (headers)
+                {
+                    curl_slist_free_all(headers);
+                }
+
                 return HTTPResponse(0);
             }
         }

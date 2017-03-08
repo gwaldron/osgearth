@@ -160,6 +160,9 @@ namespace osgEarth { namespace Threading
     {
     };
 
+    /**
+     * Future is the consumer-side interface to an asynchronous operation.
+     */
     template<typename T>
     class Future
     {
@@ -170,22 +173,32 @@ namespace osgEarth { namespace Threading
         };
 
     public:
+        //! Blank CTOR
         Future() {
             _ev = new RefEvent();
             _objRef = new RefPtrRef();
         }
 
+        //! Copy CTOR
         Future(const Future& rhs) : _ev(rhs._ev), _objRef(rhs._objRef.get()) { }
 
-        // Has the promise been fulfilled yet?
-        bool isFulfilled() const {
+        //! True is the promise was resolved and a result if available.
+        bool isAvailable() const {
             return _ev->isSet();
         }
 
-        // Wait for the promise to be fulfilled, then return.
+        //! The result value; blocks until it is available and then returns it.
         T* get() {
             _ev->wait();
-            return _objRef->_obj.release();
+            return _objRef->_obj.get();
+        }
+
+        //! The result value; blocks until available and returns it; then resets to initial state.
+        T* release() {
+            _ev->wait();
+            T* out = _objRef->_obj.release();
+            _ev->reset();
+            return out;
         }
 
     private:
@@ -193,18 +206,29 @@ namespace osgEarth { namespace Threading
         osg::ref_ptr<RefPtrRef> _objRef;
         template<typename U> friend class Promise;
     };
-
+    
+    /**
+     * Future is the producer-side interface to an asynchronous operation.
+     */
     template<typename T>
     class Promise
     {
     public:
+        //! This promise's future result.
         const Future<T> getFuture() const { return _future; }
 
+        //! Resolve (fulfill) the promise with the provided result value.
         void resolve(T* value) {
             _future._objRef->_obj = value;
             _future._ev->set();
         }
 
+        //! True if the promise is resolved and the Future holds a valid result.
+        bool isResolved() const {
+            return _future._ev->isSet();
+        }
+
+        //! True is there are no Future objects waiting on this Promise.
         bool isAbandoned() const {
             return _future._objRef->referenceCount() == 1;
         }

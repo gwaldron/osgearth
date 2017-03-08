@@ -21,6 +21,7 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <osg/Shape>
 
 using namespace osgEarth;
@@ -67,6 +68,33 @@ ElevationPool::setTileSize(unsigned value)
     Threading::ScopedMutexLock lock(_tilesMutex);
     _tileSize = value;
     clearImpl();
+}
+
+Future<ElevationSample>
+ElevationPool::getElevation(const GeoPoint& point, unsigned lod)
+{
+    GetElevationOp* op = new GetElevationOp(this, point, lod);
+    Future<ElevationSample> result = op->_promise.getFuture();
+    Registry::instance()->getAsyncOperationQueue()->add(op);
+    return result;
+}
+
+ElevationPool::GetElevationOp::GetElevationOp(ElevationPool* pool, const GeoPoint& point, unsigned lod) :
+_pool(pool), _point(point), _lod(lod)
+{
+    //nop
+}
+
+void
+ElevationPool::GetElevationOp::operator()(osg::Object*)
+{
+    osg::ref_ptr<ElevationPool> pool;
+    if (!_promise.isAbandoned() && _pool.lock(pool))
+    {
+        osg::ref_ptr<ElevationEnvelope> env = pool->createEnvelope(_point.getSRS(), _lod);
+        std::pair<float, float> r = env->getElevationAndResolution(_point.x(), _point.y());
+        _promise.resolve(new ElevationSample(r.first, r.second));
+    }
 }
 
 bool

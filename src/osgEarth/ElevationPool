@@ -30,10 +30,19 @@
 
 namespace osgEarth
 {
+    using namespace Threading;
+
     // defined at the end of this file
     class ElevationEnvelope;
     class Map;
 
+    //! Result of an elevation query.
+    struct ElevationSample : public osg::Referenced
+    {
+        float elevation;
+        float resolution;
+        ElevationSample(float a, float b) : elevation(a), resolution(b) { }
+    };
 
     /**
      * A pool of elevation data that can be used to manage regional elevation
@@ -71,6 +80,9 @@ namespace osgEarth
 
         /** Creates a query envelope to use for elevation queries in a certain area. */
         ElevationEnvelope* createEnvelope(const SpatialReference* srs, unsigned lod);
+
+        //! Queries the elevation at a GeoPoint for a given LOD.
+        Future<ElevationSample> getElevation(const GeoPoint& p, unsigned lod=23);
 
         /** Maximum number of elevation tiles to cache */
         void setMaxEntries(unsigned maxEntries) { _maxEntries = maxEntries; }
@@ -147,6 +159,17 @@ namespace osgEarth
         // QuerySet is a collection of Tiles, sorted from high to low resolution,
         // that a ElevationEnvelope uses for a terrain sampling opteration.
         typedef std::set<osg::ref_ptr<Tile>, TileSortHiResToLoRes> QuerySet;
+
+        // Asynchronous elevation query operation
+        struct GetElevationOp : public osg::Operation {
+            GetElevationOp(ElevationPool*, const GeoPoint&, unsigned lod);
+            osg::observer_ptr<ElevationPool> _pool;
+            GeoPoint _point;
+            unsigned _lod;
+            Promise<ElevationSample> _promise;
+            void operator()(osg::Object*);
+        };
+        friend struct GetElevationOp;
 
     protected:
 

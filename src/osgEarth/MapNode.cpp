@@ -322,6 +322,7 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
+    this->addChild(_overlayDecorator);
 
     // install the Draping technique for overlays:
     {
@@ -351,7 +352,8 @@ MapNode::init()
         _overlayDecorator->addTechnique( new ClampingTechnique() );
     }
 
-    addTerrainDecorator( _overlayDecorator );
+    _overlayDecorator->setTerrainEngine(getTerrainEngine());
+    _overlayDecorator->addChild(getTerrainEngine());
 
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
@@ -650,46 +652,6 @@ namespace
         }
         std::list< osg::Group* > _groups;
     };
-}
-
-void
-MapNode::addTerrainDecorator(osg::Group* decorator)
-{
-    if ( _terrainEngine )
-    {
-        decorator->addChild( _terrainEngine );
-        _terrainEngine->getParent(0)->replaceChild( _terrainEngine, decorator );
-        dirtyBound();
-
-        TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
-        if ( td )
-            td->onInstall( _terrainEngine );
-    }
-}
-
-void
-MapNode::removeTerrainDecorator(osg::Group* decorator)
-{
-    if ( _terrainEngine )
-    {
-        TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
-        if ( td )
-            td->onUninstall( _terrainEngine );
-
-        osg::ref_ptr<osg::Node> child = _terrainEngine;
-        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer; )
-        {
-            if ( g == decorator )
-            {
-                g->getParent(0)->replaceChild( g, child );
-                g->removeChild( child );
-                break;
-            }
-            child = g;
-            g = g->getParent(0);
-        }
-        dirtyBound();
-    }
 }
 
 namespace

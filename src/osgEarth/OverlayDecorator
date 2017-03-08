@@ -41,7 +41,7 @@ namespace osgEarth
     /**
      * Overlays geometry onto the terrain using various techniques.
      */
-    class OSGEARTH_EXPORT OverlayDecorator : public TerrainDecorator
+    class OSGEARTH_EXPORT OverlayDecorator : public osg::Group
     {
     public:
         OverlayDecorator();
@@ -89,9 +89,10 @@ namespace osgEarth
         void setMaximumHeight(double value) { _maxHeight = value; }
         double getMaximumHeight() const { return _maxHeight; }
 
-    public: // TerrainDecorator
-        virtual void onInstall( TerrainEngineNode* engine );
-        virtual void onUninstall( TerrainEngineNode* engine );
+        /**
+         * Initializes the decorator with a terrain engine
+         */
+        void setTerrainEngine(TerrainEngineNode*);
 
     public: // osg::Node
         void traverse( osg::NodeVisitor& nv );

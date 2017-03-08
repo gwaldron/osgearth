@@ -370,36 +370,33 @@ OverlayDecorator::setOverlayGraphTraversalMask( unsigned mask )
     _rttTraversalMask = mask;
 }
 
-
 void
-OverlayDecorator::onInstall( TerrainEngineNode* engine )
+OverlayDecorator::setTerrainEngine(TerrainEngineNode* engine)
 {
-    _engine = engine;
-
-    // establish the earth's major axis:
-    MapInfo info(engine->getMap());
-    _isGeocentric = info.isGeocentric();
-    _srs = info.getProfile()->getSRS();
-    _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
-
-    for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
+    if (engine)
     {
-        t->get()->onInstall( engine );
-    }
-}
+        _engine = engine;
 
+        // establish the earth's major axis:
+        MapInfo info(engine->getMap());
+        _isGeocentric = info.isGeocentric();
+        _srs = info.getProfile()->getSRS();
+        _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
-void
-OverlayDecorator::onUninstall( TerrainEngineNode* engine )
-{
-    for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
-    {
-        t->get()->onUninstall( engine );
+        for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
+        {
+            t->get()->onInstall( engine );
+        }
     }
 
-    _engine = 0L;
+    else
+    {
+        for (Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t)
+        {
+            t->get()->onUninstall(engine);
+        }
+    }
 }
-
 
 void
 OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,

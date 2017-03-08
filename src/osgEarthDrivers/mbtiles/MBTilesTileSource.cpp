@@ -49,7 +49,7 @@ namespace
         rw = osgDB::Registry::instance()->getReaderWriterForMimeType( format );
         if ( rw == 0L )
         {
-            rw = osgDB::Registry::instance()->getReaderWriterForExtension( format ); 
+            rw = osgDB::Registry::instance()->getReaderWriterForExtension( format );
         }
         return rw;
     }
@@ -59,7 +59,7 @@ namespace
 
 MBTilesTileSource::MBTilesTileSource(const TileSourceOptions& options) :
 TileSource( options ),
-_options  ( options ),      
+_options  ( options ),
 _database ( NULL ),
 _minLevel ( 0 ),
 _maxLevel ( 20 ),
@@ -70,12 +70,19 @@ _forceRGB ( false )
 
 Status
 MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
-{    
-    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );    
-    
+{
+    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+
     bool readWrite = (MODE_WRITE & (int)getMode()) != 0;
 
-    std::string fullFilename = _options.filename()->full();   
+    std::string fullFilename = _options.filename()->full();
+    if (!osgDB::fileExists(fullFilename))
+    {
+        fullFilename = osgDB::findDataFile(fullFilename, dbOptions);
+        if (fullFilename.empty())
+            fullFilename = _options.filename()->full();
+    }
+
     bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
 
     if ( isNewDatabase )
@@ -102,17 +109,17 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
     // Try to open (or create) the database. We use SQLITE_OPEN_NOMUTEX to do
     // our own mutexing.
-    int flags = readWrite 
+    int flags = readWrite
         ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX)
         : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
-     
+
     int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, flags, 0L );
     if ( rc != 0 )
-    {                        
+    {
         return Status::Error( Status::ResourceUnavailable, Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(_database) );
     }
-    
+
     // New database setup:
     if ( isNewDatabase )
     {
@@ -166,12 +173,12 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         std::string profileStr;
         getMetaData( "profile", profileStr );
 
-        // The data format (e.g., png, jpg, etc.). Any format passed in 
+        // The data format (e.g., png, jpg, etc.). Any format passed in
         // in the options is superceded by the one in the database metadata.
         std::string metaDataFormat;
         getMetaData( "format", metaDataFormat );
         if ( !metaDataFormat.empty() )
-            _tileFormat = metaDataFormat;        
+            _tileFormat = metaDataFormat;
 
         // Try to get it from the options.
         if (_tileFormat.empty())
@@ -200,7 +207,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 return Status::Error(Status::ServiceUnavailable, "Cannot find compressor \"" + compression + "\"");
             else
                 OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
-        }        
+        }
 
         // Set the profile
         const Profile* profile = getProfile();
@@ -224,14 +231,14 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                     return Status::Error( Stringify() << "Profile not recognized: " << profileStr );
                 }
             }
-            
+
             if (!profile)
             {
                 // Spherical mercator is the MBTiles default.
                 profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
             }
 
-            setProfile( profile );     
+            setProfile( profile );
             OE_INFO << LC << "Profile = " << profileStr << std::endl;
         }
 
@@ -276,7 +283,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     memset(data, 0, 4 * size * size);
 
     return STATUS_OK;
-}    
+}
 
 
 CachePolicy
@@ -301,7 +308,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
 
     if (z < (int)_minLevel)
     {
-        return _emptyImage.get();            
+        return _emptyImage.get();
     }
 
     if (z > (int)_maxLevel)
@@ -324,7 +331,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
         return NULL;
     }
 
-    bool valid = true;        
+    bool valid = true;
 
     sqlite3_bind_int( select, 1, z );
     sqlite3_bind_int( select, 2, x );
@@ -333,7 +340,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
     osg::Image* result = NULL;
     rc = sqlite3_step( select );
     if ( rc == SQLITE_ROW)
-    {                     
+    {
         // the pointer returned from _blob gets freed internally by sqlite, supposedly
         const char* data = (const char*)sqlite3_column_blob( select, 0 );
         int dataLen = sqlite3_column_bytes( select, 0 );
@@ -363,7 +370,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
             osgDB::ReaderWriter::ReadResult rr = _rw->readImage( inputStream, _dbOptions.get() );
             if (rr.validImage())
             {
-                result = rr.takeImage();                
+                result = rr.takeImage();
             }
         }
     }
@@ -377,7 +384,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
     return result;
 }
 
-bool 
+bool
 MBTilesTileSource::storeImage(const TileKey&    key,
                               osg::Image*       image,
                               ProgressCallback* progress)
@@ -407,7 +414,7 @@ MBTilesTileSource::storeImage(const TileKey&    key,
     }
 
     std::string value = buf.str();
-    
+
     // compress if necessary:
     if ( _compressor.valid() )
     {
@@ -461,7 +468,7 @@ MBTilesTileSource::storeImage(const TileKey&    key,
         OE_WARN << LC << "Failed query: " << query << "(" << rc << ")" << sqlite3_errstr(rc) << "; " << sqlite3_errmsg(_database) << std::endl;
 #else
         OE_WARN << LC << "Failed query: " << query << "(" << rc << ")" << rc << "; " << sqlite3_errmsg(_database) << std::endl;
-#endif        
+#endif
         ok = false;
     }
 
@@ -497,7 +504,7 @@ MBTilesTileSource::getMetaData(const std::string& key, std::string& value)
 
     rc = sqlite3_step( select );
     if ( rc == SQLITE_ROW)
-    {                     
+    {
         value = (char*)sqlite3_column_text( select, 0 );
     }
     else
@@ -544,7 +551,7 @@ MBTilesTileSource::putMetaData(const std::string& key, const std::string& value)
 
 void
 MBTilesTileSource::computeLevels()
-{        
+{
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
@@ -558,7 +565,7 @@ MBTilesTileSource::computeLevels()
 
     rc = sqlite3_step( select );
     if ( rc == SQLITE_ROW)
-    {                     
+    {
         _minLevel = sqlite3_column_int( select, 0 );
         _maxLevel = sqlite3_column_int( select, 1 );
         OE_DEBUG << LC << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
@@ -566,8 +573,8 @@ MBTilesTileSource::computeLevels()
     else
     {
         OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
-    }        
-    sqlite3_finalize( select );        
+    }
+    sqlite3_finalize( select );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_DEBUG << LC << "Computing levels took " << osg::Timer::instance()->delta_s(startTime, endTime ) << " s" << std::endl;
 }
@@ -590,7 +597,7 @@ MBTilesTileSource::createTables()
         return false;
     }
 
-    query = 
+    query =
         "CREATE TABLE IF NOT EXISTS tiles ("
         " zoom_level integer,"
         " tile_column integer,"
@@ -616,7 +623,7 @@ MBTilesTileSource::createTables()
         OE_WARN << LC << "Failed to create index on table [tiles]: " << errorMsg << std::endl;
         sqlite3_free( errorMsg );
         // keep going...
-        // return false; 
+        // return false;
     }
 
     // TODO: support "grids" and "grid_data" tables if necessary.
@@ -625,7 +632,7 @@ MBTilesTileSource::createTables()
 }
 
 std::string
-MBTilesTileSource::getExtension() const 
+MBTilesTileSource::getExtension() const
 {
     return _tileFormat;
 }

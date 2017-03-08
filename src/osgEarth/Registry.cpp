@@ -123,6 +123,7 @@ _overrideCachePolicyInitialized( false )
     if ( teStr )
     {
         _terrainEngineDriver = std::string(teStr);
+        _overrideTerrainEngineDriverName = std::string(teStr);
     }
 
     // load a default font
@@ -563,11 +564,11 @@ Registry::getUnits(const std::string& name) const
     return 0L;
 }
 
-void
-Registry::setDefaultTerrainEngineDriverName(const std::string& name)
-{
-    _terrainEngineDriver = name;
-}
+//void
+//Registry::setDefaultTerrainEngineDriverName(const std::string& name)
+//{
+//    _terrainEngineDriver = name;
+//}
 
 void
 Registry::setDefaultCacheDriverName(const std::string& name)

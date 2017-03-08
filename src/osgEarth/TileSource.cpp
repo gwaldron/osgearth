@@ -361,7 +361,6 @@ TileSource::createImage(const TileKey&        key,
 
     if ( newImage.valid() && _memCache.valid() )
     {
-        // cache it to the memory cache.
         _memCache->getOrCreateDefaultBin()->write(key.str(), newImage.get(), 0L);
     }
 
@@ -396,8 +395,7 @@ TileSource::createHeightField(const TileKey&        key,
         _memCache->getOrCreateDefaultBin()->write(key.str(), newHF.get(), 0L);
     }
 
-    //TODO: why not just newHF.release()? -gw
-    return newHF.valid() ? new osg::HeightField( *newHF.get() ) : 0L;
+    return newHF.release();
 }
 
 osg::Image*

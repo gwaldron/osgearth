@@ -43,7 +43,7 @@ namespace osgEarth
      * queries in a particular area (like a terrain tile).
      *
      * Each Map contains an ElevationPool you can access for queries against
-     * that Map. The ElevationQuery object uses it under the hood.
+     * that Map.
      *
      * ElevationEnvelope* envelope = pool->createEnvelope(srs, lod);
      * float z = envelope->getElevation(point);

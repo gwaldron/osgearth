@@ -27,7 +27,6 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/ElevationQuery>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
 #include <osgEarth/VerticalDatum>
@@ -59,11 +58,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 {
     QueryElevationHandler()
         : _mouseDown( false ),
-          _terrain  ( s_mapNode->getTerrain() ),
-          _query    ( s_mapNode->getMap() )
+          _terrain  ( s_mapNode->getTerrain() )
     {
         _map = s_mapNode->getMap();
         _path.push_back( s_mapNode->getTerrainEngine() );
+        _envelope = _map->getElevationPool()->createEnvelope(_map->getSRS(), 20u);
     }
 
     void update( float x, float y, osgViewer::View* view )
@@ -86,10 +85,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             double actual_resolution = 0.0;
             float elevation          = 0.0f;
 
-            elevation = _query.getElevation( 
-                mapPoint,
-                query_resolution, 
-                &actual_resolution );
+            std::pair<float, float> result = _envelope->getElevationAndResolution(
+                mapPoint.x(), mapPoint.y());
+
+            elevation = result.first;
+            actual_resolution = result.second;
 
             if ( elevation != NO_DATA_VALUE )
             {
@@ -169,8 +169,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     const Map*       _map;
     const Terrain*   _terrain;
     bool             _mouseDown;
-    ElevationQuery   _query;
     osg::NodePath    _path;
+    osg::ref_ptr<ElevationEnvelope> _envelope;
 };
 
 

@@ -611,7 +611,8 @@ _optionsConcrete(options)
     
     // Experiment with this and see what will work.
     //_pool.setTileSize(65u);
-    _pool.setTileSize(257u);
+    _pool = new ElevationPool();
+    _pool->setTileSize(257u);
 
     OE_TEST << LC << "Initialized!\n";
 }
@@ -677,7 +678,7 @@ FlatteningLayer::createTileSource()
 {
     OE_TEST << LC << "Creating tile source\n";
     _ts = new FlatteningTileSource(options());
-    _ts->setElevationPool(&_pool);
+    _ts->setElevationPool(_pool.get());
     _ts->setFeatureSource(_featureSource.get());
     return _ts;
 }
@@ -704,7 +705,7 @@ FlatteningLayer::setBaseLayer(ElevationLayer* layer)
         layers.push_back(layer);
     }
 
-    _pool.setElevationLayers(layers);
+    _pool->setElevationLayers(layers);
 }
 
 void
@@ -728,7 +729,7 @@ FlatteningLayer::addedToMap(const Map* map)
     {  
         // Initialize the elevation pool with our map:
         OE_INFO << LC << "Attaching elevation pool to map\n";
-        _pool.setMap( map );
+        _pool->setMap( map );
 
         // Listen for our specified base layer to arrive/depart the map.
         // setBaseLayer will be automatically called.

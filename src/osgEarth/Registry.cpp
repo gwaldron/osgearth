@@ -151,25 +151,29 @@ _threadPoolSize(2u)
     // register the system stock Units.
     Units::registerAll( this );
 
-    // intiailize the async operations queue.
-    _opQueue = new osg::OperationQueue();
+    //// intiailize the async operations queue.
+    //_opQueue = new osg::OperationQueue();
 
-    // create the thread pool and tie it to the queue.
-    for (unsigned i = 0; i < _threadPoolSize; ++i)
-    {
-        osg::OperationThread* t = new osg::OperationThread();
-        t->setOperationQueue(_opQueue.get());
-        t->start();
-        _opThreadPool.push_back(t);
-    }
+    //// create the thread pool and tie it to the queue.
+    //for (unsigned i = 0; i < _threadPoolSize; ++i)
+    //{
+    //    osg::OperationThread* t = new osg::OperationThread();
+    //    t->setOperationQueue(_opQueue.get());
+    //    t->start();
+    //    _opThreadPool.push_back(t);
+    //}
 }
 
 Registry::~Registry()
 {
-    for (unsigned i = 0; i < _opThreadPool.size(); ++i)
-    {
-        _opThreadPool[i]->cancel();
-    }
+    //_opQueue->releaseAllOperations();
+    //_opQueue->removeAllOperations();
+
+    //for (unsigned i = 0; i < _opThreadPool.size(); ++i)
+    //{
+    //    _opThreadPool[i]->setDone(true);
+    //    //_opThreadPool[i]->cancel();
+    //}
 }
 
 Registry*

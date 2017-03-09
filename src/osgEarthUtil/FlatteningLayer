@@ -193,7 +193,7 @@ namespace osgEarth { namespace Util
 
         MapCallback* _mapCallback;
         FlatteningTileSource* _ts;
-        ElevationPool _pool;
+        osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<FeatureSource> _featureSource;
 
         LayerListener<FlatteningLayer, ElevationLayer> _baseLayerListener;

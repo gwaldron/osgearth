@@ -439,6 +439,55 @@ MapNode::~MapNode()
         << (te.valid()? te.get()->referenceCount() : 0) << ", Map=" << _map->referenceCount() << ")\n";
 }
 
+Config
+MapNode::getConfig() const
+{
+    Config mapConf("map");
+    mapConf.set("version", "2");
+
+    MapFrame mapf( _map.get() );
+
+    // the map and node options:
+    Config optionsConf = _map->getInitialMapOptions().getConfig();
+    optionsConf.merge( getMapNodeOptions().getConfig() );
+    mapConf.add( "options", optionsConf );
+
+    // the layers
+    LayerVector layers;
+    mapf.getLayers(layers);
+
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        const Layer* layer = i->get();
+
+        Config layerConf = layer->getConfig();
+        if (!layerConf.empty() && !layerConf.key().empty())
+        {
+            mapConf.add(layerConf);
+        }
+    }
+
+    typedef std::vector< osg::ref_ptr<Extension> > Extensions;
+    for(Extensions::const_iterator i = getExtensions().begin(); i != getExtensions().end(); ++i)
+    {
+        Extension* e = i->get();
+        Config conf = e->getConfigOptions().getConfig();
+        if ( !conf.key().empty() )
+        {
+            mapConf.add( conf );
+        }
+    }
+
+    Config ext = externalConfig();
+    if ( !ext.empty() )
+    {
+        ext.key() = "external";
+        mapConf.add( ext );
+    }
+
+    return mapConf;
+}
+
 osg::BoundingSphere
 MapNode::computeBound() const
 {

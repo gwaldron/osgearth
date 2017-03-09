@@ -522,58 +522,18 @@ Config
 EarthFileSerializer2::serialize(const MapNode* input, const std::string& referrer) const
 {
     Config mapConf("map");
-    mapConf.set("version", "2");
-
-    if ( !input || !input->getMap() )
-        return mapConf; 
-
-    const Map* map = input->getMap();
-    MapFrame mapf( map );
-
-    // the map and node options:
-    Config optionsConf = map->getInitialMapOptions().getConfig();
-    optionsConf.merge( input->getMapNodeOptions().getConfig() );
-    mapConf.add( "options", optionsConf );
-
-    // the layers
-    LayerVector layers;
-    mapf.getLayers(layers);
-
-    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    
+    if (input && input->getMap())
     {
-        const Layer* layer = i->get();
+        mapConf = input->getConfig();
 
-        Config layerConf = layer->getConfig();
-        if (!layerConf.empty() && !layerConf.key().empty())
+        // Re-write pathnames in the Config so they are relative to the new referrer.
+        if ( _rewritePaths && !referrer.empty() )
         {
-            mapConf.add(layerConf);
+            RewritePaths rewritePaths( referrer );
+            rewritePaths.setRewriteAbsolutePaths( _rewriteAbsolutePaths );
+            rewritePaths.apply( mapConf );
         }
-    }
-
-    typedef std::vector< osg::ref_ptr<Extension> > Extensions;
-    for(Extensions::const_iterator i = input->getExtensions().begin(); i != input->getExtensions().end(); ++i)
-    {
-        Extension* e = i->get();
-        Config conf = e->getConfigOptions().getConfig();
-        if ( !conf.key().empty() )
-        {
-            mapConf.add( conf );
-        }
-    }
-
-    Config ext = input->externalConfig();
-    if ( !ext.empty() )
-    {
-        ext.key() = "external";
-        mapConf.add( ext );
-    }
-
-    // Re-write pathnames in the Config so they are relative to the new referrer.
-    if ( _rewritePaths && !referrer.empty() )
-    {
-        RewritePaths rewritePaths( referrer );
-        rewritePaths.setRewriteAbsolutePaths( _rewriteAbsolutePaths );
-        rewritePaths.apply( mapConf );
     }
 
     return mapConf;

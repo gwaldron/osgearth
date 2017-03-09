@@ -41,16 +41,22 @@ _tileSize( 257u )
     if (!_opQueue.valid())
     {
         _opQueue = new osg::OperationQueue();
-        _opThread = new osg::OperationThread();
-        _opThread->setOperationQueue(_opQueue.get());
-        _opThread->start();
+        for (unsigned i=0; i<2; ++i)
+        {
+            osg::OperationThread* thread = new osg::OperationThread();
+            thread->setOperationQueue(_opQueue.get());
+            thread->start();
+            _opThreads.push_back(thread);
+        }
     }
 }
 
 ElevationPool::~ElevationPool()
 {
-    _opThread->setDone(true);
     _opQueue->releaseAllOperations();
+
+    for (unsigned i = 0; i<_opThreads.size(); ++i)
+        _opThreads[i]->setDone(true);
 }
 
 void

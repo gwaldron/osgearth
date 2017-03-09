@@ -171,7 +171,7 @@ namespace osgEarth
         };
         friend struct GetElevationOp;
         osg::ref_ptr<osg::OperationQueue> _opQueue;
-        osg::ref_ptr<osg::OperationThread> _opThread;
+        std::vector< osg::ref_ptr<osg::OperationThread> > _opThreads;
 
         virtual ~ElevationPool();
 

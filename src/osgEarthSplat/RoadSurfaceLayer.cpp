@@ -20,7 +20,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/VirtualProgram>
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgDB/WriteFile>
@@ -177,40 +177,82 @@ RoadSurfaceLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 GeoImage
 RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
 {
-    if (getStatus().isError() || !_features.valid())
+    if (getStatus().isError())    
+    {
         return GeoImage::INVALID;
-
-    // Resolve the list of tile keys that intersect the incoming extent:
-    std::vector<TileKey> featureKeys;
-    if (_features->getFeatureProfile() && _features->getFeatureProfile()->getProfile())
-    {
-        _features->getFeatureProfile()->getProfile()->getIntersectingTiles(key, featureKeys);    
     }
-    else
+    
+    if (!_features.valid())
     {
-        featureKeys.push_back(key);
+        setStatus(Status(Status::ServiceUnavailable, "No feature source"));
+        return GeoImage::INVALID;
     }
 
     const FeatureProfile* featureProfile = _features->getFeatureProfile();
+    if (!featureProfile)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
+        return GeoImage::INVALID;
+    }
+
     const SpatialReference* featureSRS = featureProfile->getSRS();
+    if (!featureSRS)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
+        return GeoImage::INVALID;
+    }
+
+    // If the feature source has a tiling profile, we are going to have to map the incoming
+    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
+    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+
+    // Buffer the incoming extent, if requested.
+    if (options().featureBufferWidth().isSet())
+    {
+        GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+        double latitude = geoExtent.getCentroid().y();
+        double buffer = SpatialReference::transformUnits(options().featureBufferWidth().get(), featureSRS, latitude);
+        queryExtent.expand(buffer, buffer);
+    }
+    
 
     FeatureList features;
 
-    std::set<TileKey> fkeys;
-
-    for (int i = 0; i < featureKeys.size(); ++i)
-    {        
-        if (featureKeys[i].getLOD() > featureProfile->getMaxLevel())
-            fkeys.insert(featureKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
-        else
-            fkeys.insert(featureKeys[i]);
-    }
-
-    for (std::set<TileKey>::const_iterator i = fkeys.begin(); i != fkeys.end(); ++i)
+    if (featureProfile->getProfile())
     {
-        Query query;
-        query.tileKey() = *i;
+        // Resolve the list of tile keys that intersect the incoming extent.
+        std::vector<TileKey> intersectingKeys;
+        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
 
+        std::set<TileKey> featureKeys;
+        for (int i = 0; i < intersectingKeys.size(); ++i)
+        {        
+            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
+                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
+            else
+                featureKeys.insert(intersectingKeys[i]);
+        }
+
+        // Query and collect all the features we need for this tile.
+        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        {
+            Query query;        
+            query.tileKey() = *i;
+
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            if (cursor.valid())
+            {
+                cursor->fill(features);
+            }
+        }
+    }
+    else
+    {
+        // Set up the query; bounds must be in the feature SRS:
+        Query query;
+        query.bounds() = queryExtent.bounds();
+
+        // Run the query and fill the list.
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
         if (cursor.valid())
         {
@@ -220,7 +262,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
     // Create the output extent in feature SRS:
     GeoExtent outputExtent = key.getExtent();
-    FilterContext fc(_session.get(), _features->getFeatureProfile(), outputExtent);
+    FilterContext fc(_session.get(), featureProfile, outputExtent);
     
     // By default, the geometry compiler will use the Session's Map SRS at the output SRS
     // for feature data. We want a projected output so we can take an overhead picture of it.
@@ -231,16 +273,15 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         outputExtent = outputExtent.transform(fc.getOutputSRS());
     }
 
-    // turn off the shader generation:
-    GeometryCompilerOptions geomOptions;
-    geomOptions.shaderPolicy() = SHADERPOLICY_DISABLE;
-
     // compile the features into a node.
-    GeometryCompiler compiler(geomOptions);
+    GeometryCompiler compiler;
     osg::ref_ptr<osg::Node> node = compiler.compile(features, options().style().get(), fc);
     
     if (node && node->getBound().valid())
     {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
+        vp->setInheritShaders(false);
+
         // Schedule the rasterization and get the future:
         Threading::Future<osg::Image> image = _rasterizer->push(node.release(), getTileSize(), outputExtent);
 

@@ -41,8 +41,8 @@ namespace osgEarth { namespace Splat
         RoadSurfaceLayerOptions(const ConfigOptions& options = ConfigOptions())
             : ImageLayerOptions(options)
         {
-            _innerWidth.init(25.0);
-            _outerWidth.init(50.0);
+            //_innerWidth.init(25.0);
+            //_outerWidth.init(50.0);
             fromConfig(_conf);
         }
 
@@ -56,11 +56,14 @@ namespace osgEarth { namespace Splat
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
 
-        optional<double>& innerWidth() { return _innerWidth; }
-        const optional<double>& innerWidth() const { return _innerWidth; }
+        //optional<double>& innerWidth() { return _innerWidth; }
+        //const optional<double>& innerWidth() const { return _innerWidth; }
 
-        optional<double>& outerWidth() { return _outerWidth; }
-        const optional<double>& outerWidth() const { return _outerWidth; }
+        //optional<double>& outerWidth() { return _outerWidth; }
+        //const optional<double>& outerWidth() const { return _outerWidth; }
+
+        optional<Distance>& featureBufferWidth() { return _bufferWidth; }
+        const optional<Distance>& featureBufferWidth() const { return _bufferWidth; }
 
         optional<Style>& style() { return _style; }
         const optional<Style>& style() const { return _style; }
@@ -72,8 +75,9 @@ namespace osgEarth { namespace Splat
             conf.key() = "road_surface";
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("feature_source", _featureSourceLayer);
-            conf.addIfSet("inner_width", _innerWidth);
-            conf.addIfSet("outer_width", _outerWidth);
+            //conf.addIfSet("inner_width", _innerWidth);
+            //conf.addIfSet("outer_width", _outerWidth);
+            conf.addIfSet("buffer_width", _bufferWidth);
             conf.addObjIfSet("style", _style);
             return conf;
         }
@@ -89,16 +93,18 @@ namespace osgEarth { namespace Splat
         {
             conf.getObjIfSet("features",  _featureSourceOptions);
             conf.getIfSet("feature_source", _featureSourceLayer);
-            conf.getIfSet("inner_width", _innerWidth);
-            conf.getIfSet("outer_width", _outerWidth);
+            //conf.getIfSet("inner_width", _innerWidth);
+            //conf.getIfSet("outer_width", _outerWidth);
+            conf.getIfSet("buffer_width", _bufferWidth);
             conf.getObjIfSet("style", _style);
         }
         
     private:
         optional<FeatureSourceOptions> _featureSourceOptions;
         optional<std::string> _featureSourceLayer;
-        optional<double> _innerWidth;
-        optional<double> _outerWidth;
+        //optional<double> _innerWidth;
+        //optional<double> _outerWidth;
+        optional<Distance> _bufferWidth;
         optional<Style> _style;
     };
 

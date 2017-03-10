@@ -282,14 +282,26 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
         vp->setInheritShaders(false);
 
-        // Schedule the rasterization and get the future:
-        Threading::Future<osg::Image> image = _rasterizer->push(node.release(), getTileSize(), outputExtent);
+        Threading::Future<osg::Image> imageFuture;
 
-        // Wait for rasterization to complete and return the image.
-        return GeoImage(image.get(), key.getExtent());
+        // Schedule the rasterization and get the future.
+        osg::ref_ptr<TileRasterizer> rasterizer;
+        if (_rasterizer.lock(rasterizer))
+        {
+            imageFuture = rasterizer->push(node.release(), getTileSize(), outputExtent);
+
+            // Immediately discard the temporary reference to the rasterizer, because
+            // otherwise a deadlock can occur if the application exits while the call
+            // to release() below is blocked.
+            rasterizer = 0L;
+        }
+
+        osg::Image* image = imageFuture.release();
+        if (image)
+        {
+            return GeoImage(image, key.getExtent());
+        }
     }
-    else
-    {
-        return GeoImage::INVALID;
-    }
+
+    return GeoImage::INVALID;
 }

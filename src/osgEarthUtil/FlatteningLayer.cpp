@@ -460,7 +460,7 @@ FlatteningTileSource::initialize(const osgDB::Options* readOptions)
     return Status::OK();
 }
 
-
+#if 0
 osg::HeightField*
 FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
 {
@@ -480,6 +480,7 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
     OE_START_TIMER(create);
 
     const GeoExtent& ex = key.getExtent();
+
 
     // We will collection all the feature geometries in this multi:
     MultiGeometry geoms;
@@ -586,6 +587,168 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
             //double t_create = OE_GET_TIMER(create);
             //OE_INFO << LC << key.str() << " : t=" << t_create << "s\n";
 
+            // If integrate made any changes, return the new heightfield.
+            // (Or if the operation was canceled...return it anyway and it 
+            // will be discarded).
+            return hf.release();
+        }
+    }
+
+    return 0L;
+}
+#endif
+
+
+osg::HeightField*
+FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
+{
+    if (getStatus().isError())    
+    {
+        return 0L;
+    }
+    
+    if (!_featureSource.valid())
+    {
+        setStatus(Status(Status::ServiceUnavailable, "No feature source"));
+        return 0L;
+    }
+
+    const FeatureProfile* featureProfile = _featureSource->getFeatureProfile();
+    if (!featureProfile)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
+        return 0L;
+    }
+
+    const SpatialReference* featureSRS = featureProfile->getSRS();
+    if (!featureSRS)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
+        return 0L;
+    }
+
+    if (_pool->getElevationLayers().empty())
+    {
+        OE_WARN << LC << "Internal error - Pool layer set is empty\n";
+        return 0L;
+    }
+
+    OE_START_TIMER(create);
+
+    // If the feature source has a tiling profile, we are going to have to map the incoming
+    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
+    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+
+    // Lat/Long extent:
+    GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+
+    // Buffer the query extent to include the potentially flattened area.
+    double linewidth = SpatialReference::transformUnits(
+        lineWidth().get(),
+        featureSRS,
+        geoExtent.getCentroid().y());
+
+    double bufferwidth = SpatialReference::transformUnits(
+        bufferWidth().get(),
+        featureSRS,
+        geoExtent.getCentroid().y());
+
+    double queryBuffer = 0.5*linewidth + bufferwidth;
+    queryExtent.expand(queryBuffer, queryBuffer);
+
+    // We must do all the feature processing in a projected system since we're using vector math.
+    const SpatialReference* workingSRS =
+        queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
+        queryExtent.getSRS();
+    bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
+
+    // We will collection all the feature geometries in this multigeometry:
+    MultiGeometry geoms;
+
+    if (featureProfile->getProfile())
+    {
+        // Tiled source, must resolve complete set of intersecting tiles:
+        std::vector<TileKey> intersectingKeys;
+        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+
+        std::set<TileKey> featureKeys;
+        for (int i = 0; i < intersectingKeys.size(); ++i)
+        {        
+            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
+                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
+            else
+                featureKeys.insert(intersectingKeys[i]);
+        }
+
+        // Query and collect all the features we need for this tile.
+        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        {
+            Query query;        
+            query.tileKey() = *i;
+
+            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+            while (cursor.valid() && cursor->hasMore())
+            {
+                Feature* feature = cursor->nextFeature();
+
+                // Transform the feature geometry to our working (projected) SRS.
+                if (needsTransform)
+                    feature->transform(workingSRS);
+
+                //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
+                //      in order to discard geometries we don't care about
+
+                geoms.getComponents().push_back(feature->getGeometry());
+            }
+        }
+    }
+    else
+    {
+        // Non-tiled feaure source, just query arbitrary extent:
+        // Set up the query; bounds must be in the feature SRS:
+        Query query;
+        query.bounds() = queryExtent.bounds();
+
+        // Run the query and fill the list.
+        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+        while (cursor.valid() && cursor->hasMore())
+        {
+            Feature* feature = cursor->nextFeature();
+
+            // Transform the feature geometry to our working (projected) SRS.
+            if (needsTransform)
+                feature->transform(workingSRS);
+
+            //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
+            //      in order to discard geometries we don't care about
+
+            geoms.getComponents().push_back(feature->getGeometry());
+        }
+    }
+
+    if (!geoms.getComponents().empty())
+    {
+        // Make an empty heightfield to populate:
+        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
+            queryExtent,
+            257, 257,           // base tile size for elevation data
+            0u,                 // no border
+            true);              // initialize to HAE (0.0) heights
+
+        // Initialize to NO DATA.
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+
+        // Create an elevation query envelope at the LOD we are creating
+        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
+
+        // Resolve the buffering widths:
+        double lineWidthLocal = SpatialReference::transformUnits(lineWidth().get(), workingSRS, geoExtent.getCentroid().y());
+        double bufferWidthLocal = SpatialReference::transformUnits(bufferWidth().get(), workingSRS, geoExtent.getCentroid().y());
+
+        bool fill = (this->fill() == true);
+        
+        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress) || (progress && progress->isCanceled()))
+        {
             // If integrate made any changes, return the new heightfield.
             // (Or if the operation was canceled...return it anyway and it 
             // will be discarded).

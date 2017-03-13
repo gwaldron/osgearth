@@ -1,0 +1,64 @@
+<map>
+
+    <elevation name="ReadyMap elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    <fractal_elevation name="Fractal Pterodactyl" min_level="13" max_data_level="14" offset="true">
+        <cache_policy usage="no_cache"/>
+        <noise_image>H:/data/textures/seamless-noise-1.png</noise_image>
+        <amplitude>8</amplitude>
+    </fractal_elevation>
+
+    <!-- Satellite imagery -->
+    <image name="ReadyMap imagery" driver="tms" opacity="0.25" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <feature_model name="roads" min_level="12">
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #333333;
+                    stroke-width: 15m;
+                    altitude-clamping: terrain-drape;
+                }
+            </style>
+        </styles>
+    </feature_model>
+
+    <viewpoints>
+        <viewpoint name="Far range">
+          <heading>20.0616</heading>
+          <pitch>-10.5897</pitch>
+          <range>8568.71m</range>
+          <long>-121.8132467079796</long>
+          <lat>46.75415816484834</lat>
+          <height>884.2401606887579</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Close range (15m wide roads)">
+          <heading>8.88942</heading>
+          <pitch>-13.3873</pitch>
+          <range>814.424m</range>
+          <long>-121.8306682896568</long>
+          <lat>46.7268954550194</lat>
+          <height>768.5787042481825</height>
+          <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+    </viewpoints>
+    
+    <feature_source name="roads-data" driver="tfs">
+        <url>http://readymap.org/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script language="javascript">
+              <![CDATA[ ("highway" in feature.properties); ]]>
+            </script>
+        </filters>
+    </feature_source>
+</map>

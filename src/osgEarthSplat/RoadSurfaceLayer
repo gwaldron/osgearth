@@ -65,7 +65,7 @@ namespace osgEarth { namespace Splat
     public:
         Config getConfig() const
         {
-            Config conf;
+            Config conf = ImageLayerOptions::getConfig();
             conf.key() = "road_surface";
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("feature_source", _featureSourceLayer);

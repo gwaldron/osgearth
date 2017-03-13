@@ -78,7 +78,8 @@ namespace osgEarth { namespace Util
     public:
         Config getConfig() const
         {
-            Config conf;
+            Config conf = ElevationLayerOptions::getConfig();
+            conf.key() = "flattened_elevation";
             conf.addIfSet("base_layer", _elevationBaseLayer);
             conf.addObjIfSet("features",  _featureSource);
             conf.addIfSet("feature_source", _featureSourceLayer);

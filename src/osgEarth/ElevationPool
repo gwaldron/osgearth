@@ -170,11 +170,12 @@ namespace osgEarth
             void operator()(osg::Object*);
         };
         friend struct GetElevationOp;
+        osg::ref_ptr<osg::OperationQueue> _opQueue;
+        std::vector< osg::ref_ptr<osg::OperationThread> > _opThreads;
+
+        virtual ~ElevationPool();
 
     protected:
-
-        /** dtor - prevent stack allocation */
-        //virtual ~ElevationPool() { }
 
         // safely popluate the tile; called when Tile._status = IN_PROGRESS
         bool fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile);

@@ -53,3 +53,173 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   return (unsigned)pthread_self();
 #endif
 }
+
+//...................................................................
+
+Event::Event() :
+_set(false)
+{
+    //nop
+}
+
+Event::~Event()
+{
+    reset();
+    for (int i = 0; i < 255; ++i) // workaround buggy broadcast
+        _cond.signal();
+}
+
+bool Event::wait()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    return _set ? true : (_cond.wait(&_m) == 0);
+}
+
+bool Event::wait(unsigned timeout_ms)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    return _set ? true : (_cond.wait(&_m, timeout_ms) == 0);
+}
+
+bool Event::waitAndReset()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    if (_set) {
+        _set = false;
+        return true;
+    }
+    else {
+        bool value = _cond.wait(&_m) == 0;
+        _set = false;
+        return value;
+    }
+}
+
+void Event::set()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    if (!_set) {
+        _set = true;
+        _cond.broadcast(); // possible deadlock before OSG r10457 on windows
+    }
+}
+
+void Event::reset()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    _set = false;
+}
+
+//...................................................................
+
+MultiEvent::MultiEvent(int num) :
+_set(num), _num(num) 
+{
+    //nop
+}
+
+MultiEvent::~MultiEvent()
+{
+    reset();
+    for (int i = 0; i < 255; ++i) // workaround buggy broadcast
+        _cond.signal();
+}
+
+bool MultiEvent::wait()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    while (_set > 0)
+        if (_cond.wait(&_m) != 0)
+            return false;
+    return true;
+}
+
+bool MultiEvent::waitAndReset()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    while (_set > 0)
+        if (_cond.wait(&_m) != 0)
+            return false;
+    _set = _num;
+    return true;
+}
+
+void MultiEvent::set()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    if (_set > 0)
+        --_set;
+    if (_set == 0)
+        _cond.broadcast(); // possible deadlock before OSG r10457 on windows
+    //_cond.signal();
+}
+
+void MultiEvent::reset()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+    _set = _num;
+}
+
+//...................................................................
+
+ReadWriteMutex::ReadWriteMutex() :
+_readerCount(0)
+{
+    _noWriterEvent.set();
+    _noReadersEvent.set();
+}
+
+void ReadWriteMutex::readLock()
+{
+    for (;;)
+    {
+        _noWriterEvent.wait();           // wait for a writer to quit if there is one
+        incrementReaderCount();          // register this reader
+        if (!_noWriterEvent.isSet())     // double lock check, in case a writer snuck in while inrementing
+            decrementReaderCount();      // if it did, undo the registration and try again
+        else
+            break;                       // otherwise, we're in
+    }
+}
+
+void ReadWriteMutex::readUnlock()
+{
+    decrementReaderCount();              // unregister this reader
+}
+
+void ReadWriteMutex::writeLock()
+{
+    for (;;)
+    {
+        _noReadersEvent.wait(); // wait for no readers
+
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_lockWriterMutex);
+        _noWriterEvent.wait();  // wait for no writers
+        _noWriterEvent.reset(); // signal that there is now a writer
+
+        if (_noReadersEvent.isSet()) // still no readers? done.
+            break;
+        else
+            _noWriterEvent.set(); // otherwise, a reader snuck in, so try again.
+    }
+}
+
+void ReadWriteMutex::writeUnlock()
+{
+    _noWriterEvent.set();
+}
+
+void ReadWriteMutex::incrementReaderCount()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_readerCountMutex);
+    _readerCount++;            // add a reader
+    _noReadersEvent.reset();   // there's at least one reader now so clear the flag
+}
+
+void ReadWriteMutex::decrementReaderCount()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_readerCountMutex);
+    _readerCount--;               // remove a reader
+    if (_readerCount <= 0)      // if that was the last one, signal that writers are now allowed
+        _noReadersEvent.set();
+}

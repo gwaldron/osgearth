@@ -85,15 +85,8 @@ namespace
         osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress)
         {
             double min_n = FLT_MAX, max_n = -FLT_MAX;
-
-            //// Configure the noise function:
-            //SimplexNoise noise;
-            //noise.setNormalize(true);
-            //noise.setRange(-1.0, 1.0);
-            //noise.setFrequency(_options.frequency().get());
-            //noise.setPersistence(_options.persistence().get());
-            //noise.setLacunarity(_options.lacunarity().get());
-            //noise.setOctaves(std::min(12u, key.getLOD() - _options.baseLOD().get()));
+            double min_h = FLT_MAX, max_h = -FLT_MAX;
+            double h_mean = 0.0;
 
             ImageUtils::PixelReader noise1(_noiseImage1.get());
             noise1.setBilinear(true);
@@ -109,9 +102,10 @@ namespace
                     double u = (double)s / (double)(getPixelsPerTile() - 1);
                     double v = (double)t / (double)(getPixelsPerTile() - 1);
 
-                    float h = 0;
-                    double n;
+                    double n = 0.0;
                     double uScaled, vScaled;
+
+                    double finalScale = 4.0;
 
                     // Step 1
                     if (_noiseImage1.valid())
@@ -122,13 +116,9 @@ namespace
                         float uMod = (float)fmod(uScaled, 1.0);
                         float vMod = (float)fmod(vScaled, 1.0);
 
-                        n = noise1(uMod, vMod).r();
-                        h += n * _options.amplitude().get();
+                        n += noise1(uMod, vMod).r() - 0.5;
+                        finalScale *= 0.5;
                     }
-
-                    //// Step 1: apply a general, rolling bumpiness
-                    //n = noise.getTiledValue(uScaled, vScaled);
-                    //h = n * _options.amplitude().get();
 
                     if (_noiseImage2.valid())
                     {
@@ -137,16 +127,21 @@ namespace
 
                         float uMod = (float)fmod(uScaled, 1.0);
                         float vMod = (float)fmod(vScaled, 1.0);
-                        float n3 = noise2(uMod, vMod).r();
-                        h += n3 * _options.amplitude().get();
+                        n += noise2(uMod, vMod).r() - 0.5;
+                        finalScale *= 0.5;
                     }
 
-                    hf->setHeight(s, t, h);
+                    n *= finalScale;
+
+                    hf->setHeight(s, t, n * _options.amplitude().get());
 
                     if (_debug)
                     {
+                        h_mean += hf->getHeight(s, t);
                         min_n = std::min(min_n, n);
                         max_n = std::max(max_n, n);
+                        min_h = std::min(min_h, (double)hf->getHeight(s, t));
+                        max_h = std::max(max_h, (double)hf->getHeight(s, t));
                     }
                 }
             }
@@ -154,7 +149,23 @@ namespace
 
             if (_debug)
             {
-                OE_INFO << LC << "Tile " << key.str() << " N=(" << min_n << ", " << max_n << ")\n";
+                h_mean /= double(getPixelsPerTile()*getPixelsPerTile());
+                double q_mean = 0.0;
+
+                for (int s = 0; s < getPixelsPerTile(); ++s)
+                {
+                    for (int t = 0; t < getPixelsPerTile(); ++t)
+                    {
+                        double q = hf->getHeight(s, t) - h_mean;
+                        q_mean += q*q;
+                    }
+                }
+
+                double stdev = sqrt(q_mean / double(getPixelsPerTile()*getPixelsPerTile()));
+
+                OE_INFO << LC << "Tile " << key.str() << " Hmean=" << h_mean
+                    << ", stdev=" << stdev << ", n[" << min_n << ", " << max_n << "] "
+                    << "h[" << min_h << ", " << max_h << "]\n";
             }
 
             return hf;

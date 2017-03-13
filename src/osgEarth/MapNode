@@ -214,6 +214,9 @@ namespace osgEarth
          */
         void openMapLayers();
 
+        //! Serializes the MapNode into a Config object
+        Config getConfig() const;
+
 
     public: // special purpose
 

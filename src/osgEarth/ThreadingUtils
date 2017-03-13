@@ -28,9 +28,6 @@
 #include <map>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
-//#ifdef _DEBUG
-//#  define TRACE_THREADS 1
-//#endif
 
 namespace osgEarth { namespace Threading
 {   
@@ -46,58 +43,46 @@ namespace osgEarth { namespace Threading
     extern OSGEARTH_EXPORT unsigned getCurrentThreadId();
 
 
-#ifdef USE_CUSTOM_READ_WRITE_LOCK
 
     /**
-     * Event with a toggled signal state.
+     * Event with a binary signaled state, for multi-threaded sychronization.
+     *
+     * The event has two states:
+     *  "set" means that a call to wait() will not block;
+     *  "unset" means that calls to wait() will block until another thread calls set().
+     *
+     * The event starts out unset. 
+     *
+     * Typical usage: Thread A creates Thread B to run asynchronous code. Thread A
+     * then calls wait(), which blocks Thread A. When Thread B is finished, it calls
+     * set(). Thread A then wakes up and continues execution.
      */
-    class Event 
+    class OSGEARTH_EXPORT Event 
     {
     public:
-        Event() : _set( false ) { }
+        //! Construct a new event
+        Event();
 
-        ~Event() { 
-            reset(); 
-            for( int i=0; i<255; ++i ) // workaround buggy broadcast
-                _cond.signal();
-        }
+        //! DTOR
+        ~Event();
 
-        inline bool wait() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            return _set ? true : (_cond.wait( &_m ) == 0);
-        }
+        //! Block until the event is set, then return true if set, false on error.
+        bool wait();
 
-        /** waits on a signal, and then automatically resets it before returning. */
-        inline bool waitAndReset() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            if ( _set ) {
-                _set = false;
-                return true;
-            }
-            else {
-                bool value = _cond.wait( &_m ) == 0;
-                _set = false;
-                return value;
-            }
-        }
+        //! Like wait(), but also returns false on timeout.
+        bool wait(unsigned timeout_ms);
 
-        inline void set() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            if ( !_set ) {
-                _set = true;
-                _cond.broadcast(); // possible deadlock before OSG r10457 on windows
-                //_cond.signal();
-            }
-        }
+        //! Like wait(), but resets the state before returning.
+        bool waitAndReset();
 
-        inline void reset() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            _set = false;
-        }
+        //! Set the event state, causing any waiters to unblock.
+        void set();
 
-        inline bool isSet() const {
-            return _set;
-        }
+        //! Reset (unset) the event state; new waiters will block until set() is called.
+        void reset();
+
+        //! Whether the event state is set (waiters will not block).
+        inline bool isSet() const { return _set; }
 
     protected:
         OpenThreads::Mutex _m;
@@ -105,50 +90,36 @@ namespace osgEarth { namespace Threading
         bool _set;
     };
 
-    /** Same as an Event, but waits on multiple notifications before releasing its wait. */
-    class MultiEvent 
+    /** Wraps an Event in a Referenced. */
+    class OSGEARTH_EXPORT RefEvent : public Event, public osg::Referenced
+    {
+    };
+
+    /**
+     * Same as Event, but set() must be called N times before unblocking
+     * waiting thread(s).
+     */
+    class OSGEARTH_EXPORT MultiEvent 
     {
     public:
-        MultiEvent( int num =1 ) : _set( num ), _num(num)  { }
+        //! Construct a multi-event with the number of setters.
+        MultiEvent(int num =1);
 
-        ~MultiEvent() {
-            reset();
-            for( int i=0; i<255; ++i ) // workaround buggy broadcast
-                _cond.signal();
-        }
+        //! DTOR
+        ~MultiEvent();
 
-        inline bool wait() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            while( _set > 0 )
-                if ( _cond.wait( &_m ) != 0 )
-                    return false;
-            return true;
-        }
+        //! Block the calling thread until all N set()s are called.
+        bool wait();
 
-        /** waits on a signal, and then automatically resets it before returning. */
-        inline bool waitAndReset() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            while( _set > 0 )
-                if ( _cond.wait( &_m ) != 0 )
-                    return false;
-            _set = _num;
-            return true;
-        }
+        //! Same as wait(), but resets the state after returning.
+        bool waitAndReset();
 
-        inline void notify() {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            if ( _set > 0 )
-                --_set;
-            if ( _set == 0 )
-                _cond.broadcast(); // possible deadlock before OSG r10457 on windows
-            //_cond.signal();
-        }
+        //! Adds one signal to the event; when all signals are set, waiters will unblock.
+        void set();
+        void notify() { set(); }
 
-        inline void reset( int num =0 ) {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            if ( num > 0 ) _num = num;
-            _set = _num;
-        }
+        //! Resets the state.
+        void reset();
 
     protected:
         OpenThreads::Mutex _m;
@@ -156,17 +127,21 @@ namespace osgEarth { namespace Threading
         int _set, _num;
     };
 
-    class RefEvent : public Event, public osg::Referenced
-    {
-    };
-
     /**
      * Future is the consumer-side interface to an asynchronous operation.
+     *
+     * Usage: 
+     *   Producer (usually an asynchronous function call) creates a Promise<Object>
+     *   and immediately returns promise.getFuture(). The Consumer then performs other
+     *   work, and eventually (or immediately) called Future.get() or Future.release().
+     *   Either call will block until the asynchronous operation is complete and the
+     *   result in Future is available.
      */
     template<typename T>
     class Future
     {
     private:
+        // internal structure to track referenced to the result
         struct RefPtrRef : public osg::Referenced {
             RefPtrRef(T* obj = 0L) : _obj(obj) { }
             osg::ref_ptr<T> _obj;
@@ -182,20 +157,27 @@ namespace osgEarth { namespace Threading
         //! Copy CTOR
         Future(const Future& rhs) : _ev(rhs._ev), _objRef(rhs._objRef.get()) { }
 
-        //! True is the promise was resolved and a result if available.
+        //! True if the promise was resolved and a result if available.
         bool isAvailable() const {
             return _ev->isSet();
         }
 
-        //! The result value; blocks until it is available and then returns it.
+        //! True if the Promise that generated this Future no longer exists.
+        bool isAbandoned() const {
+            return _objRef->referenceCount() == 1;
+        }
+
+        //! The result value; blocks until it is available (or abandonded) and then returns it.
         T* get() {
-            _ev->wait();
+            while(!_ev->wait(1000u))
+                if (isAbandoned()) return 0L;
             return _objRef->_obj.get();
         }
 
-        //! The result value; blocks until available and returns it; then resets to initial state.
+        //! The result value; blocks until available (or abandoned) and returns it; then resets to initial state.
         T* release() {
-            _ev->wait();
+            while(!_ev->wait(1000u))
+                if (isAbandoned()) return 0L;
             T* out = _objRef->_obj.release();
             _ev->reset();
             return out;
@@ -208,7 +190,12 @@ namespace osgEarth { namespace Threading
     };
     
     /**
-     * Future is the producer-side interface to an asynchronous operation.
+     * Promise is the producer-side interface to an asynchronous operation.
+     *
+     * Usage: The code that initiates an asychronous operation creates a Promise
+     *   object, dispatches the asynchronous code, and immediately returns 
+     *   Promise.getFuture(). The caller can then call future.get() to block until
+     *   the result is available.
      */
     template<typename T>
     class Promise
@@ -236,6 +223,8 @@ namespace osgEarth { namespace Threading
     private:
         Future<T> _future;
     };
+    
+#ifdef USE_CUSTOM_READ_WRITE_LOCK
 
     /**
      * Custom read/write lock. The read/write lock in OSG can unlock mutexes from a different
@@ -244,121 +233,28 @@ namespace osgEarth { namespace Threading
      * Adapted from:
      * http://www.codeproject.com/KB/threads/ReadWriteLock.aspx
      */
-    class ReadWriteMutex
+    class OSGEARTH_EXPORT ReadWriteMutex
     {
-#ifdef TRACE_THREADS
-        typedef std::set<unsigned> TracedThreads;
-        TracedThreads _trace;
-        OpenThreads::Mutex _traceMutex;
-#endif
-
     public:
-        ReadWriteMutex() :
-          _readerCount(0)
-        { 
-            _noWriterEvent.set();
-            _noReadersEvent.set();
-        }
+        //! Construct a read/write mutex.
+        ReadWriteMutex();
 
-        void readLock()
-        {
+        //! Lock for reading. Multiple threads can take a read lock simultaneously.
+        void readLock();
 
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                if( _trace.find(getCurrentThreadId()) != _trace.end() )
-                    OE_WARN << "TRACE: tried to double-lock" << std::endl;
-            }
-#endif
-            for( ; ; )
-            {
-                _noWriterEvent.wait();             // wait for a writer to quit if there is one
-                incrementReaderCount();            // register this reader
-                if ( !_noWriterEvent.isSet() )     // double lock check, in case a writer snuck in while inrementing
-                    decrementReaderCount();        // if it did, undo the registration and try again
-                else
-                    break;                         // otherwise, we're in
-            }
+        //! Unlock for reading.
+        void readUnlock();
 
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.insert(getCurrentThreadId());
-            }
-#endif
-        }
+        //! Lock for writing. This is exclusive; no other read OR write locks may be taken.
+        void writeLock();
 
-        void readUnlock()
-        {
-            decrementReaderCount();                // unregister this reader
-            
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.erase(getCurrentThreadId());
-            }
-#endif
-        }
-
-        void writeLock()
-        {
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                if( _trace.find(getCurrentThreadId()) != _trace.end() )
-                    OE_WARN << "TRACE: tried to double-lock" << std::endl;
-            }
-#endif
-            for (;;)
-            {
-                _noReadersEvent.wait(); // wait for no readers
-
-                OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _lockWriterMutex );
-                _noWriterEvent.wait();  // wait for no writers
-                _noWriterEvent.reset(); // signal that there is now a writer
-
-                if (_noReadersEvent.isSet()) // still no readers? done.
-                    break;
-                else
-                    _noWriterEvent.set(); // otherwise, a reader snuck in, so try again.
-            }
-
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.insert(getCurrentThreadId());
-            }
-#endif
-        }
-
-        void writeUnlock()
-        {
-            _noWriterEvent.set();
-
-#ifdef TRACE_THREADS
-            {
-                OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.erase(getCurrentThreadId());
-            }
-#endif
-        }
+        //! Release a write lock.
+        void writeUnlock();
 
     protected:
 
-        void incrementReaderCount()
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _readerCountMutex );
-            _readerCount++;            // add a reader
-            _noReadersEvent.reset();   // there's at least one reader now so clear the flag
-        }
-
-        void decrementReaderCount()
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _readerCountMutex );
-            _readerCount--;               // remove a reader
-            if ( _readerCount <= 0 )      // if that was the last one, signal that writers are now allowed
-                _noReadersEvent.set();
-        }
+        void incrementReaderCount();
+        void decrementReaderCount();
 
     private:
         int    _readerCount;

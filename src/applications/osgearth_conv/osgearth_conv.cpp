@@ -85,7 +85,7 @@ struct TileSourceToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->hasData(key);
+        return _source->hasDataInExtent(key.getExtent());
     }
 
     TileSource* _source;
@@ -117,7 +117,7 @@ struct ImageLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->getTileSource()->hasData(key);
+        return _source->getTileSource()->hasDataInExtent(key.getExtent());
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -147,7 +147,7 @@ struct ElevationLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->getTileSource()->hasData(key);
+        return _source->getTileSource()->hasDataInExtent(key.getExtent());
     }
 
     osg::ref_ptr<ElevationLayer> _source;

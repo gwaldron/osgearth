@@ -166,7 +166,7 @@ bool WriteTMSTileHandler::hasData( const TileKey& key ) const
     TileSource* ts = _layer->getTileSource();
     if (ts)
     {
-        return ts->hasData(key);
+        return ts->hasDataInExtent(key.getExtent());
     }
     return true;
 }

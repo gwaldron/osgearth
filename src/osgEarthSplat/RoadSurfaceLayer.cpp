@@ -264,7 +264,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     GeoExtent outputExtent = key.getExtent();
     FilterContext fc(_session.get(), featureProfile, outputExtent);
     
-    // By default, the geometry compiler will use the Session's Map SRS at the output SRS
+    // By default, the geometry compiler will use the Session's Map SRS as the output SRS
     // for feature data. We want a projected output so we can take an overhead picture of it.
     // So set the output SRS to mercator instead.
     if (key.getExtent().getSRS()->isGeographic())

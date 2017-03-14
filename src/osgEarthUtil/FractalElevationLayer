@@ -46,15 +46,19 @@ namespace osgEarth { namespace Util
         optional<float>& persistence() { return _persistence; }
         const optional<float>& persistence() const { return _persistence; }
         
+        //! Simplex noise lacunarity
         optional<float>& lacunarity() { return _lacunarity; }
         const optional<float>& lacunarity() const { return _lacunarity; }
         
+        //! Reference LOD
         optional<unsigned>& baseLOD() { return _baseLOD; }
         const optional<unsigned>& baseLOD() const { return _baseLOD; }
 
+        //! Maximum change in elevation (total)
         optional<float>& amplitude() { return _amplitude; }
         const optional<float>& amplitude() const { return _amplitude; }
         
+        //! URI of a noise texture to use to augment to simplex noise
         optional<URI>& noiseImageURI() { return _noiseImageURI; }
         const optional<URI>& noiseImageURI() const { return _noiseImageURI; }
 

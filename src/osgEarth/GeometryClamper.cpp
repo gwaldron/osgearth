@@ -122,7 +122,7 @@ bool geomDirty = false;
 
                 if ( buildZOffsets )
                 {
-                    zOffsets->push_back( (*verts)[k].z() );
+                    zOffsets->push_back( hae ); //(*verts)[k].z() );
                 }
 
                 if ( _scale != 1.0 )

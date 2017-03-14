@@ -258,14 +258,18 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                     osgEarth::as<double>(tokens[3], 0.0)  // north
                     );
 
-                this->getDataExtents().push_back(DataExtent(extent, _minLevel, _maxLevel));
+                // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
+                // since we don't really handle DataExtents with minLevels > 0 just yet.
+                this->getDataExtents().push_back(DataExtent(extent, 0, _maxLevel));
 
                 OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
             }
         }
         else
         {
-            this->getDataExtents().push_back(DataExtent(getProfile()->getExtent(), _minLevel, _maxLevel));
+            // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
+            // since we don't really handle DataExtents with minLevels > 0 just yet.
+            this->getDataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, _maxLevel));
         }
 
     }

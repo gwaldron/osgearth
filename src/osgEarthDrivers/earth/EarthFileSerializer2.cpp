@@ -403,7 +403,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         mapOptions.mergeConfig( legacy );
     }
 
-    Map* map = new Map( mapOptions );
+    osg::ref_ptr< Map > map = new Map( mapOptions );
 
     // Start a batch update of the map:
     map->beginUpdate();

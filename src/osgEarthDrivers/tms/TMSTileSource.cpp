@@ -156,11 +156,25 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         }
         else
         {
-            //Push back a single area that encompasses the whole profile going up to the max level
-            this->getDataExtents().push_back(DataExtent(profile->getExtent(), 0, _tileMap->getMaxLevel()));
+            
+            GeoExtent extent;
+
+            // Push back a single area that covers the "bounds" present in the TMS dataset.
+            if (_tileMap.valid())
+            {
+                double minX, minY, maxX, maxY;
+                _tileMap->getExtents(minX, minY, maxX, maxY);
+                extent = GeoExtent(profile->getSRS(), minX, minY, maxX, maxY);
+            }
+
+            // If the extent isn't valid, use the profile's extent.
+            if (!extent.isValid() || extent.width() <= 0.0 || extent.height() <= 0.0 )
+            {
+                extent = profile->getExtent();
+            }
+            this->getDataExtents().push_back(DataExtent(extent, 0, _tileMap->getMaxLevel()));
         }
     }
- 
     return STATUS_OK;
 }
 

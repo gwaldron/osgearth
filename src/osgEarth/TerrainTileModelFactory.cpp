@@ -104,7 +104,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
 
         osg::Texture* tex = 0L;
 
-        if (layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
+        if (layer->isKeyInLegalRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
         {
             if (layer->createTextureSupported())
             {

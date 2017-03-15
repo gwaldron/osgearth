@@ -100,8 +100,8 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
 
     osg::ref_ptr<MultiGeometry> collection = new MultiGeometry();
 
-    DataExtentList exlist;
-    if (layer->getDataExtents(exlist))
+    const DataExtentList& exlist = layer->getDataExtents();
+    if (!exlist.empty())
     {
         for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)
         {

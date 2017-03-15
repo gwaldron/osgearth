@@ -151,8 +151,8 @@ public:
             << "&FORMAT=" << ( wmsFormatToUse.empty() ? std::string("image/") + _formatToUse : wmsFormatToUse )
             << "&STYLES=" << _options.style().value()
             << (_options.wmsVersion().value() == "1.3.0" ? "&CRS=" : "&SRS=") << _srsToUse            
-            << "&WIDTH="<< _options.tileSize().value()
-            << "&HEIGHT="<< _options.tileSize().value()
+            << "&WIDTH="<< getPixelsPerTile()
+            << "&HEIGHT=" << getPixelsPerTile()
             << "&BBOX=%lf,%lf,%lf,%lf";
 
         // then the optional keys:
@@ -246,8 +246,8 @@ public:
                 _formatToUse,
                 _options.style().value(),
                 _srsToUse,
-                _options.tileSize().value(),
-                _options.tileSize().value(),
+                getPixelsPerTile(),
+                getPixelsPerTile(),
                 patterns );
 
             if (patterns.size() > 0)
@@ -490,11 +490,6 @@ public:
             uri = replaceIn(uri, " ", "%20");
 
         return uri;
-    }
-
-    virtual int getPixelsPerTile() const
-    {
-        return _options.tileSize().value();
     }
 
     virtual std::string getExtension()  const 

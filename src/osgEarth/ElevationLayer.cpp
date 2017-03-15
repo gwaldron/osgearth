@@ -82,6 +82,9 @@ ElevationLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.updateIfSet("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
 
+    if (driver().isSet())
+        conf.set("driver", driver()->getDriver());
+
     return conf;
 }
 
@@ -108,11 +111,18 @@ namespace
     // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
     struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        NormalizeNoDataValues(TileSource* source)
+        //NormalizeNoDataValues(TileSource* source)
+        //{
+        //    _noDataValue   = source->getNoDataValue();
+        //    _minValidValue = source->getMinValidValue();
+        //    _maxValidValue = source->getMaxValidValue();
+        //}
+
+        NormalizeNoDataValues(TerrainLayer* layer)
         {
-            _noDataValue   = source->getNoDataValue();
-            _minValidValue = source->getMinValidValue();
-            _maxValidValue = source->getMaxValidValue();
+            _noDataValue   = layer->getNoDataValue();
+            _minValidValue = layer->getMinValidValue();
+            _maxValidValue = layer->getMaxValidValue();
         }
 
         void operator()(osg::ref_ptr<osg::HeightField>& hf)
@@ -208,15 +218,6 @@ ElevationLayer::isOffset() const
     return options().offset().get();
 }
 
-Config
-ElevationLayer::getConfig() const
-{
-    Config layerConf = options().getConfig();
-    layerConf.set("driver", options().driver()->getDriver());
-    layerConf.key() = "elevation";
-    return layerConf;
-}
-
 TileSource::HeightFieldOperation*
 ElevationLayer::getOrCreatePreCacheOp()
 {
@@ -225,7 +226,7 @@ ElevationLayer::getOrCreatePreCacheOp()
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_preCacheOp.valid() )
         {
-            _preCacheOp = new NormalizeNoDataValues( getTileSource() );
+            _preCacheOp = new NormalizeNoDataValues(this); // getTileSource() );
         }
     }
     return _preCacheOp.get();
@@ -259,7 +260,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     if ( key.getProfile()->isHorizEquivalentTo( getProfile() ) )
     {
         // Only try to get data if the source actually has data
-        if ( !source->hasData(key) )
+        if (!mayHaveData(key))
         {
             OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
@@ -326,7 +327,7 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
         {
             const TileKey& layerKey = intersectingTiles[i];
 
-            if ( isKeyInRange(layerKey) )
+            if ( isKeyInLegalRange(layerKey) )
             {
                 osg::HeightField* hf = createHeightFieldImplementation( layerKey, progress );
                 if ( hf )
@@ -514,7 +515,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 if ( !getTileSource() || !getTileSource()->isOK() )
                     return GeoHeightField::INVALID;
 
-                if ( !isKeyInRange(key) )
+                if ( !isKeyInLegalRange(key) )
                     return GeoHeightField::INVALID;
 
                 // build a HF from the TileSource.
@@ -679,7 +680,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             if ( layer->getTileSource() )
             {
                 // Check whether the non-mapped key is valid according to the user's min/max level settings:
-                if ( !layer->isKeyInRange(key) )
+                if ( !layer->isKeyInLegalRange(key) )
                 {
                     useLayer = false;
                 }
@@ -688,7 +689,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 // Find the "best available" mapped key from the tile source:
                 else 
                 {
-                    if ( layer->getTileSource()->getBestAvailableTileKey(mappedKey, bestKey) )
+                    bestKey = layer->getBestAvailableTileKey(mappedKey);
+                    if (bestKey.valid())
                     {
                         // If the bestKey is not the mappedKey, this layer is providing
                         // fallback data (data at a lower resolution than requested)

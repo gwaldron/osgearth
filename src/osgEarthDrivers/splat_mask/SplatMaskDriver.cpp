@@ -62,8 +62,9 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
             gdal.url() = *_options.classificationPath();
             gdal.interpolation() = osgEarth::INTERP_NEAREST;
             gdal.bilinearReprojection() = false;
-            gdal.tileSize() = 5;
+            //gdal.tileSize() = 5;
             ElevationLayerOptions classOptions("splat", gdal);
+            classOptions.tileSize() = 5;
             classOptions.cachePolicy() = CachePolicy::NO_CACHE;
             _classLayer = new ElevationLayer(classOptions);
 

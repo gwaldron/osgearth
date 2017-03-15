@@ -140,10 +140,6 @@ namespace osgEarth
          */
         bool isOffset() const;
 
-    public: // Layer
-
-        virtual Config getConfig() const;
-
     protected: // Layer
 
         virtual void init();

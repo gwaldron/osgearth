@@ -59,8 +59,7 @@ class OSGTileSource : public TileSource
 {
 public:
     OSGTileSource( const TileSourceOptions& options ) :
-      TileSource( options ),      
-      _maxDataLevel( 21 ),
+      TileSource( options ),
       _options( options )
     {
         //nop
@@ -94,19 +93,11 @@ public:
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
         {
-            if ( _options.maxDataLevel().isSet() )
-            {
-                _maxDataLevel = *_options.maxDataLevel();
-            }
-            else
-            {
-                int minSpan = osg::minimum( image->s(), image->t() );
-                int tileSize = _options.tileSize().value();
-                _maxDataLevel = (int)LOG2((minSpan/tileSize)+1);
-                //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
-            }
+            int minSpan = osg::minimum( image->s(), image->t() );
+            int tileSize = getPixelsPerTile();
+            _maxLOD = (int)LOG2((minSpan/tileSize)+1);
             
-            getDataExtents().push_back( DataExtent(getProfile()->getExtent(), 0, _maxDataLevel) );
+            getDataExtents().push_back( DataExtent(getProfile()->getExtent(), 0, _maxLOD) );
 
             bool computeAlpha =
                 (_options.convertLuminanceToRGBA() == true && image->getPixelFormat() == GL_LUMINANCE) ||
@@ -132,17 +123,11 @@ public:
 
         return STATUS_OK;
     }
-    
-    //override
-    unsigned int getMaxDataLevel() const 
-    {
-        return _maxDataLevel;
-    }
 
     osg::Image*
     createImage( const TileKey& key, ProgressCallback* progress )
     {
-        if ( !_image.valid() || key.getLevelOfDetail() > getMaxDataLevel() )
+        if (!_image.valid() || key.getLOD() > _maxLOD)
             return NULL;
 
         GeoImage cropped = _image.crop( key.getExtent(), true, getPixelsPerTile(), getPixelsPerTile(), *_options.bilinearReprojection() );
@@ -157,9 +142,9 @@ public:
 
 private:
     std::string      _extension;
-    int              _maxDataLevel;
     GeoImage         _image;
     const OSGOptions _options;
+    unsigned         _maxLOD;
 };
 
 

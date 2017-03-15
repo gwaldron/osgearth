@@ -337,8 +337,6 @@ namespace osgEarth
         typedef ImageLayerCallback Callback;
 
     public: // Layer
-
-        virtual Config getConfig() const;
         
         virtual const Status& open();
 

@@ -143,10 +143,6 @@ TileBlacklist::write(std::ostream &output) const
 
 TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
 DriverConfigOptions   ( options ),
-_tileSize             ( 256 ),
-_noDataValue          ( (float)SHRT_MIN ),
-_minValidValue        ( -32000.0f ),
-_maxValidValue        (  32000.0f ),
 _L2CacheSize          ( 16 ),
 _bilinearReprojection ( true ),
 _coverage             ( false )
@@ -159,14 +155,9 @@ Config
 TileSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.updateIfSet( "tile_size", _tileSize );
-    conf.updateIfSet( "nodata_value", _noDataValue );
-    conf.updateIfSet( "min_valid_value", _minValidValue );
-    conf.updateIfSet( "max_valid_value", _maxValidValue );
     conf.updateIfSet( "blacklist_filename", _blacklistFilename);
     conf.updateIfSet( "l2_cache_size", _L2CacheSize );
     conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
-    conf.updateIfSet( "max_data_level", _maxDataLevel );
     conf.updateIfSet( "coverage", _coverage );
     conf.updateIfSet( "osg_option_string", _osgOptionString );
     conf.updateObjIfSet( "profile", _profileOptions );
@@ -185,16 +176,9 @@ TileSourceOptions::mergeConfig( const Config& conf )
 void
 TileSourceOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "tile_size", _tileSize );
-    conf.getIfSet( "nodata_value", _noDataValue );
-    conf.getIfSet( "min_valid_value", _minValidValue );
-    conf.getIfSet( "nodata_min", _minValidValue ); // backcompat
-    conf.getIfSet( "max_valid_value", _maxValidValue );
-    conf.getIfSet( "nodata_max", _maxValidValue ); // backcompat
     conf.getIfSet( "blacklist_filename", _blacklistFilename);
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
-    conf.getIfSet( "max_data_level", _maxDataLevel );
     conf.getIfSet( "coverage", _coverage );
     conf.getIfSet( "osg_option_string", _osgOptionString );
     conf.getObjIfSet( "profile", _profileOptions );
@@ -216,7 +200,11 @@ TileSource::TileSource(const TileSourceOptions& options) :
 _options( options ),
 _status ( Status::Error("Not initialized") ),
 _mode   ( 0 ),
-_openCalled( false )
+_openCalled( false ),
+_tileSize(256),
+_noDataValue( (float)SHRT_MIN ),
+_minValidValue( -32000.0f ),
+_maxValidValue(  32000.0f )
 {
     // Initialize the l2 cache size to the options.
     int l2CacheSize = *options.L2CacheSize();
@@ -309,33 +297,13 @@ TileSource::open(const Mode&           openMode,
 int
 TileSource::getPixelsPerTile() const
 {
-    return _options.tileSize().value();
+    return _tileSize;
 }
 
-
-void TileSource::dirtyDataExtents()
+void
+TileSource::setPixelsPerTile(unsigned size)
 {
-    _dataExtentsUnion = GeoExtent::INVALID;
-}
-
-const GeoExtent& TileSource::getDataExtentsUnion() const
-{
-    if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0)
-    {
-        Threading::ScopedMutexLock lock(_mutex);
-        {
-            if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
-            {
-                GeoExtent e(_dataExtents[0]);
-                for (unsigned int i = 1; i < _dataExtents.size(); i++)
-                {
-                    e.expandToInclude(_dataExtents[i]);
-                }
-                const_cast<TileSource*>(this)->_dataExtentsUnion = e;
-            }
-        }
-    }
-    return _dataExtentsUnion;
+    _tileSize = size;
 }
 
 osg::Image*
@@ -455,254 +423,6 @@ const Profile*
 TileSource::getProfile() const
 {
     return _profile.get();
-}
-
-bool
-TileSource::hasDataAtLOD( unsigned lod ) const
-{
-    // the sematics here are really "MIGHT have data at LOD".
-
-    // Explicit max data level?
-    if ( _options.maxDataLevel().isSet() && lod > _options.maxDataLevel().value() )
-        return false;
-
-    // If no data extents are provided, just return true
-    if ( _dataExtents.size() == 0 )
-        return true;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ((!itr->minLevel().isSet() || itr->minLevel() <= lod) &&
-            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-bool
-TileSource::hasDataInExtent( const GeoExtent& extent ) const
-{
-    // if the extent is invalid, no intersection.
-    if ( !extent.isValid() )
-        return false;
-
-    // If no data extents are provided, just return true
-    if ( _dataExtents.size() == 0 )
-        return true;
-
-    bool intersects = false;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( extent.intersects( *itr ) )
-        {
-            intersects = true;
-            break;
-        }
-    }
-    return intersects;
-}
-
-bool
-TileSource::hasDataAt( const GeoPoint& location, bool exact) const
-{
-    // If the location is invalid then return false
-    if (!location.isValid())
-        return false;
-
-    // If no data extents are provided, just return true
-    if (_dataExtents.size() == 0)
-        return true;
-
-    if (!exact)
-    {
-        return getDataExtentsUnion().contains(location);
-    }
-   
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if (itr->contains( location ) )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-
-bool
-TileSource::hasData(const osgEarth::TileKey& key) const
-{
-    //sematics: "might have data"
-
-    if ( !key.valid() )
-        return false;
-
-    // If no data extents are provided, and there's no data level override,
-    // return true because there might be data but there's no way to tell.
-    if (_dataExtents.size() == 0 && !_options.maxDataLevel().isSet())
-    {
-        return true;
-    }
-
-    unsigned int lod = key.getLevelOfDetail();
-
-    // Remap the lod to an appropriate lod if it's not in the same SRS        
-    if (!key.getProfile()->isHorizEquivalentTo( getProfile() ) )
-    {        
-        lod = getProfile()->getEquivalentLOD( key.getProfile(), key.getLevelOfDetail() );        
-    }
-
-    // If there's an explicit LOD override and we've exceeded it, no data.
-    if (_options.maxDataLevel().isSet() && lod > _options.maxDataLevel().value())
-    {
-        return false;
-    }
-
-    // If there are no extents to check, there might be data.
-    if (_dataExtents.size() == 0)
-    {
-        return true;
-    }
-
-    bool intersectsData = false;
-    const osgEarth::GeoExtent& keyExtent = key.getExtent();
-    
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ((keyExtent.intersects( *itr )) && 
-            (!itr->minLevel().isSet() || itr->minLevel() <= lod ) &&
-            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod ))
-        {
-            intersectsData = true;
-            break;
-        }
-    }
-
-    return intersectsData;
-}
-
-bool
-TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
-                                    osgEarth::TileKey&       output) const
-{
-    // trivial reject
-    if ( !key.valid() )
-        return false;
-
-
-    const optional<unsigned>& MDL = getOptions().maxDataLevel();
-
-    // trivial accept: no data extents = not enough info.
-    if (_dataExtents.size() == 0)
-    {
-        if (MDL.isSet() && key.getLOD() > MDL.get())
-            output = key.createAncestorKey(MDL.get());
-        else
-            output = key;
-        return true;
-    }
-
-    // trivial reject: key doesn't intersect the union of data extents at all.
-    if ( !getDataExtentsUnion().intersects(key.getExtent()) )
-    {
-        return false;
-    }
-
-    bool     intersects = false;
-    unsigned highestLOD = 0;
-
-    // We must use the equivalent lod b/c the key can be in any profile.
-    int layerLOD = getProfile()->getEquivalentLOD( key.getProfile(), key.getLOD() );
-    
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        // check for 2D intersection:
-        if (key.getExtent().intersects( *itr ))
-        {
-            // check that the extent isn't higher-resolution than our key:
-            if ( !itr->minLevel().isSet() || layerLOD >= (int)itr->minLevel().get() )
-            {
-                // Got an intersetion; now test the LODs:
-                intersects = true;
-
-                // Is the high-LOD set? If not, there's not enough information
-                // so just assume our key might be good.
-                if ( itr->maxLevel().isSet() == false )
-                {
-                    if (MDL.isSet() && layerLOD > MDL.get())
-                        output = key.createAncestorKey(MDL.get());
-                    else
-                        output = key;
-                    return true;
-                }
-
-                // Is our key at a lower or equal LOD than the max key in this extent?
-                // If so, our key is good.
-                else if ( layerLOD <= (int)itr->maxLevel().get() )
-                {
-                    if (MDL.isSet() && layerLOD > MDL.get())
-                        output = key.createAncestorKey(MDL.get());
-                    else
-                        output = key;
-                    return true;
-                }
-
-                // otherwise, record the highest encountered LOD that
-                // intersects our key.
-                else if ( itr->maxLevel().get() > highestLOD )
-                {
-                    highestLOD = itr->maxLevel().get();
-                }
-            }
-        }
-    }
-
-    if ( intersects )
-    {
-        if (MDL.isSet() && highestLOD > MDL.get())
-            highestLOD = MDL.get();
-
-        output = key.createAncestorKey( highestLOD );
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-bool
-TileSource::hasDataForFallback(const osgEarth::TileKey& key) const
-{
-    //sematics: might have data.
-
-    if ( !key.valid() )
-        return false;
-
-    //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) 
-        return true;
-
-    const osgEarth::GeoExtent& keyExtent = key.getExtent();
-    bool intersectsData = false;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ((keyExtent.intersects( *itr )) && 
-            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()))
-        {
-            intersectsData = true;
-            break;
-        }
-    }
-
-    return intersectsData;
 }
 
 TileBlacklist*

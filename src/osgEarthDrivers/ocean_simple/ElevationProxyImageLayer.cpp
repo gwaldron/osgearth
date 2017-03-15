@@ -42,7 +42,7 @@ ElevationProxyImageLayer::createTileSource()
 }
 
 bool
-ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
+ElevationProxyImageLayer::isKeyInLegalRange( const TileKey& key ) const
 {
     return key.getLevelOfDetail() <= options().maxLevel().get();
 }

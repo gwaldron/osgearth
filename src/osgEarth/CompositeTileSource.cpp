@@ -155,7 +155,7 @@ CompositeTileSource::createImage(const TileKey&    key,
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->getTileSource()->hasDataInExtent( key.getExtent() );
+        imageInfo.dataInExtents = layer->mayHaveDataInExtent(key.getExtent()); //getTileSource()->hasDataInExtent( key.getExtent() );
         imageInfo.opacity = layer->getOpacity();
 
         if (imageInfo.dataInExtents)
@@ -294,7 +294,7 @@ osg::HeightField* CompositeTileSource::createHeightField(
             const TileKey&        key,
             ProgressCallback*     progress )
 {    
-    unsigned int size = *getOptions().tileSize();    
+    unsigned size = getPixelsPerTile(); //int size = *getOptions().tileSize();    
     bool hae = false;
     osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
     heightField->allocate(size, size);

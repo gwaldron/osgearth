@@ -165,7 +165,6 @@ ImageLayerOptions::getConfig(bool isolate) const
         if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
         {
             conf.update( filtersConf );
-            //conf.add( filtersConf );
         }
     }
 
@@ -191,6 +190,9 @@ ImageLayerOptions::getConfig(bool isolate) const
     // uniform names
     conf.updateIfSet("shared_sampler", _shareTexUniformName);
     conf.updateIfSet("shared_matrix",  _shareTexMatUniformName);
+
+    if (driver().isSet())
+        conf.set("driver", driver()->getDriver());
 
     return conf;
 }
@@ -337,12 +339,6 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
 const Status&
 ImageLayer::open()
 {
-    // Set the tile size to 256 if it's not explicitly set.
-    if (!options().driver()->tileSize().isSet())
-    {
-        options().driver()->tileSize().init( 256 );
-    }
-
     if (!_emptyImage.valid())
         _emptyImage = ImageUtils::createEmptyImage();
 
@@ -373,15 +369,6 @@ ImageLayer::init()
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TILE);
-}
-
-Config
-ImageLayer::getConfig() const
-{    
-    Config conf = options().getConfig();
-    conf.key() = "image";
-    conf.set("driver", options().driver()->getDriver()); // need?
-    return conf;
 }
 
 void
@@ -600,7 +587,8 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     }
 
     // Make sure the request is in range.
-    if ( !isKeyInRange(key) )
+    // TODO: perhaps this should be a call to mayHaveData(key) instead.
+    if ( !isKeyInLegalRange(key) )
     {
         return GeoImage::INVALID;
     }
@@ -769,12 +757,18 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
         return GeoImage::INVALID;
     }
-    
-    if ( !source->hasData( key ) )
+
+    if (!mayHaveData(key))
     {
-        OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+        OE_DEBUG << LC << "createImageFromTileSource: mayHaveData(" << key.str() << ") == false" << std::endl;
         return GeoImage::INVALID;
     }
+
+    //if ( !source->hasData( key ) )
+    //{
+    //    OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+    //    return GeoImage::INVALID;
+    //}
 
     // create an image from the tile source.
     osg::ref_ptr<osg::Image> result = source->createImage( key, op.get(), progress );   

@@ -91,8 +91,19 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // When using a custom graphics context, this somehow gets set incorrectly.
         // You can also set it when initializing the camera, but since we cannot
         // count on the user doing that we have to restore it here.
-        glDrawBuffer(GL_BACK);
-        glReadBuffer(GL_BACK);
+        osg::Camera* camera = ri.getCurrentCamera();
+
+        bool doubleBuffer =
+            camera &&
+            camera->getGraphicsContext() &&
+            camera->getGraphicsContext()->getTraits() &&
+            camera->getGraphicsContext()->getTraits()->doubleBuffer;
+
+        if (doubleBuffer)
+        {
+            glDrawBuffer(GL_BACK);
+            glReadBuffer(GL_BACK);
+        }
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the

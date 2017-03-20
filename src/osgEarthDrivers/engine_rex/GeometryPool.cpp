@@ -584,7 +584,11 @@ void SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
 
             osg::State::SetCurrentVertexArrayStateProxy setVASProxy(state, vas);
 
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
             state.bindVertexArrayObject(vas);
+#else
+            vas->bindVertexArrayObject();
+#endif
 
             if (vbo_glBufferObject) vas->bindVertexBufferObject(vbo_glBufferObject);
             if (ebo_glBufferObject) vas->bindElementBufferObject(ebo_glBufferObject);

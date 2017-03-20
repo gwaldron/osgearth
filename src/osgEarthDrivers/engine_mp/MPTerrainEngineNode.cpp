@@ -219,7 +219,8 @@ bool
 MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
     static const char* libVS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma vp_name MP Terrain SDK (VS)\n"
 
         "in vec4 oe_terrain_attr; \n"
@@ -260,7 +261,8 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
         "} \n";
 
     static const char* libFS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma vp_name MP Terrain SDK (FS)\n"
 
         "uniform vec4 oe_tile_key; \n"

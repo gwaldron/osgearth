@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_name       GroundCover geometry shader
 #pragma vp_entryPoint oe_GroundCover_geom
 #pragma vp_location   geometry

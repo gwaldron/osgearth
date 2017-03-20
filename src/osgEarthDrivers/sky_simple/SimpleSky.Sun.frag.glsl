@@ -1,5 +1,5 @@
-#version $GLSL_VERSION_STR 
-$GLSL_DEFAULT_PRECISION_FLOAT 
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform float atmos_sunAlpha; 
 in vec3 atmos_v3Direction; 

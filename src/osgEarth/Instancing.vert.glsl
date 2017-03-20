@@ -1,4 +1,6 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
 #extension GL_EXT_gpu_shader4 : enable
 #extension GL_ARB_draw_instanced: enable
 

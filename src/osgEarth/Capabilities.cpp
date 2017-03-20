@@ -152,7 +152,7 @@ _maxTextureBufferSize   ( 0 )
     _numProcessors = OpenThreads::GetNumberOfProcessors();
 
     // GLES compile?
-#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE))
     _isGLES = true;
 #else
     _isGLES = false;
@@ -212,7 +212,7 @@ _maxTextureBufferSize   ( 0 )
 #endif
         
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
-#if !(defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+#if !defined(OSG_GLES1_AVAILABLE) && !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         // Use the texture-proxy method to determine the maximum texture size 
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
@@ -228,7 +228,6 @@ _maxTextureBufferSize   ( 0 )
 #endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
-        //PORT@tom, what effect will this have?
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
 #else
@@ -319,7 +318,7 @@ _maxTextureBufferSize   ( 0 )
         OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
 
 
-        // Writing to gl_FragDepth is not supported under GLES:
+        // Writing to gl_FragDepth is not supported under GLES, is supported under gles3
 #if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
         _supportsFragDepthWrite = false;
 #else

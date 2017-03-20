@@ -26,6 +26,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/URI>
 #include <osgEarth/Lighting>
+#include <osgEarth/VirtualProgram>
 
 #include <osg/Drawable>
 #include <osg/Geode>

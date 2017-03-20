@@ -222,7 +222,7 @@ namespace
                 StringTokenizer( line, tokens, " \t", "", false, true );
                 
                 //is a declaration
-                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line.back() == ';' && indent == 0;
+                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line[line.size()-1] == ';' && indent == 0;
                 if(isdec) {
                     // check if it's already in declarations
                     bool decexists = std::find(declarations.begin(), declarations.end(), line) != declarations.end();

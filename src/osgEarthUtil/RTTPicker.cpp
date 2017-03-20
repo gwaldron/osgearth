@@ -37,6 +37,7 @@ namespace
 
     const char* pickVertexEncode =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "#pragma vp_entryPoint oe_pick_encodeObjectID\n"
         "#pragma vp_location   vertex_clip\n"
@@ -61,6 +62,7 @@ namespace
 
     const char* pickFragment =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "#pragma vp_entryPoint oe_pick_renderEncodedObjectID\n"
         "#pragma vp_location   fragment_output\n"

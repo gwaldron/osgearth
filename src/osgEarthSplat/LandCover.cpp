@@ -238,7 +238,7 @@ LandCoverLayer::createShader() const
 
     osg::Shader* shader = new osg::Shader();
     shader->setName( "LandCoverLayer" );
-    shader->setShaderSource( Stringify() << "#version 330\n" << biomeBuf.str() << "\n" << billboardBuf.str() );
+    shader->setShaderSource( Stringify() << "#version " << GLSL_VERSION_STR << "\n" << GLSL_DEFAULT_PRECISION_FLOAT << "\n" << biomeBuf.str() << "\n" << billboardBuf.str() );
     return shader;
 }
 
@@ -248,7 +248,7 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
     const char* defaultCode = "int oe_landcover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
-    buf << "#version 330\n";
+    buf << "#version " << GLSL_VERSION_STR <<  "\n" << GLSL_DEFAULT_PRECISION_FLOAT << "\n";
     
     osg::ref_ptr<ImageLayer> layer;
 

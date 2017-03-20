@@ -1,5 +1,5 @@
-#version $GLSL_VERSION_STR 
-$GLSL_DEFAULT_PRECISION_FLOAT 
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 varying float visibility; 
 in vec4 osg_FrontColor; 

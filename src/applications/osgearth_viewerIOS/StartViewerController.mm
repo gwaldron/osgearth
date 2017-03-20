@@ -42,7 +42,7 @@
     
     fileArray = [[NSMutableArray alloc] init];
     
-    std::string fullPath = osgDB::findDataFile("tests/readymap.earth");
+    std::string fullPath = osgDB::findDataFile("readymap.earth");
     
     osgDB::DirectoryContents dirContents = osgDB::getDirectoryContents(osgDB::getFilePath(fullPath));
     for(unsigned int i=0; i<dirContents.size(); i++){
@@ -52,9 +52,11 @@
             [fileArray addObject:nsFile];
         }
     }
-     
-    currentSelection = [fileArray count]-1;
-    [pickerView selectRow:currentSelection inComponent:0 animated:NO];  
+    
+    if([fileArray count] > 0) {
+        currentSelection = [fileArray count]-1;
+        [pickerView selectRow:currentSelection inComponent:0 animated:NO];
+    }
 }
 
 - (void)viewDidUnload

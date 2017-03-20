@@ -1,4 +1,6 @@
-#version 330
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_landcover_fragment
 #pragma vp_location   fragment_coloring

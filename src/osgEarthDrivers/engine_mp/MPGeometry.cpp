@@ -239,7 +239,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
     }
 
-#ifndef OSG_GLES2_AVAILABLE
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
     if ( renderColor )
     {
         // emit a default terrain color since we're not binding a color array:

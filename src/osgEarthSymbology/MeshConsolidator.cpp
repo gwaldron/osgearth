@@ -359,7 +359,7 @@ MeshConsolidator::convertToTriangles( osg::Geometry& geom, bool force )
         }
         else
         {
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
             // GLES only supports UShort, not UInt
             osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
             collector._newPrimSets = &newPrimSets;

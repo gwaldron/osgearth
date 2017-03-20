@@ -17,9 +17,9 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 
-    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
+    <!--elevation name="readymap_elevation" driver="tms" vdatum="egm96">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    </elevation-->
 
     <xi:include href="viewpoints.xml"/>
 </map>

@@ -233,6 +233,50 @@ namespace
 #endif
     }
 
+    std::string removeRedeclarations(const std::string& source)
+    {
+    
+        std::stringstream ss;
+        
+        // break into lines:
+        StringVector lines;
+        StringTokenizer( source, lines, "\n", "", true, false );
+        
+        std::string dectypesarray[] = {"uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube"};
+        std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
+        StringVector declarations;
+
+        int indent = 0;
+
+        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
+        {
+            std::string line = trimAndCompress(*line_iter);
+            if ( line.size() > 0 )
+            {
+                StringVector tokens;
+                StringTokenizer( line, tokens, " \t", "", false, true );
+                
+                //is a declaration
+                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line.back() == ';' && indent == 0;
+                if(isdec) {
+                    // check if it's already in declarations
+                    bool decexists = std::find(declarations.begin(), declarations.end(), line) != declarations.end();
+                    if(!decexists) {
+                        declarations.push_back(line);
+                        ss << *line_iter << "\n";
+                    }
+                } else {
+
+                    indent += std::count(line.begin(), line.end(), '{');
+                    indent -= std::count(line.begin(), line.end(), '}');
+                    
+                    ss << *line_iter << "\n";
+                }
+            }
+        }
+        return ss.str();
+    }
+
 
     bool s_attribAliasSortFunc(const std::pair<std::string,std::string>& a, const std::pair<std::string,std::string>& b) {
         return a.first.size() > b.first.size();
@@ -391,15 +435,20 @@ namespace
                    vertShaderBuf << " " << vertSubversion;
                 vertShaderBuf << "\n";
             }
+
             if(vertPrecisions.size() > 0) {
                 for(HeaderMap::iterator pitr = vertPrecisions.begin(); pitr != vertPrecisions.end(); ++pitr) {
                     vertShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
                 }
             }
+
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
+            
+            // find and delete redeclarations
+            vertBodyText = removeRedeclarations(vertBodyText);
 
 
 
@@ -412,6 +461,7 @@ namespace
                     fragShaderBuf << " " << fragSubversion;
                 fragShaderBuf << "\n";
             }
+
 #if defined(OSG_GLES3_AVAILABLE)
             // ensure there's a default for floats in the frag shader
             std::string& defaultFragFloat = fragPrecisions["float;"];
@@ -422,10 +472,14 @@ namespace
                     fragShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
                 }
             }
+
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
+            
+            // find and delete redeclarations
+            fragBodyText = removeRedeclarations(fragBodyText);
 
 
             // add them to the program.

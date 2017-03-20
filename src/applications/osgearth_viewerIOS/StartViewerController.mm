@@ -46,7 +46,7 @@ static NSString* s_autoloadFile = @""; //readymap_flat.earth";
     
     std::string fullPath = osgDB::findDataFile("tests/readymap.earth");
     if(fullPath.empty()) fullPath = osgDB::findDataFile("readymap.earth");
-    
+
     osgDB::DirectoryContents dirContents = osgDB::getDirectoryContents(osgDB::getFilePath(fullPath));
     for(unsigned int i=0; i<dirContents.size(); i++){
         //OSG_ALWAYS << "Dir item: " << dirContents[i] << std::endl;
@@ -60,7 +60,7 @@ static NSString* s_autoloadFile = @""; //readymap_flat.earth";
         currentSelection = [fileArray count]-1;
         [pickerView selectRow:currentSelection inComponent:0 animated:NO];
     }
-    
+
     if(s_autoloadFile != nil && [s_autoloadFile length] > 0)
         [self loadEarthView:s_autoloadFile];
 }

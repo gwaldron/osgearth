@@ -73,7 +73,7 @@ using namespace osgEarth::Util;
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode.get() );
-    
+
     _viewer->setSceneData( root );
 }
 

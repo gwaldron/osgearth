@@ -192,7 +192,7 @@ Control::init()
     _geode = new osg::Geode();
     this->addChild( _geode );
     
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
 #endif
 }
@@ -2886,7 +2886,7 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
-#if defined(OSG_GLES2_AVAILABLE) 
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later

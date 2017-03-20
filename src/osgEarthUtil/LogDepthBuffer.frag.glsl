@@ -1,4 +1,5 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_logDepth_frag
 #pragma vp_location   fragment_lighting

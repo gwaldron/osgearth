@@ -1,6 +1,6 @@
 #pragma once 
 
-//This file is used to force the linking of the osg and hogbox plugins
+//This file is used to force the linking of the osg plugins
 //as we our doing a static build we can't depend on the loading of the
 //dynamic libs to add the plugins to the registries
 
@@ -14,8 +14,23 @@ USE_GRAPICSWINDOW_IMPLEMENTATION(IOS)
 
 
 //osg plugins
+USE_OSGPLUGIN(zip)
+USE_OSGPLUGIN(curl)
+USE_OSGPLUGIN(freetype)
 
-USE_OSGPLUGIN(OpenFlight)
+#ifndef ANDROID
+USE_OSGPLUGIN(imageio)
+#else
+#endif
+
+// osgearth plugins
+USE_OSGPLUGIN(earth)
+USE_OSGPLUGIN(osgearth_gdal)
+USE_OSGPLUGIN(osgearth_tms)
+USE_OSGPLUGIN(osgearth_engine_mp)
+
+
+/*USE_OSGPLUGIN(OpenFlight)
 USE_OSGPLUGIN(obj)
 USE_OSGPLUGIN(shp)
 USE_OSGPLUGIN(ive)
@@ -63,9 +78,7 @@ USE_OSGPLUGIN(osgearth_feature_ogr)
 USE_OSGPLUGIN(osgearth_model_feature_stencil)
 USE_OSGPLUGIN(osgearth_vdatum_egm2008)
 USE_OSGPLUGIN(osgearth_model_simple)
-//USE_OSGPLUGIN(osgearth_engine_osgterrain)
 USE_OSGPLUGIN(osgearth_engine_quadtree)
-USE_OSGPLUGIN(osgearth_engine_mp)
 USE_OSGPLUGIN(osgearth_vdatum_egm96)
 USE_OSGPLUGIN(osgearth_ocean_surface)
 USE_OSGPLUGIN(osgearth_debug)
@@ -76,9 +89,7 @@ USE_OSGPLUGIN(osgearth_yahoo)
 USE_OSGPLUGIN(osgearth_arcgis_map_cache)
 USE_OSGPLUGIN(osgearth_tilecache)
 USE_OSGPLUGIN(osgearth_wcs)
-USE_OSGPLUGIN(osgearth_gdal)
-USE_OSGPLUGIN(earth)
 USE_OSGPLUGIN(osgearth_cache_filesystem)
 USE_OSGPLUGIN(osgearth_arcgis)
 USE_OSGPLUGIN(osgearth_osg)
-USE_OSGPLUGIN(osgearth_scriptengine_javascriptcore)
+USE_OSGPLUGIN(osgearth_scriptengine_javascriptcore)*/

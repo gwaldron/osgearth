@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       Phong Lighting Vertex Stage
 #pragma vp_entryPoint oe_phong_vertex

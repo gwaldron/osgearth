@@ -416,7 +416,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // a PBUFFER_RTT impl
         if ( Registry::capabilities().supportsDepthPackedStencilBuffer() )
         {
-#ifdef OSG_GLES2_AVAILABLE 
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
             params._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
 #else
             params._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
@@ -499,6 +499,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // alpha. We shall see.
         const char* warpClip =
             "#version " GLSL_VERSION_STR "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "void oe_overlay_warpClip(inout vec4 vclip) { \n"
             "    if (vclip.z > 1.0) vclip.z = vclip.w+1.0; \n"
             "} \n";

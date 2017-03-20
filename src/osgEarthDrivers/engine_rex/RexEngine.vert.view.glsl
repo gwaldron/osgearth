@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       REX Engine - Vertex/View
 #pragma vp_entryPoint oe_rex_elevateVertexAndSetTexCoords

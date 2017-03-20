@@ -1,4 +1,5 @@
-#version 330
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_logDepth_vert
 #pragma vp_location   vertex_clip

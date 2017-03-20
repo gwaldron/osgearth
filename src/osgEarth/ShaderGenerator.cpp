@@ -67,7 +67,7 @@ using namespace osgEarth;
 
 // compatibility string for GLES:
 
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #   define GLSL_PRECISION "precision mediump float;"
 #   define MEDIUMP        "mediump "
 #   define LOWP           "lowp "
@@ -716,6 +716,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
 {
     static const char* s_clip_source =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_PRECISION "\n"
         "void oe_sg_set_clipvertex(inout vec4 vertexVIEW)\n"
         "{\n"
         "    gl_ClipVertex = vertexVIEW; \n"

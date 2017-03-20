@@ -9,13 +9,14 @@
 
 #include "osgPlugins.h"
 
+#include <osg/Material>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
 
 #include <osgEarth/Viewpoint>
-#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Sky>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
@@ -100,13 +101,13 @@ using namespace osgEarth::Util;
     root->getOrCreateStateSet()->setAttribute(material); //lighting doesn't work without a material for some reason
     root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);//comment out to disable lighting
     
-    double hours = 12.0f;
+    /*double hours = 12.0f;
     float ambientBrightness = 1.0f;
     osgEarth::Util::SkyNode* sky = new osgEarth::Util::SkyNode( mapNode->getMap() );
     sky->setAmbientBrightness( ambientBrightness );
     sky->setDateTime( 1984, 11, 8, hours );
     sky->attach( _viewer, 0 );
-    root->addChild( sky );
+    root->addChild( sky );*/
     
     _viewer->setSceneData( root );
 }

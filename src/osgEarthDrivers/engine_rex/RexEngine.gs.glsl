@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 
 #if 0 // currently unused - triangle discard implemented on CPU instead

@@ -192,7 +192,7 @@ Control::init()
     _geode = new osg::Geode();
     this->addChild( _geode );
     
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
 #endif
 }
@@ -703,7 +703,11 @@ namespace
     {
         LabelText() : osgText::Text() { setDataVariance(osg::Object::DYNAMIC); }
         const osg::BoundingBox& getTextBB() const { return _textBB; }
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+        const osg::Matrix& getATMatrix(int contextID) const { return _matrix; }
+#else
         const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
+#endif
     };
 
     // writes a value to a label
@@ -2866,7 +2870,7 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later

@@ -89,7 +89,7 @@ namespace
 
 namespace
 {
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     // GLES requires all shader code be merged into a since source
     bool s_mergeShaders = true;
 #else
@@ -145,7 +145,7 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& headers, std::stringstream& body )
     {
         // break into lines:
         StringVector lines;
@@ -169,6 +169,10 @@ namespace
                         if ( newVersion > version )
                         {
                             version = newVersion;
+                            if(tokens.size() > 2)
+                            {
+                                subversion = tokens[2];
+                            }
                         }
                     }
                 }
@@ -192,6 +196,50 @@ namespace
                 }
             }
         }
+    }
+
+    std::string removeRedeclarations(const std::string& source)
+    {
+    
+        std::stringstream ss;
+        
+        // break into lines:
+        StringVector lines;
+        StringTokenizer( source, lines, "\n", "", true, false );
+        
+        std::string dectypesarray[] = {"uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube"};
+        std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
+        StringVector declarations;
+
+        int indent = 0;
+
+        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
+        {
+            std::string line = trimAndCompress(*line_iter);
+            if ( line.size() > 0 )
+            {
+                StringVector tokens;
+                StringTokenizer( line, tokens, " \t", "", false, true );
+                
+                //is a declaration
+                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line.back() == ';' && indent == 0;
+                if(isdec) {
+                    // check if it's already in declarations
+                    bool decexists = std::find(declarations.begin(), declarations.end(), line) != declarations.end();
+                    if(!decexists) {
+                        declarations.push_back(line);
+                        ss << *line_iter << "\n";
+                    }
+                } else {
+
+                    indent += std::count(line.begin(), line.end(), '{');
+                    indent -= std::count(line.begin(), line.end(), '}');
+                    
+                    ss << *line_iter << "\n";
+                }
+            }
+        }
+        return ss.str();
     }
 
 
@@ -314,10 +362,12 @@ namespace
         if ( s_mergeShaders )
         {
             unsigned          vertVersion = 0;
+            std::string       vertSubversion = "";
             HeaderMap         vertHeaders;
             std::stringstream vertBody;
 
             unsigned          fragVersion = 0;
+            std::string       fragSubversion = "";
             HeaderMap         fragHeaders;
             std::stringstream fragBody;
 
@@ -329,11 +379,11 @@ namespace
                 {
                     if ( s->getType() == osg::Shader::VERTEX )
                     {
-                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
+                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertHeaders, vertBody );
                     }
                     else if ( s->getType() == osg::Shader::FRAGMENT )
                     {
-                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragHeaders, fragBody );
                     }
                 }
             }
@@ -342,22 +392,36 @@ namespace
             std::string vertBodyText;
             vertBodyText = vertBody.str();
             std::stringstream vertShaderBuf;
-            if ( vertVersion > 0 )
-                vertShaderBuf << "#version " << vertVersion << "\n";
+            if ( vertVersion > 0 ) {
+                vertShaderBuf << "#version " << vertVersion;
+                if(vertSubversion.size() > 0)
+                   vertShaderBuf << " " << vertSubversion;
+                vertShaderBuf << "\n";
+            }
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
+            
+            // find and delete redeclarations
+            vertBodyText = removeRedeclarations(vertBodyText);
 
             std::string fragBodyText;
             fragBodyText = fragBody.str();
             std::stringstream fragShaderBuf;
-            if ( fragVersion > 0 )
-                fragShaderBuf << "#version " << fragVersion << "\n";
+            if ( fragVersion > 0 ) {
+                fragShaderBuf << "#version " << fragVersion;
+                if(fragSubversion.size() > 0)
+                    fragShaderBuf << " " << fragSubversion;
+                fragShaderBuf << "\n";
+            }
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
+            
+            // find and delete redeclarations
+            fragBodyText = removeRedeclarations(fragBodyText);
 
             // add them to the program.            
             program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );

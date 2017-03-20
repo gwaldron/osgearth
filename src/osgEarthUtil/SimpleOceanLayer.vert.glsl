@@ -1,4 +1,6 @@
-#version 330
+#version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
 #pragma vp_entryPoint ocean_VS
 #pragma vp_location vertex_view
 

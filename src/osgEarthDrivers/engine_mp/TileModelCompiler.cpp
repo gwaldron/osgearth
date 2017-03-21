@@ -2182,7 +2182,8 @@ TileModelCompiler::compile(TileModel*        model,
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
     d.surface->setName( "surface" );
     d.surfaceGeode = new osg::Geode();
-   
+    d.surfaceGeode->setName(d.model->_tileKey.str());
+
     tile->addChild( d.surfaceGeode );
 
     // Create the skirt if the heightfield skirt ratio is > 0.0

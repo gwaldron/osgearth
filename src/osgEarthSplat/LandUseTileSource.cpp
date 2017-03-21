@@ -194,6 +194,11 @@ LandUseTileSource::createImage(const TileKey&    key,
     osg::Image* out = new osg::Image();
     ImageUtils::markAsUnNormalized(out, true);
 
+    // give it a name for debugging
+    std::string image_name = key.str();
+    image_name += "_land_use";
+    out->setName(image_name);
+
     // Allocate a suitable format:
     GLenum dataType;
     GLint  internalFormat;

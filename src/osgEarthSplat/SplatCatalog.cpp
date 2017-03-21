@@ -337,6 +337,9 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     if ( imagesInOrder.size() > 0 && firstImage )
     {
         out._texture = new osg::Texture2DArray();
+        std::string spcal = "SplatCat-";
+        spcal += this->name().get();
+        out._texture->setName(spcal.c_str());
         out._texture->setTextureSize( firstImage->s(), firstImage->t(), imagesInOrder.size() );
         out._texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
         out._texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );

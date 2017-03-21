@@ -39,6 +39,9 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     osg::Image* image = new osg::Image();
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);
 
+    // give it a name for debugging
+    image->setName("oe_noise_texture");
+
     // 0 = rocky mountains
     // 1 = white noise   (not used)
     // 2 = white noise 2 (not used)

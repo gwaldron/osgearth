@@ -1788,6 +1788,10 @@ public:
             }
         }
 
+        std::string img_name = key.str();
+        img_name += "_gdal";
+        image->setName(img_name);
+
         return image.release();
     }
 

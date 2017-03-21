@@ -308,6 +308,7 @@ CacheBin::writeNode(const std::string&    key,
 {
     // Preparation step - removes things like UserDataContainers
     PrepareForCaching prep;
+    node->setName(key);
     node->accept( prep );
 
     // Write external refs (like texture images) to the cache bin

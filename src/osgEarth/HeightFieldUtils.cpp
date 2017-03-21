@@ -605,6 +605,8 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
     osg::Image* image = new osg::Image();
     image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
+    image->setName("oe_normal_map");
+
     double xcells = (double)(hf->getNumColumns()-1);
     double ycells = (double)(hf->getNumRows()-1);
     double xres = 1.0/xcells;

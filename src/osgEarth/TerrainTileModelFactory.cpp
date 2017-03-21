@@ -198,7 +198,11 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
         if ( image )
         {
-            // Made an image, so store this as a texture with no matrix.
+           std::string name = model->getKey().str();
+           name += "-heightfield";
+           image->setName(name);
+          
+           // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createElevationTexture( image );
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
@@ -227,7 +231,11 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
 
     if ( image )
     {
-        TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+       std::string name = model->getKey().str();
+       name += "-Normals";
+       image->setName(name);
+       
+       TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
         layerModel->setName( "oe_normal_map" );
 
         // Made an image, so store this as a texture with no matrix.

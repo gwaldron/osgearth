@@ -61,6 +61,8 @@ osg::HeightField* ImageToHeightFieldConverter::convert(const osg::Image* image )
     hf = convert16( image );
   }
 
+  hf->setName(image->getName() + "-HeightField");
+
   // scan for and replace NODATA values. This algorithm is terrible but good enough for now
   if ( _replace_nodata )
   {

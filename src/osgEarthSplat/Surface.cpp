@@ -186,6 +186,8 @@ Surface::createLUTBuffer(const Coverage* coverage) const
     osg::Image* image = new osg::Image();
     image->allocateImage(NUM_CLASSES * NUM_LODS, 1, 1, GL_RGBA32F_ARB, GL_FLOAT);
 
+    image->setName("oe_splat_lut");
+
     // Populate the LUT image. Each LOD fits into a single RGBA GL_FLOAT vec4
     // by packing 6 floats into 4. See below for packing approach
     GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );

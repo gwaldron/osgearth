@@ -1025,9 +1025,11 @@ RexTerrainEngineNode::updateState()
 
             // Apply uniforms for sampler bindings:
             OE_DEBUG << LC << "Render Bindings:\n";
+            std::string default_image_name = "default_oe_rex_image";
             for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
                 osg::Image* empty = ImageUtils::createEmptyImage(1,1);
+                empty->setName(default_image_name);
                 osg::ref_ptr<osg::Texture2D> tex = new osg::Texture2D(empty);
 
                 if ( b->isActive() )

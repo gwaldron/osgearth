@@ -309,6 +309,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     int maxTBOInstancesSize = maxTBOSize / matrixSize;
 
     // For each model:
+   int image_index = 0;
     for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
     {
         osg::Node*                  node      = i->first.get();
@@ -366,7 +367,11 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
         // sampler that will hold the instance matrices:
         osg::Image* image = new osg::Image();
-        image->setName("osgearth.drawinstanced.postex");
+
+        std::ostringstream image_name;
+        image_name << "osgearth.drawinstanced.postex-";
+        image_name << image_index; image_index++;
+        image->setName(image_name.str());
 		image->allocateImage( tboSize*4, 1, 1, GL_RGBA, GL_FLOAT );
 
 		// could use PixelWriter but we know the format.

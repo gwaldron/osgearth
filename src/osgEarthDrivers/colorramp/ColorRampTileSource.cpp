@@ -108,6 +108,11 @@ public:
         {
             osg::HeightField* hf = geoHF.getHeightField(); 
             osg::Image* image = new osg::Image();
+
+            std::string image_name = key.str();
+            image_name += "_color_ramp";
+            image->setName(image_name);
+
             image->allocateImage(hf->getNumColumns(),hf->getNumRows(),1, GL_RGBA, GL_UNSIGNED_BYTE);
             memset(image->data(), 0, image->getImageSizeInBytes());
             ImageUtils::PixelWriter writer(image);

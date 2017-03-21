@@ -172,6 +172,11 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
     {
         image = new osg::Image();
         image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGBA, GL_UNSIGNED_BYTE );
+
+        // give it a name for debugging
+        std::string image_name = key.str();
+        image_name += "_feature_tile";
+        image->setName(image_name);
     }
 
     preProcess( image.get(), buildData.get() );

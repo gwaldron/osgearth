@@ -95,9 +95,6 @@ namespace
     {
         osg::Geometry* geom = new osg::Geometry();
         geom->setUseVertexBufferObjects( true );
-#if OSG_MIN_VERSION_REQUIRED(3,5,6)
-        geom->setUseVertexArrayObject( true );
-#endif
         geom->setUseDisplayList( false );
         geom->setDataVariance( osg::Object::DYNAMIC );
         return geom;

@@ -1,0 +1,27 @@
+<!--
+osgEarth Sample - Annotation going across the dateline.  Should be one continuous line.
+-->
+<map name="readymap.org" type="geocentric" version="2">
+
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </image>
+
+    <annotations>
+
+        <feature name="Flight Path">
+            <srs>wgs84</srs>
+            <geometry>
+LINESTRING(140.385 35.765 0, 141.1 35.4917 3944.77, 142.163 35.1617 9645.92, 142.665 35.38 12496.8, 143.872 35.8933 12496.8, 145.667 37.1967 12496.8, 149.825 39.1533 12496.8, 155.668 42.9817 12496.8, 162.31 46.415 13716, 168.783 48.675 13716, 180 50 13716, 190 50 13716, 200 49 13716, 210 48 13716, 220 46 13716, 233 40.625 14935.2, 236.725 39.0533 14935.2, 238.828 37.8333 14935.2, 240.842 36.0417 14935.2, 240.98 35.9133 13819.4, 241.125 35.5133 11087.5, 241.245 35.1833 8832.26, 241.298 35.0317 7798.3, 241.423 34.6833 5419.12, 241.532 34.4967 4063.71, 241.583 34.41 3430.97, 241.73 34.1567 1591.04, 241.59 33.9433 0)
+            </geometry>
+
+            <style type="text/css">
+                stroke:              #ffff00;
+                stroke-width:        3;
+                render-lighting:     false;
+            </style>
+        </feature>
+
+
+    </annotations>
+</map>

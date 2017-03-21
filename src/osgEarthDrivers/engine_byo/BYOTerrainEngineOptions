@@ -59,10 +59,10 @@ namespace osgEarth { namespace Drivers
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
-            conf.updateIfSet( "url", _uri );
-            conf.updateIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-            conf.updateIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-            conf.updateIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+            conf.set( "url", _uri );
+            conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
             conf.updateNonSerializable( "node", _node.get() );
             return conf;
         }

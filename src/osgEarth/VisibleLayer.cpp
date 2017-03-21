@@ -48,7 +48,7 @@ Config
 VisibleLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.updateIfSet( "visible", _visible );
+    conf.set( "visible", _visible );
     return conf;
 }
 

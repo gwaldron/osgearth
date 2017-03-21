@@ -76,7 +76,7 @@ namespace osgEarth { namespace Triton
 
     public:
         osgEarth::Config getConfig() const {
-            osgEarth::Config conf = osgEarth::Util::OceanOptions::newConfig();
+            osgEarth::Config conf = osgEarth::Util::OceanOptions::getConfig();
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);

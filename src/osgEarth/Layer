@@ -80,7 +80,7 @@ namespace osgEarth
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
 
-        Config getConfig() const;
+        virtual Config getConfig() const;
         void fromConfig(const Config& conf);
         virtual void mergeConfig(const Config& conf);
 

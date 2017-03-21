@@ -340,7 +340,7 @@ makeTMS( osg::ArgumentParser& args )
     if( !outEarth.empty() )
     {
         // copy the options from the source map first
-        outMap = new Map( map->getInitialMapOptions() );
+        outMap = new Map(); //new Map( map->getInitialMapOptions() );
     }
 
     std::string outEarthFile = osgDB::concatPaths( rootFolder, osgDB::getSimpleFileName( outEarth ) );
@@ -417,8 +417,6 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->options().getConfig( true ) );
-                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
                 outMap->addLayer( new ImageLayer( layerOptions ) );
             }
@@ -456,8 +454,6 @@ makeTMS( osg::ArgumentParser& args )
                     outEarthFile );
 
                 ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-                layerOptions.mergeConfig( layer->options().getConfig( true ) );
-                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
                 outMap->addLayer( new ElevationLayer( layerOptions ) );
             }

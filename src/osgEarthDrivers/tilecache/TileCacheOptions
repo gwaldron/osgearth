@@ -52,9 +52,9 @@ namespace osgEarth { namespace Drivers
     protected:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url );
-            conf.updateIfSet("layer", _layer);
-            conf.updateIfSet("format", _format);
+            conf.set("url", _url );
+            conf.set("layer", _layer);
+            conf.set("format", _format);
             return conf;
         }
         void mergeConfig( const Config& conf ) {

@@ -109,22 +109,22 @@ ModelLayerOptions::setDefaults()
 Config
 ModelLayerOptions::getConfig() const
 {
-    Config conf = VisibleLayerOptions::newConfig();
+    Config conf = VisibleLayerOptions::getConfig();
     conf.key() = "model";
 
-    conf.updateIfSet( "name",           _name );
-    conf.updateIfSet( "lighting",       _lighting );
-    conf.updateIfSet( "opacity",        _opacity );
-    conf.updateIfSet( "mask_min_level", _maskMinLevel );
-    conf.updateIfSet( "patch",          _terrainPatch );  
+    conf.set( "name",           _name );
+    conf.set( "lighting",       _lighting );
+    conf.set( "opacity",        _opacity );
+    conf.set( "mask_min_level", _maskMinLevel );
+    conf.set( "patch",          _terrainPatch );  
 
     // Merge the ModelSource options
-    if ( driver().isSet() )
-        conf.merge( driver()->getConfig() );
+    //if ( driver().isSet() )
+    //    conf.merge( driver()->getConfig() );
 
     // Merge the MaskSource options
     if ( mask().isSet() )
-        conf.add( "mask", mask()->getConfig() );
+        conf.set( "mask", mask()->getConfig() );
 
     return conf;
 }

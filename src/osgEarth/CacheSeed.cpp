@@ -65,7 +65,7 @@ bool CacheTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 
     // If we didn't produce a result but the key isn't within range then we should continue to 
     // traverse the children b/c a min level was set.
-    if (!_layer->isKeyInRange(key))
+    if (!_layer->isKeyInLegalRange(key))
     {
         return true;
     }
@@ -75,12 +75,7 @@ bool CacheTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 
 bool CacheTileHandler::hasData( const TileKey& key ) const
 {
-    TileSource* ts = _layer->getTileSource();
-    if (ts)
-    {
-        return ts->hasData(key);
-    }
-    return true;
+    return _layer->mayHaveData(key);
 }
 
 std::string CacheTileHandler::getProcessString() const

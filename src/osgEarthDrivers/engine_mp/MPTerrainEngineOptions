@@ -111,17 +111,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
-            conf.updateIfSet( "skirt_ratio", _skirtRatio );
-            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.updateIfSet( "normalize_edges", _normalizeEdges);
-            conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
-            conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
-            conf.updateIfSet( "color", _color );
-            conf.updateIfSet( "incremental_update", _incrementalUpdate );
-            conf.updateIfSet( "elevation_smoothing", _smoothing );
-            conf.updateIfSet( "normal_maps", _normalMaps );
-            conf.updateIfSet( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
+            conf.set( "skirt_ratio", _skirtRatio );
+            conf.set( "quick_release_gl_objects", _quickRelease );
+            conf.set( "normalize_edges", _normalizeEdges);
+            conf.set( "tile_pixel_size", _tilePixelSize );
+            conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
+            conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
+            conf.set( "color", _color );
+            conf.set( "incremental_update", _incrementalUpdate );
+            conf.set( "elevation_smoothing", _smoothing );
+            conf.set( "normal_maps", _normalMaps );
+            conf.set( "adaptive_polar_range_factor", _adaptivePolarRangeFactor);
 
             return conf;
         }

@@ -76,8 +76,8 @@ FeatureSourceOptions::getConfig() const
 
     conf.updateIfSet   ( "open_write",   _openWrite );
     conf.updateIfSet   ( "name",         _name );
-    conf.updateObjIfSet( "profile",      _profile );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.setObj( "profile",      _profile );
+    conf.setObj( "cache_policy", _cachePolicy );
     conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.updateIfSet   ( "fid_attribute", _fidAttribute );

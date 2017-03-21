@@ -70,9 +70,8 @@ GeodeticGraticuleOptions::mergeConfig( const Config& conf )
 Config
 GeodeticGraticuleOptions::getConfig() const
 {
-    Config conf = ConfigOptions::newConfig();
+    Config conf = ConfigOptions::getConfig();
     conf.key() = "geodetic_graticule";
-    //todo
     return conf;
 }
 

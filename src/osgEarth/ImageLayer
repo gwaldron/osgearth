@@ -144,8 +144,7 @@ namespace osgEarth
 
     public:
 
-        virtual Config getConfig() const { return getConfig(false); }
-        virtual Config getConfig( bool isolate ) const;
+        virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -337,8 +336,6 @@ namespace osgEarth
         typedef ImageLayerCallback Callback;
 
     public: // Layer
-
-        virtual Config getConfig() const;
         
         virtual const Status& open();
 

@@ -69,14 +69,14 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url );
-            conf.updateIfSet( "connection", _connection );
-            conf.updateIfSet( "ogr_driver", _ogrDriver );
-            conf.updateIfSet( "build_spatial_index", _buildSpatialIndex );
-            conf.updateIfSet( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
-            conf.updateIfSet( "geometry", _geometryConf );    
-            conf.updateIfSet( "geometry_url", _geometryUrl );
-            conf.updateIfSet( "layer", _layer );
+            conf.set( "url", _url );
+            conf.set( "connection", _connection );
+            conf.set( "ogr_driver", _ogrDriver );
+            conf.set( "build_spatial_index", _buildSpatialIndex );
+            conf.set( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
+            conf.set( "geometry", _geometryConf );    
+            conf.set( "geometry_url", _geometryUrl );
+            conf.set( "layer", _layer );
             conf.updateNonSerializable( "OGRFeatureOptions::geometry", _geometry.get() );
             return conf;
         }

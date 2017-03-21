@@ -39,10 +39,10 @@ namespace osgEarth { namespace Util
         const std::vector<ConfigOptions>& layers() const { return _layers; }
 
     public:
-        Config getConfig() const;
+        virtual Config getConfig() const;
 
     protected:
-        void mergeConfig(const Config& conf) {
+        virtual void mergeConfig(const Config& conf) {
             ElevationLayerOptions::mergeConfig(conf);
             fromConfig(conf);
         }

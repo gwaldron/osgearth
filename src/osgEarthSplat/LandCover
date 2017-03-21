@@ -251,7 +251,7 @@ namespace osgEarth { namespace Splat
 
         Config getConfig() const {
             Config conf("biome");
-            conf.updateIfSet( "classes", _biomeClasses );
+            conf.set( "classes", _biomeClasses );
             for(int i=0; i<_symbols.size(); ++i) {
                 Config symbolConf = _symbols[i]->getConfig();
                 if ( !symbolConf.empty() ) {
@@ -354,15 +354,15 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "layer";
-            conf.updateIfSet( "name", _name );
-            conf.updateIfSet( "lod",  _lod );
-            conf.updateIfSet( "cast_shadows", _castShadows );
-            conf.updateIfSet( "max_distance", _maxDistance );
-            conf.updateIfSet( "density", _density );
-            conf.updateIfSet( "fill", _fill );
-            conf.updateIfSet( "wind", _wind );
-            conf.updateIfSet( "brightness", _brightness );
-            conf.updateIfSet( "contrast", _contrast );
+            conf.set( "name", _name );
+            conf.set( "lod",  _lod );
+            conf.set( "cast_shadows", _castShadows );
+            conf.set( "max_distance", _maxDistance );
+            conf.set( "density", _density );
+            conf.set( "fill", _fill );
+            conf.set( "wind", _wind );
+            conf.set( "brightness", _brightness );
+            conf.set( "contrast", _contrast );
             if ( _biomes.size() > 0 ) {
                 Config biomes("biomes");
                 for(int i=0; i<_biomes.size(); ++i) {
@@ -423,8 +423,8 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "land_cover";
-            conf.updateIfSet( "library", _resourceLibURI );
-            conf.updateIfSet( "mask_layer", _maskLayerName );
+            conf.set( "library", _resourceLibURI );
+            conf.set( "mask_layer", _maskLayerName );
             if ( !_layers.empty() ) {
                 Config layers("layers");
                 for(int i=0; i<_layers.size(); ++i) {

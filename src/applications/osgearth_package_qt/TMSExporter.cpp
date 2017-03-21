@@ -193,7 +193,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
                 outEarthFile );
 
             ImageLayerOptions layerOptions( packager.getLayerName(), tms );
-            layerOptions.mergeConfig( layer->options().getConfig( true ) );
+            layerOptions.mergeConfig( layer->options().getConfig() );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
             outMap->addLayer( new ImageLayer( layerOptions ) );
@@ -229,7 +229,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
                 outEarthFile );
 
             ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
-            layerOptions.mergeConfig( layer->options().getConfig( true ) );
+            layerOptions.mergeConfig( layer->options().getConfig() );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
             outMap->addLayer( new ElevationLayer( layerOptions ) );

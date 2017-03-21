@@ -59,7 +59,7 @@ VisibleLayerOptions()
 }
 
 TerrainLayerOptions::TerrainLayerOptions(const std::string& layerName, const TileSourceOptions& driverOptions) :
-VisibleLayerOptions()
+VisibleLayerOptions(driverOptions)
 {
     setDefaults();
     fromConfig(_conf);
@@ -72,31 +72,38 @@ TerrainLayerOptions::setDefaults()
 {
     _exactCropping.init( false );
     _reprojectedTileSize.init( 256 );
-    _loadingWeight.init( 1.0f );
     _minLevel.init( 0 );
     _maxLevel.init( 23 );
     _maxDataLevel.init( 99 );
 }
 
 Config
-TerrainLayerOptions::getConfig(bool isolate) const
+TerrainLayerOptions::getConfig() const // bool isolate) const
 {
-    Config conf = isolate? newConfig() : VisibleLayerOptions::getConfig();
+    //Config conf;
+    //if (driver().isSet())
+    //    conf = driver()->getConfig();
+    //if (!isolate && driver().isSet())
+    //    conf = driver()->getConfig();
 
-    conf.updateIfSet( "min_level", _minLevel );
-    conf.updateIfSet( "max_level", _maxLevel );
-    conf.updateIfSet( "min_resolution", _minResolution );
-    conf.updateIfSet( "max_resolution", _maxResolution );
-    conf.updateIfSet( "loading_weight", _loadingWeight );
-    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
-    conf.updateIfSet( "max_data_level", _maxDataLevel );
-    conf.updateIfSet( "vdatum", _vertDatum );
-    conf.updateObjIfSet( "proxy", _proxySettings );
+    Config conf = VisibleLayerOptions::getConfig();
 
-    // Merge the TileSource options
-    if ( !isolate && driver().isSet() )
-        conf.merge( driver()->getConfig() );
+    conf.set( "min_level", _minLevel );
+    conf.set( "max_level", _maxLevel );
+    conf.set( "min_resolution", _minResolution );
+    conf.set( "max_resolution", _maxResolution );
+    conf.set( "max_data_level", _maxDataLevel );
+    conf.set( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.set( "reprojected_tilesize", _reprojectedTileSize);
+    conf.set( "tile_size", _tileSize);
+    conf.set( "vdatum", _vertDatum );
+    conf.setObj( "proxy", _proxySettings );
+    conf.set("no_data_value", _noDataValue);
+    conf.set("min_valid_value", _minValidValue);
+    conf.set("max_valid_value", _maxValidValue);
+
+    //if (driver().isSet())
+    //    conf.merge(driver()->getConfig());
 
     return conf;
 }
@@ -108,17 +115,18 @@ TerrainLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet( "max_level", _maxLevel );        
     conf.getIfSet( "min_resolution", _minResolution );
     conf.getIfSet( "max_resolution", _maxResolution );
-    conf.getIfSet( "loading_weight", _loadingWeight );
+    conf.getIfSet( "max_data_level", _maxDataLevel );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
-    conf.getIfSet( "max_data_level", _maxDataLevel );
-
     conf.getIfSet( "vdatum", _vertDatum );
     conf.getIfSet( "vsrs", _vertDatum );    // back compat
-
     conf.getObjIfSet( "proxy",        _proxySettings );
+    conf.getIfSet("no_data_value", _noDataValue);
+    conf.getIfSet("nodata_value", _noDataValue); // back compat
+    conf.getIfSet("min_valid_value", _minValidValue);
+    conf.getIfSet("max_valid_value", _maxValidValue);
 
-    if ( conf.hasValue("driver") )
+    if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
 }
 
@@ -244,7 +252,6 @@ TerrainLayer::TerrainLayer(TerrainLayerOptions* optionsPtr) :
 VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
 _options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _openCalled(false),
-_tileSize(256),
 _tileSourceExpected(true)
 {
     //nop - init() called by subclass
@@ -255,7 +262,6 @@ VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
 _options(optionsPtr ? optionsPtr : &_optionsConcrete),
 _tileSource(tileSource),
 _openCalled(false),
-_tileSize(256),
 _tileSourceExpected(true)
 {
     //nop - init() called by subclass
@@ -273,6 +279,11 @@ TerrainLayer::init()
 
     // intiailize our read-options, which store caching and IO information.
     setReadOptions(0L);
+
+    if (options().tileSize().isSet())
+        _tileSize = options().tileSize().get();
+    else
+        _tileSize = 256;
 }
 
 const Status&
@@ -316,23 +327,20 @@ TerrainLayer::open()
         }
         else
         {
-            // system will generate a cacheId.
-            // technically, this is not quite right, we need to remove everything that's
-            // an image layer property and just use the tilesource properties.
-            Config layerConf = options().getConfig(true);
-            Config driverConf = options().driver()->getConfig();
-            Config hashConf = driverConf - layerConf;
+            // system will generate a cacheId from the layer configuration.
+            Config hashConf = options().getConfig();
 
-            // remove cache-control properties before hashing.
+            // remove non-data properties.
+            hashConf.remove("name");
+            hashConf.remove("enabled");
+            hashConf.remove("cacheid");
             hashConf.remove("cache_only");
             hashConf.remove("cache_enabled");
             hashConf.remove("cache_policy");
-            hashConf.remove("cacheid");
+            hashConf.remove("visible");
             hashConf.remove("l2_cache_size");
 
-            // need this, b/c data is vdatum-transformed before caching.
-            if (layerConf.hasValue("vdatum"))
-                hashConf.add("vdatum", layerConf.value("vdatum"));
+            OE_DEBUG << "hashConfFinal = " << hashConf.toJSON(true) << std::endl;
 
             unsigned hash = osgEarth::hashString(hashConf.toJSON());
             _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;
@@ -495,12 +503,6 @@ TerrainLayer::setProfile(const Profile* profile)
     _profile = profile;
 }
 
-unsigned
-TerrainLayer::getTileSize() const
-{
-    return _tileSize;
-}
-
 bool
 TerrainLayer::isDynamic() const
 {
@@ -612,11 +614,11 @@ TerrainLayer::getCacheBin(const Profile* profile)
                 meta->_sourceProfile   = getProfile()->toProfileOptions();
                 meta->_cacheProfile    = profile->toProfileOptions();
                 meta->_cacheCreateTime = DateTime().asTimeStamp();
+                meta->_dataExtents     = getDataExtents();
 
                 if (getTileSource())
                 {
-                    meta->_sourceDriver    = getTileSource()->getOptions().getDriver();
-                    meta->_dataExtents     = getTileSource()->getDataExtents();
+                    meta->_sourceDriver = getTileSource()->getOptions().getDriver();
                 }
 
                 // store it in the cache bin.
@@ -746,9 +748,24 @@ TerrainLayer::createAndOpenTileSource()
             tileSourceStatus = ts->open(TileSource::MODE_READ, _readOptions.get());
         }
 
+        // Now that the tile source is open and ready, propagate any user-set
+        // properties to and fro.
         if ( tileSourceStatus.isOK() )
         {
-            _tileSize = ts->getPixelsPerTile();
+            if (options().tileSize().isSet())
+                ts->setPixelsPerTile(options().tileSize().get());
+
+            if (!ts->getDataExtents().empty())
+                _dataExtents = ts->getDataExtents();
+
+            if (options().noDataValue().isSet())
+                ts->setNoDataValue(options().noDataValue().get());
+
+            if (options().minValidValue().isSet())
+                ts->setMinValidValue(options().minValidValue().get());
+
+            if (options().maxValidValue().isSet())
+                ts->setMaxValidValue(options().maxValidValue().get());
         }
         else
         {
@@ -771,7 +788,6 @@ TerrainLayer::createAndOpenTileSource()
         {
             // create the final profile from any overrides:
             applyProfileOverrides();
-
             OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
         }
     }
@@ -822,42 +838,70 @@ TerrainLayer::applyProfileOverrides()
 bool
 TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
 {
-    bool mayHaveDataInExtent = true;
-
-    if (getTileSource() && getProfile())
+    if (!ex.isValid())
     {
-        if (getProfile()->getSRS()->isEquivalentTo(ex.getSRS()))
+        // bad extent; no data
+        return false;
+    }
+    
+    const DataExtentList& de = getDataExtents();
+    if (de.empty())
+    {
+        // not enough info, assume yes
+        return true;
+    }
+
+    // Get extent in local profile:
+    GeoExtent localExtent = ex;
+    if (getProfile() && getProfile()->getSRS()->isHorizEquivalentTo(ex.getSRS()))
+    {
+        localExtent = getProfile()->clampAndTransformExtent(ex);
+    }
+
+    // Check union:
+    if (getDataExtentsUnion().intersects(localExtent))
+    {
+        // possible yes
+        return true;
+    }
+
+    // Check each extent in turn:
+    for (DataExtentList::const_iterator i = de.begin(); i != de.end(); ++i)
+    {
+        if (i->intersects(localExtent))
         {
-            GeoExtent ex_xform = getProfile()->clampAndTransformExtent(ex);
-            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex_xform);
-        }
-        else
-        {
-            mayHaveDataInExtent = getTileSource()->hasDataInExtent(ex);
+            // possible yes
+            return true;
         }
     }
 
-    return mayHaveDataInExtent;
+    // definite no.
+    return false;
 }
 
 bool
-TerrainLayer::isKeyInRange(const TileKey& key) const
+TerrainLayer::isKeyInLegalRange(const TileKey& key) const
 {    
     if ( !key.valid() )
     {
         return false;
     }
 
+    // We must use the equivalent lod b/c the input key can be in any profile.
+    unsigned localLOD = getProfile() ?
+        getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD()) :
+        key.getLOD();
+
+
     // First check the key against the min/max level limits, it they are set.
-    if ((options().maxLevel().isSet() && key.getLOD() > options().maxLevel().value()) ||
-        (options().minLevel().isSet() && key.getLOD() < options().minLevel().value()))
+    if ((options().maxLevel().isSet() && localLOD > options().maxLevel().value()) ||
+        (options().minLevel().isSet() && localLOD < options().minLevel().value()))
     {
         return false;
     }
 
     // Next, check against resolution limits (based on the source tile size).
-    if (options().minResolution().isSet() ||
-        options().maxResolution().isSet())
+    if (options().minResolution().isSet() || options().maxResolution().isSet())
     {
         const Profile* profile = getProfile();
         if ( profile )
@@ -919,6 +963,7 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     _cacheBinMetadata.clear();
 }
 
+#if 0
 bool
 TerrainLayer::getDataExtents(DataExtentList& output) const
 {
@@ -935,6 +980,59 @@ TerrainLayer::getDataExtents(DataExtentList& output) const
 
     return !output.empty();
 }
+#endif
+
+const DataExtentList&
+TerrainLayer::getDataExtents() const
+{
+    if (!_dataExtents.empty())
+    {
+        return _dataExtents;
+    }
+
+    else if (!_cacheBinMetadata.empty())
+    {
+        // There are extents in the cache bin, so use those. 
+        // The DE's are the same regardless of profile so just use the first one in there.
+        return _cacheBinMetadata.begin()->second->_dataExtents;
+    }
+
+    else
+    {
+        return _dataExtents;
+    }
+}
+
+void
+TerrainLayer::dirtyDataExtents()
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    _dataExtentsUnion = GeoExtent::INVALID;
+}
+
+const GeoExtent&
+TerrainLayer::getDataExtentsUnion() const
+{
+    const DataExtentList& de = getDataExtents();
+
+    if (_dataExtentsUnion.isInvalid() && !de.empty())
+    {
+        Threading::ScopedMutexLock lock(_mutex);
+        {
+            if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
+            {
+                GeoExtent e(de[0]);
+                for (unsigned int i = 1; i < de.size(); i++)
+                {
+                    e.expandToInclude(de[i]);
+                }
+                _dataExtentsUnion = e;
+            }
+        }
+    }
+    return _dataExtentsUnion;
+}
+
 
 void
 TerrainLayer::storeProxySettings(osgDB::Options* readOptions)
@@ -950,4 +1048,141 @@ SequenceControl*
 TerrainLayer::getSequenceControl()
 {
     return dynamic_cast<SequenceControl*>( getTileSource() );
+}
+
+TileKey
+TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
+{
+    // trivial reject
+    if ( !key.valid() )
+        return TileKey::INVALID;
+
+    unsigned MDL = options().maxDataLevel().get();
+
+    // We must use the equivalent lod b/c the input key can be in any profile.
+    unsigned localLOD = getProfile() ?
+        getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD()) :
+        key.getLOD();
+
+    // Check against level extrema:
+    if (localLOD < options().minLevel().get() || localLOD > options().maxLevel().get())
+    {
+        return TileKey::INVALID;
+    }
+
+    // Next, check against resolution limits (based on the source tile size).
+    if (options().minResolution().isSet() || options().maxResolution().isSet())
+    {
+        const Profile* profile = getProfile();
+        if ( profile )
+        {
+            // calculate the resolution in the layer's profile, which can
+            // be different that the key's profile.
+            double resKey   = key.getExtent().width() / (double)getTileSize();
+            double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
+
+            if (options().maxResolution().isSet() &&
+                options().maxResolution().value() > resLayer)
+            {
+                return TileKey::INVALID;
+            }
+
+            if (options().minResolution().isSet() &&
+                options().minResolution().value() < resLayer)
+            {
+                return TileKey::INVALID;
+            }
+        }
+    }
+
+    // Next check against the data extents.
+    const DataExtentList& de = getDataExtents();
+
+    // If we have mo data extents available, just return the MDL-limited input key.
+    if (de.empty())
+    {
+        return localLOD > MDL ? key.createAncestorKey(MDL) : key;
+    }
+
+    // Reject if the extents don't overlap at all.
+    if (!getDataExtentsUnion().intersects(key.getExtent()))
+    {
+        return TileKey::INVALID;
+    }
+
+    bool     intersects = false;
+    unsigned highestLOD = 0;
+    
+    // Check each data extent in turn:
+    for (DataExtentList::const_iterator itr = de.begin(); itr != de.end(); ++itr)
+    {
+        // check for 2D intersection:
+        if (key.getExtent().intersects(*itr))
+        {
+            // check that the extent isn't higher-resolution than our key:
+            if ( !itr->minLevel().isSet() || localLOD >= (int)itr->minLevel().get() )
+            {
+                // Got an intersetion; now test the LODs:
+                intersects = true;
+
+                // Is the high-LOD set? If not, there's not enough information
+                // so just assume our key might be good.
+                if ( itr->maxLevel().isSet() == false )
+                {
+                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                }
+
+                // Is our key at a lower or equal LOD than the max key in this extent?
+                // If so, our key is good.
+                else if ( localLOD <= (int)itr->maxLevel().get() )
+                {
+                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                }
+
+                // otherwise, record the highest encountered LOD that
+                // intersects our key.
+                else if ( itr->maxLevel().get() > highestLOD )
+                {
+                    highestLOD = itr->maxLevel().get();
+                }
+            }
+        }
+    }
+
+    if ( intersects )
+    {
+        return key.createAncestorKey(std::min(highestLOD, MDL));
+    }
+
+    return TileKey::INVALID;
+}
+
+bool
+TerrainLayer::mayHaveData(const TileKey& key) const
+{
+    return key == getBestAvailableTileKey(key);
+}
+
+unsigned
+TerrainLayer::getTileSize() const
+{
+    return getTileSource() ? getTileSource()->getPixelsPerTile() : options().tileSize().get();
+}
+
+float
+TerrainLayer::getNoDataValue() const
+{
+    return getTileSource() ? getTileSource()->getNoDataValue() : options().noDataValue().get();
+}
+
+float
+TerrainLayer::getMinValidValue() const
+{
+    return getTileSource() ? getTileSource()->getMinValidValue() : options().minValidValue().get();
+}
+
+float
+TerrainLayer::getMaxValidValue() const
+{
+    return getTileSource() ? getTileSource()->getMaxValidValue() : options().maxValidValue().get();
 }

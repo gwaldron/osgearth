@@ -154,7 +154,7 @@ namespace
 
         void load(const TileKey& key, ImageLayer* sourceLayer, float sourceWarp, ProgressCallback* progress)
         {
-            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInRange(key) )
+            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInLegalRange(key) )
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {

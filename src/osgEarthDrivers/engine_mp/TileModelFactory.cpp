@@ -84,19 +84,20 @@ namespace
             const Profile* layerProfile = _layer->getProfile();
 
             //Only try to get data from the source if it actually intersects the key extent
-            bool hasDataInExtent = true;
-            if (tileSource && layerProfile)
-            {
-                GeoExtent ext = _key.getExtent();
-                if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS()))
-                {
-                    ext = layerProfile->clampAndTransformExtent( ext );
-                }
-                hasDataInExtent = tileSource->hasDataInExtent( ext );
-            }
+            bool hasDataInExtent = _layer->mayHaveDataInExtent(_key.getExtent());
+            //bool hasDataInExtent = true;
+            //if (tileSource && layerProfile)
+            //{
+            //    GeoExtent ext = _key.getExtent();
+            //    if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS()))
+            //    {
+            //        ext = layerProfile->clampAndTransformExtent( ext );
+            //    }
+            //    hasDataInExtent = tileSource->hasDataInExtent( ext );
+            //}
             
             // fetch the image from the layer.
-            if (hasDataInExtent && _layer->isKeyInRange(_key))
+            if (hasDataInExtent && _layer->isKeyInLegalRange(_key))
             {
                 if ( useMercatorFastPath )
                 {
@@ -454,7 +455,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->isKeyInRange(key) )
+        if ( layer->getEnabled() && layer->isKeyInLegalRange(key) )
         {
             BuildColorData build;
             build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, _liveTiles.get(), model.get() );

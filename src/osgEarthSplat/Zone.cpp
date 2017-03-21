@@ -145,8 +145,8 @@ ZoneOptions::getConfig() const
         }
         conf.add(regions);
     }
-    conf.updateObjIfSet( "surface",    _surface );
-    conf.updateObjIfSet( "land_cover", _landCover );
+    conf.setObj( "surface",    _surface );
+    conf.setObj( "land_cover", _landCover );
     return conf;
 }
 

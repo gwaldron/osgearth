@@ -47,7 +47,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateObjIfSet("image", _imageOptions );
+            conf.setObj("image", _imageOptions );
             return conf;
         }
 

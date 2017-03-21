@@ -51,7 +51,7 @@ namespace osgEarth { namespace Util
 
     public:
         Config getConfig() const {
-            Config conf = newConfig();
+            Config conf = ConfigOptions::getConfig();
             conf.key() = "mgrs_graticule";
             conf.addObjIfSet("gzd_style", _gzdStyle);
             conf.addObjIfSet("sqid_style", _sqidStyle);

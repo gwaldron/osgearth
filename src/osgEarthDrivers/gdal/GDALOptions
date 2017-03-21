@@ -147,10 +147,10 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const
         {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url );
-            conf.updateIfSet( "connection", _connection );
-            conf.updateIfSet( "extensions", _extensions );
-            conf.updateIfSet( "black_extensions", _blackExtensions );
+            conf.set( "url", _url );
+            conf.set( "connection", _connection );
+            conf.set( "extensions", _extensions );
+            conf.set( "black_extensions", _blackExtensions );
 
             if ( _interpolation.isSet() ) {
                 if ( _interpolation.value() == osgEarth::INTERP_NEAREST ) conf.update( "interpolation", "nearest" );
@@ -158,12 +158,12 @@ namespace osgEarth { namespace Drivers
                 else if ( _interpolation.value() == osgEarth::INTERP_BILINEAR ) conf.update( "interpolation", "bilinear" );
             }
 
-            conf.updateIfSet( "max_data_level_override", _maxDataLevelOverride);
-            conf.updateIfSet( "subdataset", _subDataSet);
+            conf.set( "max_data_level_override", _maxDataLevelOverride);
+            conf.set( "subdataset", _subDataSet);
 
-            conf.updateIfSet( "interp_imagery", _interpolateImagery);
+            conf.set( "interp_imagery", _interpolateImagery);
 
-            conf.updateObjIfSet( "warp_profile", _warpProfile );
+            conf.setObj( "warp_profile", _warpProfile );
 
             conf.updateNonSerializable( "GDALOptions::ExternalDataset", _externalDataset.get() );
 

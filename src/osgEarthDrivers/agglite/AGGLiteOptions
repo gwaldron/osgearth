@@ -62,8 +62,8 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureTileSourceOptions::getConfig();
-            conf.updateIfSet("optimize_line_sampling", _optimizeLineSampling);
-            conf.updateIfSet("gamma", _gamma );
+            conf.set("optimize_line_sampling", _optimizeLineSampling);
+            conf.set("gamma", _gamma );
             return conf;
         }
 

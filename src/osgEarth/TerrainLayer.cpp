@@ -78,27 +78,32 @@ TerrainLayerOptions::setDefaults()
 }
 
 Config
-TerrainLayerOptions::getConfig(bool isolate) const
+TerrainLayerOptions::getConfig() const // bool isolate) const
 {
-    Config conf = isolate? newConfig() : VisibleLayerOptions::getConfig();
+    //Config conf;
+    //if (driver().isSet())
+    //    conf = driver()->getConfig();
+    //if (!isolate && driver().isSet())
+    //    conf = driver()->getConfig();
 
-    conf.updateIfSet( "min_level", _minLevel );
-    conf.updateIfSet( "max_level", _maxLevel );
-    conf.updateIfSet( "min_resolution", _minResolution );
-    conf.updateIfSet( "max_resolution", _maxResolution );
-    conf.updateIfSet( "max_data_level", _maxDataLevel );
-    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
-    conf.updateIfSet( "tile_size", _tileSize);
-    conf.updateIfSet( "vdatum", _vertDatum );
-    conf.updateObjIfSet( "proxy", _proxySettings );
-    conf.updateIfSet("no_data_value", _noDataValue);
-    conf.updateIfSet("min_valid_value", _minValidValue);
-    conf.updateIfSet("max_valid_value", _maxValidValue);
+    Config conf = VisibleLayerOptions::getConfig();
 
-    // Merge the TileSource options
-    if ( !isolate && driver().isSet() )
-        conf.merge( driver()->getConfig() );
+    conf.set( "min_level", _minLevel );
+    conf.set( "max_level", _maxLevel );
+    conf.set( "min_resolution", _minResolution );
+    conf.set( "max_resolution", _maxResolution );
+    conf.set( "max_data_level", _maxDataLevel );
+    conf.set( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.set( "reprojected_tilesize", _reprojectedTileSize);
+    conf.set( "tile_size", _tileSize);
+    conf.set( "vdatum", _vertDatum );
+    conf.setObj( "proxy", _proxySettings );
+    conf.set("no_data_value", _noDataValue);
+    conf.set("min_valid_value", _minValidValue);
+    conf.set("max_valid_value", _maxValidValue);
+
+    //if (driver().isSet())
+    //    conf.merge(driver()->getConfig());
 
     return conf;
 }
@@ -121,7 +126,7 @@ TerrainLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("min_valid_value", _minValidValue);
     conf.getIfSet("max_valid_value", _maxValidValue);
 
-    if ( conf.hasValue("driver") )
+    if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
 }
 
@@ -322,23 +327,20 @@ TerrainLayer::open()
         }
         else
         {
-            // system will generate a cacheId.
-            // technically, this is not quite right, we need to remove everything that's
-            // an image layer property and just use the tilesource properties.
-            Config layerConf = options().getConfig(true);
-            Config driverConf = options().driver()->getConfig();
-            Config hashConf = driverConf - layerConf;
+            // system will generate a cacheId from the layer configuration.
+            Config hashConf = options().getConfig();
 
-            // remove cache-control properties before hashing.
+            // remove non-data properties.
+            hashConf.remove("name");
+            hashConf.remove("enabled");
+            hashConf.remove("cacheid");
             hashConf.remove("cache_only");
             hashConf.remove("cache_enabled");
             hashConf.remove("cache_policy");
-            hashConf.remove("cacheid");
+            hashConf.remove("visible");
             hashConf.remove("l2_cache_size");
 
-            // need this, b/c data is vdatum-transformed before caching.
-            if (layerConf.hasValue("vdatum"))
-                hashConf.add("vdatum", layerConf.value("vdatum"));
+            OE_DEBUG << "hashConfFinal = " << hashConf.toJSON(true) << std::endl;
 
             unsigned hash = osgEarth::hashString(hashConf.toJSON());
             _runtimeCacheId = Stringify() << std::hex << std::setw(8) << std::setfill('0') << hash;

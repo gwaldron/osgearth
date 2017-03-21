@@ -51,7 +51,7 @@ InstanceResource::getConfig() const
     Config conf = Resource::getConfig();
     conf.key() = "instance";
 
-    conf.updateIfSet( "url", _uri );
+    conf.set( "url", _uri );
 
     return conf;
 }

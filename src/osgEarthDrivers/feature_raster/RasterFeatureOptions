@@ -59,9 +59,9 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
-            conf.updateIfSet("layer", _layer);
-            conf.updateIfSet("level", _level);
-            conf.updateIfSet("attribute", _attribute);
+            conf.set("layer", _layer);
+            conf.set("level", _level);
+            conf.set("attribute", _attribute);
             return conf;
         }
 

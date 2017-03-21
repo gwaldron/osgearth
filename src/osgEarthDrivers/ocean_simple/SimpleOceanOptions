@@ -103,17 +103,17 @@ namespace osgEarth { namespace SimpleOcean
 
     public:
         Config getConfig() const {
-            Config conf = OceanOptions::newConfig();
-            conf.updateIfSet("sea_level",           _seaLevel );
-            conf.updateIfSet("high_feather_offset", _highFeatherOffset );
-            conf.updateIfSet("low_feather_offset",  _lowFeatherOffset );
-            conf.updateIfSet("max_range",           _maxRange );
-            conf.updateIfSet("fade_range",          _fadeRange );
-            conf.updateIfSet("max_lod",             _maxLOD );
-            conf.updateIfSet("base_color",          _baseColor );
-            conf.updateIfSet("texture_url",         _textureURI );
-            conf.updateObjIfSet("mask_layer",       _maskLayerOptions );
-            conf.updateIfSet("render_bin_number",   _renderBinNumber);
+            Config conf = OceanOptions::getConfig();
+            conf.set("sea_level",           _seaLevel );
+            conf.set("high_feather_offset", _highFeatherOffset );
+            conf.set("low_feather_offset",  _lowFeatherOffset );
+            conf.set("max_range",           _maxRange );
+            conf.set("fade_range",          _fadeRange );
+            conf.set("max_lod",             _maxLOD );
+            conf.set("base_color",          _baseColor );
+            conf.set("texture_url",         _textureURI );
+            conf.setObj("mask_layer",       _maskLayerOptions );
+            conf.set("render_bin_number",   _renderBinNumber);
             return conf;
         }
 

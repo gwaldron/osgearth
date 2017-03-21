@@ -50,7 +50,7 @@ FeatureModelLayerOptions::getConfig() const
     conf.merge(GeometryCompilerOptions::getConfig());
     conf.key() = "feature_model";
 
-    conf.updateIfSet("feature_source", _featureSourceLayer);
+    conf.set("feature_source", _featureSourceLayer);
     return conf;
 }
 

@@ -79,12 +79,12 @@ namespace osgEarth { namespace BumpMap
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.updateIfSet("image",     _imageURI);
-            conf.updateIfSet("intensity", _intensity);
-            conf.updateIfSet("scale",     _scale);
-            conf.updateIfSet("octaves",   _octaves);
-            conf.updateIfSet("max_range", _maxRange);
-            conf.updateIfSet("base_lod",  _baseLOD);
+            conf.set("image",     _imageURI);
+            conf.set("intensity", _intensity);
+            conf.set("scale",     _scale);
+            conf.set("octaves",   _octaves);
+            conf.set("max_range", _maxRange);
+            conf.set("base_lod",  _baseLOD);
             return conf;
         }
 

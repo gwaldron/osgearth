@@ -170,6 +170,16 @@ ConfigOptions::~ConfigOptions()
 {
 }
 
+Config
+ConfigOptions::getConfig() const
+{
+    // iniialize with the raw original conf. subclass getConfig's can 
+    // override the values there.
+    Config conf = _conf;
+    conf.setReferrer(referrer());
+    return conf;
+}
+
 /****************************************************************/
 DriverConfigOptions::~DriverConfigOptions()
 {

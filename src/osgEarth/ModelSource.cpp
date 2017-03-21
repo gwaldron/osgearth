@@ -65,11 +65,11 @@ Config
 ModelSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.updateIfSet( "min_range", _minRange );
-    conf.updateIfSet( "max_range", _maxRange );
-    conf.updateIfSet( "render_order", _renderOrder );
-    conf.updateIfSet( "render_bin", _renderBin );
-    conf.updateIfSet( "depth_test_enabled", _depthTestEnabled );
+    conf.set( "min_range", _minRange );
+    conf.set( "max_range", _maxRange );
+    conf.set( "render_order", _renderOrder );
+    conf.set( "render_bin", _renderBin );
+    conf.set( "depth_test_enabled", _depthTestEnabled );
     return conf;
 }
 

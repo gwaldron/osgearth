@@ -56,7 +56,7 @@ CompositeTileSourceOptions::add( const ElevationLayerOptions& options )
 Config 
 CompositeTileSourceOptions::getConfig() const
 {    
-    Config conf = TileSourceOptions::newConfig();
+    Config conf = TileSourceOptions::getConfig();
 
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
     {

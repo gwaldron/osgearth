@@ -65,11 +65,11 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url ); 
-            conf.updateIfSet( "format", _format );
-            conf.updateIfSet( "invert_y", _invertY);
-            conf.updateIfSet( "min_level", _minLevel);
-            conf.updateIfSet( "max_level", _maxLevel);
+            conf.set( "url", _url ); 
+            conf.set( "format", _format );
+            conf.set( "invert_y", _invertY);
+            conf.set( "min_level", _minLevel);
+            conf.set( "max_level", _maxLevel);
             return conf;
         }
 

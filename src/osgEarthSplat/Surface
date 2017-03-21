@@ -60,7 +60,7 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "surface";
-            conf.updateIfSet("catalog", _catalogURI);
+            conf.set("catalog", _catalogURI);
             return conf;
         }
 

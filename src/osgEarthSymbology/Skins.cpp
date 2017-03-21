@@ -85,28 +85,28 @@ SkinResource::getConfig() const
     Config conf = Resource::getConfig();
     conf.key() = "skin";
 
-    conf.updateIfSet( "url",                 _imageURI );
-    conf.updateIfSet( "image_width",         _imageWidth );
-    conf.updateIfSet( "image_height",        _imageHeight );
-    conf.updateIfSet( "min_object_height",   _minObjHeight );
-    conf.updateIfSet( "max_object_height",   _maxObjHeight );
-    conf.updateIfSet( "tiled",               _isTiled );
-    conf.updateIfSet( "max_texture_span",    _maxTexSpan );
+    conf.set( "url",                 _imageURI );
+    conf.set( "image_width",         _imageWidth );
+    conf.set( "image_height",        _imageHeight );
+    conf.set( "min_object_height",   _minObjHeight );
+    conf.set( "max_object_height",   _maxObjHeight );
+    conf.set( "tiled",               _isTiled );
+    conf.set( "max_texture_span",    _maxTexSpan );
     
-    conf.updateIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
-    conf.updateIfSet( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
-    conf.updateIfSet( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
-    conf.updateIfSet( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
+    conf.set( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
+    conf.set( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
+    conf.set( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
+    conf.set( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
 
     // texture atlas support
-    conf.updateIfSet( "image_bias_s",        _imageBiasS );
-    conf.updateIfSet( "image_bias_t",        _imageBiasT );
-    conf.updateIfSet( "image_layer",         _imageLayer );
-    conf.updateIfSet( "image_scale_s",       _imageScaleS );
-    conf.updateIfSet( "image_scale_t",       _imageScaleT );
+    conf.set( "image_bias_s",        _imageBiasS );
+    conf.set( "image_bias_t",        _imageBiasT );
+    conf.set( "image_layer",         _imageLayer );
+    conf.set( "image_scale_s",       _imageScaleS );
+    conf.set( "image_scale_t",       _imageScaleT );
     
-    conf.updateIfSet( "atlas", _atlasHint );
-    conf.updateIfSet( "read_options", _readOptions );
+    conf.set( "atlas", _atlasHint );
+    conf.set( "read_options", _readOptions );
 
     return conf;
 }

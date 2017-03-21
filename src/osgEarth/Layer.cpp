@@ -40,14 +40,13 @@ ConfigOptions(co)
 
 Config LayerOptions::getConfig() const
 {
-    //isolate ? LayerOp::newConfig() : ConfigOptions::getConfig();
-    Config conf = ConfigOptions::newConfig();
-    conf.addIfSet("name", _name);
-    conf.addIfSet("enabled", _enabled);
-    conf.addIfSet("cacheid", _cacheId);
+    Config conf = ConfigOptions::getConfig();
+    conf.set("name", _name);
+    conf.set("enabled", _enabled);
+    conf.set("cacheid", _cacheId);
     if (_cachePolicy.isSet() && !_cachePolicy->empty())
-        conf.addObjIfSet("cache_policy", _cachePolicy);
-    conf.addIfSet("shader_define", _shaderDefine);
+        conf.setObj("cache_policy", _cachePolicy);
+    conf.set("shader_define", _shaderDefine);
     return conf;
 }
 

@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url ); 
+            conf.set( "url", _url ); 
             return conf;
         }
 

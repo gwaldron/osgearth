@@ -54,7 +54,7 @@ namespace osgEarth { namespace Splat
     public:
         Config getConfig() const {
             Config conf("splat");
-            conf.updateObjIfSet( "coverage", _coverage );
+            conf.setObj( "coverage", _coverage );
             Config zones("zones");
             for(int i=0; i<_zones.size(); ++i) {
                 Config zone = _zones[i].getConfig();

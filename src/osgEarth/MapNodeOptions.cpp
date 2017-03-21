@@ -89,7 +89,7 @@ MapNodeOptions::getConfig() const
     Config conf; // start with a fresh one since this is a FINAL object  // = ConfigOptions::getConfig();
     conf.key() = "options";
 
-    conf.updateObjIfSet( "proxy",                    _proxySettings );
+    conf.setObj( "proxy",                    _proxySettings );
     conf.updateIfSet   ( "cache_only",               _cacheOnly );
     conf.updateIfSet   ( "lighting",                 _enableLighting );
     conf.updateIfSet   ( "terrain",                  _terrainOptionsConf );

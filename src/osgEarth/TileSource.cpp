@@ -155,12 +155,12 @@ Config
 TileSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-    conf.updateIfSet( "l2_cache_size", _L2CacheSize );
-    conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
-    conf.updateIfSet( "coverage", _coverage );
-    conf.updateIfSet( "osg_option_string", _osgOptionString );
-    conf.updateObjIfSet( "profile", _profileOptions );
+    conf.set( "blacklist_filename", _blacklistFilename);
+    conf.set( "l2_cache_size", _L2CacheSize );
+    conf.set( "bilinear_reprojection", _bilinearReprojection );
+    conf.set( "coverage", _coverage );
+    conf.set( "osg_option_string", _osgOptionString );
+    conf.setObj( "profile", _profileOptions );
     return conf;
 }
 

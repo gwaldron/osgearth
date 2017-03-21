@@ -89,15 +89,15 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url);
-            conf.updateIfSet("primary_split_level", _primarySplitLevel);
-            conf.updateIfSet("secondary_split_level", _secondarySplitLevel);
-            conf.updateIfSet("layer", _layer);
-            conf.updateIfSet("layer_setname", _layerSetName);
-            conf.updateIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
-            conf.updateIfSet("num_tiles_high_at_lod_0", _heightLod0 );
-            conf.updateIfSet("base_name", _baseName );
-            conf.updateIfSet("terrain_tile_cache_size", _terrainTileCacheSize);
+            conf.set("url", _url);
+            conf.set("primary_split_level", _primarySplitLevel);
+            conf.set("secondary_split_level", _secondarySplitLevel);
+            conf.set("layer", _layer);
+            conf.set("layer_setname", _layerSetName);
+            conf.set("num_tiles_wide_at_lod_0", _widthLod0 );
+            conf.set("num_tiles_high_at_lod_0", _heightLod0 );
+            conf.set("base_name", _baseName );
+            conf.set("terrain_tile_cache_size", _terrainTileCacheSize);
             if ( _dirStruct.isSet() ) {
                 if ( _dirStruct == DS_FLAT ) conf.update("directory_structure", "flat");
                 else if ( _dirStruct == DS_TASK ) conf.update("directory_structure", "task");

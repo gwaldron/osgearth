@@ -52,7 +52,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = MaskSourceOptions::getConfig();
-            conf.updateObjIfSet( "features", _featureOptions );
+            conf.setObj( "features", _featureOptions );
             return conf;
         }
 

@@ -50,21 +50,21 @@ MapOptions::fromConfig( const Config& conf )
 Config
 MapOptions::getConfig() const
 {
-    Config conf = ConfigOptions::newConfig();
+    Config conf = ConfigOptions::getConfig();
 
     conf.updateIfSet   ( "name",         _name );
-    conf.updateObjIfSet( "profile",      _profileOptions );
-    conf.updateObjIfSet( "cache",        _cacheOptions );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.setObj( "profile",      _profileOptions );
+    conf.setObj( "cache",        _cacheOptions );
+    conf.setObj( "cache_policy", _cachePolicy );
 
     // all variations:
-    conf.updateIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
-    conf.updateIfSet( "type", "projected",  _cstype, CSTYPE_PROJECTED );
+    conf.set( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
+    conf.set( "type", "projected",  _cstype, CSTYPE_PROJECTED );
 
-    conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
-    conf.updateIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
-    conf.updateIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
-    conf.updateIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
+    conf.set( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
+    conf.set( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
+    conf.set( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
+    conf.set( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
 
     return conf;
 }

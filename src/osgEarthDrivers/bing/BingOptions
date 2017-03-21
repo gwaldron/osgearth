@@ -84,9 +84,9 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("key",                  _apiKey);
-            conf.updateIfSet("imagery_set",          _imagerySet );
-            conf.updateIfSet("imagery_metadata_api", _imageryMetadataAPI );
+            conf.set("key",                  _apiKey);
+            conf.set("imagery_set",          _imagerySet );
+            conf.set("imagery_metadata_api", _imageryMetadataAPI );
             return conf;
         }
 

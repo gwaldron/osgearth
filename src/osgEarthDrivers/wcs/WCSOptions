@@ -64,12 +64,12 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url);
-            conf.updateIfSet("identifier", _identifier);
-            conf.updateIfSet("format", _format);
-            conf.updateIfSet("elevation_unit", _elevationUnit);
-            conf.updateIfSet("srs", _srs);
-            conf.updateIfSet("range_subset", _rangeSubset);
+            conf.set("url", _url);
+            conf.set("identifier", _identifier);
+            conf.set("format", _format);
+            conf.set("elevation_unit", _elevationUnit);
+            conf.set("srs", _srs);
+            conf.set("range_subset", _rangeSubset);
             return conf;
         }
 

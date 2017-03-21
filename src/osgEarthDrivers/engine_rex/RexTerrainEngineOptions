@@ -119,18 +119,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
-            conf.updateIfSet( "skirt_ratio", _skirtRatio );
-            conf.updateIfSet( "color", _color );
-            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.updateIfSet( "expiration_range", _expirationRange );
-            conf.updateIfSet( "expiration_threshold", _expirationThreshold );
-            conf.updateIfSet( "progressive", _progressive );
-            conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
-            conf.updateIfSet( "normal_maps", _normalMaps );
-            conf.updateIfSet( "normalize_edges", _normalizeEdges);
-            conf.updateIfSet( "morph_terrain", _morphTerrain );
-            conf.updateIfSet( "morph_imagery", _morphImagery );
-            conf.updateIfSet( "merges_per_frame", _mergesPerFrame );
+            conf.set( "skirt_ratio", _skirtRatio );
+            conf.set( "color", _color );
+            conf.set( "quick_release_gl_objects", _quickRelease );
+            conf.set( "expiration_range", _expirationRange );
+            conf.set( "expiration_threshold", _expirationThreshold );
+            conf.set( "progressive", _progressive );
+            conf.set( "high_resolution_first", _highResolutionFirst );
+            conf.set( "normal_maps", _normalMaps );
+            conf.set( "normalize_edges", _normalizeEdges);
+            conf.set( "morph_terrain", _morphTerrain );
+            conf.set( "morph_imagery", _morphImagery );
+            conf.set( "merges_per_frame", _mergesPerFrame );
 
             if (!_lods.empty()) {
                 Config lodsConf("lods");

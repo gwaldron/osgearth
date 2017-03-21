@@ -81,13 +81,13 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url ); 
-            conf.updateIfSet( "geometry_profile", _geometryProfileConf );
-            conf.updateIfSet( "typename", _typename );
-            conf.updateIfSet( "outputformat", _outputFormat);
-            conf.updateIfSet( "maxfeatures", _maxFeatures );
-            conf.updateIfSet( "disable_tiling", _disableTiling );
-            conf.updateIfSet( "request_buffer", _buffer);
+            conf.set( "url", _url ); 
+            conf.set( "geometry_profile", _geometryProfileConf );
+            conf.set( "typename", _typename );
+            conf.set( "outputformat", _outputFormat);
+            conf.set( "maxfeatures", _maxFeatures );
+            conf.set( "disable_tiling", _disableTiling );
+            conf.set( "request_buffer", _buffer);
 
             return conf;
         }

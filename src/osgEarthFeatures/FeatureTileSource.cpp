@@ -41,8 +41,8 @@ FeatureTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::getConfig();
 
-    conf.updateObjIfSet( "features", _featureOptions );
-    conf.updateObjIfSet( "styles", _styles );
+    conf.setObj( "features", _featureOptions );
+    conf.setObj( "styles", _styles );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

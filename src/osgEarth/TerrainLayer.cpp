@@ -75,17 +75,12 @@ TerrainLayerOptions::setDefaults()
     _minLevel.init( 0 );
     _maxLevel.init( 23 );
     _maxDataLevel.init( 99 );
+    _tileSize.init( 256 );
 }
 
 Config
-TerrainLayerOptions::getConfig() const // bool isolate) const
+TerrainLayerOptions::getConfig() const
 {
-    //Config conf;
-    //if (driver().isSet())
-    //    conf = driver()->getConfig();
-    //if (!isolate && driver().isSet())
-    //    conf = driver()->getConfig();
-
     Config conf = VisibleLayerOptions::getConfig();
 
     conf.set( "min_level", _minLevel );
@@ -95,15 +90,12 @@ TerrainLayerOptions::getConfig() const // bool isolate) const
     conf.set( "max_data_level", _maxDataLevel );
     conf.set( "edge_buffer_ratio", _edgeBufferRatio);
     conf.set( "reprojected_tilesize", _reprojectedTileSize);
-    conf.set( "tile_size", _tileSize);
     conf.set( "vdatum", _vertDatum );
     conf.setObj( "proxy", _proxySettings );
     conf.set("no_data_value", _noDataValue);
     conf.set("min_valid_value", _minValidValue);
     conf.set("max_valid_value", _maxValidValue);
-
-    //if (driver().isSet())
-    //    conf.merge(driver()->getConfig());
+    conf.set( "tile_size", _tileSize);
 
     return conf;
 }
@@ -125,6 +117,7 @@ TerrainLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("nodata_value", _noDataValue); // back compat
     conf.getIfSet("min_valid_value", _minValidValue);
     conf.getIfSet("max_valid_value", _maxValidValue);
+    conf.getIfSet( "tile_size", _tileSize);
 
     if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);

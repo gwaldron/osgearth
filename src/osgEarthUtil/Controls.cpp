@@ -609,13 +609,16 @@ Control::draw(const ControlContext& cx)
                 float rx = _renderPos.x() - padding().left();
                 float ry = _renderPos.y() - padding().top();
 
-                osg::Vec3Array* verts = new osg::Vec3Array(4);
+                osg::Vec3Array* verts = new osg::Vec3Array(6);
                 _geom->setVertexArray( verts );
                 (*verts)[0].set( rx, vph - ry, 0 );
                 (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
                 (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
-                (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
-                _geom->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
+                (*verts)[3].set( (*verts)[2] );
+                (*verts)[4].set( rx + _renderSize.x(), vph - ry, 0 );
+                (*verts)[5].set( (*verts)[0] );
+                
+               _geom->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
 
                 osg::Vec4Array* colors = new osg::Vec4Array(1);
                 (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
@@ -650,7 +653,7 @@ Control::draw(const ControlContext& cx)
                 getGeode()->addDrawable( geom );
             }
         }
-
+        
         _dirty = false;
     }
 }
@@ -1095,7 +1098,7 @@ ImageControl::draw( const ControlContext& cx )
         float ry = osg::round( _renderPos.y() );
         float vph = cx._vp->height();
 
-        osg::Vec3Array* verts = new osg::Vec3Array(4);
+        osg::Vec3Array* verts = new osg::Vec3Array(6);
         g->setVertexArray( verts );
 
         if ( _rotation.as(Units::RADIANS) != 0.0f || _fixSizeForRot == true )
@@ -1109,17 +1112,21 @@ ImageControl::draw( const ControlContext& cx )
             rot( rx, vph-ry, rc, ra, (*verts)[0] );
             rot( rx, vph-ry-_image->t(), rc, ra, (*verts)[1] );
             rot( rx+_image->s(), vph-ry-_image->t(), rc, ra, (*verts)[2] );
-            rot( rx+_image->s(), vph-ry, rc, ra, (*verts)[3] );
+            (*verts)[3].set( (*verts)[2] );
+            rot( rx+_image->s(), vph-ry, rc, ra, (*verts)[4] );
+            (*verts)[5].set( (*verts)[0] );
         }
         else
         {
             (*verts)[0].set( rx, vph - ry, 0 );
             (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
             (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
-            (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
+            (*verts)[3].set( (*verts)[2] );
+            (*verts)[4].set( rx + _renderSize.x(), vph - ry, 0 );
+            (*verts)[5].set( (*verts)[0] );
         }
 
-        g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
 
         osg::Vec4Array* c = new osg::Vec4Array(1);
         (*c)[0] = osg::Vec4f(1,1,1,1);
@@ -1128,14 +1135,16 @@ ImageControl::draw( const ControlContext& cx )
 
         bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
 
-        osg::Vec2Array* t = new osg::Vec2Array(4);
+        osg::Vec2Array* t = new osg::Vec2Array(6);
 
 #ifdef IMAGECONTROL_TEXRECT
 
         (*t)[0].set( 0, flip? 0: _image->t()-1 );
         (*t)[1].set( 0, flip? _image->t()-1: 0 );
         (*t)[2].set( _image->s()-1, flip? _image->t()-1: 0 );
-        (*t)[3].set( _image->s()-1, flip? 0: _image->t()-1 );
+        (*t)[3].set( (*t)[2]);
+        (*t)[4].set( _image->s()-1, flip? 0: _image->t()-1 );
+        (*t)[5].set( (*t)[0] );
         osg::TextureRectangle* tex = new osg::TextureRectangle( _image.get() );
 
 #else
@@ -1143,7 +1152,9 @@ ImageControl::draw( const ControlContext& cx )
         (*t)[0].set( 0, flip? 0 : 1 );
         (*t)[1].set( 0, flip? 1 : 0 );
         (*t)[2].set( 1, flip? 1 : 0 );
-        (*t)[3].set( 1, flip? 0 : 1 );
+        (*t)[3].set( (*t)[2]);
+        (*t)[4].set( 1, flip? 0 : 1 );
+        (*t)[5].set( (*t)[0] );
         osg::Texture2D* tex = new osg::Texture2D( _image.get() );
 #endif
 
@@ -1155,9 +1166,9 @@ ImageControl::draw( const ControlContext& cx )
         tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
 
-        osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
+        /*osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-
+         */
         getGeode()->addDrawable( g );
 
         _dirty = false;
@@ -1263,7 +1274,7 @@ HSliderControl::draw( const ControlContext& cx )
         {
             float vph = cx._vp->height();
 
-            osg::Vec3Array* verts = new osg::Vec3Array(8);
+            osg::Vec3Array* verts = new osg::Vec3Array(10);
             g->setVertexArray( verts );
 
             (*verts)[0].set( rx, vph - ry, 0 );
@@ -1277,8 +1288,11 @@ HSliderControl::draw( const ControlContext& cx )
             (*verts)[4].set( hx-4, vph - ry + 3, 0 );
             (*verts)[5].set( hx-4, vph - (ry + rh + 3), 0 );
             (*verts)[6].set( hx+4, vph - (ry + rh + 3), 0 );
-            (*verts)[7].set( hx+4, vph - ry + 3, 0 );
-            g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 4, 4 ) );
+            (*verts)[7].set( (*verts)[6] );
+            (*verts)[8].set( hx+4, vph - ry + 3, 0 );
+            (*verts)[9].set( (*verts)[4] );
+            
+            g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 4, 6) );
 
             osg::Vec4Array* c = new osg::Vec4Array(1);
             (*c)[0] = *foreColor();
@@ -2866,7 +2880,7 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) 
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later

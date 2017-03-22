@@ -330,7 +330,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorArray(colors);
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
-    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
+    GLushort indices[] = {0,1,2,0,2,3};
+    geom->addPrimitiveSet( new osg::DrawElementsUShort( GL_TRIANGLES, 6, indices ) );
 
     return geom;
 }

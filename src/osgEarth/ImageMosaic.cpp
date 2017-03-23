@@ -135,6 +135,8 @@ ImageMosaic::createImage()
             ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);
         }
     }
+    
+    image->setName("ImageMosaic");
 
     return image.release();
 }

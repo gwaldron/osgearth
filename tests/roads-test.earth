@@ -14,7 +14,7 @@ http://readymap.org
 <map name="readymap.org" type="geocentric">
     
     <options>
-        <terrain driver="rex">
+        <terrain driver="rex" max_lod="18">
         </terrain>
     </options>
 
@@ -25,7 +25,7 @@ http://readymap.org
     <image name="Tilekeys" driver="debug">
     </image>
 
-    <road_surface name="road-surface" min_level="14" max_level="18">
+    <road_surface name="road-surface" min_level="14" max_level="18" shared="true" cacheid="road_surface">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <feature_source>roads-data</feature_source>
@@ -54,7 +54,7 @@ http://readymap.org
         </styles>
     </feature_model>
     
-    <feature_model name="Road skeleton" visible="false">
+    <feature_model name="Road skeleton">
         <feature_source>roads-data</feature_source>
         <styles>
             <style type="text/css">

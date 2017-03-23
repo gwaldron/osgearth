@@ -799,6 +799,13 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 GeoImage
 ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
+    // If we got here, asset that there's a non-null layer profile.
+    if (!getProfile())
+    {
+        setStatus(Status::Error(Status::AssertionFailure, "assembleImage with undefined profile"));
+        return GeoImage::INVALID;
+    }
+
     GeoImage mosaicedImage, result;
 
     // Scale the extent if necessary to apply an "edge buffer"

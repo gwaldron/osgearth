@@ -51,6 +51,18 @@ namespace
     };
 }
 
+namespace
+{
+    const char* distort =
+        "#version 330 \n"
+        "uniform float oe_rasterizer_f; \n"
+        "void oe_rasterizer_clip(inout vec4 vert) { \n"
+        "    float h = (vert.y + vert.w)/(2.0*vert.w); \n"
+        "    float d = 1.0; \n" //1.2299; \n" //mix(1.0, oe_rasterizer_f, h); \n"
+        "    vert.x *= d; \n"
+        "} \n";
+}
+
 TileRasterizer::TileRasterizer() :
 osg::Camera()
 {
@@ -62,7 +74,7 @@ osg::Camera()
     setClearColor(osg::Vec4(0,0,0,0));
     setClearMask(GL_COLOR_BUFFER_BIT);
     setReferenceFrame(ABSOLUTE_RF);
-    setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    //setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     setRenderOrder(PRE_RENDER);
     setRenderTargetImplementation(FRAME_BUFFER_OBJECT);
     setImplicitBufferAttachmentMask(0, 0);
@@ -94,6 +106,16 @@ osg::Camera()
     setGraphicsContext(gc);
     setDrawBuffer(GL_FRONT);
     setReadBuffer(GL_FRONT);
+#endif
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setInheritShaders(false);
+
+    // Someday we might need this to undistort rasterizer cells. We'll see
+#if 0
+    vp->setFunction("oe_rasterizer_clip", distort, ShaderComp::LOCATION_VERTEX_CLIP);
+    _distortionU = new osg::Uniform("oe_rasterizer_f", 1.0f);
+    ss->addUniform(_distortionU.get());
 #endif
 }
 
@@ -179,10 +201,9 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
             Job& job = _pendingJobs.front();
 
             // Configure a top-down orothographic camera:
-            setProjectionMatrixAsOrtho(
+            setProjectionMatrixAsOrtho2D(
                 job._extent.xMin(), job._extent.xMax(),
-                job._extent.yMin(), job._extent.yMax(),
-                -100, 100);
+                job._extent.yMin(), job._extent.yMax());
 
             // Job includes a texture to populate:
             if (job._texture.valid())

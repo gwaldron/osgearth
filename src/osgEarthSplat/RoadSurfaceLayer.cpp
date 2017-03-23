@@ -55,7 +55,9 @@ RoadSurfaceLayer::init()
 {
     setTileSourceExpected(false);
 
+    // Generate Mercator tiles by default.
     setProfile(Profile::create("global-geodetic"));
+    //setProfile(Profile::create("spherical-mercator"));
 
     // Create a rasterizer for rendering nodes to images.
     _rasterizer = new TileRasterizer(); 
@@ -204,7 +206,8 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
     // If the feature source has a tiling profile, we are going to have to map the incoming
     // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
-    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+    GeoExtent featureExtent = key.getExtent().transform(featureSRS);
+    GeoExtent queryExtent = featureExtent;
 
     // Buffer the incoming extent, if requested.
     if (options().featureBufferWidth().isSet())
@@ -260,46 +263,44 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         }
     }
 
-    // Create the output extent in feature SRS:
-    GeoExtent outputExtent = key.getExtent();
-    FilterContext fc(_session.get(), featureProfile, outputExtent);
-    
-    // By default, the geometry compiler will use the Session's Map SRS as the output SRS
-    // for feature data. We want a projected output so we can take an overhead picture of it.
-    // So set the output SRS to mercator instead.
-    if (key.getExtent().getSRS()->isGeographic())
+    if (!features.empty())
     {
-        fc.setOutputSRS(SpatialReference::get("spherical-mercator"));
-        outputExtent = outputExtent.transform(fc.getOutputSRS());
-    }
+        // Create the output extent:
+        GeoExtent outputExtent = key.getExtent();
 
-    // compile the features into a node.
-    GeometryCompiler compiler;
-    osg::ref_ptr<osg::Node> node = compiler.compile(features, options().style().get(), fc);
+        const SpatialReference* keySRS = outputExtent.getSRS();
+        osg::Vec3d pos(outputExtent.west(), outputExtent.south(), 0);
+        osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
+        outputExtent = outputExtent.transform(srs.get());
+
+        FilterContext fc(_session.get(), featureProfile, featureExtent);
+        fc.setOutputSRS(outputExtent.getSRS());
+
+        // compile the features into a node.
+        GeometryCompiler compiler;
+        osg::ref_ptr<osg::Node> node = compiler.compile(features, options().style().get(), fc);
     
-    if (node && node->getBound().valid())
-    {
-        VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
-        vp->setInheritShaders(false);
-
-        Threading::Future<osg::Image> imageFuture;
-
-        // Schedule the rasterization and get the future.
-        osg::ref_ptr<TileRasterizer> rasterizer;
-        if (_rasterizer.lock(rasterizer))
+        if (node && node->getBound().valid())
         {
-            imageFuture = rasterizer->push(node.release(), getTileSize(), outputExtent);
+            Threading::Future<osg::Image> imageFuture;
 
-            // Immediately discard the temporary reference to the rasterizer, because
-            // otherwise a deadlock can occur if the application exits while the call
-            // to release() below is blocked.
-            rasterizer = 0L;
-        }
+            // Schedule the rasterization and get the future.
+            osg::ref_ptr<TileRasterizer> rasterizer;
+            if (_rasterizer.lock(rasterizer))
+            {
+                imageFuture = rasterizer->push(node.release(), getTileSize(), outputExtent);
 
-        osg::Image* image = imageFuture.release();
-        if (image)
-        {
-            return GeoImage(image, key.getExtent());
+                // Immediately discard the temporary reference to the rasterizer, because
+                // otherwise a deadlock can occur if the application exits while the call
+                // to release() below is blocked.
+                rasterizer = 0L;
+            }
+
+            osg::Image* image = imageFuture.release();
+            if (image)
+            {
+                return GeoImage(image, key.getExtent());
+            }
         }
     }
 

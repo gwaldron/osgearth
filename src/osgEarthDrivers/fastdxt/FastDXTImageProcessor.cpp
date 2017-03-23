@@ -47,7 +47,7 @@ public:
             osg::Timer_t start = osg::Timer::instance()->tick();
             rgba = osgEarth::ImageUtils::convertToRGBA8( &image );
             osg::Timer_t end = osg::Timer::instance()->tick();
-            OE_INFO << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
+            OE_DEBUG << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
             sourceImage = rgba.get();
         }
 
@@ -58,12 +58,12 @@ public:
         case osg::Texture::USE_S3TC_DXT1_COMPRESSION:
             format = FORMAT_DXT1;
             pixelFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-            OE_INFO << "FastDXT using dxt1 format" << std::endl;
+            OE_DEBUG << "FastDXT using dxt1 format" << std::endl;
             break;
         case osg::Texture::USE_S3TC_DXT5_COMPRESSION:
             format = FORMAT_DXT5;
             pixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-            OE_INFO << "FastDXT dxt5 format" << std::endl;
+            OE_DEBUG << "FastDXT dxt5 format" << std::endl;
             break;
         default:
             OSG_WARN << "Unhandled compressed format" << compressedFormat << std::endl;
@@ -85,7 +85,7 @@ public:
         osg::Timer_t start = osg::Timer::instance()->tick();
         int outputBytes = CompressDXT(in, out, sourceImage->s(), sourceImage->t(), format);
         osg::Timer_t end = osg::Timer::instance()->tick();
-        OE_INFO << "compression took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        OE_DEBUG << "compression took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
 
         //Allocate and copy over the output data to the correct size array.
         unsigned char* data = (unsigned char*)malloc(outputBytes);

@@ -1029,7 +1029,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
             else
             {
-                OE_INFO << "FastDXT only works on GL_RGBA or GL_RGB images" << std::endl;
+                OE_DEBUG << "FastDXT only works on GL_RGBA or GL_RGB images" << std::endl;
                 return;
             }
 
@@ -1038,7 +1038,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             osg::Timer_t end = osg::Timer::instance()->tick();
             image->dirty();
             tex->setImage(0, image);
-            OE_INFO << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
+            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
         }
         else
         {

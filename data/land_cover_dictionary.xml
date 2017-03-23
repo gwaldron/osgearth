@@ -1,0 +1,23 @@
+<!--
+ osgEarth Land Cover core classification dictionary.
+ Customize this any way to want. When you introduce a data source
+ using a LandCoverLayer, contsruct a land_cover_data_source XML
+ element that maps that data source's value codes to each of these
+ land cover classes.
+ -->
+ <land_cover_dictionary>
+    <version>1</version>
+    <classes>
+        <class name="forest"/>
+        <class name="cropland"/>
+        <class name="grassland"/>
+        <class name="savannah"/>
+        <class name="swamp"/>
+        <class name="desert"/>
+        <class name="rock"/>
+        <class name="water"/>
+        <class name="tundra"/>
+        <class name="urban"/>
+        <class name="asphalt"/>
+    </classes>
+</land_cover_dictionary>

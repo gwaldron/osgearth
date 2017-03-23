@@ -132,6 +132,8 @@ SkinResource::createTexture(osg::Image* image) const
 
     osg::Texture* tex;
 
+    osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+
     if (image->r() > 1)
     {
         osg::Texture2DArray* ta = new osg::Texture2DArray();
@@ -146,6 +148,10 @@ SkinResource::createTexture(osg::Image* image) const
         ImageUtils::flattenImage(image, layers);
         for (unsigned i = 0; i < layers.size(); ++i)
         {
+           if (nvtt && layers[i].get()->getNumMipmapLevels() <= 1)
+           {
+              nvtt->generateMipMap(*layers[i].get(), true, osgDB::ImageProcessor::USE_CPU);
+           }
             tex->setImage(i, layers[i].get());
         }
         tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
@@ -156,6 +162,11 @@ SkinResource::createTexture(osg::Image* image) const
         tex = new osg::Texture2D(image);
         tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
         tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+
+        if (nvtt && image->getNumMipmapLevels() <= 1)
+        {
+           nvtt->generateMipMap(*image, true, osgDB::ImageProcessor::USE_CPU);
+        }
     }
 
     tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);

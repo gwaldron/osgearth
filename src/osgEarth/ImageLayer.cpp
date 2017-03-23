@@ -629,6 +629,12 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     if ( result.valid() )
     {
         ImageUtils::fixInternalFormat( result.getImage() );
+
+        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+        if (nvtt && result.getImage()->getPixelFormat() != GL_LUMINANCE && result.getImage()->getNumMipmapLevels() <= 1)
+        {
+           nvtt->generateMipMap(*result.getImage(), true, osgDB::ImageProcessor::USE_CPU);
+        }
     }
 
     // memory cache first:

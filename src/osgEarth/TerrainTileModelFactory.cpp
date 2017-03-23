@@ -240,8 +240,16 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
 
         // Made an image, so store this as a texture with no matrix.
         osg::Texture* texture = createNormalTexture( image );
+
         layerModel->setTexture( texture );
         model->normalModel() = layerModel;
+
+        // mipmap it  since it is osg::Texture::LINEAR_MIPMAP_LINEAR
+        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+        if (nvtt && image->getNumMipmapLevels() <= 1)
+        {
+           nvtt->generateMipMap(*image, true, osgDB::ImageProcessor::USE_CPU);
+        }
     }
 
     if (progress)

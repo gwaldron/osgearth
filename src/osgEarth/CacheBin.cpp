@@ -279,6 +279,12 @@ namespace
                         osg::ref_ptr<osgDB::Options> dbo = Registry::cloneOrCreateOptions(_writeOptions);
                         dbo->setPluginStringData("WriteImageHint", "IncludeData");
 
+                        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+                        if (nvtt && image.getNumMipmapLevels() <= 1)
+                        {
+                           nvtt->generateMipMap(image, true, osgDB::ImageProcessor::USE_CPU);
+                        }
+
                         OE_INFO << LC << "Writing image \"" << image.getFileName() << "\" to the cache\n";
 
                         if (!_bin->write(cacheKey, &image, dbo.get()))

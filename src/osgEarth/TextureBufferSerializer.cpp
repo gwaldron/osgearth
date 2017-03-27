@@ -19,6 +19,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <osg/Version>
+
+#if OSG_VERSION_LESS_THAN(3,5,4)
+
 #include <osg/TextureBuffer>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/InputStream>
@@ -35,3 +39,21 @@ namespace
         ADD_INT_SERIALIZER( TextureWidth, 0 );  // _textureWidth
     }
 }
+
+#elif OSG_VERSION_LESS_THAN(3,5,6)
+
+#include <osg/TextureBuffer>
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+REGISTER_OBJECT_WRAPPER( TextureBuffer,
+                         new osg::TextureBuffer,
+                         osg::TextureBuffer,
+                         "osg::Object osg::StateAttribute osg::Texture osg::TextureBuffer" )
+{
+    ADD_INT_SERIALIZER( TextureWidth, 0 );                       // _textureWidth
+    ADD_OBJECT_SERIALIZER( BufferData, osg::BufferData, NULL );  // _bufferData
+}
+
+#endif

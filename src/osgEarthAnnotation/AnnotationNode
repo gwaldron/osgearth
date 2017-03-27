@@ -140,6 +140,9 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
+        // override to prevent render-order symbology from taking effect.
+        virtual bool supportsRenderBinDetails() const { return true; }
+
     protected:
         
         osg::ref_ptr<HorizonCullCallback> _horizonCuller;

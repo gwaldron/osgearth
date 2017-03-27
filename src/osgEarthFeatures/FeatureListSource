@@ -52,6 +52,8 @@ namespace osgEarth { namespace Features
         FeatureListSource(const GeoExtent& defaultExtent );
 
         virtual ~FeatureListSource() { }
+        
+        virtual Status initialize(const osgDB::Options* readOptions) { return Status::OK();  }
 
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query );
 

@@ -525,9 +525,17 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
 
     if (_vertexArray.valid()) vas->assignVertexArrayDispatcher();
     if (_normalArray.valid()) vas->assignNormalArrayDispatcher();
-    if (_texcoordArray.valid()) vas->assignTexCoordArrayDispatcher(1);
-    if (_neighborArray.valid()) vas->assignTexCoordArrayDispatcher(2); // what is the argument?
-
+    unsigned texUnits = 0;
+    if (_neighborArray.valid())
+    {
+        texUnits = 2;
+    }
+    else if (_texcoordArray.valid())
+    {
+        texUnits = 1;
+    }
+    if (texUnits)
+        vas->assignTexCoordArrayDispatcher(texUnits);
     if (state.useVertexArrayObject(_useVertexArrayObject))
     {
         vas->generateVertexArrayObject();
@@ -646,6 +654,9 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
 
         if (_texcoordArray.valid() && _texcoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
             vas->setTexCoordArray(state, 0, _texcoordArray.get());
+
+        if (_neighborArray.valid() && _neighborArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+            vas->setTexCoordArray(state, 1, _neighborArray.get());
 
         vas->applyDisablingOfVertexAttributes(state);
     }

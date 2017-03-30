@@ -268,7 +268,7 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
         clamper.setPreserveZ( _clampRelative );
-        clamper.setOffset( getPosition().alt() );
+        //clamper.setOffset( getPosition().alt() );
 
         this->accept( clamper );
 

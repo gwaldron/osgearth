@@ -25,15 +25,24 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
-TerrainCuller::TerrainCuller() :
+TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
 _frame(0L),
-_context(0L),
 _camera(0L),
 _currentTileNode(0L),
-_orphanedPassesDetected(0u)
+_orphanedPassesDetected(0u),
+_cv(cullVisitor),
+_context(context)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
+
+    setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));
+    setDatabaseRequestHandler(_cv->getDatabaseRequestHandler());
+    pushReferenceViewPoint(_cv->getReferenceViewPoint());
+    pushViewport(_cv->getViewport());
+    pushProjectionMatrix(_cv->getProjectionMatrix());
+    pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
+    _camera = _cv->getCurrentCamera();
 }
 
 void

@@ -25,6 +25,7 @@
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
 #include "TerrainCuller"
+#include "RexTerrainEngineNode"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -304,13 +305,33 @@ bool
 TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionInfo)
 {    
     unsigned currLOD = _key.getLOD();
-    if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
+
+    EngineContext* context = culler->getEngineContext();
+
+    if ( *context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
-        return _surface->anyChildBoxIntersectsSphere(
-            culler->getViewPointLocal(), 
-            (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2,
-            culler->getLODScale());
+        float pixelSize = -1.0;
+        if (context->getEngine()->getComputeRangeCallback())
+        {
+            pixelSize = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
+        }    
+        if (pixelSize <= 0.0)
+        {
+            pixelSize = culler->clampedPixelSize(getBound());
+        }
+        return (pixelSize > 512.0);    
     }
+    else
+    {
+        float range = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
+        if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
+        {
+            return _surface->anyChildBoxIntersectsSphere(
+                culler->getViewPointLocal(), 
+                range,
+                culler->getLODScale());
+        }
+    }                 
     return false;
 }
 

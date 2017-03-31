@@ -25,6 +25,7 @@
 #include <osgEarth/MapFrame>
 
 #include <osg/NodeVisitor>
+#include <osgUtil/CullVisitor>
 
 
 using namespace osgEarth;
@@ -45,10 +46,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* _currentTileNode;
         unsigned _currentTileDrawCommands;
         unsigned _orphanedPassesDetected;
+        osgUtil::CullVisitor* _cv;
 
     public:
         /** A new terrain culler */
-        TerrainCuller();
+        TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
         void setup(const MapFrame& frame, const RenderBindings& bindings);

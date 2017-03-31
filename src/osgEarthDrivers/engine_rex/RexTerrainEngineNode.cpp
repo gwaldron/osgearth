@@ -545,15 +545,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         getEngineContext()->startCull( cv );
         
-        TerrainCuller culler;
-        culler.setFrameStamp(new osg::FrameStamp(*nv.getFrameStamp()));
-        culler.setDatabaseRequestHandler(nv.getDatabaseRequestHandler());
-        culler.pushReferenceViewPoint(cv->getReferenceViewPoint());
-        culler.pushViewport(cv->getViewport());
-        culler.pushProjectionMatrix(cv->getProjectionMatrix());
-        culler.pushModelViewMatrix(cv->getModelViewMatrix(), cv->getCurrentCamera()->getReferenceFrame());
-        culler._camera = cv->getCurrentCamera();
-        culler._context = this->getEngineContext();
+        TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
         culler.setup(_mapFrame, this->getEngineContext()->getRenderBindings());

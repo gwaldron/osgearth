@@ -1136,7 +1136,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         {
             Feature* f = itr->get();
             // If the feature is geodetic, try to split it across the dateline.
-            if (f->getSRS()->isGeodetic())
+            if (f->getSRS() && f->getSRS()->isGeodetic())
             {
                 // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
                 double minLon = -540;

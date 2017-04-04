@@ -114,6 +114,8 @@ MultiElevationLayer::open()
                 }
 
                 _layers.push_back(elayer);
+
+                //TODO: establish the data extents
             }
             else
             {
@@ -144,22 +146,34 @@ MultiElevationLayer::removedFromMap(const Map* map)
     }
 }
 
-osg::HeightField*
-MultiElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress)
+void
+MultiElevationLayer::createImplementation(const TileKey& key,
+                                          osg::ref_ptr<osg::HeightField>& out_heightField,
+                                          osg::ref_ptr<NormalMap>& out_normalMap,
+                                          ProgressCallback* progress)
 {
-    osg::ref_ptr<osg::HeightField> heightField = new osg::HeightField();
-    heightField->allocate(257, 257);
+    if (!out_heightField.valid())
+    {
+        out_heightField = new osg::HeightField();
+        out_heightField->allocate(257, 257);
+        out_heightField->getFloatArray()->assign(out_heightField->getFloatArray()->size(), NO_DATA_VALUE);
 
-    // Initialize the heightfield to nodata
-    heightField->getFloatArray()->assign(heightField->getFloatArray()->size(), NO_DATA_VALUE);
+        out_normalMap = new NormalMap(257, 257);
+    }
 
     // Populate the heightfield and return it if it's valid
-    if (_layers.populateHeightField(heightField.get(), key, 0, INTERP_BILINEAR, progress))
-    {             
-        return heightField.release();
-    }
-    else
-    {        
-        return 0L;
+    bool realData = _layers.populateHeightFieldAndNormalMap(
+        out_heightField.get(),
+        out_normalMap.get(),
+        key,
+        0L,
+        INTERP_BILINEAR,
+        progress);
+
+    if (!realData)
+    {
+        // Didn't get any real data? Discard the results.
+        out_heightField = 0L;
+        out_normalMap = 0L;
     }
 }

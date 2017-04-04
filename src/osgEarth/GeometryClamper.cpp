@@ -78,7 +78,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
 
     unsigned count = 0;
 
-bool geomDirty = false;
+    bool geomDirty = false;
     osg::Vec3Array*  verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
     osg::FloatArray* zOffsets = 0L;
 

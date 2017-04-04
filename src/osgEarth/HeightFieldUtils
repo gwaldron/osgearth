@@ -76,8 +76,8 @@ namespace osgEarth
         static float getHeightAtPixel(
             const osg::HeightField* hf, 
             double c, double r, 
-            ElevationInterpolation interpoltion = INTERP_BILINEAR);
-        
+            ElevationInterpolation interpolation = INTERP_BILINEAR);
+
         /**
          * Gets the height value at the specified column and row, but instead of reading
          * the actual height, interpolates a height based on the neighbors.
@@ -93,6 +93,16 @@ namespace osgEarth
          */
         static float getHeightAtLocation(
             const osg::HeightField* hf, 
+            double x, double y, 
+            double llx, double lly,
+            double dx, double dy,
+            ElevationInterpolation interpolation = INTERP_BILINEAR);
+
+        /**
+         * Gets the normal vector at a geolocation
+         */
+        static osg::Vec3 getNormalAtLocation(
+            const HeightFieldNeighborhood& hood,
             double x, double y, 
             double llx, double lly,
             double dx, double dy,
@@ -117,17 +127,6 @@ namespace osgEarth
             const HeightFieldNeighborhood& hood,
             double nx, double ny,
             float& output,
-            ElevationInterpolation interp = INTERP_BILINEAR);
-
-        /**
-         * Gets the normal vector at the specified "normalized unit location".
-         * i.e., nx => [0.0, 1.0], ny => [0.0, 1.0] where 0.0 and 1.0 are the opposing
-         * endposts of the heightfield.
-         */
-        static bool getNormalAtNormalizedLocation(
-            const osg::HeightField* hf,
-            double nx, double ny,
-            osg::Vec3& output,
             ElevationInterpolation interp = INTERP_BILINEAR);
 
         /**
@@ -200,7 +199,7 @@ namespace osgEarth
         /**
          * Convert a heightfield (and its neighbors) into a normal map* image.
          */
-        static osg::Image* convertToNormalMap(
+        static NormalMap* convertToNormalMap(
             const HeightFieldNeighborhood& hood,
             const SpatialReference*        hoodSRS);
         
@@ -210,7 +209,7 @@ namespace osgEarth
          */
         static void createNormalMap(
             const osg::Image* elevation,
-            osg::Image*       normalMap,
+            NormalMap*        normalMap,
             const GeoExtent&  extent);
 
 
@@ -221,67 +220,6 @@ namespace osgEarth
          **/
         static bool validateSamples(float &a, float &b, float &c, float &d);
     };
-
-#if 0
-    /**
-    * A collection of ValidDataOperators.  All operators must pass to be considered valid.
-    */
-    struct OSGEARTH_EXPORT CompositeValidValueOperator : public osgTerrain::ValidDataOperator
-    {
-        typedef std::vector<osg::ref_ptr<osgTerrain::ValidDataOperator> > ValidDataOperatorList;
-        ValidDataOperatorList& getOperators() { return _operators;}
-
-        virtual bool operator() (float value) const
-        {
-            for (ValidDataOperatorList::const_iterator itr = _operators.begin(); itr != _operators.end(); ++itr)
-            {
-                if (!(*itr->get())(value)) return false;
-            }
-            return true;
-        }
-
-        ValidDataOperatorList _operators;
-    };
-
-    /**
-     * Visitor that replaces "invalid" data values with a known value.
-     */
-    struct OSGEARTH_EXPORT ReplaceInvalidDataOperator : public osg::Referenced
-    {
-        ReplaceInvalidDataOperator();
-
-        virtual void operator()(osg::HeightField* heightField);
-
-        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
-        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
-
-        float getReplaceWith() { return _replaceWith; }
-        void setReplaceWith( float replaceWith ) { _replaceWith = replaceWith; }
-
-        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
-        float _replaceWith;
-    };
-
-    /**
-     * Visitor that replaces "invalid" data values with a default value.
-     */
-    struct OSGEARTH_EXPORT FillNoDataOperator : public osg::Referenced
-    {
-        FillNoDataOperator();
-
-        virtual void operator()(osg::HeightField* heightField);
-
-        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
-        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
-
-        float getDefaultValue() { return _defaultValue; }
-        void setDefaultValue(float defaultValue) { _defaultValue = defaultValue; }
-
-        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
-
-        float _defaultValue;
-    };
-#endif
 }
 
 #endif //OSGEARTH_HEIGHTFIELDUTILS_H

@@ -109,7 +109,7 @@ namespace osgEarth { namespace Util
         optional<bool> _fill;
     };
 
-
+#if 0
     /**
      * Tile source that will take elevation data (from elsewhere in the map)
      * and flatten it according to feature data. For example, given a feature
@@ -148,7 +148,7 @@ namespace osgEarth { namespace Util
 
         ElevationPool* _pool;
     };
-
+#endif
 
     /**
      * Elevation layer that overlays modified elevation samples intended to
@@ -174,16 +174,26 @@ namespace osgEarth { namespace Util
 
     public: // ElevationLayer
 
+        virtual void init();
+
         // opens the layer and returns the status
         virtual const Status& open();
 
     protected: // ElevationLayer
 
         // called by the elevation layer to create our custom tile source
-        virtual TileSource* createTileSource();
+        //virtual TileSource* createTileSource();
 
-        // called by the map when this layer is added/removed
+        virtual void createImplementation(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& hf,
+            osg::ref_ptr<NormalMap>& normalMap,
+            ProgressCallback* progres);
+
+        //! called by the map when this layer is added
         virtual void addedToMap(const class Map*);
+
+        //! called by the map when this layer is removed
         virtual void removedFromMap(const class Map*);
 
     protected:
@@ -192,8 +202,8 @@ namespace osgEarth { namespace Util
 
     private:
 
-        MapCallback* _mapCallback;
-        FlatteningTileSource* _ts;
+        //MapCallback* _mapCallback;
+        //FlatteningTileSource* _ts;
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<FeatureSource> _featureSource;
 

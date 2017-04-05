@@ -56,6 +56,12 @@ _numTilesHighAtLod0( 1 )
     _namedProfile = namedProfile; // don't set above
 }
 
+ void
+ ProfileOptions::mergeConfig( const Config& conf ) {
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
 void
 ProfileOptions::fromConfig( const Config& conf )
 {

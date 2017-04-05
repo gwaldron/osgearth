@@ -96,6 +96,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_lights)
     ADD_SUBDIRECTORY(osgearth_noisegen)
     ADD_SUBDIRECTORY(osgearth_infinitescroll)
+    ADD_SUBDIRECTORY(osgearth_video)
 
     IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
         ADD_SUBDIRECTORY(osgearth_qt_simple)

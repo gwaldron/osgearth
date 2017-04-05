@@ -314,7 +314,7 @@ namespace osgEarth
     public: // methods
 
         virtual bool createTextureSupported() const { return false; }
-        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress) { return 0L; }
+        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix) { return 0L; }
 
         /**
          * Creates a GeoImage from this layer corresponding to the provided key. The

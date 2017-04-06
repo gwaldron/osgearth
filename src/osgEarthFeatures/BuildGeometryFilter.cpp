@@ -1129,7 +1129,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
 
     // Split features across the dateline if necessary
-    if (!context.getOutputSRS()->isGeographic())
+    if (context.getOutputSRS() && !context.getOutputSRS()->isGeographic())
     {
 
         for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)

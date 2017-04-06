@@ -372,6 +372,7 @@ namespace osgEarth
 
             /** Reads a color from the image by unit coords [0..1] */
             osg::Vec4 operator()(float u, float v, int r=0, int m=0) const;
+            osg::Vec4 operator()(double u, double v, int r=0, int m=0) const;
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {

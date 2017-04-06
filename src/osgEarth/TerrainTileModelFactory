@@ -130,6 +130,7 @@ namespace osgEarth
             ElevationInterpolation          interpolation,
             unsigned                        border,
             osg::ref_ptr<osg::HeightField>& out_hf,
+            osg::ref_ptr<NormalMap>&        out_normalMap,
             ProgressCallback*               progress);
 
         osg::Texture* createImageTexture(
@@ -165,7 +166,12 @@ namespace osgEarth
             }
         };
 
-        typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
+        struct HFCacheValue
+        {
+            osg::ref_ptr<osg::HeightField> _hf;
+            osg::ref_ptr<NormalMap> _normalMap;
+        };
+        //typedef osg::ref_ptr<osg::HeightField> HFCacheValue;
         typedef LRUCache<HFCacheKey, HFCacheValue> HFCache;
         HFCache _heightFieldCache;
         bool    _heightFieldCacheEnabled;

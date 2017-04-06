@@ -352,6 +352,7 @@ namespace osgEarth
         ImageLayer(ImageLayerOptions* optionsPtr);
 
         //! Subclass can override this when not using a TileSource
+        //! by calling setTileSourceExpected(false).
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
     private:

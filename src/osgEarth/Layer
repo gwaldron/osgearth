@@ -76,6 +76,12 @@ namespace osgEarth
         optional<std::string>& shaderDefine() { return _shaderDefine; }
         const optional<std::string>& shaderDefine() const { return _shaderDefine; }
 
+        /**
+         * Shader snippet(s) to inject into this layer's stateset.
+         */
+        optional<std::string>& shader() { return _shader; }
+        const optional<std::string>& shader() const { return _shader; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
@@ -92,6 +98,7 @@ namespace osgEarth
         optional<std::string> _cacheId;
         optional<CachePolicy> _cachePolicy;
         optional<std::string> _shaderDefine;
+        optional<std::string> _shader;
     };
 
 

@@ -189,9 +189,37 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {        
-        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();    
-        return _elevationLayers.populateHeightField(
+        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+
+        return _elevationLayers.populateHeightFieldAndNormalMap(
             hf.get(),
+            0L,         // no normal map to populate
+            key,
+            convertToHAE ? map->getProfileNoVDatum() : 0L,
+            interp,
+            progress );
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool
+MapFrame::populateHeightFieldAndNormalMap(osg::ref_ptr<osg::HeightField>& hf,
+                                          osg::ref_ptr<NormalMap>&        normalMap,
+                                          const TileKey&                  key,
+                                          bool                            convertToHAE,
+                                          ProgressCallback*               progress) const
+{
+    osg::ref_ptr<const Map> map;
+    if ( _map.lock(map) )
+    {        
+        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+
+        return _elevationLayers.populateHeightFieldAndNormalMap(
+            hf.get(),
+            normalMap.get(),
             key,
             convertToHAE ? map->getProfileNoVDatum() : 0L,
             interp,

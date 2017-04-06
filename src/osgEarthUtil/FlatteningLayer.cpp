@@ -31,7 +31,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#define LC "[FlatteningTileSource] "
+#define LC "[FlatteningLayer] "
 
 #define OE_TEST OE_DEBUG
 
@@ -47,8 +47,14 @@ namespace
     double inline smoothstep(double a, double b, double t)
     {
         // smoothstep (approximates cosine):
-        double mu = t*t*(3.0-2.0*t);
-        return a + (b-a)*mu;
+        t = t*t*(3.0-2.0*t);
+        return a + (b-a)*t;
+    }
+
+    double inline smootherstep(double a, double b, double t)
+    {
+        t = t*t*t*(t*(t*6.0 - 15.0)+10.0);
+        return a + (b-a)*t;
     }
     
     // clamp "a" to [lo..hi].
@@ -252,7 +258,7 @@ namespace
                     {
                         float elevNatural = envelope->getElevation(P.x(), P.y());
                         double blend = clamp(sqrt(minD2)/bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
-                        h = smoothstep(elevInternal, elevNatural, blend);
+                        h = smootherstep(elevInternal, elevNatural, blend);
                     }
 
                     hf->setHeight(col, row, h);
@@ -372,7 +378,6 @@ namespace
         double outerRadius2 = outerRadius * outerRadius;
 
         bool needsTransform = ex.getSRS() != geomSRS;
-
         
         // Loop over the new heightfield.
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
@@ -440,7 +445,7 @@ namespace
 
                         // If the distance from our point to the line segment falls within
                         // the maximum flattening distance, store it.
-                        if (D2 < outerRadius2)
+                        if (D2 <= outerRadius2)
                         {
                             // see if P is a new sample.
                             Sample* b;
@@ -494,7 +499,7 @@ namespace
                 {
                     // The original elevation at our point:
                     float elevP = envelope->getElevation(P.x(), P.y());
-
+                    
                     for (unsigned i = 0; i < samples.size(); ++i)
                     {
                         Sample& sample = samples[i];
@@ -535,7 +540,7 @@ namespace
 
                         // smoothstep interpolation of along the buffer (perpendicular to the segment)
                         // will gently integrate the new value into the existing terrain.
-                        sample.elev = smoothstep(sample.elevPROJ, elevP, blend);
+                        sample.elev = smootherstep(sample.elevPROJ, elevP, blend);
                     }
 
                     // Finally, combine our new elevation values and set the new value in the output.
@@ -574,20 +579,59 @@ namespace
     }
 }
 
+//........................................................................
 
 
-FlatteningTileSource::FlatteningTileSource(const FlatteningLayerOptions& options) :
-TileSource(options),
-FlatteningLayerOptions(options)
+FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
+ElevationLayer(&_optionsConcrete),
+_options(&_optionsConcrete),
+_optionsConcrete(options)
 {
-    setName("FlatteningTileSource");
+    // Experiment with this and see what will work.
+    _pool = new ElevationPool();
+    _pool->setTileSize(257u);
+
+    init();
 }
 
-Status
-FlatteningTileSource::initialize(const osgDB::Options* readOptions)
+void
+FlatteningLayer::init()
 {
-    _readOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
+    setTileSourceExpected(false);
+    ElevationLayer::init();
+}
 
+const Status&
+FlatteningLayer::open()
+{
+    // ensure the caller named a feature source:
+    if (!options().featureSource().isSet() &&
+        !options().featureSourceLayer().isSet())
+    {
+        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
+    }
+
+    // If the feature source is inline, open it now.
+    if (options().featureSource().isSet())
+    {
+        // Create the feature source instance:
+        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
+        if (!fs)
+        {
+            return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source as defined"));
+        }
+
+        // Open it:
+        setStatus(fs->open(getReadOptions()));
+        if (getStatus().isError())
+            return getStatus();
+        
+        setFeatureSource(fs);
+
+        if (getStatus().isError())
+            return getStatus();
+    }
+    
     const Profile* profile = getProfile();
     if ( !profile )
     {
@@ -595,42 +639,122 @@ FlatteningTileSource::initialize(const osgDB::Options* readOptions)
         setProfile( profile );
     }
 
-    // ready!
-    return Status::OK();
+    return ElevationLayer::open();
 }
 
-osg::HeightField*
-FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
+void
+FlatteningLayer::setFeatureSource(FeatureSource* fs)
+{
+    if (fs)
+    {
+        _featureSource = fs;
+        if (_featureSource)
+        {
+            if (!_featureSource->getFeatureProfile())
+            {
+                setStatus(Status::Error(Status::ConfigurationError, "No feature profile (is the source open?)"));
+                _featureSource = 0L;
+                return;
+            }
+        }
+    }
+}
+
+FlatteningLayer::~FlatteningLayer()
+{
+    _featureLayerListener.clear();
+}
+
+void
+FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
+{
+    if (layer)
+    {
+        if (layer->getStatus().isOK())
+            setFeatureSource(layer->getFeatureSource());
+    }
+    else
+    {
+        setFeatureSource(0L);
+    }
+}
+
+void
+FlatteningLayer::addedToMap(const Map* map)
+{   
+    // Initialize the elevation pool with our map:
+    OE_INFO << LC << "Attaching elevation pool to map\n";
+    _pool->setMap( map );
+
+        
+    // Listen for our feature source layer to arrive, if there is one.
+    if (options().featureSourceLayer().isSet())
+    {
+        _featureLayerListener.listen(
+            map,
+            options().featureSourceLayer().get(), 
+            this, &FlatteningLayer::setFeatureSourceLayer);
+    }
+        
+    // Collect all elevation layers preceding this one and use them for flattening.
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+    for (ElevationLayerVector::iterator i = layers.begin(); i != layers.end(); ++i) {
+        if (i->get() == this) {
+            layers.erase(i);
+            break;
+        }
+        else {
+            OE_INFO << LC << "Using: " << i->get()->getName() << "\n";
+        }
+    }
+    if (!layers.empty())
+    {
+        _pool->setElevationLayers(layers);
+    }
+}
+
+void
+FlatteningLayer::removedFromMap(const Map* map)
+{
+    _featureLayerListener.clear();
+}
+
+void
+FlatteningLayer::createImplementation(const TileKey& key,
+                                      osg::ref_ptr<osg::HeightField>& hf,
+                                      osg::ref_ptr<NormalMap>& normalMap,
+                                      ProgressCallback* progress)
 {
     if (getStatus().isError())    
     {
-        return 0L;
+        return;
     }
     
     if (!_featureSource.valid())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
-        return 0L;
+        return;
     }
 
     const FeatureProfile* featureProfile = _featureSource->getFeatureProfile();
     if (!featureProfile)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
-        return 0L;
+        return;
     }
 
     const SpatialReference* featureSRS = featureProfile->getSRS();
     if (!featureSRS)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
-        return 0L;
+        return;
     }
 
     if (_pool->getElevationLayers().empty())
     {
         OE_WARN << LC << "Internal error - Pool layer set is empty\n";
-        return 0L;
+        return;
     }
 
     OE_START_TIMER(create);
@@ -644,12 +768,12 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 
     // Buffer the query extent to include the potentially flattened area.
     double linewidth = SpatialReference::transformUnits(
-        lineWidth().get(),
+        options().lineWidth().get(),
         featureSRS,
         geoExtent.getCentroid().y());
 
     double bufferwidth = SpatialReference::transformUnits(
-        bufferWidth().get(),
+        options().bufferWidth().get(),
         featureSRS,
         geoExtent.getCentroid().y());
 
@@ -657,9 +781,18 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
     queryExtent.expand(queryBuffer, queryBuffer);
 
     // We must do all the feature processing in a projected system since we're using vector math.
-    const SpatialReference* workingSRS =
-        queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
+#if 0
+    osg::ref_ptr<const SpatialReference> workingSRS = queryExtent.getSRS();
+    //if (workingSRS->isGeographic())
+    {
+        osg::Vec3d refPos = queryExtent.getCentroid();
+        workingSRS = workingSRS->createTangentPlaneSRS(refPos);
+    }
+#else
+    const SpatialReference* workingSRS = queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
         queryExtent.getSRS();
+#endif
+
     bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
 
     // We will collection all the feature geometries in this multigeometry:
@@ -728,193 +861,28 @@ FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* pr
 
     if (!geoms.getComponents().empty())
     {
-        // Make an empty heightfield to populate:
-        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
-            queryExtent,
-            257, 257,           // base tile size for elevation data
-            0u,                 // no border
-            true);              // initialize to HAE (0.0) heights
+        if (!hf.valid())
+        {
+            // Make an empty heightfield to populate:
+            hf = HeightFieldUtils::createReferenceHeightField(
+                queryExtent,
+                257, 257,           // base tile size for elevation data
+                0u,                 // no border
+                true);              // initialize to HAE (0.0) heights
 
-        // Initialize to NO DATA.
-        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+            // Initialize to NO DATA.
+            hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+        }
 
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
 
         // Resolve the buffering widths:
-        double lineWidthLocal = SpatialReference::transformUnits(lineWidth().get(), workingSRS, geoExtent.getCentroid().y());
-        double bufferWidthLocal = SpatialReference::transformUnits(bufferWidth().get(), workingSRS, geoExtent.getCentroid().y());
+        double lineWidthLocal = SpatialReference::transformUnits(options().lineWidth().get(), workingSRS, geoExtent.getCentroid().y());
+        double bufferWidthLocal = SpatialReference::transformUnits(options().bufferWidth().get(), workingSRS, geoExtent.getCentroid().y());
 
-        bool fill = (this->fill() == true);
+        bool fill = (options().fill() == true);
         
-        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress) || (progress && progress->isCanceled()))
-        {
-            // If integrate made any changes, return the new heightfield.
-            // (Or if the operation was canceled...return it anyway and it 
-            // will be discarded).
-            return hf.release();
-        }
+        integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress);
     }
-
-    return 0L;
-}
-
-//........................................................................
-
-#undef  LC
-#define LC "[FlatteningLayer] "
-
-FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
-ElevationLayer(&_optionsConcrete),
-_options(&_optionsConcrete),
-_optionsConcrete(options)
-{
-    // always call base class initializes
-    ElevationLayer::init();
-    
-    // Experiment with this and see what will work.
-    //_pool.setTileSize(65u);
-    _pool = new ElevationPool();
-    _pool->setTileSize(257u);
-
-    OE_TEST << LC << "Initialized!\n";
-}
-
-const Status&
-FlatteningLayer::open()
-{
-    // ensure the caller named a feature source:
-    if (!options().featureSource().isSet() &&
-        !options().featureSourceLayer().isSet())
-    {
-        return setStatus(Status::Error(Status::ConfigurationError, "Missing required feature source"));
-    }
-
-    // If the feature source is inline, open it now.
-    if (options().featureSource().isSet())
-    {
-        // Create the feature source instance:
-        FeatureSource* fs = FeatureSourceFactory::create(options().featureSource().get());
-        if (!fs)
-        {
-            return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source as defined"));
-        }
-
-        // Open it:
-        setStatus(fs->open(getReadOptions()));
-        if (getStatus().isError())
-            return getStatus();
-        
-        setFeatureSource(fs);
-
-        if (getStatus().isError())
-            return getStatus();
-    }
-
-    return ElevationLayer::open();
-}
-
-void
-FlatteningLayer::setFeatureSource(FeatureSource* fs)
-{
-    if (fs)
-    {
-        _featureSource = fs;
-        if (_featureSource)
-        {
-            if (!_featureSource->getFeatureProfile())
-            {
-                setStatus(Status::Error(Status::ConfigurationError, "No feature profile (is the source open?)"));
-                _featureSource = 0L;
-                return;
-            }
-        }
-        if (_ts)
-        {
-            _ts->setFeatureSource(fs);
-        }
-    }
-}
-
-TileSource*
-FlatteningLayer::createTileSource()
-{
-    OE_TEST << LC << "Creating tile source\n";
-    _ts = new FlatteningTileSource(options());
-    _ts->setElevationPool(_pool.get());
-    _ts->setFeatureSource(_featureSource.get());
-    return _ts;
-}
-
-FlatteningLayer::~FlatteningLayer()
-{
-    _baseLayerListener.clear();
-    _featureLayerListener.clear();
-}
-
-void
-FlatteningLayer::setBaseLayer(ElevationLayer* layer)
-{
-    OE_INFO << LC << "Setting base layer to "
-        << (layer ? layer->getName() : "null") << std::endl;
-
-    ElevationLayerVector layers;
-
-    if (layer)
-    {
-        // Instead of using all the map's elevation layers, we will use a custom set
-        // consisting of just the base layer. Otherwise, the map will return elevation data
-        // for the very layer we are trying to build!
-        layers.push_back(layer);
-    }
-
-    _pool->setElevationLayers(layers);
-}
-
-void
-FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
-{
-    if (layer)
-    {
-        if (layer->getStatus().isOK())
-            setFeatureSource(layer->getFeatureSource());
-    }
-    else
-    {
-        setFeatureSource(0L);
-    }
-}
-
-void
-FlatteningLayer::addedToMap(const Map* map)
-{   
-    if (options().elevationBaseLayer().isSet())
-    {  
-        // Initialize the elevation pool with our map:
-        OE_INFO << LC << "Attaching elevation pool to map\n";
-        _pool->setMap( map );
-
-        // Listen for our specified base layer to arrive/depart the map.
-        // setBaseLayer will be automatically called.
-        _baseLayerListener.listen(
-            map, 
-            options().elevationBaseLayer().get(), 
-            this, &FlatteningLayer::setBaseLayer);
-        
-        // Listen for our feature source layer to arrive, if there is one.
-        if (options().featureSourceLayer().isSet())
-        {
-            _featureLayerListener.listen(
-                map,
-                options().featureSourceLayer().get(), 
-                this, &FlatteningLayer::setFeatureSourceLayer);
-        }
-    }
-}
-
-void
-FlatteningLayer::removedFromMap(const Map* map)
-{
-    _baseLayerListener.clear();
-    _featureLayerListener.clear();
 }

@@ -95,7 +95,6 @@ ElevationPool::getElevation(const GeoPoint& point, unsigned lod)
 {
     GetElevationOp* op = new GetElevationOp(this, point, lod);
     Future<ElevationSample> result = op->_promise.getFuture();
-    //Registry::instance()->getAsyncOperationQueue()->add(op);
     _opQueue->add(op);
     return result;
 }
@@ -141,7 +140,7 @@ ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
         else
         {
             OE_TEST << LC << "Populating from layers (" << keyToUse.str() << ")\n";
-            ok = _layers.populateHeightField(hf, keyToUse, 0L, INTERP_BILINEAR, 0L);
+            ok = _layers.populateHeightFieldAndNormalMap(hf, 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
 
         if (ok)

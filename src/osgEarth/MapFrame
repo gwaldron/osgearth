@@ -142,6 +142,13 @@ namespace osgEarth
             bool                            expressHeightsAsHAE,
             ProgressCallback*               progress) const;
 
+        bool populateHeightFieldAndNormalMap(
+            osg::ref_ptr<osg::HeightField>& hf,
+            osg::ref_ptr<NormalMap>&        normalMap,
+            const TileKey&                  key,
+            bool                            expressHeightsAsHAE,
+            ProgressCallback*               progress) const;
+
         /**
          * Gets the map's elevation pool.
          * This returns a ref_ptr because the Map itself is held with an observer_ptr.

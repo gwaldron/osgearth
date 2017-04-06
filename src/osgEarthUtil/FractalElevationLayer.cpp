@@ -113,8 +113,8 @@ namespace
                         uScaled = u, vScaled = v;
                         scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get(), key);
 
-                        float uMod = (float)fmod(uScaled, 1.0);
-                        float vMod = (float)fmod(vScaled, 1.0);
+                        double uMod = fmod(uScaled, 1.0);
+                        double vMod = fmod(vScaled, 1.0);
 
                         n += noise1(uMod, vMod).r() - 0.5;
                         finalScale *= 0.5;
@@ -125,8 +125,8 @@ namespace
                         uScaled = u, vScaled = v;
                         scaleCoordsToLOD(uScaled, vScaled, _options.baseLOD().get() + 3, key);
 
-                        float uMod = (float)fmod(uScaled, 1.0);
-                        float vMod = (float)fmod(vScaled, 1.0);
+                        double uMod = fmod(uScaled, 1.0);
+                        double vMod = fmod(vScaled, 1.0);
                         n += noise2(uMod, vMod).r() - 0.5;
                         finalScale *= 0.5;
                     }
@@ -277,6 +277,21 @@ FractalElevationLayer::~FractalElevationLayer()
 void
 FractalElevationLayer::init()
 {
+    // If we try to use this layer 5 LODs beyond it's baseLOD, there is a 
+    // quantization that happens and the normaly become faceted. Need to track
+    // this down, but in the meantime, limit the output to baseLOD+5.
+    if (options().maxDataLevel().isSet())
+    {
+        if (options().maxDataLevel().get() - options().baseLOD().get() > 5)
+        {
+            options().maxDataLevel() = options().baseLOD().get() + 5;
+        }
+    }
+    else
+    {
+        options().maxDataLevel() = options().baseLOD().get() + 5;
+    }
+
     ElevationLayer::init();
 }
 
@@ -295,11 +310,11 @@ FractalElevationLayer::open()
 void
 FractalElevationLayer::addedToMap(const Map* map)
 {
-    //todo
+    //nop
 }
 
 void
 FractalElevationLayer::removedFromMap(const Map* map)
 {
-    //todo
+    //nop
 }

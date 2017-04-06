@@ -229,6 +229,12 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         OE_INFO << LC << "High Res First option set to true by env var\n";
     }
 
+    // Check for normals debugging.
+    if (::getenv("OSGEARTH_DEBUG_NORMALS"))
+        getOrCreateStateSet()->setDefine("OE_DEBUG_NORMALS");
+    else
+        if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
+
     // check for normal map generation (required for lighting).
     if ( _terrainOptions.normalMaps() == true )
     {

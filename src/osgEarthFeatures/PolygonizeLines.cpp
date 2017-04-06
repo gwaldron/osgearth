@@ -450,19 +450,6 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
-     
-#if 0
-    //TESTING
-    osg::Image* image = osgDB::readImageFile("H:/data/textures/road.png");
-    osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    tex->setMaxAnisotropy( 4.0f );
-    tex->setResizeNonPowerOfTwoHint( false );
-    geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-#endif
 
     return geom;
 }

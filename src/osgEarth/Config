@@ -557,7 +557,7 @@ namespace osgEarth
         ConfigOptions( const Config& conf =Config() )
             : _conf( conf ) { }
         ConfigOptions( const ConfigOptions& rhs )
-            : _conf( rhs._conf ) { }
+            : _conf( rhs.getConfig() ) { } //rhs._conf ) { }
 
         virtual ~ConfigOptions();
         

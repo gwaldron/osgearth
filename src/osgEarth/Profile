@@ -75,10 +75,7 @@ namespace osgEarth
         Config getConfig() const;
 
     protected:
-        void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+        virtual void mergeConfig( const Config& conf );
 
     private:
         void fromConfig( const Config& conf );

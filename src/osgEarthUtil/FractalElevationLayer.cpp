@@ -277,6 +277,21 @@ FractalElevationLayer::~FractalElevationLayer()
 void
 FractalElevationLayer::init()
 {
+    // If we try to use this layer 5 LODs beyond it's baseLOD, there is a 
+    // quantization that happens and the normaly become faceted. Need to track
+    // this down, but in the meantime, limit the output to baseLOD+5.
+    if (options().maxDataLevel().isSet())
+    {
+        if (options().maxDataLevel().get() - options().baseLOD().get() > 5)
+        {
+            options().maxDataLevel() = options().baseLOD().get() + 5;
+        }
+    }
+    else
+    {
+        options().maxDataLevel() = options().baseLOD().get() + 5;
+    }
+
     ElevationLayer::init();
 }
 

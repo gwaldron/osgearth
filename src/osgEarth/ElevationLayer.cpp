@@ -648,8 +648,13 @@ osg::MixinVector< osg::ref_ptr<ElevationLayer> >( rhs )
 namespace
 {
     typedef osg::ref_ptr<ElevationLayer>          RefElevationLayer;
-    typedef std::pair<RefElevationLayer, TileKey> LayerAndKey;
-    typedef std::vector<LayerAndKey>              LayerAndKeyVector;
+    struct LayerData {
+        RefElevationLayer layer;
+        TileKey key;
+        int index;
+    };
+    //typedef std::pair<RefElevationLayer, TileKey> LayerAndKey;
+    typedef std::vector<LayerData>              LayerDataVector;
 
     //! Gets the normal vector for elevation data at column s, row t.
     osg::Vec3 getNormal(const GeoExtent& extent, const osg::HeightField* hf, int s, int t)
@@ -793,16 +798,17 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     }
     
     // Collect the valid layers for this tile.
-    LayerAndKeyVector contenders;
-    LayerAndKeyVector offsets;
+    LayerDataVector contenders;
+    LayerDataVector offsets;
 
     // Track the number of layers that would return fallback data.
     unsigned numFallbackLayers = 0;
 
     // Check them in reverse order since the highest priority is last.
-    for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
+    for (int i = size()-1; i>=0; --i)
+    //for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
-        ElevationLayer* layer = i->get();
+        ElevationLayer* layer = (*this)[i].get(); //i->get();
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
@@ -843,11 +849,19 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             {
                 if ( layer->isOffset() )
                 {
-                    offsets.push_back( std::make_pair(layer, bestKey) );
+                    offsets.push_back(LayerData());
+                    LayerData& ld = offsets.back();
+                    ld.layer = layer;
+                    ld.key = bestKey;
+                    ld.index = i;
                 }
                 else
                 {
-                    contenders.push_back( std::make_pair(layer, bestKey) );
+                    contenders.push_back(LayerData());
+                    LayerData& ld = contenders.back();
+                    ld.layer = layer;
+                    ld.key = bestKey;
+                    ld.index = i;
                 }
             }
         }
@@ -932,15 +946,16 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             double y = ymin + (dy * (double)r);
 
             // Collect elevations from each layer as necessary.
-            bool resolved = false;
+            int resolvedIndex = -1;
 
             osg::Vec3 normal_sum(0,0,0);
             unsigned normal_count = 0u;
 
-            for(int i=0; i<contenders.size() && !resolved; ++i)
+            for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
             {
-                ElevationLayer* layer = contenders[i].first.get();                
-                TileKey contenderKey = contenders[i].second;
+                ElevationLayer* layer = contenders[i].layer.get();                
+                TileKey contenderKey = contenders[i].key;
+                int index = contenders[i].index;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.
@@ -1003,7 +1018,10 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     {
                         if ( elevation != NO_DATA_VALUE )
                         {
-                            resolved = true;                    
+                            // remember the index so we can only apply offset layers that
+                            // sit on TOP of this layer.
+                            resolvedIndex = index;
+
                             hf->setHeight(c, r, elevation);
 
                             if (deltaLOD)
@@ -1037,7 +1055,12 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
             for(int i=offsets.size()-1; i>=0; --i)
             {
-                TileKey contenderKey = offsets[i].second;
+                // Only apply an offset layer if it sits on top of the resolved layer
+                // (or if there was no resolved layer).
+                if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
+                    continue;
+
+                TileKey contenderKey = offsets[i].key;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.
@@ -1058,7 +1081,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 GeoHeightField& layerHF = offsetFields[n][i];
                 if ( !layerHF.valid() )
                 {
-                    ElevationLayer* offset = offsets[i].first.get();
+                    ElevationLayer* offset = offsets[i].layer.get();
 
                     layerHF = offset->createHeightField(contenderKey, progress);
                     if ( !layerHF.valid() )

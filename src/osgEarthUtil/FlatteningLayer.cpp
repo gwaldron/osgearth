@@ -662,27 +662,7 @@ FlatteningLayer::setFeatureSource(FeatureSource* fs)
 
 FlatteningLayer::~FlatteningLayer()
 {
-    _baseLayerListener.clear();
     _featureLayerListener.clear();
-}
-
-void
-FlatteningLayer::setBaseLayer(ElevationLayer* layer)
-{
-    OE_INFO << LC << "Setting base layer to "
-        << (layer ? layer->getName() : "null") << std::endl;
-
-    ElevationLayerVector layers;
-
-    if (layer)
-    {
-        // Instead of using all the map's elevation layers, we will use a custom set
-        // consisting of just the base layer. Otherwise, the map will return elevation data
-        // for the very layer we are trying to build!
-        layers.push_back(layer);
-    }
-
-    _pool->setElevationLayers(layers);
 }
 
 void
@@ -702,34 +682,41 @@ FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 void
 FlatteningLayer::addedToMap(const Map* map)
 {   
-    if (options().elevationBaseLayer().isSet())
-    {  
-        // Initialize the elevation pool with our map:
-        OE_INFO << LC << "Attaching elevation pool to map\n";
-        _pool->setMap( map );
+    // Initialize the elevation pool with our map:
+    OE_INFO << LC << "Attaching elevation pool to map\n";
+    _pool->setMap( map );
 
-        // Listen for our specified base layer to arrive/depart the map.
-        // setBaseLayer will be automatically called.
-        _baseLayerListener.listen(
-            map, 
-            options().elevationBaseLayer().get(), 
-            this, &FlatteningLayer::setBaseLayer);
         
-        // Listen for our feature source layer to arrive, if there is one.
-        if (options().featureSourceLayer().isSet())
-        {
-            _featureLayerListener.listen(
-                map,
-                options().featureSourceLayer().get(), 
-                this, &FlatteningLayer::setFeatureSourceLayer);
+    // Listen for our feature source layer to arrive, if there is one.
+    if (options().featureSourceLayer().isSet())
+    {
+        _featureLayerListener.listen(
+            map,
+            options().featureSourceLayer().get(), 
+            this, &FlatteningLayer::setFeatureSourceLayer);
+    }
+        
+    // Collect all elevation layers preceding this one and use them for flattening.
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+    for (ElevationLayerVector::iterator i = layers.begin(); i != layers.end(); ++i) {
+        if (i->get() == this) {
+            layers.erase(i);
+            break;
         }
+        else {
+            OE_INFO << LC << "Using: " << i->get()->getName() << "\n";
+        }
+    }
+    if (!layers.empty())
+    {
+        _pool->setElevationLayers(layers);
     }
 }
 
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
-    _baseLayerListener.clear();
     _featureLayerListener.clear();
 }
 
@@ -896,14 +883,6 @@ FlatteningLayer::createImplementation(const TileKey& key,
 
         bool fill = (options().fill() == true);
         
-        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress) || (progress && progress->isCanceled()))
-        {
-            // If integrate made any changes, return the new heightfield.
-            // (Or if the operation was canceled...return it anyway and it 
-            // will be discarded).
-            //return hf.release();
-        }
+        integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress);
     }
-
-    //return 0L;
 }

@@ -20,7 +20,6 @@ in vec3 atmos_vert;
         
 vec3 vp_Normal;          // surface normal (from osgEarth)
 
-
 //#define MAX_LIGHTS 8
 
 // Total number of lights in the scene

@@ -476,7 +476,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocalToorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_INFO << LC << "ILLEGAL: called GeoPoint::createLocalToWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createLocalToWorld( _p, out_l2w );
@@ -488,7 +488,7 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_INFO << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createWorldToLocal( _p, out_w2l );
@@ -2036,6 +2036,125 @@ GeoImage::takeImage()
     return _image.release();
 }
 
+/***************************************************************************/
+
+#define DEFAULT_NORMAL osg::Vec3(0,0,1)
+#define DEFAULT_CURVATURE 0.0f
+
+NormalMap::NormalMap(unsigned s, unsigned t) :
+osg::Image(),
+_write(0L),
+_read(0L)
+{
+    const osg::Vec3 defaultNormal(DEFAULT_NORMAL);
+    const float defaultCurvature(DEFAULT_CURVATURE);
+
+    if ( s > 0 && t > 0 )
+    {
+        allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE, 1);
+
+        _write = new ImageUtils::PixelWriter(this);
+        _read = new ImageUtils::PixelReader(this);
+
+        for (unsigned y=0; y<t; ++y)
+            for (unsigned x=0; x<s; ++x)
+                set(x, y, defaultNormal, defaultCurvature);
+    }
+}
+
+NormalMap::~NormalMap()
+{
+    if (_read) delete _read;
+    if (_write) delete _write;
+}
+
+void
+NormalMap::set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature)
+{
+    if (!_write) return;
+
+    osg::Vec4f encoding(
+        0.5f*(normal.x()+1.0f),
+        0.5f*(normal.y()+1.0f),
+        0.5f*(normal.z()+1.0f),
+        0.5f*(curvature+1.0f));
+
+    (*_write)(encoding, s, t);
+}
+
+osg::Vec3
+NormalMap::getNormal(unsigned s, unsigned t) const
+{
+    if (!_read) return osg::Vec3(0,0,1);
+
+    osg::Vec4 encoding = (*_read)(s, t);
+    return osg::Vec3(
+        encoding.x()*2.0 - 1.0,
+        encoding.y()*2.0 - 1.0,
+        encoding.z()*2.0 - 1.0);
+}
+
+osg::Vec3
+NormalMap::getNormalByUV(double u, double v) const
+{
+    if (!_read) return osg::Vec3(0,0,1);
+
+    double c = u * (double)(s()-1);
+    double r = v * (double)(t()-1);
+
+    unsigned rowMin = osg::maximum((int)floor(r), 0);
+    unsigned rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(t() - 1)), 0);
+    unsigned colMin = osg::maximum((int)floor(c), 0);
+    unsigned colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(s() - 1)), 0);
+    
+    if (rowMin > rowMax) rowMin = rowMax;
+    if (colMin > colMax) colMin = colMax;
+
+    osg::Vec3 ur = getNormal(colMax, rowMax);
+    osg::Vec3 ll = getNormal(colMin, rowMin);
+    osg::Vec3 ul = getNormal(colMin, rowMax);
+    osg::Vec3 lr = getNormal(colMax, rowMin);
+
+    osg::Vec3 result;
+
+    // Bilinear:
+    //if (interpolation == INTERP_BILINEAR)
+    {
+        //Check for exact value
+        if ((colMax == colMin) && (rowMax == rowMin))
+        {
+            // exact
+            result = getNormal(colMin, rowMin);
+        }
+        else if (colMax == colMin)
+        {
+            //Linear interpolate vertically
+            result = ll*((double)rowMax - r) + ul*(r - (double)rowMin);
+        }
+        else if (rowMax == rowMin)
+        {
+            //Linear interpolate horizontally
+            result = ll*((double)colMax - c) + lr*(c - (double)colMin);
+        }
+        else
+        {
+            //Bilinear interpolate
+            osg::Vec3 n1 = ll*((double)colMax - c) + lr*(c - (double)colMin);
+            osg::Vec3 n2 = ul*((double)colMax - c) + ur*(c - (double)colMin);
+            result = n1*((double)rowMax - r) + n2*(r - (double)rowMin);
+        }
+    }
+
+    result.normalize();
+    return result;
+}
+
+float
+NormalMap::getCurvature(unsigned s, unsigned t) const
+{
+    if (!_read) return 0.0f;
+    return (*_read)(s, t).a() * 2.0f - 1.0f;
+}
 
 /***************************************************************************/
 
@@ -2061,7 +2180,25 @@ _extent     ( extent ),
 _minHeight( FLT_MAX ),
 _maxHeight( -FLT_MAX )
 {
-    if ( _heightField.valid() && extent.isInvalid() )
+    init();
+}
+
+GeoHeightField::GeoHeightField(osg::HeightField* heightField,
+                               NormalMap*        normalMap,
+                               const GeoExtent&  extent) :
+_heightField( heightField ),
+_normalMap  ( normalMap ),
+_extent     ( extent ),
+_minHeight  ( FLT_MAX ),
+_maxHeight  ( -FLT_MAX )
+{
+    init();
+}
+
+void
+GeoHeightField::init()
+{
+    if ( _heightField.valid() && _extent.isInvalid() )
     {
         OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
     }
@@ -2090,6 +2227,24 @@ bool
 GeoHeightField::valid() const
 {
     return _heightField.valid() && _extent.isValid();
+}
+
+float
+GeoHeightField::getElevation(double x, double y) const
+{
+    return HeightFieldUtils::getHeightAtLocation(
+        _heightField.get(),
+        x, y,
+        _extent.xMin(), _extent.yMin(),
+        _heightField->getXInterval(), _heightField->getYInterval(),
+        INTERP_BILINEAR);
+}
+
+osg::Vec3
+GeoHeightField::getNormal(double x, double y) const
+{
+    return !_normalMap.valid() ? osg::Vec3(0,0,1) :
+        _normalMap->getNormalByUV((x - _extent.xMin()) / _extent.width(), (y - _extent.yMin()) / _extent.height());
 }
 
 bool
@@ -2153,6 +2308,91 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
     }
 }
 
+bool
+GeoHeightField::getElevationAndNormal(const SpatialReference* inputSRS,
+                                      double                  x,
+                                      double                  y,
+                                      ElevationInterpolation  interp,
+                                      const SpatialReference* outputSRS,
+                                      float&                  out_elevation,
+                                      osg::Vec3f&             out_normal) const
+{
+    osg::Vec3d xy(x, y, 0);
+    osg::Vec3d local = xy;
+    const SpatialReference* extentSRS = _extent.getSRS();
+
+
+    // first xform the input point into our local SRS:
+    if ( inputSRS && !inputSRS->transform(xy, extentSRS, local) )
+        return false;
+
+    // check that the point falls within the heightfield bounds:
+    if ( _extent.contains(local.x(), local.y()) )
+    {
+        double xInterval = _extent.width()  / (double)(_heightField->getNumColumns()-1);
+        double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
+
+        // sample the heightfield at the input coordinates:
+        // (note: since it's sampling the HF, it will return an MSL height if applicable)
+        out_elevation = HeightFieldUtils::getHeightAtLocation(
+            _heightField.get(), 
+            local.x(), local.y(),
+            _extent.xMin(), _extent.yMin(), 
+            xInterval, yInterval, 
+            interp);
+
+        // if the vertical datums don't match, do a conversion:
+        if (out_elevation != NO_DATA_VALUE && 
+            outputSRS && 
+            !extentSRS->isVertEquivalentTo(outputSRS) )
+        {
+            // if the caller provided a custom output SRS, perform the appropriate
+            // Z transformation. This requires a lat/long point:
+
+            osg::Vec3d geolocal(local);
+            if ( !extentSRS->isGeographic() )
+            {
+                extentSRS->transform(geolocal, extentSRS->getGeographicSRS(), geolocal);
+            }
+
+            VerticalDatum::transform(
+                extentSRS->getVerticalDatum(),
+                outputSRS->getVerticalDatum(),
+                geolocal.y(), geolocal.x(), out_elevation);
+        }
+
+        // If we have a normal map, use it; if not, attempt to generate a normal
+        // by sampling the heightfield.
+        if (_normalMap.valid())
+        {
+            //OE_INFO << "Normal Map Exists\n";
+            double nx = osg::clampBetween((local.x() - _extent.xMin()) / _extent.width(), 0.0, 1.0);
+            double ny = osg::clampBetween((local.y() - _extent.yMin()) / _extent.height(), 0.0, 1.0);
+            out_normal = _normalMap->getNormalByUV(nx, ny);
+        }
+        else
+        {
+            HeightFieldNeighborhood hood;
+            hood.setNeighbor(0, 0, _heightField.get());
+
+            // calculate the normal at the same location:
+            out_normal = HeightFieldUtils::getNormalAtLocation(
+                hood,
+                local.x(), local.y(),
+                _extent.xMin(), _extent.yMin(), 
+                xInterval, yInterval);
+        }
+
+        return true;
+    }
+    else
+    {
+        out_elevation = 0.0f;
+        out_normal.set(0.0f, 0.0f, 1.0f);
+        return false;
+    }
+}
+
 GeoHeightField
 GeoHeightField::createSubSample( const GeoExtent& destEx, unsigned int width, unsigned int height, ElevationInterpolation interpolation) const
 {
@@ -2212,6 +2452,18 @@ osg::HeightField*
 GeoHeightField::takeHeightField()
 {
     return _heightField.release();
+}
+
+NormalMap*
+GeoHeightField::getNormalMap()
+{
+    return _normalMap.get();
+}
+
+const NormalMap*
+GeoHeightField::getNormalMap() const
+{
+    return _normalMap.get();
 }
 
 double

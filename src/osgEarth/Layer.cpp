@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Layer>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderLoader>
 #include <osgDB/Registry>
 
 using namespace osgEarth;
@@ -47,6 +48,7 @@ Config LayerOptions::getConfig() const
     if (_cachePolicy.isSet() && !_cachePolicy->empty())
         conf.setObj("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
+    conf.set("shader", _shader);
     return conf;
 }
 
@@ -69,6 +71,7 @@ void LayerOptions::fromConfig(const Config& conf)
             _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
     }
     conf.getIfSet("shader_define", _shaderDefine);
+    conf.getIfSet("shader", _shader);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)
@@ -140,10 +143,20 @@ Layer::open()
         osg::Object::setName(options().name().get());
     }
     
+    // Install any shader #defines
     if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
         OE_INFO << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
+    }
+
+    // Load any user defined shaders
+    if (options().shader().isSet() && !options().shader()->empty())
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
+        ShaderPackage package;
+        package.add("", options().shader().get());
+        package.loadAll(vp, getReadOptions());
     }
 
     return _status;

@@ -71,8 +71,10 @@ namespace osgEarth { namespace Util
     public: // ElevationLayer
 
         // override to generate custom heightfield
-        virtual osg::HeightField* createHeightFieldImplementation(
-            const TileKey& key, 
+        virtual void createImplementation(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& out_heightField,
+            osg::ref_ptr<NormalMap>& out_normalMap,
             ProgressCallback* progress);
 
     protected: // Layer

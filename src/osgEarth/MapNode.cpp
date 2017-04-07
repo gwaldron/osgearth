@@ -649,10 +649,16 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     }
 
     osg::Node* node = layer->getNode();
-    if (node)
+    if (node)    
     {
+        osg::Group* nodeContainer = new osg::Group();
+        nodeContainer->setStateSet(layer->getStateSet());
+
+        nodeContainer->addChild( node );
+        _layerNodes->addChild( nodeContainer );
+
         OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
-        _layerNodes->addChild(node);
+        //_layerNodes->addChild(node);
 
         // TODO: move this logic into ModelLayer.
         if (modelLayer)

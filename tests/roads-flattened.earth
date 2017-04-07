@@ -1,7 +1,7 @@
 <map>
 
     <options>
-        <terrain driver="rex" max_lod="20" morph_imagery="false">
+        <terrain driver="rex">
             <!-- note: experimental -->
             <lods>
                 <lod lod="10" priority_offset="10"/>
@@ -27,33 +27,22 @@
             </coverage>
         </coverages>
     </land_cover>
+    <elevation name="ReadyMap Elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
 
-    <!-- Composited elevation data -->
-    <multi_elevation name="elevation-data" cacheid="rmfractal" visible="true">
-        <cache_policy usage="no_cache"/>
-        <layers>
-            <elevation name="ReadyMap elevation" driver="tms">
-                <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-            </elevation>
-            <fractal_elevation name="Fractal elevation detail" min_level="13" max_data_level="16" offset="true">
-                <cache_policy usage="no_cache"/>
-                <noise_image>H:/data/textures/seamless-noise-1.png</noise_image>
-                <amplitude>8</amplitude>
-            </fractal_elevation>
-        </layers>
-    </multi_elevation>
+    <fractal_elevation name="Fractal" min_level="8" offset="true">
+        <noise_image>../data/seamless-noise-1.png</noise_image>
+        <amplitude>7</amplitude>
+    </fractal_elevation>
 
-    <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" cacheid="flattened_roads">
-        <fill>true</fill>
-        <cache_policy usage="no_cache"/>
-        <base_layer>elevation-data</base_layer>
+    <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" enabled="true">
         <feature_source>roads-data</feature_source>
-        <line_width>15m</line_width>
-        <buffer_width>20m</buffer_width>
+        <line_width>12m</line_width>
+        <buffer_width>24m</buffer_width>
     </flattened_elevation>
 
-    <!-- Satellite imagery -->
-    <image name="ReadyMap imagery" driver="tms" opacity="0.35" enabled="true">
+    <image name="ReadyMap imagery" driver="tms" opacity="0.50" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 

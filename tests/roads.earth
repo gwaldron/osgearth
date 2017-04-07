@@ -14,7 +14,7 @@ http://readymap.org
 <map name="readymap.org" type="geocentric">
     
     <options>
-        <terrain driver="rex">
+        <terrain driver="rex" progressive="true">
         </terrain>
     </options>
 

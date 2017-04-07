@@ -597,7 +597,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     }
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
-                pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+                //pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+                pass->_samplers[SamplerBinding::COLOR]._matrix = *layer->getMatrix();
 
                 // Handle an RTT image layer:
                 if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())
@@ -782,7 +783,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
                 // all other samplers just need to inherit from their parent 
                 // and scale/bias their texture matrix.
-                else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
+                else if (!mySampler._texture.valid())// || !mySampler._matrix.isIdentity())
                 {
                     const Sampler& parentSampler = parentPass._samplers[s];
                     mySampler._texture = parentSampler._texture.get();

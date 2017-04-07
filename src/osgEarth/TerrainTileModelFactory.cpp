@@ -103,12 +103,13 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             continue;
 
         osg::Texture* tex = 0L;
+        osg::Matrixf textureMatrix;
 
         if (layer->isKeyInLegalRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
         {
             if (layer->createTextureSupported())
             {
-                tex = layer->createTexture( key, progress );
+                tex = layer->createTexture( key, progress, textureMatrix );
             }
 
             else
@@ -141,6 +142,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             layerModel->setImageLayer(layer);
 
             layerModel->setTexture(tex);
+            layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
 
             model->colorLayers().push_back(layerModel);
 

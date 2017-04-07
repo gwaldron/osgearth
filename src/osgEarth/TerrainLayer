@@ -374,6 +374,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile>    _targetProfileHint;
         unsigned                       _tileSize;  
         osg::ref_ptr<MemCache>         _memCache;
+        bool _openCalled;
 
         // profile from tile source or cache, before any overrides applied
         mutable osg::ref_ptr<const Profile> _profileOriginal;
@@ -415,8 +416,6 @@ namespace osgEarth
         mutable Threading::Mutex _mutex;
 
         mutable osg::ref_ptr<CacheSettings> _cacheSettings;
-
-        bool _openCalled;
 
         void fireCallback(TerrainLayerCallback::MethodPtr method);
 

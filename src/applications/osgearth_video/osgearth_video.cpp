@@ -28,6 +28,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/VideoLayer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
@@ -40,58 +41,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
-
-class VideoLayer : public osgEarth::ImageLayer
-{
-public:
-
-     VideoLayer(const std::string& filename)
-     {         
-         osg::Image* image = osgDB::readImageFile(filename);
-         if (image)
-         {             
-             osg::ImageStream* is = dynamic_cast< osg::ImageStream*>( image );
-             if (is)
-             {
-                 is->setLoopingMode(osg::ImageStream::LOOPING);
-                 is->play();                 
-             }
-
-             _texture = new osg::Texture2D( image );
-             _texture->setResizeNonPowerOfTwoHint( false );
-             _texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture2D::LINEAR);
-             _texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture2D::LINEAR);
-             _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-             _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-
-         }
-
-         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-     }
-
-     virtual bool createTextureSupported() const { return true; }
-     
-     virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)
-     {
-         if (key.getLOD() > 0) return 0;
-
-         bool flip = _texture->getImage()->getOrigin()==osg::Image::TOP_LEFT;
-         osg::Matrixf scale = osg::Matrixf::scale(0.5, flip? -1.0 : 1.0, 1.0);         
-
-         if (key.getTileX() == 0)
-         {
-             textureMatrix = scale;
-         }
-         else if (key.getTileX() == 1)
-         {
-             textureMatrix =  scale * osg::Matrixf::translate(0.5, 0.0, 0.0);
-         }
-
-         return _texture.get();
-     }
-
-     osg::ref_ptr< osg::Texture2D > _texture;
-};
 
 /**
  * How to create a simple osgEarth map and display it.
@@ -121,7 +70,10 @@ main(int argc, char** argv)
         {
             std::string filename = arguments[ pos ];
             OE_NOTICE << "Loading " << filename << std::endl;
-            map->addLayer(new VideoLayer(filename));
+            VideoLayerOptions opt;
+            opt.url() = filename;
+            VideoLayer* layer = new VideoLayer(opt);
+            map->addLayer(layer);
         }
     }
 

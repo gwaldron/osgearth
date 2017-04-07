@@ -192,6 +192,7 @@ SET(LIB_PUBLIC_HEADERS
     Utils
     Version
     VerticalDatum
+    VideoLayer
     Viewpoint
     VirtualProgram
     VisibleLayer
@@ -355,6 +356,7 @@ set(TARGET_SRC
     Utils.cpp
     Version.cpp
     VerticalDatum.cpp
+    VideoLayer.cpp
     Viewpoint.cpp
     VirtualProgram.cpp
     VisibleLayer.cpp

@@ -27,6 +27,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/GeoTransform>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
@@ -79,6 +80,16 @@ main(int argc, char** argv)
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );
+
+    // put a model on the map atop Pike's Peak, Colorado, USA
+    osg::Node* model = osgDB::readNodeFile("../data/red_flag.osg.10000.scale.osgearth_shadergen");
+    if (model)
+    {
+        GeoTransform* xform = new GeoTransform();
+        xform->addChild(model);
+        xform->setPosition(GeoPoint(map->getSRS()->getGeographicSRS(), -105.042292, 38.840829));
+        node->addChild(xform);
+    }
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

@@ -495,6 +495,7 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
 {
     if ( bs.valid() )
     {
+        out_polytope.getMaskStack().clear();
         out_polytope.clear();
 
         // add planes for the four sides of the BS. Normals point inwards.

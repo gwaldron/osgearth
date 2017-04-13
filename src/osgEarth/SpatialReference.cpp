@@ -1444,6 +1444,7 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     
     if ( transform(v, to_srs) )
     {
+        bool swapXValues = ( isGeographic() && in_out_xmin > in_out_xmax );
         in_out_xmin = DBL_MAX;
         in_out_ymin = DBL_MAX;
         in_out_xmax = -DBL_MAX;
@@ -1456,6 +1457,9 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
             in_out_xmax = std::max( v[i].x(), in_out_xmax );
             in_out_ymax = std::max( v[i].y(), in_out_ymax );
         }
+
+        if ( swapXValues )
+            std::swap( in_out_xmin, in_out_xmax );
 
         return true;
     }

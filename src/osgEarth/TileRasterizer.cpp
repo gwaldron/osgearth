@@ -104,9 +104,9 @@ osg::Camera()
     traits->depth = 0;
     osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits);
     setGraphicsContext(gc);
+#endif
     setDrawBuffer(GL_FRONT);
     setReadBuffer(GL_FRONT);
-#endif
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setInheritShaders(false);

@@ -25,6 +25,8 @@
 #include <osgEarth/URI>
 #include <osgEarth/Terrain>
 
+#include <osgEarthFeatures/Feature>
+
 #include <osg/Group>
 #include <osg/Geometry>
 #include <osg/Image>
@@ -157,6 +159,8 @@ namespace osgEarth { namespace Annotation
 
         void updateFilters();
 
+        osg::Node* createNode(osgEarth::Features::Feature* feature);
+
 
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
@@ -166,9 +170,8 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr< osg::Image > _image;
         bool _dirty;
         OpenThreads::Mutex _mutex;
-        osg::Geode* _geode;
-        osg::MatrixTransform* _transform;
-        osg::Geometry* _geometry;
+
+        osg::Group* _root;        
         osg::Texture* _texture;
         Distance _geometryResolution;
 

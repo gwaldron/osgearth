@@ -6,21 +6,17 @@ osgEarth Sample - GLSL in the Earth File.
     <image driver="gdal" name="world-tiff">
         <url>../data/world.tif</url>
         <caching_policy usage="no_cache"/>
-    </image>
-    
-    <terrainshader>
-        <code><![CDATA[
-        
-            #version 110
-            #pragma vp_entryPoint "adjustGamma"
-            #pragma vp_location   "fragment_coloring"
-            
+        <shader>
+          <![CDATA[
+            #pragma vp_entryPoint adjustGamma
+            #pragma vp_location   fragment_coloring
+            uniform float gamma;
             void adjustGamma(inout vec4 color)
             {
                 const float gamma = 2.7;
                 color.rgb = pow(color.rgb, 1.0/vec3(gamma));
-            }
-            
-        ]]></code>
-    </terrainshader>
+            }            
+          ]]>
+        </shader>
+    </image>
 </map>

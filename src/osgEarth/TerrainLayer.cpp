@@ -284,6 +284,10 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        // Call base class
+        if (Layer::open().isError())
+            return getStatus();
+
         // Create an L2 mem cache that sits atop the main cache, if necessary.
         // For now: use the same L2 cache size at the driver.
         int l2CacheSize = options().driver()->L2CacheSize().get();

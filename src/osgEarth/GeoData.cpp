@@ -870,11 +870,15 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
     ymin = south();
     xmax = east();
     ymax = north();
+    if (getSRS() && getSRS()->isGeographic() && crossesAntimeridian() && xmin > xmax)
+        xmin -= 360.0;
 }
 
 Bounds
 GeoExtent::bounds() const
 {
+    if (getSRS() && getSRS()->isGeographic() && crossesAntimeridian() && _west > _east)
+        return Bounds( _west - 360.0, _south, _east, _north );
     return Bounds( _west, _south, _east, _north );
 }
 

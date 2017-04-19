@@ -64,7 +64,8 @@ namespace osgEarth { namespace SimpleSky
 
         bool disconnect(MapNode* mapNode)
         {
-            //todo
+            osgEarth::removeGroup(_skynode.get());
+            _skynode = 0L;
             return true;
         }
 
@@ -92,12 +93,15 @@ namespace osgEarth { namespace SimpleSky
         {
             ui::Container* container = dynamic_cast<ui::Container*>(control);
             if (container)
-                container->addControl(SkyControlFactory::create(_skynode.get()));
+                _ui = container->addControl(SkyControlFactory::create(_skynode.get()));
             return true;
         }
 
         bool disconnect(ui::Control* control)
         {
+            ui::Container* container = dynamic_cast<ui::Container*>(control);
+            if (container && _ui.valid())
+                container->removeChild(_ui.get());
             return true;
         }
 
@@ -117,6 +121,7 @@ namespace osgEarth { namespace SimpleSky
 
 
     private:
+        osg::ref_ptr<ui::Control> _ui;
         osg::ref_ptr<SkyNode> _skynode;
     };
 

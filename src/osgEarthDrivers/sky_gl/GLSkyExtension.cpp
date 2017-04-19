@@ -62,7 +62,7 @@ namespace osgEarth { namespace GLSky
     public: // ExtensionInterface<ui::Control>
 
         bool connect( ui::Control* );
-        bool disconnect( ui::Control* ) { return true; }
+        bool disconnect( ui::Control* );
 
     public: // SkyNodeFactory
 
@@ -72,6 +72,7 @@ namespace osgEarth { namespace GLSky
         GLSkyExtension(const GLSkyExtension&, const osg::CopyOp&) { }
         virtual ~GLSkyExtension() { }
 
+        osg::ref_ptr<ui::Control> _ui;
         osg::ref_ptr<SkyNode> _skyNode;
     };
 
@@ -103,6 +104,8 @@ GLSkyExtension::connect(MapNode* mapNode)
 bool
 GLSkyExtension::disconnect(MapNode* mapNode)
 {
+    osgEarth::removeGroup(_skyNode.get());
+    _skyNode = 0L;
     return true;
 }
 
@@ -122,6 +125,15 @@ GLSkyExtension::connect(ui::Control* control)
     ui::Container* container = dynamic_cast<ui::Container*>(control);
     if (container && _skyNode.valid())
         container->addControl(SkyControlFactory::create(_skyNode.get()));
+    return true;
+}
+
+bool
+GLSkyExtension::disconnect(ui::Control* control)
+{
+    ui::Container* container = dynamic_cast<ui::Container*>(control);
+    if (container && _ui.valid())
+        container->removeChild(_ui.get());
     return true;
 }
 

@@ -305,6 +305,24 @@ namespace osgEarth
         }
     }
 
+    /** Remove a group from the middle of a scene graph */
+    inline void removeGroup(osg::Group* group)
+    {
+        if (group)
+        {
+            osg::ref_ptr<osg::Group> g = group;
+            while (g->getNumParents() > 0)
+            {
+                osg::Group* parent = group->getParent(group->getNumParents()-1);
+                for (unsigned c = 0; c < group->getNumChildren(); ++c)
+                {
+                    parent->addChild(group->getChild(c));
+                }
+                parent->removeChild(group);
+            }
+        }
+    }
+
     /**
      * Remove all a group's children.
      */

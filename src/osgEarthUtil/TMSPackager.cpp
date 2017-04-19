@@ -186,7 +186,7 @@ std::string WriteTMSTileHandler::getProcessString() const
 
         for (int i = 0; i < imageLayers.size(); i++)
         {
-            if (imageLayer == imageLayers.at(i))
+            if (imageLayer == imageLayers[i].get())
             {
                 buf << " --image " << i << " ";
                 break;
@@ -200,7 +200,7 @@ std::string WriteTMSTileHandler::getProcessString() const
 
         for (int i = 0; i < elevationLayers.size(); i++)
         {
-            if (elevationLayer == elevationLayers.at(i))
+            if (elevationLayer == elevationLayers[i].get())
             {
                 buf << " --elevation " << i << " ";
                 break;
@@ -365,7 +365,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
             // Get the index of the layer
             for (int i = 0; i < imageLayers.size(); i++)
             {
-                if (imageLayers.at(i) == imageLayer)
+                if (imageLayers[i].get() == imageLayer)
                 {
                     index = i;
                     break;
@@ -381,7 +381,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
             // Get the index of the layer
             for (int i = 0; i < elevationLayers.size(); i++)
             {
-                if (elevationLayers.at(i) == elevationLayer)
+                if (elevationLayers[i].get() == elevationLayer)
                 {
                     index = i;
                     break;

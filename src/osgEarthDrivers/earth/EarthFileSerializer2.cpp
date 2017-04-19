@@ -504,7 +504,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     // Install the extensions
     for (unsigned i = 0; i < extensions.size(); ++i)
     {
-        mapNode->addExtension(extensions.at(i).get());
+        mapNode->addExtension(extensions[i].get());
     }
 
     // return the topmost parent of the mapnode. It's possible that

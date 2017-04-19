@@ -35,7 +35,7 @@ Zone::configure(const ConfigOptions& options, const Map* map, const osgDB::Optio
 
     for(int i=0; i<in.boundaries().size(); ++i)
     {
-        const osg::BoundingBox& box = in.boundaries().at(i);
+        const osg::BoundingBox& box = in.boundaries()[i];
         _boundaries.push_back( Boundary() );
         Boundary& b = _boundaries.back();
         

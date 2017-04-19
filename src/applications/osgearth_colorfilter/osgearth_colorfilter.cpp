@@ -712,7 +712,7 @@ main(int argc, char** argv)
         // attach color filter to each layer.
         for (unsigned i = 0; i<imageLayers.size(); ++i)
         {
-            ImageLayer* layer = imageLayers.at( i );
+            ImageLayer* layer = imageLayers[i].get();
 
             if ( layer->getEnabled() && layer->getVisible() )
             {

@@ -106,7 +106,7 @@ namespace
             TileRenderModel& model = tileNode.renderModel();
             for (int p = 0; p < model._passes.size(); ++p)
             {
-                RenderingPass& pass = model._passes.at(p);
+                RenderingPass& pass = model._passes[p];
 
                 // if the map doesn't contain a layer with a matching UID,
                 // it's gone so remove it from the render model.
@@ -1144,7 +1144,7 @@ RexTerrainEngineNode::updateState()
 
                 for( int i=0; i<imageLayers.size(); ++i )
                 {
-                    ImageLayer* layer = imageLayers.at(i);
+                    ImageLayer* layer = imageLayers[i].get();
                     if ( layer->getEnabled() )
                     {
                         // install Color Filter function calls:

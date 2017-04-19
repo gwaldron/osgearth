@@ -1688,11 +1688,11 @@ void Container::setVisible(bool visibility)
         getChildren(out); 
         for (int i = 0; i < (int) out.size(); i++) 
         { 
-                Container* container = dynamic_cast<Container*>( out.at(i) ); 
+                Container* container = dynamic_cast<Container*>( out[i] ); 
                 if (container) { 
                         container->setVisible(visibility); 
                 } else { 
-                        out.at(i)->setVisible(visibility); 
+                        out[i]->setVisible(visibility); 
                 } 
         } 
 }

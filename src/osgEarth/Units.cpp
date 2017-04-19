@@ -48,7 +48,7 @@ namespace
         std::string::size_type pos = input.find_first_of("eE");
         if (pos != std::string::npos && 
             input.length() > (pos+2) &&
-            (input.at(pos+1) == '-' || input.at(pos+1) == '+'))
+            (input[pos+1] == '-' || input[pos+1] == '+'))
         {
             start = input.begin() + pos + 2;
         }

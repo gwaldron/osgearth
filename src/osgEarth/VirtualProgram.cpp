@@ -123,7 +123,7 @@ namespace
         std::stringstream buf;
         for( unsigned i=0; i<in.length(); ++i )
         {
-            char c = in.at(i);
+            char c = in[i];
             if ( ::isspace(c) )
             {
                 if ( !inwhite )

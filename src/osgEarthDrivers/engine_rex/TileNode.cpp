@@ -651,7 +651,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Other Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {
-        TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
+        TerrainTileImageLayerModel* layerModel = model->sharedLayers()[i].get();
         if (layerModel->getTexture())
         {
             // locate the shared binding corresponding to this layer:
@@ -675,7 +675,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Patch Layers
     for (unsigned i = 0; i < model->patchLayers().size(); ++i)
     {
-        TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
+        TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
     }
 
     if (_childrenReady)

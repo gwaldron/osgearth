@@ -88,14 +88,14 @@ struct UpdateOperation : public osg::Operation
 
         for(unsigned i=0; i<modelLayers.size(); ++i)
         {
-            ModelSource* ms = modelLayers.at(i)->getModelSource();
+            ModelSource* ms = modelLayers[i]->getModelSource();
             if ( ms )
             {
                 ms->dirty();
             }
             else
             {
-                OE_NOTICE << modelLayers.at(i)->getName()
+                OE_NOTICE << modelLayers[i]->getName()
                     << " has no model source.\n";
             }
         }

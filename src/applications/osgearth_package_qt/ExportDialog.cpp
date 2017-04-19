@@ -151,7 +151,7 @@ void ExportDialog::updateEstimate()
         maxLevel = 0;
         for (unsigned int i = 0; i < terrainLayers.size(); i++)
         {
-            osgEarth::TerrainLayer* layer = terrainLayers.at(i);
+            osgEarth::TerrainLayer* layer = terrainLayers[i].get();
             if (layer)
             {
                 osgEarth::TileSource* ts = layer->getTileSource();

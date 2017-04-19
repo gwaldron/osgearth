@@ -12,38 +12,25 @@ Demonstrates occlusion culling on feature labels.
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-			
-	<model name="cities" driver="feature_geom">
+            
+    <feature_model name="labels">
 
-        <features name="cities" driver="ogr">
+        <features name="labels" driver="ogr">
             <url>../data/world.shp</url>
         </features>
 
         <styles>
             <style type="text/css">              
-                cities {                   			
-                   text-provider:       annotation;
+                labels {                            
                    text-content:        [cntry_name];
                    text-priority:       [pop_cntry];
                    text-halo:           #3f3f7f;
                    text-align:          center_center;
                    text-declutter:      true;
-				   text-occlusion-cull: true;	                   
-				   altitude-clamping:   terrain;	                   				   				   
-				   altitude-technique:  scene;
+                   text-occlusion-cull: true;
                 }     
             </style>
         </styles>        
-    </model>
-		
-    <options lighting="false"/>
-    
-    <screen_space_layout>
-        <out_animation_time>  0.0  </out_animation_time>
-        <in_animation_time>   0.25 </in_animation_time>
-        <min_animation_scale> 0.45 </min_animation_scale>
-        <min_animation_alpha> 0.35 </min_animation_alpha>
-        <sort_by_priority>    true </sort_by_priority>
-    </screen_space_layout>
+    </feature_model>
     
 </map>

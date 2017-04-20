@@ -112,7 +112,11 @@ namespace osgEarth
         LandCoverClassVector& getClasses() { return options().classes(); }
         const LandCoverClassVector& getClasses() const { return _landCoverClasses; }
 
-        const LandCoverClass* getClass(const std::string& name) const;
+        //! Gets a land cover class by its name.
+        const LandCoverClass* getClassByName(const std::string& name) const;
+
+        //! Gets the land cover class corresponding to the integer value.
+        const LandCoverClass* getClassByValue(int value) const;
 
     private:
         LandCoverClassVector _landCoverClasses;
@@ -187,7 +191,8 @@ namespace osgEarth
 
     /**
      * Component coverage layer of a LandCoverLayer.
-     * This layer only lives inside a LandCoverLayer; if makes no sense to add
+     * This layer only lives inside a LandCoverLayer; it makes no sense to add
+     * it to a map directly.
      */
     class OSGEARTH_EXPORT LandCoverCoverageLayer : public ImageLayer
     {

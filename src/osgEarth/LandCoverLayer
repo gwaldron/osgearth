@@ -98,6 +98,11 @@ namespace osgEarth
         /** Construct a land cover layer from options. */
         LandCoverLayer(const LandCoverLayerOptions& options);
 
+        //! Given a land cover tile, which you can generate by calling
+        //! createImage, get the land cover class at the given parametric
+        //! coordinates [0..1].
+        const LandCoverClass* getClassByUV(const GeoImage& tile, double u, double v) const;
+
     protected: // Layer
 
         virtual void init();

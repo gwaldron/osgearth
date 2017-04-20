@@ -24,16 +24,27 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/URI>
+#include <osgEarth/LandCoverLayer>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+
+    struct FractalElevationLayerLandCoverMapping
+    {
+        std::string className;
+        optional<float> amplitude;
+    };
+
+    typedef std::map<std::string, FractalElevationLayerLandCoverMapping> FractalElevationLayerLandCoverMap;
+
 
     /**
      * Serializable options to configure a FractalElevationLayer.
      */
     class OSGEARTHUTIL_EXPORT FractalElevationLayerOptions : public ElevationLayerOptions
     {
+
     public:
         // constructor
         FractalElevationLayerOptions(const ConfigOptions& co = ConfigOptions());
@@ -57,6 +68,10 @@ namespace osgEarth { namespace Util
         //! Maximum change in elevation (total)
         optional<float>& amplitude() { return _amplitude; }
         const optional<float>& amplitude() const { return _amplitude; }
+
+        //! Mappings from land cover classes to amplitude values (optional)
+        FractalElevationLayerLandCoverMap& landCoverMap() { return _lcMap; }
+        const FractalElevationLayerLandCoverMap& landCoverMap() const { return _lcMap; }
         
         //! URI of a noise texture to use to augment to simplex noise
         optional<URI>& noiseImageURI() { return _noiseImageURI; }
@@ -81,6 +96,8 @@ namespace osgEarth { namespace Util
         optional<unsigned> _baseLOD;
         optional<float> _amplitude;
         optional<URI> _noiseImageURI;
+        FractalElevationLayerLandCoverMap _lcMap;
+
     };
 
 
@@ -107,17 +124,29 @@ namespace osgEarth { namespace Util
 
     protected: // Layer
 
-        // called by the elevation layer to create our custom tile source
-        virtual TileSource* createTileSource();
-
         // called by the map when this layer is added/removed
         virtual void addedToMap(const class Map*);
 
         virtual void removedFromMap(const class Map*);
 
+        virtual void createImplementation(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            osg::ref_ptr<NormalMap>& out_normalMap,
+            ProgressCallback* progress);
+
     protected:
 
         virtual ~FractalElevationLayer();
+
+        osg::observer_ptr<LandCoverLayer> _landCover;
+        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
+
+        bool _debug;
+        osg::ref_ptr<osg::Image> _noiseImage1;
+        osg::ref_ptr<osg::Image> _noiseImage2;
+
+        const FractalElevationLayerLandCoverMapping* getMapping(const LandCoverClass*) const;
     };
 
 } } // namespace osgEarth::Util

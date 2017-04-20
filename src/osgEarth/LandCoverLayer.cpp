@@ -135,7 +135,7 @@ namespace
         {
             const LandCoverValueMapping* mapping = k->get();
             int value = mapping->getValue();
-            const LandCoverClass* lcClass = coverage->getDictionary()->getClass(mapping->getLandCoverClassName());
+            const LandCoverClass* lcClass = coverage->getDictionary()->getClassByName(mapping->getLandCoverClassName());
             if (lcClass)
             {
                 codemap[value] = lcClass->getValue();
@@ -492,4 +492,20 @@ TileSource*
 LandCoverLayer::createTileSource()
 {
     return new LandCoverTileSource(options());
+}
+
+const LandCoverClass*
+LandCoverLayer::getClassByUV(const GeoImage& tile, double u, double v) const
+{
+    if (!tile.valid())
+        return 0L;
+
+    if (!_lcDictionary.valid())
+        return 0L;
+
+    ImageUtils::PixelReader read(tile.getImage());
+    read.setBilinear(false); // nearest neighbor only!
+    float value = read(u, v).r();
+
+    return _lcDictionary->getClassByValue((int)value);
 }

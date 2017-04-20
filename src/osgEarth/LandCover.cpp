@@ -127,13 +127,27 @@ _optionsConcrete(options)
 }
 
 const LandCoverClass*
-LandCoverDictionary::getClass(const std::string& name) const
+LandCoverDictionary::getClassByName(const std::string& name) const
 {
     for (LandCoverClassVector::const_iterator i = options().classes().begin();
         i != options().classes().end();
         ++i)
     {
         if (i->get()->getName() == name)
+            return i->get();
+    }
+    return 0L;
+}
+
+
+const LandCoverClass*
+LandCoverDictionary::getClassByValue(int value) const
+{
+    for (LandCoverClassVector::const_iterator i = options().classes().begin();
+        i != options().classes().end();
+        ++i)
+    {
+        if (i->get()->getValue() == value)
             return i->get();
     }
     return 0L;

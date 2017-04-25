@@ -93,7 +93,7 @@ namespace
 
         ~ILayer() { if (read) delete read; }
 
-        void load(const TileKey& key, ImageLayer* sourceLayer, ProgressCallback* progress)
+        void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
             if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInLegalRange(key) )
             {
@@ -116,7 +116,7 @@ namespace
                 // cannot interpolate coverage data:
                 read->setBilinear( false );
 
-                //warp = sourceWarp;
+                warp = sourceLayer->options().warp().get();
             }
         }
     };
@@ -288,12 +288,11 @@ namespace
         GLint  internalFormat;
     
         // 32-bit float:
-        dataType       = GL_FLOAT;
         internalFormat = GL_LUMINANCE32F_ARB;
-    
+
         int tilesize = getPixelsPerTile();
 
-        out->allocateImage(tilesize, tilesize, 1, GL_LUMINANCE, dataType);
+        out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
         out->setInternalTextureFormat(internalFormat);
 
         osg::Vec2 cov;    // coverage coordinates
@@ -339,6 +338,8 @@ namespace
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
                         if ( texel.r() != NO_DATA_VALUE )
                         {
+                            texel.g() = layer.warp;
+
                             if (texel.r() < 1.0f)
                             {
                                 // normalized code; convert
@@ -488,7 +489,7 @@ LandCoverLayer::createTileSource()
 GeoImage
 LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
 {
-    if (options().warpFactor().get() > 0.0f)
+    if (true) // warping enabled
     {
         MetaImage metaImage;
 
@@ -549,8 +550,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         osg::Vec4 pixel;
         osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
         
-        float dL = (float)key.getLOD() - options().noiseLOD().get();
-        float warp = options().warpFactor().get() * pow(2, dL);
+        float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
+        //float warp = options().warpFactor().get() * pow(2, dL);
 
         for (int t = 0; t < image->t(); ++t)
         {
@@ -560,6 +561,11 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
                 double u = (double)s / (double)(image->s() - 1);
 
                 cov.set(u, v);
+
+                // first read the unwarped pixel to get the warping value:
+                metaImage.read(cov.x(), cov.y(), pixel);
+                float warp = pixel.g() * pdL;
+
                 noiseCoords = getSplatCoords(key, options().noiseLOD().get(), cov);
                 double noise = getNoise(noiseGen, noiseCoords);
                 cov = warpCoverageCoords(cov, noise, warp);

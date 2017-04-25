@@ -199,7 +199,8 @@ LandCoverValueMapping::getConfig() const
 #define LC "[LandCoverCoverageLayer] "
 
 LandCoverCoverageLayerOptions::LandCoverCoverageLayerOptions(const ConfigOptions& co) :
-ImageLayerOptions(co)
+ImageLayerOptions(co),
+_warp(0.0f)
 {
     fromConfig(_conf);
 }
@@ -213,6 +214,8 @@ LandCoverCoverageLayerOptions::fromConfig(const Config& conf)
         osg::ref_ptr<LandCoverValueMapping> mapping = new LandCoverValueMapping(*i);
         _valueMappings.push_back(mapping.get());
     }
+
+    conf.getIfSet("warp", _warp);
 }
 
 Config
@@ -230,6 +233,7 @@ LandCoverCoverageLayerOptions::getConfig() const
         if (mapping)
             mappings.add(mapping->getConfig());
     }
+    conf.set("warp", _warp);
     return conf;
 }
 

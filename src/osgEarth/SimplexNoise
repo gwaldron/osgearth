@@ -19,18 +19,19 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_UTIL_SIMPLEX_NOISE_H
-#define OSGEARTH_UTIL_SIMPLEX_NOISE_H 1
+#ifndef OSGEARTH_SIMPLEX_NOISE_H
+#define OSGEARTH_SIMPLEX_NOISE_H 1
 
-#include <osgEarthUtil/Common>
+#include <osgEarth/Common>
+#include <osg/Image>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     /**
      * Simplex Noise Generator.
      * Adapted from https://github.com/Taywee/Noise
      */
-    class OSGEARTHUTIL_EXPORT SimplexNoise
+    class OSGEARTH_EXPORT SimplexNoise
     {
     public:
         SimplexNoise();
@@ -180,6 +181,6 @@ namespace osgEarth { namespace Util
         bool _normalize;
     };
 
-} } // namespace osgEarth::Util
+} // namespace osgEarth
 
-#endif //OSGEARTH_UTIL_SIMPLEX_NOISE_H
+#endif //OSGEARTH_SIMPLEX_NOISE_H

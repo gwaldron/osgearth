@@ -513,6 +513,20 @@ namespace osgEarth
          */
         bool createPolytope(osg::Polytope& out) const;
 
+        /**
+         * Computes a scale/bias matrix that transforms parametric coordinates [0..1]
+         * from this extent into the target extent. Return false if the extents are
+         * incompatible (different SRS, etc.)
+         *
+         * For example, if this extent is 100m wide, and the target extent is
+         * 200m wide, the output matrix will have an x_scale = 0.5.
+         *
+         * Note! For the sake of efficiency, this method does NOT check for 
+         * validity nor for SRS equivalence -- so be sure to validate those beforehand.
+         * It also assumes the output matrix is preset to the identity.
+         */
+        bool createScaleBias(const GeoExtent& target, osg::Matrix& output) const;
+
     public:
         static GeoExtent INVALID;
 

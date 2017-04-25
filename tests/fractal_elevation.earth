@@ -1,19 +1,42 @@
 <map>
+    
+    <!-- Land cover dictionary -->
+    <xi:include href="../data/land_cover_dictionary.xml"/>
+    
+    <!-- Land cover layer -->
+    <land_cover name="land-cover">
+        <cache_policy usage="no_cache"/>
+        <coverages>
+            <coverage name="ESA GLOBCOVER" driver="gdal">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
+            </coverage>
+            <coverage name="NCLD 2011" driver="gdal">
+                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+                <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
+            </coverage>
+        </coverages>
+    </land_cover>
 
     <elevation name="ReadyMap elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
-    <fractal_elevation name="Fractal Pterodactyl" min_level="13" max_data_level="14" offset="true">
+    <fractal_elevation name="Fractal Offset" min_level="13" max_data_level="14" offset="true">
         <cache_policy usage="no_cache"/>
         <noise_image>H:/data/textures/seamless-noise-1.png</noise_image>
-        <amplitude>8</amplitude>
+        <amplitude>5</amplitude>
+        <land_cover_mappings>
+            <mapping class="water" amplitude="0"/>
+        </land_cover_mappings>
     </fractal_elevation>
 
     <!-- Satellite imagery -->
-    <image name="ReadyMap imagery" driver="tms" opacity="0.25" enabled="true">
+    <image name="ReadyMap imagery" driver="tms" opacity="0.75" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
+    
+    <image driver="debug"/>
     
     <feature_model name="roads" min_level="12">
         <feature_source>roads-data</feature_source>
@@ -29,6 +52,7 @@
     </feature_model>
 
     <viewpoints>
+    
         <viewpoint name="Far range">
           <heading>20.0616</heading>
           <pitch>-10.5897</pitch>
@@ -38,6 +62,7 @@
           <height>884.2401606887579</height>
           <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
+        
         <viewpoint name="Close range (15m wide roads)">
           <heading>8.88942</heading>
           <pitch>-13.3873</pitch>
@@ -47,6 +72,17 @@
           <height>768.5787042481825</height>
           <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
+        
+        <viewpoint>
+            <heading>-42.1043</heading>
+            <pitch>-33.8312</pitch>
+            <range>3560.03m</range>
+            <long>-121.8482337534752</long>
+            <lat>46.71225032882199</lat>
+            <height>922.0786652481183</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+
     </viewpoints>
     
     <feature_source name="roads-data" driver="tfs">

@@ -507,6 +507,12 @@ ImageLayer::createImage(const TileKey&    key,
 GeoImage
 ImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
 {
+    // Check here in case a subclass calls this method directly.
+    //if ( !isKeyInLegalRange(key) )
+    //{
+    //    return GeoImage::INVALID;
+    //}
+
     return createImageFromTileSource(key, progress);
 }
 

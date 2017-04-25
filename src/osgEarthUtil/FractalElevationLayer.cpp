@@ -20,7 +20,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Map>
 #include <osgEarth/ImageUtils>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;

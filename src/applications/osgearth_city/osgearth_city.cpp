@@ -275,10 +275,11 @@ void addParks(Map* map)
     // data are polygons, the PLACEMENT_RANDOM directive below will scatter
     // points within the polygon boundary at the specified density.
     ModelSymbol* model = style.getOrCreate<ModelSymbol>();
-    model->url()->setLiteral(TREE_MODEL_URL);
+    //model->url()->setLiteral(TREE_MODEL_URL);
     model->scale()->setLiteral( 0.2 );
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 3000.0f; // instances per sqkm
+    model->setModel(osgDB::readNodeFile(TREE_MODEL_URL));
     
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();

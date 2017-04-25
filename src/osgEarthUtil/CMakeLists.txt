@@ -51,7 +51,6 @@ SET(HEADERS_ROOT
     RTTPicker
     Shaders
     Shadowing
-    SimplexNoise
     SimpleOceanLayer
     SimplePager
     Sky
@@ -138,7 +137,6 @@ SET(SOURCES_ROOT
     RadialLineOfSight.cpp
     RTTPicker.cpp
     Shadowing.cpp
-    SimplexNoise.cpp
     SimpleOceanLayer.cpp
     SimplePager.cpp
     SpatialData.cpp

@@ -10,10 +10,7 @@
             <coverage name="ESA GLOBCOVER" driver="gdal">
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-            </coverage>
-            <coverage name="NCLD 2011" driver="gdal">
-                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
-                <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
+                <warp>0.05</warp>
             </coverage>
         </coverages>
     </land_cover>

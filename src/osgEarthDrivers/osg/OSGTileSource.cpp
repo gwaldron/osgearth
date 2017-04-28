@@ -65,6 +65,15 @@ public:
         //nop
     }
 
+    // By default don't cache local data from this layer
+    CachePolicy getCachePolicyHint(const Profile* targetProfile) const
+    {
+        if (_options.url()->isRemote() == false)
+            return CachePolicy::NO_CACHE;
+        else
+            return CachePolicy::DEFAULT;
+    }
+
     Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        

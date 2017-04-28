@@ -20,7 +20,7 @@ osgEarth Sample - Rendering a cloud layer with a layer shader
             #pragma vp_entryPoint alphaOut
             #pragma vp_location fragment_coloring
             void alphaOut(inout vec4 color) {
-                color.a = clamp(distance(color.rgb, vec3(0,0,0)), 0, 1);
+                color.a *= clamp(distance(color.rgb, vec3(0,0,0)), 0, 1);
             }
           ]]>
         </shader>

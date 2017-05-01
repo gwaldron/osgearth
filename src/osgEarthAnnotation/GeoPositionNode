@@ -28,7 +28,7 @@
 #include <osg/PositionAttitudeTransform>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
 
     /**
@@ -96,6 +96,14 @@ namespace osgEarth { namespace Annotation
         double getOcclusionCullingMaxAltitude() const;
         void setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude );
 
+        /**
+         * Changes whether the MapNodeObserver method setMapNode() is ignored or not.
+         * Typically this is not ignored, but certain annotation nodes that are
+         * relative to nodes in the scene might need to force ignoring.
+         */
+        bool getIgnoreSetMapNode() const;
+        void setIgnoreSetMapNode( bool value );
+
         /** Serialize. */
         Config getConfig() const;
 
@@ -123,6 +131,7 @@ namespace osgEarth { namespace Annotation
         bool                            _occlusionCullingRequested;
         optional< double >              _occlusionCullingMaxAltitude;
         bool                            _horizonCullingRequested;
+        bool                            _ignoreSetMapNode;
 
         osg::ref_ptr< HorizonCullCallback >      _horizonCuller;
         osg::ref_ptr< OcclusionCullingCallback > _occlusionCuller;

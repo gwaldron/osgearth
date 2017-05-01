@@ -50,7 +50,8 @@ AnnotationNode(),
 _geoxform(0L),
 _paxform(0L),
 _occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING ),
+_ignoreSetMapNode( false )
 {
     init();
 }
@@ -60,7 +61,8 @@ AnnotationNode(),
 _geoxform(0L),
 _paxform(0L),
 _occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING ),
+_ignoreSetMapNode( false )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -71,7 +73,8 @@ AnnotationNode(),
 _geoxform(0L),
 _paxform(0L),
 _occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING ),
+_ignoreSetMapNode( false )
 {
     init();
     GeoPositionNode::setMapNode( mapNode );
@@ -83,26 +86,30 @@ AnnotationNode(rhs, copy),
 _geoxform(0L),
 _paxform(0L),
 _occlusionCullingRequested( DEFAULT_OCCLUSION_CULLING ),
-_horizonCullingRequested( DEFAULT_HORIZON_CULLING )
+_horizonCullingRequested( DEFAULT_HORIZON_CULLING ),
+_ignoreSetMapNode( false )
 {
     //nop - UNUSED
 }
 
 void
 GeoPositionNode::init()
-{    
+{
     _geoxform = new GeoTransform();
     this->addChild( _geoxform );
 
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
-    
+
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 }
 
 void
 GeoPositionNode::setMapNode( MapNode* mapNode )
 {
+    if ( getIgnoreSetMapNode() )
+        return;
+
     MapNode* oldMapNode = getMapNode();
     if ( oldMapNode != mapNode )
     {
@@ -117,7 +124,7 @@ GeoPositionNode::setMapNode( MapNode* mapNode )
         }
 
         if ( mapNode )
-            _geoxform->setTerrain( getMapNode()->getTerrain() );
+            _geoxform->setTerrain( mapNode->getTerrain() );
         else
             _geoxform->setTerrain( 0L );
     }
@@ -210,10 +217,27 @@ void GeoPositionNode::setOcclusionCullingMaxAltitude( double occlusionCullingMax
     _occlusionCullingMaxAltitude = occlusionCullingMaxAltitude;
     if ( _occlusionCuller.valid() )
     {
-        _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );         
+        _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );
     }
 }
 
+bool
+GeoPositionNode::getIgnoreSetMapNode() const
+{
+    return _ignoreSetMapNode;
+}
+
+void
+GeoPositionNode::setIgnoreSetMapNode( bool value )
+{
+    if ( _ignoreSetMapNode  == value )
+        return;
+
+    // Disable the map, if changing from respecting to ignoring
+    if ( value )
+        setMapNode( 0L );
+    _ignoreSetMapNode = value;
+}
 
 GeoPositionNode::GeoPositionNode(MapNode* mapNode, const Config& conf) :
 AnnotationNode            ( conf ),
@@ -267,6 +291,11 @@ GeoPositionNode::setConfig(const Config& conf)
         osg::Quat q( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0), c->value("w", 1.0) );
         getPositionAttitudeTransform()->setAttitude( q );
     }
+
+    if ( conf.hasValue( "ignore_map" ) )
+    {
+        setIgnoreSetMapNode( conf.value<bool>( "ignore_map", false ) );
+    }
 }
 
 Config
@@ -306,6 +335,8 @@ GeoPositionNode::getConfig() const
         c.set( "w", rot.w() );
         conf.add( c );
     }
+
+    conf.add( "ignore_map", getIgnoreSetMapNode() );
 
     return conf;
 }

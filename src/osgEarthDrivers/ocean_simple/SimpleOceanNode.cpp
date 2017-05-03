@@ -24,7 +24,7 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/CullingUtils>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 

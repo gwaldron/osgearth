@@ -332,12 +332,16 @@ namespace osgEarth
          * Applies the texture compression options to a texture.
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
-        
+       
         typedef ImageLayerCallback Callback;
 
     public: // Layer
         
         virtual const Status& open();
+
+        //! Subclass can override this when not using a TileSource
+        //! by calling setTileSourceExpected(false).
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
     protected: // Layer
             
@@ -350,10 +354,6 @@ namespace osgEarth
 
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
-
-        //! Subclass can override this when not using a TileSource
-        //! by calling setTileSourceExpected(false).
-        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
     private:
 

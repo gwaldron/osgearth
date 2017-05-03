@@ -284,6 +284,15 @@ MapNode::init()
     _terrainEngine = TerrainEngineNodeFactory::create( terrainOptions );
     _terrainEngineInitialized = false;
 
+    if ( _terrainEngine )
+    {
+        _terrainEngine->setMap( _map.get(), terrainOptions );
+    }
+    else
+    {
+        OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
+    }
+
     // the engine needs a container so we can set lighting state on the container and
     // not on the terrain engine itself. Makeing it a StickyGroup prevents the osgUtil
     // Optimizer from collapsing it if it's empty
@@ -301,59 +310,41 @@ MapNode::init()
             terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
-    if ( _terrainEngine )
-    {
-        // inform the terrain engine of the map information now so that it can properly
-        // initialize it's CoordinateSystemNode. This is necessary in order to support
-        // manipulators and to set up the texture compositor prior to frame-loop
-        // initialization.
-        _terrainEngine->setMap( _map.get(), terrainOptions );
-        _terrainEngineContainer->addChild( _terrainEngine );
-    }
-    else
-    {
-        OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
-    }
+    // a decorator for overlay models:
+    _overlayDecorator = new OverlayDecorator();
+    _terrainEngineContainer->addChild(_overlayDecorator);
+
+    // install the Draping technique for overlays:
+    DrapingTechnique* draping = new DrapingTechnique();
+
+    const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
+    if ( _mapNodeOptions.overlayBlending().isSet() )
+        draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+    if ( envOverlayTextureSize )
+        draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+    else if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+    if ( _mapNodeOptions.overlayMipMapping().isSet() )
+        draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+        draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+    if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+        draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
+
+    draping->reestablish( _terrainEngine );
+    _overlayDecorator->addTechnique( draping );
+
+    // install the Clamping technique for overlays:
+    _overlayDecorator->addTechnique( new ClampingTechnique() );
+
+    _overlayDecorator->setTerrainEngine(_terrainEngine);
+    _overlayDecorator->addChild(_terrainEngine);
 
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
     this->addChild( _layerNodes );
-
-    // a decorator for overlay models:
-    _overlayDecorator = new OverlayDecorator();
-    this->addChild(_overlayDecorator);
-
-    // install the Draping technique for overlays:
-    {
-        DrapingTechnique* draping = new DrapingTechnique();
-
-        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
-
-        if ( _mapNodeOptions.overlayBlending().isSet() )
-            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-        if ( envOverlayTextureSize )
-            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
-        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
-            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-        if ( _mapNodeOptions.overlayMipMapping().isSet() )
-            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
-        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
-            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
-
-        draping->reestablish( getTerrainEngine() );
-        _overlayDecorator->addTechnique( draping );
-    }
-
-    // install the Clamping technique for overlays:
-    {
-        _overlayDecorator->addTechnique( new ClampingTechnique() );
-    }
-
-    _overlayDecorator->setTerrainEngine(getTerrainEngine());
-    _overlayDecorator->addChild(getTerrainEngine());
 
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);

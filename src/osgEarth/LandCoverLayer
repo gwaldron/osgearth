@@ -42,28 +42,14 @@ namespace osgEarth
          * Amount by which to warp texture coordinates of coverage data.
          * Try 0.01 as a starting point.
          */
-        //optional<float>& warpFactor() { return _warp; }
-        //const optional<float>& warpFactor() const { return _warp; }
+        optional<float>& warpFactor() { return _warp; }
+        const optional<float>& warpFactor() const { return _warp; }
 
         /**
          * LOD at which to calculate the noise function for warping.
          */
-        //optional<unsigned>& baseLOD() { return _baseLOD; }
-        //const optional<unsigned>& baseLOD() const { return _baseLOD; }
-
-        /**
-         * Bit size of the encoded data. The default is 32 (for a 32-bit signed
-         * floating point value) but you can set it to 16 if you know your data
-         * values are all within the range of a signed 16-bit float.
-         */
-        optional<unsigned>& bits() { return _bits; }
-        const optional<unsigned>& bits() const { return _bits; }
-
-        /**
-         * Dictionary that defines all land cover types.
-         */
-        //osg::ref_ptr<LandCoverDictionary>& dictionary() { return _dictionary; }
-        //const osg::ref_ptr<LandCoverDictionary>& dictionary() const { return _dictionary; }
+        optional<unsigned>& noiseLOD() { return _noiseLOD; }
+        const optional<unsigned>& noiseLOD() const { return _noiseLOD; }
 
     public:
         virtual Config getConfig() const;
@@ -75,9 +61,8 @@ namespace osgEarth
             fromConfig(conf);
         }
 
-        optional<float>                _warp;
-        optional<unsigned>             _baseLOD;
-        optional<unsigned>             _bits;
+        optional<float> _warp;
+        optional<unsigned> _noiseLOD;
         std::vector<LandCoverCoverageLayerOptions> _coverages;
     };
 
@@ -108,6 +93,8 @@ namespace osgEarth
         virtual void init();
 
         virtual void addedToMap(const class Map*);
+
+        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback*);
 
     protected: // TerrainLayer
 

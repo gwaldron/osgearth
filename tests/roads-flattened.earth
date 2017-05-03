@@ -2,11 +2,11 @@
 
     <options>
         <terrain driver="rex">
-            <!-- note: experimental -->
+            <!-- note: experimental
             <lods>
                 <lod lod="10" priority_offset="10"/>
                 <lod lod="13" priority_offset="7"/>
-            </lods>
+            </lods> -->
         </terrain>
     </options>
     
@@ -27,6 +27,7 @@
             </coverage>
         </coverages>
     </land_cover>
+    
     <elevation name="ReadyMap Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
@@ -147,6 +148,16 @@
           <height>953.2630590070039</height>
           <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
+        <viewpoint name="Overlap">
+            <heading>-57.5371</heading>
+            <pitch>-56.6654</pitch>
+            <range>95.9873m</range>
+            <long>-121.6366175925203</long>
+            <lat>46.76520332634789</lat>
+            <height>941.8131768433377</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+
     </viewpoints>
     
     <feature_source name="roads-data" driver="tfs">

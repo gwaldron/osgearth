@@ -1928,9 +1928,15 @@ namespace
 }
     
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
-_image     (image),
 _bilinear  (false)
 {
+    setImage(image);
+}
+
+void
+ImageUtils::PixelReader::setImage(const osg::Image* image)
+{
+    _image = image;
     if (image)
     {
         _normalized = ImageUtils::isNormalized(image);

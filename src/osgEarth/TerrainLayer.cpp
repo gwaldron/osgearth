@@ -897,6 +897,12 @@ TerrainLayer::isKeyInLegalRange(const TileKey& key) const
         return false;
     }
 
+    // Next check the maxDataLevel if that is set.
+    if (options().maxDataLevel().isSet() && localLOD > options().maxDataLevel().get())
+    {
+        return false;
+    }
+
     // Next, check against resolution limits (based on the source tile size).
     if (options().minResolution().isSet() || options().maxResolution().isSet())
     {

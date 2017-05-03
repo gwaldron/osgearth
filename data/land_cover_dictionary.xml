@@ -11,7 +11,7 @@
         <class name="forest"/>
         <class name="cropland"/>
         <class name="grassland"/>
-        <class name="savannah"/>
+        <class name="savanna"/>
         <class name="swamp"/>
         <class name="desert"/>
         <class name="rock"/>

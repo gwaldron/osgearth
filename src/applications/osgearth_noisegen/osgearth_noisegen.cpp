@@ -27,7 +27,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthSymbology/Color>

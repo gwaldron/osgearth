@@ -1339,6 +1339,22 @@ GeoExtent::createPolytope(osg::Polytope& tope) const
     return true;
 }
 
+bool
+GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrix& output) const
+{    
+    double scalex = width() / rhs.width();
+    double scaley = height() / rhs.height();
+    double biasx  = (xMin()-rhs.xMin()) / rhs.width();
+    double biasy  = (yMin()-rhs.yMin()) / rhs.height();
+
+    output(0,0) = scalex;
+    output(1,1) = scaley;
+    output(3,0) = biasx;
+    output(3,1) = biasy;
+
+    return true;
+}
+
 /***************************************************************************/
 
 DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :

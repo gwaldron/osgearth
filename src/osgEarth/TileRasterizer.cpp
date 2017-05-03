@@ -82,9 +82,9 @@ osg::Camera()
     setViewMatrix(osg::Matrix::identity());
 
     osg::StateSet* ss = getOrCreateStateSet();
-    ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    //ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
-    ss->setMode(GL_BLEND, 0);
+    ss->setMode(GL_BLEND, 1);
     ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
     

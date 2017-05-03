@@ -50,12 +50,13 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _text             ( text ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -63,7 +64,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const TextSymbol*   symbol ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _text             ( text ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
@@ -71,6 +72,7 @@ _followFixedCourse( false )
     Style style;
     style.add( const_cast<TextSymbol*>(symbol) );
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(const std::string&  text,
@@ -86,11 +88,12 @@ _followFixedCourse( false )
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
-GeoPositionNode   ( mapNode, position ),
+GeoPositionNode   ( mapNode ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -314,6 +317,8 @@ _followFixedCourse( false )
     conf.getIfSet   ( "text",  _text );
 
     init( *style );
+
+    setPosition(getPosition());
 }
 
 Config

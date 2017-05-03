@@ -56,7 +56,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _image   ( image ),
 _text    ( text ),
 _style   ( style ),
@@ -65,6 +65,7 @@ _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init();
+    setPosition(position);
 }
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
@@ -72,7 +73,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _text    ( text ),
 _style   ( style ),
 _geode            ( 0L ),
@@ -80,19 +81,21 @@ _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init();
+    setPosition(position);
 }
 
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const GeoPoint&       position,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-GeoPositionNode ( mapNode, position ),
+GeoPositionNode ( mapNode ),
 _style    ( style ),
 _dbOptions        ( dbOptions ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init();
+    setPosition(position);
 }
 
 void
@@ -445,6 +448,7 @@ _followFixedCourse( false )
     }
 
     init();
+    setPosition(getPosition());
 }
 
 void

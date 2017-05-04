@@ -597,8 +597,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     }
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
-                pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
-                //pass->_samplers[SamplerBinding::COLOR]._matrix = *layer->getMatrix();
+                //pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+                pass->_samplers[SamplerBinding::COLOR]._matrix = *layer->getMatrix();
 
                 // Handle an RTT image layer:
                 if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())

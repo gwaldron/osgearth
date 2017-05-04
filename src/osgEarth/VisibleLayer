@@ -89,6 +89,8 @@ namespace osgEarth
         void fireCallback(VisibleLayerCallback::MethodPtr);
     };
 
+    typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;
+
 } // namespace TerrainLayer
 
 #endif // OSGEARTH_RENDER_LAYER_H

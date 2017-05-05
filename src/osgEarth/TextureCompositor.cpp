@@ -23,16 +23,16 @@
 
 using namespace osgEarth;
 
-#define LC "[TextureResources] "
+#define LC "[TerrainResources] "
 
 
-TextureCompositor::TextureCompositor()
+TerrainResources::TerrainResources()
 {
     //nop
 }
 
 bool
-TextureCompositor::reserveTextureImageUnit(int&        out_unit,
+TerrainResources::reserveTextureImageUnit(int&        out_unit,
                                            const char* requestor)
 {
     out_unit = -1;
@@ -56,14 +56,14 @@ TextureCompositor::reserveTextureImageUnit(int&        out_unit,
 }
 
 void
-TextureCompositor::releaseTextureImageUnit(int unit)
+TerrainResources::releaseTextureImageUnit(int unit)
 {
     Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
     _reservedUnits.erase( unit );
 }
 
 bool
-TextureCompositor::setTextureImageUnitOffLimits(int unit)
+TerrainResources::setTextureImageUnitOffLimits(int unit)
 {
     Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
     if (_reservedUnits.find(unit) != _reservedUnits.end())

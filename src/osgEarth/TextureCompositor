@@ -25,18 +25,18 @@
 namespace osgEarth
 {
     /**
-     * Utility class that tracks texture allocation units
+     * Utility class that manages GPU resources for a terrain engine
      */
-    class OSGEARTH_EXPORT TextureCompositor : public osg::Referenced
+    class OSGEARTH_EXPORT TerrainResources : public osg::Referenced
     {
     public:
         /**
          * Constructs a new compositor.
          */
-        TextureCompositor();
+        TerrainResources();
 
         /** dtor */
-        virtual ~TextureCompositor() { }
+        virtual ~TerrainResources() { }
 
         /**
          * Requests a texture image unit that is not in use, and marks is as reserved.

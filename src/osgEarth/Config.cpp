@@ -34,11 +34,6 @@ using namespace osgEarth;
 
 #define LC "[Config] "
 
-namespace
-{
-    Config s_emptyConf;
-}
-
 Config::~Config()
 {
 }
@@ -94,6 +89,7 @@ Config::child( const std::string& childName ) const
         if ( i->key() == childName )
             return *i;
     }
+    static Config s_emptyConf;
     return s_emptyConf;
     //Config emptyConf;
     //emptyConf.setReferrer( _referrer );

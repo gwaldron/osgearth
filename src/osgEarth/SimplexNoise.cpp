@@ -17,14 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osgEarth/ImageUtils>
 #include <osg/Image>
 #include <algorithm>
 
 #define POW2(x) ((double)(x==0 ? 1 : (2 << (x-1))))
 
-using namespace osgEarth::Util;
+using namespace osgEarth;
 
 const SimplexNoise::Grad SimplexNoise::grad3[12] = {
     Grad(1, 1, 0), Grad(-1, 1, 0), Grad(1, -1, 0), Grad(-1, -1, 0),

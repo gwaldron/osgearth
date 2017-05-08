@@ -119,7 +119,7 @@ FeatureSource::open(const osgDB::Options* readOptions)
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
     {
-        const ConfigOptions& conf = _options.filters().at(i);
+        const ConfigOptions& conf = _options.filters()[i];
         FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
         if ( filter )
         {

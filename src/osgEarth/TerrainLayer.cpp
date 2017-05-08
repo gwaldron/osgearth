@@ -284,6 +284,10 @@ TerrainLayer::open()
 {
     if ( !_openCalled )
     {
+        // Call base class
+        if (Layer::open().isError())
+            return getStatus();
+
         // Create an L2 mem cache that sits atop the main cache, if necessary.
         // For now: use the same L2 cache size at the driver.
         int l2CacheSize = options().driver()->L2CacheSize().get();
@@ -889,6 +893,12 @@ TerrainLayer::isKeyInLegalRange(const TileKey& key) const
     // First check the key against the min/max level limits, it they are set.
     if ((options().maxLevel().isSet() && localLOD > options().maxLevel().value()) ||
         (options().minLevel().isSet() && localLOD < options().minLevel().value()))
+    {
+        return false;
+    }
+
+    // Next check the maxDataLevel if that is set.
+    if (options().maxDataLevel().isSet() && localLOD > options().maxDataLevel().get())
     {
         return false;
     }

@@ -125,10 +125,6 @@ _supportsGLSL(false)
     // we will set these later (in TileModelCompiler)
     this->setUseDisplayList(false);
     this->setUseVertexBufferObjects(true);
-    
-#if OSG_MIN_VERSION_REQUIRED(3,5,6)
-    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT) this->setUseVertexArrayObject(true);
-#endif
 }
 
 
@@ -593,8 +589,7 @@ MPGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
     osg::VertexArrayState* vas = osg::Geometry::createVertexArrayState(renderInfo);
     
     // make sure we have array dispatchers for the multipass coords
-    if(osg::DisplaySettings::instance()->getVertexBufferHint() == osg::DisplaySettings::VERTEX_ARRAY_OBJECT)
-        vas->assignTexCoordArrayDispatcher(_texCoordList.size() + 2);
+    vas->assignTexCoordArrayDispatcher(_texCoordList.size() + 2);
 
     return vas;
 }

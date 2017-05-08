@@ -31,7 +31,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
 #include <osgEarth/ShaderLoader>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osgEarth/Layer>
 
 #include <osg/Texture2D>

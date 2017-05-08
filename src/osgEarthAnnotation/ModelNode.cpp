@@ -46,7 +46,7 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-GeoPositionNode    ( mapNode, GeoPoint() ),
+GeoPositionNode( mapNode ),
 _style       ( style ),
 _dbOptions   ( dbOptions )
 {
@@ -59,6 +59,7 @@ ModelNode::setStyle(const Style& style)
 {
     _style = style;
     init();
+    setPosition(getPosition());
 }
 
 void
@@ -196,6 +197,7 @@ _dbOptions   ( dbOptions )
         _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
     init();
+    setPosition(getPosition());
 }
 
 Config

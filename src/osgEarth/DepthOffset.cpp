@@ -168,8 +168,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         (graphChanging || (_options.enabled() == false));
 
     bool install =
-        (graph && graphChanging ) || 
-        (graph && (_options.enabled() == true));
+        (graph && graphChanging && _options.enabled() == true);
 
     // shader package:
     Shaders shaders;

@@ -204,7 +204,7 @@ namespace
             if ( !tokens[i].empty() )
             {
                 int len = tokens[i].length();
-                if ( tokens[i].at(len-1) == ';' )
+                if ( tokens[i][len-1] == ';' )
                     buf << " " << tokens[i].substr(0, len-1); // strip semicolon
                 else
                     buf << " " << tokens[i];

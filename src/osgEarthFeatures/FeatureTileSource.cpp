@@ -234,7 +234,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                                 Style combinedStyle;
 
                                 // if the style string begins with an open bracket, it's an inline style definition.
-                                if ( styleString.length() > 0 && styleString.at(0) == '{' )
+                                if ( styleString.length() > 0 && styleString[0] == '{' )
                                 {
                                     Config conf( "style", styleString );
                                     conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );

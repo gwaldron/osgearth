@@ -157,7 +157,7 @@ namespace osgEarth
         TYPE temp = dv; \
         std::istringstream strin( trim(str) ); \
         if ( !strin.eof() ) { \
-            if ( str.length() >= 2 && str.at(0) == '0' && str.at(1) == 'x' ) { \
+            if ( str.length() >= 2 && str[0] == '0' && str[1] == 'x' ) { \
                 strin.seekg( 2 ); \
                 strin >> std::hex >> temp; \
             } \

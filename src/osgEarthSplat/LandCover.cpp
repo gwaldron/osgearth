@@ -43,7 +43,7 @@ LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Opt
         {
             osg::ref_ptr<LandCoverLayer> layer = new LandCoverLayer();
 
-            if ( layer->configure( in.layers().at(i), dbo ) )
+            if ( layer->configure( in.layers()[i], dbo ) )
             {
                 _layers.push_back( layer.get() );
                 OE_INFO << LC << "Configured land cover layer \"" << layer->getName() << "\"\n";
@@ -110,7 +110,7 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     {
         osg::ref_ptr<LandCoverBiome> biome = new LandCoverBiome();
 
-        if ( biome->configure( in.biomes().at(i), dbo ) )
+        if ( biome->configure( in.biomes()[i], dbo ) )
         {
             _biomes.push_back( biome.get() );
         }
@@ -130,7 +130,7 @@ LandCoverLayer::getTotalNumBillboards() const
     int count = 0;
     for(int i=0; i<getBiomes().size(); ++i)
     {
-        count += getBiomes().at(i)->getBillboards().size();
+        count += getBiomes()[i]->getBillboards().size();
     }
     return count;
 }
@@ -175,7 +175,7 @@ LandCoverLayer::createShader() const
     int index = 0;
     for(int i=0; i<getBiomes().size(); ++i)
     {
-        const LandCoverBiome* biome = getBiomes().at(i).get();
+        const LandCoverBiome* biome = getBiomes()[i].get();
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
@@ -183,7 +183,7 @@ LandCoverLayer::createShader() const
 
         for(int j=0; j<biome->getBillboards().size(); ++j)
         {
-            const LandCoverBillboard& bb = biome->getBillboards().at(j);
+            const LandCoverBillboard& bb = biome->getBillboards()[j];
 
             billboardBuf
                 << "    oe_landcover_Billboard("
@@ -279,7 +279,7 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
 
         for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
         {
-            const LandCoverBiome* biome = getBiomes().at(biomeIndex).get();
+            const LandCoverBiome* biome = getBiomes()[biomeIndex].get();
 
             if ( !biome->getClasses().empty() )
             {
@@ -395,11 +395,11 @@ LandCoverLayer::createTexture() const
 
     for(int b=0; b<getBiomes().size(); ++b)
     {
-        const LandCoverBiome* biome = getBiomes().at(b);
+        const LandCoverBiome* biome = getBiomes()[b];
 
         for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
         {
-            const LandCoverBillboard& bb = biome->getBillboards().at(i);
+            const LandCoverBillboard& bb = biome->getBillboards()[i];
 
             osg::ref_ptr<osg::Image> im;
 

@@ -89,7 +89,7 @@ SplatExtension::connect(MapNode* mapNode)
     for(int i=0; i<zones().size(); ++i)
     {
         osg::ref_ptr<Zone> zone = new Zone();
-        if ( zone->configure(zones().at(i), mapNode->getMap(), _dbo.get()) )
+        if ( zone->configure(zones()[i], mapNode->getMap(), _dbo.get()) )
         {
             myZones.push_back( zone.get() );
 

@@ -651,7 +651,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Other Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {
-        TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
+        TerrainTileImageLayerModel* layerModel = model->sharedLayers()[i].get();
         if (layerModel->getTexture())
         {
             // locate the shared binding corresponding to this layer:
@@ -675,7 +675,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Patch Layers
     for (unsigned i = 0; i < model->patchLayers().size(); ++i)
     {
-        TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
+        TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
     }
 
     if (_childrenReady)
@@ -783,7 +783,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
                 // all other samplers just need to inherit from their parent 
                 // and scale/bias their texture matrix.
-                else if (!mySampler._texture.valid())// || !mySampler._matrix.isIdentity())
+                else if (!mySampler._texture.valid() || !mySampler._matrix.isIdentity())
                 {
                     const Sampler& parentSampler = parentPass._samplers[s];
                     mySampler._texture = parentSampler._texture.get();

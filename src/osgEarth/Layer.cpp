@@ -23,7 +23,7 @@
 
 using namespace osgEarth;
 
-#define LC "[Layer] "
+#define LC "[Layer] Layer \"" << getName() << "\" "
 
 //.................................................................
 
@@ -153,6 +153,7 @@ Layer::open()
     // Load any user defined shaders
     if (options().shader().isSet() && !options().shader()->empty())
     {
+        OE_INFO << LC << "Installing inline shader code\n";
         VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
         ShaderPackage package;
         package.add("", options().shader().get());
@@ -188,7 +189,7 @@ Layer::create(const std::string& name, const ConfigOptions& options)
 {
     if ( name.empty() )
     {
-        OE_WARN << LC << "ILLEGAL- Layer::create requires a plugin name" << std::endl;
+        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a plugin name" << std::endl;
         return 0L;
     }
 

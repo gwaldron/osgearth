@@ -89,7 +89,7 @@ main(int argc, char** argv)
 
         // Install a ClipNode. The ClipNode establishes positional state so it
         // doesn't need to parent anything. In this case it needs to be at the
-        // top of the scene graph since out clip plane calculator assumes 
+        // top of the scene graph since our clip plane calculator assumes 
         // you're in world space.
         osg::ClipNode* clipNode = new osg::ClipNode();
         root->addChild( clipNode );

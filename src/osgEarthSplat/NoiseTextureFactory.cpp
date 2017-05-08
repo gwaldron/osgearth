@@ -20,7 +20,7 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Random>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osg/Texture2D>
 
 using namespace osgEarth;
@@ -52,7 +52,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     for(int k=0; k<chans; ++k)
     {
         // Configure the noise function:
-        osgEarth::Util::SimplexNoise noise;
+        osgEarth::SimplexNoise noise;
         noise.setNormalize( true );
         noise.setRange( 0.0, 1.0 );
         noise.setFrequency( F[k] );

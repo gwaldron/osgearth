@@ -82,9 +82,9 @@ osg::Camera()
     setViewMatrix(osg::Matrix::identity());
 
     osg::StateSet* ss = getOrCreateStateSet();
-    ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    //ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
-    ss->setMode(GL_BLEND, 0);
+    ss->setMode(GL_BLEND, 1);
     ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
     
@@ -104,9 +104,9 @@ osg::Camera()
     traits->depth = 0;
     osg::GraphicsContext* gc = osg::GraphicsContext::createGraphicsContext(traits);
     setGraphicsContext(gc);
+#endif
     setDrawBuffer(GL_FRONT);
     setReadBuffer(GL_FRONT);
-#endif
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setInheritShaders(false);

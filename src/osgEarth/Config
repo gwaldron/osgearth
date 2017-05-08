@@ -155,8 +155,9 @@ namespace osgEarth
             }
         }
 
-        /** Copy of the first child with the given key */
-        Config child( const std::string& key ) const;
+        /** First child with the given key */
+        //Config child( const std::string& key ) const;
+        const Config& child( const std::string& key ) const;
 
         /** Pointer to the first child with the given key, or NULL if none exist */
         const Config* child_ptr( const std::string& key ) const;

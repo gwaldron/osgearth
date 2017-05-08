@@ -128,6 +128,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskSource
     Memory
     MemCache
+    MetaTile
     Metrics
     ModelLayer
     ModelSource
@@ -160,6 +161,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderUtils
     Shadowing
     SharedSARepo
+    SimplexNoise
     SpatialReference
     StateSetCache
     StateSetLOD
@@ -300,6 +302,7 @@ set(TARGET_SRC
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
+    MetaTile.cpp
     Metrics.cpp
     MimeTypes.cpp
     ModelLayer.cpp
@@ -327,6 +330,7 @@ set(TARGET_SRC
     ShaderLoader.cpp
     ShaderUtils.cpp
     Shadowing.cpp
+    SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp
     StateSetLOD.cpp

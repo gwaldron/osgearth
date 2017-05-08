@@ -58,9 +58,15 @@ namespace osgEarth { namespace Annotation
          */
         GeoPositionNode(MapNode* mapNode, const GeoPoint& position);
 
-        /** The anchor position */
-        virtual void setPosition(const GeoPoint& pos) { _geoxform->setPosition( pos ); dirty(); }
-        const GeoPoint& getPosition() const           { return _geoxform->getPosition(); }
+        /**
+         * The anchor position of this node.
+         * If the annotation also has a style that contains an AltitudeSymbol,
+         * any clamping properties in the symbol will take precedence over
+         * the altitude mode in the GeoPoint you pass into this call.
+         * @param pos New geoposition
+         */
+        virtual void setPosition(const GeoPoint& pos);
+        const GeoPoint& getPosition() const { return _geoxform->getPosition(); }
 
         /** Local XYZ offset */
         virtual void setLocalOffset(const osg::Vec3f& pos) { _paxform->setPosition(pos); dirty(); }

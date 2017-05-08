@@ -142,6 +142,12 @@ Cache::removeBin( CacheBin* bin )
     _bins.remove( bin );
 }
 
+bool Cache::clear()
+{
+    _bins.clear();
+    return false;
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

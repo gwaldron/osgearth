@@ -768,6 +768,12 @@ namespace osgEarth
             }
         }
 
+        void clear()
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.clear();
+        }
+
     private:
         std::map<KEY,osg::ref_ptr<DATA> >    _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;

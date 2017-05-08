@@ -224,39 +224,6 @@ ImageOverlay::postCTOR()
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
-void splitFeatureAcrossDateline(Feature* feature, FeatureList &splitFeatures)
-{       
-    // If the feature is geodetic, try to split it across the dateline.
-    if (feature->getSRS() && feature->getSRS()->isGeodetic())
-    {
-        // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
-        double minLon = -540;
-        for (int i = 0; i < 3; i++)
-        {
-            double offset = minLon - -180.0;
-            double maxLon = minLon + 360.0;
-            Bounds bounds(minLon, -90.0, maxLon, 90.0);
-            osg::ref_ptr< Geometry > croppedGeometry;
-            if (feature->getGeometry()->crop(bounds, croppedGeometry))
-            {
-                // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
-                for (int j = 0; j < croppedGeometry->size(); j++)
-                {
-                    (*croppedGeometry)[j].x() -= offset;
-                }
-                osg::ref_ptr< Feature > croppedFeature = new Feature(*feature);
-                croppedFeature->setGeometry(croppedGeometry.get());
-                splitFeatures.push_back(croppedFeature);
-            }
-            minLon += 360.0;
-        }
-    }
-    else
-    {
-        splitFeatures.push_back( feature );
-    }   
-}
-
 void
 ImageOverlay::init()
 {
@@ -289,7 +256,7 @@ ImageOverlay::init()
         FeatureList features;
         if (!mapSRS->isGeographic())
         {
-            splitFeatureAcrossDateline(f, features);
+            f->splitAcrossDateLine(features);
         }
         else
         {

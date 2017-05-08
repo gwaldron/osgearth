@@ -246,6 +246,11 @@ namespace osgEarth { namespace Features
          */
         void transform( const SpatialReference* srs );
 
+        /**
+         * Splits this feature into multiple features if it is a geodetic feature and cross the date line.
+         */
+        void splitAcrossDateLine(FeatureList& splitFeatures);
+
     protected:
 
         Feature( FeatureID fid =0L );

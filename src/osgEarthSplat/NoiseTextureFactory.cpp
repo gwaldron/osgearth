@@ -113,6 +113,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
 
     // make a texture:
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setName("oe_noise_texture");
     tex->setWrap(tex->WRAP_S, tex->REPEAT);
     tex->setWrap(tex->WRAP_T, tex->REPEAT);
     tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
@@ -120,7 +121,7 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     tex->setMaxAnisotropy( 4.0f );
     tex->setUnRefImageDataAfterApply( true );
 
-    osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+    static osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
     if (nvtt && image->getNumMipmapLevels() <= 1)
     {
        nvtt->generateMipMap(*image, true, osgDB::ImageProcessor::USE_CPU);

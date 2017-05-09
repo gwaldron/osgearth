@@ -630,7 +630,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     {
         ImageUtils::fixInternalFormat( result.getImage() );
 
-        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+        static osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
         if (nvtt && result.getImage()->getPixelFormat() != GL_LUMINANCE && result.getImage()->getNumMipmapLevels() <= 1)
         {
            nvtt->generateMipMap(*result.getImage(), true, osgDB::ImageProcessor::USE_CPU);
@@ -942,7 +942,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     else if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
     {
         osg::Timer_t start = osg::Timer::instance()->tick();
-        osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
+        static osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
         if (imageProcessor)
         {
             osg::Texture::InternalFormatMode mode;

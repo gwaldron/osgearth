@@ -244,12 +244,13 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         layerModel->setTexture( texture );
         model->normalModel() = layerModel;
 
+        // nvtt doesn't work well on normal maps via the osg api:-(
         // mipmap it  since it is osg::Texture::LINEAR_MIPMAP_LINEAR
-        osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
-        if (nvtt && image->getNumMipmapLevels() <= 1)
-        {
-           nvtt->generateMipMap(*image, true, osgDB::ImageProcessor::USE_CPU);
-        }
+        //static osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+        //if (nvtt && image->getNumMipmapLevels() <= 1)
+        //{
+        //   nvtt->generateMipMap(*image, true, osgDB::ImageProcessor::USE_CPU);
+        //}
     }
 
     if (progress)
@@ -344,7 +345,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
                                             const ImageLayer* layer) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
-
+    tex->setName("oe_image_texture");
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);
@@ -372,7 +373,7 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
                                                const ImageLayer* layer) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
-
+    tex->setName("oe_coverage_texture");
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);
@@ -389,6 +390,7 @@ osg::Texture*
 TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setName("oe_elevation_texture");
     tex->setInternalFormat(GL_LUMINANCE32F_ARB);
     tex->setSourceFormat(GL_LUMINANCE);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
@@ -404,6 +406,7 @@ osg::Texture*
 TerrainTileModelFactory::createNormalTexture(osg::Image* image) const
 {
     osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setName("oe_normal_texture");
     tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );

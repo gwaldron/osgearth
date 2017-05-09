@@ -132,7 +132,7 @@ SkinResource::createTexture(osg::Image* image) const
 
     osg::Texture* tex;
 
-    osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
+    static osgDB::ImageProcessor* nvtt = osgDB::Registry::instance()->getImageProcessor();
 
     if (image->r() > 1)
     {

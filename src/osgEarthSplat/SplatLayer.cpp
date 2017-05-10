@@ -224,22 +224,18 @@ SplatLayer::preCull(osgUtil::CullVisitor* cv) const
     // If we have zones, select the current one and apply its state set.
     if (_zones.size() > 0)
     {
-        osg::StateSet* zoneStateSet = 0L;
+        int zoneIndex = 0;
         osg::Vec3d vp = cv->getViewPoint();
-        double z2 = vp.length2();
 
-        for(unsigned z=0; z<_zones.size() && !zoneStateSet; ++z)
+        for(int z=_zones.size()-1; z > 0 && zoneIndex == 0; --z)
         {
             if ( _zones[z]->contains(vp) )
             {
-                zoneStateSet = _zones[z]->getStateSet();
+                zoneIndex = z;
             }
         }
 
-        if ( !zoneStateSet )
-        {
-            zoneStateSet = _zones[0]->getStateSet();
-        }  
+        osg::StateSet* zoneStateSet = _zones[zoneIndex]->getStateSet();
 
         if (zoneStateSet == 0L)
         {

@@ -45,7 +45,7 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
         Boundary& b = _boundaries.back();
         
         GeoExtent extent(
-            map->getSRS()->getGeographicSRS(),
+            SpatialReference::get("wgs84"),
             osg::clampBetween(box.xMin(), -180.0f, 180.0f),
             osg::clampBetween(box.yMin(),  -90.0f,  90.0f),
             osg::clampBetween(box.xMax(), -180.0f, 180.0f),

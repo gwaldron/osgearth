@@ -97,10 +97,10 @@ SplatLayer::init()
     VisibleLayer::init();
 
     _zonesConfigured = false;
-    _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
-    _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L);
 
-    setName("Splat Imagery");
+    _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L); // TODO deprecate
+    _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L); // TODO deprecate
+
     setRenderType(osgEarth::Layer::RENDERTYPE_TILE);
 
     for (std::vector<ZoneOptions>::const_iterator i = options().zones().begin();
@@ -183,9 +183,12 @@ SplatLayer::getOrCreateNode(TerrainResources* res)
 {
     if (res)
     {
+        // TODO.
+        // These reservations are Layer-specific, so we should add the
+        // capability to TerrainResources to support per-Layer reservations.
         if (_splatBinding.valid() == false)
         {
-            if (res->reserveTextureImageUnit(_splatBinding, "Splat texture") == false)
+            if (res->reserveTextureImageUnitForLayer(_splatBinding, this, "Splat texture") == false)
             {
                 OE_WARN << LC << "No texture unit available for splatting texture\n";
             }
@@ -193,7 +196,7 @@ SplatLayer::getOrCreateNode(TerrainResources* res)
 
         if (_lutBinding.valid() == false)
         {
-            if (res->reserveTextureImageUnit(_lutBinding, "Splatting LUT") == false)
+            if (res->reserveTextureImageUnitForLayer(_lutBinding, this, "Splatting LUT") == false)
             {
                 OE_WARN << LC << "No texture unit available for splatting LUT\n";
             }
@@ -201,7 +204,7 @@ SplatLayer::getOrCreateNode(TerrainResources* res)
 
         if (_noiseBinding.valid() == false)
         {
-            if (res->reserveTextureImageUnit(_noiseBinding, "Splat noise sampler") == false)
+            if (res->reserveTextureImageUnitForLayer(_noiseBinding, this, "Splat noise sampler") == false)
             {
                 OE_WARN << LC << "No texture unit available for splatting Noise function\n";
             }

@@ -25,17 +25,22 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-bool
-Zone::configure(const ConfigOptions& options, const Map* map, const osgDB::Options* dbo)
+Zone::Zone(const ZoneOptions& options) :
+_options(options),
+_uid(0)
 {
-    ZoneOptions in(options);
+    //nop
+}
 
-    if ( in.name().isSet() )
-        setName( in.name().get() );
+bool
+Zone::configure(const Map* map, const osgDB::Options* readOptions)
+{
+    if ( _options.name().isSet() )
+        setName( _options.name().get() );
 
-    for(int i=0; i<in.boundaries().size(); ++i)
+    for(int i=0; i<_options.boundaries().size(); ++i)
     {
-        const osg::BoundingBox& box = in.boundaries()[i];
+        const osg::BoundingBox& box = _options.boundaries()[i];
         _boundaries.push_back( Boundary() );
         Boundary& b = _boundaries.back();
         
@@ -56,25 +61,25 @@ Zone::configure(const ConfigOptions& options, const Map* map, const osgDB::Optio
         b.meanRadius2 = meanRadius*meanRadius;
     }
     
-    if ( in.surface().isSet() )
+    if ( _options.surface().isSet() )
     {
         _surface = new Surface();
-        if ( !_surface->configure(in.surface().get(), map, dbo) )
+        if ( !_surface->configure(_options.surface().get(), map, readOptions) )
         {
             OE_WARN << LC << "Surface data is not properly configured; surface splatting disabled.\n";
             _surface = 0L;
         }
     }
 
-    if ( in.landCover().isSet() )
-    {
-        _landCover = new LandCover();
-        if ( !_landCover->configure(in.landCover().get(), map, dbo) )
-        {
-            OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
-            _landCover = 0L;
-        }
-    }
+    //if ( in.GroundCover().isSet() )
+    //{
+    //    _GroundCover = new GroundCover();
+    //    if ( !_GroundCover->configure(in.GroundCover().get(), map, dbo) )
+    //    {
+    //        OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
+    //        _GroundCover = 0L;
+    //    }
+    //}
 
     return true;
 }
@@ -110,6 +115,8 @@ Zone::getOrCreateStateSet()
     return _stateSet.get();
 }
 
+//........................................................................
+
 void
 ZoneOptions::fromConfig(const Config& conf)
 {
@@ -123,7 +130,7 @@ ZoneOptions::fromConfig(const Config& conf)
         }
     }
     conf.getObjIfSet( "surface",    _surface );
-    conf.getObjIfSet( "land_cover", _landCover );
+    //conf.getObjIfSet( "land_cover", _GroundCover );
 }
 
 Config
@@ -146,13 +153,14 @@ ZoneOptions::getConfig() const
         conf.add(regions);
     }
     conf.setObj( "surface",    _surface );
-    conf.setObj( "land_cover", _landCover );
+    //conf.setObj( "land_cover", _GroundCover );
     return conf;
 }
 
 void
 ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
+#if 0
     osg::StateSet* stateset = 0L;
     
     Zone* finalZone = 0L;
@@ -173,7 +181,7 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 finalZoneIndex = zoneIndex;
                 finalZone = _zones[z].get();
             }
-            if ( _zones[z]->getLandCover() )
+            if ( _zones[z]->getGroundCover() )
             {
                 zoneIndex++;
             }
@@ -185,9 +193,9 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
             finalZoneIndex = 0;
         }                
         
-        // Relays the zone to the LandCoverPatchLayer.
-        //VisitorData::store(*nv, "oe.LandCover.zoneIndex", new RefUID(finalZoneIndex));
-        VisitorData::store(*nv, "oe.landcover.zone", finalZone );
+        // Relays the zone to the GroundCoverPatchLayer.
+        //VisitorData::store(*nv, "oe.GroundCover.zoneIndex", new RefUID(finalZoneIndex));
+        VisitorData::store(*nv, "oe.GroundCover.zone", finalZone );
     }
 
     if ( stateset )
@@ -200,6 +208,7 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if (finalZone)
     {
-        VisitorData::remove(*nv, "oe.landcover.zone");
+        VisitorData::remove(*nv, "oe.GroundCover.zone");
     }
+#endif
 }

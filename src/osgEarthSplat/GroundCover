@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_PROCEDURAL_LANDCOVER
-#define OSGEARTH_PROCEDURAL_LANDCOVER 1
+#ifndef OSGEARTH_PROCEDURAL_GroundCover
+#define OSGEARTH_PROCEDURAL_GroundCover 1
 
 #include "Export"
 #include <osgEarth/Config>
@@ -43,10 +43,10 @@ namespace osgEarth { namespace Splat
     class SplatCoverageLegend;
 
 
-    class OSGEARTHSPLAT_EXPORT LandCoverBillboard
+    class OSGEARTHSPLAT_EXPORT GroundCoverBillboard
     {
     public:
-        LandCoverBillboard(osg::Image* image, float width, float height)
+        GroundCoverBillboard(osg::Image* image, float width, float height)
             : _image(image), _width(width), _height(height) { }
 
         osg::ref_ptr<osg::Image> _image;
@@ -54,43 +54,43 @@ namespace osgEarth { namespace Splat
         float                    _height;
     };
 
-    typedef std::vector<LandCoverBillboard> LandCoverBillboards;
+    typedef std::vector<GroundCoverBillboard> GroundCoverBillboards;
 
 
-    class OSGEARTHSPLAT_EXPORT LandCoverBiome : public osg::Referenced
+    class OSGEARTHSPLAT_EXPORT GroundCoverBiome : public osg::Referenced
     {
     public:
-        LandCoverBiome() : _code(0) { }
+        GroundCoverBiome() : _code(0) { }
 
         /** classification names for this biome (space separated) */
         void setClasses( const std::string& value ) { _classNames = value; }
         const std::string& getClasses() const { return _classNames; }
 
         /** Resources that may be used to render land cover in this biome */
-        LandCoverBillboards& getBillboards() { return _billboards; }
-        const LandCoverBillboards& getBillboards() const { return _billboards; }
+        GroundCoverBillboards& getBillboards() { return _billboards; }
+        const GroundCoverBillboards& getBillboards() const { return _billboards; }
 
     protected:
-        virtual ~LandCoverBiome() { }
+        virtual ~GroundCoverBiome() { }
 
         std::string    _classNames;
         int            _code;
-        LandCoverBillboards _billboards;
+        GroundCoverBillboards _billboards;
 
     public:
         bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
     };
 
-    typedef std::vector< osg::ref_ptr<LandCoverBiome> > LandCoverBiomes;
+    typedef std::vector< osg::ref_ptr<GroundCoverBiome> > GroundCoverBiomes;
 
 
     /**
      * A layer of land cover data.
      */
-    class OSGEARTHSPLAT_EXPORT LandCoverLayer : public osg::Referenced
+    class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public osg::Referenced
     {
     public:
-        LandCoverLayer() : _lod(14), _castShadows(false), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
+        GroundCoverLayer() : _lod(14), _castShadows(false), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
 
         /** Name of this layer */
         void setName(const std::string& name) { _name = name; }
@@ -133,8 +133,8 @@ namespace osgEarth { namespace Splat
         float getContrast() const { return _contrast; }
 
         /** Biomes comprising this layer. */
-        LandCoverBiomes& getBiomes() { return _biomes; }
-        const LandCoverBiomes& getBiomes() const { return _biomes; }
+        GroundCoverBiomes& getBiomes() { return _biomes; }
+        const GroundCoverBiomes& getBiomes() const { return _biomes; }
 
     public:
 
@@ -154,7 +154,7 @@ namespace osgEarth { namespace Splat
         osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
     protected:
-        virtual ~LandCoverLayer() { }
+        virtual ~GroundCoverLayer() { }
 
         std::string     _name;
         Bounds          _bounds;
@@ -166,7 +166,7 @@ namespace osgEarth { namespace Splat
         float           _wind;
         float           _brightness;
         float           _contrast;
-        LandCoverBiomes _biomes;
+        GroundCoverBiomes _biomes;
 
         osg::ref_ptr<osg::StateSet> _stateSet;
 
@@ -174,23 +174,23 @@ namespace osgEarth { namespace Splat
         bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
     };
 
-    typedef std::vector< osg::ref_ptr<LandCoverLayer> > LandCoverLayers;
+    typedef std::vector< osg::ref_ptr<GroundCoverLayer> > GroundCoverLayers;
 
     /**
      * Describes all land cover for the scene.
      */
-    class OSGEARTHSPLAT_EXPORT LandCover : public osg::Referenced
+    class OSGEARTHSPLAT_EXPORT GroundCover : public osg::Referenced
     {
     public:
-        LandCover() { }
+        GroundCover() { }
 
         /** Resource library containing resources for the land cover assets */
         void setLibrary(ResourceLibrary* lib) { _lib = lib; }
         const ResourceLibrary* getLibrary() const { return _lib.get(); }
 
         /** Land cover layers */
-        LandCoverLayers& getLayers() { return _layers; }
-        const LandCoverLayers& getLayers() const { return _layers; }
+        GroundCoverLayers& getLayers() { return _layers; }
+        const GroundCoverLayers& getLayers() const { return _layers; }
 
         /** Layer that will mask out land cover */
         void setMaskLayer(ImageLayer* layer) { _maskLayer = layer; }
@@ -198,17 +198,17 @@ namespace osgEarth { namespace Splat
         const ImageLayer* getMaskLayer() const { return _maskLayer.get(); }
 
     protected:
-        virtual ~LandCover() { }
+        virtual ~GroundCover() { }
 
         osg::ref_ptr<ResourceLibrary> _lib;
-        LandCoverLayers               _layers;
+        GroundCoverLayers               _layers;
         osg::ref_ptr<ImageLayer>      _maskLayer;
         
     public:
         bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
     };
 
-    typedef std::vector< osg::ref_ptr<LandCover> > LandCovers;
+    typedef std::vector< osg::ref_ptr<GroundCover> > GroundCovers;
 
 
     //........................................................................
@@ -217,10 +217,10 @@ namespace osgEarth { namespace Splat
     /**
      * Configures one biome within a land cover layer.
      */
-    class LandCoverBiomeOptions : public ConfigOptions
+    class GroundCoverBiomeOptions : public ConfigOptions
     {
     public:
-        LandCoverBiomeOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+        GroundCoverBiomeOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
             fromConfig( _conf );
         }
 
@@ -270,10 +270,10 @@ namespace osgEarth { namespace Splat
     /**
      * Configures one layer of land cover data. 
      */
-    class LandCoverLayerOptions : public ConfigOptions
+    class GroundCoverLayerOptions : public ConfigOptions
     {
     public:
-        LandCoverLayerOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+        GroundCoverLayerOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
             fromConfig( _conf );
         }
 
@@ -316,8 +316,8 @@ namespace osgEarth { namespace Splat
         const optional<float>& contrast() const { return _contrast; }
 
         /** Biomes comprising this layer. */
-        std::vector<LandCoverBiomeOptions>& biomes() { return _biomes; }
-        const std::vector<LandCoverBiomeOptions>& biomes() const { return _biomes; }
+        std::vector<GroundCoverBiomeOptions>& biomes() { return _biomes; }
+        const std::vector<GroundCoverBiomeOptions>& biomes() const { return _biomes; }
 
     protected:
         optional<std::string>              _name;
@@ -329,7 +329,7 @@ namespace osgEarth { namespace Splat
         optional<float>                    _wind;
         optional<float>                    _brightness;
         optional<float>                    _contrast;
-        std::vector<LandCoverBiomeOptions> _biomes;
+        std::vector<GroundCoverBiomeOptions> _biomes;
 
     public:
         void fromConfig(const Config& conf) {
@@ -346,7 +346,7 @@ namespace osgEarth { namespace Splat
             if ( biomes ) {
                 const ConfigSet& biomesVec = biomes->children();
                 for( ConfigSet::const_iterator i = biomesVec.begin(); i != biomesVec.end(); ++i ) {
-                    _biomes.push_back( LandCoverBiomeOptions(*i) );
+                    _biomes.push_back( GroundCoverBiomeOptions(*i) );
                 }
             }
         }
@@ -383,10 +383,10 @@ namespace osgEarth { namespace Splat
      * Options for rendering land cover (environmental features that sit on the terrain
      * surface like trees, rocks, grass, etc.)
      */
-    class LandCoverOptions : public ConfigOptions
+    class GroundCoverOptions : public ConfigOptions
     {
     public:
-        LandCoverOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+        GroundCoverOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
             fromConfig( _conf );
         }
 
@@ -395,8 +395,8 @@ namespace osgEarth { namespace Splat
         const optional<URI>& library() const { return _resourceLibURI; }
 
         /** Layers of land cover data */
-        std::vector<LandCoverLayerOptions>& layers() { return _layers; }
-        const std::vector<LandCoverLayerOptions>& layers() const { return _layers; }
+        std::vector<GroundCoverLayerOptions>& layers() { return _layers; }
+        const std::vector<GroundCoverLayerOptions>& layers() const { return _layers; }
 
         /** Name of a map layer to use for masking out land cover. */
         optional<std::string>& maskLayerName() { return _maskLayerName; }
@@ -405,7 +405,7 @@ namespace osgEarth { namespace Splat
     protected:        
         optional<URI>                      _resourceLibURI; 
         optional<std::string>              _maskLayerName;
-        std::vector<LandCoverLayerOptions> _layers;
+        std::vector<GroundCoverLayerOptions> _layers;
 
     public:
         void fromConfig(const Config& conf) {
@@ -415,7 +415,7 @@ namespace osgEarth { namespace Splat
             if ( layers ) {
                 const ConfigSet& layerVec = layers->children();
                 for(ConfigSet::const_iterator i = layerVec.begin(); i != layerVec.end(); ++i ) {
-                    _layers.push_back( LandCoverLayerOptions(*i) );
+                    _layers.push_back( GroundCoverLayerOptions(*i) );
                 }
             }
         }
@@ -442,4 +442,4 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_PROCEDURAL_LANDCOVER
+#endif // OSGEARTH_PROCEDURAL_GroundCover

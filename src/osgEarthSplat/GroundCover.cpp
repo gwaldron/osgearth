@@ -1,4 +1,4 @@
-#include "LandCover"
+#include "GroundCover"
 #include "Coverage"
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
@@ -15,12 +15,12 @@ using namespace osgEarth;
 using namespace osgEarth::Splat;
 using namespace osgEarth::Symbology;
 
-#define LC "[LandCover] "
+#define LC "[GroundCover] "
 
 bool
-LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo)
+GroundCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo)
 {
-    LandCoverOptions in( conf );
+    GroundCoverOptions in( conf );
     
     if ( in.library().isSet() )
     {
@@ -41,7 +41,7 @@ LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Opt
     {
         for(int i=0; i<in.layers().size(); ++i)
         {
-            osg::ref_ptr<LandCoverLayer> layer = new LandCoverLayer();
+            osg::ref_ptr<GroundCoverLayer> layer = new GroundCoverLayer();
 
             if ( layer->configure( in.layers()[i], dbo ) )
             {
@@ -77,9 +77,9 @@ LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Opt
 //............................................................................
 
 bool
-LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+GroundCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 {
-    LandCoverLayerOptions in( conf );
+    GroundCoverLayerOptions in( conf );
 
     if ( in.name().isSet() )
         setName( in.name().get() );
@@ -108,7 +108,7 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 
     for(int i=0; i<in.biomes().size(); ++i)
     {
-        osg::ref_ptr<LandCoverBiome> biome = new LandCoverBiome();
+        osg::ref_ptr<GroundCoverBiome> biome = new GroundCoverBiome();
 
         if ( biome->configure( in.biomes()[i], dbo ) )
         {
@@ -125,7 +125,7 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 }
 
 int
-LandCoverLayer::getTotalNumBillboards() const
+GroundCoverLayer::getTotalNumBillboards() const
 {
     int count = 0;
     for(int i=0; i<getBiomes().size(); ++i)
@@ -136,7 +136,7 @@ LandCoverLayer::getTotalNumBillboards() const
 }
 
 osg::StateSet*
-LandCoverLayer::getOrCreateStateSet()
+GroundCoverLayer::getOrCreateStateSet()
 {
     if ( !_stateSet.valid() )
         _stateSet = new osg::StateSet();
@@ -144,7 +144,7 @@ LandCoverLayer::getOrCreateStateSet()
 }
 
 osg::Shader*
-LandCoverLayer::createShader() const
+GroundCoverLayer::createShader() const
 {
     std::stringstream biomeBuf;
     std::stringstream billboardBuf;
@@ -153,7 +153,7 @@ LandCoverLayer::createShader() const
 
     // encode all the biome data.
     biomeBuf << 
-        "struct oe_landcover_Biome { \n"
+        "struct oe_GroundCover_Biome { \n"
         "    int firstBillboardIndex; \n"
         "    int numBillboards; \n"
         "    float density; \n"
@@ -161,21 +161,21 @@ LandCoverLayer::createShader() const
         "    vec2 maxWidthHeight; \n"
         "}; \n"
 
-        "const oe_landcover_Biome oe_landcover_biomes[" << getBiomes().size() << "] = oe_landcover_Biome[" << getBiomes().size() << "] ( \n";
+        "const oe_GroundCover_Biome oe_GroundCover_biomes[" << getBiomes().size() << "] = oe_GroundCover_Biome[" << getBiomes().size() << "] ( \n";
 
     billboardBuf <<
-        "struct oe_landcover_Billboard { \n"
+        "struct oe_GroundCover_Billboard { \n"
         "    int arrayIndex; \n"
         "    float width; \n"
         "    float height; \n"
         "}; \n"
 
-        "const oe_landcover_Billboard oe_landcover_billboards[" << totalBillboards << "] = oe_landcover_Billboard[" << totalBillboards << "](\n";
+        "const oe_GroundCover_Billboard oe_GroundCover_billboards[" << totalBillboards << "] = oe_GroundCover_Billboard[" << totalBillboards << "](\n";
     
     int index = 0;
     for(int i=0; i<getBiomes().size(); ++i)
     {
-        const LandCoverBiome* biome = getBiomes()[i].get();
+        const GroundCoverBiome* biome = getBiomes()[i].get();
 
         float maxWidth = 0.0f, maxHeight = 0.0f;
         
@@ -183,10 +183,10 @@ LandCoverLayer::createShader() const
 
         for(int j=0; j<biome->getBillboards().size(); ++j)
         {
-            const LandCoverBillboard& bb = biome->getBillboards()[j];
+            const GroundCoverBillboard& bb = biome->getBillboards()[j];
 
             billboardBuf
-                << "    oe_landcover_Billboard("
+                << "    oe_GroundCover_Billboard("
                 << index 
                 << ", float(" << bb._width << ")"
                 << ", float(" << bb._height << ")"
@@ -207,7 +207,7 @@ LandCoverLayer::createShader() const
         // directions, but that's OK since we are rarely if ever going to GPU-cull
         // a billboard at the top of the viewport. -gw
 
-        biomeBuf << "    oe_landcover_Biome(" 
+        biomeBuf << "    oe_GroundCover_Biome(" 
             << firstIndex << ", "
             << biome->getBillboards().size() 
             << ", float(" << getDensity() << ")"
@@ -225,27 +225,27 @@ LandCoverLayer::createShader() const
         << "\n); \n";
 
     biomeBuf 
-        << "void oe_landcover_getBiome(in int biomeIndex, out oe_landcover_Biome biome) { \n"
-        << "    biome = oe_landcover_biomes[biomeIndex]; \n"
+        << "void oe_GroundCover_getBiome(in int biomeIndex, out oe_GroundCover_Biome biome) { \n"
+        << "    biome = oe_GroundCover_biomes[biomeIndex]; \n"
         << "} \n";
         
     billboardBuf
-        << "void oe_landcover_getBillboard(in int billboardIndex, out oe_landcover_Billboard billboard) { \n"
-        << "    billboard = oe_landcover_billboards[billboardIndex]; \n"
+        << "void oe_GroundCover_getBillboard(in int billboardIndex, out oe_GroundCover_Billboard billboard) { \n"
+        << "    billboard = oe_GroundCover_billboards[billboardIndex]; \n"
         << "} \n";
     
     osg::ref_ptr<ImageLayer> layer;
 
     osg::Shader* shader = new osg::Shader();
-    shader->setName( "LandCoverLayer" );
+    shader->setName( "GroundCoverLayer" );
     shader->setShaderSource( Stringify() << "#version 330\n" << biomeBuf.str() << "\n" << billboardBuf.str() );
     return shader;
 }
 
 osg::Shader*
-LandCoverLayer::createPredicateShader(const Coverage* coverage) const
+GroundCoverLayer::createPredicateShader(const Coverage* coverage) const
 {
-    const char* defaultCode = "int oe_landcover_getBiomeIndex(in vec4 coords) { return -1; }\n";
+    const char* defaultCode = "int oe_GroundCover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
     buf << "#version 330\n";
@@ -274,12 +274,12 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
 
         buf << "uniform sampler2D " << sampler << ";\n"
             << "uniform mat4 " << matrix << ";\n"
-            << "int oe_landcover_getBiomeIndex(in vec4 coords) { \n"
+            << "int oe_GroundCover_getBiomeIndex(in vec4 coords) { \n"
             << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
 
         for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
         {
-            const LandCoverBiome* biome = getBiomes()[biomeIndex].get();
+            const GroundCoverBiome* biome = getBiomes()[biomeIndex].get();
 
             if ( !biome->getClasses().empty() )
             {
@@ -332,7 +332,7 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
     }
     
     osg::Shader* shader = new osg::Shader();
-    shader->setName("oe Landcover predicate function");
+    shader->setName("oe GroundCover predicate function");
     shader->setShaderSource( buf.str() );
 
     return shader;
@@ -341,9 +341,9 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
 //............................................................................
 
 bool
-LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 {
-    LandCoverBiomeOptions in( conf );
+    GroundCoverBiomeOptions in( conf );
 
     if ( in.biomeClasses().isSet() )
         setClasses( in.biomeClasses().get() );
@@ -363,7 +363,7 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 
             if ( image )
             {
-                getBillboards().push_back( LandCoverBillboard(image, bs->width().get(), bs->height().get()) );
+                getBillboards().push_back( GroundCoverBillboard(image, bs->width().get(), bs->height().get()) );
             }
             else
             {
@@ -386,7 +386,7 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 }
 
 osg::Texture*
-LandCoverLayer::createTexture() const
+GroundCoverLayer::createTexture() const
 {
     osg::Texture2DArray* tex = new osg::Texture2DArray();
 
@@ -395,11 +395,11 @@ LandCoverLayer::createTexture() const
 
     for(int b=0; b<getBiomes().size(); ++b)
     {
-        const LandCoverBiome* biome = getBiomes()[b];
+        const GroundCoverBiome* biome = getBiomes()[b];
 
         for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
         {
-            const LandCoverBillboard& bb = biome->getBillboards()[i];
+            const GroundCoverBillboard& bb = biome->getBillboards()[i];
 
             osg::ref_ptr<osg::Image> im;
 

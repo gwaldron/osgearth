@@ -19,8 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SPLAT_LANDCOVER_TERRAIN_EFFECT_H
-#define OSGEARTH_SPLAT_LANDCOVER_TERRAIN_EFFECT_H
+#ifndef OSGEARTH_SPLAT_GroundCover_TERRAIN_EFFECT_H
+#define OSGEARTH_SPLAT_GroundCover_TERRAIN_EFFECT_H
 
 #include "Export"
 #include "Coverage"
@@ -36,11 +36,11 @@ namespace osgEarth { namespace Splat
     /**
      * Effect that renders land cover data (trees, grass, rocks, etc.)
      */
-    class OSGEARTHSPLAT_EXPORT LandCoverLayerFactory : public osg::Referenced
+    class OSGEARTHSPLAT_EXPORT GroundCoverLayerFactory : public osg::Referenced
     {
     public:
         /** constructor */
-        LandCoverLayerFactory();
+        GroundCoverLayerFactory();
 
         /**
          * Sets the OSG DB options to use when performing I/O
@@ -72,16 +72,16 @@ namespace osgEarth { namespace Splat
 
 
     protected:
-        virtual ~LandCoverLayerFactory() { }
+        virtual ~GroundCoverLayerFactory() { }
 
         osg::ref_ptr<const osgDB::Options> _dbo;
 
         osg::ref_ptr<Coverage> _coverage;
         Zones _zones;
         int _noiseTexUnit;
-        int _landCoverTexUnit;
+        int _GroundCoverTexUnit;
     };
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_SPLAT_LANDCOVER_TERRAIN_EFFECT_H
+#endif // OSGEARTH_SPLAT_GroundCover_TERRAIN_EFFECT_H

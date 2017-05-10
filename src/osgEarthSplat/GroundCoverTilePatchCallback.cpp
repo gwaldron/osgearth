@@ -19,7 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "LandCoverTilePatchCallback"
+#if 0
+#include "GroundCoverTilePatchCallback"
 #include <osgEarth/TraversalData>
 #include <osgEarth/Shadowing>
 #include <osgUtil/CullVisitor>
@@ -27,15 +28,15 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-#define LC "[LandCoverTilePatchCallback] "
+#define LC "[GroundCoverTilePatchCallback] "
 
 void
-LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
+GroundCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
                                  const TileKey&        key,
                                  osg::StateSet*        tileStateSet,
                                  osg::Node*            tilePatch)
 {
-    RefUID* zoneIndex = VisitorData::fetch<RefUID>(*cv, "oe.LandCover.zoneIndex");
+    RefUID* zoneIndex = VisitorData::fetch<RefUID>(*cv, "oe.GroundCover.zoneIndex");
     if ( zoneIndex && (*zoneIndex) < _zones.size() )
     {
         // Figure out what type of camera this is:
@@ -51,11 +52,11 @@ LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
             //ZoneData& zone = _zones[*zoneIndex];
             Zone* zone = _zones[*zoneIndex].get();
 
-            LandCoverLayers& layers = zone->getLandCover()->getLayers();
+            GroundCoverLayers& layers = zone->getGroundCover()->getLayers();
             for(int i=0; i<layers.size(); ++i)
             {
                 //LayerData& layerData = zone._layers[i];
-                LandCoverLayer* layer = layers[i].get();
+                GroundCoverLayer* layer = layers[i].get();
 
                 if ( layer->getLOD() == key.getLOD() &&
                     (!isShadowCamera || layer->getCastShadows()) )
@@ -83,7 +84,8 @@ LandCoverTilePatchCallback::cull(osgUtil::CullVisitor* cv,
 }
 
 void
-LandCoverTilePatchCallback::release(const TileKey& key)
+GroundCoverTilePatchCallback::release(const TileKey& key)
 {
     // nop - implementation is stateless.
 }
+#endif

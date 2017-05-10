@@ -3,8 +3,6 @@
 // TODO:
 // Encapsulate the "use normal map" define logic in the terrain SDK itself.
 
-#pragma vp_define OE_USE_NORMAL_MAP
-
 #ifdef OE_USE_NORMAL_MAP
 
 // import SDK

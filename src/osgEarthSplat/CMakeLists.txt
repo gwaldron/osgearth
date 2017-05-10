@@ -18,10 +18,10 @@ set(TARGET_GLSL
     Splat.frag.glsl
     Splat.frag.common.glsl
     Splat.util.glsl
-    LandCover.TCS.glsl
-    LandCover.TES.glsl
-    LandCover.GS.glsl
-    LandCover.FS.glsl )
+    GroundCover.TCS.glsl
+    GroundCover.TES.glsl
+    GroundCover.GS.glsl
+    GroundCover.FS.glsl )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -35,9 +35,9 @@ set(TARGET_IN
 
 set(TARGET_SRC
     Coverage.cpp
-    LandCover.cpp
-    LandCoverLayerFactory.cpp
-    LandCoverTilePatchCallback.cpp
+    GroundCover.cpp
+    GroundCoverLayerFactory.cpp
+    GroundCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
@@ -53,9 +53,9 @@ set(TARGET_SRC
 set(LIB_PUBLIC_HEADERS
     Coverage
 	Export
-    LandCover
-    LandCoverLayerFactory
-    LandCoverTilePatchCallback
+    GroundCover
+    GroundCoverLayerFactory
+    GroundCoverTilePatchCallback
     LandUseTileSource
     NoiseTextureFactory
     RoadSurfaceLayer

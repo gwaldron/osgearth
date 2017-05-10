@@ -7,16 +7,11 @@
 #pragma vp_entryPoint oe_splat_complex
 #pragma vp_location   fragment_coloring
 
-// define to activate 'edit' mode in which uniforms control
-// the splatting parameters.
-#pragma vp_define SPLAT_EDIT
-
-// define to activate GPU-generated noise instead of a noise texture.
-#pragma vp_define SPLAT_GPU_NOISE
-
 // include files
 #pragma include Splat.types.glsl
 #pragma include Splat.frag.common.glsl
+
+#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT, OE_SPLAT_GPU_NOISE)
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
@@ -86,7 +81,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 {
     float hasDetail = clamp(ri.detailIndex+1.0, 0.0, 1.0);
 
-#ifdef SPLAT_EDIT
+#ifdef OE_SPLAT_EDIT
     float brightness = oe_splat_brightness;
     float contrast = oe_splat_contrast;
     float threshold = oe_splat_threshold;
@@ -199,7 +194,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     return texel;
 }
 
-#ifdef SPLAT_GPU_NOISE
+#ifdef OE_SPLAT_GPU_NOISE
 
 uniform float oe_splat_freq;
 uniform float oe_splat_pers;
@@ -216,11 +211,18 @@ vec4 oe_splat_getNoise(in vec2 tc)
 
 #else // !SPLAT_GPU_NOISE
 
+#ifdef OE_SPLAT_HAVE_NOISE_SAMPLER
 uniform sampler2D oe_splat_noiseTex;
 vec4 oe_splat_getNoise(in vec2 tc)
 {
     return texture(oe_splat_noiseTex, tc.st);
 }
+#else
+vec4 oe_splat_getNoise(in vec2 tc)
+{
+    return vec4(0.0);
+}
+#endif
 
 #endif // SPLAT_GPU_NOISE
 

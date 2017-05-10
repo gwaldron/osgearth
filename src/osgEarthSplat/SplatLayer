@@ -25,41 +25,122 @@
 #include "Export"
 #include "Coverage"
 #include "Zone"
-
 #include <osgEarth/VisibleLayer>
+#include <osgEarth/LayerListener>
+#include <osgEarth/LandCoverLayer>
 
-using namespace osgEarth;
-
+namespace osgEarth {
+    namespace Features {
+        class FeatureSource;
+        class FeatureSourceLayer;
+    }
+}
 namespace osgEarth { namespace Splat
 {
-    /**
-     * Layer that renders splatted terrain tiles
-     */
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    
+    //! Options to configure a splat layer.
+    class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
+    {
+    public:
+        SplatLayerOptions(const ConfigOptions& co = ConfigOptions()) :
+            VisibleLayerOptions(co)
+        {
+            fromConfig(_conf);
+        }
+
+        //! Optional layer containing zone information (NOT YET IMPLEMENTED)
+        optional<std::string>& zoneLayer() { return _zoneLayerName; }
+        const optional<std::string>& zoneLayer() const { return _zoneLayerName; }
+
+        //! Required layer containing land cover data
+        optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
+        const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }
+
+        std::vector<ZoneOptions>& zones() { return _zones; }
+        const std::vector<ZoneOptions>& zones() const { return _zones; }
+
+    public:
+        virtual Config getConfig() const;
+    protected:
+        virtual void mergeConfig(const Config& conf) {
+            VisibleLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+        void fromConfig(const Config& conf);
+
+    private:
+        optional<std::string> _zoneLayerName;
+        optional<std::string> _landCoverLayerName;
+        std::vector<ZoneOptions> _zones;
+    };
+
+
+    //! Layer that renders geotypical textures on the terrain based on
+    //! classification data ("texture splatting").
     class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
-        /** constructor */
+        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions);
+
+        //! Construct a splat layer with default configuration
         SplatLayer();
+        
+        //! Construct a splat layer with configuration options
+        SplatLayer(const SplatLayerOptions& options);
 
-        /**
-         * Coverage source
-         */
-        void setCoverage(Coverage* coverage) { _coverage = coverage; }
-        Coverage* getCoverage() const { return _coverage.get(); }
+        //! The feature source containing the optional Zone information
+        void setZoneFeatureSource(FeatureSource* zoneFS);
 
-        /**
-         * Splatting zones
-         */
-        void setZones(const Zones& zones) { _zones = zones; }
-        const Zones& getZones() const { return _zones; }
+        //! The layer containing optional zone features
+        void setZoneLayer(FeatureSourceLayer* zoneLayer);
 
+        //! Layer containing required coverage data
+        void setLandCoverLayer(LandCoverLayer* landCoverLayer);
+
+        //! Layer containing the land cover dictionary.
+        void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
+
+    public: // Layer
+
+        //! Override
+        bool preCull(osgUtil::CullVisitor* cv) const;
+        void postCull(osgUtil::CullVisitor* cv) const;
+
+    protected:
+
+        //! Override post-ctor init
+        virtual void init();
+
+    public:
+
+        //! Called when this layer is added to the map
+        virtual void addedToMap(const Map* map);
+        virtual void removedFromMap(const Map* map);
+        virtual osg::Node* getOrCreateNode(TerrainResources*);
 
     protected:
         virtual ~SplatLayer() { }
 
-        osg::ref_ptr<Coverage> _coverage;
-        Zones                  _zones;
+        osg::observer_ptr<FeatureSource> _zoneFeatures;
+        osg::observer_ptr<LandCoverDictionary> _landCoverDict;
+        osg::observer_ptr<LandCoverLayer> _landCoverLayer;
 
+        LayerListener<SplatLayer, FeatureSourceLayer> _zoneLayerListener;
+        LayerListener<SplatLayer, LandCoverDictionary> _landCoverDictListener;
+        LayerListener<SplatLayer, LandCoverLayer> _landCoverListener;
+
+        TextureImageUnitReservation _splatBinding;
+        TextureImageUnitReservation _lutBinding;
+        TextureImageUnitReservation _noiseBinding;
+
+        Zones _zones;
+        bool _zonesConfigured;
+        bool _editMode;
+        bool _gpuNoise;
+
+        void buildStateSets();
     };
 
 } } // namespace osgEarth::Splat

@@ -19,6 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #ifndef OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
 #define OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
 
@@ -113,3 +114,4 @@ namespace osgEarth { namespace Splat
 } } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
+#endif

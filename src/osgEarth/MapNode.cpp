@@ -604,7 +604,7 @@ MapNode::getLayerNodeGroup() const
 osg::Node*
 MapNode::getLayerNode(Layer* layer) const
 {
-    return layer ? layer->getNode() : 0L;
+    return layer ? layer->getOrCreateNode(0L) : 0L;
 }
 
 
@@ -639,7 +639,8 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
         modelLayer->getOrCreateSceneGraph(_map.get(), _map->getReadOptions(), 0L);
     }
 
-    osg::Node* node = layer->getNode();
+    // Create the node.
+    osg::Node* node = layer->getOrCreateNode(getTerrainEngine()->getResources());
     if (node)    
     {
         osg::Group* nodeContainer = new osg::Group();
@@ -680,11 +681,16 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
 void
 MapNode::onLayerRemoved(Layer* layer, unsigned index)
 {
-    if (!layer || !layer->getNode())
+    if (layer == 0L)
         return;
 
-    _layerNodes->removeChild(layer->getNode());
+    osg::Node* node = layer->getOrCreateNode(0L);
+    if (node == 0L)
+        return;
+
+    _layerNodes->removeChild(node);
 }
+
 
 namespace
 {

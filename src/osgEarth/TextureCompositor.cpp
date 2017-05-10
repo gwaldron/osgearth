@@ -55,6 +55,31 @@ TerrainResources::reserveTextureImageUnit(int&        out_unit,
     return false;
 }
 
+bool
+TerrainResources::reserveTextureImageUnit(TextureImageUnitReservation& reservation,
+                                          const char* requestor)
+{
+    reservation._unit = -1;
+    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    
+    Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
+    for( unsigned i=0; i<maxUnits; ++i )
+    {
+        if (_reservedUnits.find(i) == _reservedUnits.end())
+        {
+            _reservedUnits.insert( i );
+            reservation._unit = i;
+            reservation._res = this;
+            if ( requestor )
+            {
+                OE_INFO << LC << "Texture unit " << i << " reserved for " << requestor << "\n";
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 void
 TerrainResources::releaseTextureImageUnit(int unit)
 {
@@ -75,5 +100,16 @@ TerrainResources::setTextureImageUnitOffLimits(int unit)
     {
         _reservedUnits.insert( unit );
         return true;
+    }
+}
+
+//........................................................................
+
+TextureImageUnitReservation::~TextureImageUnitReservation()
+{
+    osg::ref_ptr<TerrainResources> res;
+    if (_unit >= 0 && _res.lock(res))
+    {
+        res->releaseTextureImageUnit(_unit);
     }
 }

@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "LandCoverLayerFactory"
+#include "GroundCoverLayerFactory"
 #include "SplatOptions"
 #include "NoiseTextureFactory"
 
@@ -40,7 +40,7 @@
 
 #include "SplatShaders"
 
-#define LC "[LandCoverLayerFactory] "
+#define LC "[GroundCoverLayerFactory] "
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -48,14 +48,14 @@ using namespace osgEarth::Splat;
 namespace
 {
     //TODO: fix ambiguous inheritance issue here:
-    class LandCoverPatchLayer : public PatchLayer
+    class GroundCoverPatchLayer : public PatchLayer
     {
     public:
         struct AcceptCallbackAdapter : public PatchLayer::AcceptCallback
         {
-            LandCoverPatchLayer* _owner;
+            GroundCoverPatchLayer* _owner;
 
-            AcceptCallbackAdapter(LandCoverPatchLayer* owner) : _owner(owner) { }
+            AcceptCallbackAdapter(GroundCoverPatchLayer* owner) : _owner(owner) { }
 
             bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const {
                 return _owner->acceptLayer(nv, camera);
@@ -67,15 +67,15 @@ namespace
         };
 
     public:
-        LandCoverPatchLayer() : PatchLayer()
+        GroundCoverPatchLayer() : PatchLayer()
         {
             this->setAcceptCallback(new AcceptCallbackAdapter(this));
         }
 
-        void setZoneAndLayer(const Zone* zone, const LandCoverLayer* layer)
+        void setZoneAndLayer(const Zone* zone, const GroundCoverLayer* layer)
         {
             _zone = zone;
-            _landCoverLayer = layer;
+            _GroundCoverLayer = layer;
         }
 
     public: // AcceptCallbackAdapter
@@ -88,14 +88,14 @@ namespace
         bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
         {
             // If this layer doesn't belong to the active zone, reject it.
-            const Zone* zone = VisitorData::fetch<const Zone>(nv, "oe.landcover.zone");
+            const Zone* zone = VisitorData::fetch<const Zone>(nv, "oe.GroundCover.zone");
             if (zone && zone != _zone.get())
                 return false;
             
             // if this is a shadow camera and the layer is configured to cast shadows, accept it.
             if (osgEarth::Shadowing::isShadowCamera(camera))
             {
-                bool ok = (_landCoverLayer->getCastShadows() == true);
+                bool ok = (_GroundCoverLayer->getCastShadows() == true);
                 //OE_INFO << "Layer=" << getName() << " - shadow pass (" << ok << ")\n";
                 return ok;
             }
@@ -113,25 +113,25 @@ namespace
 
         bool acceptKey(const TileKey& key) const
         {
-            return _landCoverLayer->getLOD() == key.getLOD();
+            return _GroundCoverLayer->getLOD() == key.getLOD();
         }
 
     private:
         osg::ref_ptr<const Zone> _zone;
-        osg::ref_ptr<const LandCoverLayer> _landCoverLayer;
+        osg::ref_ptr<const GroundCoverLayer> _GroundCoverLayer;
     };
 }
 
 
-LandCoverLayerFactory::LandCoverLayerFactory() :
+GroundCoverLayerFactory::GroundCoverLayerFactory() :
 _noiseTexUnit    ( -1 ),
-_landCoverTexUnit( -1 )
+_GroundCoverTexUnit( -1 )
 {
     //nop
 }
 
 void
-LandCoverLayerFactory::setDBOptions(const osgDB::Options* dbo)
+GroundCoverLayerFactory::setDBOptions(const osgDB::Options* dbo)
 {
     _dbo = dbo;
 }
@@ -148,24 +148,25 @@ LandCoverLayerFactory::setDBOptions(const osgDB::Options* dbo)
 //}
 
 void
-LandCoverLayerFactory::install(MapNode* mapNode)
+GroundCoverLayerFactory::install(MapNode* mapNode)
 {    
+#if 0
     if ( !mapNode )
         return;
 
     // first make sure there is land cover data available:
-    bool landCoverActive = false;
+    bool GroundCoverActive = false;
     for (Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
     {
         Zone* zone = z->get();
-        LandCover* landcover = zone->getLandCover();
-        if (landcover)
+        GroundCover* GroundCover = zone->getGroundCover();
+        if (GroundCover)
         {
-            landCoverActive = true;
+            GroundCoverActive = true;
         }
     }
 
-    if (landCoverActive)
+    if (GroundCoverActive)
     {
         //if (!mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Noise"))
         //{
@@ -173,9 +174,9 @@ LandCoverLayerFactory::install(MapNode* mapNode)
         //    return;
         //}
 
-        if (!mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(_landCoverTexUnit, "LandCover"))
+        if (!mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(_GroundCoverTexUnit, "GroundCover"))
         {
-            OE_WARN << LC << "No texture image unit available for LandCover." << std::endl;
+            OE_WARN << LC << "No texture image unit available for GroundCover." << std::endl;
             return;
         }
 
@@ -185,14 +186,14 @@ LandCoverLayerFactory::install(MapNode* mapNode)
         for (Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
         {
             Zone* zone = z->get();
-            LandCover* landCover = zone->getLandCover();
-            if (landCover)
+            GroundCover* GroundCover = zone->getGroundCover();
+            if (GroundCover)
             {
-                for (LandCoverLayers::iterator i = landCover->getLayers().begin();
-                    i != landCover->getLayers().end();
+                for (GroundCoverLayers::iterator i = GroundCover->getLayers().begin();
+                    i != GroundCover->getLayers().end();
                     ++i)
                 {
-                    LandCoverLayer* layer = i->get();
+                    GroundCoverLayer* layer = i->get();
                     if (layer)
                     {
                         if (!layer->getBiomes().empty() || layer->getTotalNumBillboards() > 0)
@@ -202,16 +203,16 @@ LandCoverLayerFactory::install(MapNode* mapNode)
                             //stateset->setTextureAttribute(_noiseTexUnit, noiseTexture.get());
                             //stateset->addUniform(new osg::Uniform("oe_splat_noiseTex", _noiseTexUnit));
 
-                            bool useMask = (landCover->getMaskLayer() != 0L);
+                            bool useMask = (GroundCover->getMaskLayer() != 0L);
 
                             // Install the land cover shaders on the state set
                             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
                             vp->setName("Land Cover (" + layer->getName() + ")");
-                            LandCoverShaders shaders;
+                            GroundCoverShaders shaders;
                             if (useMask)
                             {
-                                shaders.replace("MASK_SAMPLER", landCover->getMaskLayer()->shareTexUniformName().get());
-                                shaders.replace("MASK_TEXTURE", landCover->getMaskLayer()->shareTexMatUniformName().get());
+                                shaders.replace("MASK_SAMPLER", GroundCover->getMaskLayer()->shareTexUniformName().get());
+                                shaders.replace("MASK_TEXTURE", GroundCover->getMaskLayer()->shareTexMatUniformName().get());
                             }
                             shaders.loadAll(vp, _dbo.get());
 
@@ -233,19 +234,19 @@ LandCoverLayerFactory::install(MapNode* mapNode)
                             OE_INFO << LC << "Adding land cover layer \"" << layer->getName() << "\" to zone \"" << zone->getName() << "\" at LOD " << layer->getLOD() << "\n";
 
                             // Install the uniforms
-                            stateset->addUniform(new osg::Uniform("oe_landcover_windFactor", layer->getWind()));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_noise", 1.0f));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_ao", 0.5f));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_exposure", 1.0f));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_windFactor", layer->getWind()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
 
-                            stateset->addUniform(new osg::Uniform("oe_landcover_density", layer->getDensity()));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_fill", layer->getFill()));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_maxDistance", layer->getMaxDistance()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_density", layer->getDensity()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_fill", layer->getFill()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", layer->getMaxDistance()));
 
-                            stateset->addUniform(new osg::Uniform("oe_landcover_brightness", layer->getBrightness()));
-                            stateset->addUniform(new osg::Uniform("oe_landcover_contrast", layer->getContrast()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_brightness", layer->getBrightness()));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_contrast", layer->getContrast()));
 
-                            stateset->addUniform(new osg::Uniform("oe_landcover_useMask", useMask));
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_useMask", useMask));
 
                             // enable alpha-to-coverage multisampling for vegetation.
                             stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
@@ -263,12 +264,12 @@ LandCoverLayerFactory::install(MapNode* mapNode)
 
                             osg::Texture* tex = layer->createTexture();
 
-                            stateset->setTextureAttribute(_landCoverTexUnit, tex);
-                            stateset->addUniform(new osg::Uniform("oe_landcover_texArray", _landCoverTexUnit));
+                            stateset->setTextureAttribute(_GroundCoverTexUnit, tex);
+                            stateset->addUniform(new osg::Uniform("oe_GroundCover_texArray", _GroundCoverTexUnit));
 
 
                             //osgEarth::PatchLayer* patch = new osgEarth::PatchLayer();
-                            LandCoverPatchLayer* patch = new LandCoverPatchLayer();
+                            GroundCoverPatchLayer* patch = new GroundCoverPatchLayer();
                             patch->setZoneAndLayer(zone, layer);
                             patch->setName("Land Cover: " + layer->getName());
                             //patch->setAcceptCallback( new AcceptLOD(layer->getLOD()) );
@@ -297,16 +298,17 @@ LandCoverLayerFactory::install(MapNode* mapNode)
     {
         OE_DEBUG << LC << "No land cover information found\n";
     }
+#endif
 }
 
 void
-LandCoverLayerFactory::uninstall(MapNode* mapNode)
+GroundCoverLayerFactory::uninstall(MapNode* mapNode)
 {
     //TODO
     if (mapNode)
     {
-        if (_landCoverTexUnit >= 0)
-            mapNode->getTerrainEngine()->getResources()->releaseTextureImageUnit(_landCoverTexUnit);
+        if (_GroundCoverTexUnit >= 0)
+            mapNode->getTerrainEngine()->getResources()->releaseTextureImageUnit(_GroundCoverTexUnit);
     
         if (_noiseTexUnit >= 0)
             mapNode->getTerrainEngine()->getResources()->releaseTextureImageUnit(_noiseTexUnit);

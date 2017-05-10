@@ -284,16 +284,12 @@ namespace
         ImageUtils::markAsUnNormalized(out, true);
 
         // Allocate a suitable format:
-        GLenum dataType;
-        GLint  internalFormat;
-    
-        // 32-bit float:
-        internalFormat = GL_LUMINANCE32F_ARB;
+        GLint  internalFormat = GL_LUMINANCE32F_ARB;
 
         int tilesize = getPixelsPerTile();
 
         out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
-        out->setInternalTextureFormat(internalFormat);
+        out->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
 
         osg::Vec2 cov;    // coverage coordinates
 

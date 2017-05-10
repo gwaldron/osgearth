@@ -21,7 +21,7 @@
 
 #include "Export"
 #include "Surface"
-#include "LandCover"
+#include "GroundCover"
 #include <osgEarth/TerrainEngineNode>
 #include <osg/BoundingBox>
 #include <osg/Polytope>
@@ -37,76 +37,6 @@ namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
 
-    /**
-     * A zone limits a particular surface or land cover layer to a set of
-     * geographic boundaries.
-     */
-    class OSGEARTHSPLAT_EXPORT Zone : public osg::Referenced
-    {
-    public:
-        struct Boundary
-        {
-            GeoExtent     extent;
-            double        zmin, zmin2;
-            double        zmax, zmax2;
-            double        meanRadius2;
-            osg::Polytope tope;
-        };
-        typedef std::vector<Boundary> Boundaries;
-
-    public:
-        Zone() : _uid(0) { }
-
-        void setName(const std::string& name) { _name = name; }
-        const std::string& getName() const { return _name; }
-
-        Boundaries& getBoundaries() { return _boundaries; }
-        const Boundaries& getBoundaries() const { return _boundaries; }
-
-        Surface* getSurface() const { return _surface.get(); }
-
-        LandCover* getLandCover() const { return _landCover.get(); }
-
-        osg::StateSet* getStateSet() { return _stateSet.get(); }
-
-        osg::StateSet* getOrCreateStateSet();
-
-        bool contains(const osg::Vec3& points) const;
-
-        void setUID(UID uid) { _uid = uid; }
-        UID getUID() const { return _uid; }
-
-    protected:
-        virtual ~Zone() { }
-        std::string                 _name;
-        UID                         _uid;
-        Boundaries                  _boundaries;
-        osg::ref_ptr<Surface>       _surface;
-        osg::ref_ptr<LandCover>     _landCover;
-        osg::ref_ptr<osg::StateSet> _stateSet;
-
-    public:
-        bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
-    };
-
-    typedef std::vector<osg::ref_ptr<Zone> > Zones;
-
-    
-    /**
-     * Cull callback that will select the most appropriate Zone based on the camera position
-     * Internal - no export
-     */
-    class OSGEARTHSPLAT_EXPORT ZoneSwitcher : public osg::NodeCallback
-    {
-    public:
-        ZoneSwitcher(const Zones& zones) : _zones(zones) { }
-
-    public: // NodeCallback
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
-
-    protected:
-        Zones _zones;
-    };
 
     //........................................................................
 
@@ -133,14 +63,14 @@ namespace osgEarth { namespace Splat
         const optional<SurfaceOptions>& surface() const { return _surface; }
 
         /** Land Cover rendering options */
-        optional<LandCoverOptions>& landCover() { return _landCover; }
-        const optional<LandCoverOptions>& landCover() const { return _landCover; }
+        //optional<GroundCoverOptions>& GroundCover() { return _GroundCover; }
+        //const optional<GroundCoverOptions>& GroundCover() const { return _GroundCover; }
 
     protected:
         optional<std::string>         _name;
         std::vector<osg::BoundingBox> _boundaries;
         optional<SurfaceOptions>      _surface;
-        optional<LandCoverOptions>    _landCover;
+        //optional<GroundCoverOptions>    _GroundCover;
 
     public:
         void fromConfig(const Config& conf);
@@ -148,7 +78,79 @@ namespace osgEarth { namespace Splat
     };
 
     typedef std::vector<ZoneOptions> ZoneOptionsVector;
+    
 
+    /**
+     * A zone limits a particular surface or land cover layer to a set of
+     * geographic boundaries.
+     */
+    class OSGEARTHSPLAT_EXPORT Zone : public osg::Referenced
+    {
+    public:
+        struct Boundary
+        {
+            GeoExtent     extent;
+            double        zmin, zmin2;
+            double        zmax, zmax2;
+            double        meanRadius2;
+            osg::Polytope tope;
+        };
+        typedef std::vector<Boundary> Boundaries;
+
+    public:
+        Zone(const ZoneOptions& options);
+
+        void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
+
+        Boundaries& getBoundaries() { return _boundaries; }
+        const Boundaries& getBoundaries() const { return _boundaries; }
+
+        void setSurface(Surface* surface) { _surface = surface; }
+        Surface* getSurface() const { return _surface.get(); }
+
+        osg::StateSet* getStateSet() { return _stateSet.get(); }
+
+        osg::StateSet* getOrCreateStateSet();
+
+        bool contains(const osg::Vec3& points) const;
+
+        void setUID(UID uid) { _uid = uid; }
+        UID getUID() const { return _uid; }
+
+    protected:
+        virtual ~Zone() { }
+        std::string                 _name;
+        UID                         _uid;
+        Boundaries                  _boundaries;
+        osg::ref_ptr<Surface>       _surface;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        const ZoneOptions           _options;
+
+    public:
+        bool configure(const Map* map, const osgDB::Options* readOptions);
+    };
+
+    typedef std::vector<osg::ref_ptr<Zone> > Zones;
+
+
+    
+    
+    /**
+     * Cull callback that will select the most appropriate Zone based on the camera position
+     * Internal - no export
+     */
+    class OSGEARTHSPLAT_EXPORT ZoneSwitcher : public osg::NodeCallback
+    {
+    public:
+        ZoneSwitcher(const Zones& zones) : _zones(zones) { }
+
+    public: // NodeCallback
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    protected:
+        Zones _zones;
+    };
 
 } } // namespace osgEarth::Splat
 

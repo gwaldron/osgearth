@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _bindings(0L) { }
 
         /** Set up the map layers before culling the terrain */
-        void setup(const MapFrame& frame, const RenderBindings& bindings, unsigned frameNum, osg::NodeVisitor& nv, const osg::Camera* camera);
+        void setup(const MapFrame& frame, const RenderBindings& bindings, unsigned frameNum, osgUtil::CullVisitor* cv);
 
         /** Optimize for best state sharing (when using geometry pooling) */
         void sortDrawCommands();

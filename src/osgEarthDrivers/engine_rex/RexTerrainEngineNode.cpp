@@ -604,7 +604,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
                 //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
 
-                cv->apply(*lastLayer);
+                if (lastLayer->_layer)
+                {
+                    if (lastLayer->_layer->preCull(cv))
+                    {
+                        cv->apply(*lastLayer);
+                        lastLayer->_layer->postCull(cv);
+                    }
+                }
+                else
+                {
+                    cv->apply(*lastLayer);
+                }
             }
 
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";

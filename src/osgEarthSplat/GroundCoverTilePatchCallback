@@ -19,8 +19,9 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SPLAT_LANDCOVER_TILE_PATCH_CALLBACK_H
-#define OSGEARTH_SPLAT_LANDCOVER_TILE_PATCH_CALLBACK_H
+#if 0
+#ifndef OSGEARTH_SPLAT_GroundCover_TILE_PATCH_CALLBACK_H
+#define OSGEARTH_SPLAT_GroundCover_TILE_PATCH_CALLBACK_H
 
 #include "Export"
 #include "Zone"
@@ -33,11 +34,11 @@ namespace osgEarth { namespace Splat
     /**
      * Tile Patch callback that renders the land cover data.
      */
-    class LandCoverTilePatchCallback : public TilePatchCallback
+    class GroundCoverTilePatchCallback : public TilePatchCallback
     {
     public:
         /** constructor */
-        LandCoverTilePatchCallback() { }
+        GroundCoverTilePatchCallback() { }
 
         Zones _zones;
 
@@ -55,4 +56,5 @@ namespace osgEarth { namespace Splat
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_SPLAT_LANDCOVER_TILE_PATCH_CALLBACK_H
+#endif // OSGEARTH_SPLAT_GroundCover_TILE_PATCH_CALLBACK_H
+#endif

@@ -94,7 +94,7 @@ namespace osgEarth { namespace Features
         virtual const Status& open();
 
         // The Node representing this layer.
-        virtual osg::Node* getNode() const;
+        virtual osg::Node* getOrCreateNode(TerrainResources*);
 
     protected: // Layer
         

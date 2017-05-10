@@ -31,17 +31,17 @@ SplattingShaders::SplattingShaders()
 }
 
 
-LandCoverShaders::LandCoverShaders()
+GroundCoverShaders::GroundCoverShaders()
 {
-    LandCover_TCS = "LandCover.TCS.glsl";
-    _sources[LandCover_TCS] = "@LandCover.TCS.glsl@";
+    GroundCover_TCS = "GroundCover.TCS.glsl";
+    _sources[GroundCover_TCS] = "@GroundCover.TCS.glsl@";
 
-    LandCover_TES = "LandCover.TES.glsl";
-    _sources[LandCover_TES] = "@LandCover.TES.glsl@";
+    GroundCover_TES = "GroundCover.TES.glsl";
+    _sources[GroundCover_TES] = "@GroundCover.TES.glsl@";
 
-    LandCover_GS = "LandCover.GS.glsl";
-    _sources[LandCover_GS] = "@LandCover.GS.glsl@";
+    GroundCover_GS = "GroundCover.GS.glsl";
+    _sources[GroundCover_GS] = "@GroundCover.GS.glsl@";
 
-    LandCover_FS = "LandCover.FS.glsl";
-    _sources[LandCover_FS] = "@LandCover.FS.glsl@";
+    GroundCover_FS = "GroundCover.FS.glsl";
+    _sources[GroundCover_FS] = "@GroundCover.FS.glsl@";
 }

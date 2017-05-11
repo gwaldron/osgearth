@@ -67,6 +67,9 @@ using namespace osgEarth::Util;
     manip->getSettings()->setThrowDecayRate(0.1);
     _viewer->setCameraManipulator( manip );
     
+    osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
+    osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
+    
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
     {
@@ -98,8 +101,8 @@ using namespace osgEarth::Util;
     material->setAmbient(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
     material->setDiffuse(osg::Material::FRONT, osg::Vec4(0.9,0.9,0.9,1.0));
     material->setSpecular(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
-    root->getOrCreateStateSet()->setAttribute(material); //lighting doesn't work without a material for some reason
-    root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);//comment out to disable lighting
+    //root->getOrCreateStateSet()->setAttribute(material); //lighting doesn't work without a material for some reason
+    //root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);//comment out to disable lighting
     
     /*double hours = 12.0f;
     float ambientBrightness = 1.0f;
@@ -123,6 +126,8 @@ using namespace osgEarth::Util;
     
     osg::setNotifyLevel(osg::DEBUG_FP);
     osgEarth::setNotifyLevel(osg::DEBUG_FP);
+    
+    osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_BUFFER_OBJECT);
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];
@@ -149,7 +154,7 @@ using namespace osgEarth::Util;
 	traits->alpha = 8;
     //traits->samples = 4;
     //traits->sampleBuffers = 2;
-	traits->stencil = 0;
+	traits->stencil = 8;
 	traits->windowDecoration = false;
 	traits->doubleBuffer = true;
 	traits->sharedContext = 0;
@@ -182,7 +187,7 @@ using namespace osgEarth::Util;
     
     //optimize viewer and db pager
     _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-    _viewer->getCamera()->setLODScale(_viewer->getCamera()->getLODScale()/2.0);
+    //_viewer->getCamera()->setLODScale(_viewer->getCamera()->getLODScale()/2.0);
     
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

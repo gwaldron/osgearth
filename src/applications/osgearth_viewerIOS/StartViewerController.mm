@@ -42,7 +42,8 @@
     
     fileArray = [[NSMutableArray alloc] init];
     
-    std::string fullPath = osgDB::findDataFile("readymap.earth");
+    std::string fullPath = osgDB::findDataFile("tests/readymap.earth");
+    if(fullPath.empty()) fullPath = osgDB::findDataFile("readymap.earth");
     
     osgDB::DirectoryContents dirContents = osgDB::getDirectoryContents(osgDB::getFilePath(fullPath));
     for(unsigned int i=0; i<dirContents.size(); i++){

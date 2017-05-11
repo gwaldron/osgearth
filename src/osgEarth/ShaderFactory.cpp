@@ -81,6 +81,7 @@ namespace
         std::string interp;      // interpolation qualifer (flat, etc.)
         std::string type;        // float, vec4, etc.
         std::string name;        // name without any array specifiers, etc.
+        std::string prec;        // precision qualifier if any
         std::string declaration; // name including array specifiers (for decl)
         int         arraySize;   // 0 if not an array; else array size.
     };
@@ -187,6 +188,11 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             {
                 v.interp = tokens[p++];
             }
+            
+            if ( tokens[p] == "lowp" || tokens[p] == "mediump" || tokens[p] == "highp" )
+            {
+                v.prec = tokens[p++];
+            }
 
             if ( p+1 < tokens.size() )
             {
@@ -253,7 +259,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
         buf << "VP_PerVertex { \n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << INDENT << i->interp << (i->interp.empty()?"":" ") << i->declaration << "; \n";
+            buf << INDENT << i->interp << (i->interp.empty()?"":" ") << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
         buf << "}";
         vertdata = buf.str();
     }
@@ -276,7 +282,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         buf << "\n// Vertex stage globals:\n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
         
         buf << "\n// Vertex stage outputs:\n";
         if ( hasGS || hasTCS )
@@ -452,7 +458,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         // Stage globals.
         buf << "\n// TCS stage globals \n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
 
         // Helper functions:
         // TODO: move this into its own osg::Shader so it can be shared.
@@ -926,7 +932,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // Declare stage globals.
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << ";\n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << ";\n";
 
         if ( coloringStage || lightingStage || outputStage )
         {

@@ -139,5 +139,8 @@ SET(CMAKE_EXE_LINKER_FLAGS "-framework QuartzCore -framework Foundation -framewo
 #restore setting
 SET(OSGEARTH_BUILD_APPLICATION_BUNDLES {$TMP_OSGEARTH_BUILD_APPLICATION_BUNDLES})
 SET(VPB_BUILD_APPLICATION_BUNDLES {$TMP_VPB_BUILD_APPLICATION_BUNDLES})
+<<<<<<< HEAD
 
+=======
+>>>>>>> Improved example to include all osgearth plugins, fixed variable copying in shaderfactory when precision is used, include Virtual program for precision and glsl version defines in landcover.cpp
 SET(CMAKE_OSX_ARCHITECTURES {$TMP_CMAKE_OSX_ARCHITECTURES})

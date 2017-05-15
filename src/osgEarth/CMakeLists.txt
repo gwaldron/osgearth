@@ -174,13 +174,13 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
+    TerrainResources
     TerrainTileModel
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
     TilePatchCallback
     Tessellator
-    TextureCompositor
     TileKey
     TileHandler
     TileRasterizer
@@ -341,11 +341,11 @@ set(TARGET_SRC
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainResources.cpp
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     TextureBufferSerializer.cpp
-    TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
     TilePatchCallback.cpp

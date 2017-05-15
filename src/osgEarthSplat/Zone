@@ -50,27 +50,28 @@ namespace osgEarth { namespace Splat
             fromConfig(_conf);
         }
 
-        /** Name of this zone (readable) */
+        //! Name of this zone (readable)
         optional<std::string> name() { return _name; }
         const optional<std::string> name() const { return _name; }
 
-        /** Boundary set for this zone (optional) */
+        //! Boundary set for this zone (optional)
         std::vector<osg::BoundingBox>& boundaries() { return _boundaries; }
         const std::vector<osg::BoundingBox>& boundaries() const { return _boundaries; }
 
-        /** Surface rendering options */
+        //! Surface rendering options
         optional<SurfaceOptions>& surface() { return _surface; }
         const optional<SurfaceOptions>& surface() const { return _surface; }
 
-        /** Land Cover rendering options */
-        //optional<GroundCoverOptions>& GroundCover() { return _GroundCover; }
-        //const optional<GroundCoverOptions>& GroundCover() const { return _GroundCover; }
+        //! Ground cover rendering options
+        
+        optional<GroundCoverOptions>& groundCover() { return _groundCover; }
+        const optional<GroundCoverOptions>& groundCover() const { return _groundCover; }
 
     protected:
-        optional<std::string>         _name;
+        optional<std::string> _name;
         std::vector<osg::BoundingBox> _boundaries;
-        optional<SurfaceOptions>      _surface;
-        //optional<GroundCoverOptions>    _GroundCover;
+        optional<SurfaceOptions> _surface;
+        optional<GroundCoverOptions> _groundCover;
 
     public:
         void fromConfig(const Config& conf);
@@ -109,6 +110,9 @@ namespace osgEarth { namespace Splat
         void setSurface(Surface* surface) { _surface = surface; }
         Surface* getSurface() const { return _surface.get(); }
 
+        void setGroundCover(GroundCover* groundCover) { _groundCover = groundCover; }
+        GroundCover* getGroundCover() const { return _groundCover.get(); }
+
         osg::StateSet* getStateSet() { return _stateSet.get(); }
 
         osg::StateSet* getOrCreateStateSet();
@@ -124,6 +128,7 @@ namespace osgEarth { namespace Splat
         UID                         _uid;
         Boundaries                  _boundaries;
         osg::ref_ptr<Surface>       _surface;
+        osg::ref_ptr<GroundCover>   _groundCover;
         osg::ref_ptr<osg::StateSet> _stateSet;
         const ZoneOptions           _options;
 

@@ -20,7 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/TerrainTileModelFactory>

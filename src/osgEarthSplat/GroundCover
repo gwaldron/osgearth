@@ -22,6 +22,7 @@
 #include "Export"
 #include <osgEarth/Config>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/LandCoverLayer>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Symbol>
 #include <osg/BoundingBox>
@@ -41,6 +42,107 @@ namespace osgEarth { namespace Splat
 
     class Coverage;
     class SplatCoverageLegend;
+
+
+    class OSGEARTHSPLAT_EXPORT GroundCoverBiomeOptions : public ConfigOptions
+    {
+    public:
+        GroundCoverBiomeOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig( _conf );
+        }
+
+        /** Name of the biome classes to use. This is one or more class names from the legend,
+          * separated by whitespace. e.g.: "forest grassland swamp" */
+        optional<std::string>& biomeClasses() { return _biomeClasses; }
+        const optional<std::string>& biomeClasses() const { return _biomeClasses; }
+
+        /** Symbology used to conigure rendering in this biome */
+        SymbolVector& symbols() { return _symbols; }
+        const SymbolVector& symbols() const { return _symbols; }
+
+    protected:
+        optional<std::string> _biomeClasses;
+        SymbolVector _symbols;
+
+    public:    
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+        virtual void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    };
+    typedef std::vector<GroundCoverBiomeOptions> GroundCoverBiomeOptionsVector;
+
+
+    class OSGEARTHSPLAT_EXPORT GroundCoverOptions : public ConfigOptions
+    {
+    public:
+        GroundCoverOptions(const ConfigOptions& conf = ConfigOptions());
+
+        /** Name of the land cover layer */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        /** Equivalent terrain LOD at which this layer will render */
+        optional<unsigned>& lod() { return _lod; }
+        const optional<unsigned>& lod() const { return _lod; }
+
+        /** Whether objects in this layer should cast shadows. */
+        optional<bool>& castShadows() { return _castShadows; }
+        const optional<bool>& castShadows() const { return _castShadows; }
+
+        /** Maximum viewing distance from camera */
+        optional<float>& maxDistance() { return _maxDistance; }
+        const optional<float>& maxDistance() const { return _maxDistance; }
+
+        /** Wind speed [0..1] */
+        optional<float>& wind() { return _wind; }
+        const optional<float>& wind() const { return _wind; }
+
+        /** Metric that controls the number of land cover instances will render
+          * in a given area. [1..5] */
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
+
+        /** Percentage of land that this layer's instances will cover [0..1]. Lower
+          * values will result is more "patchiness" of placement. */
+        optional<float>& fill() { return _fill; }
+        const optional<float>& fill() const { return _fill; }
+
+        /** Brightness factor for rendering [1..], 1 = default */
+        optional<float>& brightness() { return _brightness; }
+        const optional<float>& brightness() const { return _brightness; }
+
+        /** Contrast factor for rendering [0..], 0 = default */
+        optional<float>& contrast() { return _contrast; }
+        const optional<float>& contrast() const { return _contrast; }
+
+        /** Biomes comprising this layer. */
+        GroundCoverBiomeOptionsVector& biomes() { return _biomes; }
+        const GroundCoverBiomeOptionsVector& biomes() const { return _biomes; }
+
+    public:
+        virtual Config getConfig() const;
+    protected:
+        virtual void mergeConfig(const Config& conf) {
+            ConfigOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+        void fromConfig(const Config& conf);
+
+    protected:
+        optional<std::string> _name;
+        optional<unsigned> _lod;
+        optional<bool> _castShadows;
+        optional<float> _maxDistance;
+        optional<float> _density;
+        optional<float> _fill;
+        optional<float> _wind;
+        optional<float> _brightness;
+        optional<float> _contrast;
+        GroundCoverBiomeOptionsVector _biomes;
+    };
 
 
     class OSGEARTHSPLAT_EXPORT GroundCoverBillboard
@@ -85,52 +187,20 @@ namespace osgEarth { namespace Splat
 
 
     /**
-     * A layer of land cover data.
+     * A group of land cover data.
      */
-    class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public osg::Referenced
+    class OSGEARTHSPLAT_EXPORT GroundCover : public osg::Referenced
     {
     public:
-        GroundCoverLayer() : _lod(14), _castShadows(false), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
+        GroundCover(const GroundCoverOptions& options);
+
+        
+        GroundCoverOptions& options() { return _options; }
+        const GroundCoverOptions& options() const { return _options; }
 
         /** Name of this layer */
-        void setName(const std::string& name) { _name = name; }
-        const std::string& getName() const { return _name; }
-
-        /** Bounds within which this layer should render (map coordinates) */
-        void setBounds(const Bounds& bounds) { _bounds = bounds; }
-        const Bounds& getBounds() const { return _bounds; }
-
-        /** Terrain LOD at which this layer should render */
-        void setLOD(unsigned lod) { _lod = lod; }
-        unsigned getLOD() const { return _lod; }
-
-        /** Whether this layer should cast shadows when enabled */
-        void setCastShadows(bool value) { _castShadows = value; }
-        bool getCastShadows() const { return _castShadows; }
-
-        /** Maximum visibility distance from camera */
-        void setMaxDistance(float value) { _maxDistance = value; }
-        float getMaxDistance() const { return _maxDistance; }
-
-        /** Density of land cover; i.e. instances per unit of area [1..5+] */
-        void setDensity(float value) { _density = value; }
-        float getDensity() const { return _density; }
-
-        /** Fill percentage of land cover instances [0..1] */
-        void setFill(float value) { _fill = value; }
-        float getFill() const { return _fill; }
-
-        /** Wind effect (0..1) */
-        void setWind(float value) { _wind = value; }
-        float getWind() const { return _wind; }
-
-        /** Brightness [0..2+] .. 1 = default */
-        void setBrightness(float value) { _brightness = value; }
-        float getBrightness() const { return _brightness; }
-
-        /** Contrast [0..1] .. 0 = default */
-        void setContrast(float value) { _contrast = value; }
-        float getContrast() const { return _contrast; }
+        //void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return options().name().get(); }
 
         /** Biomes comprising this layer. */
         GroundCoverBiomes& getBiomes() { return _biomes; }
@@ -144,7 +214,8 @@ namespace osgEarth { namespace Splat
         osg::Shader* createShader() const;
 
         /** Creates the shader that resolves land cover information into billboard data. */
-        osg::Shader* createPredicateShader(const Coverage*) const;
+        //osg::Shader* createPredicateShader(const Coverage*) const;
+        osg::Shader* createPredicateShader(LandCoverDictionary*, LandCoverLayer*) const;
 
         /** Builds the texture object containing all the data for this layer. */
         osg::Texture* createTexture() const;
@@ -154,8 +225,9 @@ namespace osgEarth { namespace Splat
         osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
     protected:
-        virtual ~GroundCoverLayer() { }
+        virtual ~GroundCover() { }
 
+        GroundCoverOptions _options;
         std::string     _name;
         Bounds          _bounds;
         unsigned        _lod;
@@ -171,11 +243,10 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::StateSet> _stateSet;
 
     public:
-        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+        bool configure(const osgDB::Options* readOptions);
     };
 
-    typedef std::vector< osg::ref_ptr<GroundCoverLayer> > GroundCoverLayers;
-
+#if 0
     /**
      * Describes all land cover for the scene.
      */
@@ -189,8 +260,8 @@ namespace osgEarth { namespace Splat
         const ResourceLibrary* getLibrary() const { return _lib.get(); }
 
         /** Land cover layers */
-        GroundCoverLayers& getLayers() { return _layers; }
-        const GroundCoverLayers& getLayers() const { return _layers; }
+        GroundCoverGroupVector& getGroups() { return _groups; }
+        const GroundCoverGroupVector& getGroups() const { return _groups; }
 
         /** Layer that will mask out land cover */
         void setMaskLayer(ImageLayer* layer) { _maskLayer = layer; }
@@ -201,15 +272,18 @@ namespace osgEarth { namespace Splat
         virtual ~GroundCover() { }
 
         osg::ref_ptr<ResourceLibrary> _lib;
-        GroundCoverLayers               _layers;
-        osg::ref_ptr<ImageLayer>      _maskLayer;
+        GroundCoverGroupVector _groups;
+        osg::ref_ptr<ImageLayer> _maskLayer;
         
     public:
         bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
     };
 
     typedef std::vector< osg::ref_ptr<GroundCover> > GroundCovers;
+#endif
 
+
+#if 0
 
     //........................................................................
 
@@ -439,6 +513,7 @@ namespace osgEarth { namespace Splat
             fromConfig( conf );
         }
     };
+#endif
 
 } } // namespace osgEarth::Splat
 

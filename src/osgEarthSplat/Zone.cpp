@@ -71,15 +71,20 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
         }
     }
 
-    //if ( in.GroundCover().isSet() )
-    //{
-    //    _GroundCover = new GroundCover();
-    //    if ( !_GroundCover->configure(in.GroundCover().get(), map, dbo) )
-    //    {
-    //        OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
-    //        _GroundCover = 0L;
-    //    }
-    //}
+    if( _options.groundCover().isSet() )
+    {
+        _groundCover = new GroundCover(_options.groundCover().get());
+
+        if (_groundCover->configure(readOptions))
+        {
+            OE_INFO << LC << "Configured land cover group \"" << _groundCover->getName() << "\"\n";
+        }
+        else
+        {
+            OE_WARN << LC << "Land cover group \"" << _groundCover->getName() << "\" is improperly configured\n";
+            return false;
+        }
+    }
 
     return true;
 }
@@ -130,7 +135,7 @@ ZoneOptions::fromConfig(const Config& conf)
         }
     }
     conf.getObjIfSet( "surface",    _surface );
-    //conf.getObjIfSet( "land_cover", _GroundCover );
+    conf.getObjIfSet( "groundcover", _groundCover);
 }
 
 Config
@@ -153,7 +158,7 @@ ZoneOptions::getConfig() const
         conf.add(regions);
     }
     conf.setObj( "surface",    _surface );
-    //conf.setObj( "land_cover", _GroundCover );
+    conf.setObj( "groundcover", _groundCover );
     return conf;
 }
 

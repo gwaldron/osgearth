@@ -3,7 +3,7 @@
 #pragma vp_entryPoint oe_GroundCover_geom
 #pragma vp_location   geometry
 
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_GROUNDCOVER_USE_MASK)
                 
 layout(triangles)        in;        // triangles from the TileDrawable
 layout(triangle_strip)   out;       // output a triangle-strip billboard
@@ -31,7 +31,7 @@ uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
 
 // Noise texture:
-uniform sampler2D oe_splat_noiseTex;
+uniform sampler2D oe_GroundCover_noiseTex;
 
 // different noise texture channels:
 #define NOISE_SMOOTH   0
@@ -81,10 +81,10 @@ float oe_terrain_getElevation(in vec2);
 // Generated in code
 int oe_GroundCover_getBiomeIndex(in vec4);
 
-uniform bool oe_GroundCover_useMask;
+#ifdef OE_GROUNDCOVER_USE_MASK
 uniform sampler2D MASK_SAMPLER;
 uniform mat4 MASK_TEXTURE;
-
+#endif
 
 // Sample the elevation texture and move the vertex accordingly.
 void
@@ -158,15 +158,14 @@ oe_GroundCover_geom()
     }
     
     // If we're using a mask texture, sample it now:
-    if ( oe_GroundCover_useMask )
+#ifdef OE_GROUNDCOVER_USE_MASK
+    float mask = texture(MASK_SAMPLER, (MASK_TEXTURE*vec4(tileUV,0,1)).st).a;
+    if ( mask > 0.0 )
     {
-        float mask = texture(MASK_SAMPLER, (MASK_TEXTURE*vec4(tileUV,0,1)).st).a;
-        if ( mask > 0.0 )
-        {
-            // Failed to pass the mask; no geometry emitted.
-            return;
-        }
+        // Failed to pass the mask; no geometry emitted.
+        return;
     }
+#endif
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center;
@@ -187,7 +186,7 @@ oe_GroundCover_geom()
     oe_GroundCover_getBiome(biomeIndex, biome);
 
     // sample the noise texture.
-    vec4 noise = texture(oe_splat_noiseTex, tileUV);
+    vec4 noise = texture(oe_GroundCover_noiseTex, tileUV);
 
     // a pseudo-random scale factor to the width and height of a billboard
     float sizeScale = abs(1.0 + noise[NOISE_RANDOM_2]);

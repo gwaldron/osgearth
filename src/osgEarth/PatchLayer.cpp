@@ -23,5 +23,20 @@ using namespace osgEarth;
 PatchLayer::PatchLayer() :
 VisibleLayer()
 {
+    init();
+}
+
+PatchLayer::PatchLayer(PatchLayerOptions* optionsPtr) :
+VisibleLayer(optionsPtr ? optionsPtr : &_optionsConcrete),
+_options(optionsPtr ? optionsPtr : &_optionsConcrete)
+{
+    //nop - subclass will call init()
+}
+
+void
+PatchLayer::init()
+{
+    Layer::init();
+    
     setRenderType(RENDERTYPE_PATCH);
 }

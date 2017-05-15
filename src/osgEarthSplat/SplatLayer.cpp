@@ -49,6 +49,7 @@ SplatLayerOptions::getConfig() const
     conf.key() = "splat";
     conf.set("zone_layer", _zoneLayerName);
     conf.set("land_cover_layer", _landCoverLayerName);
+
     Config zones("zones");
     for (int i = 0; i < _zones.size(); ++i) {
         Config zone = _zones[i].getConfig();
@@ -65,6 +66,7 @@ SplatLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet("zone_layer", _zoneLayerName);
     conf.getIfSet("land_cover_layer", _landCoverLayerName);
+
     const Config* zones = conf.child_ptr("zones");
     if (zones) {
         const ConfigSet& children = zones->children();

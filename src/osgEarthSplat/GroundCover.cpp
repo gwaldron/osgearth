@@ -2,6 +2,7 @@
 #include "Coverage"
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
+#include "Zone"
 
 #include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
@@ -17,100 +18,104 @@ using namespace osgEarth::Symbology;
 
 #define LC "[GroundCover] "
 
-bool
-GroundCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo)
+GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
+ConfigOptions(co),
+_lod(14),
+_castShadows(false),
+_maxDistance(1000.0f),
+_density(1.0f),
+_fill(1.0f),
+_wind(0.0f),
+_brightness(1.0f),
+_contrast(0.5f)
 {
-    GroundCoverOptions in( conf );
-    
-    if ( in.library().isSet() )
-    {
-        _lib = new ResourceLibrary( "default", in.library().get() );
-        if ( !_lib->initialize( dbo ) )
-        {
-            OE_WARN << LC << "Failed to load resource library \"" << in.library()->full() << "\"\n";
-            return false;
-        }
-    }
-
-    if ( in.layers().empty() )
-    {
-        OE_WARN << LC << "No land cover layers defined\n";
-        return false;
-    }
-    else
-    {
-        for(int i=0; i<in.layers().size(); ++i)
-        {
-            osg::ref_ptr<GroundCoverLayer> layer = new GroundCoverLayer();
-
-            if ( layer->configure( in.layers()[i], dbo ) )
-            {
-                _layers.push_back( layer.get() );
-                OE_INFO << LC << "Configured land cover layer \"" << layer->getName() << "\"\n";
-            }
-            else
-            {
-                OE_WARN << LC << "Land cover layer \"" << layer->getName() << "\" is improperly configured\n";
-                return false;
-            }
-        }
-    }
-
-    if ( in.maskLayerName().isSet() )
-    {
-        ImageLayer* layer = map->getLayerByName<ImageLayer>( in.maskLayerName().get() );
-        if ( layer )
-        {
-            setMaskLayer( layer );
-        }
-        else
-        {
-            OE_WARN << LC << "Masking layer \"" << in.maskLayerName().get() << "\" not found in the map." << std::endl;
-            return false;
-        }
-    }
-
-    return true;
+    fromConfig(_conf);
 }
 
+Config
+GroundCoverOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+    conf.key() = "groundcover";
+    conf.set("name", _name);
+    conf.set("lod", _lod);
+    conf.set("cast_shadows", _castShadows);
+    conf.set("max_distance", _maxDistance);
+    conf.set("density", _density);
+    conf.set("fill", _fill);
+    conf.set("wind", _wind);
+    conf.set("brightness", _brightness);
+    conf.set("contrast", _contrast);
+    if (_biomes.size() > 0) {
+        Config biomes("biomes");
+        for (int i = 0; i < _biomes.size(); ++i) {
+            biomes.add("biome", _biomes[i].getConfig());
+        }
+        conf.update(biomes);
+    }
+    return conf;
+}
+
+void
+GroundCoverOptions::fromConfig(const Config& conf)
+{
+    conf.getIfSet("name", _name);
+    conf.getIfSet("lod", _lod);
+    conf.getIfSet("cast_shadows", _castShadows);
+    conf.getIfSet("max_distance", _maxDistance);
+    conf.getIfSet("density", _density);
+    conf.getIfSet("fill", _fill);
+    conf.getIfSet("wind", _wind);
+    conf.getIfSet("brightness", _brightness);
+    conf.getIfSet("contrast", _contrast);
+    const Config* biomes = conf.child_ptr("biomes");
+    if (biomes) {
+        const ConfigSet& biomesVec = biomes->children();
+        for (ConfigSet::const_iterator i = biomesVec.begin(); i != biomesVec.end(); ++i) {
+            _biomes.push_back(GroundCoverBiomeOptions(*i));
+        }
+    }
+}
 
 //............................................................................
 
-bool
-GroundCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+GroundCover::GroundCover(const GroundCoverOptions& in) :
+_options(in)
 {
-    GroundCoverLayerOptions in( conf );
+    //if ( in.name().isSet() )
+    //    setName( in.name().get() );
+    //if ( in.lod().isSet() )
+    //    setLOD( in.lod().get() );
+    //if ( in.castShadows().isSet() )
+    //    setCastShadows( in.castShadows().get() );
+    //if ( in.maxDistance().isSet() )
+    //    setMaxDistance( in.maxDistance().get() );
+    //if ( in.density().isSet() )
+    //    setDensity( in.density().get() );
+    //if ( in.fill().isSet() )
+    //    setFill( in.fill().get() );
+    //if ( in.wind().isSet() )
+    //    setWind( in.wind().get() );
+    //if ( in.brightness().isSet() )
+    //    setBrightness( in.brightness().get() );
+    //if ( in.contrast().isSet() )
+    //    setContrast( in.contrast().get() );
+}
 
-    if ( in.name().isSet() )
-        setName( in.name().get() );
-    if ( in.lod().isSet() )
-        setLOD( in.lod().get() );
-    if ( in.castShadows().isSet() )
-        setCastShadows( in.castShadows().get() );
-    if ( in.maxDistance().isSet() )
-        setMaxDistance( in.maxDistance().get() );
-    if ( in.density().isSet() )
-        setDensity( in.density().get() );
-    if ( in.fill().isSet() )
-        setFill( in.fill().get() );
-    if ( in.wind().isSet() )
-        setWind( in.wind().get() );
-    if ( in.brightness().isSet() )
-        setBrightness( in.brightness().get() );
-    if ( in.contrast().isSet() )
-        setContrast( in.contrast().get() );
-
-    if ( in.biomes().size() == 0 )
+bool
+GroundCover::configure(const osgDB::Options* readOptions)
+{
+    if ( options().biomes().size() == 0 )
     {
         OE_WARN << LC << "No biomes defined in layer \"" << getName() << "\"\n";
         return false;
     }
 
-    for(int i=0; i<in.biomes().size(); ++i)
+    for(int i=0; i<_options.biomes().size(); ++i)
     {
         osg::ref_ptr<GroundCoverBiome> biome = new GroundCoverBiome();
 
-        if ( biome->configure( in.biomes()[i], dbo ) )
+        if ( biome->configure( options().biomes()[i], readOptions ) )
         {
             _biomes.push_back( biome.get() );
         }
@@ -125,18 +130,18 @@ GroundCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo
 }
 
 int
-GroundCoverLayer::getTotalNumBillboards() const
+GroundCover::getTotalNumBillboards() const
 {
     int count = 0;
-    for(int i=0; i<getBiomes().size(); ++i)
+    for(int i=0; i<_biomes.size(); ++i)
     {
-        count += getBiomes()[i]->getBillboards().size();
+        count += _biomes[i]->getBillboards().size();
     }
     return count;
 }
 
 osg::StateSet*
-GroundCoverLayer::getOrCreateStateSet()
+GroundCover::getOrCreateStateSet()
 {
     if ( !_stateSet.valid() )
         _stateSet = new osg::StateSet();
@@ -144,7 +149,7 @@ GroundCoverLayer::getOrCreateStateSet()
 }
 
 osg::Shader*
-GroundCoverLayer::createShader() const
+GroundCover::createShader() const
 {
     std::stringstream biomeBuf;
     std::stringstream billboardBuf;
@@ -210,8 +215,8 @@ GroundCoverLayer::createShader() const
         biomeBuf << "    oe_GroundCover_Biome(" 
             << firstIndex << ", "
             << biome->getBillboards().size() 
-            << ", float(" << getDensity() << ")"
-            << ", float(" << getFill() << ")"
+            << ", float(" << options().density().get() << ")"
+            << ", float(" << options().fill().get() << ")"
             << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
 
         if ( (i+1) < getBiomes().size() )
@@ -243,29 +248,22 @@ GroundCoverLayer::createShader() const
 }
 
 osg::Shader*
-GroundCoverLayer::createPredicateShader(const Coverage* coverage) const
+GroundCover::createPredicateShader(LandCoverDictionary* landCoverDict, LandCoverLayer* layer) const
 {
     const char* defaultCode = "int oe_GroundCover_getBiomeIndex(in vec4 coords) { return -1; }\n";
 
     std::stringstream buf;
     buf << "#version 330\n";
-    
-    osg::ref_ptr<ImageLayer> layer;
 
-    if ( !coverage )
+        if ( !landCoverDict )
     {
         buf << defaultCode;
-        OE_INFO << LC << "No coverage; generating default coverage predicate\n";
+        OE_WARN << LC << "No land cover dictionary; generating default coverage predicate\n";
     }
-    else if ( !coverage->getLegend() )
+    else if ( !layer )
     {
         buf << defaultCode;
-        OE_INFO << LC << "No legend; generating default coverage predicate\n";
-    }
-    else if ( !coverage->lockLayer(layer) )
-    {
-        buf << defaultCode;
-        OE_INFO << LC << "No classification layer; generating default coverage predicate\n";
+        OE_WARN << LC << "No classification layer; generating default coverage predicate\n";
     }
     else
     {
@@ -288,41 +286,14 @@ GroundCoverLayer::createPredicateShader(const Coverage* coverage) const
 
                 for(int i=0; i<classes.size(); ++i)
                 {
-                    std::vector<const CoverageValuePredicate*> predicates;
-                    if ( coverage->getLegend()->getPredicatesForClass(classes[i], predicates) )
+                    const LandCoverClass* lcClass = landCoverDict->getClassByName(classes[i]);
+                    if (lcClass)
                     {
-                        for(std::vector<const CoverageValuePredicate*>::const_iterator p = predicates.begin();
-                            p != predicates.end(); 
-                            ++p)
-                        {
-                            const CoverageValuePredicate* predicate = *p;
-
-                            if ( predicate->_exactValue.isSet() )
-                            {
-                                buf << "    if (value == " << predicate->_exactValue.get() << ") return " << biomeIndex << "; \n";
-                            }
-                            else if ( predicate->_minValue.isSet() && predicate->_maxValue.isSet() )
-                            {
-                                buf << "    if (value >= " << predicate->_minValue.get() << " && value <= " << predicate->_maxValue.get() << ") return " << biomeIndex << "; \n";
-                            }
-                            else if ( predicate->_minValue.isSet() )
-                            {
-                                buf << "    if (value >= " << predicate->_minValue.get() << ")  return " << biomeIndex << "; \n";
-                            }
-                            else if ( predicate->_maxValue.isSet() )
-                            {
-                                buf << "    if (value <= " << predicate->_maxValue.get() << ") return " << biomeIndex << "; \n";
-                            }
-
-                            else 
-                            {
-                                OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact/min/max value was set in the legend\n";
-                            }
-                        }
+                        buf << "    if (value == " << lcClass->getValue() << ") return " << biomeIndex << "; \n";
                     }
                     else
                     {
-                        OE_WARN << LC << "Class \"" << classes[i] << "\" not found in the legend!\n";
+                        OE_WARN << LC << "Land cover class \"" << classes[i] << "\" was not found in the dictionary!\n";
                     }
                 }
             }
@@ -338,55 +309,8 @@ GroundCoverLayer::createPredicateShader(const Coverage* coverage) const
     return shader;
 }
 
-//............................................................................
-
-bool
-GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
-{
-    GroundCoverBiomeOptions in( conf );
-
-    if ( in.biomeClasses().isSet() )
-        setClasses( in.biomeClasses().get() );
-
-    for(SymbolVector::const_iterator i = in.symbols().begin(); i != in.symbols().end(); ++i)
-    {
-        const BillboardSymbol* bs = dynamic_cast<BillboardSymbol*>( i->get() );
-        if ( bs )
-        {
-            URI imageURI = bs->url()->evalURI();
-
-            osg::Image* image = const_cast<osg::Image*>( bs->getImage() );
-            if ( !image )
-            {
-                image = imageURI.getImage(dbo);
-            }
-
-            if ( image )
-            {
-                getBillboards().push_back( GroundCoverBillboard(image, bs->width().get(), bs->height().get()) );
-            }
-            else
-            {
-                OE_WARN << LC << "Failed to load billboard image from \"" << imageURI.full() << "\"\n";
-            }
-        } 
-        else
-        {
-            OE_WARN << LC << "Unrecognized symbol in land cover biome\n";
-        }
-    }
-
-    if ( getBillboards().size() == 0 )
-    {
-        OE_WARN << LC << "A biome failed to install any billboards.\n";
-        return false;
-    }
-
-    return true;
-}
-
 osg::Texture*
-GroundCoverLayer::createTexture() const
+GroundCover::createTexture() const
 {
     osg::Texture2DArray* tex = new osg::Texture2DArray();
 
@@ -435,4 +359,51 @@ GroundCoverLayer::createTexture() const
     tex->setResizeNonPowerOfTwoHint( false );
 
     return tex;
+}
+
+//............................................................................
+
+bool
+GroundCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+{
+    GroundCoverBiomeOptions in( conf );
+
+    if ( in.biomeClasses().isSet() )
+        setClasses( in.biomeClasses().get() );
+
+    for(SymbolVector::const_iterator i = in.symbols().begin(); i != in.symbols().end(); ++i)
+    {
+        const BillboardSymbol* bs = dynamic_cast<BillboardSymbol*>( i->get() );
+        if ( bs )
+        {
+            URI imageURI = bs->url()->evalURI();
+
+            osg::Image* image = const_cast<osg::Image*>( bs->getImage() );
+            if ( !image )
+            {
+                image = imageURI.getImage(dbo);
+            }
+
+            if ( image )
+            {
+                getBillboards().push_back( GroundCoverBillboard(image, bs->width().get(), bs->height().get()) );
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to load billboard image from \"" << imageURI.full() << "\"\n";
+            }
+        } 
+        else
+        {
+            OE_WARN << LC << "Unrecognized symbol in land cover biome\n";
+        }
+    }
+
+    if ( getBillboards().size() == 0 )
+    {
+        OE_WARN << LC << "A biome failed to install any billboards.\n";
+        return false;
+    }
+
+    return true;
 }

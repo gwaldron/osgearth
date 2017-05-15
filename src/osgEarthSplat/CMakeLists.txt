@@ -36,6 +36,7 @@ set(TARGET_IN
 set(TARGET_SRC
     Coverage.cpp
     GroundCover.cpp
+    GroundCoverLayer.cpp
     GroundCoverLayerFactory.cpp
     GroundCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
@@ -54,6 +55,7 @@ set(LIB_PUBLIC_HEADERS
     Coverage
 	Export
     GroundCover
+    GroundCoverLayer
     GroundCoverLayerFactory
     GroundCoverTilePatchCallback
     LandUseTileSource

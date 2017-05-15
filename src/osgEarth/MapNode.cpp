@@ -35,7 +35,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>

@@ -26,7 +26,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/PluginLoader>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osgDB/Options>

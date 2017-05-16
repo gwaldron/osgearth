@@ -36,15 +36,11 @@ set(TARGET_SRC
     Coverage.cpp
     GroundCover.cpp
     GroundCoverLayer.cpp
-    GroundCoverLayerFactory.cpp
-    GroundCoverTilePatchCallback.cpp
     LandUseTileSource.cpp
     NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
-	SplatExtension.cpp
 	SplatCatalog.cpp
     SplatLayer.cpp
-	SplatLayerFactory.cpp
 	SplatCoverageLegend.cpp
     Surface.cpp
     Zone.cpp
@@ -55,18 +51,14 @@ set(LIB_PUBLIC_HEADERS
 	Export
     GroundCover
     GroundCoverLayer
-    GroundCoverLayerFactory
-    GroundCoverTilePatchCallback
     LandUseTileSource
     NoiseTextureFactory
     RoadSurfaceLayer
 	SplatCoverageLegend
 	SplatCatalog
-	SplatExtension
 	SplatOptions
     SplatShaders
     SplatLayer
-	SplatLayerFactory
     Surface
     Zone)
 	

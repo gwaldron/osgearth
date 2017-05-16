@@ -218,8 +218,6 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
 
     texel.rgb = mix(temp1, temp0, weight.y);
 
-#endif
-
     return texel;
 }
 

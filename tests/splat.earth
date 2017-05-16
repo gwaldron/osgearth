@@ -112,6 +112,22 @@
                     </biomes>
                 </groundcover>
             </zone>
+            <zone name="australia">
+                <boundaries>
+                    <boundary xmin="112" xmax="154" ymin="-43.50" ymax="-11.16" zmax="2000000"/>
+                </boundaries>
+                <groundcover>
+                    <max_distance>150</max_distance>
+                    <density>2</density>
+                    <fill>0.50</fill>
+                    <wind>0.15</wind>
+                    <biomes>
+                        <biome name="Grass" classes="forest">
+                            <billboard url="../data/splat/grass2.png" width="0.85" height="0.4"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
         </zones>
     </splat_groundcover>
             

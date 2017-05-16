@@ -21,6 +21,7 @@
 */
 #include "SplatLayer"
 #include "SplatShaders"
+#include "NoiseTextureFactory"
 #include <osgEarth/VirtualProgram>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
@@ -338,21 +339,15 @@ SplatLayer::buildStateSets()
         
     if (_noiseBinding.valid())
     {
-        osg::Uniform* noiseTexUniform = new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit());
-        stateset->addUniform(noiseTexUniform);
+        NoiseTextureFactory noise;
+        osg::ref_ptr<osg::Texture> noiseTexture = noise.create(256u, 1u);
+        stateset->setTextureAttribute(_noiseBinding.unit(), noiseTexture.get());
+        stateset->addUniform(new osg::Uniform(NOISE_SAMPLER, _noiseBinding.unit()));
         stateset->setDefine("OE_SPLAT_HAVE_NOISE_SAMPLER");
     }
 
     osg::Uniform* lcTexUniform = new osg::Uniform(COVERAGE_SAMPLER, landCoverLayer->shareImageUnit().get());
     stateset->addUniform(lcTexUniform);
-
-
-    // control uniforms (TODO: simplify and deprecate unneeded uniforms)
-    //stateset->addUniform(_scaleOffsetUniform.get());
-    //stateset->addUniform(_warpUniform.get());
-    //stateset->addUniform(_blurUniform.get());
-    //stateset->addUniform(_noiseScaleUniform.get());
-    //stateset->addUniform(_useBilinearUniform.get());
 
     stateset->addUniform(new osg::Uniform("oe_splat_scaleOffsetInt", 0));
     stateset->addUniform(new osg::Uniform("oe_splat_warp", 0.0f));

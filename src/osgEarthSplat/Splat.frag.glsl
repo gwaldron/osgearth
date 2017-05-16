@@ -9,9 +9,9 @@
 
 // include files
 #pragma include Splat.types.glsl
-#pragma include Splat.frag.common.glsl
 
-#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT, OE_SPLAT_GPU_NOISE)
+// statset defines
+#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT, OE_SPLAT_GPU_NOISE, OE_TERRAIN_RENDER_NORMAL_MAP)
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
@@ -46,8 +46,40 @@ uniform float oe_splat_minSlope;
 uniform samplerBuffer oe_splat_coverageLUT;
 
 
+//............................................................................
+// Get the slope of the terrain
+
+#ifdef OE_TERRAIN_RENDER_NORMAL_MAP
+// import SDK
+vec4 oe_terrain_getNormalAndCurvature(in vec2);
+
+// normal map version:
+in vec2 oe_normalMapCoords;
+
+float oe_splat_getSlope()
+{
+    vec4 encodedNormal = oe_terrain_getNormalAndCurvature( oe_normalMapCoords );
+    vec3 normalTangent = normalize(encodedNormal.xyz*2.0-1.0);
+    return clamp((1.0-normalTangent.z)/0.8, 0.0, 1.0);
+}
+
+#else // !OE_TERRAIN_RENDER_NORMAL_MAP
+
+// non- normal map version:
+in float oe_splat_slope;
+
+float oe_splat_getSlope()
+{
+    return oe_splat_slope;
+}
+
+#endif // OE_TERRAIN_RENDER_NORMAL_MAP
+
+
+//............................................................................
 // reads the encoded splatting render information for a coverage value.
 // this data was encoded in Surface::createLUTBUffer().
+
 void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRenderInfo ri)
 {
     const int num_lods = 26;
@@ -70,11 +102,17 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
     ri.minSlope     = fract(t[3])*100.0;
 }
 
+
+//............................................................................
+// Sample a texel from the splatting texture catalog
+
 vec4 oe_splat_getTexel(in float index, in vec2 tc)
 {
     return texture(oe_splatTex, vec3(tc, index));
 }
 
+
+//............................................................................
 // Samples a detail texel using its render info parameters.
 // Returns the weighting factor in the alpha channel.
 vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env)
@@ -158,7 +196,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     // Detail splat - weighting is in the alpha channel
     // TODO: Pointless to have a detail range? -gw
     // TODO: If noise is a texture, just try to single-sample it instead
-    float detailToggle =env.range < oe_splat_detailRange ? 1.0 : 0.0;
+    float detailToggle = env.range < oe_splat_detailRange ? 1.0 : 0.0;
     vec4 sw_detail = detailToggle * oe_splat_getDetailTexel(ri_sw, splat_tc, env);
     vec4 se_detail = detailToggle * oe_splat_getDetailTexel(ri_se, splat_tc, env);
     vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env);
@@ -226,6 +264,8 @@ vec4 oe_splat_getNoise(in vec2 tc)
 
 #endif // SPLAT_GPU_NOISE
 
+
+
 // Simplified entry point with does no filtering or range blending. (much faster.)
 void oe_splat_simple(inout vec4 color)
 {
@@ -288,6 +328,6 @@ void oe_splat_complex(inout vec4 color)
     color = mix(color, texel, texel.a);
     color.a = 1.0;
 
-    // uncomment to visualize slope.
-    //color.rgba = vec4(env.slope,0,0,1);
+    // uncomment to visualize slope, noise, etc.
+    //color.rgba = vec4(env.noise.x,0,0,1);    
 }

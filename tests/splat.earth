@@ -4,71 +4,118 @@
 -->
 
 <map>
-        
     <options>
-        <terrain driver="rex" merges_per_frame="1">
-        </terrain>
+        <terrain driver="rex"/>
     </options>
+    
+    <xi:include href="../data/land_cover_dictionary.xml"/>
+    
+    <land_cover name="land-cover-data" max_data_level="15">
+        <cache_policy usage="no_cache"/>
+        <coverages>
+            <coverage name="ESA GLOBCOVER" driver="gdal">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
+                <warp>0.05</warp>
+            </coverage>
+        </coverages>
+    </land_cover>
+    
+    <!--
+    <feature_source name="zone-data" driver="ogr" ogr_driver="GeoJSON">
+        <data>
+            <![CDATA[
+                { "type" : "FeatureCollection",
+                  "features" : [
+                    { "type" : "Feature",
+                      "properties" : {
+                          "name" : "Australia"
+                      },
+                      "geometry" : {
+                          "type" : "Polygon",
+                          "coordinates" : [ [
+                              [ 112, -43.50 ],
+                              [ 154, -43.50 ],
+                              [ 154, -11.16 ],
+                              [ 112, -11.16 ],
+                              [ 112, -43.50 ]
+                          ] ]
+                      }
+                    }
+                  ]
+                }
+            ]]>
+        </data>
+    </feature_source>  
+    -->
     
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-     
-    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
-        <base_lod>12</base_lod>
-        <tile_size>256</tile_size>
-        <cache_policy usage="none"/>
-        <images>
-            <image name="ESA" driver="gdal" coverage="true">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <warp>0.01</warp>
-            </image>
-        </images>
-    </image>
-
-    <bumpmap>
-        <image>../data/rock_hard.jpg</image>
-        <octaves>8</octaves>
-        <intensity>2.2</intensity>
-    </bumpmap>
-   
-    <splat>        
-        <coverage>
-            <layer> CLASSMAP </layer>
-            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-        </coverage>
         
+    <splat_imagery name="Splat Imagery" zone_layer="zone-data" land_cover_layer="land-cover-data">
         <zones>
-            <zone name="default" doc="Default Climate Zone">            
+            <zone name="default">
                 <surface>
                     <catalog>../data/splat/splat_catalog.xml</catalog>
                 </surface>
-                <land_cover>
-                    <layers>
-                        <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5" cast_shadows="true">
-                            <biomes>
-                                <biome classes="forest forest1 forest2 forest3 forest4">
-                                    <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
-                                    <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
-                                    <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
-                                </biome>
-                            </biomes>
-                        </layer>
-                    
-                        <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
-                            <biomes>
-                                <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
-                                    <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
-                                </biome>
-                            </biomes>
-                        </layer>
-                    </layers>                    
-                </land_cover>
-            </zone>                
+            </zone>
+            <zone name="au">
+                <boundaries>
+                    <boundary xmin="112" xmax="154" ymin="-43.50" ymax="-11.16" zmax="2000000"/>
+                </boundaries>
+                <surface>
+                    <catalog>../data/splat/splat_catalog_au.xml</catalog>
+                </surface>
+            </zone>
         </zones>
-        
-    </splat>
+    </splat_imagery>
+    
+    <splat_groundcover name="Trees" zone_layer="zone-data" land_cover_layer="land-cover-data">
+        <lod>13</lod>
+        <cast_shadows>true</cast_shadows>
+        <zones>
+            <zone name="default">
+                <groundcover>
+                    <max_distance>6400</max_distance>
+                    <density>3.4</density>
+                    <fill>0.45</fill>
+                    <brightness>2.0</brightness>
+                    <contrast>0.5</contrast>
+                    <biomes>
+                        <biome classes="forest">
+                            <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                            <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                            <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+        </zones>
+    </splat_groundcover>
+
+    
+    <splat_groundcover name="Grass" zone_layer="zone-data" land_cover_layer="land-cover-data">
+        <lod>19</lod>
+        <cast_shadows>false</cast_shadows>
+        <zones>
+            <zone name="default">
+                <groundcover>
+                    <max_distance>150</max_distance>
+                    <density>3.8</density>
+                    <fill>0.50</fill>
+                    <wind>0.15</wind>
+                    <biomes>
+                        <biome name="Grass" classes="forest">
+                            <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+        </zones>
+    </splat_groundcover>
             
     <xi:include href="viewpoints.xml"/>
 
+    <libraries>osgEarthSplat</libraries>
 </map>

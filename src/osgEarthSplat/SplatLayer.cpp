@@ -330,12 +330,10 @@ SplatLayer::buildStateSets()
     osg::StateSet* stateset = new osg::StateSet();
 
     // Bind the texture image unit:
-    osg::Uniform* splatTexUniform = new osg::Uniform(SPLAT_SAMPLER, _splatBinding.unit());
-    stateset->addUniform(splatTexUniform);
+    stateset->addUniform(new osg::Uniform(SPLAT_SAMPLER, _splatBinding.unit()));
 
     // install the uniform for the splat LUT.
-    osg::Uniform* lutTexUniform = new osg::Uniform(LUT_SAMPLER, _lutBinding.unit());
-    stateset->addUniform(lutTexUniform);
+    stateset->addUniform(new osg::Uniform(LUT_SAMPLER, _lutBinding.unit()));
         
     if (_noiseBinding.valid())
     {
@@ -355,7 +353,7 @@ SplatLayer::buildStateSets()
     stateset->addUniform(new osg::Uniform("oe_splat_useBilinear", 1.0f));
     stateset->addUniform(new osg::Uniform("oe_splat_noiseScale", 12.0f));
 
-    stateset->addUniform(new osg::Uniform("oe_splat_detailRange", 1000000.0f));
+    stateset->addUniform(new osg::Uniform("oe_splat_detailRange", 100000.0f));
 
     if (_editMode)
         stateset->setDefine("OE_SPLAT_EDIT_MODE");

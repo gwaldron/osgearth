@@ -87,17 +87,6 @@ namespace
     void write(std::ostream& buf, const SplatRangeData* rangeData, int I)
     {
         buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
-        //if (rangeData->_detail.isSet()) {
-        //    buf << indent(I) << "detail = " << (rangeData->_detail->_textureIndex) << ".0;\n";
-        //    if (rangeData->_detail->_brightness.isSet())
-        //        buf << indent(I) << "brightness = " << rangeData->_detail->_brightness.get() << ";\n";
-        //    if (rangeData->_detail->_contrast.isSet())
-        //        buf << indent(I) << "contrast = " << rangeData->_detail->_contrast.get() << ";\n";
-        //    if (rangeData->_detail->_threshold.isSet())
-        //        buf << indent(I) << "threshold = " << rangeData->_detail->_threshold.get() << ";\n";
-        //    if (rangeData->_detail->_slope.isSet())
-        //        buf << indent(I) << "slope = " << rangeData->_detail->_slope.get() << ";\n";
-        //}
     }
 }
 

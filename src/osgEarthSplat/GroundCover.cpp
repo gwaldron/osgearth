@@ -21,7 +21,6 @@ using namespace osgEarth::Symbology;
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
 ConfigOptions(co),
 _lod(14),
-_castShadows(false),
 _maxDistance(1000.0f),
 _density(1.0f),
 _fill(1.0f),
@@ -39,7 +38,6 @@ GroundCoverOptions::getConfig() const
     conf.key() = "groundcover";
     conf.set("name", _name);
     conf.set("lod", _lod);
-    conf.set("cast_shadows", _castShadows);
     conf.set("max_distance", _maxDistance);
     conf.set("density", _density);
     conf.set("fill", _fill);
@@ -61,7 +59,6 @@ GroundCoverOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet("name", _name);
     conf.getIfSet("lod", _lod);
-    conf.getIfSet("cast_shadows", _castShadows);
     conf.getIfSet("max_distance", _maxDistance);
     conf.getIfSet("density", _density);
     conf.getIfSet("fill", _fill);
@@ -82,24 +79,7 @@ GroundCoverOptions::fromConfig(const Config& conf)
 GroundCover::GroundCover(const GroundCoverOptions& in) :
 _options(in)
 {
-    //if ( in.name().isSet() )
-    //    setName( in.name().get() );
-    //if ( in.lod().isSet() )
-    //    setLOD( in.lod().get() );
-    //if ( in.castShadows().isSet() )
-    //    setCastShadows( in.castShadows().get() );
-    //if ( in.maxDistance().isSet() )
-    //    setMaxDistance( in.maxDistance().get() );
-    //if ( in.density().isSet() )
-    //    setDensity( in.density().get() );
-    //if ( in.fill().isSet() )
-    //    setFill( in.fill().get() );
-    //if ( in.wind().isSet() )
-    //    setWind( in.wind().get() );
-    //if ( in.brightness().isSet() )
-    //    setBrightness( in.brightness().get() );
-    //if ( in.contrast().isSet() )
-    //    setContrast( in.contrast().get() );
+    //nop
 }
 
 bool

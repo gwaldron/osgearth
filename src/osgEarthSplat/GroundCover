@@ -88,10 +88,6 @@ namespace osgEarth { namespace Splat
         optional<unsigned>& lod() { return _lod; }
         const optional<unsigned>& lod() const { return _lod; }
 
-        /** Whether objects in this layer should cast shadows. */
-        optional<bool>& castShadows() { return _castShadows; }
-        const optional<bool>& castShadows() const { return _castShadows; }
-
         /** Maximum viewing distance from camera */
         optional<float>& maxDistance() { return _maxDistance; }
         const optional<float>& maxDistance() const { return _maxDistance; }
@@ -134,7 +130,6 @@ namespace osgEarth { namespace Splat
     protected:
         optional<std::string> _name;
         optional<unsigned> _lod;
-        optional<bool> _castShadows;
         optional<float> _maxDistance;
         optional<float> _density;
         optional<float> _fill;

@@ -242,10 +242,8 @@ oe_GroundCover_geom()
 
 #ifdef OE_IS_SHADOW_CAMERA
     
-    // generate cross-hatch geometry for shadowing/depth:
-
-    vec3 eastVector = gl_NormalMatrix * vec3(1,0,0);
-    vec3 halfWidthTangentVector = cross(eastVector, up_view) * 0.5 * width;
+    vec3 tangentVector = gl_NormalMatrix * vec3(1,0,0); // vector pointing east-ish.
+    vec3 halfWidthTangentVector = cross(tangentVector, up_view) * 0.5 * width;
     vec3 heightVector = up_view*height;
 
     vp_Color = vec4(1,1,1,falloff);
@@ -265,7 +263,7 @@ oe_GroundCover_geom()
 
         // calculates normals:
         vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
-
+        
         // if we are looking straight-ish down on the billboard, don't bother with it
         if (abs(dot(normalize(center_view.xyz), faceNormalVector)) < 0.01)
             return;
@@ -292,7 +290,8 @@ oe_GroundCover_geom()
                     
         EndPrimitive();
 
-        halfWidthTangentVector = cross(halfWidthTangentVector, up_view);
+        tangentVector = gl_NormalMatrix * vec3(0,1,0);
+        halfWidthTangentVector = cross(tangentVector, up_view) * 0.5 * width;
     }
 
 #else // normal render camera - draw as a billboard:

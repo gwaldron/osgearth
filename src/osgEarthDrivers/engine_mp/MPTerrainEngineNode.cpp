@@ -1007,6 +1007,12 @@ MPTerrainEngineNode::updateState()
             Color terrainColor = _terrainOptions.color().getOrUse( Color(1,1,1,-1) );
             terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
 
+            // shadowing?
+            if (_terrainOptions.castShadows() == true)
+            {
+                terrainStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
+            }
+
             if ( _update_mapf )
             {
                 // assemble color filter code snippets.

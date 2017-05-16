@@ -1130,6 +1130,12 @@ RexTerrainEngineNode::updateState()
                 }
             }
 
+            // Shadowing?
+            if (_terrainOptions.castShadows() == true)
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
+            }
+
             // assemble color filter code snippets.
             bool haveColorFilters = false;
             {

@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
 #include <osgDB/Registry>
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 
@@ -242,4 +243,19 @@ Layer::removeCallback(LayerCallback* cb)
     CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
     if ( i != _callbacks.end() ) 
         _callbacks.erase( i );
+}
+
+bool
+Layer::preCull(osgUtil::CullVisitor* cv) const
+{
+    //if (getStateSet())
+    //    cv->pushStateSet(getStateSet());
+    return true;
+}
+
+void
+Layer::postCull(osgUtil::CullVisitor* cv) const
+{
+    //if (getStateSet())
+    //    cv->popStateSet();
 }

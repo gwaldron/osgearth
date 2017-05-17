@@ -49,7 +49,7 @@ void
 TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
-    _terrain.setup(frame, bindings, frameNum, *this, _camera);
+    _terrain.setup(frame, bindings, frameNum, _cv);
 }
 
 float

@@ -604,7 +604,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
                 //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
 
-                cv->apply(*lastLayer);
+                if (lastLayer->_layer)
+                {
+                    if (lastLayer->_layer->preCull(cv))
+                    {
+                        cv->apply(*lastLayer);
+                        lastLayer->_layer->postCull(cv);
+                    }
+                }
+                else
+                {
+                    cv->apply(*lastLayer);
+                }
             }
 
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
@@ -1117,6 +1128,12 @@ RexTerrainEngineNode::updateState()
                 {
                     surfaceStateSet->setDefine("OE_TERRAIN_MORPH_GEOMETRY");
                 }
+            }
+
+            // Shadowing?
+            if (_terrainOptions.castShadows() == true)
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
             }
 
             // assemble color filter code snippets.

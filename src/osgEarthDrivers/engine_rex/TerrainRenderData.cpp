@@ -36,8 +36,10 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings,
-                         unsigned frameNum, osg::NodeVisitor& nv, const osg::Camera* camera)
+TerrainRenderData::setup(const MapFrame& frame,
+                         const RenderBindings& bindings,
+                         unsigned frameNum,
+                         osgUtil::CullVisitor* cv)
 {
     _bindings = &bindings;
 
@@ -83,7 +85,7 @@ TerrainRenderData::setup(const MapFrame& frame, const RenderBindings& bindings,
                         PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
 
                         if (patchLayer->getAcceptCallback() != 0L &&
-                            patchLayer->getAcceptCallback()->acceptLayer(nv, camera))
+                            patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
                             patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
                             addLayerDrawable(layer);

@@ -110,16 +110,13 @@ namespace osgEarth
         
     public:
         LandCoverClassVector& getClasses() { return options().classes(); }
-        const LandCoverClassVector& getClasses() const { return _landCoverClasses; }
+        const LandCoverClassVector& getClasses() const { return options().classes(); }
 
         //! Gets a land cover class by its name.
         const LandCoverClass* getClassByName(const std::string& name) const;
 
         //! Gets the land cover class corresponding to the integer value.
         const LandCoverClass* getClassByValue(int value) const;
-
-    private:
-        LandCoverClassVector _landCoverClasses;
     };
 
 

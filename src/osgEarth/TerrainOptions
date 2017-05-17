@@ -189,6 +189,12 @@ namespace osgEarth
 
         optional<double>& minExpiryTime() { return _minExpiryTime; }
         const optional<double>& minExpiryTime() const { return _minExpiryTime; }
+
+        /**
+         * Whether the terrain should cast shadows - default is false
+         */
+        optional<bool>& castShadows() { return _castShadows; }
+        const optional<bool>& castShadows() const { return _castShadows; }
    
     public:
         virtual Config getConfig() const;
@@ -228,6 +234,7 @@ namespace osgEarth
         optional<int> _binNumber;
         optional<int> _minExpiryFrames;
         optional<double> _minExpiryTime;
+        optional<bool> _castShadows;
     };
 }
 

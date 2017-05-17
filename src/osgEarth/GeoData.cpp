@@ -1063,6 +1063,10 @@ GeoExtent::expandToInclude( double x, double y )
         _south = y;
         _north = y;
     }
+    else if (_west < _east && x >= _west && x <= _east )
+    {
+        //nop. already in horizontal extent.
+    }
     else if ( getSRS() && getSRS()->isGeographic() )
     {
         x = normalizeLongitude( x );

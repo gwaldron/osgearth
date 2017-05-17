@@ -142,7 +142,7 @@ RoadSurfaceLayer::removedFromMap(const Map* map)
 }
 
 osg::Node*
-RoadSurfaceLayer::getNode() const
+RoadSurfaceLayer::getOrCreateNode(TerrainResources*)
 {
     // adds the Rasterizer to the scene graph so we can rasterize tiles
     return _rasterizer.get();

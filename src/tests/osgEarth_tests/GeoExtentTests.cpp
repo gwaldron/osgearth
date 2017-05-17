@@ -38,3 +38,17 @@ TEST_CASE( "GeoExtent transformMBR preserves the crossesAntimerdian properly" ) 
     REQUIRE(transformed.crossesAntimeridian());
 }
 
+TEST_CASE( "GeoExtent contains work" ) {
+    GeoExtent ext(osgEarth::SpatialReference::create("wgs84"), -10.0, -10.0, 10.0, 10.0);
+    REQUIRE(ext.contains(5.0, 5.0));
+}
+
+TEST_CASE( "GeoExtent contains works when the extent cross the antimerdian" ) {
+
+    // Create an extent that crosses the antimerdian.
+    GeoExtent ext(osgEarth::SpatialReference::create("wgs84"), -180.001, -90.0, 179.995, 90.0);
+    REQUIRE(ext.contains(5.0, 0.0));
+}
+
+
+

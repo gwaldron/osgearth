@@ -69,12 +69,6 @@ namespace
         return result;
     }
 
-    bool s_crossesAntimeridian( double x0, double x1 )
-    {
-        return ((x0 < 0.0 && x1 > 0.0 && x0-x1 < -180.0) ||
-                (x1 < 0.0 && x0 > 0.0 && x1-x0 < -180.0));
-    }
-
     double s_westToEastLongitudeDistance( double west, double east )
     {
         return west < east ? east-west : fmod(east,360.)-west;
@@ -879,9 +873,9 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
 Bounds
 GeoExtent::bounds() const
 {
-    if (getSRS() && getSRS()->isGeographic() && crossesAntimeridian() && _west > _east)
-        return Bounds( _west - 360.0, _south, _east, _north );
-    return Bounds( _west, _south, _east, _north );
+    double west, east, south, north;
+    getBounds(west, south, east, north);
+    return Bounds( west, south, east, north );
 }
 
 bool
@@ -903,7 +897,9 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     {
         // normalize a geographic longitude to -180:+180
         if ( _srs->isGeographic() )
+        {
             localxy.x() = normalizeLongitude( localxy.x() );            
+        }
 
         //Account for small rounding errors along the edges of the extent
         if (osg::equivalent(_west, localxy.x())) localxy.x() = _west;
@@ -911,21 +907,9 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
         if (osg::equivalent(_south, localxy.y())) localxy.y() = _south;
         if (osg::equivalent(_north, localxy.y())) localxy.y() = _north;
 
-        if ( crossesAntimeridian() )
-        {
-            if ( localxy.x() > 0.0 )
-            {
-                return localxy.x() >= _west && localxy.x() <= 180.0 && localxy.y() >= _south && localxy.y() <= _north;
-            }
-            else
-            {
-                return localxy.x() >= -180.0 && localxy.x() <= _east && localxy.y() >= _south && localxy.y() <= _north;
-            }
-        }
-        else
-        {
-            return localxy.x() >= _west && localxy.x() <= _east && localxy.y() >= _south && localxy.y() <= _north;
-        }
+        double west, east, south, north;
+        getBounds(west, south, east, north);
+        return localxy.x() >= west && localxy.x() <= east && localxy.y() >= south && localxy.y() <= north;        
     }
 }
 

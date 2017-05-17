@@ -3,7 +3,7 @@
 #pragma vp_entryPoint oe_GroundCover_geom
 #pragma vp_location   geometry
 
-#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_GROUNDCOVER_USE_MASK)
+#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_GROUNDCOVER_MASK_SAMPLER, OE_GROUNDCOVER_MASK_MATRIX)
                 
 layout(triangles)        in;        // triangles from the TileDrawable
 layout(triangle_strip)   out;       // output a triangle-strip billboard
@@ -81,9 +81,9 @@ float oe_terrain_getElevation(in vec2);
 // Generated in code
 int oe_GroundCover_getBiomeIndex(in vec4);
 
-#ifdef OE_GROUNDCOVER_USE_MASK
-uniform sampler2D MASK_SAMPLER;
-uniform mat4 MASK_TEXTURE;
+#ifdef OE_GROUNDCOVER_MASK_SAMPLER
+uniform sampler2D OE_GROUNDCOVER_MASK_SAMPLER;
+uniform mat4 OE_GROUNDCOVER_MASK_MATRIX;
 #endif
 
 // Sample the elevation texture and move the vertex accordingly.
@@ -158,8 +158,8 @@ oe_GroundCover_geom()
     }
     
     // If we're using a mask texture, sample it now:
-#ifdef OE_GROUNDCOVER_USE_MASK
-    float mask = texture(MASK_SAMPLER, (MASK_TEXTURE*vec4(tileUV,0,1)).st).a;
+#ifdef OE_GROUNDCOVER_MASK_SAMPLER
+    float mask = texture(OE_GROUNDCOVER_MASK_SAMPLER, (OE_GROUNDCOVER_MASK_MATRIX*vec4(tileUV,0,1)).st).a;
     if ( mask > 0.0 )
     {
         // Failed to pass the mask; no geometry emitted.

@@ -50,14 +50,11 @@ namespace osgEarth { namespace Splat
             fromConfig(_conf);
         }
 
-        //! Optional layer containing zone information (NOT YET IMPLEMENTED)
-        optional<std::string>& zoneLayer() { return _zoneLayerName; }
-        const optional<std::string>& zoneLayer() const { return _zoneLayerName; }
-
         //! Required layer containing land cover data
         optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
         const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }
 
+        //! Splatting zones (one required, more optional)
         std::vector<ZoneOptions>& zones() { return _zones; }
         const std::vector<ZoneOptions>& zones() const { return _zones; }
 
@@ -71,7 +68,6 @@ namespace osgEarth { namespace Splat
         void fromConfig(const Config& conf);
 
     private:
-        optional<std::string> _zoneLayerName;
         optional<std::string> _landCoverLayerName;
         std::vector<ZoneOptions> _zones;
     };
@@ -89,12 +85,6 @@ namespace osgEarth { namespace Splat
         
         //! Construct a splat layer with configuration options
         SplatLayer(const SplatLayerOptions& options);
-
-        //! The feature source containing the optional Zone information
-        void setZoneFeatureSource(FeatureSource* zoneFS);
-
-        //! The layer containing optional zone features
-        void setZoneLayer(FeatureSourceLayer* zoneLayer);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
@@ -123,11 +113,9 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatLayer() { }
 
-        osg::observer_ptr<FeatureSource> _zoneFeatures;
         osg::observer_ptr<LandCoverDictionary> _landCoverDict;
         osg::observer_ptr<LandCoverLayer> _landCoverLayer;
 
-        LayerListener<SplatLayer, FeatureSourceLayer> _zoneLayerListener;
         LayerListener<SplatLayer, LandCoverDictionary> _landCoverDictListener;
         LayerListener<SplatLayer, LandCoverLayer> _landCoverListener;
 

@@ -48,7 +48,6 @@ SplatLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
     conf.key() = "splat";
-    conf.set("zone_layer", _zoneLayerName);
     conf.set("land_cover_layer", _landCoverLayerName);
 
     Config zones("zones");
@@ -65,7 +64,6 @@ SplatLayerOptions::getConfig() const
 void
 SplatLayerOptions::fromConfig(const Config& conf)
 {
-    conf.getIfSet("zone_layer", _zoneLayerName);
     conf.getIfSet("land_cover_layer", _landCoverLayerName);
 
     const Config* zones = conf.child_ptr("zones");
@@ -116,21 +114,6 @@ SplatLayer::init()
 }
 
 void
-SplatLayer::setZoneFeatureSource(FeatureSource* fs)
-{
-    _zoneFeatures = fs;
-}
-
-void
-SplatLayer::setZoneLayer(FeatureSourceLayer* layer)
-{
-    //todo - error checking
-    setZoneFeatureSource(layer->getFeatureSource());
-    if (layer)
-        buildStateSets();
-}
-
-void
 SplatLayer::setLandCoverDictionary(LandCoverDictionary* layer)
 {
     _landCoverDict = layer;
@@ -158,11 +141,6 @@ SplatLayer::addedToMap(const Map* map)
     if (!_landCoverLayer.valid() && options().landCoverLayer().isSet())
     {
         _landCoverListener.listen(map, options().landCoverLayer().get(), this, &SplatLayer::setLandCoverLayer);
-    }
-
-    if (options().zoneLayer().isSet())
-    {
-        _zoneLayerListener.listen(map, options().zoneLayer().get(), this, &SplatLayer::setZoneLayer);
     }
 
     for (Zones::iterator zone = _zones.begin(); zone != _zones.end(); ++zone)

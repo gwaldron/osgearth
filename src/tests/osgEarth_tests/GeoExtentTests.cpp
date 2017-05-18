@@ -80,6 +80,16 @@ TEST_CASE( "GeoExtent expandToInclude works") {
         invalid.expandToInclude(-15.0, -15.0);        
         REQUIRE(invalid == GeoExtent(SpatialReference::create("wgs84"), -15.0, -15.0, -15.0, -15.0));
     }     
+
+    SECTION("expandToInclude expands to the full extent") {
+        GeoExtent full(SpatialReference::create("wgs84"));
+        full.expandToInclude(-180.0, -90);
+        // First point should result in zero width
+        REQUIRE(full.width() == 0.0);
+        full.expandToInclude(180.0, 90);
+        // Seond point should result in full width
+        REQUIRE(full.width() == 360.0);
+    }
 }
 
 TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimerdian") {
@@ -111,16 +121,6 @@ TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimerdi
         ext.expandToInclude(525.0, 0.0);        
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 165.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
-    }
-
-    SECTION("expandToInclude expands to the full extent") {
-        GeoExtent full(SpatialReference::create("wgs84"));
-        full.expandToInclude(-180.0, -90);
-        // First point should result in zero width
-        REQUIRE(full.width() == 0.0);
-        full.expandToInclude(180.0, 90);
-        // Seond point should result in full width
-        REQUIRE(full.width() == 360.0);
     }
 }
 

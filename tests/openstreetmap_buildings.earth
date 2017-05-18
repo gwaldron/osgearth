@@ -9,7 +9,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <options>
         <terrain driver="rex"/>
     </options>
-    
+
     <feature_source name="buildings-data" driver="tfs">
         <url>http://readymap.org/osm-buildings/</url>
         <min_level>14</min_level>
@@ -31,45 +31,11 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 
             <style type="text/css">
                 default {
-                    extrusion-height:      getHeight();
-                    extrusion-flatten:     true;
-                    extrusion-wall-style:  building-wall;
-                    extrusion-roof-style:  building-rooftop;
-                    altitude-clamping:     terrain;
-                    altitude-technique:    map;
-                    altitude-binding:      vertex;
-                    altitude-resolution:   0;
-                }
-                building-wall {
-                    skin-library:     us_resources;
-                    skin-tags:        building;
-                    skin-random-seed: 1;
-                    fill:             #ffffff;
-                }
-                building-rooftop {
-                    skin-library:     us_resources;
-                    skin-tags:        rooftop;
-                    skin-tiled:       true;
-                    skin-random-seed: 1;
-                    fill:             #ffffff;
+                    fill:  #ff0000;
+                    render-depth-offset-min-bias: 1000;
                 }
             </style>
 
-            <script>
-                function getHeight() {
-					if ("height" in feature.properties) {
-						var h = feature.properties["height"].replace('m','');
-						return Math.max(h, 4.0);
-					} else if ("building:height" in feature.properties) {
-						var h = feature.properties["building:height"].replace('m','');
-						return Math.max(h, 4.0);
-					} else if ("building:levels" in feature.properties){
-						var l = feature.properties["building:levels"];
-						return Math.max(l * 4.0, 4.0);
-					}
-					return Math.floor((Math.random() * 5.0) + 4.0);
-                }
-            </script>
         </styles>
     </feature_model>
 

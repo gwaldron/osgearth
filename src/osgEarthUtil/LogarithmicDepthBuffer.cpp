@@ -65,17 +65,13 @@ namespace
         {
             const osg::Matrix& proj = renderInfo.getCurrentCamera()->getProjectionMatrix();
 
-            if ( osg::equivalent(proj(3,3), 0.0) ) // perspective
+            // perspective only. the LDB will automatically disable in orthograhpic.
+            if ( osg::equivalent(proj(3,3), 0.0) )
             {
                 float vfov, ar, n, f;
                 proj.getPerspective(vfov, ar, n, f);
                 float fc = (float)(2.0/LOG2(_coeff*f+1.0));
                 _uniform->set( fc );
-            }
-            else // ortho
-            {
-                // Disable in ortho, because it just doesn't work.
-                _uniform->set( -1.0f );
             }
 
             if ( _next.valid() )

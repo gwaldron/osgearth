@@ -156,6 +156,8 @@ FractalElevationLayer::~FractalElevationLayer()
 void
 FractalElevationLayer::init()
 {
+    _debug = false;
+
     // No tile source; we will override createImplementation
     setTileSourceExpected(false);
 

@@ -1,7 +1,7 @@
 #version 410
 
-#pragma vp_name       LandCover TES Shader
-#pragma vp_entryPoint oe_landcover_tessellate
+#pragma vp_name       GroundCover TES Shader
+#pragma vp_entryPoint oe_GroundCover_tessellate
 #pragma vp_location   tess_eval
 
 // osgEarth terrain is always CCW winding
@@ -41,7 +41,7 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
 vec3 vp_Normal;
 
 // simplest possible pass-though:
-void oe_landcover_tessellate()
+void oe_GroundCover_tessellate()
 {
     VP_Interpolate3();
     // Must re-normalize the normal vector since interpolation was linear?

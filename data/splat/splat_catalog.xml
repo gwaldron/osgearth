@@ -22,7 +22,6 @@
 				<image>rock_dark.jpg</image>
 				<threshold>0.8</threshold>
 				<contrast>1.5</contrast>
-				<scale>9.0</scale>
 			</detail>
 		</class>
 		<class name="rock">
@@ -32,9 +31,9 @@
             <image>tundra.jpg</image>
             <detail>
                 <image>rock_dark.jpg</image>
-                <slope>0.18</slope>
-                <contrast>2.8</contrast>
-                <scale>12.0</scale>
+                <slope>0.4</slope>
+                <contrast>2.3</contrast>
+                <brightness>2.0</brightness>
             </detail>
         </class>
 		<class name="urban">

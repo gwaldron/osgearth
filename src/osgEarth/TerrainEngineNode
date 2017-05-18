@@ -26,7 +26,7 @@
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TerrainTileNode>
 #include <osgEarth/TerrainEngineRequirements>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/TilePatchCallback>
 #include <osgEarth/Progress>
@@ -135,7 +135,7 @@ namespace osgEarth
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the object that keeps track of GPU resources in use */
-        TextureCompositor* getResources() const;
+        TerrainResources* getResources() const;
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );
@@ -240,11 +240,6 @@ namespace osgEarth
           * @deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
-    public: // deprecated
-        
-        /** @derepcated Use getResources() instead. */
-        TextureCompositor* getTextureCompositor() const { return getResources(); }
-
     protected:
         TerrainEngineNode();
         virtual ~TerrainEngineNode();
@@ -273,7 +268,7 @@ namespace osgEarth
         // shaders, state, etc.
         virtual void dirtyState() { }
 
-        osg::ref_ptr<TextureCompositor> _textureResourceTracker;
+        osg::ref_ptr<TerrainResources> _textureResourceTracker;
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;

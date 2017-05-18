@@ -5,7 +5,7 @@
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_RENDER_IMAGERY, OE_TERRAIN_MORPH_IMAGERY, OE_TERRAIN_BLEND_IMAGERY, OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_TERRAIN_RENDER_IMAGERY, OE_TERRAIN_MORPH_IMAGERY, OE_TERRAIN_BLEND_IMAGERY, OE_TERRAIN_CAST_SHADOWS, OE_IS_PICK_CAMERA, OE_IS_SHADOW_CAMERA)
 
 uniform sampler2D oe_layer_tex;
 uniform int       oe_layer_uid;
@@ -26,6 +26,11 @@ in float oe_layer_rangeOpacity;
 
 void oe_rexEngine_frag(inout vec4 color)
 {
+#if defined(OE_IS_SHADOW_CAMERA) && !defined(OE_TERRAIN_CAST_SHADOWS)
+    discard;
+    return;
+#endif
+
 #ifdef OE_IS_PICK_CAMERA
     color = vec4(0);
 #else

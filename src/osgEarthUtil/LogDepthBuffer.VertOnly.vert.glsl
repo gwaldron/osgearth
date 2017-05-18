@@ -1,4 +1,4 @@
-#version 110
+#version 330 compatibility
 
 #pragma vp_entryPoint oe_logDepth_vert
 #pragma vp_location   vertex_clip
@@ -8,7 +8,7 @@ uniform float oe_logDepth_FC;
 
 void oe_logDepth_vert(inout vec4 clip)
 {
-    if ( oe_logDepth_FC > 0.0 )
+    if (gl_ProjectionMatrix[3][3] == 0.0) // perspective
     {
         clip.z = (log2(max(1e-6, clip.w+1.0))*oe_logDepth_FC - 1.0) * clip.w;
     }

@@ -74,6 +74,7 @@ namespace osgEarth
             }
         };
 
+        //! Listens for a layer of type LAYERTYPE and name "layerName" to arrive.
         void listen(const Map* map, const std::string& layerName, LISTENER* object, Function function) {
             if (map) {
                 _entries.push_back(Entry());
@@ -88,6 +89,25 @@ namespace osgEarth
 
                 // See if it's already there
                 LAYERTYPE* layer = map->getLayerByName<LAYERTYPE>(layerName);
+                if (layer)
+                    onLayerAdded(&e, layer, map->getIndexOfLayer(layer));
+            }
+        }
+
+        //! Listens for the first layer of type LAYERTYPE to arrive (regardles of name)
+        void listen(const Map* map, LISTENER* object, Function function) {
+            if (map) {
+                _entries.push_back(Entry());
+                Entry& e = _entries.back();
+                e._map = map;
+                e._object = object;
+                e._function = function;
+                e._callback = new Callback(&e);
+                e._listener = this;
+                map->addMapCallback(e._callback.get());
+
+                // See if it's already there
+                LAYERTYPE* layer = map->getLayer<LAYERTYPE>();
                 if (layer)
                     onLayerAdded(&e, layer, map->getIndexOfLayer(layer));
             }
@@ -112,12 +132,12 @@ namespace osgEarth
         }
 
         void onLayerAdded(Entry* entry, LAYERTYPE* layer, unsigned index) {
-            if (entry->_layerName == layer->getName())
+            if (entry->_layerName.empty() || entry->_layerName == layer->getName())
                 ((*entry->_object).*(entry->_function))(layer);
         }
 
         void onLayerRemoved(Entry* entry, Layer* layer, unsigned index) {
-            if (entry->_layerName == layer->getName())
+            if (entry->_layerName.empty() || entry->_layerName == layer->getName())
                 ((*entry->_object).*(entry->_function))(0L);
         }
     };

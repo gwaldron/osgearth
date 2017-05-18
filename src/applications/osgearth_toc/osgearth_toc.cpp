@@ -299,7 +299,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
 
     // a checkbox to enable/disable the layer:
-    if (visibleLayer && layer->getEnabled())
+    if (visibleLayer && layer->getEnabled() && !(imageLayer && imageLayer->isCoverage()))
     {
         CheckBoxControl* enabled = new CheckBoxControl( visibleLayer->getVisible() );
         enabled->addEventHandler( new ToggleLayerVisibility(visibleLayer) );

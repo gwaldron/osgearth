@@ -19,44 +19,57 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_SPLAT_SPLAT_LAYER_H
-#define OSGEARTH_SPLAT_SPLAT_LAYER_H
+#ifndef OSGEARTH_SPLAT_GROUND_COVER_LAYER_H
+#define OSGEARTH_SPLAT_GROUND_COVER_LAYER_H
 
 #include "Export"
 #include "Coverage"
 #include "Zone"
-#include <osgEarth/VisibleLayer>
+#include <osgEarth/PatchLayer>
 #include <osgEarth/LayerListener>
 #include <osgEarth/LandCoverLayer>
 
-namespace osgEarth {
-    namespace Features {
-        class FeatureSource;
-        class FeatureSourceLayer;
-    }
-}
+namespace osgEarth { namespace Features {
+    class FeatureSource;
+    class FeatureSourceLayer;
+} }
+
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
-    
-    //! Options to configure a splat layer.
-    class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
+
+    //! Serializable configuration for a GroundCoverLayer.
+    class OSGEARTHSPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
     {
     public:
-        SplatLayerOptions(const ConfigOptions& co = ConfigOptions()) :
-            VisibleLayerOptions(co)
+        GroundCoverLayerOptions(const ConfigOptions& co = ConfigOptions()) :
+            PatchLayerOptions(co),
+            _lod(13u),
+            _castShadows(false)
         {
             fromConfig(_conf);
         }
 
         //! Required layer containing land cover data
         optional<std::string>& landCoverLayer() { return _landCoverLayerName; }
-        const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }
+        const optional<std::string>& landCoverLayer() const { return _landCoverLayerName; }        
+        
+        //! Optional name of a map layer to use for masking ground cover
+        optional<std::string>& maskLayer() { return _maskLayerName; }
+        const optional<std::string>& maskLayer() const { return _maskLayerName; }
 
-        //! Splatting zones (one required, more optional)
+        //! Geographic zones
         std::vector<ZoneOptions>& zones() { return _zones; }
         const std::vector<ZoneOptions>& zones() const { return _zones; }
+
+        //! Terrain LOD at which this layer should render
+        optional<unsigned>& lod() { return _lod; }
+        const optional<unsigned>& lod() const { return _lod; }
+
+        //! Whether objects in this layer should cast shadows.
+        optional<bool>& castShadows() { return _castShadows; }
+        const optional<bool>& castShadows() const { return _castShadows; }
 
     public:
         virtual Config getConfig() const;
@@ -69,28 +82,37 @@ namespace osgEarth { namespace Splat
 
     private:
         optional<std::string> _landCoverLayerName;
-        std::vector<ZoneOptions> _zones;
+        optional<std::string> _maskLayerName;
+        ZoneOptionsVector _zones;
+        optional<unsigned> _lod;
+        optional<bool> _castShadows;
     };
 
 
-    //! Layer that renders geotypical textures on the terrain based on
-    //! classification data ("texture splatting").
-    class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
+    //! Layer that renders billboards on the ground using the GPU,
+    //! like trees, grass, rocks, etc.
+    class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
-        META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions);
+        META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions);
 
-        //! Construct a splat layer with default configuration
-        SplatLayer();
+        //! Construct a layer with default configuration
+        GroundCoverLayer();
         
-        //! Construct a splat layer with configuration options
-        SplatLayer(const SplatLayerOptions& options);
+        //! Construct a layer with configuration options
+        GroundCoverLayer(const GroundCoverLayerOptions& options);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);
 
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
+
+        //! Masking layer (optional)
+        void setMaskLayer(ImageLayer* layer);
+
+        //! LOD at which to draw ground cover
+        unsigned getLOD() const;
 
     public: // Layer
 
@@ -103,6 +125,9 @@ namespace osgEarth { namespace Splat
         //! Override post-ctor init
         virtual void init();
 
+        //! Override layer open
+        virtual const Status& open();
+
     public:
 
         //! Called when this layer is added to the map
@@ -111,26 +136,25 @@ namespace osgEarth { namespace Splat
         virtual osg::Node* getOrCreateNode(TerrainResources*);
 
     protected:
-        virtual ~SplatLayer() { }
+        virtual ~GroundCoverLayer() { }
 
         osg::observer_ptr<LandCoverDictionary> _landCoverDict;
         osg::observer_ptr<LandCoverLayer> _landCoverLayer;
+        osg::observer_ptr<ImageLayer> _maskLayer;
 
-        LayerListener<SplatLayer, LandCoverDictionary> _landCoverDictListener;
-        LayerListener<SplatLayer, LandCoverLayer> _landCoverListener;
+        LayerListener<GroundCoverLayer, LandCoverDictionary> _landCoverDictListener;
+        LayerListener<GroundCoverLayer, LandCoverLayer> _landCoverListener;
+        LayerListener<GroundCoverLayer, ImageLayer> _maskLayerListener;
 
-        TextureImageUnitReservation _splatBinding;
-        TextureImageUnitReservation _lutBinding;
+        TextureImageUnitReservation _groundCoverTexBinding;
         TextureImageUnitReservation _noiseBinding;
 
         Zones _zones;
         bool _zonesConfigured;
-        bool _editMode;
-        bool _gpuNoise;
 
         void buildStateSets();
     };
 
 } } // namespace osgEarth::Splat
 
-#endif // OSGEARTH_SPLAT_SPLAT_LAYER_FACTORY_H
+#endif // OSGEARTH_SPLAT_GROUND_COVER_LAYER_H

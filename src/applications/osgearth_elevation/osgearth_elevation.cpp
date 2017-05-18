@@ -129,10 +129,51 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 yes = true;
             }
 
-            // finally, get a normal ISECT HAE point.
+            // now get a normal ISECT HAE point.
             GeoPoint isectPoint;
             isectPoint.fromWorld( _terrain->getSRS()->getGeodeticSRS(), world );
             s_mapLabel->setText( Stringify() << isectPoint.alt() << " m");
+
+            TerrainTileModel* model = s_mapNode->getTerrainEngine()->createTileModel(
+                MapFrame(s_mapNode->getMap()),
+                TileKey(14, 16904, 3995, s_mapNode->getMap()->getProfile()),
+                CreateTileModelFilter(),
+                0L);
+
+            float h = model->elevationModel()->getHeightField()->getHeight(218, 24);
+
+            OE_WARN << "h = " << h << std::endl;
+
+#if 0
+            // This is the createTileModel approach:
+            TileKey modelKey = 
+                s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 14u);
+
+            TerrainTileModel* model = s_mapNode->getTerrainEngine()->createTileModel(
+                MapFrame(s_mapNode->getMap()),
+                modelKey,
+                CreateTileModelFilter(),
+                0L);
+
+            if (model->elevationModel().valid())
+            {
+                float h_model = HeightFieldUtils::getHeightAtLocation(
+                    model->elevationModel()->getHeightField(),
+                    mapPoint.x(), mapPoint.y(),
+                    model->elevationModel()->getHeightField()->getOrigin().x(),
+                    model->elevationModel()->getHeightField()->getOrigin().y(),
+                    model->elevationModel()->getHeightField()->getXInterval(),
+                    model->elevationModel()->getHeightField()->getYInterval());
+
+                OE_WARN << "h_model = " << h_model << std::endl;
+            
+                float h_nearest = model->elevationModel()->getHeightField()->getHeight(218, 24);
+                OE_WARN << "h_nearest = " << h_nearest << std::endl;            
+
+                OE_WARN << "h_key = " << modelKey.str() << std::endl;
+            }
+            else OE_WARN << "-- no elevation model for that key " << modelKey.str() << "\n";
+#endif
 
             // and move the marker.
             s_marker->setPosition(mapPoint);

@@ -47,7 +47,8 @@ _magFilter( osg::Texture::LINEAR),
 _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
-_binNumber( 0 )
+_binNumber( 0 ),
+_castShadows( false )
 {
     fromConfig( _conf );
 }
@@ -79,6 +80,7 @@ TerrainOptions::getConfig() const
     conf.set( "bin_number", _binNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
     conf.set( "min_expiry_frames", _minExpiryFrames);
+    conf.set( "cast_shadows", _castShadows);
 
     //Save the filter settings
 	conf.set("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -121,6 +123,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bin_number", _binNumber );
     conf.getIfSet( "min_expiry_time", _minExpiryTime);
     conf.getIfSet( "min_expiry_frames", _minExpiryFrames);
+    conf.getIfSet( "cast_shadows", _castShadows);
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

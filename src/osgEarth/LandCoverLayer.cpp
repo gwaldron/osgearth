@@ -284,11 +284,7 @@ namespace
         ImageUtils::markAsUnNormalized(out, true);
 
         // Allocate a suitable format:
-        GLenum dataType;
-        GLint  internalFormat;
-    
-        // 32-bit float:
-        internalFormat = GL_LUMINANCE32F_ARB;
+        GLint internalFormat = GL_LUMINANCE32F_ARB;
 
         int tilesize = getPixelsPerTile();
 
@@ -329,12 +325,6 @@ namespace
 
                     if ( cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f )
                     {
-                        // Noise is like a repeating overlay at the noiseLOD. So sample it using
-                        // straight U/V tile coordinates.
-                        //noiseCoords = getSplatCoords( key, noiseLOD, osg::Vec2(u,v) );
-                        //noise = getNoise( _noiseGen, noiseCoords );
-                        //cov = warpCoverageCoords(cov, noise, layer.warp);
-
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
                         if ( texel.r() != NO_DATA_VALUE )
                         {

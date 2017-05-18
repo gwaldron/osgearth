@@ -41,15 +41,15 @@ namespace osgEarth { namespace Splat
             Util;
 	};
 
-    struct LandCoverShaders : public osgEarth::ShaderPackage
+    struct GroundCoverShaders : public osgEarth::ShaderPackage
 	{
-        LandCoverShaders();
+        GroundCoverShaders();
 
         std::string
-            LandCover_TCS,
-            LandCover_TES,
-            LandCover_GS,
-            LandCover_FS;
+            GroundCover_TCS,
+            GroundCover_TES,
+            GroundCover_GS,
+            GroundCover_FS;
 	};
 	
 } } // namespace osgEarth::Splat

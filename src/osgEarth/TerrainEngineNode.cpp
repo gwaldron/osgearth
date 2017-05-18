@@ -20,7 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/TerrainTileModelFactory>
@@ -99,7 +99,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 }
 
 
-TextureCompositor*
+TerrainResources*
 TerrainEngineNode::getResources() const
 {
     return _textureResourceTracker.get();
@@ -211,7 +211,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         this->setEllipsoidModel( NULL );
     
     // Install an object to manage texture image unit usage:
-    _textureResourceTracker = new TextureCompositor();
+    _textureResourceTracker = new TerrainResources();
     std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
     for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
         _textureResourceTracker->setTextureImageUnitOffLimits( *i );

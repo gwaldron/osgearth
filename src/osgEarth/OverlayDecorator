@@ -117,7 +117,7 @@ namespace osgEarth
             osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
             const double*                 _horizonDistance;  // points to the PVD horizon distance
-            TextureCompositor*            _terrainResources; // for accessing image units
+            TerrainResources*             _terrainResources; // for accessing image units
             osg::Vec3d                    _eyeWorld;         // eyepoint in world coords
             osgShadow::ConvexPolyhedron   _visibleFrustumPH; // polyhedron representing the frustum
         };

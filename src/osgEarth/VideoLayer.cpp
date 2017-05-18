@@ -130,9 +130,9 @@ VideoLayer::open()
         {
             return ImageLayer::open();
         }
-        else
-            return getStatus();
     }
+
+    return getStatus();
 }
 
 osg::Texture* VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix)

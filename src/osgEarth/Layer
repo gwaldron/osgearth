@@ -26,10 +26,15 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/PluginLoader>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/TerrainResources>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osgDB/Options>
 #include <vector>
+
+namespace osgUtil {
+    class CullVisitor;
+}
 
 namespace osgEarth
 {
@@ -183,12 +188,12 @@ namespace osgEarth
 
         /**
          * Gets a optional scene graph provided by the layer (default is NULL).
-         * When this layer is added to a Map, the MapNode will add this node to 
-         * its scene graph; and remove it when the Layer is removed from the Map.
-         * (Note: This method is const to discourage you from *creating* the node in this
-         * method, since the MapNode may call it just to test for the node's existance.)
+         * When this layer is added to a Map, the MapNode will call this method and
+         * add the return value to its scene graph; and remove it when the Layer
+         * is removed from the Map.
+         * @param res Terrain resource manager
          */
-        virtual osg::Node* getNode() const { return 0L; }
+        virtual osg::Node* getOrCreateNode(TerrainResources* res) { return 0L; }
 
     public:
 
@@ -209,13 +214,13 @@ namespace osgEarth
         osg::StateSet* getOrCreateStateSet() {
             if (!_stateSet.valid())
                 _stateSet = new osg::StateSet();
-            return _stateSet.get();
+            return getStateSet();
         }
 
         /**
          * Layer's stateset, or NULL if none exists
          */
-        osg::StateSet* getStateSet() const {
+        virtual osg::StateSet* getStateSet() const {
             return _stateSet.get();
         }
 
@@ -259,6 +264,13 @@ namespace osgEarth
 
         //! Map will call this function when this Layer is removed from a Map.
         virtual void removedFromMap(const class Map*) { }
+
+        //! Called before culling this layer - return false to reject.
+        virtual bool preCull(osgUtil::CullVisitor*) const;
+
+        //! Called after culling this layer
+        virtual void postCull(osgUtil::CullVisitor*) const;
+
 
     public: // osg::Object
 

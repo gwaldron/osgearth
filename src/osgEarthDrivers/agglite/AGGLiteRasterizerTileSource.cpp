@@ -139,7 +139,6 @@ public:
         // clear the buffer.
         if ( _options.coverage() == true )
         {
-            // For coverage data, FLT_MAX = no data.
             agg::renderer<span_coverage32, float32> ren(rbuf);
             ren.clear( float32(NO_DATA_VALUE) );
         }

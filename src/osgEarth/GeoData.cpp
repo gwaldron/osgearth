@@ -1054,11 +1054,7 @@ GeoExtent::expandToInclude( double x, double y )
         south = y;
         north = y;
     }
-    else if (_west < _east && x >= _west && x <= _east )
-    {
-        //nop. already in horizontal extent.
-    }
-    else if (_west < _east && x >= _west && x <= _east )
+    else if (west < east && x >= west && x <= east )
     {
         //nop. already in horizontal extent.
     }

@@ -114,6 +114,10 @@ namespace osgEarth { namespace Splat
         //! LOD at which to draw ground cover
         unsigned getLOD() const;
 
+        //! Geogrphic zones; at least one is required
+        Zones& zones() { return _zones; }
+        const Zones& zones() const { return _zones; }
+
     public: // Layer
 
         //! Override

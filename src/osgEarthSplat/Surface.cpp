@@ -39,8 +39,12 @@ Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Optio
 {
     SurfaceOptions in(conf);
 
-    // Read in the catalog.
-    _catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
+    if (_catalog.valid() == false && in.catalogURI().isSet())
+    {
+        // Read in the catalog.
+        _catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
+    }
+
     if ( !_catalog.valid() )
     {
         OE_WARN << LC << "Failed to read catalog for surface\n";

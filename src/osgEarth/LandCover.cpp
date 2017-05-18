@@ -31,6 +31,13 @@ _value(0)
     //nop
 }
 
+LandCoverClass::LandCoverClass(const std::string& name, int value) :
+osg::Object()
+{
+    setName(name);
+    setValue(value);
+}
+
 LandCoverClass::LandCoverClass(const Config& conf) :
 osg::Object(),
 _value(0)
@@ -111,6 +118,22 @@ LandCoverDictionaryOptions::getConfig() const
     return conf;
 }
 
+bool
+LandCoverDictionaryOptions::loadFromXML(const URI& uri)
+{
+    osg::ref_ptr<XmlDocument> xml = XmlDocument::load(uri);
+    if (xml.valid())
+    {
+        _conf = xml->getConfig().child("land_cover_dictionary");
+        fromConfig(_conf);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 LandCoverDictionary::LandCoverDictionary() :
 Layer(&_optionsConcrete),
 _options(&_optionsConcrete)
@@ -124,6 +147,15 @@ _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
     init();
+}
+
+void
+LandCoverDictionary::addClass(const std::string& name, int value)
+{
+    if (value == INT_MAX)
+        value = options().classes().size();
+
+    options().classes().push_back(new LandCoverClass(name, value));
 }
 
 const LandCoverClass*
@@ -175,6 +207,14 @@ osg::Object(rhs, op)
 {
     _value = rhs._value;
     _lcClassName = rhs._lcClassName;
+}
+
+LandCoverValueMapping::LandCoverValueMapping(int value, const std::string& className) :
+osg::Object(),
+_value(value),
+_lcClassName(className)
+{
+    //nop
 }
 
 void
@@ -237,6 +277,24 @@ LandCoverCoverageLayerOptions::getConfig() const
     return conf;
 }
 
+bool
+LandCoverCoverageLayerOptions::loadMappingsFromXML(const URI& uri)
+{
+    osg::ref_ptr<XmlDocument> xml = XmlDocument::load(uri);
+    if (xml.valid())
+    {
+        fromConfig(xml->getConfig());
+        return true;
+    }
+    else return false;
+}
+
+void
+LandCoverCoverageLayerOptions::map(int value, const std::string& lcClass)
+{
+    mappings().push_back(new LandCoverValueMapping(value, lcClass));
+}
+
 LandCoverCoverageLayer::LandCoverCoverageLayer() :
 ImageLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
@@ -251,3 +309,4 @@ _optionsConcrete(options)
 {
     init();
 }
+

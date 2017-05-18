@@ -92,6 +92,10 @@ namespace osgEarth { namespace Splat
         //! Layer containing the land cover dictionary.
         void setLandCoverDictionary(LandCoverDictionary* landCoverDict);
 
+        //! Splatting zones
+        Zones& zones() { return _zones; }
+        const Zones& zones() const { return _zones; }
+
     public: // Layer
 
         //! Override

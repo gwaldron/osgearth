@@ -45,35 +45,6 @@ namespace osgEarth { namespace Splat {
 
 //........................................................................
 
-void
-GroundCoverBiomeOptions::fromConfig(const Config& conf) 
-{
-    conf.getIfSet("classes", _biomeClasses);
-    const ConfigSet& symbols = conf.children();
-    for (ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
-        Symbol* s = SymbolRegistry::instance()->create(*i);
-        if (s) {
-            _symbols.push_back(s);
-        }
-    }
-}
-
-Config
-GroundCoverBiomeOptions::getConfig() const 
-{
-    Config conf("biome");
-    conf.set("classes", _biomeClasses);
-    for (int i = 0; i < _symbols.size(); ++i) {
-        Config symbolConf = _symbols[i]->getConfig();
-        if (!symbolConf.empty()) {
-            conf.add(symbolConf);
-        }
-    }
-    return conf;
-}
-
-//........................................................................
-
 Config
 GroundCoverLayerOptions::getConfig() const
 {
@@ -444,7 +415,7 @@ GroundCoverLayer::buildStateSets()
             }
             else
             {
-                OE_WARN << LC << "ILLEGAL: land cover layer with no biomes or no billboards defined\n";
+                OE_WARN << LC << "ILLEGAL: ground cover layer with no biomes or no billboards defined\n";
             }
         }
         else

@@ -43,12 +43,15 @@ namespace osgEarth
         //! Construct an empty land cover class.
         LandCoverClass();
 
+        //! Construct a land cover class with the given name and numerical value
+        LandCoverClass(const std::string& name, int value);
+
         //! Construct a land cover class from a serialized Config.
         LandCoverClass(const Config& conf);
 
         //! Copy constructor
         LandCoverClass(const LandCoverClass& rhs, const osg::CopyOp& op);
-        
+
         //! Code value that represents this class in a coverage raster
         void setValue(int value) { _value = value; }
         int getValue() const { return _value; }
@@ -76,6 +79,9 @@ namespace osgEarth
         //! Collection of classes defined in this dictionary.
         LandCoverClassVector& classes() { return _landCoverClasses; }
         const LandCoverClassVector& classes() const { return _landCoverClasses; }
+
+        //! Load the options from an XML file
+        bool loadFromXML(const URI& uri);
         
     public:
         virtual Config getConfig() const;
@@ -102,11 +108,17 @@ namespace osgEarth
     public:
         META_Layer(osgEarth, LandCoverDictionary, LandCoverDictionaryOptions);
 
-        /** Constructs an empty dictionary */
+        //! Constructs an empty dictionary */
         LandCoverDictionary();
 
-        /** Constructs a dictionary from serializable options. */
+        //! Constructs a dictionary from serializable options. */
         LandCoverDictionary(const LandCoverDictionaryOptions&);
+
+        //! Add a class.
+        void addClass(const std::string& name, int value =INT_MAX);
+
+        //! Load from an XML file.
+        bool loadFromXML(const URI& uri);
         
     public:
         LandCoverClassVector& getClasses() { return options().classes(); }
@@ -132,6 +144,9 @@ namespace osgEarth
 
         //! Construct a blank mapping
         LandCoverValueMapping();
+
+        //! Construct with values
+        LandCoverValueMapping(int value, const std::string& className);
 
         //! Deserialize a mapping
         LandCoverValueMapping(const Config& conf);
@@ -175,6 +190,12 @@ namespace osgEarth
         optional<float>& warp() { return _warp; }
         const optional<float>& warp() const { return _warp; }
 
+        //! Load the data from an XML file
+        bool loadMappingsFromXML(const URI& uri);
+
+        //! Add a mapping from a value to a class (convenience)
+        void map(int value, const std::string& className);
+
     public:
         virtual Config getConfig() const;
 
@@ -214,6 +235,9 @@ namespace osgEarth
         //! Land cover dictionary to use.
         void setDictionary(LandCoverDictionary* value) { _lcDictionary = value; }
         LandCoverDictionary* getDictionary() const { return _lcDictionary.get(); }
+
+        //! Load mappings from XML
+        bool loadMappingsFromXML(const URI& uri);
 
     public: // Layer
 

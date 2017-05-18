@@ -18,6 +18,37 @@ using namespace osgEarth::Symbology;
 
 #define LC "[GroundCover] "
 
+//........................................................................
+
+void
+GroundCoverBiomeOptions::fromConfig(const Config& conf) 
+{
+    conf.getIfSet("classes", _biomeClasses);
+    const ConfigSet& symbols = conf.children();
+    for (ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
+        Symbol* s = SymbolRegistry::instance()->create(*i);
+        if (s) {
+            _symbols.push_back(s);
+        }
+    }
+}
+
+Config
+GroundCoverBiomeOptions::getConfig() const 
+{
+    Config conf("biome");
+    conf.set("classes", _biomeClasses);
+    for (int i = 0; i < _symbols.size(); ++i) {
+        Config symbolConf = _symbols[i]->getConfig();
+        if (!symbolConf.empty()) {
+            conf.add(symbolConf);
+        }
+    }
+    return conf;
+}
+
+//........................................................................
+
 GroundCoverOptions::GroundCoverOptions(const ConfigOptions& co) :
 ConfigOptions(co),
 _lod(14),
@@ -94,12 +125,12 @@ GroundCover::configure(const osgDB::Options* readOptions)
     for(int i=0; i<_options.biomes().size(); ++i)
     {
         osg::ref_ptr<GroundCoverBiome> biome = new GroundCoverBiome();
+        _biomes.push_back( biome.get() );
+    }
 
-        if ( biome->configure( options().biomes()[i], readOptions ) )
-        {
-            _biomes.push_back( biome.get() );
-        }
-        else
+    for (int i = 0; i<_biomes.size(); ++i)
+    {
+        if ( _biomes[i]->configure( options().biomes()[i], readOptions ) == false )
         {
             OE_WARN << LC << "One of the biomes in layer \"" << getName() << "\" is improperly configured\n";
             return false;

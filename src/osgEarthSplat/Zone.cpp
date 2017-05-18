@@ -25,6 +25,12 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
+Zone::Zone() :
+_uid(0)
+{
+    //nop
+}
+
 Zone::Zone(const ZoneOptions& options) :
 _options(options),
 _uid(0)
@@ -64,6 +70,10 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
     if ( _options.surface().isSet() )
     {
         _surface = new Surface();
+    }
+
+    if (_surface.valid())
+    {
         if ( !_surface->configure(_options.surface().get(), map, readOptions) )
         {
             OE_WARN << LC << "Surface data is not properly configured; surface splatting disabled.\n";
@@ -74,7 +84,10 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
     if( _options.groundCover().isSet() )
     {
         _groundCover = new GroundCover(_options.groundCover().get());
+    }
 
+    if (_groundCover.valid())
+    {
         if (_groundCover->configure(readOptions))
         {
             OE_INFO << LC << "Configured land cover group \"" << _groundCover->getName() << "\"\n";

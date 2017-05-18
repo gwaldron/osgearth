@@ -8,7 +8,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 
     <feature_model name="osm">
         <features name="osm" driver="tfs">
-            <url>http://vr-theworld.com/osm/</url>
+            <url>http://readymap.org/osm/</url>
             <min_level>14</min_level>
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>
@@ -189,7 +189,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <profile>spherical-mercator</profile>
 
         <features name="osm" driver="tfs">
-            <url>http://vr-theworld.com/osm/</url>
+            <url>http://readymap.org/osm/</url>
             <min_level>14</min_level>
             <max_level>14</max_level>
             <profile>spherical-mercator</profile>

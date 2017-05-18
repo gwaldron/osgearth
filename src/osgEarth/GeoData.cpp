@@ -785,7 +785,7 @@ GeoExtent::getCentroid( double& out_x, double& out_y ) const
     out_x = west() + 0.5*width();
 
     if ( _srs->isGeographic() )
-        out_x = normalizeLongitude( out_x );        
+        out_x = s_normalizeLongitude( out_x );        
     return true;
 }
 
@@ -901,14 +901,15 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
             localxy.x() = normalizeLongitude( localxy.x() );            
         }
 
-        //Account for small rounding errors along the edges of the extent
-        if (osg::equivalent(_west, localxy.x())) localxy.x() = _west;
-        if (osg::equivalent(_east, localxy.x())) localxy.x() = _east;
-        if (osg::equivalent(_south, localxy.y())) localxy.y() = _south;
-        if (osg::equivalent(_north, localxy.y())) localxy.y() = _north;
-
         double west, east, south, north;
         getBounds(west, south, east, north);
+
+        //Account for small rounding errors along the edges of the extent
+        if (osg::equivalent(west, localxy.x())) localxy.x() = west;
+        if (osg::equivalent(east, localxy.x())) localxy.x() = east;
+        if (osg::equivalent(south, localxy.y())) localxy.y() = south;
+        if (osg::equivalent(north, localxy.y())) localxy.y() = north;
+
         return localxy.x() >= west && localxy.x() <= east && localxy.y() >= south && localxy.y() <= north;        
     }
 }
@@ -1040,54 +1041,70 @@ GeoExtent::recomputeCircle()
 void
 GeoExtent::expandToInclude( double x, double y )
 {
-    if ( west() == DBL_MAX )
+    // If the point is already in the extent, just return.
+    if (contains(x,y)) return;
+
+    double west, east, south, north;
+    getBounds(west, south, east, north);
+
+    if ( west == DBL_MAX )
     {
-        _west = x;
-        _east = x;
-        _south = y;
-        _north = y;
+        west = x;
+        east = x;
+        south = y;
+        north = y;
+    }
+    else if (_west < _east && x >= _west && x <= _east )
+    {
+        //nop. already in horizontal extent.
     }
     else if ( getSRS() && getSRS()->isGeographic() )
     {
-        x = normalizeLongitude( x );
+        x = normalizeLongitude( x );        
 
         // calculate possible expansion distances. The lesser of the two
         // will be the direction in which we expand.
 
         // west:
         double dw;
-        if ( x > west() )
-            dw = west() - (x-360.);
+        if ( x > west )
+            dw = west - (x-360.);
         else
-            dw = west() - x;
+            dw = west - x;
 
         // east:
         double de;
-        if ( x < east() )
-            de = (x+360.) - east();
+        if ( x < east )
+            de = (x+360.) - east;
         else
-            de = x - east();
+            de = x - east;
 
         // this is the empty space available - growth beyond this 
         // automatically yields full extent [-180..180]
         double maxWidth = 360.0-width();
-
+        
+        // Special case for when 
+        if (maxWidth == 360.0 && (dw == 360.0 || de == 360.0))
+        {
+            // reached full extent
+            west = -180.0;
+            east =  180.0;
+        }
         // if both are > 180, then the point is already in our extent.
-        if ( dw <= 180. || de <= 180. )
+        else if ( dw <= 180. || de <= 180. )
         {
             if ( dw < de )
             {
                 if ( dw < maxWidth )
                 {
                     // expand westward
-                    _west -= dw;                    
-                    _west = normalizeLongitude( _west );
+                    west -= dw;                    
                 }
                 else
                 {
                     // reached full extent
-                    _west = -180.0;
-                    _east =  180.0;
+                    west = -180.0;
+                    east =  180.0;
                 }
             }
             else
@@ -1095,14 +1112,13 @@ GeoExtent::expandToInclude( double x, double y )
                 if ( de < maxWidth )
                 {
                     // expand eastward
-                    _east += de;
-                    _east = normalizeLongitude(_east);
+                    east += de;
                 }
                 else
                 {
                     // reached full extent.
-                    _west = -180.0;
-                    _east =  180.0;
+                    west = -180.0;
+                    east =  180.0;
                 }
             }
         }
@@ -1110,12 +1126,21 @@ GeoExtent::expandToInclude( double x, double y )
     }
     else
     {
-        _west = std::min(_west, x);
-        _east = std::max(_east, x);
+        west = std::min(west, x);
+        east = std::max(east, x);
     }
 
-    _south = std::min(_south, y);
-    _north = std::max(_north, y);
+    _west = west;
+    _east = east;
+
+    if (_srs->isGeographic() && (_east-_west < 360.0))
+    {
+        _west = s_normalizeLongitude(_west);
+        _east = s_normalizeLongitude(_east);
+    }
+
+    _south = std::min(south, y);
+    _north = std::max(north, y);
 
     recomputeCircle();
 }
@@ -1182,8 +1207,8 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     }
 
     // normalize our new longitudes
-    result._west = normalizeLongitude( result._west );
-    result._east = normalizeLongitude( result._east );
+    result._west = s_normalizeLongitude( result._west );
+    result._east = s_normalizeLongitude( result._east );
 
     // latitude is easy, just clamp it
     result._south = std::max( south(), rhs.south() );
@@ -1253,10 +1278,23 @@ double
 GeoExtent::normalizeLongitude( double longitude ) const
 {
     if (isValid() && _srs->isGeographic())
-    {
-        double minLon, maxLon;
-        s_getLongitudeFrame( _west, minLon, maxLon );        
-        return s_normalizeLongitude( longitude, minLon, maxLon );
+    {   
+        double west, east, south, north;
+        getBounds(west, south, east, north);
+
+        double lon = s_normalizeLongitude(longitude);
+
+        // Shift the coordinate to the west
+        if (west < -180.0 && longitude > east)
+        {
+            return lon - 360.0;
+        }
+        // Shift the coordinate to the east
+        else if (east > 180.0 && longitude < west)
+        {
+            return lon + 360.0;
+        }
+        return lon;
     }
     return longitude;
 }

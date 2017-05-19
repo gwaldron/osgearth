@@ -759,7 +759,9 @@ GeoExtent::isValid() const
         _east  != DBL_MAX  && _east  != -DBL_MAX &&
         _west  != DBL_MAX  && _west  != -DBL_MAX &&
         _north != DBL_MAX  && _north != -DBL_MAX &&
-        _south != DBL_MAX  && _south != -DBL_MAX;
+        _south != DBL_MAX  && _south != -DBL_MAX &&
+        width() >= 0.0 &&
+        height() >= 0.0;
 }
 
 double

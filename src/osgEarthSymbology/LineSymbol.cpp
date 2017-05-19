@@ -69,7 +69,7 @@ LineSymbol::getConfig() const
     conf.addIfSet   ("tessellation", _tessellation);
     conf.addIfSet   ("crease_angle", _creaseAngle);
     conf.addObjIfSet("tessellation_size", _tessellationSize );
-    conf.addIfSet   ("image", _imageURI);
+    conf.addObjIfSet   ("image", _imageURI);
     return conf;
 }
 
@@ -80,7 +80,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ("tessellation", _tessellation);
     conf.getIfSet   ("crease_angle", _creaseAngle);
     conf.getObjIfSet("tessellation_size", _tessellationSize);
-    conf.getIfSet   ("image", _imageURI);
+    conf.getObjIfSet("image", _imageURI);
 }
 
 void
@@ -143,6 +143,6 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value());
     }
     else if (match(c.key(), "stroke-image")) {
-        style.getOrCreate<LineSymbol>()->imageURI() = URI(stripQuotes(c.value()), c.referrer());
+        style.getOrCreate<LineSymbol>()->imageURI() = StringExpression(stripQuotes(c.value()), c.referrer());
     }
 }

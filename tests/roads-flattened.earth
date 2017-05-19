@@ -9,10 +9,10 @@
             </lods> -->
         </terrain>
     </options>
-    
+
     <!-- Land cover dictionary -->
     <xi:include href="../data/land_cover_dictionary.xml"/>
-    
+
     <!-- Land cover layer -->
     <land_cover name="land-cover">
         <cache_policy usage="no_cache"/>
@@ -27,7 +27,7 @@
             </coverage>
         </coverages>
     </land_cover>
-    
+
     <elevation name="ReadyMap Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
@@ -52,18 +52,20 @@
         <cache_policy usage="no_cache"/>
         <tile_size>256</tile_size>
         <feature_source>roads-data</feature_source>
-        <style type="text/css">
-            default {
-               stroke: #ffffff;
-               stroke-width: 12m;
-               stroke-image: "../data/road.png";
-            }                    
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-width: 12m;
+                   stroke-image: ""../data/road.png"";
+                }
+            </style>
+        </styles>
         <buffer_width>12m</buffer_width>
     </road_surface>
-     
+
     <!-- Deprecated. Use the land-cover layer instead. -->
-    
+
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
         <base_lod>12</base_lod>
         <tile_size>256</tile_size>
@@ -75,14 +77,14 @@
             </image>
         </images>
     </image>
-    
-    <splat>        
+
+    <splat>
         <coverage>
             <layer> CLASSMAP </layer>
             <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-        </coverage>        
+        </coverage>
         <zones>
-            <zone name="default" doc="Default Climate Zone">            
+            <zone name="default" doc="Default Climate Zone">
                 <surface>
                     <catalog>../data/splat/splat_catalog.xml</catalog>
                 </surface>
@@ -98,7 +100,7 @@
                                 </biome>
                             </biomes>
                         </layer>
-                    
+
                         <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
                             <biomes>
                                 <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
@@ -106,9 +108,9 @@
                                 </biome>
                             </biomes>
                         </layer>
-                    </layers>                    
+                    </layers>
                 </land_cover>
-            </zone>                
+            </zone>
         </zones>
     </splat>
 
@@ -159,7 +161,7 @@
         </viewpoint>
 
     </viewpoints>
-    
+
     <feature_source name="roads-data" driver="tfs">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>

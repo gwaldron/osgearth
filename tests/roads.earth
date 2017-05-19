@@ -12,7 +12,7 @@ http://readymap.org
 
 -->
 <map name="readymap.org" type="geocentric">
-    
+
     <options>
         <terrain driver="rex" progressive="true">
         </terrain>
@@ -21,7 +21,7 @@ http://readymap.org
     <image name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-    
+
     <image name="Tilekeys" driver="debug">
     </image>
 
@@ -29,15 +29,17 @@ http://readymap.org
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <feature_source>roads-data</feature_source>
-        <style type="text/css">
-            default {
-               stroke: #ffffff;
-               stroke-width: 65m;
-               stroke-image: "../data/road.png";
-            }                    
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-width: 65m;
+                   stroke-image: ""../data/road.png"";
+                }
+            </style>
+        </styles>
     </road_surface>
-    
+
     <feature_model name="Road verts">
         <feature_source>roads-data</feature_source>
         <styles>
@@ -53,7 +55,7 @@ http://readymap.org
             </style>
         </styles>
     </feature_model>
-    
+
     <feature_model name="Road skeleton" visible="false">
         <feature_source>roads-data</feature_source>
         <styles>
@@ -63,12 +65,12 @@ http://readymap.org
                     stroke-width: 65m;
                     render-depth-test: false;
                     render-order: 2;
-                    stroke-image: "../data/grid.png";
+                    stroke-image: ""../data/grid.png"";
                 }
             </style>
         </styles>
     </feature_model>
-    
+
     <feature_source name="roads-data" driver="tfs">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>
@@ -81,7 +83,7 @@ http://readymap.org
             </script>
         </filters>
     </feature_source>
-    
+
     <viewpoints>
         <viewpoint name="45 Lat">
             <heading>-1.6803</heading>
@@ -102,6 +104,6 @@ http://readymap.org
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
     </viewpoints>
-    
+
     <libraries>osgEarthSplat</libraries>
 </map>

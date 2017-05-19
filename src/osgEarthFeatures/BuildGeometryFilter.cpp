@@ -254,12 +254,12 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 }
 
 
-osg::Geode*
+osg::Group*
 BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                                              bool           twosided,
                                              FilterContext& context)
 {
-    osg::Geode* geode = new osg::Geode();
+    osg::Group* group = new osg::Group;    
 
     // establish some referencing
     bool                    makeECEF   = false;
@@ -275,6 +275,10 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         //mapSRS     = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
+    // We need to create a different geode for each texture that is used so they can share statesets.
+    typedef std::map< std::string, osg::ref_ptr< osg::Geode > > TextureToGeodeMap;
+    TextureToGeodeMap geodes;    
+
     // iterate over all features.
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
@@ -286,6 +290,35 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
         if ( !line )
             continue;
+
+        std::string imageURI;
+
+        // Image URI
+        if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
+        {
+            StringExpression temp( *line->imageURI() );
+            imageURI = input->eval( temp, context.getSession());            
+        }
+
+        // Try to find the existing geode, otherwise create one.
+        osg::ref_ptr< osg::Geode > geode;
+        TextureToGeodeMap::iterator itr = geodes.find(imageURI);
+        if (itr != geodes.end())
+        {
+            geode = itr->second;
+        }
+        else
+        {
+            geode = new osg::Geode;
+
+            // Create the texture for the geode.
+            osg::ref_ptr<osg::Texture> tex;
+            if (context.getSession()->getResourceCache()->getOrCreateLineTexture(imageURI, tex, context.getDBOptions()))
+            {
+                geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
+            }
+            geodes[imageURI] = geode;
+        }
 
         // run a symbol script if present.
         if ( line->script().isSet() )
@@ -343,12 +376,30 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             {
                 Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
                 Clamping::setHeights( geom, hats.get() );
-            }
+            }            
         }
-
         polygonizer.installShaders( geode );
     }
-    return geode;
+
+    for (TextureToGeodeMap::iterator itr = geodes.begin(); itr != geodes.end(); ++itr)
+    {
+        // Optimize the Geode
+        osg::Geode* geode = itr->second.get();
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        geode->accept(mg);
+
+        osgUtil::Optimizer o;
+        o.optimize( geode,
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+        // Add it to the group
+        group->addChild( geode );
+    }
+
+    return group;
 }
 
 
@@ -1224,30 +1275,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
         bool twosided = polygons.size() > 0 ? false : true;
-        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
-        if ( geode->getNumDrawables() > 0 )
+        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context);
+
+        if (lines->getNumChildren() > 0)
         {
-            osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(65536);
-            geode->accept(mg);
-
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(),
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
-            if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
-            {
-                osg::ref_ptr<osg::Texture> tex;
-                if (context.getSession()->getResourceCache()->getOrCreateLineTexture(line->imageURI().get(), tex, context.getDBOptions()))
-                {
-                    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
-                }
-            }
-
-            result->addChild( geode.get() );
+            result->addChild( lines.get() );
         }
+
     }
 
     if ( lines.size() > 0 )

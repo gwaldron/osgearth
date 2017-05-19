@@ -228,7 +228,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
                 if ( !profile )
                 {
-                    return Status::Error( Stringify() << "Profile not recognized: " << profileStr );
+                    OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
                 }
             }
 

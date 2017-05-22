@@ -53,14 +53,42 @@
         <tile_size>256</tile_size>
         <feature_source>roads-data</feature_source>
         <styles>
-            <style type="text/css">
-                default {
-                   stroke: #ffffff;
-                   stroke-width: 12m;
-                   stroke-image: ""../data/road.png"";
+
+             <script language="javascript">
+            <![CDATA[
+                function selectStyle() {
+                    if ("highway" in feature.properties) {
+                        var hwy = feature.properties["highway"];
+                        if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
+                            return "default";
+                        }
+                        return "asphalt";
+                    }
+                    return "default";
                 }
-            </style>
+            ]]>
+            </script>
+
+            <selector name="default" style_expr="selectStyle()"/>
+
+        <style type="text/css">
+            default {
+               stroke: #ffffff;
+               stroke-width: 12m;
+               stroke-image: ""../data/road.png"";
+
+            }
+
+            asphalt {
+               stroke: #ffffff;
+               stroke-width: 4m;
+               stroke-image: ""../data/asphalt.jpg"";
+            }
+
+        </style>
+
         </styles>
+
         <buffer_width>12m</buffer_width>
     </road_surface>
 

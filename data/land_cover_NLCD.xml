@@ -1,0 +1,27 @@
+<!--
+Land Cover data source definition for NLCD (National Land Cover Dataset)
+https://www.mrlc.gov/nlcd2011.php
+-->
+<land_cover_mappings source="NLCD 2011">
+    <mapping value="11" class="water"     desc="Open Water" />
+    <mapping value="12" class="tundra"    desc="Perennial Ice/Snow" />
+    <mapping value="21" class="grassland" desc="Developed, Open Space"/>           
+    <mapping value="22" class="grassland" desc="Developed, Low Intensity"/>           
+    <mapping value="23" class="urban"     desc="Developed, Medium Intensity"/>
+    <mapping value="24" class="urban"     desc="Developed, High Intensity"/>                
+    <mapping value="31" class="desert"    desc="Barren Land (Rock/Sand/Clay)"/>                
+    <mapping value="41" class="forest"    desc="Deciduous Forest"/>
+    <mapping value="42" class="forest"    desc="Evergreen Forest"/>
+    <mapping value="43" class="forest"    desc="Mixed Forest"/>               
+    <mapping value="51" class="savanna"   desc="Dwarf Scrub"/>
+    <mapping value="52" class="savanna"   desc="Shrub/Scrub"/>
+    <mapping value="71" class="grassland" desc="Glassland/Herbaceous"/>
+    <mapping value="72" class="grassland" desc="Sedge/Herbaceous"/>
+    <mapping value="73" class="swamp"     desc="Lichens"/>
+    <mapping value="74" class="swamp"     desc="Moss"/>
+    <mapping value="81" class="grassland" desc="Pasture/Hay"/>
+    <mapping value="82" class="cropland"  desc="Cultivated Crops"/>               
+    <mapping value="90" class="swamp"     desc="Woody Wetlands"/>
+    <mapping value="95" class="swamp"     desc="Emergent Herbaceous Wetlands"/>
+</land_cover_mappings>
+

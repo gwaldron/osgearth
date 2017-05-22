@@ -1209,8 +1209,11 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     }
 
     // normalize our new longitudes
-    result._west = s_normalizeLongitude( result._west );
-    result._east = s_normalizeLongitude( result._east );
+    if (_srs->isGeographic())
+    {
+        result._west = s_normalizeLongitude( result._west );
+        result._east = s_normalizeLongitude( result._east );
+    }
 
     // latitude is easy, just clamp it
     result._south = std::max( south(), rhs.south() );

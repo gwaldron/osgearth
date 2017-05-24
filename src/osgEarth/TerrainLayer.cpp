@@ -620,7 +620,8 @@ TerrainLayer::getCacheBin(const Profile* profile)
 
                 // store it in the cache bin.
                 std::string data = meta->getConfig().toJSON(false);
-                bin->write(metaKey, new StringObject(data), _readOptions.get());                   
+                osg::ref_ptr<StringObject> temp = new StringObject(data);
+                bin->write(metaKey, temp.get(), _readOptions.get());                   
 
                 bin->setMetadata(meta.get());
             }

@@ -174,12 +174,30 @@ namespace
         }
         return Dmin;
     }
+
+
+    struct Widths {
+        Widths(const Widths& rhs) {
+            bufferWidth = rhs.bufferWidth;
+            lineWidth = rhs.lineWidth;
+        }
+
+        Widths(double bufferWidth, double lineWidth) {
+            this->bufferWidth = bufferWidth;
+            this->lineWidth = lineWidth;
+        }
+
+        double bufferWidth;
+        double lineWidth;
+    };
+
+    typedef std::vector<Widths> WidthsList;
     
     // Creates a heightfield that flattens an area intersecting the input polygon geometry.
     // The height of the area is found by sampling a point internal to the polygon.
     // bufferWidth = width of transition from flat area to natural terrain.
     bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                           double bufferWidth, ElevationEnvelope* envelope, 
+                           WidthsList& widths, ElevationEnvelope* envelope, 
                            bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -211,13 +229,16 @@ namespace
                     P = Pex;
                 
                 bool done = false;
-                double minD2 = bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
+                double minD2 = DBL_MAX;//bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
+                double bufferWidth = 0.0;
 
                 const Polygon* bestPoly = 0L;
 
                 ConstGeometryIterator giter(geom, false);
+                int geomIndex = 0;
                 while (giter.hasMore() && !done)
                 {
+                    Widths width = widths[geomIndex++];
                     const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
                     if (polygon)
                     {
@@ -229,6 +250,7 @@ namespace
                             done = true;
                             bestPoly = polygon;
                             minD2 = -1.0;
+                            bufferWidth = width.bufferWidth;
                         }
 
                         // If not in the polygon, how far to the closest edge?
@@ -239,9 +261,10 @@ namespace
                             {
                                 minD2 = D2;
                                 bestPoly = polygon;
+                                bufferWidth = width.bufferWidth;
                             }
                         }
-                    }
+                    }                    
                 }
 
                 if (bestPoly && minD2 != 0.0)
@@ -277,6 +300,8 @@ namespace
         return wroteChanges;
     }
 
+
+
     struct Sample {
         double D2;      // distance to segment squared
         osg::Vec3d A;   // endpoint of segment
@@ -287,6 +312,9 @@ namespace
         float elevPROJ; // elevation at point on segment
         float elev;     // flattened elevation
         double D;       // distance
+
+        double innerRadius;
+        double outerRadius;
 
         bool operator < (struct Sample& rhs) const { return D2 < rhs.D2; }
     };
@@ -361,7 +389,7 @@ namespace
      * modifiable heightfield as we go along.
      */
     bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                        double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+                        WidthsList& widths, ElevationEnvelope* envelope,
                         bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -372,10 +400,6 @@ namespace
         double row_interval = ex.height() / (double)(hf->getNumRows()-1);
 
         osg::Vec3d Pex, P, PROJ;
-
-        double innerRadius = lineWidth * 0.5;
-        double outerRadius = innerRadius + bufferWidth;
-        double outerRadius2 = outerRadius * outerRadius;
 
         bool needsTransform = ex.getSRS() != geomSRS;
         
@@ -402,14 +426,21 @@ namespace
                 // because the elevation values on these line segments will be the flattening
                 // value. There may be more than one line segment that falls within the search
                 // radius; we will collect up to MaxSamples of these for each heightfield point.
+                //static const unsigned Maxsamples = 4;
                 static const unsigned Maxsamples = 4;
                 Samples samples;
                 
                 // Search for line segments.
                 ConstGeometryIterator giter(geom);
+                unsigned int geomIndex = 0;
                 while (giter.hasMore())
                 {
                     const Geometry* part = giter.next();
+                    Widths w = widths[geomIndex++];
+
+                    double innerRadius = w.lineWidth * 0.5;
+                    double outerRadius = innerRadius + w.bufferWidth;
+                    double outerRadius2 = outerRadius * outerRadius;
                 
                     for (int i = 0; i < part->size()-1; ++i)
                     {
@@ -477,6 +508,8 @@ namespace
                                 b->A = A;
                                 b->B = B;
                                 b->T = t;
+                                b->innerRadius = innerRadius;
+                                b->outerRadius = outerRadius;
                             }
                         }
                     }
@@ -509,7 +542,7 @@ namespace
                         // Blend factor. 0 = distance is less than or equal to the inner radius;
                         //               1 = distance is greater than or equal to the outer radius.
                         double blend = clamp(
-                            (sample.D - innerRadius) / (outerRadius - innerRadius),
+                            (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
                             0.0, 1.0);
                         
                         if (sample.T == 0.0)
@@ -569,13 +602,13 @@ namespace
     
 
     bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                   double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+                   WidthsList& widths, ElevationEnvelope* envelope,
                    bool fillAllPixels, ProgressCallback* progress)
     {
         if (geom->isLinear())
-            return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, fillAllPixels, progress);
+            return integrateLines(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
         else
-            return integratePolygons(key, hf, geom, geomSRS, bufferWidth, envelope, fillAllPixels, progress);
+            return integratePolygons(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
     }
 }
 
@@ -767,6 +800,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
     GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
 
     // Buffer the query extent to include the potentially flattened area.
+    /*
     double linewidth = SpatialReference::transformUnits(
         options().lineWidth().get(),
         featureSRS,
@@ -776,7 +810,10 @@ FlatteningLayer::createImplementation(const TileKey& key,
         options().bufferWidth().get(),
         featureSRS,
         geoExtent.getCentroid().y());
-
+    */
+    // TODO:  JBFIX.  Add a "max" setting somewhere.
+    double linewidth = 10.0;
+    double bufferwidth = 10.0;
     double queryBuffer = 0.5*linewidth + bufferwidth;
     queryExtent.expand(queryBuffer, queryBuffer);
 
@@ -795,8 +832,13 @@ FlatteningLayer::createImplementation(const TileKey& key,
 
     bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
 
+    osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet();
+    styleSheet->setScript(options().getScript());
+    osg::ref_ptr< Session > session = new Session( _map.get(), styleSheet.get());
+
     // We will collection all the feature geometries in this multigeometry:
     MultiGeometry geoms;
+    WidthsList widths;
 
     if (featureProfile->getProfile())
     {
@@ -824,14 +866,41 @@ FlatteningLayer::createImplementation(const TileKey& key,
             {
                 Feature* feature = cursor->nextFeature();
 
+                double lineWidth = 0.0;
+                double bufferWidth = 0.0;
+                if (options().lineWidth().isSet())
+                {
+                    NumericExpression lineWidthExpr(options().lineWidth().get());
+                    lineWidth = feature->eval(lineWidthExpr, session);
+                }
+
+                if (options().bufferWidth().isSet())
+                {
+                    NumericExpression bufferWidthExpr(options().bufferWidth().get());
+                    bufferWidth = feature->eval(bufferWidthExpr, session);
+                }
+
                 // Transform the feature geometry to our working (projected) SRS.
                 if (needsTransform)
                     feature->transform(workingSRS);
+
+                lineWidth = SpatialReference::transformUnits(
+                    Distance(lineWidth),
+                    featureSRS,
+                    geoExtent.getCentroid().y());
+
+                bufferWidth = SpatialReference::transformUnits(
+                    Distance(bufferWidth),
+                    featureSRS,
+                    geoExtent.getCentroid().y());
 
                 //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
                 //      in order to discard geometries we don't care about
 
                 geoms.getComponents().push_back(feature->getGeometry());
+                if (feature->getGeometry()->getNumComponents() > 1) OE_NOTICE << "Adding multigeometry" << std::endl;
+                widths.push_back(Widths(bufferWidth, lineWidth));
+                OE_NOTICE << "highway=" << feature->getString("highway") << " bufferWidth=" << bufferWidth << " lineWidth=" << lineWidth << std::endl;
             }
         }
     }
@@ -848,6 +917,34 @@ FlatteningLayer::createImplementation(const TileKey& key,
         {
             Feature* feature = cursor->nextFeature();
 
+            double lineWidth = 0.0;
+            double bufferWidth = 0.0;
+            if (options().lineWidth().isSet())
+            {
+                NumericExpression lineWidthExpr(options().lineWidth().get());
+                lineWidth = feature->eval(lineWidthExpr, session);
+            }
+
+            if (options().bufferWidth().isSet())
+            {
+                NumericExpression bufferWidthExpr(options().bufferWidth().get());
+                bufferWidth = feature->eval(bufferWidthExpr, session);
+            }
+
+            // Transform the feature geometry to our working (projected) SRS.
+            if (needsTransform)
+                feature->transform(workingSRS);
+
+            lineWidth = SpatialReference::transformUnits(
+                Distance(lineWidth),
+                featureSRS,
+                geoExtent.getCentroid().y());
+
+            bufferWidth = SpatialReference::transformUnits(
+                Distance(bufferWidth),
+                featureSRS,
+                geoExtent.getCentroid().y());
+
             // Transform the feature geometry to our working (projected) SRS.
             if (needsTransform)
                 feature->transform(workingSRS);
@@ -856,6 +953,7 @@ FlatteningLayer::createImplementation(const TileKey& key,
             //      in order to discard geometries we don't care about
 
             geoms.getComponents().push_back(feature->getGeometry());
+            widths.push_back(Widths(bufferWidth, lineWidth));
         }
     }
 
@@ -877,12 +975,18 @@ FlatteningLayer::createImplementation(const TileKey& key,
         // Create an elevation query envelope at the LOD we are creating
         osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
 
-        // Resolve the buffering widths:
-        double lineWidthLocal = SpatialReference::transformUnits(options().lineWidth().get(), workingSRS, geoExtent.getCentroid().y());
-        double bufferWidthLocal = SpatialReference::transformUnits(options().bufferWidth().get(), workingSRS, geoExtent.getCentroid().y());
-
         bool fill = (options().fill() == true);
+
+        if (geoms.getComponents().size() != widths.size())
+        {
+            OE_NOTICE << "Components and widths not equal" << std::endl;
+        }
+        else
+        {
+            OE_NOTICE << "Geoms=" << geoms.getComponents().size() << " widths=" << widths.size() << std::endl;
+        }
         
-        integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress);
+        
+        integrate(key, hf, &geoms, workingSRS, widths, envelope, fill, progress);
     }
 }

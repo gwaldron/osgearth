@@ -26,12 +26,15 @@
 #include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgDB/FileNameUtils>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
 
     /**
      * Serializable options to configure a FlatteningLayer.
@@ -58,18 +61,20 @@ namespace osgEarth { namespace Util
         const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
         /** For line features, the width around the line to flatten. */
-        optional<Distance>& lineWidth() { return _lineWidth; }
-        const optional<Distance>& lineWidth() const { return _lineWidth; }
+        optional<NumericExpression>& lineWidth() { return _lineWidth; }
+        const optional<NumericExpression>& lineWidth() const { return _lineWidth; }
 
         /** Width of the buffer between the flattened terrain and the natural terrain,
             which will serve as a transition area. */
-        optional<Distance>& bufferWidth() { return _bufferWidth; }
-        const optional<Distance>& bufferWidth() const { return _bufferWidth; }
+        optional<NumericExpression>& bufferWidth() { return _bufferWidth; }
+        const optional<NumericExpression>& bufferWidth() const { return _bufferWidth; }
 
         //! Whether to write all samples (default=false) with source elev instead of
         //! writing NO_DATA_VALUE where no features exist
         optional<bool>& fill() { return _fill; }
         const optional<bool>& fill() const { return _fill; }
+
+        StyleSheet::ScriptDef* getScript() const { return _script.get(); }
 
     public:
         Config getConfig() const
@@ -78,28 +83,78 @@ namespace osgEarth { namespace Util
             conf.key() = "flattened_elevation";
             conf.addObjIfSet("features",  _featureSource);
             conf.addIfSet("feature_source", _featureSourceLayer);
-            conf.addIfSet("line_width", _lineWidth);
-            conf.addIfSet("buffer_width", _bufferWidth);
+            conf.addObjIfSet("line_width", _lineWidth);
+            conf.addObjIfSet("buffer_width", _bufferWidth);
             conf.addIfSet("fill", _fill);
+
+            if ( _script.valid() )
+            {
+                Config scriptConf("script");
+
+                if ( !_script->name.empty() )
+                    scriptConf.set( "name", _script->name );
+                if ( !_script->language.empty() )
+                    scriptConf.set( "language", _script->language );
+                if ( _script->uri.isSet() )
+                    scriptConf.set( "url", _script->uri->base() );
+                if ( !_script->profile.empty() )
+                    scriptConf.set( "profile", _script->profile );
+                else if ( !_script->code.empty() )
+                    scriptConf.value() = _script->code;
+
+                conf.add( scriptConf );
+            }
+
             return conf;
         }
 
     protected:
         void mergeConfig( const Config& conf )
         {
+            URIContext uriContext = URIContext( conf.referrer() );
+
             conf.getObjIfSet("features",  _featureSource);
             conf.getIfSet("feature_source", _featureSourceLayer);
-            conf.getIfSet("line_width", _lineWidth);
-            conf.getIfSet("buffer_width", _bufferWidth);
+            conf.getObjIfSet("line_width", _lineWidth);
+            conf.getObjIfSet("buffer_width", _bufferWidth);
             conf.getIfSet("fill", _fill);
+
+            // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
+            ConfigSet scripts = conf.children( "script" );
+            for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
+            {
+                _script = new StyleSheet::ScriptDef();
+
+                // load the code from a URI if there is one:
+                if ( i->hasValue("url") )
+                {
+                    _script->uri = URI( i->value("url"), uriContext );
+                    OE_INFO << "Loading script from \"" << _script->uri->full() << std::endl;
+                    _script->code = _script->uri->getString();
+                }
+                else
+                {
+                    _script->code = i->value();
+                }
+
+                // name is optional and unused at the moment
+                _script->name = i->value("name");
+
+                std::string lang = i->value("language");
+                _script->language = lang.empty() ? "javascript" : lang;
+
+                std::string profile = i->value("profile");
+                _script->profile = profile;
+            }
         }
         
     private:
         optional<FeatureSourceOptions>  _featureSource;
         optional<std::string> _featureSourceLayer;
-        optional<Distance> _lineWidth;
-        optional<Distance> _bufferWidth;
+        optional<NumericExpression> _lineWidth;
+        optional<NumericExpression> _bufferWidth;
         optional<bool> _fill;
+        osg::ref_ptr< StyleSheet::ScriptDef > _script;
     };
 
     /**
@@ -150,7 +205,9 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<FeatureSource> _featureSource;
+        osg::ref_ptr<ScriptEngine> _scriptEngine;
         LayerListener<FlatteningLayer, FeatureSourceLayer> _featureLayerListener;
+        osg::observer_ptr< const Map > _map;
     };
 
     REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);

@@ -15,9 +15,30 @@
     </fractal_elevation>
 
     <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" enabled="true">
+        <script language="javascript">
+            <![CDATA[
+            function getLineWidth() {
+                var hwy = feature.properties["highway"];
+                if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
+                    return 30.0;
+                }
+                return 5.0;
+            }
+
+            function getBufferWidth() {
+                return 0.0;
+                var hwy = feature.properties["highway"];
+                if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
+                    return 12.0;
+                }
+                return 4.0;
+            }
+        ]]>
+        </script>
+
         <feature_source>roads-data</feature_source>
-        <line_width>12m</line_width>
-        <buffer_width>24m</buffer_width>
+        <line_width>getLineWidth()</line_width>
+        <buffer_width>getBufferWidth()</buffer_width>
     </flattened_elevation>
 
     <!-- Procedural terrain imagery from land cover data -->
@@ -57,12 +78,12 @@
             <style type="text/css">
                 default {
                    stroke: #ffffff;
-                   stroke-width: 12m;
+                   stroke-width: 30m;
                    stroke-image: ""../data/road.png"";
                 }
                 asphalt {
                    stroke: #ffffff;
-                   stroke-width: 4m;
+                   stroke-width: 1m;
                    stroke-image: ""../data/asphalt.jpg"";
                 }
             </style>
@@ -72,6 +93,7 @@
     </road_surface>
 
     <!-- GPU trees from land cover data -->
+    <!--
     <splat_groundcover name="Trees" land_cover_layer="LandCover">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
@@ -94,6 +116,7 @@
             </zone>
         </zones>
     </splat_groundcover>
+-->
 
     <viewpoints>
         <viewpoint name="Rainier">
@@ -151,11 +174,11 @@
         <cache_policy usage="no_cache"/>
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <url>D:\geodata\splatting\GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
             </coverage>
             <coverage name="NCLD 2011" driver="gdal">
-                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+                <url>D:\geodata\splatting\nlcd_2011_landcover_2011_edition_2014_03_31_tiled.tif</url>
                 <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
                 <warp>0.01</warp>
             </coverage>

@@ -88,8 +88,9 @@ using namespace osgEarth;
 #define TEXENV_COLOR   "oe_sg_texenvcolor"
 #define TEX_MATRIX     "oe_sg_texmat"
 
-#define VERTEX_FUNCTION   "oe_sg_vert"
-#define FRAGMENT_FUNCTION "oe_sg_frag"
+#define VERTEX_MODEL_FUNCTION "oe_sg_vert_model"
+#define VERTEX_VIEW_FUNCTION  "oe_sg_vert_view"
+#define FRAGMENT_FUNCTION     "oe_sg_frag"
 
 // other stuff
 #define INDENT "    "
@@ -357,20 +358,6 @@ ShaderGenerator::ShaderGenerator()
     _duplicateSharedSubgraphs = false;
 }
 
-// pre-3.3.0, NodeVisitor didn't have a copy constructor.
-#if OSG_VERSION_LESS_THAN(3,3,0)
-ShaderGenerator::ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy) :
-osg::NodeVisitor         (),
-_active                  (rhs._active),
-_duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs)
-{
-    _visitorType              = rhs._visitorType;
-    _traversalMode            = rhs._traversalMode;
-    _traversalMask            = rhs._traversalMask;
-    _nodeMaskOverride         = rhs._nodeMaskOverride;
-    _state = new StateEx();
-}
-#else
 ShaderGenerator::ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy) :
 osg::NodeVisitor         (rhs, copy),
 _active                  (rhs._active),
@@ -378,7 +365,6 @@ _duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs)
 {
     _state = new StateEx();
 }
-#endif
 
 void
 ShaderGenerator::setIgnoreHint(osg::Object* object, bool ignore)
@@ -592,7 +578,6 @@ ShaderGenerator::apply( osg::Geode& node )
     }
 }
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,3)
 void
 ShaderGenerator::apply( osg::Drawable& node )
 {
@@ -607,7 +592,6 @@ ShaderGenerator::apply( osg::Drawable& node )
 
     apply( &node );
 }
-#endif
 
 void 
 ShaderGenerator::apply( osg::Drawable* drawable )
@@ -806,7 +790,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
         "out " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
-        "void " VERTEX_FUNCTION "(inout vec4 vertexVIEW)\n"
+        "void " VERTEX_MODEL_FUNCTION "(inout vec4 unused)\n"
         "{ \n"
         INDENT TEX_COORD_TEXT " = gl_MultiTexCoord0;\n"
         "} \n";
@@ -821,7 +805,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
+    vp->setFunction( VERTEX_MODEL_FUNCTION, vertSrc, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
     vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 
@@ -874,9 +858,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     {
         needNewStateSet = true;
         osg::StateAttribute::GLModeValue value = current->getMode(GL_LIGHTING);
-        //newStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
         newStateSet->setDefine(OE_LIGHTING_DEFINE, value);
-        //newStateSet->setDefine("OE_GL_LIGHTING_ENABLED", value == osg::StateAttribute::ON ? "1" : "0");
     }
     
     // start generating the shader source.
@@ -927,23 +909,37 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     {
         std::string version = GLSL_VERSION_STR;
 
-        std::string vertHeadSource;
-        vertHeadSource = buf._vertHead.str();
+        std::string modelHeadSource = buf._modelHead.str();
+        std::string modelBodySource = buf._modelBody.str();
 
-        std::string vertBodySource;
-        vertBodySource = buf._vertBody.str();
-
-
-        if ( !vertHeadSource.empty() || !vertBodySource.empty() )
+        if (!modelHeadSource.empty() && !modelBodySource.empty())
         {
-            std::string vertSource = Stringify()
+            std::string modelSource = Stringify()
                 << "#version " << version << "\n" GLSL_PRECISION "\n"
-                << vertHeadSource
-                << "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n{\n"
-                << vertBodySource
+                << modelHeadSource
+                << "void " VERTEX_MODEL_FUNCTION "(inout vec4 vertex_model)\n{\n"
+                << modelBodySource
                 << "}\n";
 
-            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
+            vp->setFunction(VERTEX_MODEL_FUNCTION, modelSource, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f);
+        }
+
+        std::string viewHeadSource;
+        viewHeadSource = buf._viewHead.str();
+
+        std::string viewBodySource;
+        viewBodySource = buf._viewBody.str();
+
+        if ( !viewHeadSource.empty() && !viewBodySource.empty() )
+        {
+            std::string viewSource = Stringify()
+                << "#version " << version << "\n" GLSL_PRECISION "\n"
+                << viewHeadSource
+                << "void " VERTEX_VIEW_FUNCTION "(inout vec4 vertex_view)\n{\n"
+                << viewBodySource
+                << "}\n";
+
+            vp->setFunction(VERTEX_VIEW_FUNCTION, viewSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
         }
 
 
@@ -953,7 +949,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         std::string fragBodySource;
         fragBodySource = buf._fragBody.str();
 
-        if ( !fragHeadSource.empty() || !fragBodySource.empty() )
+        if ( !fragHeadSource.empty() && !fragBodySource.empty() )
         {
             std::string fragSource = Stringify()
                 << "#version " << version << "\n" GLSL_PRECISION "\n"
@@ -985,7 +981,8 @@ ShaderGenerator::apply(osg::Texture*     tex,
 {
    bool ok = true;
 
-   buf._vertHead << "out " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+   buf._modelHead << "out " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+   buf._viewHead << "out " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
    buf._fragHead << "in " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
    apply( texgen, unit, buf );
@@ -1103,7 +1100,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
         switch( texgen->getMode() )
         {
         case osg::TexGen::OBJECT_LINEAR:
-            buf._vertBody
+            buf._modelBody
                 << INDENT "{\n"
                 << INDENT TEX_COORD << unit << " = "
                 <<      "gl_Vertex.x*gl_ObjectPlaneS[" <<unit<< "] + "
@@ -1114,7 +1111,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::EYE_LINEAR:
-            buf._vertBody
+            buf._viewBody
                 << INDENT "{\n"
                 << INDENT TEX_COORD << unit << " = "
                 <<      "vertex_view.x*gl_EyePlaneS[" <<unit<< "] + "
@@ -1125,9 +1122,9 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::SPHERE_MAP:
-            buf._vertHead
+            buf._viewHead
                 << "vec3 vp_Normal; // stage global\n";
-            buf._vertBody 
+            buf._viewBody 
                 << INDENT "{\n" // scope it in case there are > 1
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
                 << INDENT "vec3 r = reflect(view_vec, vp_Normal);\n"
@@ -1138,9 +1135,9 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::REFLECTION_MAP:
-            buf._vertHead
+            buf._viewHead
                 << "vec3 vp_Normal; // stage global\n";
-            buf._vertBody
+            buf._viewBody
                 << INDENT "{\n"
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
                 << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, vp_Normal), 1.0); \n"
@@ -1148,9 +1145,9 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::NORMAL_MAP:
-            buf._vertHead
+            buf._viewHead
                 << "vec3 vp_Normal; //stage global\n";
-            buf._vertBody
+            buf._viewBody
                 << INDENT "{\n"
                 << INDENT TEX_COORD << unit << " = vec4(vp_Normal, 1.0); \n"
                 << INDENT "}\n";
@@ -1167,7 +1164,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
         // GLSL only supports built-in "gl_MultiTexCoord{0..7}"
         if ( unit <= 7 )
         {
-            buf._vertBody
+            buf._modelBody
                 << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
         }
         else
@@ -1177,7 +1174,7 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
                 << "requires a custom vertex attribute (osg_MultiTexCoord" << unit << ")."
                 << std::endl;
 
-            buf._vertBody 
+            buf._modelBody 
                 << INDENT << TEX_COORD << unit << " = osg_MultiTexCoord" << unit << ";\n";
         }
     }
@@ -1192,8 +1189,8 @@ ShaderGenerator::apply(osg::TexMat* texmat, int unit, GenBuffers& buf)
     {
         std::string texMatUniform = Stringify() << TEX_MATRIX << unit;
 
-        buf._vertHead << "uniform mat4 " << texMatUniform << ";\n";
-        buf._vertBody << INDENT << TEX_COORD << unit << " = " << texMatUniform << " * " << TEX_COORD<<unit << ";\n";
+        buf._viewHead << "uniform mat4 " << texMatUniform << ";\n";
+        buf._viewBody << INDENT << TEX_COORD << unit << " = " << texMatUniform << " * " << TEX_COORD<<unit << ";\n";
 
         buf._stateSet
             ->getOrCreateUniform(texMatUniform, osg::Uniform::FLOAT_MAT4)
@@ -1236,7 +1233,7 @@ ShaderGenerator::apply(osg::Texture3D* tex, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
 {
-    buf._vertHead << "#extension GL_ARB_texture_rectangle : enable\n";
+    buf._viewHead << "#extension GL_ARB_texture_rectangle : enable\n";
 
     buf._fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
     buf._fragBody << INDENT "texel = texture(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";

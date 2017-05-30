@@ -195,7 +195,8 @@ namespace osgEarth
 
         struct OSGEARTH_EXPORT GenBuffers
         {
-            std::stringstream _vertHead, _vertBody;
+            std::stringstream _modelHead, _modelBody;
+            std::stringstream _viewHead, _viewBody;
             std::stringstream _fragHead, _fragBody;
             osg::StateSet*    _stateSet;
             unsigned          _version;

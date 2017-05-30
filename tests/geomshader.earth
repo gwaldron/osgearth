@@ -19,8 +19,8 @@ Rendering pipeline.
         <code><![CDATA[
         
             #version 330
-            #pragma vp_entryPoint "pulsateEffect"
-            #pragma vp_location   "geometry"
+            #pragma vp_entryPoint demo
+            #pragma vp_location   geometry
 
             layout(triangles) in;
             layout(triangle_strip) out;
@@ -40,7 +40,7 @@ Rendering pipeline.
                             cos(angle)*p.y - sin(angle)*p.x);
             }
             
-            void pulsateEffect()
+            void demo()
             {
                 float strength = mod(osg_FrameTime, 6.28);
                                     
@@ -55,7 +55,7 @@ Rendering pipeline.
                     pos.xy = rotate(pos.xy, strength);
                     gl_Position = pos;
                     
-                    // Copies stage globals to output and calles EmitVertex():
+                    // Copies stage globals to output and calls EmitVertex():
                     VP_EmitModelVertex();
                 }
                 EndPrimitive();

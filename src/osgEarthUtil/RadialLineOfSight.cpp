@@ -21,7 +21,7 @@
 */
 #include <osgEarthUtil/RadialLineOfSight>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -286,7 +286,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
         osg::Vec3d end = _centerWorld + spoke;
-        osg::ref_ptr<DPLineSegmentIntersector> dplsi = new DPLineSegmentIntersector( _centerWorld, end );
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> dplsi = new osgUtil::LineSegmentIntersector( _centerWorld, end );
         ivGroup->addIntersector( dplsi.get() );
     }
 
@@ -297,11 +297,11 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
 
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
-        DPLineSegmentIntersector* los = dynamic_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
+        osgUtil::LineSegmentIntersector* los = dynamic_cast<osgUtil::LineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
         if ( !los )
             continue;
 
-        DPLineSegmentIntersector::Intersections& hits = los->getIntersections();
+        osgUtil::LineSegmentIntersector::Intersections& hits = los->getIntersections();
 
         osg::Vec3d start = los->getStart();
         osg::Vec3d end = los->getEnd();
@@ -429,7 +429,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
         osg::Vec3d end = _centerWorld + spoke;        
-        osg::ref_ptr<DPLineSegmentIntersector> dplsi = new DPLineSegmentIntersector( _centerWorld, end );
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> dplsi = new osgUtil::LineSegmentIntersector( _centerWorld, end );
         if (dplsi)
             ivGroup->addIntersector( dplsi.get() );
     }
@@ -442,11 +442,11 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
         //Get the current hit
-        DPLineSegmentIntersector* los = dynamic_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
+        osgUtil::LineSegmentIntersector* los = dynamic_cast<osgUtil::LineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
         if ( !los )
             continue;
 
-        DPLineSegmentIntersector::Intersections& hits = los->getIntersections();
+        osgUtil::LineSegmentIntersector::Intersections& hits = los->getIntersections();
 
         osg::Vec3d currEnd = los->getEnd();
         bool currHasLOS = hits.empty();
@@ -455,8 +455,8 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
         //Get the next hit
         unsigned int nextIndex = i + 1;
         if (nextIndex == _numSpokes) nextIndex = 0;
-        DPLineSegmentIntersector* losNext = static_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[nextIndex].get());
-        DPLineSegmentIntersector::Intersections& hitsNext = losNext->getIntersections();
+        osgUtil::LineSegmentIntersector* losNext = static_cast<osgUtil::LineSegmentIntersector*>(ivGroup->getIntersectors()[nextIndex].get());
+        osgUtil::LineSegmentIntersector::Intersections& hitsNext = losNext->getIntersections();
 
         osg::Vec3d nextEnd = losNext->getEnd();
         bool nextHasLOS = hitsNext.empty();

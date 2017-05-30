@@ -39,7 +39,7 @@ _scale          ( 1.0f ),
 _offset         ( 0.0f )
 {
     this->setNodeMaskOverride( ~0 );
-    _lsi = new osgEarth::DPLineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
+    _lsi = new osgUtil::LineSegmentIntersector(osg::Vec3d(0,0,0), osg::Vec3d(0,0,0));
 }
 
 void

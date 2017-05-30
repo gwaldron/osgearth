@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationQuery>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 #include <osgUtil/IntersectionVisitor>
@@ -207,7 +207,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                     // first time through, set up the intersector on demand
                     if ( !_patchLayersLSI.valid() )
                     {
-                        _patchLayersLSI = new DPLineSegmentIntersector(start, end);
+                        _patchLayersLSI = new osgUtil::LineSegmentIntersector(start, end);
                         _patchLayersLSI->setIntersectionLimit( _patchLayersLSI->LIMIT_NEAREST );
                     }
                     else

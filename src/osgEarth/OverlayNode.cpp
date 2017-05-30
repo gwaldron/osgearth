@@ -23,7 +23,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/PrimitiveIntersector>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
 
 #define LC "[OverlayNode] "
@@ -353,7 +353,7 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
                 osg::Vec3d worldStart = pi->getStart() * modelToWorld;
                 osg::Vec3d worldEnd = pi->getEnd() * modelToWorld;
 
-                osg::ref_ptr<DPLineSegmentIntersector> lsi = new DPLineSegmentIntersector(worldStart, worldEnd);
+                osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(worldStart, worldEnd);
                 osgUtil::IntersectionVisitor ivTerrain(lsi.get());
                 mapNode->getTerrainEngine()->accept(ivTerrain);
 

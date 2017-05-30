@@ -21,7 +21,7 @@
 */
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -254,12 +254,12 @@ LinearLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
       }
 
 
-      DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(_startWorld, _endWorld);
+      osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(_startWorld, _endWorld);
       osgUtil::IntersectionVisitor iv( lsi );
 
       node->accept( iv );
 
-      DPLineSegmentIntersector::Intersections& hits = lsi->getIntersections();
+      osgUtil::LineSegmentIntersector::Intersections& hits = lsi->getIntersections();
       if ( hits.size() > 0 )
       {
           _hasLOS = false;

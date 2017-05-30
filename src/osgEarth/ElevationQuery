@@ -23,7 +23,7 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Containers>
 #include <osgEarth/ModelLayer>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 
 namespace osgEarth
 {
@@ -127,7 +127,7 @@ namespace osgEarth
         std::vector<ModelLayer*> _patchLayers;
 
         // Intersector to query the patch layers
-        osg::ref_ptr<DPLineSegmentIntersector> _patchLayersLSI;
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> _patchLayersLSI;
 
         // Callback to force the intersector to materialize paged model nodes
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;

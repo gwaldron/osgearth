@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/Terrain>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
@@ -126,7 +126,7 @@ Terrain::getHeight(osg::Node*              patch,
         getSRS()->transform(end,   ecef, end);
     }
 
-    DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector( start, end );
+    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector( start, end );
     lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
 
     osgUtil::IntersectionVisitor iv( lsi );
@@ -187,7 +187,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     return false;    
 
 #else
-    // New code, uses the code from osg::View::computeIntersections but uses our DPLineSegmentIntersector instead to get around floating point precision issues.
+    // New code, uses the code from osg::View::computeIntersections but uses our osgUtil::LineSegmentIntersector instead to get around floating point precision issues.
     float local_x, local_y = 0.0;
     const osg::Camera* camera = view2->getCameraContainingPosition(x, y, local_x, local_y);
     if (!camera) camera = view2->getCamera();
@@ -219,7 +219,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
 
     // Use a double precision line segment intersector
     //osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
-    osg::ref_ptr< DPLineSegmentIntersector > picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
 
     // Limit it to one intersection, we only care about the first
     picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );

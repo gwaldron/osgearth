@@ -27,7 +27,7 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
 #include <iomanip>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 
 #include <osg/io_utils>
 
@@ -1348,7 +1348,7 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
     {
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
-		lsi = new osgEarth::DPLineSegmentIntersector(start,end);
+		lsi = new osgUtil::LineSegmentIntersector(start,end);
 
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
@@ -1381,7 +1381,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         osg::Vec3d look = out_target-out_eye;
 
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi =
-		    new osgEarth::DPLineSegmentIntersector(out_eye, out_eye+look*1e8);
+		    new osgUtil::LineSegmentIntersector(out_eye, out_eye+look*1e8);
 
         lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
 

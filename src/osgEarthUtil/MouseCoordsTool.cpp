@@ -23,7 +23,7 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEngineNode>
 #include <osgViewer/View>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
@@ -71,7 +71,7 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 #if 1 // testing AGL, Dist to Point
         osg::Vec3d eye, center, up;
         aa.asView()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
-        DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(eye, osg::Vec3d(0,0,0));
+        osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(eye, osg::Vec3d(0,0,0));
         osgUtil::IntersectionVisitor iv(lsi);
         lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
         //iv.setUserData( new Map() );

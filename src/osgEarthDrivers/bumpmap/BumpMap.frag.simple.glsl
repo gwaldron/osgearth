@@ -6,6 +6,15 @@
 
 #pragma include BumpMap.frag.common.glsl
 
+#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_IS_PICK_CAMERA)
+
+#if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_PICK_CAMERA)
+
+//nop
+void oe_bumpmap_fragment(inout vec4 color) { }
+
+#else
+
 in vec3 vp_Normal;
 in vec2 oe_bumpmap_coords;
 flat in mat3 oe_bumpmap_normalMatrix;
@@ -27,3 +36,5 @@ void oe_bumpmap_fragment(inout vec4 color)
 	// permute the normal with the bump.
 	vp_Normal = normalize(vp_Normal + bump*oe_bumpmap_intensity*slope);
 }
+
+#endif

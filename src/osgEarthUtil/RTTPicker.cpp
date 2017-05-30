@@ -192,6 +192,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
 
     // designate this as a pick camera
     rttSS->setDefine("OE_IS_PICK_CAMERA");
+    rttSS->setDefine("OE_LIGHTING", osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     // default value for the objectid override uniform:
     rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getObjectIDUniformName().c_str(), 0u) );

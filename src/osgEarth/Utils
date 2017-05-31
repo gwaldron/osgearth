@@ -126,8 +126,12 @@ namespace osgEarth
         }
     };
 
+#if OSG_VERSION_LESS_THAN(3,5,6)
+#define OE_HAVE_PIXEL_AUTO_TRANSFORM 1
     /**
      * A pixel-based AutoTransform variant.
+     * NOTE: AutoTransform was refactored for OSG 3.5.6 and this class does
+     * not work with the new version.
      */
     class OSGEARTH_EXPORT PixelAutoTransform : public osg::AutoTransform
     {
@@ -176,6 +180,7 @@ namespace osgEarth
         double _screenSpaceRotationRadians;
         osg::observer_ptr<osg::Node> _sizingNode;
     };
+#endif // OSG_VERSION_LESS_THAN(3,5,6)
 
     /**
      * Proxy class that registers a custom render bin's prototype with the

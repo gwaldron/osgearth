@@ -39,6 +39,8 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 
 //------------------------------------------------------------------------
 
+#ifdef OE_HAVE_PIXEL_AUTO_TRANSFORM
+
 #undef LC
 #define LC "[PixelAutoTransform] "
 
@@ -308,6 +310,8 @@ PixelAutoTransform::dirty()
     _dirty = true;
     setCullingActive( false );
 }
+
+#endif // OE_HAVE_PIXEL_AUTO_TRANSFORM
 
 //-----------------------------------------------------------------------------
 

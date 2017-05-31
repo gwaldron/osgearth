@@ -14,24 +14,19 @@
         <amplitude>7</amplitude>
     </fractal_elevation>
 
-    <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" enabled="true">
+    <flattened_elevation name="Road Flattener" min_level="14" max_data_level="16" enabled="true" cache_enabled="false">
         <script language="javascript">
             <![CDATA[
             function getLineWidth() {
                 var hwy = feature.properties["highway"];
                 if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
-                    return 30.0;
-                }
-                return 5.0;
-            }
-
-            function getBufferWidth() {
-                return 0.0;
-                var hwy = feature.properties["highway"];
-                if (hwy === "motorway" || hwy === "trunk" || hwy == "primary" || hwy === "secondary") {
                     return 12.0;
                 }
                 return 4.0;
+            }
+
+            function getBufferWidth() {
+                return 12.0;
             }
         ]]>
         </script>
@@ -78,12 +73,12 @@
             <style type="text/css">
                 default {
                    stroke: #ffffff;
-                   stroke-width: 30m;
+                   stroke-width: 12m;
                    stroke-image: ""../data/road.png"";
                 }
                 asphalt {
                    stroke: #ffffff;
-                   stroke-width: 1m;
+                   stroke-width: 4m;
                    stroke-image: ""../data/asphalt.jpg"";
                 }
             </style>
@@ -93,7 +88,6 @@
     </road_surface>
 
     <!-- GPU trees from land cover data -->
-    <!--
     <splat_groundcover name="Trees" land_cover_layer="LandCover">
         <lod>13</lod>
         <cast_shadows>true</cast_shadows>
@@ -116,7 +110,6 @@
             </zone>
         </zones>
     </splat_groundcover>
--->
 
     <viewpoints>
         <viewpoint name="Rainier">

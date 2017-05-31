@@ -10,8 +10,7 @@
         <styles>
             <style type="text/css">
                 points {
-                   model:               "../data/red_flag.osg.2500.scale";
-                   altitude-clamping:   terrain;
+                   model: "../data/red_flag.osg.2500.scale";
                 }                                            
             </style>
         </styles>   

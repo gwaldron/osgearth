@@ -48,7 +48,7 @@
     </splat_imagery>
 
     <!-- Road surface rendering -->
-    <road_surface name="road-surface" min_level="14" max_data_level="19" shared="true" cacheid="road_surface">
+    <road_surface name="RoadSurface" min_level="13" max_data_level="19" shared="true" cacheid="road_surface">
         <cache_policy usage="no_cache"/>
         <tile_size>256</tile_size>
         <feature_source>roads-data</feature_source>
@@ -89,13 +89,14 @@
 
     <!-- GPU trees from land cover data -->
     <splat_groundcover name="Trees" land_cover_layer="LandCover">
-        <lod>13</lod>
+        <lod>14</lod>
         <cast_shadows>true</cast_shadows>
+        <mask_layer>RoadSurface</mask_layer>
         <zones>
             <zone name="default">
                 <groundcover>
                     <max_distance>6400</max_distance>
-                    <density>4.0</density>
+                    <density>2.0</density>
                     <fill>0.85</fill>
                     <brightness>3.0</brightness>
                     <contrast>0.5</contrast>
@@ -167,11 +168,11 @@
         <cache_policy usage="no_cache"/>
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
-                <url>D:\geodata\splatting\GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
             </coverage>
             <coverage name="NCLD 2011" driver="gdal">
-                <url>D:\geodata\splatting\nlcd_2011_landcover_2011_edition_2014_03_31_tiled.tif</url>
+                <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
                 <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
                 <warp>0.01</warp>
             </coverage>

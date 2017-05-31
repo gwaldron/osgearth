@@ -175,6 +175,7 @@ GroundCoverLayer::setLandCoverLayer(LandCoverLayer* layer)
 {
     _landCoverLayer = layer;
     if (layer) {
+        OE_INFO << LC << "Land cover layer is \"" << layer->getName() << "\"\n";
         buildStateSets();
     }
 }
@@ -183,6 +184,11 @@ void
 GroundCoverLayer::setMaskLayer(ImageLayer* layer)
 {
     _maskLayer = layer;
+    if (layer)
+    {
+        OE_INFO << LC << "Mask layer is \"" << layer->getName() << "\"\n";
+        buildStateSets();
+    }
 }
 
 unsigned

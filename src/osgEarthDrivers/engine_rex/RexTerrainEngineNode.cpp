@@ -1098,6 +1098,7 @@ RexTerrainEngineNode::updateState()
 
             // Functions that affect the terrain surface only:
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
+            package.load(surfaceVP, package.ENGINE_ELEVATION_MODEL);
             package.load(surfaceVP, package.ENGINE_FRAG);
 
             // Elevation?

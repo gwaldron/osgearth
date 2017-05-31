@@ -74,12 +74,12 @@
                 default {
                    stroke: #ffffff;
                    stroke-width: 12m;
-                   stroke-image: ""../data/road.png"";
+                   stroke-image: ../data/road.png;
                 }
                 asphalt {
                    stroke: #ffffff;
                    stroke-width: 4m;
-                   stroke-image: ""../data/asphalt.jpg"";
+                   stroke-image: ../data/asphalt.jpg;
                 }
             </style>
         </styles>

@@ -69,7 +69,7 @@
             <style type="text/css">
                 default {
                     stroke-width: 10m;
-                    stroke-image: ""../data/road.png"";
+                    stroke-image: "../data/road.png";
                 }
             </style>
         </styles>

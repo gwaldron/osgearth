@@ -402,7 +402,11 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asString();
           else
-            OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+          {
+            // Couldn't execute it as code, just take it as a string literal.
+            val = i->first;
+            OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+          }
         }
       }
 
@@ -434,7 +438,11 @@ Feature::eval(StringExpression& expr, Session* session) const
                 if (result.success())
                     val = result.asString();
                 else
-                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                {
+                    // Couldn't execute it as code, just take it as a string literal.
+                    val = i->first;
+                    OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                }
             }
         }
 

@@ -138,6 +138,11 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                             node->getPositionAttitudeTransform()->setAttitude( *cx._options->modelRotation() );
                         }
 
+                        if (cx._options->externalNodePostProcessor().valid() == true)
+                        {
+                            (*cx._options->externalNodePostProcessor().get())(node);
+                        }
+
                         modelNode = node;
                     }
 

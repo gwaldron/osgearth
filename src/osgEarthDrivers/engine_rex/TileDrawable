@@ -87,6 +87,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
         osg::Vec3f* _mesh;
+        GLuint* _meshIndices;
 
         ModifyBoundingBoxCallback* _bboxCB;
 

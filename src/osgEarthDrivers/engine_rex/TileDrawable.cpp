@@ -42,12 +42,33 @@ _tileSize    ( tileSize )
     // a mesh to materialize the heightfield for functors
     _mesh = new osg::Vec3f[ tileSize*tileSize ];
     
+    // allocate and prepopulate mesh index array. 
+    // TODO: This is the same for all tiles (of the same tilesize)
+    // so perhaps in the future we can just share it.
+    _meshIndices = new GLuint[ (tileSize-1)*(tileSize-1)*6 ];
+    
+    GLuint* k = &_meshIndices[0];
+    for(int t=0; t<_tileSize-1; ++t)
+    {
+        for(int s=0; s<_tileSize-1; ++s)
+        {
+            int i00 = t*_tileSize + s;
+            int i10 = i00 + 1;
+            int i01 = i00 + _tileSize;
+            int i11 = i01 + 1;
+
+            *k++ = i00; *k++ = i10; *k++ = i01;
+            *k++ = i01; *k++ = i10; *k++ = i11;
+        }
+    }
+    
     // builds the initial mesh.
     setElevationRaster(0L, osg::Matrixf::identity());
 }
 
 TileDrawable::~TileDrawable()
 {
+    delete [] _meshIndices;
     delete [] _mesh;
 }
 
@@ -116,49 +137,9 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
 // Functor supplies triangles to things like IntersectionVisitor, ComputeBoundsVisitor, etc.
 void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
-{        
-#if 1 // triangles (OSG-stats-friendly)
-    //TODO: improve by caching the entire Vec3f, not just the height.
-    
-    f.begin(GL_TRIANGLES);
-    for(int t=0; t<_tileSize-1; ++t)
-    {
-        for(int s=0; s<_tileSize-1; ++s)
-        {
-            int i00 = t*_tileSize + s;
-            int i10 = i00 + 1;
-            int i01 = i00 + _tileSize;
-            int i11 = i01 + 1;
-
-            f.vertex(_mesh[i00]);  f.vertex(_mesh[i10]);  f.vertex(_mesh[i01]);
-            f.vertex(_mesh[i01]);  f.vertex(_mesh[i10]);  f.vertex(_mesh[i11]);
-        }
-    }
-
-    f.end();
-
-#else
-    // triangle-strips (faster? but not stats-friendly; will cause the OSG stats
-    // to report _tileSize-1 primitive sets per TileDrawable even though there
-    // is only one.
-
-    for(int t=0; t<_tileSize-1; ++t)
-    {
-        f.begin( GL_TRIANGLE_STRIP );
-
-        for(int s=0; s<_tileSize; ++s)
-        {
-            int i = t*_tileSize + s;
-            f.vertex( _mesh[i] );
-
-            i += _tileSize;
-            f.vertex( _mesh[i] );
-        }
-
-        f.end();
-    }
-
-#endif
+{
+    f.setVertexArray(_tileSize*_tileSize, _mesh);
+    f.drawElements(GL_TRIANGLES, (_tileSize - 1)*(_tileSize-1)*6, _meshIndices);
 }
 
 osg::BoundingSphere

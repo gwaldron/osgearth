@@ -54,7 +54,7 @@ namespace
 namespace
 {
     const char* distort =
-        "#version 330 \n"
+        "#version " GLSL_VERSION_STR "\n"
         "uniform float oe_rasterizer_f; \n"
         "void oe_rasterizer_clip(inout vec4 vert) { \n"
         "    float h = (vert.y + vert.w)/(2.0*vert.w); \n"

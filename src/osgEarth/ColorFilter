@@ -130,7 +130,12 @@ namespace osgEarth
 
     // Macro used to register new annotation types.
 #define OSGEARTH_REGISTER_COLORFILTER( KEY, CLASSNAME ) \
+    extern "C" void osgearth_colorfilter_##KEY(void) {} \
     static osgEarth::ColorFilterRegistrationProxy< CLASSNAME > s_osgEarthColorFilterRegistrationProxy##KEY( #KEY )
+    
+#define USE_OSGEARTH_COLORFILTER( KEY ) \
+    extern "C" void osgearth_colorfilter_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_colorfilter_##KEY(osgearth_colorfilter_##KEY);
 
 } // namespace osgEarth
 

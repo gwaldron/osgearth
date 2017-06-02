@@ -25,4 +25,6 @@
 - (void)startAnimation;
 - (void)stopAnimation;
 
+- (IBAction)onBackClicked:(id)sender;
+
 @end

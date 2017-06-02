@@ -6,6 +6,10 @@
 
 #include <osgViewer/GraphicsWindow>
 #include <osgDB/Registry>
+#include <osgEarth/ColorFilter>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarthAnnotation/AnnotationRegistry>
 
 //windowing system
 #ifndef ANDROID
@@ -120,4 +124,82 @@ USE_OSGPLUGIN(osgearth_wcs)
 USE_OSGPLUGIN(osgearth_wms)
 USE_OSGPLUGIN(osgearth_xyz)
 USE_OSGPLUGIN(osgearth_yahoo)
+
+// extensions
+USE_OSGPLUGIN(osgearth_annotations)
+//USE_OSGPLUGIN(osgearth_bumpmap)
+USE_OSGPLUGIN(osgearth_bump_map)
+USE_OSGPLUGIN(osgearth_contourmap)
+USE_OSGPLUGIN(osgearth_contour_map)
+//USE_OSGPLUGIN(osgearth_sky_gl)
+USE_OSGPLUGIN(osgearth_graticule)
+USE_OSGPLUGIN(osgearth_lod_blending)
+//USE_OSGPLUGIN(osgearth_mapinspector)
+USE_OSGPLUGIN(osgearth_mgrs_graticule)
+//USE_OSGPLUGIN(osgearth_noise)
+USE_OSGPLUGIN(osgearth_screen_space_layout)
+USE_OSGPLUGIN(osgearth_decluttering)
+//USE_OSGPLUGIN(osgearth_ocean_simple)
+//USE_OSGPLUGIN(osgearth_sky_simple)
+//USE_OSGPLUGIN(osgearth_splat)
+//USE_OSGPLUGIN(osgearth_terrainshader)
+USE_OSGPLUGIN(osgearth_utm_graticule)
+
+// annotations
+USE_OSGEARTH_ANNOTATION(circle)
+USE_OSGEARTH_ANNOTATION(ellipse)
+USE_OSGEARTH_ANNOTATION(feature)
+USE_OSGEARTH_ANNOTATION(imageoverlay)
+USE_OSGEARTH_ANNOTATION(label)
+USE_OSGEARTH_ANNOTATION(local_geometry)
+USE_OSGEARTH_ANNOTATION(place)
+USE_OSGEARTH_ANNOTATION(rectangle)
+
+// layers
+USE_OSGEARTH_LAYER(elevation)
+USE_OSGEARTH_LAYER(feature_mask)
+USE_OSGEARTH_LAYER(feature_model)
+USE_OSGEARTH_LAYER(feature_source)
+USE_OSGEARTH_LAYER(flattened_elevation)
+USE_OSGEARTH_LAYER(fractal_elevation)
+USE_OSGEARTH_LAYER(image)
+USE_OSGEARTH_LAYER(land_cover_dictionary)
+USE_OSGEARTH_LAYER(land_cover)
+USE_OSGEARTH_LAYER(model)
+USE_OSGEARTH_LAYER(multi_elevation)
+//USE_OSGEARTH_LAYER(road_surface)
+USE_OSGEARTH_LAYER(simple_ocean)
+USE_OSGEARTH_LAYER(video)
+
+// simple symbols
+USE_OSGEARTH_SIMPLE_SYMBOL(altitude)
+USE_OSGEARTH_SIMPLE_SYMBOL(bbox)
+USE_OSGEARTH_SIMPLE_SYMBOL(billboard)
+USE_OSGEARTH_SIMPLE_SYMBOL(coverage)
+USE_OSGEARTH_SIMPLE_SYMBOL(extrusion)
+USE_OSGEARTH_SIMPLE_SYMBOL(icon)
+USE_OSGEARTH_SIMPLE_SYMBOL(line)
+USE_OSGEARTH_SIMPLE_SYMBOL(marker)
+USE_OSGEARTH_SIMPLE_SYMBOL(model)
+USE_OSGEARTH_SIMPLE_SYMBOL(point)
+USE_OSGEARTH_SIMPLE_SYMBOL(polygon)
+USE_OSGEARTH_SIMPLE_SYMBOL(render)
+USE_OSGEARTH_SIMPLE_SYMBOL(skin)
+USE_OSGEARTH_SIMPLE_SYMBOL(text)
+
+// simple feature filters
+USE_OSGEARTH_SIMPLE_FEATUREFILTER(buffer)
+USE_OSGEARTH_SIMPLE_FEATUREFILTER(convert)
+USE_OSGEARTH_SIMPLE_FEATUREFILTER(resample)
+USE_OSGEARTH_SIMPLE_FEATUREFILTER(script)
+
+// color filters
+USE_OSGEARTH_COLORFILTER(brightness_contrast)
+USE_OSGEARTH_COLORFILTER(chroma_key)
+USE_OSGEARTH_COLORFILTER(cmyk)
+USE_OSGEARTH_COLORFILTER(gamma)
+USE_OSGEARTH_COLORFILTER(glsl)
+USE_OSGEARTH_COLORFILTER(hsl)
+USE_OSGEARTH_COLORFILTER(night)
+USE_OSGEARTH_COLORFILTER(rgb)
 

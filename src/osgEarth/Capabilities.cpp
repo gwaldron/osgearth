@@ -194,13 +194,19 @@ _maxTextureBufferSize   ( 0 )
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "  Version = " << _version << std::endl;
 
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
         //OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
+#endif
 
         glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &_maxGPUTextureUnits );
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
+#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+#else
+        _maxGPUTextureCoordSets = _maxGPUTextureUnits;
+#endif
         OE_INFO << LC << "  Max GPU texture coord indices = " << _maxGPUTextureCoordSets << std::endl;
 
         glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
@@ -294,13 +300,22 @@ _maxTextureBufferSize   ( 0 )
             _supportsUniformBufferObjects = false;
         }
 
+#if !defined(OSG_GLES3_AVAILABLE)
         _supportsNonPowerOfTwoTextures =
             osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
+#else
+        _supportsNonPowerOfTwoTextures = true;
+#endif
         OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
+
+#if !defined(OSG_GLES3_AVAILABLE)
         _supportsTextureBuffer = 
             osg::isGLExtensionOrVersionSupported( id, "GL_ARB_texture_buffer_object", 3.0 ) ||
             osg::isGLExtensionOrVersionSupported( id, "GL_EXT_texture_buffer_object", 3.0 );
+#else
+        _supportsTextureBuffer = false;
+#endif
 
         if ( _supportsTextureBuffer )
         {

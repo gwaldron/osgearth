@@ -11,6 +11,8 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
+static NSString* s_autoloadFile = @""; //readymap_flat.earth";
+
 @interface StartViewerController ()
 
 @end
@@ -58,6 +60,9 @@
         currentSelection = [fileArray count]-1;
         [pickerView selectRow:currentSelection inComponent:0 animated:NO];
     }
+    
+    if(s_autoloadFile != nil && [s_autoloadFile length] > 0)
+        [self loadEarthView:s_autoloadFile];
 }
 
 - (void)viewDidUnload
@@ -75,12 +80,17 @@
 
 -(IBAction)onStartViewer
 {
-    /*if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-     self.osgEarthViewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPhone" bundle:nil] autorelease];
-     } else {
-     self.osgEarthViewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPad" bundle:nil] autorelease];
-     }*/
-    self.osgEarthViewController = [[ViewController alloc] intWithFileName:[fileArray objectAtIndex:currentSelection]];
+    [self loadEarthView:[fileArray objectAtIndex:currentSelection]];
+}
+
+-(void) loadEarthView:(NSString*)aFile
+{
+    if(self.osgEarthViewController != nil) {
+        [self.osgEarthViewController release];
+        self.osgEarthViewController = nil;
+    }
+    
+    self.osgEarthViewController = [[ViewController alloc] intWithFileName:aFile];
     [self.osgEarthViewController startAnimation]; 
     [self.view addSubview:self.osgEarthViewController.view];
 }

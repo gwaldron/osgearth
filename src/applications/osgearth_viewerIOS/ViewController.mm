@@ -56,9 +56,6 @@ using namespace osgEarth::Util;
 
 - (void)loadOsgEarthDemoScene{
     
-    osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
-    osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
-    
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
     {
@@ -109,8 +106,6 @@ using namespace osgEarth::Util;
     // ensure tiff plugin is used over imageio
     osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
     osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
-    
-    osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_BUFFER_OBJECT);
     
     osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_BUFFER_OBJECT);
     
@@ -168,8 +163,6 @@ using namespace osgEarth::Util;
     _viewer->getCamera()->setProjectionMatrixAsPerspective(45.0f,(float)w/h,
                                                            0.1f, 10000.0f);
 
-    
-
     // Tell the database pager to not modify the unref settings
     _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
 
@@ -187,27 +180,9 @@ using namespace osgEarth::Util;
     // closer to the ground without near clipping. If you need more, use --logdepth
     _viewer->getCamera()->setNearFarRatio(0.0001);
 
-
     //load
     [self loadOsgEarthDemoScene];
-<<<<<<< HEAD
-=======
-    
-    // configure the near/far so we don't clip things that are up close
-    _viewer->getCamera()->setNearFarRatio(0.00002);
-    
-    //optimize viewer and db pager
-    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-    //_viewer->getCamera()->setLODScale(_viewer->getCamera()->getLODScale()/2.0);
-    
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-//    _viewer->getDatabasePager()->setDoPreCompile( true );
-//   _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
-//    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
 
->>>>>>> Improved example to include all osgearth plugins, fixed variable copying in shaderfactory when precision is used, include Virtual program for precision and glsl version defines in landcover.cpp
-  
     _isAnimating=false;
     [self startAnimation];
     
@@ -268,7 +243,6 @@ using namespace osgEarth::Util;
 
 - (void)update:(CADisplayLink *)sender
 {
-    //
     if(_viewer != NULL && _isAnimating) _viewer->frame();
 }
 

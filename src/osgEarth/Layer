@@ -316,6 +316,10 @@ namespace osgEarth
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
     extern "C" void osgdb_##NAME(void) {} \
     static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
+    
+#define USE_OSGEARTH_LAYER(NAME) \
+    extern "C" void osgdb_##NAME(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_##NAME);
 
 } // namespace osgEarth
 

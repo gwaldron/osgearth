@@ -35,7 +35,8 @@ using namespace osgEarth::Util;
 
 - (id)intWithFileName:(NSString*)file
 {
-    self = [super init];
+    //self = [super init];
+    self = [super initWithNibName:@"ViewController" bundle:nil];
     if(self){
         
         _file = [file cStringUsingEncoding:NSASCIIStringEncoding];
@@ -54,21 +55,6 @@ using namespace osgEarth::Util;
 }
 
 - (void)loadOsgEarthDemoScene{
-
-    // install our default manipulator (do this before calling load)
-    //    _viewer->setCameraManipulator( new osgEarth::Util::EarthManipulator() );
-    
-    // This chunk inverts the Y axis.
-    osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
-    //osgEarth::Util::EarthManipulator::ActionOptions options;
-    //options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
-    //manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
-    manip->getSettings()->setThrowingEnabled(true);
-    manip->getSettings()->setThrowDecayRate(0.1);
-    _viewer->setCameraManipulator( manip );
-    
-    osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
-    osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
     
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
@@ -84,33 +70,9 @@ using namespace osgEarth::Util;
         return;
     }
     
-    // warn about not having an earth manip
-    osgEarth::Util::EarthManipulator* manip_temp = dynamic_cast<osgEarth::Util::EarthManipulator*>(_viewer->getCameraManipulator());
-    if ( manip_temp == 0L )
-    {
-        OSG_WARN << "Helper used before installing an EarthManipulator" << std::endl;
-    }
-    
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode.get() );
-
-    
-    //have to add these
-    osg::Material* material = new osg::Material();
-    material->setAmbient(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
-    material->setDiffuse(osg::Material::FRONT, osg::Vec4(0.9,0.9,0.9,1.0));
-    material->setSpecular(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
-    //root->getOrCreateStateSet()->setAttribute(material); //lighting doesn't work without a material for some reason
-    //root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);//comment out to disable lighting
-    
-    /*double hours = 12.0f;
-    float ambientBrightness = 1.0f;
-    osgEarth::Util::SkyNode* sky = new osgEarth::Util::SkyNode( mapNode->getMap() );
-    sky->setAmbientBrightness( ambientBrightness );
-    sky->setDateTime( 1984, 11, 8, hours );
-    sky->attach( _viewer, 0 );
-    root->addChild( sky );*/
     
     _viewer->setSceneData( root );
 }
@@ -124,8 +86,16 @@ using namespace osgEarth::Util;
     
     setenv("GDAL_DATA", dataPath.c_str(), 1);
     
-    osg::setNotifyLevel(osg::DEBUG_FP);
-    osgEarth::setNotifyLevel(osg::DEBUG_FP);
+    osg::setNotifyLevel(osg::INFO);
+    osgEarth::setNotifyLevel(osg::INFO);
+    
+    // thread-safe initialization of the OSG wrapper manager. Calling this here
+    // prevents the "unsupported wrapper" messages from OSG
+    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
+    
+    // ensure tiff plugin is used over imageio
+    osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
+    osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
     
     osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_BUFFER_OBJECT);
     
@@ -169,6 +139,9 @@ using namespace osgEarth::Util;
 	if(graphicsContext)
 	{
         _viewer->getCamera()->setGraphicsContext(graphicsContext);
+        _viewer->realize();
+        osgViewer::GraphicsWindowIOS* osgWindow = dynamic_cast<osgViewer::GraphicsWindowIOS*>(_viewer->getCamera()->getGraphicsContext());
+        if(osgWindow) [self.view sendSubviewToBack:(UIView*)osgWindow->getView()];
     }
     
     _viewer->getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
@@ -178,23 +151,30 @@ using namespace osgEarth::Util;
     _viewer->getCamera()->setProjectionMatrixAsPerspective(45.0f,(float)w/h,
                                                            0.1f, 10000.0f);
 
+    
+    // just do single threaded
+    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+
+    // Tell the database pager to not modify the unref settings
+    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
+
+
+    // install our default manipulator
+    osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
+    //manip->getSettings()->setThrowingEnabled(true);
+    //manip->getSettings()->setThrowDecayRate(0.1);
+    _viewer->setCameraManipulator( manip );
+
+    // disable the small-feature culling
+    _viewer->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    _viewer->getCamera()->setNearFarRatio(0.0001);
+
 
     //load
     [self loadOsgEarthDemoScene];
-    
-    // configure the near/far so we don't clip things that are up close
-    _viewer->getCamera()->setNearFarRatio(0.00002);
-    
-    //optimize viewer and db pager
-    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-    //_viewer->getCamera()->setLODScale(_viewer->getCamera()->getLODScale()/2.0);
-    
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-//    _viewer->getDatabasePager()->setDoPreCompile( true );
-//   _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
-//    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
-
   
     _isAnimating=false;
     [self startAnimation];
@@ -245,11 +225,17 @@ using namespace osgEarth::Util;
     }
 }
 
+- (IBAction)onBackClicked:(id)sender {
+    [self stopAnimation];
+    _viewer = NULL;
+    [self.view removeFromSuperview];
+}
+
 
 - (void)update:(CADisplayLink *)sender
 {
     //
-    _viewer->frame();
+    if(_viewer != NULL) _viewer->frame();
 }
 
 

@@ -163,6 +163,7 @@ using namespace osgEarth::Util;
     _viewer->getCamera()->setProjectionMatrixAsPerspective(45.0f,(float)w/h,
                                                            0.1f, 10000.0f);
 
+
     // Tell the database pager to not modify the unref settings
     _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
 

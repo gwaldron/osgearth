@@ -233,93 +233,6 @@ namespace
 #endif
     }
 
-    std::string removeRedeclarations(const std::string& source)
-    {
-    
-        std::stringstream ss; // stream for main source
-        std::stringstream ds; // stream for declarations
-        
-        // break into lines:
-        StringVector lines;
-        StringTokenizer( source, lines, "\n", "", true, false );
-        
-        // types we consider declarations
-        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp"};
-        std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
-        
-        // list of existing declarations
-        StringVector declarations;
-       
-        // use this to mark an insertion point in the main source for our declarations
-        std::string insertmarker = "@DEFINITIONS@";
-        // track the highest precision we find
-        std::string precision = "";
-
-        // track the current {} indent level
-        int indent = 0;
-
-        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
-        {
-            std::string rawline = *line_iter;
-            
-            std::string translate = "sampler1D";
-            std::string::size_type pos = rawline.find(translate, 0);
-            if(pos != std::string::npos) rawline.replace(pos, translate.length(), "sampler2D");
-            
-            std::string line = trimAndCompress(rawline);
-            if ( line.size() > 0 )
-            {
-                StringVector tokens;
-                StringTokenizer( line, tokens, " \t", "", false, true );
-                
-                //is a declaration
-                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line.back() == ';' && indent == 0;
-                if(isdec) {
-                    // check if it's already in declarations
-                    bool decexists = std::find(declarations.begin(), declarations.end(), line) != declarations.end();
-                    // check if it's a function definition, this is a bit shoddy, we know we're in global scope, we know it ends with ; so if it has brackets we'll say it's a function def
-                    bool isfunc = line.find("(") != std::string::npos && line.find(")") != std::string::npos;
-                    if(!decexists && !isfunc) {
-                        declarations.push_back(line);
-                        ds << rawline << "\n";
-                        //ss << *line_iter << "\n";
-                    }
-                } else {
-                
-                    // basic skip comments
-                    //if(line.compare(0, 2, "//") == 0) continue;
-
-                    indent += std::count(line.begin(), line.end(), '{');
-                    indent -= std::count(line.begin(), line.end(), '}');
-                    
-                    //if its the precision def insert a marker
-                    if(tokens[0] == "precision") {
-                        // if it's the first
-                        if(precision.empty()) {
-                            ss << insertmarker;
-                            precision = tokens[1];
-                        } else {
-                            // see if it's higher
-                            if(precision == "lowp" && (tokens[1] == "mediump" || tokens[1] == "highp")) precision = tokens[1];
-                            if(precision == "mediump" && tokens[1] == "highp") precision = tokens[1];
-                        }
-                    } else {
-                        ss << rawline << "\n";
-                    }
-                    
-                }
-            }
-        }
-        
-        std::string precisionline = "precision " + precision + " float;\n";
-        
-        std::string s = ss.str();
-        std::string::size_type pos = s.find(insertmarker, 0);
-        s.replace(pos, insertmarker.length(), precisionline + ds.str());
-        
-        return s;
-    }
-
 
     bool s_attribAliasSortFunc(const std::pair<std::string,std::string>& a, const std::pair<std::string,std::string>& b) {
         return a.first.size() > b.first.size();
@@ -489,9 +402,6 @@ namespace
                 vertShaderBuf << h->second << "\n";
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
-            
-            // find and delete redeclarations
-            vertBodyText = removeRedeclarations(vertBodyText);
 
 
 
@@ -520,9 +430,7 @@ namespace
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
-            
-            // find and delete redeclarations
-            fragBodyText = removeRedeclarations(fragBodyText);
+
 
             // add them to the program.
             program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );

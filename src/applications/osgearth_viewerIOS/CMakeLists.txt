@@ -89,8 +89,7 @@ SET(OSG_STATIC_PLUGINS ${OSG_STATIC_PLUGINS}
 
 SET(RESOURCE_FILES  
     StartViewerController.xib
-    ViewController_iPhone.xib
-    ViewController_iPad.xib
+    ViewController.xib
     ${CMAKE_SOURCE_DIR}/tests/readymap.earth
 )
 

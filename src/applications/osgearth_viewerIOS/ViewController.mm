@@ -114,6 +114,8 @@ using namespace osgEarth::Util;
     
     //create the viewer
 	_viewer = new osgViewer::Viewer();
+    // just do single threaded
+    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
     
 	// Setup the traits parameters
 	traits->x = 0;
@@ -152,8 +154,6 @@ using namespace osgEarth::Util;
                                                            0.1f, 10000.0f);
 
     
-    // just do single threaded
-    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
 
     // Tell the database pager to not modify the unref settings
     _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
@@ -227,7 +227,9 @@ using namespace osgEarth::Util;
 
 - (IBAction)onBackClicked:(id)sender {
     [self stopAnimation];
-    _viewer = NULL;
+    _viewer->done();
+    //_viewer->stopThreading();
+    //_viewer->getDatabasePager()->cancel();
     [self.view removeFromSuperview];
 }
 
@@ -235,7 +237,7 @@ using namespace osgEarth::Util;
 - (void)update:(CADisplayLink *)sender
 {
     //
-    if(_viewer != NULL) _viewer->frame();
+    if(_viewer != NULL && _isAnimating) _viewer->frame();
 }
 
 

@@ -145,11 +145,19 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, std::string& subversion, HeaderMap& precisions, HeaderMap& headers, std::stringstream& body )
     {
+    
+        // types we consider declarations
+        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp", "struct", "attribute", "#extension", "#define"};
+        std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
+        
         // break into lines:
         StringVector lines;
         StringTokenizer( source, lines, "\n", "", true, false );
+
+        // keep track of brackets and if we're in global scope indent==0
+        int indent = 0;
 
         for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
         {
@@ -159,6 +167,16 @@ namespace
             {
                 StringVector tokens;
                 StringTokenizer( line, tokens, " \t", "", false, true );
+                
+                indent += std::count(line.begin(), line.end(), '{');
+                indent -= std::count(line.begin(), line.end(), '}');
+                
+                // we say it's a declaration if it starts with one of the dectyps, has a ; at the end and is in the global scope
+                bool isdec = (std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line[line.size()-1] == ';' && indent == 0) || (tokens[0] == "#extension" || tokens[0] == "#define");
+                
+                // discard forward declarations of functions, we know it's a declaration so just see if it has brackets (should be safe)
+                bool isfunc = isdec && (line.find("(") != std::string::npos && line.find(")") != std::string::npos);
+                if(isfunc) continue;
 
                 if (tokens[0] == "#version")
                 {
@@ -176,15 +194,26 @@ namespace
                         }
                     }
                 }
+                
+                else if(tokens[0] == "precision") {
+                    // precision stored in map of value type to current highest value precision
+                    // dec should be keyword valueprecision type, precision highp float
+                    if(tokens.size() < 3) continue;
+                    std::string& currentlevel = precisions[tokens[2]];
+                    
+                    // see if it's higher
+                    if(currentlevel.empty() || (currentlevel == "lowp" && (tokens[1] == "mediump" || tokens[1] == "highp"))) currentlevel = tokens[1];
+                    if(currentlevel == "mediump" && tokens[1] == "highp") currentlevel = tokens[1];
+                }
 
-                else if (
-                    tokens[0] == "#extension"   ||
+                else if (isdec
+                    /*tokens[0] == "#extension"   ||
                     tokens[0] == "#define"      ||
                     tokens[0] == "precision"    ||
                     tokens[0] == "struct"       ||
                     tokens[0] == "varying"      ||
                     tokens[0] == "uniform"      ||
-                    tokens[0] == "attribute")
+                    tokens[0] == "attribute"*/)
                 {
                     std::string& header = headers[line];
                     header = line;
@@ -202,93 +231,6 @@ namespace
         version = 300;
         subversion = "es";
 #endif
-    }
-
-    std::string removeRedeclarations(const std::string& source)
-    {
-    
-        std::stringstream ss; // stream for main source
-        std::stringstream ds; // stream for declarations
-        
-        // break into lines:
-        StringVector lines;
-        StringTokenizer( source, lines, "\n", "", true, false );
-        
-        // types we consider declarations
-        std::string dectypesarray[] = {"void", "uniform", "in", "out", "varying", "bool", "int", "float", "vec2", "vec3", "vec4", "bvec2", "bvec3", "bvec4", "ivec2", "ivec3", "ivec4", "mat2", "mat3", "mat4", "sampler2D", "samplerCube", "lowp", "mediump", "highp"};
-        std::vector<std::string> dectypes (dectypesarray, dectypesarray + sizeof(dectypesarray) / sizeof(dectypesarray[0]) );
-        
-        // list of existing declarations
-        StringVector declarations;
-       
-        // use this to mark an insertion point in the main source for our declarations
-        std::string insertmarker = "@DEFINITIONS@";
-        // track the highest precision we find
-        std::string precision = "";
-
-        // track the current {} indent level
-        int indent = 0;
-
-        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
-        {
-            std::string rawline = *line_iter;
-            
-            std::string translate = "sampler1D";
-            std::string::size_type pos = rawline.find(translate, 0);
-            if(pos != std::string::npos) rawline.replace(pos, translate.length(), "sampler2D");
-            
-            std::string line = trimAndCompress(rawline);
-            if ( line.size() > 0 )
-            {
-                StringVector tokens;
-                StringTokenizer( line, tokens, " \t", "", false, true );
-                
-                //is a declaration
-                bool isdec = std::find(dectypes.begin(), dectypes.end(), tokens[0]) != dectypes.end() && line[line.size()-1] == ';' && indent == 0;
-                if(isdec) {
-                    // check if it's already in declarations
-                    bool decexists = std::find(declarations.begin(), declarations.end(), line) != declarations.end();
-                    // check if it's a function definition, this is a bit shoddy, we know we're in global scope, we know it ends with ; so if it has brackets we'll say it's a function def
-                    bool isfunc = line.find("(") != std::string::npos && line.find(")") != std::string::npos;
-                    if(!decexists && !isfunc) {
-                        declarations.push_back(line);
-                        ds << rawline << "\n";
-                        //ss << *line_iter << "\n";
-                    }
-                } else {
-                
-                    // basic skip comments
-                    //if(line.compare(0, 2, "//") == 0) continue;
-
-                    indent += std::count(line.begin(), line.end(), '{');
-                    indent -= std::count(line.begin(), line.end(), '}');
-                    
-                    //if its the precision def insert a marker
-                    if(tokens[0] == "precision") {
-                        // if it's the first
-                        if(precision.empty()) {
-                            ss << insertmarker;
-                            precision = tokens[1];
-                        } else {
-                            // see if it's higher
-                            if(precision == "lowp" && (tokens[1] == "mediump" || tokens[1] == "highp")) precision = tokens[1];
-                            if(precision == "mediump" && tokens[1] == "highp") precision = tokens[1];
-                        }
-                    } else {
-                        ss << rawline << "\n";
-                    }
-                    
-                }
-            }
-        }
-        
-        std::string precisionline = "precision " + precision + " float;\n";
-        
-        std::string s = ss.str();
-        std::string::size_type pos = s.find(insertmarker, 0);
-        s.replace(pos, insertmarker.length(), precisionline + ds.str());
-        
-        return s;
     }
 
 
@@ -412,11 +354,13 @@ namespace
         {
             unsigned          vertVersion = 0;
             std::string       vertSubversion = "";
+            HeaderMap         vertPrecisions;
             HeaderMap         vertHeaders;
             std::stringstream vertBody;
 
             unsigned          fragVersion = 0;
             std::string       fragSubversion = "";
+            HeaderMap         fragPrecisions;
             HeaderMap         fragHeaders;
             std::stringstream fragBody;
 
@@ -428,11 +372,11 @@ namespace
                 {
                     if ( s->getType() == osg::Shader::VERTEX )
                     {
-                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertHeaders, vertBody );
+                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertSubversion, vertPrecisions, vertHeaders, vertBody );
                     }
                     else if ( s->getType() == osg::Shader::FRAGMENT )
                     {
-                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragHeaders, fragBody );
+                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragSubversion, fragPrecisions, fragHeaders, fragBody );
                     }
                 }
             }
@@ -447,13 +391,17 @@ namespace
                    vertShaderBuf << " " << vertSubversion;
                 vertShaderBuf << "\n";
             }
+            if(vertPrecisions.size() > 0) {
+                for(HeaderMap::iterator pitr = vertPrecisions.begin(); pitr != vertPrecisions.end(); ++pitr) {
+                    vertShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
+                }
+            }
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
             vertShaderBuf << vertBodyText << "\n";
             vertBodyText = vertShaderBuf.str();
-            
-            // find and delete redeclarations
-            vertBodyText = removeRedeclarations(vertBodyText);
+
+
 
             std::string fragBodyText;
             fragBodyText = fragBody.str();
@@ -464,13 +412,21 @@ namespace
                     fragShaderBuf << " " << fragSubversion;
                 fragShaderBuf << "\n";
             }
+#if defined(OSG_GLES3_AVAILABLE)
+            // ensure there's a default for floats in the frag shader
+            std::string& defaultFragFloat = fragPrecisions["float;"];
+            if(defaultFragFloat.size() == 0) defaultFragFloat = "highp";
+#endif
+            if(fragPrecisions.size() > 0) {
+                for(HeaderMap::iterator pitr = fragPrecisions.begin(); pitr != fragPrecisions.end(); ++pitr) {
+                    fragShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
+                }
+            }
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
-            
-            // find and delete redeclarations
-            fragBodyText = removeRedeclarations(fragBodyText);
+
 
             // add them to the program.
             program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );

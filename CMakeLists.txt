@@ -208,6 +208,11 @@ ENDIF(UNIX)
 
 
 IF(WIN32)
+  FIND_PACKAGE(GLCORE)
+  IF(GLCORE_FOUND)
+      INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
+  ENDIF()    
+
   IF(MSVC)
         # This option is to enable the /MP switch for Visual Studio 2005 and above compilers
         OPTION(WIN32_USE_MP "Set to ON to build osgEarth with the /MP option (Visual Studio 2005 and above)." OFF)

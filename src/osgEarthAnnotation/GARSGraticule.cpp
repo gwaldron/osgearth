@@ -162,6 +162,48 @@ enum GARSLevel
     GARS_5
 };
 
+std::string getGARSLabel(double lon, double lat, GARSLevel level)
+{
+    int lonCell = floor((lon - -180.0) / 0.5);
+    int latCell = floor((lat - -90.0) / 0.5);
+     
+    // Format the lon cell
+    std::stringstream buf;
+    if (lonCell < 9)
+    {
+        buf << "00";
+    }
+    else if (lonCell < 99)
+    {
+        buf << "0";
+    }
+    buf << (lonCell + 1);
+
+    // Format the lat cell
+    std::string latIndices = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    int latPrimaryIndex = latCell / latIndices.size();
+    int latSecondaryIndex = latCell - (latPrimaryIndex * latIndices.size());
+    buf << latIndices[latPrimaryIndex] << latIndices[latSecondaryIndex];
+
+    if (level == GARS_15 || level == GARS_5)
+    {
+        // Figure out the quadrant of the 15 minute cell within the parent 30 minute cell.
+        int x15Cell = floor(fmod(lon - -180.0, 0.5) / 0.25);
+        int y15Cell = floor(fmod(lat - -90.0, 0.5) / 0.25);
+        int y15CellInverted = 2 - y15Cell - 1;
+        buf << x15Cell + y15CellInverted * 2 + 1;
+
+        if (level == GARS_5)
+        {
+            int x5Cell = floor((lon - -180.0 - (lonCell * 0.5 + x15Cell * 0.25)) / 0.08333333333);
+            int y5Cell = floor((lat - -90.0 - (latCell * 0.5 + y15Cell * 0.25)) / 0.08333333333);
+            int y5CellInverted = 3 - y5Cell - 1;
+            buf << x5Cell + y5CellInverted * 3 + 1;
+
+        }
+    }
+    return buf.str();
+}
 
 class GridNode : public PagedNode
 {
@@ -270,6 +312,12 @@ void GridNode::build()
     style.getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     style.getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
+    double lon, lat;
+    _extent.getCentroid(lon, lat);
+    std::string label = getGARSLabel(lon, lat, _level);
+    style.getOrCreateSymbol<TextSymbol>()->content()->setLiteral(label);
+
+    /*
     if (_level == GARS_30)
     {
         style.getOrCreateSymbol<TextSymbol>()->content()->setLiteral("30");
@@ -282,8 +330,9 @@ void GridNode::build()
     {    
         style.getOrCreateSymbol<TextSymbol>()->content()->setLiteral("5");
     }
+    */
 
-    style.getOrCreateSymbol<TextSymbol>()->size() = 40.0;
+    style.getOrCreateSymbol<TextSymbol>()->size() = 20.0;
     style.getOrCreateSymbol<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
 
     

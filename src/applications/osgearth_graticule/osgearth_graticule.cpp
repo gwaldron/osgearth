@@ -34,9 +34,11 @@
 #include <osgEarthUtil/GeodeticGraticule>
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/UTMGraticule>
+#include <osgEarthAnnotation/GARSGraticule>
 #include <osgEarthUtil/GraticuleNode>
 
 using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 int
 usage( const std::string& msg )
@@ -47,6 +49,7 @@ usage( const std::string& msg )
         << "   --geodetic            : display a geodetic (lat/long) graticule" << std::endl
         << "   --utm                 : display a UTM graticule" << std::endl
         << "   --mgrs                : display an MGRS graticule" << std::endl
+        << "   --gars                : display a GARS graticule" << std::endl
         << "   --shader              : display a geodetic graticule using the glsl shaders" << std::endl;
     return -1;
 }
@@ -93,8 +96,9 @@ main(int argc, char** argv)
     bool isUTM = arguments.read("--utm");
     bool isMGRS = arguments.read("--mgrs");
     bool isGeodetic = arguments.read("--geodetic");
+    bool isGARS = arguments.read("--gars");
 
-    bool isShader = !isUTM && !isMGRS && !isGeodetic;
+    bool isShader = !isUTM && !isMGRS && !isGeodetic && !isGARS;
 
     // load the .earth file from the command line.
     MapNode* mapNode = MapNode::load( arguments );
@@ -131,6 +135,11 @@ main(int argc, char** argv)
         gr->setOptions( o );
         root->addChild( gr );
         formatter = new LatLongFormatter();
+    }
+    else if ( isGARS )
+    {
+        GARSGraticule* gr = new GARSGraticule( mapNode );
+        root->addChild( gr );
     }
     else
     {

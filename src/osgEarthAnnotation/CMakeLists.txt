@@ -8,7 +8,7 @@ set(LIB_NAME osgEarthAnnotation)
 
 set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-set(LIB_PUBLIC_HEADERS  
+set(LIB_PUBLIC_HEADERS
     AnnotationSettings
     AnnotationEditing
     AnnotationExtension
@@ -25,6 +25,7 @@ set(LIB_PUBLIC_HEADERS
     Export
     FeatureNode
     FeatureEditing
+    GARSGraticule
     GeoPositionNode
     GeoPositionNodeAutoScaler
     LocalGeometryNode
@@ -54,6 +55,7 @@ set(LIB_COMMON_FILES
     EllipseNode.cpp
     FeatureNode.cpp
     FeatureEditing.cpp
+    GARSGraticule.cpp
     GeoPositionNode.cpp
     GeoPositionNodeAutoScaler.cpp
     LocalGeometryNode.cpp
@@ -69,7 +71,7 @@ set(LIB_COMMON_FILES
 
 
 ADD_LIBRARY( ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
-    ${LIB_PUBLIC_HEADERS}  
+    ${LIB_PUBLIC_HEADERS}
     ${LIB_COMMON_FILES}
 )
 

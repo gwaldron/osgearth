@@ -11,7 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
     ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler    
+    AutoClipPlaneHandler
     ArcGIS
     AtlasBuilder
     Common
@@ -84,7 +84,7 @@ set(TARGET_GLSL
     Graticule.vert.glsl
     Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
-    LogDepthBuffer.VertOnly.vert.glsl    
+    LogDepthBuffer.VertOnly.vert.glsl
     LogDepthBuffer.frag.glsl
     Shadowing.vert.glsl
     Shadowing.frag.glsl
@@ -94,7 +94,7 @@ set(TARGET_GLSL
 set(TARGET_IN
     Shaders.cpp.in)
 
-configure_shaders(            
+configure_shaders(
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
@@ -190,7 +190,7 @@ SET(LIB_PUBLIC_HEADERS
     ${HEADERS_COLORFILTER}
 )
 
-SET(LIB_COMMON_FILES 
+SET(LIB_COMMON_FILES
     ${SOURCES_ROOT} ${SOURCES_COLORFILTER}
 )
 

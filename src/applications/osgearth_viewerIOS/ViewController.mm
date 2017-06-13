@@ -86,8 +86,8 @@ using namespace osgEarth::Util;
     
     setenv("GDAL_DATA", dataPath.c_str(), 1);
     
-    osg::setNotifyLevel(osg::INFO);
-    osgEarth::setNotifyLevel(osg::INFO);
+    osg::setNotifyLevel(osg::DEBUG_FP);
+    osgEarth::setNotifyLevel(osg::DEBUG_FP);
     
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG

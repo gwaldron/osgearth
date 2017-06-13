@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthAnnotation/GARSGraticule>
+#include <osgEarthUtil/GARSGraticule>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarth/PagedNode>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 

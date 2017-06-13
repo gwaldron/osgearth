@@ -25,7 +25,6 @@ set(LIB_PUBLIC_HEADERS
     Export
     FeatureNode
     FeatureEditing
-    GARSGraticule
     GeoPositionNode
     GeoPositionNodeAutoScaler
     LocalGeometryNode
@@ -55,7 +54,6 @@ set(LIB_COMMON_FILES
     EllipseNode.cpp
     FeatureNode.cpp
     FeatureEditing.cpp
-    GARSGraticule.cpp
     GeoPositionNode.cpp
     GeoPositionNodeAutoScaler.cpp
     LocalGeometryNode.cpp

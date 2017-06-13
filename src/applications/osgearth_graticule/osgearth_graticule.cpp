@@ -34,7 +34,7 @@
 #include <osgEarthUtil/GeodeticGraticule>
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/UTMGraticule>
-#include <osgEarthAnnotation/GARSGraticule>
+#include <osgEarthUtil/GARSGraticule>
 #include <osgEarthUtil/GraticuleNode>
 
 using namespace osgEarth::Util;

@@ -304,7 +304,7 @@ _mapNode(mapNode)
 
 void GARSGraticule::build30MinCells()
 {
-    double size = 5.0;
+    double size = 3.0;
     int numCols = ceil(360.0 / size);
     int numRows = ceil(180.0 / size);
 

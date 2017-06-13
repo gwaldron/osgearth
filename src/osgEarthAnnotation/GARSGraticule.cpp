@@ -268,7 +268,6 @@ osg::Node* IndexNode::loadChildren()
     {    
         for (int r = 0; r < numRows; r++)
         {
-            Feature* feature = new Feature(new LineString(5), SpatialReference::create("wgs84"));
             double west = _extent.xMin() + 0.5 * (double)c;
             double south = _extent.yMin() + 0.5 * r;
             group->addChild(new GridNode(_mapNode.get(), GeoExtent(_extent.getSRS(), west, south, west + 0.5, south + 0.5), GARS_30));         

@@ -28,6 +28,7 @@ SET(HEADERS_ROOT
     Fog
     Formatter
     FractalElevationLayer
+    GARSGraticule
     GeodeticGraticule
     GraticuleExtension
     GraticuleNode
@@ -117,6 +118,7 @@ SET(SOURCES_ROOT
     FlatteningLayer.cpp
     Fog.cpp
     FractalElevationLayer.cpp
+    GARSGraticule.cpp
     GeodeticGraticule.cpp
     GraticuleExtension.cpp
     GraticuleTerrainEffect.cpp

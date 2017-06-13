@@ -186,14 +186,38 @@ void GridNode::build()
     double lon, lat;
     _extent.getCentroid(lon, lat);
     std::string label = getGARSLabel(lon, lat, _level);
+    /*
     style.getOrCreateSymbol<TextSymbol>()->content()->setLiteral(label);
-
     style.getOrCreateSymbol<TextSymbol>()->size() = 20.0;
     style.getOrCreateSymbol<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    */
     
     FeatureNode* featureNode = new FeatureNode(_mapNode.get(), features, style);
     // Add the node to the attachpoint.
     _attachPoint->addChild(featureNode);
+       
+    GeoPoint centroid(_extent.getSRS(), lon, lat, 1000.0);
+    GeoPoint west(_extent.getSRS(), _extent.west(), lat, 0.0);
+    GeoPoint east(_extent.getSRS(), _extent.east(), lat, 0.0);   
+    double widthInMeters = west.distanceTo(east);
+
+    osgText::Text* text = new osgText::Text;
+    text->setFont(osgText::readFontFile("arial.ttf"));
+    text->setText(label);
+
+    text->setCharacterSize(widthInMeters / (double)label.size());
+    text->setAlignment(osgText::Text::CENTER_CENTER);
+    osg::Geode* textGeode = new osg::Geode;
+    textGeode->addDrawable(text);
+
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->addChild(textGeode);
+
+    osg::Matrixd local2World;
+    centroid.createLocalToWorld(local2World);
+    mt->setMatrix(local2World);
+
+   _attachPoint->addChild(mt);
 }
 
 osg::BoundingSphere GridNode::getKeyBound() const
@@ -269,6 +293,13 @@ GARSGraticule::GARSGraticule(MapNode* mapNode):
 _mapNode(mapNode)
 {
     build30MinCells();
+
+    osg::StateSet* ss = this->getOrCreateStateSet();
+    ss->setMode( GL_DEPTH_TEST, 0 );
+    ss->setMode( GL_LIGHTING, 0 );
+    ss->setMode( GL_BLEND, 1 );
+    // force it to render after the terrain.
+    ss->setRenderBinDetails(1, "RenderBin");
 }
 
 void GARSGraticule::build30MinCells()

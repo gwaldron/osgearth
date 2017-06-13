@@ -107,7 +107,7 @@ std::string getGARSLabel(double lon, double lat, GARSLevel level)
 class GridNode : public PagedNode
 {
 public:
-    GridNode(MapNode* mapNode, const GeoExtent& extent, GARSLevel level);
+    GridNode(MapNode* mapNode, GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level);
 
     virtual osg::Node* loadChildren();
 
@@ -119,11 +119,13 @@ public:
 
     GeoExtent _extent;
     osg::observer_ptr<MapNode> _mapNode;
+    GARSGraticule* _graticule;
     GARSLevel _level;
 };
 
-GridNode::GridNode(MapNode* mapNode, const GeoExtent& extent, GARSLevel level):
+GridNode::GridNode(MapNode* mapNode, GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level):
 _mapNode(mapNode),
+_graticule(graticule),
 _extent(extent),
 _level(level),
 PagedNode()
@@ -160,7 +162,7 @@ osg::Node* GridNode::loadChildren()
             double east = west + width;
             double north = south + height;
 
-            group->addChild(new GridNode(_mapNode.get(), GeoExtent(_extent.getSRS(), west, south, east, north), childLevel));
+            group->addChild(new GridNode(_mapNode.get(), _graticule, GeoExtent(_extent.getSRS(), west, south, east, north), childLevel));
 
         }
     }
@@ -178,11 +180,13 @@ void GridNode::build()
     FeatureList features;
     features.push_back(feature);
 
-    Style style;
+    Style style = _graticule->getGridStyle();
+    /*
     style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Blue;
     style.getOrCreateSymbol<LineSymbol>()->tessellation() = 20;
     style.getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     style.getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    */
 
     double lon, lat;
     _extent.getCentroid(lon, lat);
@@ -236,7 +240,7 @@ bool GridNode::hasChildren() const
 class IndexNode : public PagedNode
 {
 public:
-    IndexNode(MapNode* mapNode, const GeoExtent& extent);
+    IndexNode(MapNode* mapNode, GARSGraticule* graticule, const GeoExtent& extent);
 
     virtual osg::Node* loadChildren();
 
@@ -245,11 +249,13 @@ public:
     virtual bool hasChildren() const;
 
     GeoExtent _extent;
+    GARSGraticule* _graticule;
     osg::observer_ptr<MapNode> _mapNode;
 };
 
-IndexNode::IndexNode(MapNode* mapNode, const GeoExtent& extent):
+IndexNode::IndexNode(MapNode* mapNode, GARSGraticule* graticule, const GeoExtent& extent):
 _mapNode(mapNode),
+_graticule(graticule),
 _extent(extent),
 PagedNode()
 {
@@ -271,7 +277,7 @@ osg::Node* IndexNode::loadChildren()
         {
             double west = _extent.xMin() + 0.5 * (double)c;
             double south = _extent.yMin() + 0.5 * r;
-            group->addChild(new GridNode(_mapNode.get(), GeoExtent(_extent.getSRS(), west, south, west + 0.5, south + 0.5), GARS_30));         
+            group->addChild(new GridNode(_mapNode.get(), _graticule, GeoExtent(_extent.getSRS(), west, south, west + 0.5, south + 0.5), GARS_30));         
         }
     }        
     return group;
@@ -300,7 +306,23 @@ _mapNode(mapNode)
     ss->setMode( GL_BLEND, 1 );
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
+    
+    _gridStyle.getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Blue;
+    _gridStyle.getOrCreateSymbol<LineSymbol>()->tessellation() = 20;
+    _gridStyle.getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    _gridStyle.getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 }
+
+const Style& GARSGraticule::getGridStyle() const
+{
+    return _gridStyle;
+}
+
+void GARSGraticule::setGridStyle(Style& style)
+{
+    _gridStyle = style;
+}
+
 
 void GARSGraticule::build30MinCells()
 {
@@ -314,7 +336,7 @@ void GARSGraticule::build30MinCells()
         {
             double west = -180.0 + (double)c * size;
             double south = -90.0 + (double)r * size;
-            addChild(new IndexNode(_mapNode.get(), GeoExtent(SpatialReference::create("wgs84"), west, south, west + size, south + size)));
+            addChild(new IndexNode(_mapNode.get(), this, GeoExtent(SpatialReference::create("wgs84"), west, south, west + size, south + size)));
         }
     }
 }

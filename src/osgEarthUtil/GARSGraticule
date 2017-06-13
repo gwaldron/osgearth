@@ -22,6 +22,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Common>
+#include <osgEarthSymbology/Style>
 
 namespace osgEarth { namespace Util
 {
@@ -35,13 +36,18 @@ namespace osgEarth { namespace Util
 
         void build30MinCells();
 
+        const Style& getGridStyle() const;
+        void setGridStyle(Style& style);
+
     protected:
 
         /** dtor */
         virtual ~GARSGraticule() { }
 
         osg::observer_ptr< MapNode > _mapNode;
+
+        Style _gridStyle;
     };  
-} } // namespace osgEarth::Annotation
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHANNOTATION_GARS_GRATICLE

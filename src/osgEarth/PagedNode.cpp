@@ -85,7 +85,7 @@ void PagedNode::setupPaging()
     {    
 
         // Now setup a filename on the PagedLOD that will load all of the children of this node.
-        _plod->setFileName(1, "dummy.osgearth_pseudo_pagednode");
+        _plod->setFileName(1, ".osgearth_pseudo_pagednode");
       
         // assemble data to pass to the pseudoloader
         osgDB::Options* options = new osgDB::Options();

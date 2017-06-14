@@ -86,18 +86,8 @@ using namespace osgEarth::Util;
     
     setenv("GDAL_DATA", dataPath.c_str(), 1);
     
-    osg::setNotifyLevel(osg::INFO);
-    osgEarth::setNotifyLevel(osg::INFO);
-    
-    // thread-safe initialization of the OSG wrapper manager. Calling this here
-    // prevents the "unsupported wrapper" messages from OSG
-    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
-    
-    // ensure tiff plugin is used over imageio
-    osgDB::Registry::instance()->addFileExtensionAlias("tiff", "tiff");
-    osgDB::Registry::instance()->addFileExtensionAlias("tif", "tiff");
-    
-    osg::DisplaySettings::instance()->setVertexBufferHint(osg::DisplaySettings::VertexBufferHint::VERTEX_BUFFER_OBJECT);
+    osg::setNotifyLevel(osg::FATAL);
+    osgEarth::setNotifyLevel(osg::DEBUG_FP);
     
     // thread-safe initialization of the OSG wrapper manager. Calling this here
     // prevents the "unsupported wrapper" messages from OSG

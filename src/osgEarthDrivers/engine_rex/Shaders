@@ -28,6 +28,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::string
             ENGINE_VERT_MODEL,
             ENGINE_VERT_VIEW,
+            ENGINE_ELEVATION_MODEL,
             ENGINE_FRAG,
             ENGINE_GEOM,
             NORMAL_MAP_VERT,

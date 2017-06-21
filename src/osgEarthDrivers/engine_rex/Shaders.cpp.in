@@ -9,6 +9,9 @@ Shaders::Shaders()
     ENGINE_VERT_MODEL = "RexEngine.vert.glsl";
     _sources[ENGINE_VERT_MODEL] = "@RexEngine.vert.glsl@";
 
+	ENGINE_ELEVATION_MODEL = "RexEngine.elevation.glsl";
+    _sources[ENGINE_ELEVATION_MODEL] = "@RexEngine.elevation.glsl@";
+
     MORPHING_VERT = "RexEngine.Morphing.vert.glsl";
     _sources[MORPHING_VERT] = "@RexEngine.Morphing.vert.glsl@";
 

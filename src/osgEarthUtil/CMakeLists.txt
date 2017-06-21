@@ -11,7 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
     ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler    
+    AutoClipPlaneHandler
     ArcGIS
     AtlasBuilder
     Common
@@ -28,6 +28,7 @@ SET(HEADERS_ROOT
     Fog
     Formatter
     FractalElevationLayer
+    GARSGraticule
     GeodeticGraticule
     GraticuleExtension
     GraticuleNode
@@ -84,7 +85,7 @@ set(TARGET_GLSL
     Graticule.vert.glsl
     Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
-    LogDepthBuffer.VertOnly.vert.glsl    
+    LogDepthBuffer.VertOnly.vert.glsl
     LogDepthBuffer.frag.glsl
     Shadowing.vert.glsl
     Shadowing.frag.glsl
@@ -94,7 +95,7 @@ set(TARGET_GLSL
 set(TARGET_IN
     Shaders.cpp.in)
 
-configure_shaders(            
+configure_shaders(
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
@@ -117,6 +118,7 @@ SET(SOURCES_ROOT
     FlatteningLayer.cpp
     Fog.cpp
     FractalElevationLayer.cpp
+    GARSGraticule.cpp
     GeodeticGraticule.cpp
     GraticuleExtension.cpp
     GraticuleTerrainEffect.cpp
@@ -190,7 +192,7 @@ SET(LIB_PUBLIC_HEADERS
     ${HEADERS_COLORFILTER}
 )
 
-SET(LIB_COMMON_FILES 
+SET(LIB_COMMON_FILES
     ${SOURCES_ROOT} ${SOURCES_COLORFILTER}
 )
 

@@ -206,9 +206,10 @@ _maxTextureBufferSize   ( 0 )
         glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
         OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
 
+#if !(defined(OSG_GL3_AVAILABLE))
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
-
+#endif
         
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
 #if !(defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))

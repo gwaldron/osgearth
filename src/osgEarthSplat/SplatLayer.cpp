@@ -219,7 +219,12 @@ SplatLayer::preCull(osgUtil::CullVisitor* cv) const
             }
         }
 
-        osg::StateSet* zoneStateSet = _zones[zoneIndex]->getStateSet();
+        osg::StateSet* zoneStateSet = 0L;
+        Surface* surface = _zones[zoneIndex]->getSurface();
+        if (surface)
+        {
+            zoneStateSet = surface->getStateSet();
+        }
 
         if (zoneStateSet == 0L)
         {
@@ -291,9 +296,10 @@ SplatLayer::buildStateSets()
     {
         Zone* zone = z->get();
 
+        osg::StateSet* zoneStateset = zone->getSurface()->getOrCreateStateSet();
+
         // The texture array for the zone:
         const SplatTextureDef& texdef = zone->getSurface()->getTextureDef();
-        osg::StateSet* zoneStateset = zone->getOrCreateStateSet();
 
         // apply the splatting texture catalog:
         zoneStateset->setTextureAttribute(_splatBinding.unit(), texdef._texture.get());

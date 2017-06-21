@@ -125,13 +125,13 @@ Zone::contains(const osg::Vec3& point) const
     return false;
 }
 
-osg::StateSet*
-Zone::getOrCreateStateSet() 
-{
-    if ( !_stateSet.valid() )
-        _stateSet = new osg::StateSet();
-    return _stateSet.get();
-}
+//osg::StateSet*
+//Zone::getOrCreateStateSet() 
+//{
+//    if ( !_stateSet.valid() )
+//        _stateSet = new osg::StateSet();
+//    return _stateSet.get();
+//}
 
 //........................................................................
 

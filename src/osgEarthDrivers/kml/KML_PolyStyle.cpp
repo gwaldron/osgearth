@@ -57,8 +57,13 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 		}
 		if (!outline)
 		{
-			LineSymbol* line = style.getOrCreate<LineSymbol>();
-			line->stroke()->color().a() = 0;
+            // If the style already has a line symbol, that means there was a LineStyle 
+            // that will take precedence over this outline.
+            if (!style.has<LineSymbol>())
+            {
+			    LineSymbol* line = style.getOrCreate<LineSymbol>();
+			    line->stroke()->color().a() = 0;
+            }
 		}
 	}
 }

@@ -54,6 +54,17 @@ Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Optio
     return true;
 }
 
+osg::StateSet*
+Surface::getOrCreateStateSet()
+{
+    if ( !_stateSet.valid() )
+    {
+        _stateSet = new osg::StateSet();
+    }
+
+    return _stateSet.get();
+}
+
 bool
 Surface::loadTextures(const LandCoverDictionary* landCoverDict, const osgDB::Options* dbo)
 {

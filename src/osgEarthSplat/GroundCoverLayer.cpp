@@ -280,7 +280,14 @@ GroundCoverLayer::preCull(osgUtil::CullVisitor* cv) const
             }
         }
 
-        osg::StateSet* zoneStateSet = _zones[zoneIndex]->getStateSet();
+        osg::StateSet* zoneStateSet = 0L;
+        GroundCover* gc = _zones[zoneIndex]->getGroundCover();
+        if (gc)
+        {
+            zoneStateSet = gc->getStateSet();
+        }
+
+        //osg::StateSet* zoneStateSet = _zones[zoneIndex]->getGroundCover()getStateSet();
 
         if (zoneStateSet == 0L)
         {
@@ -375,7 +382,7 @@ GroundCoverLayer::buildStateSets()
         {
             if (!groundCover->getBiomes().empty() || groundCover->getTotalNumBillboards() > 0)
             {
-                osg::StateSet* zoneStateSet = zone->getOrCreateStateSet();   
+                osg::StateSet* zoneStateSet = groundCover->getOrCreateStateSet();
                             
                 // Install the land cover shaders on the state set
                 VirtualProgram* vp = VirtualProgram::getOrCreate(zoneStateSet);
@@ -399,18 +406,18 @@ GroundCoverLayer::buildStateSets()
 
                 OE_INFO << LC << "Adding ground cover \"" << groundCover->getName() << "\" to zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 
-                // Install the uniforms
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", groundCover->options().wind().get()));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
+                //// Install the uniforms
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", groundCover->options().wind().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
 
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_density", groundCover->options().density().get()));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_fill", groundCover->options().fill().get()));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", groundCover->options().maxDistance().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_density", groundCover->options().density().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_fill", groundCover->options().fill().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", groundCover->options().maxDistance().get()));
 
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_brightness", groundCover->options().brightness().get()));
-                zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_contrast", groundCover->options().contrast().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_brightness", groundCover->options().brightness().get()));
+                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_contrast", groundCover->options().contrast().get()));
 
                 osg::Texture* tex = groundCover->createTexture();
 

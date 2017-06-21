@@ -94,14 +94,16 @@ namespace osgEarth { namespace Splat
         /** Gets the texture definition creates by loadTextures */
         const SplatTextureDef& getTextureDef() const { return _textureDef; }
 
+        osg::StateSet* getOrCreateStateSet();
+        osg::StateSet* getStateSet() const { return _stateSet.get(); }
+
     protected:
         virtual ~Surface() { }
 
     protected:
         osg::ref_ptr<SplatCatalog> _catalog;
         SplatTextureDef            _textureDef;
-
-        //bool createGLSLSamplingCode(const Coverage* coverage, std::string& output) const;
+        osg::ref_ptr<osg::StateSet> _stateSet;
 
         osg::Texture* createLUTBuffer(const LandCoverDictionary* lcd) const;
 

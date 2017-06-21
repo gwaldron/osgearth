@@ -62,8 +62,7 @@ namespace osgEarth { namespace Splat
         optional<SurfaceOptions>& surface() { return _surface; }
         const optional<SurfaceOptions>& surface() const { return _surface; }
 
-        //! Ground cover rendering options
-        
+        //! Ground cover rendering options        
         optional<GroundCoverOptions>& groundCover() { return _groundCover; }
         const optional<GroundCoverOptions>& groundCover() const { return _groundCover; }
 
@@ -115,9 +114,9 @@ namespace osgEarth { namespace Splat
         void setGroundCover(GroundCover* groundCover) { _groundCover = groundCover; }
         GroundCover* getGroundCover() const { return _groundCover.get(); }
 
-        osg::StateSet* getStateSet() { return _stateSet.get(); }
+        //osg::StateSet* getStateSet() { return _stateSet.get(); }
 
-        osg::StateSet* getOrCreateStateSet();
+        //osg::StateSet* getOrCreateStateSet();
 
         bool contains(const osg::Vec3& points) const;
 

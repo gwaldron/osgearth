@@ -3,10 +3,12 @@
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
 #include "Zone"
+#include "SplatShaders"
 
 #include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/VirtualProgram>
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
 
@@ -155,9 +157,36 @@ osg::StateSet*
 GroundCover::getOrCreateStateSet()
 {
     if ( !_stateSet.valid() )
+    {
         _stateSet = new osg::StateSet();
+
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", options().wind().get()));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
+
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_density", options().density().get()));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_fill", options().fill().get()));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", options().maxDistance().get()));
+
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_brightness", options().brightness().get()));
+        _stateSet->addUniform(new osg::Uniform("oe_GroundCover_contrast", options().contrast().get()));
+    }
+
     return _stateSet.get();
 }
+
+#define SET_GET_UNIFORM(NAME, UNIFORM) \
+    void GroundCover::set##NAME (float value) { getOrCreateStateSet()->getUniform(UNIFORM)->set(value); } \
+    float GroundCover::get##NAME () const { float value = 0.0f; if (getStateSet()) getStateSet()->getUniform(UNIFORM)->get(value); return value; }
+
+SET_GET_UNIFORM(Wind, "oe_GroundCover_windFactor")
+SET_GET_UNIFORM(Density, "oe_GroundCover_density")
+SET_GET_UNIFORM(Fill, "oe_GroundCover_fill")
+SET_GET_UNIFORM(MaxDistance, "oe_GroundCover_maxDistance")
+SET_GET_UNIFORM(Brightness, "oe_GroundCover_brightness")
+SET_GET_UNIFORM(Contrast, "oe_GroundCover_contrast")
+
 
 osg::Shader*
 GroundCover::createShader() const

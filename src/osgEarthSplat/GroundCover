@@ -182,7 +182,7 @@ namespace osgEarth { namespace Splat
 
 
     /**
-     * A group of land cover data.
+     * Interface for controlling ground cover appearance.
      */
     class OSGEARTHSPLAT_EXPORT GroundCover : public osg::Referenced
     {
@@ -200,6 +200,30 @@ namespace osgEarth { namespace Splat
         GroundCoverBiomes& getBiomes() { return _biomes; }
         const GroundCoverBiomes& getBiomes() const { return _biomes; }
 
+        //! Wind factor
+        void setWind(float wind);
+        float getWind() const;
+
+        //! Density
+        void setDensity(float density);
+        float getDensity() const;
+
+        //! Fill
+        void setFill(float fill);
+        float getFill() const;
+
+        //! Max draw distance
+        void setMaxDistance(float distance);
+        float getMaxDistance() const;
+
+        //! Brightness
+        void setBrightness(float value);
+        float getBrightness() const;
+
+        //! Constrast
+        void setContrast(float value);
+        float getContrast() const;
+
     public:
 
         int getTotalNumBillboards() const;
@@ -216,6 +240,7 @@ namespace osgEarth { namespace Splat
 
         /** The stateset containing the shaders and state for rendering this layer. */
         osg::StateSet* getOrCreateStateSet();
+
         osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
     protected:

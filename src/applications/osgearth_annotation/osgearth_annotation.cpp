@@ -33,6 +33,7 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthAnnotation/ModelNode>
 
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/ImageOverlayEditor>
@@ -344,6 +345,18 @@ main(int argc, char** argv)
 
             editGroup->addChild( new ImageOverlayEditor(imageOverlay) );
         }
+    }
+
+    //--------------------------------------------------------------------
+
+    // a model node with auto scaling.
+    {
+        Style style;
+        style.getOrCreate<ModelSymbol>()->autoScale() = true;
+        style.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/red_flag.osg.50.scale");
+        ModelNode* modelNode = new ModelNode(mapNode, style); 
+        modelNode->setPosition(GeoPoint(geoSRS, -100, 52));
+        annoGroup->addChild(modelNode);
     }
 
     //--------------------------------------------------------------------

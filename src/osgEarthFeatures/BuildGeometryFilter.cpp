@@ -1212,6 +1212,15 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             has_pointsymbol    = has_pointsymbol    || (f->style()->has<PointSymbol>());
         }
 
+        // if there's a polygon with outlining disabled, nix the line symbol.
+        if (has_polysymbol)
+        {
+            if (poly && poly->outline() == false)
+                has_linesymbol = false;
+            else if (f->style().isSet() && f->style()->has<PolygonSymbol>() && f->style()->get<PolygonSymbol>()->outline() == false)
+                has_linesymbol = false;
+        }
+
         // if no style is set, use the geometry type:
         if ( !has_polysymbol && !has_linesymbol && !has_polylinesymbol && !has_pointsymbol && f->getGeometry() )
         {

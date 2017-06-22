@@ -688,7 +688,15 @@ MapNode::onLayerRemoved(Layer* layer, unsigned index)
     if (node == 0L)
         return;
 
-    _layerNodes->removeChild(node);
+    for (unsigned i = 0; i < _layerNodes->getNumChildren(); ++i)
+    {
+        osg::Group* g = _layerNodes->getChild(i)->asGroup();
+        if (g && g->getNumChildren() > 0 && g->getChild(0) == node)
+        {
+            _layerNodes->removeChild(i);
+            break;
+        }
+    }
 }
 
 

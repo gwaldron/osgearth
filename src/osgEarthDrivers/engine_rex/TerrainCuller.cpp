@@ -233,5 +233,8 @@ TerrainCuller::apply(osg::Node& node)
         }
     }
 
-    traverse(node);
+    // Handle any CullCallbacks and traverse.
+    osg::Callback* cullCallback = node.getCullCallback();
+    if (cullCallback) cullCallback->run(&node, this);
+    else traverse(node);
 }

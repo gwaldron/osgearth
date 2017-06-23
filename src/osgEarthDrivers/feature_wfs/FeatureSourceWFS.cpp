@@ -36,8 +36,6 @@
 
 #include <ogr_api.h>
 
-#include <curl/curl.h>
-
 
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO

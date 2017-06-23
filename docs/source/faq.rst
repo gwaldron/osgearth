@@ -176,7 +176,11 @@ Can I hire someone to help me with osgEarth?
     services. The easiest way to get in touch with us is through our web site
     `contact form`_.
     
-.. _contact form:   http://pelicanmapping.com/?page_id=2
+    Pelican also offers a `Priority Support`_ package that is a good fit for 
+    companies that prefer to do most of their development in-house.
+    
+.. _contact form:     http://pelicanmapping.com/?page_id=2
+.. _Priority Support: http://web.pelicanmapping.com/priority-support/
 
 
 ----

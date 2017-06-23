@@ -20,6 +20,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
@@ -35,6 +36,7 @@
 
 #include <ogr_api.h>
 
+#include <curl/curl.h>
 
 
 //#undef  OE_DEBUG
@@ -241,7 +243,7 @@ public:
         {
             return ".xml";
         }        
-		else if (isJSON(mime))
+        else if (isJSON(mime))
         {
             return ".json";
         }        
@@ -314,6 +316,15 @@ public:
                             << query.bounds().get().xMax() + buffer << ","
                             << query.bounds().get().yMax() + buffer;
         }
+
+        // BBOX and CQL_FILTER are mutually exclusive
+        // NOTE: CQL_FILTER is a non-standard vendor parameter. See:
+        // http://docs.geoserver.org/latest/en/user/services/wfs/vendor.html
+        else if (query.expression().isSet())
+        {
+            buf << "&CQL_FILTER=" << osgEarth::URI::urlEncode(query.expression().get());
+        }
+
         std::string str;
         str = buf.str();
         return str;

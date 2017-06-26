@@ -88,8 +88,6 @@ namespace osgEarth { namespace Util
         /**
          * Constructs a new graticule for use with the specified map.
          *
-         * @param map
-         *      Map with which you will use this graticule
          * @param options
          *      Optional "options" that configure the graticule. Defaults will be used
          *      if you don't specify this.
@@ -129,8 +127,6 @@ namespace osgEarth { namespace Util
         void setUpDefaultStyles();
 
         void rebuild();
-
-        osg::observer_ptr<MapNode> _mapNode;
 
         UID _uid;
 

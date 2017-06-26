@@ -117,8 +117,8 @@ main(int argc, char** argv)
     Formatter* formatter = 0L;
     if ( isUTM )
     {
-        UTMGraticule* gr = new UTMGraticule( mapNode );
-        root->addChild( gr );
+        UTMGraticule* gr = new UTMGraticule();
+        mapNode->getMap()->addLayer(gr);
         formatter = new MGRSFormatter();
     }
     else if ( isMGRS )

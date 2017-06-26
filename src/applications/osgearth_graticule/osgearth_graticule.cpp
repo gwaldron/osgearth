@@ -127,6 +127,11 @@ main(int argc, char** argv)
         mapNode->getMap()->addLayer(gr);
         formatter = new MGRSFormatter();
     }
+    else if ( isGARS )
+    {
+        GARSGraticule* gr = new GARSGraticule();
+        mapNode->getMap()->addLayer(gr);
+    }
     else if ( isGeodetic )
     {
         GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
@@ -135,11 +140,6 @@ main(int argc, char** argv)
         gr->setOptions( o );
         root->addChild( gr );
         formatter = new LatLongFormatter();
-    }
-    else if ( isGARS )
-    {
-        GARSGraticule* gr = new GARSGraticule( mapNode );
-        root->addChild( gr );
     }
     else
     {

@@ -206,8 +206,6 @@ namespace osgEarth
 
     public:
 
-        // *** NOTE *** Everything below this line is experimental and subject to change ***
-
         /**
          * Access the layer's stateset, creating it is necessary
          */

@@ -20,33 +20,101 @@
 #define OSGEARTHANNOTATION_GARS_GRATICLE
 
 #include <osgEarth/Extension>
-#include <osgEarth/MapNode>
+#include <osgEarth/VisibleLayer>
 #include <osgEarthUtil/Common>
 #include <osgEarthSymbology/Style>
+#include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
-    class OSGEARTHUTIL_EXPORT GARSGraticule : public osg::Group
+    /**
+     * Configuration options for the geodetic graticule.
+     */
+    class GARSGraticuleOptions : public VisibleLayerOptions
     {
     public:
+        GARSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
+            fromConfig(_conf);
+        }
+        
+    public:
+        //! Style for grid zone designator geometry and text
+        optional<Style>& style() { return _style; }
+        const optional<Style>& style() const { return _style; }
 
-        GARSGraticule(MapNode* mapNode);
+    public:
+        virtual Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
+            conf.key() = "gars_graticule";
+            conf.addObjIfSet("style", _style);
+            return conf;
+        }
 
-        void build30MinCells();
+        virtual void fromConfig(const Config& conf) {
+            conf.getObjIfSet("style", _style);
+        }
 
-        const Style& getGridStyle() const;
-        void setGridStyle(Style& style);
+    protected:
+        optional<Style> _style;
+
+        void mergeConfig(const Config& conf) {
+            VisibleLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+    };
+
+    /**
+     * GARS (Global Area Reference System) Graticuler map layer.
+     * http://earth-info.nga.mil/GandG/coordsys/grids/gars.html
+     */
+    class OSGEARTHUTIL_EXPORT GARSGraticule : public VisibleLayer
+    {
+    public:
+        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions);
+
+        GARSGraticule();
+
+        GARSGraticule(const GARSGraticuleOptions& options);
+
+        void dirty();
+
+    public: // Layer
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+        
+        virtual osg::Node* getOrCreateNode(TerrainResources* res);
+
+        virtual void init();
 
     protected:
 
         /** dtor */
-        virtual ~GARSGraticule() { }
+        virtual ~GARSGraticule() { }        
 
-        osg::observer_ptr< MapNode > _mapNode;
+    private:
 
-        Style _gridStyle;
+        void setUpDefaultStyles();
+
+        void rebuild();
+
+        UID _uid;
+
+        osg::ref_ptr<const Profile> _profile;
+
+        //osg::ref_ptr<FeatureProfile> _featureProfile;
+
+        osg::ref_ptr<osg::ClipPlane> _clipPlane;
+
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
+
+        void build30MinCells();
     };  
 } } // namespace osgEarth::Util
 

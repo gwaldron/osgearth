@@ -37,7 +37,7 @@ namespace osgEarth { namespace Util
     /**
      * Configuration options for the geodetic graticule.
      */
-    class /*header only*/ UTMGraticuleOptions : public ConfigOptions
+    classUTMGraticuleOptions : public ConfigOptions
     {
     public:
         UTMGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf) {

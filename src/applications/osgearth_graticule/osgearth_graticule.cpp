@@ -123,8 +123,8 @@ main(int argc, char** argv)
     }
     else if ( isMGRS )
     {
-        MGRSGraticule* gr = new MGRSGraticule( mapNode );
-        root->addChild( gr );
+        MGRSGraticule* gr = new MGRSGraticule();
+        mapNode->getMap()->addLayer(gr);
         formatter = new MGRSFormatter();
     }
     else if ( isGeodetic )

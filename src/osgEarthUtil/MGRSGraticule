@@ -20,8 +20,8 @@
 #define OSGEARTHUTIL_MGRS_GRATICLE
 
 #include <osgEarthUtil/UTMGraticule>
-#include <osgEarth/Extension>
-#include <osgEarth/ModelLayer>
+#include <osgEarth/VisibleLayer>
+
 
 namespace osgEarth { namespace Util
 {
@@ -31,15 +31,12 @@ namespace osgEarth { namespace Util
     /**
      * Configuration options for the geodetic graticule.
      */
-    class MGRSGraticuleOptions : public ConfigOptions
+    class MGRSGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf) {
-            mergeConfig(_conf);
+        MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
+            fromConfig(_conf);
         }
-
-        /** dtor */
-        virtual ~MGRSGraticuleOptions() { }
 
         /** Style for grid zone designator geometry and text */
         optional<Style>& gzdStyle() { return _gzdStyle; }
@@ -50,19 +47,23 @@ namespace osgEarth { namespace Util
         const optional<Style>& sqidStyle() const { return _sqidStyle; }
 
     public:
-        Config getConfig() const {
-            Config conf = ConfigOptions::getConfig();
+        virtual Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
             conf.key() = "mgrs_graticule";
             conf.addObjIfSet("gzd_style", _gzdStyle);
             conf.addObjIfSet("sqid_style", _sqidStyle);
             return conf;
         }
 
-    protected:
-
-        void mergeConfig(const Config& conf) {
+        virtual void fromConfig(const Config& conf) {
             conf.getObjIfSet("gzd_style", _gzdStyle);
             conf.getObjIfSet("sqid_style", _sqidStyle);
+        }
+
+    protected:
+        void mergeConfig(const Config& conf) {
+            VisibleLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
         }
 
         optional<Style> _gzdStyle;
@@ -76,11 +77,13 @@ namespace osgEarth { namespace Util
      * NOTE: So far, this only works for geocentric maps.
      * TODO: Add projected support; add text label support
      */
-    class OSGEARTHUTIL_EXPORT MGRSGraticule : public osg::Group,
-                                              public MapNodeObserver,
-                                              public MGRSGraticuleOptions
+    class OSGEARTHUTIL_EXPORT MGRSGraticule : public VisibleLayer
     {
     public:
+        META_Layer(osgEarthUtil, MGRSGraticule, MGRSGraticuleOptions);
+
+
+        MGRSGraticule();
 
         /**
          * Constructs a new graticule for use with the specified map.
@@ -91,30 +94,23 @@ namespace osgEarth { namespace Util
          *      Optional "options" that configure the graticule. Defaults will be used
          *      if you don't specify this.
          */
-        MGRSGraticule(MapNode* mapNode, const MGRSGraticuleOptions& options);
-        
-        /**
-         * Constructs a new MGRS graticule for use with the specified map
-         * using default options.
-         *
-         * @param map
-         *      Map with which you will use this graticule
-         */
-        MGRSGraticule(MapNode* mapNode);
+        MGRSGraticule(const MGRSGraticuleOptions& options);
 
         /**
          * If you change any of the options, call this to refresh the display
          * to refelct the new settings.
          */
-        void refresh();
+        void dirty();
 
+    public: // Layer
 
-    public: // MapNodeObserver
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
         
-        virtual void setMapNode( MapNode* mapNode );
+        virtual osg::Node* getOrCreateNode(TerrainResources* res);
 
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
-
+        virtual void init();
 
     protected:
 
@@ -128,16 +124,10 @@ namespace osgEarth { namespace Util
 
         osg::Node* buildSQIDTiles( const std::string& gzd );
         
-        GeoExtent getExtent( const std::string& gzd, const std::string& sqid );
+        friend class MGRSGraticulePseudoLoader;
 
-        friend class MGRSGraticuleFactory;
+        void setUpDefaultStyles();
 
-        void applyDefaultStyles();
-
-        /** one-time initialization called by each constructor */
-        void ctor();
-
-        /** called whenever we need to reconstruct the graticule's graph */
         void rebuild();
 
         osg::observer_ptr<MapNode> _mapNode;
@@ -150,58 +140,11 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<osg::ClipPlane> _clipPlane;
 
-        osg::Group* _root;
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
 
         UTMData _utmData;
-    };
-
-    
-    /**
-     * Extension that lets you load and configure an MGRS Graticuler from an earth file.
-     * Usage:
-     *    <mgrs_graticule>
-     *       ...
-     *    </mgrs_graticule>
-     */
-    class MGRSGraticuleExtension : public Extension,
-                                   public ExtensionInterface<MapNode>,
-                                   public MGRSGraticuleOptions
-    {
-    public:
-        META_Object(osgearth_mgrs_graticule, MGRSGraticuleExtension);
-
-        // CTORs
-        MGRSGraticuleExtension() { }
-        MGRSGraticuleExtension(const MGRSGraticuleOptions& options) : MGRSGraticuleOptions(options) { }
-
-        // DTOR
-        virtual ~MGRSGraticuleExtension() { }
-
-
-    public: // Extension
-
-        virtual const ConfigOptions& getConfigOptions() const { return *this; }
-
-
-    public: // ExtensionInterface<MapNode>
-
-        bool connect(MapNode* mapNode) {
-            _layer = new ModelLayer("MGRS Graticule", new MGRSGraticule(mapNode, *this));
-            mapNode->getMap()->addLayer(_layer.get());
-            return true;
-        }
-
-        bool disconnect(MapNode* mapNode) {
-            mapNode->getMap()->removeLayer(_layer.get());
-            //mapNode->onModelLayerRemoved(_layer.get());
-            return true;
-        }
-
-
-    protected: // Object
-        MGRSGraticuleExtension(const MGRSGraticuleExtension& rhs, const osg::CopyOp& op) { }
-
-        osg::ref_ptr<ModelLayer> _layer;
     };
 
 } } // namespace osgEarth::Util

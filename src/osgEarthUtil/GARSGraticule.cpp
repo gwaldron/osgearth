@@ -309,6 +309,8 @@ GARSGraticule::dirty()
 void
 GARSGraticule::init()
 {
+    VisibleLayer::init();
+
     osg::StateSet* ss = this->getOrCreateStateSet();
     ss->setMode( GL_DEPTH_TEST, 0 );
     ss->setMode( GL_LIGHTING, 0 );

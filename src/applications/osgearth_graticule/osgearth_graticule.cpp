@@ -35,7 +35,6 @@
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/UTMGraticule>
 #include <osgEarthUtil/GARSGraticule>
-#include <osgEarthUtil/GraticuleNode>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
@@ -46,45 +45,14 @@ usage( const std::string& msg )
     OE_NOTICE 
         << msg << std::endl
         << "USAGE: osgearth_graticule [options] file.earth" << std::endl
-        << "   --geodetic            : display a geodetic (lat/long) graticule" << std::endl
+        << "   --geodetic            : display a Lat/Long graticule" << std::endl
         << "   --utm                 : display a UTM graticule" << std::endl
         << "   --mgrs                : display an MGRS graticule" << std::endl
-        << "   --gars                : display a GARS graticule" << std::endl
-        << "   --shader              : display a geodetic graticule using the glsl shaders" << std::endl;
+        << "   --gars                : display a GARS graticule" << std::endl;
     return -1;
 }
 
 //------------------------------------------------------------------------
-
-struct ToggleGraticuleHandler : public ControlEventHandler
-{
-    ToggleGraticuleHandler( GraticuleNode* graticule ) : _graticule( graticule ) { }
-
-    void onValueChanged( Control* control, bool value )
-    {
-        _graticule->setVisible( value );
-    }
-
-    GraticuleNode* _graticule;
-};
-
-struct OffsetGraticuleHandler : public ControlEventHandler
-{
-    OffsetGraticuleHandler( GraticuleNode* graticule, const osg::Vec2f& offset ) :
-        _graticule( graticule ),
-        _offset(offset)
-    {
-        //nop
-    }
-
-    void onClick( Control* control, const osg::Vec2f& pos, int mouseButtonMask )
-    {
-        _graticule->setCenterOffset( _graticule->getCenterOffset() + _offset );
-    }
-
-    osg::Vec2f _offset;
-    GraticuleNode* _graticule;
-};
 
 int
 main(int argc, char** argv)
@@ -98,8 +66,6 @@ main(int argc, char** argv)
     bool isGeodetic = arguments.read("--geodetic");
     bool isGARS = arguments.read("--gars");
 
-    bool isShader = !isUTM && !isMGRS && !isGeodetic && !isGARS;
-
     // load the .earth file from the command line.
     MapNode* mapNode = MapNode::load( arguments );
     if ( !mapNode )
@@ -111,8 +77,6 @@ main(int argc, char** argv)
     // root scene graph:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
-
-    GraticuleNode* graticuleNode = 0;
 
     Formatter* formatter = 0L;
     if ( isUTM )
@@ -131,24 +95,14 @@ main(int argc, char** argv)
     {
         GARSGraticule* gr = new GARSGraticule();
         mapNode->getMap()->addLayer(gr);
-    }
-    else if ( isGeodetic )
-    {
-#if 0
-        GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
-        GeodeticGraticuleOptions o = gr->getOptions();
-        o.lineStyle()->getOrCreate<LineSymbol>()->stroke()->color().set(1,0,0,1);
-        gr->setOptions( o );
-        root->addChild( gr );
-#endif
         formatter = new LatLongFormatter();
     }
-    else
+    else // if ( isGeodetic )
     {
-        graticuleNode = new GraticuleNode( mapNode );
-        root->addChild( graticuleNode );
+        GeodeticGraticule* gr = new GeodeticGraticule();
+        mapNode->getMap()->addLayer(gr);
+        formatter = new LatLongFormatter();
     }
-
    
     // mouse coordinate readout:
     ControlCanvas* canvas = new ControlCanvas();
@@ -156,50 +110,8 @@ main(int argc, char** argv)
     VBox* vbox = new VBox();
     canvas->addControl( vbox );
 
-
     LabelControl* readout = new LabelControl();
     vbox->addControl( readout );
-
-    if (graticuleNode)
-    {
-        HBox* toggleBox = vbox->addControl( new HBox() );
-        toggleBox->setChildSpacing( 5 );
-        CheckBoxControl* toggleCheckBox = new CheckBoxControl( true );
-        toggleCheckBox->addEventHandler( new ToggleGraticuleHandler( graticuleNode ) );
-        toggleBox->addControl( toggleCheckBox );
-        LabelControl* labelControl = new LabelControl( "Show Graticule" );
-        labelControl->setFontSize( 24.0f );
-        toggleBox->addControl( labelControl  );
-
-        HBox* offsetBox = vbox->addControl( new HBox() );
-        offsetBox->setChildSpacing( 5 );
-        osg::Vec4 activeColor(1,.3,.3,1);
-
-        offsetBox->addControl(new LabelControl("Adjust Labels"));
-
-        double adj = 10.0;
-        LabelControl* left = new LabelControl("Left");
-        left->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(-adj, 0.0)) );
-        offsetBox->addControl(left);
-        left->setActiveColor(activeColor);
-
-        LabelControl* right = new LabelControl("Right");
-        right->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(adj, 0.0)) );
-        offsetBox->addControl(right);
-        right->setActiveColor(activeColor);
-
-        LabelControl* down = new LabelControl("Down");
-        down->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(0.0, -adj)) );
-        offsetBox->addControl(down);
-        down->setActiveColor(activeColor);
-
-        LabelControl* up = new LabelControl("Up");
-        up->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(0.0, adj)) );
-        offsetBox->addControl(up);
-        up->setActiveColor(activeColor);
-
-
-    }
 
     MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
     tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );

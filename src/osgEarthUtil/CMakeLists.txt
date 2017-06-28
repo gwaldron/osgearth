@@ -30,10 +30,6 @@ SET(HEADERS_ROOT
     FractalElevationLayer
     GARSGraticule
     GeodeticGraticule
-    GraticuleExtension
-    GraticuleNode
-    GraticuleOptions
-    GraticuleTerrainEffect
     HTM
     LatLongFormatter
     LineOfSight
@@ -120,9 +116,6 @@ SET(SOURCES_ROOT
     FractalElevationLayer.cpp
     GARSGraticule.cpp
     GeodeticGraticule.cpp
-    GraticuleExtension.cpp
-    GraticuleTerrainEffect.cpp
-    GraticuleNode.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp

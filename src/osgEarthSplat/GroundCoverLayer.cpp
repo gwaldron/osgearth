@@ -231,8 +231,8 @@ GroundCoverLayer::removedFromMap(const Map* map)
     //NOP
 }
 
-osg::Node*
-GroundCoverLayer::getOrCreateNode(TerrainResources* res)
+void
+GroundCoverLayer::setTerrainResources(TerrainResources* res)
 {
     if (res)
     {
@@ -257,8 +257,6 @@ GroundCoverLayer::getOrCreateNode(TerrainResources* res)
             buildStateSets();
         }
     }
-
-    return 0L;
 }
 
 bool

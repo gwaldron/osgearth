@@ -159,8 +159,8 @@ SplatLayer::removedFromMap(const Map* map)
     //NOP
 }
 
-osg::Node*
-SplatLayer::getOrCreateNode(TerrainResources* res)
+void
+SplatLayer::setTerrainResources(TerrainResources* res)
 {
     if (res)
     {
@@ -196,8 +196,6 @@ SplatLayer::getOrCreateNode(TerrainResources* res)
             buildStateSets();
         }
     }
-
-    return 0L;
 }
 
 bool

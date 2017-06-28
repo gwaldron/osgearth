@@ -98,17 +98,14 @@ VisibleLayer::open()
 void
 VisibleLayer::setVisible(bool value)
 {
-    if (options().visible().get() != value)
-    {
-        options().visible() = value;
+    options().visible() = value;
 
-        // if this layer has a scene graph node, toggle its node mask
-        osg::Node* node = getOrCreateNode(0L);
-        if (node)
-            node->setNodeMask(value? ~0 : 0);
+    // if this layer has a scene graph node, toggle its node mask
+    osg::Node* node = getOrCreateNode();
+    if (node)
+        node->setNodeMask(value? ~0 : 0);
 
-        fireCallback(&VisibleLayerCallback::onVisibleChanged);
-    }
+    fireCallback(&VisibleLayerCallback::onVisibleChanged);
 }
 
 bool

@@ -217,7 +217,7 @@ GeodeticGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-GeodeticGraticule::getOrCreateNode(TerrainResources* tr)
+GeodeticGraticule::getOrCreateNode()
 {
     if (_root.valid() == false)
     {
@@ -231,18 +231,12 @@ GeodeticGraticule::getOrCreateNode(TerrainResources* tr)
 void
 GeodeticGraticule::setVisible(bool value)
 {
-    bool changed = value != getVisible();
-
     VisibleLayer::setVisible(value);
 
-    // Need to install or remove the terrain effect:
-    if (changed)
-    {
-        if (getVisible())
-            installEffect();
-        else
-            removeEffect();
-    }
+    if (getVisible())
+        installEffect();
+    else
+        removeEffect();
 }
 
 void
@@ -277,7 +271,7 @@ GeodeticGraticule::rebuild()
         _mapNode->getTerrainEngine()->addCullCallback(_callback.get());
     }
 
-    installEffect();
+    setVisible(getVisible());
 }
 
 #define RESOLUTION_UNIFORM "oe_GeodeticGraticule_resolution"
@@ -301,8 +295,6 @@ GeodeticGraticule::installEffect()
     
     stateset->addUniform(new osg::Uniform(COLOR_UNIFORM, options().color().get()));
     stateset->addUniform(new osg::Uniform(WIDTH_UNIFORM, options().lineWidth().get()));
-
-    OE_INFO << LC << "Effect installed\n";
 }
 
 void
@@ -323,8 +315,6 @@ GeodeticGraticule::removeEffect()
 
             stateset->removeUniform( COLOR_UNIFORM );
             stateset->removeUniform( WIDTH_UNIFORM );
-
-            OE_INFO << LC << "Effect removed\n";
         }
     }
 }

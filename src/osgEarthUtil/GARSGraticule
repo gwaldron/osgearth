@@ -75,10 +75,13 @@ namespace osgEarth { namespace Util
     public:
         META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions);
 
+        //! Construct a default GARS graticule
         GARSGraticule();
 
+        //! Construct a graticule with custom options
         GARSGraticule(const GARSGraticuleOptions& options);
 
+        //! Call to refresh after setting an option
         void dirty();
 
     public: // Layer
@@ -87,7 +90,7 @@ namespace osgEarth { namespace Util
 
         virtual void removedFromMap(const Map* map);
         
-        virtual osg::Node* getOrCreateNode(TerrainResources* res);
+        virtual osg::Node* getOrCreateNode();
 
         virtual void init();
 
@@ -99,22 +102,13 @@ namespace osgEarth { namespace Util
     private:
 
         void setUpDefaultStyles();
-
         void rebuild();
+        void build30MinCells();
 
         UID _uid;
-
         osg::ref_ptr<const Profile> _profile;
-
-        //osg::ref_ptr<FeatureProfile> _featureProfile;
-
         osg::ref_ptr<osg::ClipPlane> _clipPlane;
-
         osg::ref_ptr<osg::Group> _root;
-
-        osg::observer_ptr<const Map> _map;
-
-        void build30MinCells();
     };  
 } } // namespace osgEarth::Util
 

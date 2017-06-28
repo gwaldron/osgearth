@@ -240,7 +240,7 @@ namespace osgEarth
         virtual Config getConfig() const;
 
         /** Node creates by this model layer */
-        virtual osg::Node* getOrCreateNode(TerrainResources*);
+        virtual osg::Node* getOrCreateNode();
 
         /**
          * Sets the read options for this layer to user; this includes

@@ -129,7 +129,7 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 }
 
 osg::Node*
-FeatureModelLayer::getOrCreateNode(TerrainResources*)
+FeatureModelLayer::getOrCreateNode()
 {
     OE_DEBUG << LC << "getNode\n";
     return _root.get();

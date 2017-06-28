@@ -112,7 +112,7 @@ namespace osgEarth { namespace Splat
         //! Called when this layer is added to the map
         virtual void addedToMap(const Map* map);
         virtual void removedFromMap(const Map* map);
-        virtual osg::Node* getOrCreateNode(TerrainResources*);
+        virtual void setTerrainResources(TerrainResources* res);
 
     protected:
         virtual ~SplatLayer() { }

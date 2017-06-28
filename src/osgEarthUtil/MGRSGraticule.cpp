@@ -93,16 +93,17 @@ void
 MGRSGraticule::addedToMap(const Map* map)
 {
     _map = map;
+    rebuild();
 }
 
 void
 MGRSGraticule::removedFromMap(const Map* map)
 {
-
+    _map = 0L;
 }
 
 osg::Node*
-MGRSGraticule::getOrCreateNode(TerrainResources* tr)
+MGRSGraticule::getOrCreateNode()
 {
     if (_root.valid() == false)
     {
@@ -120,16 +121,19 @@ MGRSGraticule::getOrCreateNode(TerrainResources* tr)
 void
 MGRSGraticule::rebuild()
 {
+    if (_root.valid() == false)
+        return;
+
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
+
     // Set up some reasonable default styling for a caller that did not
     // set styles in the options.
     setUpDefaultStyles();
     
     // clear everything out and start over
     _root->removeChildren( 0, _root->getNumChildren() );
-
-    osg::ref_ptr<const Map> map;
-    if (!_map.lock(map))
-        return;
 
     // requires a geocentric map
     if ( !map->isGeocentric() )

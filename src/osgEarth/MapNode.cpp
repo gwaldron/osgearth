@@ -604,7 +604,7 @@ MapNode::getLayerNodeGroup() const
 osg::Node*
 MapNode::getLayerNode(Layer* layer) const
 {
-    return layer ? layer->getOrCreateNode(0L) : 0L;
+    return layer ? layer->getOrCreateNode() : 0L;
 }
 
 
@@ -631,6 +631,9 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
 {
     if (!layer || !layer->getEnabled())
         return;
+    
+    // Communicate terrain resources to the layer:
+    layer->setTerrainResources(getTerrainEngine()->getResources());
 
     // Compatibility, until we refactor things.
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
@@ -639,18 +642,18 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
         modelLayer->getOrCreateSceneGraph(_map.get(), _map->getReadOptions(), 0L);
     }
 
-    // Create the node.
-    osg::Node* node = layer->getOrCreateNode(getTerrainEngine()->getResources());
-    if (node)    
+    // Create the layer's node, if it has one:
+    osg::Node* node = layer->getOrCreateNode();
+
+    if (node)
     {
+        // encase the layer's node in a container that will hold its state set:
         osg::Group* nodeContainer = new osg::Group();
         nodeContainer->setStateSet(layer->getStateSet());
-
         nodeContainer->addChild( node );
         _layerNodes->addChild( nodeContainer );
 
         OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
-        //_layerNodes->addChild(node);
 
         // TODO: move this logic into ModelLayer.
         if (modelLayer)
@@ -675,6 +678,12 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
                 }
             }
         }
+
+        //// If this is a visible layer, we have to re-initialize the visibility
+        //// after calling getOrCreateNode.
+        //VisibleLayer* VL = dynamic_cast<VisibleLayer*>(layer);
+        //if (VL)
+        //    VL->setVisible(VL->getVisible());
     }
 }
 
@@ -684,7 +693,7 @@ MapNode::onLayerRemoved(Layer* layer, unsigned index)
     if (layer == 0L)
         return;
 
-    osg::Node* node = layer->getOrCreateNode(0L);
+    osg::Node* node = layer->getOrCreateNode();
     if (node == 0L)
         return;
 

@@ -63,7 +63,7 @@ TritonLayer::init()
 }
 
 osg::Node*
-TritonLayer::getOrCreateNode(osgEarth::TerrainResources* res)
+TritonLayer::getOrCreateNode()
 {
     return _tritonNode.get();
 }

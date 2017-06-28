@@ -226,16 +226,17 @@ void
 UTMGraticule::addedToMap(const Map* map)
 {
     _map = map;
+    rebuild();
 }
 
 void
 UTMGraticule::removedFromMap(const Map* map)
 {
-
+    _map = 0L;
 }
 
 osg::Node*
-UTMGraticule::getOrCreateNode(TerrainResources* tr)
+UTMGraticule::getOrCreateNode()
 {
     if (_root.valid() == false)
     {
@@ -253,12 +254,15 @@ UTMGraticule::getOrCreateNode(TerrainResources* tr)
 void
 UTMGraticule::rebuild()
 {
-    // clear everything out
-    _root->removeChildren( 0, _root->getNumChildren() );
+    if (_root.valid() == false)
+        return;
 
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return;
+
+    // clear everything out
+    _root->removeChildren( 0, _root->getNumChildren() );
 
     // requires a geocentric map
     if ( !map->isGeocentric() )

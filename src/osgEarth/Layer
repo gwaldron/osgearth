@@ -191,9 +191,8 @@ namespace osgEarth
          * When this layer is added to a Map, the MapNode will call this method and
          * add the return value to its scene graph; and remove it when the Layer
          * is removed from the Map.
-         * @param res Terrain resource manager
          */
-        virtual osg::Node* getOrCreateNode(TerrainResources* res) { return 0L; }
+        virtual osg::Node* getOrCreateNode() { return 0L; }
 
     public:
 
@@ -262,6 +261,12 @@ namespace osgEarth
 
         //! Map will call this function when this Layer is removed from a Map.
         virtual void removedFromMap(const class Map*) { }
+
+        //! MapNode will call this function when terrain resources are available.
+        virtual void setTerrainResources(TerrainResources*) { }
+
+
+    public: // Experimental
 
         //! Called before culling this layer - return false to reject.
         virtual bool preCull(osgUtil::CullVisitor*) const;

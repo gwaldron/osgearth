@@ -389,7 +389,7 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
 }
 
 osg::Node*
-ModelLayer::getOrCreateNode(TerrainResources*)
+ModelLayer::getOrCreateNode()
 {
     if (!_graphs.empty())
         return _graphs.begin()->second.get();

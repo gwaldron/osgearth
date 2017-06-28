@@ -330,17 +330,17 @@ GARSGraticule::init()
 void
 GARSGraticule::addedToMap(const Map* map)
 {
-    _map = map;
+    rebuild();
 }
 
 void
 GARSGraticule::removedFromMap(const Map* map)
 {
-
+    //nop
 }
 
 osg::Node*
-GARSGraticule::getOrCreateNode(TerrainResources* tr)
+GARSGraticule::getOrCreateNode()
 {
     if (_root.valid() == false)
     {
@@ -354,6 +354,9 @@ GARSGraticule::getOrCreateNode(TerrainResources* tr)
 void
 GARSGraticule::rebuild()
 {
+    if (_root.valid() == false)
+        return;
+
     _root->removeChildren(0, _root->getNumChildren());
     build30MinCells();
 }

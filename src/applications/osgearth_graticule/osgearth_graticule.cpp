@@ -134,11 +134,13 @@ main(int argc, char** argv)
     }
     else if ( isGeodetic )
     {
+#if 0
         GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
         GeodeticGraticuleOptions o = gr->getOptions();
         o.lineStyle()->getOrCreate<LineSymbol>()->stroke()->color().set(1,0,0,1);
         gr->setOptions( o );
         root->addChild( gr );
+#endif
         formatter = new LatLongFormatter();
     }
     else

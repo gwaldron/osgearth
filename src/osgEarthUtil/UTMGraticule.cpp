@@ -213,6 +213,8 @@ UTMGraticule::dirty()
 void
 UTMGraticule::init()
 {
+    VisibleLayer::init();
+
     // make the shared depth attr:
     this->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
 

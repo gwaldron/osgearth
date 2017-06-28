@@ -35,7 +35,6 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
     using namespace osgEarth::Annotation;
 
-
     /**
     * Node that manges the graticule resolution and labels
     */
@@ -127,8 +126,9 @@ namespace osgEarth { namespace Util
         void updateLabels();
 
         std::string getText(const GeoPoint& location, bool lat);
-
     };
+
+    
 
 } } // namespace osgEarth::Util
 

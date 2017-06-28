@@ -29,10 +29,8 @@ script:
 - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cmake -DCMAKE_BUILD_TYPE=Release . && make -j3 && sudo make install && sudo ldconfig; fi
 - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then cd tests && osgEarth_tests ; fi
 notifications:
-  email:
-    recipients:
-    - jasonbeverage@pelicanmapping.com
-    - gwaldron@pelicanmapping.com
+  slack:
+    secure: E/9LpduB9vyavYKA4HgQxf48JB3cQmKOo0We829cox67aixQCKhYjHG0KmT6wnjVVKWRbHru0ho7Gi1NuVNdGXAOG7PMP7XFOJB7pBfczy7HmQhsAttX/dTltb0XzRFx9O5qk3q2Vnc7JXKO5HbFDWCYh0O3RFoph9XzTfAQBdBNsy/wyYD0fogYsWk43qQPI8lLukBfJ705sn2un+bkfgnuS9g/uuQmmqIhXwkAamAUaioryVHDaLz2e1bMKaq62Rl4yV+lbY1/hsg8Ob1o1jm5MnEjcHuVU1uugX34FZZFVWrF3OuEvfEmDv2tN2Q72Zz/xmJR37osZ8x55gRg5w+lal0VEo/U7leMABzu8/k4DXsPLGEY8ft3aalBbVw2qh/IMOc8Jyq4/wg6/2aet0mS9FAmWy59HnDyYTsZtUdiU4aRdVvQcgJs5JEXypMYlVCCv325ixaA6CxGplGAqST2XYu4U+QPaS6Zrv/Rj2PEq49Xire1IQQGehiElgIE+npZtPneep2HunUZ4+UfYaxkX+pP3YwjZ8tE7gAh85Zw4w+pZCZV1wzg56vN8XakpG8TxGD/dlWKAqV2KLbjFufGpttyAE8VuYQV4ZEfHgqENfS0zlNIoFcIdFos5ipuijpbRvTs+PkScgcKu2CAXMSL2zKxKdqn/AD7/p0+EiE=
 addons:
   coverity_scan:
     project:

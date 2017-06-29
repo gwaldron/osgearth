@@ -285,7 +285,7 @@ TerrainLayer::open()
     if ( !_openCalled )
     {
         // Call base class
-        if (Layer::open().isError())
+        if (VisibleLayer::open().isError())
             return getStatus();
 
         // Create an L2 mem cache that sits atop the main cache, if necessary.

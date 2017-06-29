@@ -127,7 +127,7 @@ FeatureMaskLayer::open()
             setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
         }
     }
-    return Layer::open();
+    return MaskLayer::open();
 }
 
 osg::Vec3dArray*

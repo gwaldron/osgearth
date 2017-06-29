@@ -17,7 +17,7 @@ osgEarth Sample - Annotations
                    heading="35.27" pitch="-35" />
     </viewpoints>
     
-    <annotations>
+    <annotations name="Annotations Group A">
     
         <label text="Label">
             <position lat="34" long="-120" />
@@ -93,6 +93,9 @@ osgEarth Sample - Annotations
             </style>
         </ellipse>
         <label text="HAT Ellipse" lat="40" long="-100.0"/>
+    </annotations>
+    
+    <annotations name="Annotations Group B">
         
         <ellipse name="ellipse extruded">
             <position lat="32" long="-100.0"/>

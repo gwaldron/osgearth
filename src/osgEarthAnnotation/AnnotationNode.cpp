@@ -94,7 +94,6 @@ AnnotationNode::traverse(osg::NodeVisitor& nv)
                 if (mapNode)
                 {
                     setMapNode(mapNode);
-                    ADJUST_UPDATE_TRAV_COUNT(this, -1);
                 }
             }
 

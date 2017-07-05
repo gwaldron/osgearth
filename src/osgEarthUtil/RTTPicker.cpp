@@ -113,9 +113,9 @@ RTTPicker::RTTPicker(int cameraSize)
 RTTPicker::~RTTPicker()
 {
     // remove the RTT camera from all views
-    for(int i=0; i<_pickContexts.size(); ++i)
+    for (PickContexts::iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
     {
-        PickContext& pc = _pickContexts[i];
+        PickContext& pc = *i;
         while( pc._pickCamera->getNumParents() > 0 )
         {
             pc._pickCamera->getParent(0)->removeChild( pc._pickCamera.get() );
@@ -142,7 +142,7 @@ RTTPicker::getOrCreateTexture(osg::View* view)
 RTTPicker::PickContext&
 RTTPicker::getOrCreatePickContext(osg::View* view)
 {
-    for(PickContextVector::iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
+    for(PickContexts::iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
     {
         if ( i->_view.get() == view )
         {

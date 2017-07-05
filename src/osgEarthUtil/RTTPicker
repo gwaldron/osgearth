@@ -27,6 +27,7 @@
 #include <osg/Image>
 #include <osg/Texture2D>
 #include <queue>
+#include <list>
 
 namespace osgEarth { namespace Util
 {
@@ -113,8 +114,10 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<osg::Image>     _image;
             osg::ref_ptr<osg::Texture2D> _tex;
         };
-        typedef std::vector<PickContext> PickContextVector;
-        PickContextVector _pickContexts;
+        // use a container that does not invalidate iters on insertion, since we hold
+        // pointers to PickContext objects in the _picks member
+        typedef std::list<PickContext> PickContexts;
+        PickContexts _pickContexts;
         
         // Creates a new pick context on demand.
         PickContext& getOrCreatePickContext(osg::View* view);

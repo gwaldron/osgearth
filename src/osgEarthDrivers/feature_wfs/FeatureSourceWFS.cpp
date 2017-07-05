@@ -305,7 +305,14 @@ public:
                    "&X=" << tileX <<
                    "&Y=" << tileY;
         }
-        else if (query.bounds().isSet())
+	// BBOX and CQL_FILTER are mutually exclusive. Give CQL_FILTER priority if specified.
+	// NOTE: CQL_FILTER is a non-standard vendor parameter. See:
+	// http://docs.geoserver.org/latest/en/user/services/wfs/vendor.html
+	else if (query.expression().isSet())
+	{
+	    buf << "&CQL_FILTER=" << osgEarth::URI::urlEncode(query.expression().get());
+	}
+	else if (query.bounds().isSet())
         {            
             double buffer = *_options.buffer();            
             buf << "&BBOX=" << std::setprecision(16)
@@ -313,14 +320,6 @@ public:
                             << query.bounds().get().yMin() - buffer << ","
                             << query.bounds().get().xMax() + buffer << ","
                             << query.bounds().get().yMax() + buffer;
-        }
-
-        // BBOX and CQL_FILTER are mutually exclusive
-        // NOTE: CQL_FILTER is a non-standard vendor parameter. See:
-        // http://docs.geoserver.org/latest/en/user/services/wfs/vendor.html
-        else if (query.expression().isSet())
-        {
-            buf << "&CQL_FILTER=" << osgEarth::URI::urlEncode(query.expression().get());
         }
 
         std::string str;

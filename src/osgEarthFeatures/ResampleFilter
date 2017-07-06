@@ -65,6 +65,7 @@ namespace osgEarth { namespace Features
 
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
+            conf.key() = "resample";
             conf.addIfSet("min_length", _minLen);
             conf.addIfSet("max_length", _maxLen);
             conf.addIfSet("mode", "linear",       _mode, RESAMPLE_LINEAR);

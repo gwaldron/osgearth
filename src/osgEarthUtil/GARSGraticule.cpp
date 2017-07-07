@@ -347,6 +347,7 @@ GARSGraticule::getOrCreateNode()
     if (_root.valid() == false)
     {
         _root = new osg::Group();
+        _root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
         rebuild();
     }
 

@@ -200,10 +200,8 @@ FeatureModelLayer::create()
         FeatureModelGraph* fmg = new FeatureModelGraph(
             _session.get(),
             options(),
-            nodeFactory);
-
-        // install the callbacks host:
-        fmg->setSceneGraphCallbacks(_sgCallbacks.get());
+            nodeFactory,
+            _sgCallbacks.get());
 
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);

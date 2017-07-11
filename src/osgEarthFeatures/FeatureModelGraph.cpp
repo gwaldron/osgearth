@@ -93,7 +93,6 @@ namespace
                                 float minRange, 
                                 float maxRange, 
                                 const FeatureDisplayLayout& layout,
-                                RefNodeOperationVector* postMergeOps,
                                 SceneGraphCallbacks* sgCallbacks,
                                 osgDB::FileLocationCallback* flc,
                                 const osgDB::Options* readOptions,
@@ -113,11 +112,6 @@ namespace
         if (sgCallbacks)
         {
             PagedLODWithSceneGraphCallbacks* plod = new PagedLODWithSceneGraphCallbacks(sgCallbacks);
-            p = plod;
-        }
-        else
-        {
-            PagedLODWithNodeOperations* plod = new PagedLODWithNodeOperations(postMergeOps);
             p = plod;
         }
             
@@ -221,7 +215,7 @@ namespace
 
     struct SetupFading : public SceneGraphCallback
     {
-        void onPostMerge( osg::Node* node )
+        void onPostMergeNode( osg::Node* node )
         {
             osg::Uniform* u = FadeEffect::createStartTimeUniform();
             u->set( (float)osg::Timer::instance()->time_s() );
@@ -235,14 +229,16 @@ namespace
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory) :
+                                     FeatureNodeFactory*              factory,
+                                     SceneGraphCallbacks*             callbacks) :
 _session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE )
+_overlayChange      ( OVERLAY_NO_CHANGE ),
+_sgCallbacks        ( callbacks )
 {
     ctor();
 }
@@ -251,37 +247,16 @@ FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
                                      ModelSource*                     modelSource,
-                                     RefNodeOperationVector*          preMergeOperations,
-                                     RefNodeOperationVector*          postMergeOperations) :
+                                     SceneGraphCallbacks*             callbacks) :
 _session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
 _modelSource        ( modelSource ),
-_preMergeOperations ( preMergeOperations ),
-_postMergeOperations( postMergeOperations ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE )
-{
-    ctor();
-}
-
-FeatureModelGraph::FeatureModelGraph(Session*                         session,
-                                     const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory,
-                                     RefNodeOperationVector*          preMergeOperations,
-                                     RefNodeOperationVector*          postMergeOperations) :
-_session            ( session ),
-_options            ( options ),
-_factory            ( factory ),
-_modelSource        ( 0L ),
-_preMergeOperations ( preMergeOperations ),
-_postMergeOperations( postMergeOperations ),
-_dirty              ( false ),
-_pendingUpdate      ( false ),
-_overlayInstalled   ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE )
+_overlayChange      ( OVERLAY_NO_CHANGE ),
+_sgCallbacks        (callbacks)
 {
     ctor();
 }
@@ -294,16 +269,6 @@ FeatureModelGraph::ctor()
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
-
-    // set up the callback queues for pre- and post-merge operations.
-
-    // per-merge ops run in the pager thread:
-    if ( !_preMergeOperations.valid())
-        _preMergeOperations = new RefNodeOperationVector();
-
-    // post-merge ops run in the update traversal:
-    if ( !_postMergeOperations.valid() )
-        _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
     if ( !_session->styles() )
@@ -482,12 +447,9 @@ FeatureModelGraph::ctor()
 
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.
-    if ( _options.fading().isSet() )
+    if ( _options.fading().isSet() && _sgCallbacks.valid())
     {
         _sgCallbacks->add(new SetupFading());
-        //_postMergeOperations->mutex().writeLock();
-        //_postMergeOperations->push_back( new SetupFading() );
-        //_postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -633,7 +595,6 @@ FeatureModelGraph::setupPaging()
         0.0f, 
         maxRange, 
         _options.layout().get(),
-        _postMergeOperations.get(),
         _sgCallbacks.get(),
         _defaultFileLocationCallback.get(),
         getSession()->getDBOptions(),
@@ -879,7 +840,6 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     uri, 
                     0.0f, maxRange, 
                     _options.layout().get(),
-                    _postMergeOperations.get(),
                     _sgCallbacks.get(),
                     _defaultFileLocationCallback.get(),
                     readOptions,
@@ -1660,17 +1620,6 @@ FeatureModelGraph::runPreMergeOperations(osg::Node* node)
    {
        _sgCallbacks->firePreMergeNode(node);
    }
-
-   // @deprecated
-   if ( _preMergeOperations.valid() )
-   {
-      _preMergeOperations->mutex().readLock();
-      for( NodeOperationVector::iterator i = _preMergeOperations->begin(); i != _preMergeOperations->end(); ++i )
-      {
-         i->get()->operator()( node );
-      }
-      _preMergeOperations->mutex().readUnlock();
-   }
 }
 
 void
@@ -1680,19 +1629,7 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
    {
        _sgCallbacks->firePostMergeNode(node);
    }
-
-   // @deprecated
-   if ( _postMergeOperations.valid() )
-   {
-      _postMergeOperations->mutex().readLock();
-      for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
-      {
-         i->get()->operator()( node );
-      }
-      _postMergeOperations->mutex().readUnlock();
-   }
 }
-
 
 void
 FeatureModelGraph::changeOverlay()
@@ -1774,6 +1711,8 @@ FeatureModelGraph::redraw()
         
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
+        // We're just building the entire node now with no paging, so run the post merge operations immediately.
+        runPostMergeOperations(node);
     }
 
     float minRange = -FLT_MAX;

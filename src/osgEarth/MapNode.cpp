@@ -81,11 +81,11 @@ namespace
 
     // callback that will run the MapNode installer on model layers so that
     // MapNodeObservers can have MapNode access
-    struct MapNodeObserverInstaller : public NodeOperation
+    struct MapNodeObserverInstaller : public SceneGraphCallback
     {
         MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        void operator()( osg::Node* node )
+        virtual void onPostMergeNode(osg::Node* node)
         {
             if ( _mapNode.valid() && node )
             {
@@ -639,14 +639,20 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
     if (modelLayer)
     {
+        // TODO:  Why go through all the MapNodeObserver stuff when we can just pass in the MapNode here?
         modelLayer->getOrCreateSceneGraph(_map.get(), _map->getReadOptions(), 0L);
+        // Install the MapNodeObserverInstaller so that MapNodeObservers will be notified of the MapNode.
+        modelLayer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
     }
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getOrCreateNode();
-
     if (node)
     {
+        // Call setMapNode on any MapNodeObservers on this initial creation.
+        MapNodeReplacer replacer( this );
+        node->accept( replacer );
+
         // encase the layer's node in a container that will hold its state set:
         osg::Group* nodeContainer = new osg::Group();
         nodeContainer->setStateSet(layer->getStateSet());

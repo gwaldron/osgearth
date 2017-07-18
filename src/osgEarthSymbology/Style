@@ -144,6 +144,9 @@ namespace osgEarth { namespace Symbology
 
         template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias
 
+	/** Access to list of symbols currently defining the style */
+	SymbolList& symbols() { return _symbols; }
+	const SymbolList& symbols() const { return _symbols; }
 
         /** Serializes this object into a Config. */
         virtual Config getConfig( bool keepOrigType =true ) const;

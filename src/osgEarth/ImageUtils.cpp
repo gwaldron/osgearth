@@ -35,7 +35,7 @@
 #define LC "[ImageUtils] "
 
 
-#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE)
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #    define GL_RGB8_INTERNAL  GL_RGB8_OES
 #    define GL_RGB8A_INTERNAL GL_RGBA8_OES
 #else
@@ -1058,7 +1058,7 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
 
     const Capabilities& caps = Registry::capabilities();
 
-#ifndef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) && defined(OSG_GLES3_AVAILABLE)
 
     if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
     {

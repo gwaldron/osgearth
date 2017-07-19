@@ -11,6 +11,8 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
+static NSString* s_autoloadFile = @""; //readymap_flat.earth";
+
 @interface StartViewerController ()
 
 @end
@@ -43,7 +45,8 @@
     fileArray = [[NSMutableArray alloc] init];
     
     std::string fullPath = osgDB::findDataFile("tests/readymap.earth");
-    
+    if(fullPath.empty()) fullPath = osgDB::findDataFile("readymap.earth");
+
     osgDB::DirectoryContents dirContents = osgDB::getDirectoryContents(osgDB::getFilePath(fullPath));
     for(unsigned int i=0; i<dirContents.size(); i++){
         //OSG_ALWAYS << "Dir item: " << dirContents[i] << std::endl;
@@ -52,9 +55,14 @@
             [fileArray addObject:nsFile];
         }
     }
-     
-    currentSelection = [fileArray count]-1;
-    [pickerView selectRow:currentSelection inComponent:0 animated:NO];  
+    
+    if([fileArray count] > 0) {
+        currentSelection = [fileArray count]-1;
+        [pickerView selectRow:currentSelection inComponent:0 animated:NO];
+    }
+
+    if(s_autoloadFile != nil && [s_autoloadFile length] > 0)
+        [self loadEarthView:s_autoloadFile];
 }
 
 - (void)viewDidUnload
@@ -72,12 +80,17 @@
 
 -(IBAction)onStartViewer
 {
-    /*if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-     self.osgEarthViewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPhone" bundle:nil] autorelease];
-     } else {
-     self.osgEarthViewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPad" bundle:nil] autorelease];
-     }*/
-    self.osgEarthViewController = [[ViewController alloc] intWithFileName:[fileArray objectAtIndex:currentSelection]];
+    [self loadEarthView:[fileArray objectAtIndex:currentSelection]];
+}
+
+-(void) loadEarthView:(NSString*)aFile
+{
+    if(self.osgEarthViewController != nil) {
+        [self.osgEarthViewController release];
+        self.osgEarthViewController = nil;
+    }
+    
+    self.osgEarthViewController = [[ViewController alloc] intWithFileName:aFile];
     [self.osgEarthViewController startAnimation]; 
     [self.view addSubview:self.osgEarthViewController.view];
 }

@@ -1,4 +1,6 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
+
 #pragma vp_entryPoint oe_detail_fragment
 #pragma vp_location   fragment_coloring
 #pragma vp_order      1

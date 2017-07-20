@@ -64,7 +64,8 @@ namespace osgEarth { namespace Features
         FeatureModelGraph(
             Session*                         session,
             const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory);
+            FeatureNodeFactory*              factory,
+            SceneGraphCallbacks*             callbacks);
 
         /**
          * Constructs a new model graph.
@@ -75,27 +76,15 @@ namespace osgEarth { namespace Features
          *      Model source options
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
-         * @param preMergeOperations
-         *      Node operations that will execute in the pager thread after it finishes
-         *      building a node
-         * @param postMergeOperations
-         *      Node operations that will execute after merging a node into the graph
+         * @param callbacks
+         *      List of callbacks to invoke as nodes are created and merged into the scene graph.
          */
         FeatureModelGraph(
             Session*                         session,
             const FeatureModelSourceOptions& options,
             FeatureNodeFactory*              factory,
             ModelSource*                     modelSource,
-            RefNodeOperationVector*          preMergeOperations,
-            RefNodeOperationVector*          postMergeOperations);
-        
-        /* @deprecated */
-        FeatureModelGraph(
-            Session*                         session,
-            const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            RefNodeOperationVector*          preMergeOperations,
-            RefNodeOperationVector*          postMergeOperations);
+            SceneGraphCallbacks*             callbacks);
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -247,9 +236,6 @@ namespace osgEarth { namespace Features
         OverlayChange                    _overlayChange;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
-
-        osg::ref_ptr<RefNodeOperationVector> _preMergeOperations;
-        osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 
         osg::observer_ptr<ModelSource> _modelSource;
 

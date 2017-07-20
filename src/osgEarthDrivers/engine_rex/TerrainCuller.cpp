@@ -35,6 +35,7 @@ _context(context)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    setCullingMode(cullVisitor->getCullingMode());
 
     setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));
     setDatabaseRequestHandler(_cv->getDatabaseRequestHandler());

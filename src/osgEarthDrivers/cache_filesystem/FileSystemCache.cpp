@@ -122,6 +122,7 @@ namespace
         bool                              _binPathExists;
         std::string                       _metaPath;       // full path to the bin's metadata file
         std::string                       _binPath;        // full path to the bin's root folder
+        std::string                       _compressorName;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _zlibOptions;
         mutable Threading::ReadWriteMutex _mutex;
@@ -298,12 +299,21 @@ namespace
 
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension(OSG_FORMAT);
 
+        _zlibOptions = Registry::instance()->cloneOrCreateOptions();
+
 #ifdef OSG_COMPRESS
 #ifdef OSGEARTH_HAVE_ZLIB
-        _zlibOptions = Registry::instance()->cloneOrCreateOptions();
         _zlibOptions->setPluginStringData("Compressor", "zlib");
+        _compressorName = "zlib";
 #endif        
 #endif
+        if (::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR) != 0L){
+           _compressorName = ::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR);
+        }
+        if (_compressorName.length() > 0){
+           _zlibOptions->setPluginStringData("Compressor", _compressorName);
+        }
+     
     }
 
     const osgDB::Options*
@@ -320,7 +330,9 @@ namespace
         else
         {
             osgDB::Options* merged = Registry::cloneOrCreateOptions(dbo);
-            merged->setPluginStringData("Compressor", "zlib");
+            if (_compressorName.length()){
+               merged->setPluginStringData("Compressor", _compressorName);
+            }
             return merged;
         }
     }

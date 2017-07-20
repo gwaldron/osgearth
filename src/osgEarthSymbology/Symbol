@@ -45,6 +45,7 @@ namespace osgEarth { namespace Symbology
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const;   
+	virtual void mergeConfig(const Config& conf);
 
     public:
         /* methods required by osg::Object */
@@ -59,8 +60,6 @@ namespace osgEarth { namespace Symbology
         static bool match(const std::string& key, const char* pattern);
 
         Symbol( const Config& conf =Config() );
-
-        void mergeConfig(const Config& conf);
 
         virtual ~Symbol() { }
     };

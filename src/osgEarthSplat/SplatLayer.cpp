@@ -28,7 +28,7 @@
 #include <osgUtil/CullVisitor>
 #include <cstdlib> // getenv
 
-#define LC "[SplatLayer] "
+#define LC "[SplatLayer] " << getName() << ": "
 
 #define COVERAGE_SAMPLER "oe_splat_coverageTex"
 #define SPLAT_SAMPLER    "oe_splatTex"

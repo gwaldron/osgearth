@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ColorFilter>
+#include <vector>
 
 namespace osgEarth
 {
@@ -71,6 +72,14 @@ namespace osgEarth
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**
+         * Adds the name of a GLSL extension that should be enabled in the shader mains.
+         * Example: addGLSLExtension("GL_ARB_gpu_shader_int64");
+         * This would be required if you use an extension to introduce a new type that
+         * you then use as a varying.
+         */
+        virtual void addGLSLExtension(const std::string& name);
+
+        /**
          * Builds a shader function that executes an image filter chain.
          * @param functionName Name to give to the resulting shader function
          * @param chain        Color filter chain to execute
@@ -78,14 +87,6 @@ namespace osgEarth
         virtual osg::Shader* createColorFilterChainFragmentShader(
             const std::string&      functionName,
             const ColorFilterChain& chain ) const;
-
-        /**
-         * Gets a uniform corresponding to the given mode and value. These uniforms are 
-         * named in the form "oe_mode_MODE" (e.g., "oe_mode_GL_LIGHTING").
-         */
-        //virtual osg::Uniform* createUniformForGLMode(
-        //    osg::StateAttribute::GLMode      mode,
-        //    osg::StateAttribute::GLModeValue value ) const;
 
         /**
          * The name of the range uniform created by createRangeUniform().
@@ -111,6 +112,7 @@ namespace osgEarth
         virtual ~ShaderFactory() { }
 
         FragmentStageOrder _fragStageOrder;
+        std::vector<std::string> _glslExtensions;
     };
 
 

@@ -153,9 +153,9 @@ namespace osgEarth
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        const ShaderFactory* getShaderFactory() const;
+        ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
-        static const ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
+        static ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
 
         /**
          * The default shader generator.

@@ -64,10 +64,13 @@ _tilesLastCull(0)
 const Map*
 EngineContext::getMap() const
 {
+#if 0
+    // debugging check
     if (Threading::getCurrentThreadId() != _mainThreadId)
     {
         OE_WARN << LC << "Illegal - do not call getMap from outside the main thread\n";
     }
+#endif
     return _map;
 }
 

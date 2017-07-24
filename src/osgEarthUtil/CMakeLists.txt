@@ -61,6 +61,7 @@ SET(HEADERS_ROOT
     TMS
     TMSBackFiller
     TMSPackager
+    TopologyGraph
     UTMGraticule
     VerticalScale
     WFS
@@ -144,6 +145,7 @@ SET(SOURCES_ROOT
     TMS.cpp
     TMSBackFiller.cpp
     TMSPackager.cpp
+    TopologyGraph.cpp
     UTMGraticule.cpp
     VerticalScale.cpp
     WFS.cpp

@@ -19,10 +19,12 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
+#include <osgEarthUtil/TopologyGraph>
 #include <osg/Point>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 #define LC "[GeometryPool] "
@@ -168,6 +170,16 @@ namespace
         primSet->addElement((INDEX0)+1); \
         primSet->addElement((INDEX1)+1); \
     } \
+}
+
+#define addMaskSkirtTriangles(INDEX0, INDEX1) \
+{ \
+    primSet->addElement((INDEX0));   \
+    primSet->addElement((INDEX0)+1); \
+    primSet->addElement((INDEX1));   \
+    primSet->addElement((INDEX1));   \
+    primSet->addElement((INDEX0)+1); \
+    primSet->addElement((INDEX1)+1); \
 }
 
 SharedGeometry*
@@ -355,7 +367,70 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    if ( createSkirt )
+    // create mask geometry
+    bool skirtCreated = false;
+
+    if (maskSet)
+    {
+        int s = verts->size();
+        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
+        if (maskPrim)
+        {
+            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
+            geom->setMaskElements(maskPrim);
+
+            if (createSkirt)
+            {
+                // Skirts for masking geometries are complicated. There are two parts.
+                // The first part is the "perimeter" of the tile, i.e the outer edge of the 
+                // tessellation. This code will detect that outer boundary and create skrits
+                // for it.
+                // The second part (NYI) detects the actual inner boundary ("patch geometry")
+                // that patches the tile tessellation to the masking boundary. TDB.
+                TopologyGraph topo;
+                BuildTopologyVisitor visitor(topo);
+                visitor.apply(geom, verts); 
+
+                if (topo._verts.empty() == false)
+                {
+                    TopologyGraph::IndexVector boundary;
+                    topo.createBoundary(boundary);
+                
+                    double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+                    unsigned skirtIndex = verts->size();
+
+                    unsigned matches = 0;
+                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
+                    {
+                        int k;
+                        for (k = 0; k<skirtIndex; ++k)
+                        {
+                            if ((*verts)[k].x() == (*i)->x() && (*verts)[k].y() == (*i)->y())
+                            {
+                                addSkirtDataForIndex(k, height);
+                                matches++;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matches != boundary.size()) {
+                        OE_WARN << LC << "matches != boundary size" << std::endl;
+                    }
+
+                    int n;
+                    for (n = skirtIndex; n<(int)verts->size()-2; n+=2)
+                        addMaskSkirtTriangles(n, n+2);
+
+                    addMaskSkirtTriangles(n, skirtIndex);
+
+                    skirtCreated = true;
+                }
+            }
+        }
+    }
+
+    if ( createSkirt && !skirtCreated )
     {
         // SKIRTS:
         // calculate the skirt extrusion height
@@ -382,17 +457,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             addSkirtTriangles( i, i+2 );
 
         addSkirtTriangles( i, skirtIndex );
-    }
-
-    // create mask geometry
-    if (maskSet)
-    {
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
-        if (maskPrim)
-        {
-            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
-            geom->setMaskElements(maskPrim);
-        }
     }
 
     return geom;

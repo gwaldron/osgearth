@@ -537,7 +537,7 @@ namespace
 
         // create new MAINs for this function stack.
         VirtualProgram::ShaderVector mains;
-        ShaderComp::StageMask stages = Registry::shaderFactory()->createMains( accumFunctions, accumShaderMap, mains );
+        ShaderComp::StageMask stages = Registry::shaderFactory()->createMains(accumFunctions, accumShaderMap, extensionsSet, mains);
 
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program

@@ -73,14 +73,6 @@ namespace osgEarth
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**
-         * Adds the name of a GLSL extension that should be enabled in the shader mains.
-         * Example: addGLSLExtension("GL_ARB_gpu_shader_int64");
-         * This would be required if you use an extension to introduce a new type that
-         * you then use as a varying.
-         */
-        virtual void addGLSLExtension(const std::string& name);
-
-        /**
          * Builds a shader function that executes an image filter chain.
          * @param functionName Name to give to the resulting shader function
          * @param chain        Color filter chain to execute
@@ -113,7 +105,6 @@ namespace osgEarth
         virtual ~ShaderFactory() { }
 
         FragmentStageOrder _fragStageOrder;
-        std::vector<std::string> _glslExtensions;
     };
 
 

@@ -1145,21 +1145,21 @@ VirtualProgram::setFunctionMaxRange(const std::string& name, float maxRange)
     _dataModelMutex.unlock();
 }
 
-bool VirtualProgram::addExtension(const std::string& extension)
+bool VirtualProgram::addGLSLExtension(const std::string& extension)
 {
    _dataModelMutex.lock();
    std::pair<std::set<std::string>::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
    _dataModelMutex.unlock();
    return insertPair.second;
 }
-bool VirtualProgram::hasExtension(const std::string& extension) const
+bool VirtualProgram::hasGLSLExtension(const std::string& extension) const
 {
    _dataModelMutex.lock();
    bool doesHave = _globalExtensions.find(extension)!=_globalExtensions.end();
    _dataModelMutex.unlock();
    return doesHave;
 }
-bool VirtualProgram::removeExtension(const std::string& extension)
+bool VirtualProgram::removeGLSLExtension(const std::string& extension)
 {
    _dataModelMutex.lock();
    int erased = _globalExtensions.erase(extension);

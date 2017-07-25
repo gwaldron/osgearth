@@ -300,9 +300,12 @@ namespace osgEarth
         void setInheritShaders( bool value );
         bool getInheritShaders() const { return _inherit; }
 
-        bool addExtension(const std::string& extension);
-        bool hasExtension(const std::string& extension) const;
-        bool removeExtension(const std::string& extension);
+        /**
+        * Ability to add an extension to the VP
+        */
+        bool addGLSLExtension(const std::string& extension);
+        bool hasGLSLExtension(const std::string& extension) const;
+        bool removeGLSLExtension(const std::string& extension);
     public: 
         /**
          * Constructs a new VP

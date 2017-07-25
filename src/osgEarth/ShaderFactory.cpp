@@ -69,11 +69,6 @@ ShaderFactory::ShaderFactory()
     _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
 }
 
-void
-ShaderFactory::addGLSLExtension(const std::string& name)
-{
-    _glslExtensions.push_back(name);
-}
 
 #define SPACE_MODEL 0
 #define SPACE_VIEW  1
@@ -93,19 +88,21 @@ namespace
 
     typedef std::vector<Variable> Variables;
 
-    void appendGLSLExtensions(std::ostream& buf, const std::vector<std::string>& extensions)
-    {
-        for (int i = 0; i < extensions.size(); ++i)
-        {
-            buf << "#extension " << extensions[i] << " : enable\n";
-        }
-    }
+	void addExtensionsToBuffer(std::ostream& buf, const VirtualProgram::ExtensionsSet& in_extensions)
+	{
+	   for (VirtualProgram::ExtensionsSet::const_iterator it = in_extensions.begin(); it != in_extensions.end(); ++it)
+	   {
+	      const std::string& extension = *it;
+	      buf << "#extension "<<extension<< " : enable \n";
+	   }
+	}
 }
 
 
 ShaderComp::StageMask
 ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                            const VirtualProgram::ShaderMap&          in_shaders,
+                           const VirtualProgram::ExtensionsSet&      in_extensions,
                            std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
     StageMask stages =
@@ -292,7 +289,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "#pragma vp_name VP Vertex Shader Main\n"
             << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
 
-        appendGLSLExtensions(buf, _glslExtensions);
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << "\n// Vertex stage globals:\n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
@@ -457,7 +454,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             // For gl_MaxPatchVertices
             << (!s_GLES_SHADERS ? "#extension GL_NV_gpu_shader5 : enable\n" : "");
 
-        appendGLSLExtensions(buf, _glslExtensions);
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -537,7 +534,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Tessellation Evaluation (TES) Shader MAIN\n";
 
-        appendGLSLExtensions(buf, _glslExtensions);
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -743,7 +740,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Geometry Shader Main\n";
 
-        appendGLSLExtensions(buf, _glslExtensions);
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -937,7 +934,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "#pragma vp_name VP Fragment Shader Main\n"
             << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
 
-        appendGLSLExtensions(buf, _glslExtensions);
+        addExtensionsToBuffer(buf, in_extensions);
 
         // no output stage? Use default output
         if (!outputStage)

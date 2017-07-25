@@ -69,6 +69,7 @@ namespace osgEarth
         virtual ShaderComp::StageMask createMains(
             const ShaderComp::FunctionLocationMap&    functions,
             const VirtualProgram::ShaderMap&          in_shaders,
+            const VirtualProgram::ExtensionsSet&      in_extensions,
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**

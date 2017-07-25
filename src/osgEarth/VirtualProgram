@@ -300,6 +300,9 @@ namespace osgEarth
         void setInheritShaders( bool value );
         bool getInheritShaders() const { return _inherit; }
 
+        bool addExtension(const std::string& extension);
+        bool hasExtension(const std::string& extension) const;
+        bool removeExtension(const std::string& extension);
     public: 
         /**
          * Constructs a new VP
@@ -416,6 +419,7 @@ namespace osgEarth
 
         typedef unsigned                              ShaderID;
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
+        typedef std::set<std::string>                 ExtensionsSet;
         typedef std::map< std::string, std::string >  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
@@ -475,6 +479,8 @@ namespace osgEarth
         // holds a map of each named shader installed in this VP.
         // _dataModelMutex protects access to this member.
         ShaderMap _shaderMap;
+
+        ExtensionsSet _globalExtensions;
 
         // per-context cached shader map for thread-safe reuse without constant reallocation.
         struct ApplyVars

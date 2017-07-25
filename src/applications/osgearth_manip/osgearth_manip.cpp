@@ -520,6 +520,113 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
         double _vfov, _ar, _zn, _zf;
     };
+    
+    struct FitViewToPoints : public osgGA::GUIEventHandler
+    {
+        std::vector<GeoPoint> _points;
+
+        FitViewToPoints(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+            // Set up a list of control points
+            const SpatialReference* srs = SpatialReference::get("wgs84");
+            _points.push_back(GeoPoint(srs, -120, 30, 0));
+            _points.push_back(GeoPoint(srs, -100, 45, 0));
+        }
+
+        // Projects a point in view space onto the far clip plane of a projection matrix
+        void projectToFarPlane(osg::Vec3d& Pview, const osg::Matrix& projMatrix, const osg::Matrix& projMatrixInv)
+        {
+            osg::Vec4d Pclip = osg::Vec4d(Pview.x(), Pview.y(), Pview.z(), 1.0)* projMatrix;
+            Pclip.z() = Pclip.w();
+            osg::Vec4d Ptemp = Pclip * projMatrixInv;
+            Pview.set(Ptemp.x() / Ptemp.w(), Ptemp.y() / Ptemp.w(), Ptemp.z() / Ptemp.w());
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                const SpatialReference* srs = SpatialReference::get("wgs84");
+
+                const osg::Camera* camera = aa.asView()->getCamera();
+                
+                // Convert to world space:
+                std::vector<osg::Vec3d> world(_points.size());
+                for (int i = 0; i < _points.size(); ++i)
+                    _points[i].toWorld(world[i]);
+
+                // Rewrite the projection matrix so the far plane is at the ellipsoid. 
+                // We do this so we can project our control points onto a common plane.
+                osg::Matrix projMatrix = camera->getProjectionMatrix();
+                double fovy_deg, ar, n, f;
+                projMatrix.getPerspective(fovy_deg, ar, n, f);
+                n = 1.0;
+                f = osg::maximum(srs->getEllipsoid()->getRadiusEquator(), srs->getEllipsoid()->getRadiusPolar());
+                projMatrix.makePerspective(fovy_deg, ar, n, f);
+
+                // Calculate new focal point as the "centroid" of our control points:
+                osg::Vec3d FPworld;
+                for (int i = 0; i<world.size(); ++i)
+                    FPworld += world[i];
+                FPworld /= world.size();
+
+                // Set up a view matrix to look down on our new focal point:
+                FPworld.normalize();
+                FPworld *= f * 2.0;
+                osg::Matrix viewMatrix = camera->getViewMatrix();
+                viewMatrix.makeLookAt(FPworld, osg::Vec3d(0, 0, 0), osg::Vec3d(0,0,1));
+
+                // Transform our control points into view space, and then project each one
+                // onto our common view plane (tangent to the ellispoid).
+                osg::Matrix projMatrixInv;
+                projMatrixInv.invert(projMatrix);
+
+                double Mx = -DBL_MAX, My = -DBL_MAX;
+                std::vector<osg::Vec3d> view(world.size());
+                for (int i = 0; i < world.size(); ++i)
+                {
+                    view[i] = world[i] * viewMatrix;
+                    projectToFarPlane(view[i], projMatrix, projMatrixInv);
+                    Mx = osg::maximum(Mx, osg::absolute(view[i].x()));
+                    My = osg::maximum(My, osg::absolute(view[i].y()));                    
+                }
+
+                // Calculate optimal new Z (distance from view plane)
+                double half_fovy_rad = osg::DegreesToRadians(fovy_deg) * 0.5;
+                double half_fovx_rad = half_fovy_rad * ar;
+                double Zx = Mx / tan(half_fovx_rad);
+                double Zy = My / tan(half_fovy_rad);
+                double Zbest = std::max(Zx, Zy);
+
+                // Calcluate the new viewpoint.
+                FPworld.normalize();
+                FPworld *= f;
+                GeoPoint FP;
+                FP.fromWorld(srs, FPworld);
+
+                Viewpoint vp = _manip->getViewpoint();
+                vp.focalPoint() = FP;
+                vp.range() = Zbest;
+
+                _manip->setViewpoint(vp, 0.0);
+
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("FitViewToPoints"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+        
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -696,6 +803,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
+
+    viewer.addEventHandler(new FitViewToPoints('j', manip));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

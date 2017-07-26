@@ -39,6 +39,7 @@ SET(HEADERS_ROOT
     MeasureTool
     MGRSFormatter
     MGRSGraticule
+    MGRSGraticule2
     MouseCoordsTool
     MultiElevationLayer
     ObjectLocator
@@ -64,6 +65,7 @@ SET(HEADERS_ROOT
     TopologyGraph
     UTMGraticule
     VerticalScale
+    ViewFitter
     WFS
     WMS
 )
@@ -125,6 +127,7 @@ SET(SOURCES_ROOT
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
+    MGRSGraticule2.cpp
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
     ObjectLocator.cpp
@@ -148,6 +151,7 @@ SET(SOURCES_ROOT
     TopologyGraph.cpp
     UTMGraticule.cpp
     VerticalScale.cpp
+    ViewFitter.cpp
     WFS.cpp
     WMS.cpp
     ${SHADERS_CPP}

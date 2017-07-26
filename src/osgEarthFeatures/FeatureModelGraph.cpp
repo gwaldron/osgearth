@@ -1731,7 +1731,9 @@ FeatureModelGraph::redraw()
     
     //If they've specified a min/max range, setup an LOD
     if ( minRange != -FLT_MAX || maxRange != FLT_MAX )
-    {        
+    {
+        OE_INFO << LC << "Elevation LOD set to " << minRange << " => " << maxRange << std::endl;
+
         // todo: revisit this, make sure this is still right.
         ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
         lod->addChild( node );

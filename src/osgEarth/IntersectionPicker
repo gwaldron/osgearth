@@ -29,7 +29,10 @@ namespace osgEarth
 {
     /**
      * Utility for picking objects from the scene.
-     * @deprecated - please consider the RTTPicker instead
+     *
+     * Please consider the RTTPicker instead unless you need to pick
+     * multiple overlapping objects in the scene. RTTPicker supports
+     * shader-based geometry while IntersectionPicker does not.
      */
     class OSGEARTH_EXPORT IntersectionPicker
     {

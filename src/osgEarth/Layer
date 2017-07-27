@@ -296,6 +296,7 @@ namespace osgEarth
         virtual void init();
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
 
     private:
         UID _uid;

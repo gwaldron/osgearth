@@ -18,6 +18,8 @@
  */
 #include <osgEarthUtil/ViewFitter>
 
+#define LC "[ViewFitter] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -44,7 +46,7 @@ _camera(camera)
 bool
 ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outVP) const
 {
-    if (points.empty() || _mapSRS.valid() == false || _camera.valid()== false)
+    if (points.empty() || _mapSRS.valid() == false || _camera.valid() == false)
         return false;
 
     osg::Matrix projMatrix = _camera->getProjectionMatrix();
@@ -53,7 +55,10 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     // Orthographic matrix is not yet supported.
     bool isOrtho = osg::equivalent(projMatrix(3,3), 1.0);
     if (isOrtho)
+    {
+        OE_WARN << LC << "Orthographic camera is not supported" << std::endl;
         return false;
+    }
 
     // Convert the point set to world space:
     std::vector<osg::Vec3d> world(points.size());

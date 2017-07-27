@@ -40,6 +40,8 @@ namespace osgEarth { namespace Util
 
         //! Creates a Viewpoint that looks straight down on the map and
         //! encompasses the provided set of points.
+        //! Returns true upon success, or false if there is missing data or if
+        //! the camera is orthographic.
         bool createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& out) const;
 
     protected:

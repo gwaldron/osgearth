@@ -124,6 +124,9 @@ namespace osgEarth { namespace Features
          */
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
 
+        //! Options passed in.
+        const FeatureModelSourceOptions& options() const { return _options; }
+
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);

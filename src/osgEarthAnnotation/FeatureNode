@@ -47,26 +47,22 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, FeatureNode);
 
         /**
-         * Constructs a new FeatureNode from a single Feature
+         * Construct a new FeatureNode from a single Feature.
          */
         FeatureNode( 
-            MapNode* mapNode, 
             Feature* feature,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(),
             StyleSheet* styleSheet = 0);
 
         /**
-         * Constructs a new FeatureNode from a FeatureList
+         * Constuct a new FeatureNode from a list of features.
          */
-        FeatureNode( 
-            MapNode* mapNode, 
-            FeatureList& features,
+        FeatureNode(
+            const FeatureList& features,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
             StyleSheet* styleSheet = 0);
-
-        virtual ~FeatureNode() { }
 
          /**
          * Gets the list of features
@@ -100,6 +96,34 @@ namespace osgEarth { namespace Annotation
         void init();
         void dirty() { init(); }
 
+    public: // older constructors that take a MapNode
+
+        /**
+         * Constructs a new FeatureNode from a single Feature and a MapNode.
+         * You can use this variant if you the FeatureNode will not be a
+         * descendant of the MapNode.
+         * NOTE: candidate for deprecation
+         */
+        FeatureNode( 
+            MapNode* mapNode, 
+            Feature* feature,
+            const Style& style = Style(),
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
+            StyleSheet* styleSheet = 0);
+
+        /**
+         * Constructs a new FeatureNode from a FeatureList and a MapNode.
+         * You can use this variant if you the FeatureNode will not be a
+         * descendant of the MapNode.
+         * NOTE: candidate for deprecation
+         */
+        FeatureNode( 
+            MapNode* mapNode, 
+            const FeatureList& features,
+            const Style& style = Style(),
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
+            StyleSheet* styleSheet = 0);
+
     public: // AnnotationNode
 
         /**
@@ -128,6 +152,9 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
+
+        virtual ~FeatureNode() { }
+
         FeatureList                  _features;
         GeometryCompilerOptions      _options;
         osg::Group*                  _attachPoint;

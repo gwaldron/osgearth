@@ -110,13 +110,13 @@ namespace
     public:
         GridNode(GARSGraticule* graticule, const GeoExtent& extent, GARSLevel level);
 
-        virtual osg::Node* loadChildren();
+        virtual osg::Node* loadChild();
 
         virtual void build();
 
-        virtual osg::BoundingSphere getKeyBound() const;
+        virtual osg::BoundingSphere getChildBound() const;
 
-        virtual bool hasChildren() const;
+        virtual bool hasChild() const;
 
         GeoExtent _extent;
         GARSGraticule* _graticule;
@@ -133,7 +133,7 @@ namespace
         setupPaging();
     }
 
-    osg::Node* GridNode::loadChildren()
+    osg::Node* GridNode::loadChild()
     {
         GARSLevel childLevel;
         unsigned dim = 2;
@@ -213,12 +213,12 @@ namespace
        _attachPoint->addChild(mt);
     }
 
-    osg::BoundingSphere GridNode::getKeyBound() const
+    osg::BoundingSphere GridNode::getChildBound() const
     {
         return getBounds(_extent);
     }
 
-    bool GridNode::hasChildren() const
+    bool GridNode::hasChild() const
     {
         return _level != GARS_5;
     }
@@ -230,11 +230,11 @@ namespace
     public:
         IndexNode(GARSGraticule* graticule, const GeoExtent& extent);
 
-        virtual osg::Node* loadChildren();
+        virtual osg::Node* loadChild();
 
-        virtual osg::BoundingSphere getKeyBound() const;
+        virtual osg::BoundingSphere getChildBound() const;
 
-        virtual bool hasChildren() const;
+        virtual bool hasChild() const;
 
         GeoExtent _extent;
         GARSGraticule* _graticule;
@@ -245,11 +245,10 @@ namespace
     _extent(extent),
     PagedNode()
     {
-        build();
         setupPaging();
     }
 
-    osg::Node* IndexNode::loadChildren()
+    osg::Node* IndexNode::loadChild()
     {
         // Load the 30 minute cells.
         osg::Group* group = new osg::Group;
@@ -269,12 +268,12 @@ namespace
         return group;
     }
 
-    osg::BoundingSphere IndexNode::getKeyBound() const
+    osg::BoundingSphere IndexNode::getChildBound() const
     {
         return getBounds(_extent);
     }
 
-    bool IndexNode::hasChildren() const
+    bool IndexNode::hasChild() const
     {
         return true;
     }

@@ -149,6 +149,172 @@ namespace
         }
     }
 
+    
+    struct Geom10km : public PagedNode
+    {
+        Geom10km()
+        {
+            setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+            setRange(880);
+            setAdditive(false);
+        }
+
+        void setupData(Feature* feature, const Style* style)
+        {
+            _feature = feature;
+            _style = style;
+            setNode(build());
+        }
+
+        bool hasChild() const 
+        {
+            return false;
+        }
+
+        osg::Node* build()
+        {
+            GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
+            double lon, lat;
+            extent.getCentroid(lon, lat);
+            osg::ref_ptr<const SpatialReference> utm = _feature->getSRS()->createUTMFromLonLat(lon, lat);
+
+            double x0 = _feature->getDouble("easting");
+            double y0 = _feature->getDouble("northing");
+
+            osg::ref_ptr<MultiGeometry> grid = new MultiGeometry();
+            for (double x=x0; x<=x0+100000.0; x += 10000.0)
+            {
+                LineString* ls = new LineString();
+                ls->push_back(osg::Vec3d(x, y0, 0));
+                ls->push_back(osg::Vec3d(x, y0+10000.0, 0));
+                grid->getComponents().push_back(ls);
+            }
+
+            OE_INFO << utm->getName() << std::endl;
+            osg::ref_ptr<Feature> f = new Feature(grid.get(), utm);
+            f->transform(_feature->getSRS());
+
+            GeometryCompilerOptions gco;
+            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            return new FeatureNode(f.get(), *_style, gco);
+        }
+
+        Feature* _feature;
+        const Style* _style;
+    };
+
+
+    //! Geometry for a single SQID 100km cell and its children
+    struct SQID100kmGeom : public PagedNode
+    {
+        SQID100kmGeom(const std::string& name)
+        {
+            setName(name);
+            setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+            setRange(880);
+            setAdditive(false);
+        }
+
+        void setupData(Feature* feature, const Style* style)
+        {
+            _feature = feature;
+            Style* s = new Style(*style);
+            s->getOrCreateSymbol<LineSymbol>()->stroke()->color().set(1,0,0,1);
+            _style = s; //style;
+            setNode( build() );
+        }
+
+        osg::Node* loadChild()
+        {
+            Geom10km* child = new Geom10km();
+            child->setupData(_feature, _style);
+            child->setupPaging();
+            return child;
+        }
+
+        bool hasChild() const
+        {
+            return true;
+        }
+
+        osg::BoundingSphere getChildBound() const
+        {
+            osg::ref_ptr<Geom10km> child = new Geom10km();
+            child->setupData(_feature, _style);
+            return child->getBound();
+        }
+
+        osg::Node* build()
+        {
+            GeometryCompilerOptions gco;
+            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            FeatureNode* node = new FeatureNode(_feature, *_style, gco);
+            return node;
+        }
+
+        Feature* _feature;
+        const Style* _style;
+    };
+
+
+    //! All SQID 100km goemetry from a single URM cell combines into one geometry
+    struct SQID100kmGeomCombined : public PagedNode
+    {
+        SQID100kmGeomCombined(const std::string& name, const osg::BoundingSphere& bs)
+        {
+            setName(name);
+            _bs = bs;
+            setAdditive(false);
+            setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+            setRange(3200);
+        }
+
+        void setupData(const FeatureList& sqidFeatures, const Style* sqidStyle)
+        {
+            _sqidFeatures = sqidFeatures;
+            _sqidStyle = sqidStyle;
+            setNode(build());
+        }
+
+        osg::Node* loadChild()
+        {
+            osg::Group* group = new osg::Group();
+
+            for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
+            {
+                Feature* feature = f->get();
+                SQID100kmGeom* geom = new SQID100kmGeom(getName());
+                geom->setupData(feature, _sqidStyle);
+                geom->setupPaging();
+                group->addChild(geom);                
+            }
+
+            return group;
+        }
+
+        osg::BoundingSphere getChildBound() const
+        {
+            return getChild(0)->getBound();
+        }
+
+        osg::Node* build()
+        {
+            GeometryCompilerOptions gco;
+            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            
+            // remove the text since we'll make text elsewhere
+            Style style = *_sqidStyle;
+            style.remove<TextSymbol>();
+
+            return new FeatureNode(0L, _sqidFeatures, style, gco);
+        }
+
+        osg::BoundingSphere _bs;
+        FeatureList _sqidFeatures;
+        const Style* _sqidStyle;
+    };
+
+
     struct GZDGeom : public PagedNode
     {
         const Style* _sqidStyle;
@@ -156,15 +322,33 @@ namespace
 
         GZDGeom(const std::string& name)
         {
-            _additive = true;
             setName(name);     
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(640);
+            setAdditive(false);
         }
 
         osg::Node* loadChild()
         {
-            return buildSQID();
+#if 0
+            osg::Group* group = new osg::Group();
+
+            for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
+            {
+                Feature* feature = f->get();
+                SQID100kmGeom* geom = new SQID100kmGeom(getName());
+                geom->setupData(feature, _sqidStyle);
+                geom->setupPaging();
+                group->addChild(geom);                
+            }
+
+            return group;
+#else
+            SQID100kmGeomCombined* child = new SQID100kmGeomCombined(getName(), getBound());
+            child->setupData(_sqidFeatures, _sqidStyle);
+            child->setupPaging();
+            return child;
+#endif
         }
 
         osg::BoundingSphere getChildBound() const
@@ -176,12 +360,12 @@ namespace
                        const FeatureList& sqidFeatures, const Style& sqidStyle,
                        const FeatureProfile* prof, const Map* map)
         {
-            setNode(buildGZD(gzdFeature, gzdStyle, prof, map));
+            setNode(build(gzdFeature, gzdStyle, prof, map));
             _sqidFeatures = sqidFeatures;
             _sqidStyle = &sqidStyle;
         }
 
-        osg::Node* buildGZD(const Feature* f, const Style& style, const FeatureProfile* prof, const Map* map)
+        osg::Node* build(const Feature* f, const Style& style, const FeatureProfile* prof, const Map* map)
         {
             osg::Group* group = new osg::Group();
 
@@ -243,18 +427,6 @@ namespace
             Registry::shaderGenerator().run(group, Registry::stateSetCache());
     
             return ClusterCullingFactory::createAndInstall(group, centerECEF);
-        }
-
-        osg::Node* buildSQID()
-        {
-            GeometryCompilerOptions gco;
-            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
-            
-            // remove the text since we'll make text elsewhere
-            Style style = *_sqidStyle;
-            style.remove<TextSymbol>();
-
-            return new FeatureNode(0L, _sqidFeatures, style, gco);
         }
     };
 

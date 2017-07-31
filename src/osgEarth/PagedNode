@@ -49,7 +49,7 @@ namespace osgEarth
         void setNode(osg::Node* node);
 
         //! Override to load paged child node
-        virtual osg::Node* loadChild() =0;
+        virtual osg::Node* loadChild() { return 0L; }
 
         //! Bounding sphere of paged data
         virtual osg::BoundingSphere getChildBound() const;

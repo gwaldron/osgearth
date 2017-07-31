@@ -23,27 +23,58 @@
 #define OSGEARTHUTIL_PAGEDNODE_H
 
 #include <osgEarth/Common>
+#include <osgEarth/optional>
 #include <osg/PagedLOD>
 
 namespace osgEarth
 {
+    /**
+     * PagedNode is a group with a self-contained paged child.
+     * It wraps the details of a PagedNode node into a container
+     * that is easier to manage.
+     *
+     * To use, override the class. Call setNode() with the default
+     * node to display, and implement loadChild() to load the 
+     * paged child node when it comes within range. Set the page-in
+     * range for the paged child node with setRange() and setRangeMode().
+     * Finally, call setupPaging() to complete setup.
+     */
     class OSGEARTH_EXPORT PagedNode : public osg::Group
     {
     public:
         PagedNode();
 
-        virtual osg::Node* loadChildren();
+        //! Sets the node to display by default when children
+        //! are not loaded.
+        void setNode(osg::Node* node);
 
-        virtual void build();
+        //! Override to load paged child node
+        virtual osg::Node* loadChild() =0;
 
-        virtual osg::BoundingSphere getKeyBound() const;
+        //! Bounding sphere of paged data
+        virtual osg::BoundingSphere getChildBound() const;
 
-        virtual bool hasChildren() const;
+        //! Returns true by default; override for custom behavior
+        virtual bool hasChild() const;
 
+        //! Call this after setting up your data on the attach point
         void setupPaging();
 
+        //! Sets the page-in rage mode (distance v. pixel-size; default is distance)
+        void setRangeMode(const osg::LOD::RangeMode);
+
+        //! Sets the range (or pixel size) at which to page in the child data.
+        void setRange(float range) { _range = range; }
+
+        //! Sets whether the child replaces the default node (non-additive)
+        //! or renders alongside the default node (additive)
+        void setAdditive(bool value) { _additive = value; }
+
+    protected:
         osg::Group* _attachPoint;
         osg::PagedLOD* _plod;
+        bool _additive;
+        optional<float> _range;
     };    
 }
 

@@ -118,7 +118,7 @@ namespace osgEarth { namespace Util
 
     private:
         
-        osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
+        //osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
 
         osg::Node* buildSQIDTiles( const std::string& gzd );
         
@@ -141,6 +141,11 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<const Map> _map;
 
         UTMData _utmData;
+
+        osg::Node* buildGZDGeomTile(const std::string& gzd, const Feature* feature, const Style& style, const Map* map);
+
+        osg::Node* buildGZDTextTile(const std::string& gzd, const Feature* feature, const Style& style);
+
     };
 
 } } // namespace osgEarth::Util

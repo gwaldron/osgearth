@@ -276,7 +276,8 @@ namespace
 
         for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
         {
-            if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE)
+            if (chunk->type != GLSLChunker::Chunk::TYPE_DIRECTIVE ||
+                (chunk->tokens.size()>0 && chunk->tokens[0].compare(0, 3, "#if")==0))
             {
                 for (unsigned line = 0; line < 4; ++line) {
                     chunk = chunks.insert(chunk, chunker.chunkLine(lines[line]));

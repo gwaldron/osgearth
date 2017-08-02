@@ -85,10 +85,10 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
 {
     const int num_lods = 26;
 
-    int index = int(value)*num_lods + int(env.lod);
+    int lutIndex = int(value)*num_lods + int(env.lod);
 
     // fetch the splatting parameters:
-    vec4 t = texelFetch(oe_splat_coverageLUT, index);
+    vec4 t = texelFetch(oe_splat_coverageLUT, lutIndex);
 
     ri.primaryIndex = t[0];
     ri.detailIndex  = t[1];
@@ -108,7 +108,8 @@ void oe_splat_getRenderInfo(in float value, in oe_SplatEnv env, out oe_SplatRend
 
 vec4 oe_splat_getTexel(in float index, in vec2 tc)
 {
-    return texture(oe_splatTex, vec3(tc, index));
+    //return texture(oe_splatTex, vec3(tc, index));
+    return index >= 0.0 ? texture(oe_splatTex, vec3(tc, index)) : vec4(1,0,0,0);
 }
 
 
@@ -168,7 +169,7 @@ vec4 oe_splat_nearest(in vec2 splat_tc, inout oe_SplatEnv env)
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
     vec4 detail  = oe_splat_getDetailTexel(ri, splat_tc, env) * detailToggle;    
-    return vec4( mix(primary.rgb, detail.rgb, detail.a), 1.0 );
+    return vec4( mix(primary.rgb, detail.rgb, detail.a), primary.a );
 }
 
 //............................................................................
@@ -193,10 +194,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     oe_SplatRenderInfo ri_nw; oe_splat_getRenderInfo(value_nw, env, ri_nw);
 
     // Primary splat:
-    vec3 sw_primary = oe_splat_getTexel(ri_sw.primaryIndex, splat_tc).rgb;
-    vec3 se_primary = oe_splat_getTexel(ri_se.primaryIndex, splat_tc).rgb;
-    vec3 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc).rgb;
-    vec3 nw_primary = oe_splat_getTexel(ri_nw.primaryIndex, splat_tc).rgb;
+    vec4 sw_primary = oe_splat_getTexel(ri_sw.primaryIndex, splat_tc);
+    vec4 se_primary = oe_splat_getTexel(ri_se.primaryIndex, splat_tc);
+    vec4 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc);
+    vec4 nw_primary = oe_splat_getTexel(ri_nw.primaryIndex, splat_tc);
 
     // Detail splat - weighting is in the alpha channel
     // TODO: Pointless to have a detail range? -gw
@@ -207,17 +208,17 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, inout oe_SplatEnv env)
     vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env);
     vec4 nw_detail = detailToggle * oe_splat_getDetailTexel(ri_nw, splat_tc, env); 
 
-    vec3 nw_mix = mix(nw_primary, nw_detail.rgb, nw_detail.a);
-    vec3 ne_mix = mix(ne_primary, ne_detail.rgb, ne_detail.a);
-    vec3 sw_mix = mix(sw_primary, sw_detail.rgb, sw_detail.a);
-    vec3 se_mix = mix(se_primary, se_detail.rgb, se_detail.a);
+    vec4 nw_mix = mix(nw_primary, nw_detail, nw_detail.a);
+    vec4 ne_mix = mix(ne_primary, ne_detail, ne_detail.a);
+    vec4 sw_mix = mix(sw_primary, sw_detail, sw_detail.a);
+    vec4 se_mix = mix(se_primary, se_detail, se_detail.a);
 
     vec2 weight = fract( oe_splat_covtc*size - 0.5+(1.0/size) );
 
-    vec3 temp0 = mix(nw_mix, ne_mix, weight.x);
-    vec3 temp1 = mix(sw_mix, se_mix, weight.x);
+    vec4 temp0 = mix(nw_mix, ne_mix, weight.x);
+    vec4 temp1 = mix(sw_mix, se_mix, weight.x);
 
-    texel.rgb = mix(temp1, temp0, weight.y);
+    texel = mix(temp1, temp0, weight.y);
 
     return texel;
 }
@@ -322,7 +323,7 @@ void oe_splat_complex(inout vec4 color)
     vec4 texel = mix(texel0, texel1, lodBlend);
 
     color = mix(color, texel, texel.a);
-    color.a = 1.0;
+    //color.a = 1.0;
 
     // uncomment to visualize slope, noise, etc.
     //color.rgba = vec4(env.noise.x,0,0,1);    

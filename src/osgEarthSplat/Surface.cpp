@@ -86,25 +86,6 @@ Surface::loadTextures(const LandCoverDictionary* landCoverDict, const osgDB::Opt
     return true;
 }
 
-namespace
-{
-#define INDENTATION 4
-    struct indent {
-        indent(int level) :_level(level){}
-        int _level;
-        friend std::ostream& operator<<(std::ostream& os, const indent& val) {
-            for (int i=0; i<val._level * INDENTATION; ++i) 
-                os << ' ';
-            return os;
-        }
-    };
-
-    void write(std::ostream& buf, const SplatRangeData* rangeData, int I)
-    {
-        buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
-    }
-}
-
 #define NUM_FLOATS_PER_LOD 6
 #define NUM_LODS 26
 #define NUM_CLASSES 256
@@ -151,6 +132,7 @@ Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
         int coverageValue = lcClass->getValue();
         if (coverageValue >= 0 && coverageValue < NUM_CLASSES)
         {
+            //OE_INFO << LC << "LUT: " << lcClass->getName() << " = " << coverageValue << std::endl;
             CoverageClass& coverageClass = lut[coverageValue];
             const std::string& className = lcClass->getName();
             const SplatLUT::const_iterator k = _textureDef._splatLUT.find(className);
@@ -165,7 +147,11 @@ Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
                     if (range._maxLOD.isSet() && lod == range._maxLOD.get() && (r + 1) < ranges.size())
                         ++r;
                 }
-            }            
+            }
+            else
+            {
+                OE_WARN << LC << "No splat mapping for land cover class " << className << std::endl;
+            }
         }
     }
 

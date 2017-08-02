@@ -67,6 +67,15 @@ FeatureModelOptions::fromConfig(const Config& conf)
     conf.getIfSet( "node_caching",     _nodeCaching );
     
     conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
+
+    // Support a singleton style (convenience)
+    optional<Style> style;
+    conf.getObjIfSet("style", style);
+    if (style.isSet())
+    {
+        if (_styles.valid() == false) _styles = new StyleSheet();
+        _styles->addStyle(style.get());
+    }
 }
 
 Config
@@ -341,7 +350,7 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
-#if !(defined(OSG_GLES2_AVAILABLE) || defined(OSG_GL3_AVAILABLE) )
+#if !(defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE) || defined(OSG_GL3_AVAILABLE) )
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());

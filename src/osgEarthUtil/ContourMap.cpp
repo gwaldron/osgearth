@@ -55,12 +55,17 @@ ContourMap::init()
     // uniforms we'll need:
     _xferMin     = new osg::Uniform(osg::Uniform::FLOAT,      "oe_contour_min" );
     _xferRange   = new osg::Uniform(osg::Uniform::FLOAT,      "oe_contour_range" );
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+    _xferSampler = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oe_contour_xfer" );
+#else
     _xferSampler = new osg::Uniform(osg::Uniform::SAMPLER_1D, "oe_contour_xfer" );
+#endif
     _opacityUniform = new osg::Uniform(osg::Uniform::FLOAT,   "oe_contour_opacity" );
 
     // Create a 1D texture from the transfer function's image.
-    _xferTexture = new osg::Texture1D();
+    _xferTexture = new TextureType();
     _xferTexture->setResizeNonPowerOfTwoHint( false );
+    _xferTexture->setUseHardwareMipMapGeneration( false );
     _xferTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _xferTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _xferTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );

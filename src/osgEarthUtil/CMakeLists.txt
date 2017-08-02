@@ -61,8 +61,10 @@ SET(HEADERS_ROOT
     TMS
     TMSBackFiller
     TMSPackager
+    TopologyGraph
     UTMGraticule
     VerticalScale
+    ViewFitter
     WFS
     WMS
 )
@@ -144,8 +146,10 @@ SET(SOURCES_ROOT
     TMS.cpp
     TMSBackFiller.cpp
     TMSPackager.cpp
+    TopologyGraph.cpp
     UTMGraticule.cpp
     VerticalScale.cpp
+    ViewFitter.cpp
     WFS.cpp
     WMS.cpp
     ${SHADERS_CPP}

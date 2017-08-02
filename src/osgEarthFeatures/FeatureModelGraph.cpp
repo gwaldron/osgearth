@@ -98,15 +98,25 @@ namespace
                                 const osgDB::Options* readOptions,
                                 FeatureModelGraph* fmg)
     {
-#ifdef USE_PROXY_NODE_FOR_TESTING
-        ProxyNode* p = new ProxyNode();
+#ifdef USE_PROXY_NODE
+
+        osg::ProxyNode* p = new osg::ProxyNode();
         p->setCenter( bs.center() );
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
-        p->setRange( 0, minRange, maxRange );
-        p->setPriorityOffset( 0, layout.priorityOffset().get() );
-        p->setPriorityScale(0, layout.priorityScale().get() );
+        p->setLoadingExternalReferenceMode(osg::ProxyNode::LOAD_IMMEDIATELY);
+
+        // force onto the high-latency thread pool.
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions(readOptions);
+        options->setFileLocationCallback( flc );
+        p->setDatabaseOptions( options );
+        // so we can find the FMG instance in the pseudoloader.
+        options->getOrCreateUserDataContainer()->addUserObject(fmg);
+
+        return p;
+
 #else
+        
         osg::PagedLOD* p;
 
         if (sgCallbacks)
@@ -114,32 +124,33 @@ namespace
             PagedLODWithSceneGraphCallbacks* plod = new PagedLODWithSceneGraphCallbacks(sgCallbacks);
             p = plod;
         }
-            
-        p->setCenter( bs.center() );
-        p->setRadius( bs.radius() );
-        p->setFileName( 0, uri );
-        p->setRange( 0, minRange, maxRange );
-        p->setPriorityOffset( 0, layout.priorityOffset().get() );
-        p->setPriorityScale(0, layout.priorityScale().get() );
+        else
+        {
+            p = new osg::PagedLOD();
+        }
+
+        p->setCenter(bs.center());
+        p->setRadius(bs.radius());
+        p->setFileName(0, uri);
+        p->setRange(0, minRange, maxRange);
+        p->setPriorityOffset(0, layout.priorityOffset().get());
+        p->setPriorityScale(0, layout.priorityScale().get());
         if (layout.minExpiryTime().isSet())
         {
             float value = layout.minExpiryTime() >= 0.0f ? layout.minExpiryTime().get() : FLT_MAX;
             p->setMinimumExpiryTime(0, value);
         }
-            
-#endif
 
         // force onto the high-latency thread pool.
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions(readOptions);
-        options->setFileLocationCallback( flc );
-        p->setDatabaseOptions( options );
-
+        options->setFileLocationCallback(flc);
+        p->setDatabaseOptions(options);
         // so we can find the FMG instance in the pseudoloader.
-        //TODO: fix
         options->getOrCreateUserDataContainer()->addUserObject(fmg);
-        //OptionsData<FeatureModelGraph>::set(options, "FeatureModelGraph", fmg);
 
         return p;
+
+#endif
     }
 }
 
@@ -588,19 +599,28 @@ FeatureModelGraph::setupPaging()
     // build the URI for the top-level paged LOD:
     std::string uri = s_makeURI( 0, 0, 0 );
 
-    // bulid the top level Paged LOD:
-    osg::Group* pagedNode = createPagedNode( 
-        bs, 
-        uri, 
-        0.0f, 
-        maxRange, 
-        _options.layout().get(),
-        _sgCallbacks.get(),
-        _defaultFileLocationCallback.get(),
-        getSession()->getDBOptions(),
-        this);
+    // bulid the top level node:
+    osg::Node* topNode;
 
-    return pagedNode;
+    if (options().layout()->paged() == true)
+    {
+        topNode = createPagedNode( 
+            bs, 
+            uri, 
+            0.0f, 
+            maxRange, 
+            _options.layout().get(),
+            _sgCallbacks.get(),
+            _defaultFileLocationCallback.get(),
+            getSession()->getDBOptions(),
+            this);
+    }
+    else
+    {
+        topNode = load(0, 0, 0, uri, getSession()->getDBOptions());
+    }
+
+    return topNode;
 }
 
 
@@ -835,17 +855,26 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     << "; maxrange = " << maxRange
                     << std::endl;
 
-                osg::Group* pagedNode = createPagedNode( 
-                    subtile_bs, 
-                    uri, 
-                    0.0f, maxRange, 
-                    _options.layout().get(),
-                    _sgCallbacks.get(),
-                    _defaultFileLocationCallback.get(),
-                    readOptions,
-                    this);
+                osg::Node* childNode;
 
-                parent->addChild( pagedNode );
+                if (options().layout()->paged() == true)
+                {
+                    childNode = createPagedNode( 
+                        subtile_bs, 
+                        uri, 
+                        0.0f, maxRange, 
+                        _options.layout().get(),
+                        _sgCallbacks.get(),
+                        _defaultFileLocationCallback.get(),
+                        readOptions,
+                        this);
+                }
+                else
+                {
+                    childNode = load(subtileLOD, u, v, uri, readOptions);
+                }
+
+                parent->addChild( childNode );
             }
         }
     }
@@ -1731,7 +1760,9 @@ FeatureModelGraph::redraw()
     
     //If they've specified a min/max range, setup an LOD
     if ( minRange != -FLT_MAX || maxRange != FLT_MAX )
-    {        
+    {
+        OE_INFO << LC << "Elevation LOD set to " << minRange << " => " << maxRange << std::endl;
+
         // todo: revisit this, make sure this is still right.
         ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
         lod->addChild( node );

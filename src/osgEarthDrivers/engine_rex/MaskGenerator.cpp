@@ -179,31 +179,32 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
         int num_i = max_i - min_i + 1;
         int num_j = max_j - min_j + 1;
 
-        osg::ref_ptr<Polygon> maskSkirtPoly = new Polygon();
-        maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
+        // The "patch polygon" is the region that stitches the normal tile geometry to the mask boundary.
+        osg::ref_ptr<Polygon> patchPoly = new Polygon();
+        patchPoly->resize(num_i * 2 + num_j * 2 - 4);
 
         for (int i = 0; i < num_i; i++)
         {
             {
                 osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)min_j)/(double)(_tileSize-1), 0.0);
-                (*maskSkirtPoly)[i] = ndc;
+                (*patchPoly)[i] = ndc;
             }
 
             {
                 osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
-                (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
+                (*patchPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
             }
         }
         for (int j = 0; j < num_j - 2; j++)
         {
             {
                 osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
-                (*maskSkirtPoly)[j + num_i] = ndc;
+                (*patchPoly)[j + num_i] = ndc;
             }
 
             {
                 osg::Vec3d ndc( ((double)min_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
-                (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
+                (*patchPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
             }
         }
 
@@ -241,7 +242,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 
             //Crop the mask to the stitching poly (for case where mask crosses tile edge)
             osg::ref_ptr<Geometry> maskCrop;
-            maskPoly->crop(maskSkirtPoly.get(), maskCrop);
+            maskPoly->crop(patchPoly.get(), maskCrop);
 
             GeometryIterator i( maskCrop.get(), false );
             while( i.hasMore() )
@@ -264,8 +265,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             {
                 int zSet = 0;
 
-                //Look for verts that belong to the original mask skirt polygon
-                for (Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
+                //Look for verts that belong to the original mask patch polygon
+                for (Polygon::iterator mit = patchPoly->begin(); mit != patchPoly->end(); ++mit)
                 {
                     if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
                     {

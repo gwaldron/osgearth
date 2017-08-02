@@ -90,11 +90,11 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
     {
         if (_groundCover->configure(readOptions))
         {
-            OE_INFO << LC << "Configured land cover group \"" << _groundCover->getName() << "\"\n";
+            OE_DEBUG << LC << "Configured land cover group \"" << _groundCover->getName() << "\"\n";
         }
         else
         {
-            OE_WARN << LC << "Land cover group \"" << _groundCover->getName() << "\" is improperly configured\n";
+            OE_WARN << LC << "Land cover group is improperly configured\n";
             return false;
         }
     }

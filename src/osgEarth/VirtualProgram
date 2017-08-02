@@ -37,6 +37,10 @@
 #    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
 #    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
+#elif defined(OSG_GLES3_AVAILABLE)
+#    define GLSL_VERSION                 300
+#    define GLSL_VERSION_STR             "300 es"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
 #elif defined(OSG_GL3_AVAILABLE)
 #    define GLSL_VERSION                 330
 #    define GLSL_VERSION_STR             "330"
@@ -296,6 +300,12 @@ namespace osgEarth
         void setInheritShaders( bool value );
         bool getInheritShaders() const { return _inherit; }
 
+        /**
+        * Ability to add an extension to the VP
+        */
+        bool addGLSLExtension(const std::string& extension);
+        bool hasGLSLExtension(const std::string& extension) const;
+        bool removeGLSLExtension(const std::string& extension);
     public: 
         /**
          * Constructs a new VP
@@ -412,6 +422,7 @@ namespace osgEarth
 
         typedef unsigned                              ShaderID;
         typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
+        typedef std::set<std::string>                 ExtensionsSet;
         typedef std::map< std::string, std::string >  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias >            AttribAliasVector;
@@ -471,6 +482,8 @@ namespace osgEarth
         // holds a map of each named shader installed in this VP.
         // _dataModelMutex protects access to this member.
         ShaderMap _shaderMap;
+
+        ExtensionsSet _globalExtensions;
 
         // per-context cached shader map for thread-safe reuse without constant reallocation.
         struct ApplyVars

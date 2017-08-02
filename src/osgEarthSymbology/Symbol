@@ -45,6 +45,7 @@ namespace osgEarth { namespace Symbology
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const;   
+	virtual void mergeConfig(const Config& conf);
 
     public:
         /* methods required by osg::Object */
@@ -59,8 +60,6 @@ namespace osgEarth { namespace Symbology
         static bool match(const std::string& key, const char* pattern);
 
         Symbol( const Config& conf =Config() );
-
-        void mergeConfig(const Config& conf);
 
         virtual ~Symbol() { }
     };
@@ -140,10 +139,20 @@ namespace osgEarth { namespace Symbology
     };
 
 #define OSGEARTH_REGISTER_SYMBOL( CLASSNAME )\
+    extern "C" void osgearth_symbol_##CLASSNAME(void) {} \
     static osgEarth::Symbology::RegisterSymbolProxy<CLASSNAME> s_osgEarthRegisterSymbolProxy_##CLASSNAME;
+    
+#define USE_OSGEARTH_SYMBOL( CLASSNAME ) \
+    extern "C" void osgearth_symbol_##CLASSNAME(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_symbol_##CLASSNAME(osgearth_symbol_##CLASSNAME);
 
 #define OSGEARTH_REGISTER_SIMPLE_SYMBOL( KEY, CLASSNAME)\
+    extern "C" void osgearth_simple_symbol_##KEY(void) {} \
     static osgEarth::Symbology::RegisterSymbolProxy< osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME> > s_osgEarthRegisterSymbolProxy_##CLASSNAME##KEY(new osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME>(#KEY));
+    
+#define USE_OSGEARTH_SIMPLE_SYMBOL( KEY ) \
+    extern "C" void osgearth_simple_symbol_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_simple_symbol_##KEY(osgearth_simple_symbol_##KEY);
 
 
 } } // namespace osgEarth::Symbology

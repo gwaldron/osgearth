@@ -37,6 +37,7 @@ namespace
 
     const char* pickVertexEncode =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "#pragma vp_entryPoint oe_pick_encodeObjectID\n"
         "#pragma vp_location   vertex_clip\n"
@@ -61,6 +62,7 @@ namespace
 
     const char* pickFragment =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "#pragma vp_entryPoint oe_pick_renderEncodedObjectID\n"
         "#pragma vp_location   fragment_output\n"
@@ -177,14 +179,14 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // disable all the things that break ObjectID picking:
     osg::StateAttribute::GLModeValue disable = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
-    //rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
     rttSS->setMode(GL_CULL_FACE, disable );
     rttSS->setMode(GL_ALPHA_TEST, disable );
-	#if !(defined(OSG_GLES2_AVAILABLE) || defined(OSG_GL3_AVAILABLE) )
+
+#if !(defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE) || defined(OSG_GL3_AVAILABLE) )
     rttSS->setMode(GL_POINT_SMOOTH, disable );
-	#endif
     rttSS->setMode(GL_LINE_SMOOTH, disable );
+#endif
     
     // Disabling GL_BLEND is not enough, because osg::Text re-enables it
     // without regard for the OVERRIDE.

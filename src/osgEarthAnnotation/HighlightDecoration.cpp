@@ -39,6 +39,7 @@ namespace
 {
     const char* fragSource =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform vec4 oe_anno_highlight_color; \n"
         "void " FRAG_FUNCTION "(inout vec4 color) {\n"
         "    color.rgb = mix(color.rgb, oe_anno_highlight_color.rgb, oe_anno_highlight_color.a); \n"

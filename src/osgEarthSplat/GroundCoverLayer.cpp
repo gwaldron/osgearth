@@ -32,7 +32,7 @@
 #include <osg/Texture2D>
 #include <cstdlib> // getenv
 
-#define LC "[GroundCoverLayer] "
+#define LC "[GroundCoverLayer] " << getName() << ": "
 
 #define GCTEX_SAMPLER "oe_GroundCover_billboardTex"
 #define NOISE_SAMPLER "oe_GroundCover_noiseTex"
@@ -402,20 +402,7 @@ GroundCoverLayer::buildStateSets()
                 layerShader->setType(osg::Shader::GEOMETRY);
                 vp->setShader(layerShader);
 
-                OE_INFO << LC << "Adding ground cover \"" << groundCover->getName() << "\" to zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
-
-                //// Install the uniforms
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_windFactor", groundCover->options().wind().get()));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_noise", 1.0f));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_ao", 0.5f));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_exposure", 1.0f));
-
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_density", groundCover->options().density().get()));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_fill", groundCover->options().fill().get()));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_maxDistance", groundCover->options().maxDistance().get()));
-
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_brightness", groundCover->options().brightness().get()));
-                //zoneStateSet->addUniform(new osg::Uniform("oe_GroundCover_contrast", groundCover->options().contrast().get()));
+                OE_INFO << LC << "Established zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 
                 osg::Texture* tex = groundCover->createTexture();
 

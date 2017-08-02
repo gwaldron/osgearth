@@ -112,13 +112,6 @@ namespace
     // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
     struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        //NormalizeNoDataValues(TileSource* source)
-        //{
-        //    _noDataValue   = source->getNoDataValue();
-        //    _minValidValue = source->getMinValidValue();
-        //    _maxValidValue = source->getMaxValidValue();
-        //}
-
         NormalizeNoDataValues(TerrainLayer* layer)
         {
             _noDataValue   = layer->getNoDataValue();
@@ -134,8 +127,9 @@ namespace
                 for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
                 {
                     float& value = *i;
-                    if ( osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
+                    if ( osg::isNaN(value) || osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
                     {
+                        OE_DEBUG << "Replaced " << value << " with NO_DATA_VALUE" << std::endl;
                         value = NO_DATA_VALUE;
                     }
                 } 
@@ -222,12 +216,12 @@ ElevationLayer::isOffset() const
 TileSource::HeightFieldOperation*
 ElevationLayer::getOrCreatePreCacheOp()
 {
-    if ( !_preCacheOp.valid() && getTileSource() )
+    if ( !_preCacheOp.valid() )
     {
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_preCacheOp.valid() )
         {
-            _preCacheOp = new NormalizeNoDataValues(this); // getTileSource() );
+            _preCacheOp = new NormalizeNoDataValues(this);
         }
     }
     return _preCacheOp.get();

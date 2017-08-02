@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ColorFilter>
+#include <vector>
 
 namespace osgEarth
 {
@@ -68,6 +69,7 @@ namespace osgEarth
         virtual ShaderComp::StageMask createMains(
             const ShaderComp::FunctionLocationMap&    functions,
             const VirtualProgram::ShaderMap&          in_shaders,
+            const VirtualProgram::ExtensionsSet&      in_extensions,
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**
@@ -78,14 +80,6 @@ namespace osgEarth
         virtual osg::Shader* createColorFilterChainFragmentShader(
             const std::string&      functionName,
             const ColorFilterChain& chain ) const;
-
-        /**
-         * Gets a uniform corresponding to the given mode and value. These uniforms are 
-         * named in the form "oe_mode_MODE" (e.g., "oe_mode_GL_LIGHTING").
-         */
-        //virtual osg::Uniform* createUniformForGLMode(
-        //    osg::StateAttribute::GLMode      mode,
-        //    osg::StateAttribute::GLModeValue value ) const;
 
         /**
          * The name of the range uniform created by createRangeUniform().

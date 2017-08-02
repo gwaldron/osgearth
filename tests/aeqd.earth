@@ -19,5 +19,4 @@
         <url>http://readymap.org/readymap/tiles.1.0.0/116/</url>
     </elevation>
 
-    <xi:include href="annotations.xml"/>
 </map>

@@ -296,6 +296,7 @@ namespace osgEarth
         virtual void init();
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
 
     private:
         UID _uid;
@@ -319,6 +320,10 @@ namespace osgEarth
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
     extern "C" void osgdb_##NAME(void) {} \
     static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
+    
+#define USE_OSGEARTH_LAYER(NAME) \
+    extern "C" void osgdb_##NAME(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_##NAME);
 
 } // namespace osgEarth
 

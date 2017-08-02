@@ -22,6 +22,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/VirtualProgram>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -30,7 +31,7 @@
 
 #define LC "[ShaderFactory] "
 
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     static bool s_GLES_SHADERS = true;
 #else
     static bool s_GLES_SHADERS = false;
@@ -80,17 +81,28 @@ namespace
         std::string interp;      // interpolation qualifer (flat, etc.)
         std::string type;        // float, vec4, etc.
         std::string name;        // name without any array specifiers, etc.
+        std::string prec;        // precision qualifier if any
         std::string declaration; // name including array specifiers (for decl)
         int         arraySize;   // 0 if not an array; else array size.
     };
 
     typedef std::vector<Variable> Variables;
+
+	void addExtensionsToBuffer(std::ostream& buf, const VirtualProgram::ExtensionsSet& in_extensions)
+	{
+	   for (VirtualProgram::ExtensionsSet::const_iterator it = in_extensions.begin(); it != in_extensions.end(); ++it)
+	   {
+	      const std::string& extension = *it;
+	      buf << "#extension "<<extension<< " : enable \n";
+	   }
+	}
 }
 
 
 ShaderComp::StageMask
 ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                            const VirtualProgram::ShaderMap&          in_shaders,
+                           const VirtualProgram::ExtensionsSet&      in_extensions,
                            std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
     StageMask stages =
@@ -186,6 +198,11 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             {
                 v.interp = tokens[p++];
             }
+            
+            if ( tokens[p] == "lowp" || tokens[p] == "mediump" || tokens[p] == "highp" )
+            {
+                v.prec = tokens[p++];
+            }
 
             if ( p+1 < tokens.size() )
             {
@@ -252,7 +269,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
         buf << "VP_PerVertex { \n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << INDENT << i->interp << (i->interp.empty()?"":" ") << i->declaration << "; \n";
+            buf << INDENT << i->interp << (i->interp.empty()?"":" ") << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
         buf << "}";
         vertdata = buf.str();
     }
@@ -267,14 +284,16 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf <<
-            "#version " << vs_glsl_version << "\n"
+        buf << "#version " << vs_glsl_version << "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             "#pragma vp_name VP Vertex Shader Main\n"
-            "#extension GL_ARB_gpu_shader5 : enable \n";
+            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
+
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << "\n// Vertex stage globals:\n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
         
         buf << "\n// Vertex stage outputs:\n";
         if ( hasGS || hasTCS )
@@ -430,9 +449,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf << "#version " << tcs_glsl_version << "\n"
+            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n"
             // For gl_MaxPatchVertices
-            << "#extension GL_NV_gpu_shader5 : enable\n";
+            << (!s_GLES_SHADERS ? "#extension GL_NV_gpu_shader5 : enable\n" : "");
+
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -449,7 +471,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         // Stage globals.
         buf << "\n// TCS stage globals \n";
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << "; \n";
 
         // Helper functions:
         // TODO: move this into its own osg::Shader so it can be shared.
@@ -509,7 +531,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf << "#version " << tes_glsl_version << "\n"
+            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Tessellation Evaluation (TES) Shader MAIN\n";
+
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -712,7 +737,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf << "#version " << gs_glsl_version << "\n"
+            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Geometry Shader Main\n";
+
+        addExtensionsToBuffer(buf, in_extensions);
 
         buf << glMatrixUniforms << "\n";
 
@@ -902,8 +930,11 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf << "#version " << fs_glsl_version << "\n"
+            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
             << "#pragma vp_name VP Fragment Shader Main\n"
-            << "#extension GL_ARB_gpu_shader5 : enable \n";
+            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
+
+        addExtensionsToBuffer(buf, in_extensions);
 
         // no output stage? Use default output
         if (!outputStage)
@@ -920,7 +951,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // Declare stage globals.
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << ";\n";
+            buf << i->prec << (i->prec.empty()?"":" ") << i->declaration << ";\n";
 
         if ( coloringStage || lightingStage || outputStage )
         {
@@ -1015,8 +1046,7 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
 {
     std::stringstream buf;
     buf << 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n";
+        "#version " GLSL_VERSION_STR "\n" << GLSL_DEFAULT_PRECISION_FLOAT "\n";
 
     // write out the shader function prototypes:
     for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )

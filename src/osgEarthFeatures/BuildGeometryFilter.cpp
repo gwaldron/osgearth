@@ -312,10 +312,13 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             geode = new osg::Geode;
 
             // Create the texture for the geode.
-            osg::ref_ptr<osg::Texture> tex;
-            if (context.getSession()->getResourceCache()->getOrCreateLineTexture(imageURI, tex, context.getDBOptions()))
+            if (imageURI.empty() == false)
             {
-                geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
+                osg::ref_ptr<osg::Texture> tex;
+                if (context.getSession()->getResourceCache()->getOrCreateLineTexture(imageURI, tex, context.getDBOptions()))
+                {
+                    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
+                }
             }
             geodes[imageURI] = geode;
         }

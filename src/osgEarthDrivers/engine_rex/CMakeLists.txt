@@ -1,5 +1,5 @@
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology osgEarthUtil)
 
 set(TARGET_GLSL
     RexEngine.vert.glsl

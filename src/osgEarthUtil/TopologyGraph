@@ -1,0 +1,147 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2016 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_TOPOLOGY_GRAPH_H
+#define OSGEARTHUTIL_TOPOLOGY_GRAPH_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/SpatialReference>
+#include <osg/NodeVisitor>
+#include <osg/Vec3d>
+#include <osg/Geometry>
+#include <vector>
+#include <map>
+#include <set>
+
+namespace osgEarth { namespace Util
+{
+#define TOPOLOGY_TOLERANCE 0.0
+
+    //! Stores the noded topology of a model with unique verticies and edge definitions.
+    //! The verticies are stored rotated into the XY plane so that we can properly find
+    //! the "bottom-most" vert and walk the boundary.
+    class OSGEARTHUTIL_EXPORT TopologyGraph
+    {
+    public:
+
+        struct Vertex {
+            Vertex(const Vertex& rhs) : _drawable(rhs._drawable), _verts(rhs._verts), _index(rhs._index) { }
+            Vertex(osg::Drawable* drawable, osg::Vec3Array* verts, unsigned index) : _drawable(drawable), _verts(verts), _index(index) { }
+            osg::Drawable* _drawable;
+            osg::Vec3Array* _verts;
+            unsigned _index;
+            const osg::Vec3& vertex() const { return (*_verts)[_index]; }
+            float x() const { return (*_verts)[_index].x(); }
+            float y() const { return (*_verts)[_index].y(); }
+            bool operator < (const Vertex& rhs) const {
+                double dx = x() - rhs.x();
+                if (dx < 0.0) return true;
+                if (dx > 0.0) return false;
+                double dy = y() - rhs.y();
+                return dy < 0.0;
+            }
+        };
+
+        typedef std::set<Vertex> VertexSet;
+
+        typedef VertexSet::iterator Index;
+
+        // custom comparator for Index so we can use it at a std::map key
+        struct IndexLess : public std::less<Index> {
+            bool operator()(const Index& lhs, const Index& rhs) const {
+                return (*lhs) < (*rhs);
+            }
+        };
+
+        typedef std::set<Index, IndexLess> IndexSet;
+
+        typedef std::map<Index, IndexSet, IndexLess>  EdgeMap;
+
+        typedef std::vector<Index> IndexVector;
+
+    public:
+
+        TopologyGraph();
+
+        void createBoundary(IndexVector& output) const;
+
+    public:
+        unsigned     _totalVerts;  // total number of verts encountered
+        //VertexSet    _vertsWorld;  // 
+        VertexSet    _verts;       // set of unique verts in the topology (rotated into XY plane)
+        EdgeMap      _edgeMap;     // maps each vert to all the verts with which it shares an edge
+        Index        _minY;        // points to the vert with the minimum Y coordinate (in XY plane)
+        osg::Matrixd _world2plane; // matrix that transforms into a localized XY plane
+        const osgEarth::SpatialReference* _srs;
+
+        friend class TopologyBuilder;
+        friend class BuildTopologyVisitor;
+
+        void dumpBoundary(const std::string& filename);
+    };
+
+
+    // A TriangleIndexFunctor that traverses a stream of triangles and builds a
+    // topology graph from their points and edges.
+    class OSGEARTHUTIL_EXPORT TopologyBuilder
+    {
+    public:
+        TopologyBuilder();
+
+        typedef std::map<unsigned, TopologyGraph::Index> UniqueMap;
+
+        TopologyGraph*  _topology;     // topology to which to append point and edge data
+        osg::Drawable*  _drawable;     // source geometry
+        osg::Vec3Array* _verts;        // source vertex list
+        osg::Matrix     _local2world;  // transforms source verts into world coordinates
+        UniqueMap       _uniqueMap;    // prevents duplicates
+
+        void operator()( unsigned v0, unsigned v1, unsigned v2 );
+
+        TopologyGraph::Index add( unsigned v );
+
+        friend class TopologyBuilderVisitor;
+    };
+
+
+    // Visits a scene graph and builds a topology graph from the verts and edges
+    // found within.
+    class OSGEARTHUTIL_EXPORT BuildTopologyVisitor : public osg::NodeVisitor
+    {
+    public:
+        BuildTopologyVisitor( TopologyGraph& topology );
+
+        // track local transforms so we can build a topology in world coords
+        void apply( osg::Transform& xform );
+
+        // add the contents of a Geometry to the topology
+        void apply( osg::Drawable& drawable );
+
+        void apply( osg::Drawable* drawable, osg::Vec3Array* verts );
+
+        std::vector<osg::Matrixd> _matrixStack;
+        TopologyGraph&            _topology;
+    };
+
+} }
+
+#endif // OSGEARTHUTIL_TOPOLOGY_GRAPH_H

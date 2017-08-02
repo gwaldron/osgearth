@@ -141,6 +141,8 @@ _threadPoolSize(2u)
     {
 #ifdef WIN32
         _defaultFont = osgText::readFontFile("arial.ttf");
+#else
+        _defaultFont = osgText::Font::getDefaultFont();
 #endif
     }
     if ( _defaultFont.valid() )
@@ -482,7 +484,7 @@ Registry::initCapabilities()
         _caps = new Capabilities();
 }
 
-const ShaderFactory*
+ShaderFactory*
 Registry::getShaderFactory() const
 {
     return _shaderLib.get();

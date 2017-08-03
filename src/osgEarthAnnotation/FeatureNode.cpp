@@ -385,13 +385,13 @@ _clampDirty(false)
         Config geomconf = conf.child("geometry");
         geom = GeometryUtils::geometryFromWKT( geomconf.value() );
         if ( !geom.valid() )
-            OE_WARN << LC << "Config is missing required 'geometry' element" << std::endl;
+            OE_WARN << LC << "Config (" << conf.value("name") << ") is missing valid 'geometry' element" << std::endl;
     }
 
     osg::ref_ptr<const SpatialReference> srs;
     srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
     if ( !srs.valid() )
-        OE_WARN << LC << "Config is missing required 'srs' element" << std::endl;
+        OE_WARN << LC << "Config is missing valid 'srs' element" << std::endl;
 
     optional<GeoInterpolation> geoInterp;
 

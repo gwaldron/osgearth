@@ -914,6 +914,12 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                         << "unit=" << newBinding.unit() << "\n";
                 }
             }
+
+            // For an image layer, attach the default fragment shader:
+            Shaders shaders;
+            osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            shaders.load(vp, shaders.ENGINE_FRAG);
         }
 
         else
@@ -1099,7 +1105,7 @@ RexTerrainEngineNode::updateState()
             // Functions that affect the terrain surface only:
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
             package.load(surfaceVP, package.ENGINE_ELEVATION_MODEL);
-            package.load(surfaceVP, package.ENGINE_FRAG);
+            //package.load(surfaceVP, package.ENGINE_FRAG);
 
             // Elevation?
             if (this->elevationTexturesRequired())

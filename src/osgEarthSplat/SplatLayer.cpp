@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgUtil/CullVisitor>
+#include <osg/BlendFunc>
 #include <cstdlib> // getenv
 
 #define LC "[SplatLayer] " << getName() << ": "
@@ -346,6 +347,10 @@ SplatLayer::buildStateSets()
     stateset->setDefine("OE_USE_NORMAL_MAP");
 
     stateset->setDefine("OE_SPLAT_COVERAGE_TEXMAT", landCoverLayer->shareTexMatUniformName().get());
+    
+    //stateset->setAttributeAndModes(
+    //    new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO),
+    //    osg::StateAttribute::OVERRIDE);
 
     SplattingShaders splatting;
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

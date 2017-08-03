@@ -151,7 +151,7 @@ osgEarth Sample - Annotations
         <feature name="Draped Polygon">
             <srs>wgs84</srs>
             <geometry>
-                POLYGON((-100 47, -100 49, -95 48, -96 45 -98 42))
+                POLYGON((-100 47, -100 49, -95 48, -96 45, -98 42))
             </geometry>
             <style type="text/css">
                 fill:     #ffff007f;

@@ -110,6 +110,8 @@ _threadPoolSize(2u)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/jpg",                            "jpg" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/dds",                            "dds" );
+    // This is not correct, but some versions of readymap can return tif with one f instead of two.
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/tif",                            "tif" );
 
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );

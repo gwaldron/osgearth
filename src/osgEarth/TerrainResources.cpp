@@ -73,6 +73,8 @@ TerrainResources::reserveTextureImageUnit(int&         out_unit,
                                           const Layer* layer,
                                           const char*  requestor)
 {
+    OE_DEPRECATED(reserveTextureImageUnit, reserveTextureImageUnitForLayer) << std::endl;
+
     if (layer == 0L)
     {
         return reserveTextureImageUnit(out_unit, requestor);

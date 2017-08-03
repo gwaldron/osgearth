@@ -46,6 +46,7 @@ uniform float oe_splat_minSlope;
 // lookup table containing the coverage value => texture index mappings
 uniform samplerBuffer oe_splat_coverageLUT;
 
+uniform int oe_layer_order;
 
 //............................................................................
 // Get the slope of the terrain
@@ -323,8 +324,8 @@ void oe_splat_complex(inout vec4 color)
     vec4 texel = mix(texel0, texel1, lodBlend);
 
     color = mix(color, texel, texel.a);
-    //color.a = 1.0;
+    color.a = oe_layer_order > 0 ? texel.a : 1.0;
 
     // uncomment to visualize slope, noise, etc.
-    //color.rgba = vec4(env.noise.x,0,0,1);    
+    //color.rgba = vec4(env.noise.x,0,0,1);  
 }

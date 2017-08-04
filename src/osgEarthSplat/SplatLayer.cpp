@@ -225,13 +225,19 @@ SplatLayer::preCull(osgUtil::CullVisitor* cv) const
             zoneStateSet = surface->getStateSet();
         }
 
-        if (zoneStateSet == 0L)
+        if (zoneStateSet)
         {
-            OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
-            exit(-1);
+            cv->pushStateSet(zoneStateSet);
         }
-        
-        cv->pushStateSet(zoneStateSet);
+        else
+        {
+            //OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
+            //exit(-1);
+
+            // push a dummy SS so there's something to pop.
+            static osg::ref_ptr<osg::StateSet> dummy = new osg::StateSet();
+            cv->pushStateSet(dummy.get());
+        }
     }
     return true;
 }

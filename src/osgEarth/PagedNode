@@ -42,8 +42,31 @@ namespace osgEarth
 
         void setupPaging();
 
+		/**
+		* Gets the range factor
+		*/
+		float getRangeFactor() const;
+
+		/**
+		 * Sets the range factor
+		 */
+		void setRangeFactor(float rangeFactor);
+
+		/**
+		 * Gets whether this node's children are additive
+		 */
+		bool getAdditive() const;
+
+		/**
+		* Sets whether this node's children are additive
+		*/
+		void setAdditive(bool additive);
+
+	protected:
         osg::Group* _attachPoint;
         osg::PagedLOD* _plod;
+		float _rangeFactor;
+		bool _additive;
     };    
 }
 

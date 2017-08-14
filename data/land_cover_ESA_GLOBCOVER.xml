@@ -25,6 +25,6 @@ http://due.esrin.esa.int/page_globcover.php
     <mapping value="200" class="desert" desc="Bare areas"/>
     <mapping value="210" class="water" desc="Water bodies"/>
     <mapping value="220" class="tundra" desc="Permanent snow and ice"/>
-    <mapping value="230" class="water" desc="No data"/>
+    <mapping value="230" class="no-data" desc="No data"/>
     <mapping value="900" class="asphalt" desc="Paved roads"/>
 </land_cover_mappings>

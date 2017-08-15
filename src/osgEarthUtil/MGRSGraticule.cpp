@@ -252,7 +252,7 @@ namespace
             return node;
         }
 
-        Feature* _feature;
+        osg::ref_ptr<Feature> _feature;
         const Style* _style;
     };
 
@@ -654,17 +654,17 @@ MGRSGraticule::rebuild()
         osg::ref_ptr<FeatureCursor> gzd_cursor = gzd_fs->createFeatureCursor();
         while (gzd_cursor.valid() && gzd_cursor->hasMore())
         {
-            Feature* feature = gzd_cursor->nextFeature();
+            osg::ref_ptr<Feature> feature = gzd_cursor->nextFeature();
             std::string gzd = feature->getString("gzd");
             if (!gzd.empty())
             {
                 GZDGeom* geom = new GZDGeom(gzd);
-                geom->setupData(feature, options().gzdStyle().get(), table[gzd], options().sqidStyle().get(), _featureProfile.get(), map.get());
+                geom->setupData(feature.get(), options().gzdStyle().get(), table[gzd], options().sqidStyle().get(), _featureProfile.get(), map.get());
                 geom->setupPaging();
                 geomTop->addChild(geom);
 
                 GZDText* text = new GZDText(gzd, geom->getBound());
-                text->setupData(feature, options().gzdStyle().get(), table[gzd], options().sqidStyle().get());
+                text->setupData(feature.get(), options().gzdStyle().get(), table[gzd], options().sqidStyle().get());
                 text->setupPaging();
                 textTop->addChild(text);
             }

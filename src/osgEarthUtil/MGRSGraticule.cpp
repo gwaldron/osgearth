@@ -162,7 +162,8 @@ namespace
         void setupData(Feature* feature, const Style* style)
         {
             _feature = feature;
-            _style = style;
+            _style = *style;
+            _style.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x1111;
             setNode(build());
         }
 
@@ -182,25 +183,42 @@ namespace
             double y0 = _feature->getDouble("northing");
 
             osg::ref_ptr<MultiGeometry> grid = new MultiGeometry();
+
+            // south-north lines:
             for (double x=x0; x<=x0+100000.0; x += 10000.0)
             {
                 LineString* ls = new LineString();
                 ls->push_back(osg::Vec3d(x, y0, 0));
-                ls->push_back(osg::Vec3d(x, y0+10000.0, 0));
+                ls->push_back(osg::Vec3d(x, y0+100000.0, 0));
+                grid->getComponents().push_back(ls);
+            }
+            
+            // west-east lines:
+            for (double y=y0; y<=y0+100000.0; y+=10000.0)
+            {
+                LineString* ls = new LineString();
+                ls->push_back(osg::Vec3d(x0, y, 0));
+                ls->push_back(osg::Vec3d(x0+100000.0, y, 0));
                 grid->getComponents().push_back(ls);
             }
 
-            OE_INFO << utm->getName() << std::endl;
+            //OE_INFO << utm->getName() << std::endl;
             osg::ref_ptr<Feature> f = new Feature(grid.get(), utm);
             f->transform(_feature->getSRS());
 
+            osg::ref_ptr<Geometry> croppedGeom;
+            if (f->getGeometry()->crop(extent.bounds(), croppedGeom))
+            {
+                f->setGeometry(croppedGeom.get());
+            }
+
             GeometryCompilerOptions gco;
             gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
-            return new FeatureNode(f.get(), *_style, gco);
+            return new FeatureNode(f.get(), _style, gco);
         }
 
         Feature* _feature;
-        const Style* _style;
+        Style _style;
     };
 
 
@@ -212,22 +230,22 @@ namespace
             setName(name);
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(880);
-            setAdditive(false);
+            setAdditive(true);
         }
 
         void setupData(Feature* feature, const Style* style)
         {
             _feature = feature;
-            Style* s = new Style(*style);
-            s->getOrCreateSymbol<LineSymbol>()->stroke()->color().set(1,0,0,1);
-            _style = s; //style;
+            _style = *style;
+            _style.getOrCreate<LineSymbol>()->stroke()->color().set(1,1,0,1);
+            _style.getOrCreate<LineSymbol>()->stroke()->stipple().clear();
             setNode( build() );
         }
 
         osg::Node* loadChild()
         {
             Geom10km* child = new Geom10km();
-            child->setupData(_feature, _style);
+            child->setupData(_feature, &_style);
             child->setupPaging();
             return child;
         }
@@ -240,7 +258,7 @@ namespace
         osg::BoundingSphere getChildBound() const
         {
             osg::ref_ptr<Geom10km> child = new Geom10km();
-            child->setupData(_feature, _style);
+            child->setupData(_feature, &_style);
             return child->getBound();
         }
 
@@ -248,16 +266,16 @@ namespace
         {
             GeometryCompilerOptions gco;
             gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
-            FeatureNode* node = new FeatureNode(_feature, *_style, gco);
+            FeatureNode* node = new FeatureNode(_feature, _style, gco);
             return node;
         }
 
         osg::ref_ptr<Feature> _feature;
-        const Style* _style;
+        Style _style;
     };
 
 
-    //! All SQID 100km goemetry from a single URM cell combines into one geometry
+    //! All SQID 100km goemetry from a single UTM cell combines into one geometry
     struct SQID100kmGeomCombined : public PagedNode
     {
         SQID100kmGeomCombined(const std::string& name, const osg::BoundingSphere& bs)
@@ -806,7 +824,7 @@ MGRSGraticule::setUpDefaultStyles()
     if (!options().sqidStyle().isSet())
     {
         LineSymbol* line = options().sqidStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color(Color::White, 0.5f);
+        line->stroke()->color() = Color::Gray;
         line->stroke()->stipplePattern() = 0x1111;
 
         TextSymbol* text = options().sqidStyle()->getOrCreate<TextSymbol>();

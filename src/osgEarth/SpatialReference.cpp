@@ -357,10 +357,22 @@ SpatialReference::create( osg::CoordinateSystemNode* csn )
 }
 
 SpatialReference*
-SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
+SpatialReference::createFromHandle(void* ogrHandle)
 {
-    SpatialReference* srs = new SpatialReference( ogrHandle, xferOwnership );
-    return srs;
+    if (!ogrHandle)
+    {
+        OE_WARN << LC << "Illegal call to createFromHandle(NULL)" << std::endl;
+        return 0L;
+    }
+
+    void* clonedHandle = OSRClone(ogrHandle);
+    if (!clonedHandle)
+    {
+        OE_WARN << LC << "Internal error: createFromHandle() failed to clone" << std::endl;
+        return 0L;
+    }
+
+    return new SpatialReference(clonedHandle);
 }
 
 SpatialReference*
@@ -1159,6 +1171,10 @@ SpatialReference::transformXYPointArrays(double*  x,
     // Transform the X and Y values inside an exclusive GDAL/OGR lock
     GDAL_SCOPED_LOCK;
 
+    //OE_INFO << LC << "Attempt transfrom from \n"
+    //    << "    " << getHorizInitString() << "\n"
+    //    << " -> " << out_srs->getHorizInitString() << std::endl;
+
     void* xform_handle = NULL;
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
@@ -1179,6 +1195,10 @@ SpatialReference::transformXYPointArrays(double*  x,
             << "SRS xform not possible" << std::endl
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
+
+        OE_WARN << LC << "INPUT: " << getWKT() << std::endl
+            << "OUTPUT: " << out_srs->getWKT() << std::endl;
+
         return false;
     }
 

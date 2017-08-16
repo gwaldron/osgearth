@@ -59,7 +59,9 @@ namespace
     REGISTER_OSGPLUGIN(osgearth_pseudo_pagednode, PagedNodePseudoLoader);
 }
 
-PagedNode::PagedNode()
+PagedNode::PagedNode():
+	_rangeFactor(6.0f),
+	_additive(false)
 {
     _plod = new osg::PagedLOD;
     addChild(_plod);
@@ -67,6 +69,26 @@ PagedNode::PagedNode()
     _attachPoint = new osg::Group;
 
     _plod->addChild( _attachPoint );     
+}
+
+float PagedNode::getRangeFactor() const
+{
+	return _rangeFactor;
+}
+
+void PagedNode::setRangeFactor(float rangeFactor)
+{
+	_rangeFactor = rangeFactor;
+}
+
+bool PagedNode::getAdditive() const
+{
+	return _additive;
+}
+
+void PagedNode::setAdditive(bool additive)
+{
+	_additive = additive;
 }
 
 void PagedNode::build()
@@ -91,14 +113,11 @@ void PagedNode::setupPaging()
         osgDB::Options* options = new osgDB::Options();
         OptionsData<PagedNode>::set(options, "osgEarth.PagedNode", this);
         _plod->setDatabaseOptions( options );
+        
+		// Setup the min and max ranges.
+        float minRange = (float)(bs.radius() * _rangeFactor);        
 
-        double rangeFactor = 6.0;
-
-        // Setup the min and max ranges.
-        float minRange = (float)(bs.radius() * rangeFactor);
-        bool additive = false;
-
-        if (!additive)
+        if (!_additive)
         {
             // Replace mode, the parent is replaced by its children.
             _plod->setRange( 0, minRange, FLT_MAX );

@@ -25,14 +25,13 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
 	if (node)
 	{
-        PolygonSymbol* poly = 0L;
+        PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
 
 		Color color(Color::White);
 		std::string colorVal = getValue(node, "color");
 		if (!colorVal.empty())
 		{
 			color = Color(Stringify() << "#" << colorVal, Color::ABGR);
-            poly = style.getOrCreate<PolygonSymbol>();
             poly->fill()->color() = color;
 		}
 

@@ -238,7 +238,18 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     }
                     if ( featureNode )
                     {
-                        cx._groupStack.top()->addChild( featureNode );
+                        osg::Node* child = featureNode;
+
+                        // If this feature node is map-clamped, we most likely need a depth-offset
+                        // shader to prevent z-fighting with the terrain.
+                        if (alt && alt->clamping() == alt->CLAMP_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_MAP)
+                        {
+                            DepthOffsetGroup* g = new DepthOffsetGroup();
+                            g->addChild( featureNode );
+                            child = g;
+                        }
+                
+                        cx._groupStack.top()->addChild( child );
                         KML_Feature::build( node, cx, featureNode );
                     }
                 }

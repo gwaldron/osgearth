@@ -234,7 +234,7 @@ namespace
 
                 const Polygon* bestPoly = 0L;
 
-                for (unsigned int geomIndex = 0; geomIndex <= geom->getNumComponents(); geomIndex++)
+                for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
                     Geometry* component = geom->getComponents()[geomIndex];
                     Widths width = widths[geomIndex];

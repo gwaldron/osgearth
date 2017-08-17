@@ -93,6 +93,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual bool supports(const osg::PrimitiveIndexFunctor&) const { return true; }
         virtual void accept(osg::PrimitiveIndexFunctor&) const;
 
+    public:
+
+        // internal function for testing
+        void drawImplementation(osg::RenderInfo& ri) const { render(GL_TRIANGLES, ri); }
+
+        // convert to a "real" geometry object
+        osg::Geometry* makeOsgGeometry();
+
     protected:
 
         virtual ~SharedGeometry();

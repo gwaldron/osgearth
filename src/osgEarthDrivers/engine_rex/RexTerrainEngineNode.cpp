@@ -20,6 +20,7 @@
 #include "Shaders"
 #include "SelectionInfo"
 #include "TerrainCuller"
+#include "GeometryPool"
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -745,6 +746,44 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     return mt;
 }
 
+osg::Node*
+RexTerrainEngineNode::createTile(const TerrainTileModel* model)
+{
+    if (model == 0L)
+    {
+        OE_WARN << LC << "Illegal: createTile(NULL)" << std::endl;
+        return 0L;
+    }
+
+    // Mask generator creates geometry from masking boundaries when they exist.
+    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
+        model->getKey(), 
+        getEngineContext()->getOptions().tileSize().get(),
+        getEngineContext()->getMap());
+
+    osg::ref_ptr<SharedGeometry> sharedGeom;
+
+    getEngineContext()->getGeometryPool()->getPooledGeometry(
+        model->getKey(),
+        _mapFrame.getMapInfo(),
+        sharedGeom,
+        maskGenerator.get());
+
+    if (sharedGeom.valid() == false)
+        return 0L;
+    
+    // Establish a local reference frame for the tile:
+    GeoPoint centroid;
+    model->getKey().getExtent().getCentroid(centroid);
+
+    osg::Matrix local2world;
+    centroid.createLocalToWorld( local2world );
+
+    osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
+    xform->addChild(sharedGeom->makeOsgGeometry());
+
+    return xform;
+}
 
 osg::Node*
 RexTerrainEngineNode::createTile( const TileKey& key )

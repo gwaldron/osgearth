@@ -63,6 +63,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key);
+
+        // Create a standalone tile from a tile model (experimental)
+        osg::Node* createTile(const TerrainTileModel* model);
         
         // when incremental update is enabled, forces regeneration of tiles
         // in the given region.

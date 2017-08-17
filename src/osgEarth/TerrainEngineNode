@@ -292,6 +292,12 @@ namespace osgEarth
          */
         virtual osg::Node* createTile(const TileKey& key) =0;
 
+        /**
+         * Utility for creating standalone tile geometry from a tile model.
+         * Note: experimental.
+         */
+        virtual osg::Node* createTile(const TerrainTileModel* model) { return 0L; }
+
     private:
         friend struct TerrainEngineNodeCallbackProxy;
         friend struct MapNodeMapLayerController;

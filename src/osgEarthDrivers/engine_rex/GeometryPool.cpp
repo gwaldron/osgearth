@@ -820,3 +820,20 @@ void SharedGeometry::accept(osg::PrimitiveIndexFunctor& pif) const
     _drawElements->accept(pif);
 }
 
+osg::Geometry*
+SharedGeometry::makeOsgGeometry()
+{
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+    geom->setUseDisplayList(false);
+
+    geom->setVertexArray(getVertexArray());
+    geom->setNormalArray(getNormalArray());
+    geom->setTexCoordArray(0, getTexCoordArray());
+    if (getDrawElements())
+        geom->addPrimitiveSet(getDrawElements());
+    if (getMaskElements())
+        geom->addPrimitiveSet(getMaskElements());
+
+    return geom;
+}

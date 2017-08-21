@@ -3,6 +3,10 @@ osgEarth Sample - GLSL in the Earth File.
 -->
 
 <map>
+    <options>
+        <terrain driver="rex"></terrain>
+    </options>
+    
     <image driver="gdal" name="world-tiff">
         <url>../data/world.tif</url>
         <caching_policy usage="no_cache"/>

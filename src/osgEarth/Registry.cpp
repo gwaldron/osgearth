@@ -55,6 +55,9 @@ using namespace OpenThreads;
 #define LC "[Registry] "
 
 
+OpenThreads::ReentrantMutex Registry::_gdal_mutex;
+
+
 Registry::Registry() :
 osg::Referenced     ( true ),
 _gdal_registered    ( false ),
@@ -198,12 +201,6 @@ void
 Registry::destruct()
 {
     //nop
-}
-
-OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
-{
-    static OpenThreads::ReentrantMutex _gdal_mutex;
-    return _gdal_mutex;
 }
 
 const Profile*

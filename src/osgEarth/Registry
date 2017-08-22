@@ -34,7 +34,7 @@
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::getGDALMutex() )\
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::_gdal_mutex )\
 
 namespace osgText {
     class Font;
@@ -55,8 +55,6 @@ namespace osgEarth
 
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
-
-    extern OSGEARTH_EXPORT OpenThreads::ReentrantMutex& getGDALMutex();
 
     /**
      * Application-wide global repository.
@@ -276,6 +274,9 @@ namespace osgEarth
 
         //! Access to the general-purpose async operations queue
         osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
+
+        /** Global mutex for accessing GDAL */
+        static OpenThreads::ReentrantMutex _gdal_mutex;
 
     protected:
         virtual ~Registry();

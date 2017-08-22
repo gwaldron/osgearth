@@ -747,7 +747,9 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
 }
 
 osg::Node*
-RexTerrainEngineNode::createTile(const TerrainTileModel* model)
+RexTerrainEngineNode::createTile(const TerrainTileModel* model,
+                                 int flags,
+                                 unsigned referenceLOD)
 {
     if (model == 0L)
     {
@@ -755,34 +757,142 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model)
         return 0L;
     }
 
-    // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
-        model->getKey(), 
-        getEngineContext()->getOptions().tileSize().get(),
-        getEngineContext()->getMap());
+    // Dimension of each tile in vertices
+    unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
 
-    osg::ref_ptr<SharedGeometry> sharedGeom;
-
-    getEngineContext()->getGeometryPool()->getPooledGeometry(
-        model->getKey(),
-        _mapFrame.getMapInfo(),
-        sharedGeom,
-        maskGenerator.get());
-
-    if (sharedGeom.valid() == false)
-        return 0L;
+    optional<bool> hasMasks(false);
     
-    // Establish a local reference frame for the tile:
-    GeoPoint centroid;
-    model->getKey().getExtent().getCentroid(centroid);
+    // Trivial rejection test for masking geometry. Check at the top level and
+    // if there's not mask there, there's no mask at the reference LOD either.
+    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
+        model->getKey(),
+        tileSize,
+        getEngineContext()->getMap()
+    );
 
-    osg::Matrix local2world;
-    centroid.createLocalToWorld( local2world );
+    bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
+    bool includeTilesWithoutMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
+    
+    if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
+        return 0L;
 
-    osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
-    xform->addChild(sharedGeom->makeOsgGeometry());
+    // If the ref LOD is higher than the key LOD, build a list of tile keys at the 
+    // ref LOD that match up with the main tile key in the model.
+    std::vector<TileKey> keys;
+    if (referenceLOD > model->getKey().getLOD())
+    {
+        unsigned span = 1 << (referenceLOD - model->getKey().getLOD());
+        unsigned x0 = model->getKey().getTileX() * span;
+        unsigned y0 = model->getKey().getTileY() * span;
 
-    return xform;
+        keys.reserve(span*span);
+
+        for (unsigned x=x0; x<x0+span; ++x)
+        {
+            for (unsigned y=y0; y<y0+span; ++y)
+            {
+                keys.push_back(TileKey(referenceLOD, x, y, model->getKey().getProfile()));
+            }
+        }
+    }
+    else
+    {
+        // no reference LOD? Just use the model's key.
+        keys.push_back(model->getKey());
+    }
+
+    // group to hold all the tiles
+    osg::Group* group = new osg::Group();
+
+    maskGenerator = 0L;
+    
+    for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
+    {
+        // Mask generator creates geometry from masking boundaries when they exist.
+        maskGenerator = new MaskGenerator(
+            *key,
+            tileSize,
+            getEngineContext()->getMap());
+
+        if (maskGenerator->hasMasks() == true && includeTilesWithMasks == false)
+            continue;
+
+        if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
+            continue;
+
+        osg::ref_ptr<SharedGeometry> sharedGeom;
+
+        getEngineContext()->getGeometryPool()->getPooledGeometry(
+            *key,
+            _mapFrame.getMapInfo(),
+            tileSize,
+            maskGenerator.get(),
+            sharedGeom);
+
+        osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
+
+        if (sharedGeom.valid())
+        {
+            if (model->elevationModel().valid())
+            {
+                osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
+                drawable = geom.get();
+
+                // Clone the vertex array since it's shared and we're going to alter it
+                geom->setVertexArray(osg::clone(geom->getVertexArray()));
+
+                // Apply the elevation model to the verts, noting that the texture coordinate
+                // runs [0..1] across the tile and the normal is the up vector at each vertex.
+                osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+                osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+                osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
+
+                const osg::HeightField* hf = model->elevationModel()->getHeightField();
+                const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
+
+                // Tile coords must be transformed into the local tile's space
+                // for elevation grid lookup:
+                osg::Matrix scaleBias;
+                key->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+
+                // Apply elevation to each vertex.
+                for (unsigned i = 0; i < verts->size(); ++i)
+                {
+                    osg::Vec3& vert = (*verts)[i];
+                    osg::Vec3& up = (*ups)[i];
+                    osg::Vec3& tileCoord = (*tileCoords)[i];
+
+                    // Skip verts on a masking boundary since their elevations are hard-wired.
+                    if (tileCoord.z() != MASK_MARKER_BOUNDARY)
+                    {
+                        osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
+                        n = n * scaleBias;
+                        if (hfmatrix) n = n * (*hfmatrix);
+
+                        float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
+                        if (z != NO_DATA_VALUE)
+                        {
+                            vert += up*z;
+                        }
+                    }
+                }
+            }
+    
+            // Establish a local reference frame for the tile:
+            GeoPoint centroid;
+            key->getExtent().getCentroid(centroid);
+
+            osg::Matrix local2world;
+            centroid.createLocalToWorld(local2world);
+
+            osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
+            xform->addChild(drawable.get());
+
+            group->addChild(xform);
+        }
+    }
+
+    return group;
 }
 
 osg::Node*

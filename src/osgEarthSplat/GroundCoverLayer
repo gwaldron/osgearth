@@ -40,7 +40,7 @@ namespace osgEarth { namespace Splat
     using namespace osgEarth::Features;
 
     //! Serializable configuration for a GroundCoverLayer.
-    class OSGEARTHSPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
+    class OSGEARTH_SPLAT_EXPORT GroundCoverLayerOptions : public PatchLayerOptions
     {
     public:
         GroundCoverLayerOptions(const ConfigOptions& co = ConfigOptions()) :
@@ -91,7 +91,7 @@ namespace osgEarth { namespace Splat
 
     //! Layer that renders billboards on the ground using the GPU,
     //! like trees, grass, rocks, etc.
-    class OSGEARTHSPLAT_EXPORT GroundCoverLayer : public PatchLayer
+    class OSGEARTH_SPLAT_EXPORT GroundCoverLayer : public PatchLayer
     {
     public:
         META_Layer(osgEarthSplat, GroundCoverLayer, GroundCoverLayerOptions);

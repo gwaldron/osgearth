@@ -36,7 +36,7 @@ namespace osgEarth { namespace Splat
     /**
      * Configuration options for the land use tile source
      */
-    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
+    class OSGEARTH_SPLAT_EXPORT RoadSurfaceLayerOptions : public ImageLayerOptions    
     {
     public:
         RoadSurfaceLayerOptions(const ConfigOptions& options = ConfigOptions())
@@ -101,7 +101,7 @@ namespace osgEarth { namespace Splat
      * Tile source that will read from ANOTHER tile source and perform
      * various pre-processing syntheses operations like warping and detailing.
      */
-    class OSGEARTHSPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
+    class OSGEARTH_SPLAT_EXPORT RoadSurfaceLayer : public osgEarth::ImageLayer
     {
     public:
         META_Layer(osgEarth, RoadSurfaceLayer, RoadSurfaceLayerOptions);

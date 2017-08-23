@@ -43,7 +43,7 @@ namespace osgEarth { namespace Splat
     /**
      * Serializable options data for a Zone object
      */
-    class OSGEARTHSPLAT_EXPORT ZoneOptions : public ConfigOptions
+    class OSGEARTH_SPLAT_EXPORT ZoneOptions : public ConfigOptions
     {
     public:
         ZoneOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
@@ -84,7 +84,7 @@ namespace osgEarth { namespace Splat
      * A zone limits a particular surface or land cover layer to a set of
      * geographic boundaries.
      */
-    class OSGEARTHSPLAT_EXPORT Zone : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT Zone : public osg::Referenced
     {
     public:
         struct Boundary
@@ -146,7 +146,7 @@ namespace osgEarth { namespace Splat
      * Cull callback that will select the most appropriate Zone based on the camera position
      * Internal - no export
      */
-    class OSGEARTHSPLAT_EXPORT ZoneSwitcher : public osg::NodeCallback
+    class OSGEARTH_SPLAT_EXPORT ZoneSwitcher : public osg::NodeCallback
     {
     public:
         ZoneSwitcher(const Zones& zones) : _zones(zones) { }

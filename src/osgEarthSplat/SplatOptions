@@ -32,7 +32,7 @@ namespace osgEarth { namespace Splat
     /**
      * Options governing the classification splatting engine.
      */
-    class OSGEARTHSPLAT_EXPORT SplatOptions : public DriverConfigOptions
+    class OSGEARTH_SPLAT_EXPORT SplatOptions : public DriverConfigOptions
     {
     public:
         /** Classification coverage options */

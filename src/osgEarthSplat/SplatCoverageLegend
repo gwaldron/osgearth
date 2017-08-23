@@ -31,7 +31,7 @@ namespace osgEarth { namespace Splat
      * of a splat class.
      */
     template<typename T>
-    class OSGEARTHSPLAT_EXPORT CoverageValuePredicateT : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT CoverageValuePredicateT : public osg::Referenced
     {
     public:
         optional<T> _exactValue;
@@ -63,7 +63,7 @@ namespace osgEarth { namespace Splat
      * Legend that maps coverage values (or value predicates) to splat
      * catalog classes.
      */
-    class OSGEARTHSPLAT_EXPORT SplatCoverageLegend : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT SplatCoverageLegend : public osg::Referenced
     {
     public:
         SplatCoverageLegend();

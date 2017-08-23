@@ -41,7 +41,7 @@ namespace osgEarth { namespace Splat
     using namespace osgEarth::Features;
     
     //! Options to configure a splat layer.
-    class OSGEARTHSPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
+    class OSGEARTH_SPLAT_EXPORT SplatLayerOptions : public VisibleLayerOptions
     {
     public:
         SplatLayerOptions(const ConfigOptions& co = ConfigOptions()) :
@@ -75,7 +75,7 @@ namespace osgEarth { namespace Splat
 
     //! Layer that renders geotypical textures on the terrain based on
     //! classification data ("texture splatting").
-    class OSGEARTHSPLAT_EXPORT SplatLayer : public VisibleLayer
+    class OSGEARTH_SPLAT_EXPORT SplatLayer : public VisibleLayer
     {
     public:
         META_Layer(osgEarthSplat, SplatLayer, SplatLayerOptions);

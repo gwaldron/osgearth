@@ -44,7 +44,7 @@ namespace osgEarth { namespace Splat
     class SplatCoverageLegend;
 
 
-    class OSGEARTHSPLAT_EXPORT GroundCoverBiomeOptions : public ConfigOptions
+    class OSGEARTH_SPLAT_EXPORT GroundCoverBiomeOptions : public ConfigOptions
     {
     public:
         GroundCoverBiomeOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
@@ -75,7 +75,7 @@ namespace osgEarth { namespace Splat
     typedef std::vector<GroundCoverBiomeOptions> GroundCoverBiomeOptionsVector;
 
 
-    class OSGEARTHSPLAT_EXPORT GroundCoverOptions : public ConfigOptions
+    class OSGEARTH_SPLAT_EXPORT GroundCoverOptions : public ConfigOptions
     {
     public:
         GroundCoverOptions(const ConfigOptions& conf = ConfigOptions());
@@ -140,7 +140,7 @@ namespace osgEarth { namespace Splat
     };
 
 
-    class OSGEARTHSPLAT_EXPORT GroundCoverBillboard
+    class OSGEARTH_SPLAT_EXPORT GroundCoverBillboard
     {
     public:
         GroundCoverBillboard(osg::Image* image, float width, float height)
@@ -154,7 +154,7 @@ namespace osgEarth { namespace Splat
     typedef std::vector<GroundCoverBillboard> GroundCoverBillboards;
 
 
-    class OSGEARTHSPLAT_EXPORT GroundCoverBiome : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT GroundCoverBiome : public osg::Referenced
     {
     public:
         GroundCoverBiome() : _code(0) { }
@@ -184,7 +184,7 @@ namespace osgEarth { namespace Splat
     /**
      * Interface for controlling ground cover appearance.
      */
-    class OSGEARTHSPLAT_EXPORT GroundCover : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT GroundCover : public osg::Referenced
     {
     public:
         GroundCover(const GroundCoverOptions& options);

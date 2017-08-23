@@ -44,12 +44,12 @@
     #  if defined( OSGEARTHSPLAT_LIBRARY_STATIC )
     #    define OSGEARTH_SPLAT_EXPORT
     #  elif defined( OSGEARTHSPLAT_LIBRARY )
-    #    define OSGEARTHSPLAT_EXPORT   __declspec(dllexport)
+    #    define OSGEARTH_SPLAT_EXPORT   __declspec(dllexport)
     #  else
-    #    define OSGEARTHSPLAT_EXPORT   __declspec(dllimport)
+    #    define OSGEARTH_SPLAT_EXPORT   __declspec(dllimport)
     #  endif
 #else
-    #  define OSGEARTHSPLAT_EXPORT
+    #  define OSGEARTH_SPLAT_EXPORT
 #endif  
 
 // set up define for whether member templates are supported by VisualStudio compilers.

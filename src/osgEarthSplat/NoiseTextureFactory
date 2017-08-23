@@ -26,7 +26,7 @@ namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
     
-    class OSGEARTHSPLAT_EXPORT NoiseTextureFactory
+    class OSGEARTH_SPLAT_EXPORT NoiseTextureFactory
     {
     public:
         NoiseTextureFactory() { }

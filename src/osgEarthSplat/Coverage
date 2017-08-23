@@ -81,7 +81,7 @@ namespace osgEarth { namespace Splat
      * Coverage data model. This defines the coverage layer and an associated legend that is
      * used to interpret the coverage code values in the raster.
      */
-    class OSGEARTHSPLAT_EXPORT Coverage : public osg::Referenced
+    class OSGEARTH_SPLAT_EXPORT Coverage : public osg::Referenced
     {
     public:
         /** Construct the coverage data */

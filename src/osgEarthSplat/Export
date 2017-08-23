@@ -42,7 +42,7 @@
 
 #if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
     #  if defined( OSGEARTHSPLAT_LIBRARY_STATIC )
-    #    define OSGEARTH_SPLAT_EXPORT
+    #    define OSGEARTHSPLAT_EXPORT
     #  elif defined( OSGEARTHSPLAT_LIBRARY )
     #    define OSGEARTHSPLAT_EXPORT   __declspec(dllexport)
     #  else

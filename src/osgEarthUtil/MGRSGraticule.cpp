@@ -54,11 +54,9 @@ using namespace osgEarth::Annotation;
 
 #define MGRS_GRATICULE_PSEUDOLOADER_EXTENSION "osgearthutil_mgrs_graticule"
 
-
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 
 //---------------------------------------------------------------------------
-
 
 MGRSGraticule::MGRSGraticule() :
 VisibleLayer(&_optionsConcrete),
@@ -149,83 +147,206 @@ namespace
         }
     }
 
-    
-    struct Geom10km : public PagedNode
+
+    struct GeomCell : public PagedNode
     {
-        Geom10km()
+        double _size;        
+        osg::ref_ptr<Feature> _feature;
+        Style _style;
+        bool _hasChild;
+        const MGRSGraticuleOptions* _options;
+    
+        GeomCell(double size);
+        void setupData(Feature* feature, const MGRSGraticuleOptions* options);
+        osg::Node* loadChild();
+        bool hasChild() const;
+        osg::BoundingSphere getChildBound() const;
+        osg::Node* build();
+    };
+
+
+    struct GeomGrid : public PagedNode
+    {
+        double _size;
+        const MGRSGraticuleOptions* _options;
+        osg::ref_ptr<Feature> _feature;
+        Style _style;
+        GeoExtent _extent;
+        osg::ref_ptr<const SpatialReference> _utm;
+
+        GeomGrid(double size)
         {
+            _size = size;
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
-            setRange(880);
+            setRange(1600);
             setAdditive(false);
         }
 
-        void setupData(Feature* feature, const Style* style)
+        void setupData(Feature* feature, const MGRSGraticuleOptions* options)
         {
             _feature = feature;
-            _style = *style;
-            _style.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x1111;
+            _options = options;
+            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(_size*0.1);
+            if (i != options->styleMap()->end())
+                _style = i->second;
             setNode(build());
+        }
+
+        osg::Node* loadChild()
+        {
+            osg::Group* group = new osg::Group();
+
+            double x0 = _feature->getDouble("easting");
+            double y0 = _feature->getDouble("northing");
+            double interval = _size * 0.1;
+
+            for (double x = x0; x < x0 + _size; x += interval)
+            {
+                for (double y = y0; y < y0 + _size; y += interval)
+                {
+                    osg::ref_ptr<Polygon> polygon = new Polygon();
+                    polygon->push_back(x, y);
+                    polygon->push_back(x+interval, y);
+                    polygon->push_back(x+interval, y+interval);
+                    polygon->push_back(x, y+interval);
+
+                    osg::ref_ptr<Feature> f = new Feature(polygon.get(), _utm.get());
+                    f->transform(_feature->getSRS());
+
+                    osg::ref_ptr<Geometry> croppedGeom;
+                    if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
+                    {
+                        f->setGeometry(croppedGeom.get());
+                        f->set("easting", x);
+                        f->set("northing", y);
+                        GeomCell* child = new GeomCell(interval);
+                        child->setupData(f.get(), _options);
+                        child->setupPaging();
+                        group->addChild(child);
+                    }                 
+                }
+            }
+            
+            return group;
+        }
+
+        osg::BoundingSphere getChildBound() const
+        {
+            return getChild(0)->getBound();
         }
 
         bool hasChild() const 
         {
-            return false;
+            return true;
         }
 
         osg::Node* build()
         {
-            GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
+            _extent = GeoExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
             double lon, lat;
-            extent.getCentroid(lon, lat);
-            osg::ref_ptr<const SpatialReference> utm = _feature->getSRS()->createUTMFromLonLat(lon, lat);
+            _extent.getCentroid(lon, lat);
+            _utm = _feature->getSRS()->createUTMFromLonLat(lon, lat);
 
             double x0 = _feature->getDouble("easting");
             double y0 = _feature->getDouble("northing");
 
+            double interval = _size * 0.1;
+
             osg::ref_ptr<MultiGeometry> grid = new MultiGeometry();
 
             // south-north lines:
-            for (double x=x0; x<=x0+100000.0; x += 10000.0)
+            for (double x=x0; x<=x0+_size; x += interval)
             {
                 LineString* ls = new LineString();
                 ls->push_back(osg::Vec3d(x, y0, 0));
-                ls->push_back(osg::Vec3d(x, y0+100000.0, 0));
+                ls->push_back(osg::Vec3d(x, y0+_size, 0));
                 grid->getComponents().push_back(ls);
             }
             
             // west-east lines:
-            for (double y=y0; y<=y0+100000.0; y+=10000.0)
+            for (double y=y0; y<=y0+_size; y+=interval)
             {
                 LineString* ls = new LineString();
                 ls->push_back(osg::Vec3d(x0, y, 0));
-                ls->push_back(osg::Vec3d(x0+100000.0, y, 0));
+                ls->push_back(osg::Vec3d(x0+_size, y, 0));
                 grid->getComponents().push_back(ls);
             }
 
-            //OE_INFO << utm->getName() << std::endl;
-            osg::ref_ptr<Feature> f = new Feature(grid.get(), utm);
+            osg::ref_ptr<Feature> f = new Feature(grid.get(), _utm.get());
             f->transform(_feature->getSRS());
 
             osg::ref_ptr<Geometry> croppedGeom;
-            if (f->getGeometry()->crop(extent.bounds(), croppedGeom))
+            if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
             {
                 f->setGeometry(croppedGeom.get());
             }
 
             GeometryCompilerOptions gco;
             gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
-            return new FeatureNode(f.get(), _style, gco);
+            FeatureNode* node = new FeatureNode(f.get(), _style, gco);
+            
+            return node;
         }
-
-        Feature* _feature;
-        Style _style;
     };
+    
+
+
+    GeomCell::GeomCell(double size) : _size(size)
+    {
+        setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+        setRange(880);
+        setAdditive(true);
+    }
+
+    void GeomCell::setupData(Feature* feature, const MGRSGraticuleOptions* options)
+    {
+        _feature = feature;
+        _options = options;
+        _hasChild = _size > options->maxResolution().get();
+        const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(_size);
+        if (i != options->styleMap()->end())
+            _style = i->second;
+        setNode( build() );
+    }
+
+    osg::Node* GeomCell::loadChild()
+    {
+        GeomGrid* child = new GeomGrid(_size);
+        child->setupData(_feature.get(), _options);
+        child->setupPaging();
+        return child;
+    }
+
+    bool GeomCell::hasChild() const
+    {
+        return _hasChild;
+    }
+
+    osg::BoundingSphere GeomCell::getChildBound() const
+    {
+        //osg::ref_ptr<Geom1kmGrid> child = new Geom1kmGrid();
+        osg::ref_ptr<GeomGrid> child = new GeomGrid(_size);
+        child->setupData(_feature, _options);
+        return child->getBound();
+    }
+
+    osg::Node* GeomCell::build()
+    {
+        GeometryCompilerOptions gco;
+        gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+        FeatureNode* node = new FeatureNode(_feature.get(), _style, gco);
+        return node;
+    }
 
 
     //! Geometry for a single SQID 100km cell and its children
-    struct SQID100kmGeom : public PagedNode
+    struct SQID100kmCell : public PagedNode
     {
-        SQID100kmGeom(const std::string& name)
+        osg::ref_ptr<Feature> _feature;
+        const MGRSGraticuleOptions* _options;
+        Style _style;
+
+        SQID100kmCell(const std::string& name)
         {
             setName(name);
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
@@ -233,19 +354,20 @@ namespace
             setAdditive(true);
         }
 
-        void setupData(Feature* feature, const Style* style)
+        void setupData(Feature* feature, const MGRSGraticuleOptions* options)
         {
             _feature = feature;
-            _style = *style;
-            _style.getOrCreate<LineSymbol>()->stroke()->color().set(1,1,0,1);
-            _style.getOrCreate<LineSymbol>()->stroke()->stipple().clear();
+            _options = options;
+            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(100000.0);
+            if (i != options->styleMap()->end())
+                _style = i->second;
             setNode( build() );
         }
 
         osg::Node* loadChild()
         {
-            Geom10km* child = new Geom10km();
-            child->setupData(_feature, &_style);
+            GeomGrid* child = new GeomGrid(100000.0);
+            child->setupData(_feature, _options);
             child->setupPaging();
             return child;
         }
@@ -257,8 +379,10 @@ namespace
 
         osg::BoundingSphere getChildBound() const
         {
-            osg::ref_ptr<Geom10km> child = new Geom10km();
-            child->setupData(_feature, &_style);
+            GeomGrid* child = new GeomGrid(100000.0);
+            child->setupData(_feature.get(), _options);
+            //osg::ref_ptr<Geom10kmGrid> child = new Geom10kmGrid();
+            //child->setupData(_feature, &_style);
             return child->getBound();
         }
 
@@ -269,16 +393,18 @@ namespace
             FeatureNode* node = new FeatureNode(_feature, _style, gco);
             return node;
         }
-
-        osg::ref_ptr<Feature> _feature;
-        Style _style;
     };
 
 
-    //! All SQID 100km goemetry from a single UTM cell combines into one geometry
-    struct SQID100kmGeomCombined : public PagedNode
+    //! All SQID 100km goemetry from a single UTM GZD cell combined into one geometry
+    struct SQID100kmGrid : public PagedNode
     {
-        SQID100kmGeomCombined(const std::string& name, const osg::BoundingSphere& bs)
+        osg::BoundingSphere _bs;
+        FeatureList _sqidFeatures;
+        Style _style;
+        const MGRSGraticuleOptions* _options;
+
+        SQID100kmGrid(const std::string& name, const osg::BoundingSphere& bs)
         {
             setName(name);
             _bs = bs;
@@ -287,10 +413,13 @@ namespace
             setRange(3200);
         }
 
-        void setupData(const FeatureList& sqidFeatures, const Style* sqidStyle)
+        void setupData(const FeatureList& sqidFeatures, const MGRSGraticuleOptions* options)
         {
             _sqidFeatures = sqidFeatures;
-            _sqidStyle = sqidStyle;
+            _options = options;
+            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(100000.0);
+            if (i != options->styleMap()->end())
+                _style = i->second;
             setNode(build());
         }
 
@@ -301,8 +430,8 @@ namespace
             for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
             {
                 Feature* feature = f->get();
-                SQID100kmGeom* geom = new SQID100kmGeom(getName());
-                geom->setupData(feature, _sqidStyle);
+                SQID100kmCell* geom = new SQID100kmCell(getName());
+                geom->setupData(feature, _options);
                 geom->setupPaging();
                 group->addChild(geom);                
             }
@@ -319,24 +448,16 @@ namespace
         {
             GeometryCompilerOptions gco;
             gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
-            
-            // remove the text since we'll make text elsewhere
-            Style style = *_sqidStyle;
-            style.remove<TextSymbol>();
-
-            return new FeatureNode(0L, _sqidFeatures, style, gco);
+            return new FeatureNode(0L, _sqidFeatures, _style, gco);
         }
-
-        osg::BoundingSphere _bs;
-        FeatureList _sqidFeatures;
-        const Style* _sqidStyle;
     };
 
 
     struct GZDGeom : public PagedNode
     {
-        const Style* _sqidStyle;
-        FeatureList  _sqidFeatures;
+        Style _sqidStyle;
+        FeatureList _sqidFeatures;
+        const MGRSGraticuleOptions* _options;
 
         GZDGeom(const std::string& name)
         {
@@ -348,25 +469,10 @@ namespace
 
         osg::Node* loadChild()
         {
-#if 0
-            osg::Group* group = new osg::Group();
-
-            for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
-            {
-                Feature* feature = f->get();
-                SQID100kmGeom* geom = new SQID100kmGeom(getName());
-                geom->setupData(feature, _sqidStyle);
-                geom->setupPaging();
-                group->addChild(geom);                
-            }
-
-            return group;
-#else
-            SQID100kmGeomCombined* child = new SQID100kmGeomCombined(getName(), getBound());
-            child->setupData(_sqidFeatures, _sqidStyle);
+            SQID100kmGrid* child = new SQID100kmGrid(getName(), getBound());
+            child->setupData(_sqidFeatures, _options);
             child->setupPaging();
             return child;
-#endif
         }
 
         osg::BoundingSphere getChildBound() const
@@ -374,22 +480,24 @@ namespace
             return getChild(0)->getBound();
         }
 
-        void setupData(const Feature* gzdFeature, const Style& gzdStyle,
-                       const FeatureList& sqidFeatures, const Style& sqidStyle,
-                       const FeatureProfile* prof, const Map* map)
+        void setupData(const Feature* gzdFeature,
+                       const FeatureList& sqidFeatures, 
+                       const MGRSGraticuleOptions* options,
+                       const FeatureProfile* prof, 
+                       const Map* map)
         {
-            setNode(build(gzdFeature, gzdStyle, prof, map));
+            _options = options;
+            setNode(build(gzdFeature, prof, map));
             _sqidFeatures = sqidFeatures;
-            _sqidStyle = &sqidStyle;
         }
 
-        osg::Node* build(const Feature* f, const Style& style, const FeatureProfile* prof, const Map* map)
+        osg::Node* build(const Feature* f, const FeatureProfile* prof, const Map* map)
         {
             osg::Group* group = new osg::Group();
 
             Style lineStyle;
-            lineStyle.add( const_cast<LineSymbol*>(style.get<LineSymbol>()) );
-            lineStyle.add( const_cast<AltitudeSymbol*>(style.get<AltitudeSymbol>()) );
+            lineStyle.add( const_cast<LineSymbol*>(_options->gzdStyle()->get<LineSymbol>()) );
+            lineStyle.add( const_cast<AltitudeSymbol*>(_options->gzdStyle()->get<AltitudeSymbol>()) );
             
             GeoExtent extent(f->getSRS(), f->getGeometry()->getBounds());
 
@@ -451,7 +559,7 @@ namespace
 
     struct GZDText : public PagedNode
     {
-        const Style* _sqidStyle;
+        const MGRSGraticuleOptions* _options;
         FeatureList  _sqidFeatures;
         osg::BoundingSphere _bs;
 
@@ -466,7 +574,7 @@ namespace
 
         bool hasChild() const
         {
-            return _sqidStyle->has<TextSymbol>();
+            return _options->sqidStyle()->has<TextSymbol>();
         }
 
         osg::Node* loadChild()
@@ -479,16 +587,17 @@ namespace
             return _bs;
         }
 
-        void setupData(const Feature* gzdFeature, const Style& gzdStyle,
-                       const FeatureList& sqidFeatures, const Style& sqidStyle)
+        void setupData(const Feature* gzdFeature, const FeatureList& sqidFeatures, const MGRSGraticuleOptions* options)
         {
-            setNode(buildGZD(gzdFeature, gzdStyle));
+            _options = options;
+            setNode(buildGZD(gzdFeature));
             _sqidFeatures = sqidFeatures;
-            _sqidStyle = &sqidStyle;
         }
 
-        osg::Node* buildGZD(const Feature* f, const Style& style)
+        osg::Node* buildGZD(const Feature* f)
         {
+            const Style& style = _options->gzdStyle().get();
+
             if (style.has<TextSymbol>() == false)
                 return 0L;
 
@@ -524,7 +633,8 @@ namespace
 
         osg::Node* buildSQID()
         {
-            const TextSymbol* textSymPrototype = _sqidStyle->get<TextSymbol>();
+            const Style& style = _options->sqidStyle().get();
+            const TextSymbol* textSymPrototype = style.get<TextSymbol>();
             osg::ref_ptr<TextSymbol> textSym = textSymPrototype ? new TextSymbol(*textSymPrototype) : new TextSymbol();
 
             if (textSym->size().isSet() == false)
@@ -677,12 +787,12 @@ MGRSGraticule::rebuild()
             if (!gzd.empty())
             {
                 GZDGeom* geom = new GZDGeom(gzd);
-                geom->setupData(feature.get(), options().gzdStyle().get(), table[gzd], options().sqidStyle().get(), _featureProfile.get(), map.get());
+                geom->setupData(feature.get(), table[gzd], &options(), _featureProfile.get(), map.get());
                 geom->setupPaging();
                 geomTop->addChild(geom);
 
                 GZDText* text = new GZDText(gzd, geom->getBound());
-                text->setupData(feature.get(), options().gzdStyle().get(), table[gzd], options().sqidStyle().get());
+                text->setupData(feature.get(), table[gzd], &options());
                 text->setupPaging();
                 textTop->addChild(text);
             }
@@ -808,17 +918,19 @@ MGRSGraticule::buildGZDGeomTile(const std::string& name, const Feature* f, const
 void
 MGRSGraticule::setUpDefaultStyles()
 {
+    float alpha = 0.35f;
+
     if (!options().gzdStyle().isSet())
     {
         LineSymbol* line = options().gzdStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::Gray;
-        line->stroke()->width() = 1.0;
+        line->stroke()->color().set(1,0,0,0.25); // = Color::Gray;
+        line->stroke()->width() = 4.0;
         line->tessellation() = 20;
 
         TextSymbol* text = options().gzdStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color(Color::White, 0.3f);
-        text->halo()->color() = Color(Color::Black, 0.2f);
-        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+        text->fill()->color() = Color::Gray;
+        text->halo()->color() = Color::Black;
+        text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM; //CENTER_CENTER;
     }
 
     if (!options().sqidStyle().isSet())
@@ -828,9 +940,56 @@ MGRSGraticule::setUpDefaultStyles()
         line->stroke()->stipplePattern() = 0x1111;
 
         TextSymbol* text = options().sqidStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color(Color::White, 0.3f);
-        text->halo()->color() = Color(Color::Black, 0.1f);
-        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+        text->fill()->color() = Color::Gray;
+        text->halo()->color() = Color::Black;
+        text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM; //CENTER_CENTER;
+    }
+
+    if (!options().styleMap().isSet())
+    {
+        MGRSGraticuleOptions::StyleMap& styles = options().styleMap().mutable_value();
+        // SQID 100km
+        {
+            Style& style = styles[100000];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(1,1,0,alpha);
+            line->stroke()->width() = 3;
+        }
+        // 10km
+        {
+            Style& style = styles[10000];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(0,1,0,alpha);
+            line->stroke()->width() = 2;
+        }
+        // 1km
+        {
+            Style& style = styles[1000];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(.5,.5,1,alpha);
+            line->stroke()->width() = 2;
+        }
+        // 100m
+        {
+            Style& style = styles[100];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(1,1,1,alpha);
+            line->stroke()->width() = 1;
+        }
+        // 10m
+        {
+            Style& style = styles[10];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(1,1,1,alpha);
+            line->stroke()->width() = 1;
+        }
+        // 1m
+        {
+            Style& style = styles[1];
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(1,1,1,alpha);
+            line->stroke()->width() = 0.5;
+        }
     }
 }
 

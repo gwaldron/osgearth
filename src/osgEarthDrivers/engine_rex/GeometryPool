@@ -101,6 +101,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // convert to a "real" geometry object
         osg::Geometry* makeOsgGeometry();
 
+        // whether this geometry contains anything
+        bool empty() const;
+
     protected:
 
         virtual ~SharedGeometry();

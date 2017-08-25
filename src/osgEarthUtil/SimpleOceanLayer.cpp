@@ -190,7 +190,7 @@ void
 SimpleOceanLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
 {
     // Force the max Z to be at least sea level, to satisfy the culling pass
-    box.zMax() = std::max(box.zMax(), 0.0f);
+    box.zMax() = std::max(box.zMax(), (osg::BoundingBox::value_type)0.0);
 }
 
 Config

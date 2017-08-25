@@ -292,11 +292,27 @@ namespace osgEarth
          */
         virtual osg::Node* createTile(const TileKey& key) =0;
 
+        //! Flags that affect the createTile behavior.
+        enum CreateTileFlags
+        {
+            CREATE_TILE_INCLUDE_TILES_WITH_MASKS     = 1,
+            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS  = 2,
+            CREATE_TILE_DEFAULT_FLAGS                = ~0 /* all */
+        };
+
         /**
          * Utility for creating standalone tile geometry from a tile model.
          * Note: experimental.
+         * @param model Tile model for which to build a tile
+         * @param flags OR of the CreateTileFlags enums
+         * @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
+         *        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
+         *        Specific a referenceLOD=16, tile will be 33x33.
          */
-        virtual osg::Node* createTile(const TerrainTileModel* model) { return 0L; }
+        virtual osg::Node* createTile(
+            const TerrainTileModel* model,
+            int createTileFlags =CREATE_TILE_DEFAULT_FLAGS,
+            unsigned referenceLOD =0u) { return 0L; }
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;

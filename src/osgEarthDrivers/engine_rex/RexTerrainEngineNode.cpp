@@ -36,6 +36,7 @@
 #include <osg/BlendFunc>
 #include <osg/Depth>
 #include <osg/CullFace>
+#include <osg/ValueObject>
 
 #include <cstdlib> // for getenv
 
@@ -831,50 +832,84 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
         osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
 
+        osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
+        udc->setUserValue("tile_key", key->str());
+
         if (sharedGeom.valid())
         {
             osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
             drawable = geom.get();
 
-            if (model->elevationModel().valid() && !sharedGeom->empty())
+
+            if (!sharedGeom->empty())
             {
-                // Clone the vertex array since it's shared and we're going to alter it
-                geom->setVertexArray(osg::clone(geom->getVertexArray()));
-
-                // Apply the elevation model to the verts, noting that the texture coordinate
-                // runs [0..1] across the tile and the normal is the up vector at each vertex.
-                osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
-                osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
-                osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
-
-                const osg::HeightField* hf = model->elevationModel()->getHeightField();
-                const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
-
-                // Tile coords must be transformed into the local tile's space
-                // for elevation grid lookup:
-                osg::Matrix scaleBias;
-                key->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
-
-                // Apply elevation to each vertex.
-                for (unsigned i = 0; i < verts->size(); ++i)
+                // Burn elevation data into the vertex list
+                if (model->elevationModel().valid())
                 {
-                    osg::Vec3& vert = (*verts)[i];
-                    osg::Vec3& up = (*ups)[i];
-                    osg::Vec3& tileCoord = (*tileCoords)[i];
+                    // Clone the vertex array since it's shared and we're going to alter it
+                    geom->setVertexArray(osg::clone(geom->getVertexArray()));
 
-                    // Skip verts on a masking boundary since their elevations are hard-wired.
-                    if (tileCoord.z() != MASK_MARKER_BOUNDARY)
+                    // Apply the elevation model to the verts, noting that the texture coordinate
+                    // runs [0..1] across the tile and the normal is the up vector at each vertex.
+                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+                    osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+                    osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
+
+                    const osg::HeightField* hf = model->elevationModel()->getHeightField();
+                    const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
+
+                    // Tile coords must be transformed into the local tile's space
+                    // for elevation grid lookup:
+                    osg::Matrix scaleBias;
+                    key->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+
+                    // Apply elevation to each vertex.
+                    for (unsigned i = 0; i < verts->size(); ++i)
                     {
-                        osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
-                        n = n * scaleBias;
-                        if (hfmatrix) n = n * (*hfmatrix);
+                        osg::Vec3& vert = (*verts)[i];
+                        osg::Vec3& up = (*ups)[i];
+                        osg::Vec3& tileCoord = (*tileCoords)[i];
 
-                        float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
-                        if (z != NO_DATA_VALUE)
+                        // Skip verts on a masking boundary since their elevations are hard-wired.
+                        if (tileCoord.z() != MASK_MARKER_BOUNDARY)
                         {
-                            vert += up*z;
+                            osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
+                            n = n * scaleBias;
+                            if (hfmatrix) n = n * (*hfmatrix);
+
+                            float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
+                            if (z != NO_DATA_VALUE)
+                            {
+                                vert += up*z;
+                            }
                         }
                     }
+                }
+
+                // Encode the masking extents into a user data object
+                if (maskGenerator->hasMasks())
+                {
+                    // Find the NDC coords of the masking patch geometry:
+                    osg::Vec3d maskMin, maskMax;
+                    maskGenerator->getMinMax(maskMin, maskMax);
+
+                    // Clamp to the tile's extent
+                    maskMin.x() = osg::clampBetween(maskMin.x(), 0.0, 1.0);
+                    maskMin.y() = osg::clampBetween(maskMin.y(), 0.0, 1.0);
+                    maskMax.x() = osg::clampBetween(maskMax.x(), 0.0, 1.0);
+                    maskMax.y() = osg::clampBetween(maskMax.y(), 0.0, 1.0);
+
+                    const GeoExtent& e = key->getExtent();
+                    osg::Vec2d tkMin(e.xMin() + maskMin.x()*e.width(), e.yMin() + maskMin.y()*e.height());
+                    osg::Vec2d tkMax(e.xMin() + maskMax.x()*e.width(), e.yMin() + maskMax.y()*e.height());
+
+                    udc->setUserValue("mask_patch_min", tkMin);
+                    udc->setUserValue("mask_patch_max", tkMax);
+
+                    //OE_INFO << LC << "key " << key->str()
+                    //    << " ext=" << e.toString() << "\n"
+                    //    << " min=" << tkMin.x() << "," << tkMin.y()
+                    //    << "; max=" << tkMax.x() << "," << tkMax.y() << std::endl;
                 }
             }
     

@@ -124,13 +124,14 @@ _requireNormalTextures   ( false ),
 _requireParentTextures   ( false ),
 _requireElevationBorder  ( false ),
 _requireFullDataAtFirstLOD( false ),
-_redrawRequired          ( true )
+_redrawRequired          ( true ),
+_updateScheduled( false )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 
     // register for update traversals so we can process terrain callbacks
-    ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    //ADJUST_UPDATE_TRAV_COUNT(this, 1);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -368,46 +369,22 @@ namespace
 
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
-{
-#if 0
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        // see if we need to set up the Terrain object with an update ops queue.
-        if ( !_terrainInterface->_updateOperationQueue.valid() )
-        {
-            Threading::ScopedMutexLock lock(s_opqlock);
-            if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
-            {
-                //TODO: think, will this work with >1 view?
-                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-                if ( cv->getCurrentCamera() )
-                {
-                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
-                    if ( view && view->getViewerBase() )
-                    {
-                        osg::OperationQueue* q = view->getViewerBase()->getUpdateOperations();
-                        if ( !q ) {
-                            q = new osg::OperationQueue();
-                            view->getViewerBase()->setUpdateOperations( q );
-                        }
-                        _terrainInterface->_updateOperationQueue = q;
-                    }
-                }
-            }
-        }
-    }
-
-    else 
-#endif
-    
+{    
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         _dirtyCount = 0;
+        if (_updateScheduled == false && _terrainInterface->_updateQueue->empty() == false)
+        {
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+            _updateScheduled = true;
+        }
     }
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         _terrainInterface->update();
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        _updateScheduled = false;
     }
 
     osg::CoordinateSystemNode::traverse( nv );

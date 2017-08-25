@@ -131,7 +131,7 @@ _updateScheduled( false )
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 
     // register for update traversals so we can process terrain callbacks
-    //ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    ADJUST_UPDATE_TRAV_COUNT(this, 1);
 }
 
 TerrainEngineNode::~TerrainEngineNode()
@@ -382,9 +382,12 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        _terrainInterface->update();
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
-        _updateScheduled = false;
+        if (_updateScheduled == true )
+        {
+            _terrainInterface->update();
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            _updateScheduled = false;
+        }
     }
 
     osg::CoordinateSystemNode::traverse( nv );

@@ -833,11 +833,11 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
         if (sharedGeom.valid())
         {
-            if (model->elevationModel().valid())
-            {
-                osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
-                drawable = geom.get();
+            osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
+            drawable = geom.get();
 
+            if (model->elevationModel().valid() && !sharedGeom->empty())
+            {
                 // Clone the vertex array since it's shared and we're going to alter it
                 geom->setVertexArray(osg::clone(geom->getVertexArray()));
 

@@ -104,8 +104,10 @@ GeometryPool::getPooledGeometry(const TileKey&                tileKey,
             // Not found. Create it.
             out = createGeometry( tileKey, mapInfo, tileSize, maskSet );
 
-            if (!masking)
+            if (!masking && out.valid())
+            {
                 _geometryMap[ geomKey ] = out.get();
+            }
 
             if ( _debug )
             {
@@ -211,21 +213,19 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // TODO: reconsider this ... 
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
-    // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
-    primSet->setElementBufferObject(new osg::ElementBufferObject());
-
-    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
-
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    SharedGeometry* geom = new SharedGeometry();
+    osg::ref_ptr<SharedGeometry> geom = new SharedGeometry();
     geom->setUseVertexBufferObjects(true);
     //geom->setUseDisplayList(false);
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
+    // Pre-allocate enough space for all triangles.
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
+    primSet->setElementBufferObject(new osg::ElementBufferObject());
+    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
     geom->setDrawElements(primSet);
 
     // the vertex locations:
@@ -376,7 +376,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     {
         int s = verts->size();
         osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
-        if (maskPrim)
+        if (maskPrim && maskPrim->size() > 0)
         {
             maskPrim->setElementBufferObject(primSet->getElementBufferObject());
             geom->setMaskElements(maskPrim);
@@ -461,7 +461,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         addSkirtTriangles( i, skirtIndex );
     }
 
-    return geom;
+    return geom.release();
 }
 
 
@@ -581,6 +581,15 @@ SharedGeometry::~SharedGeometry()
 {
     //nop
 }
+
+bool 
+SharedGeometry::empty() const
+{
+    return
+        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0) &&
+        (_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
+}
+
 
 #ifdef SUPPORTS_VAO
 osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const

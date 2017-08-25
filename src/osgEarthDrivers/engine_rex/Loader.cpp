@@ -21,6 +21,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -210,6 +211,7 @@ PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = std::max(value, 0);
     this->setNumChildrenRequiringUpdateTraversal( 1 );
+    
 }
 
 void

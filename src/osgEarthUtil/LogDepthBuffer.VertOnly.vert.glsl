@@ -1,4 +1,4 @@
-#version 330 compatibility
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint oe_logDepth_vert
 #pragma vp_location   vertex_clip

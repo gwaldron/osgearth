@@ -328,7 +328,11 @@ namespace
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
                         if ( texel.r() != NO_DATA_VALUE )
                         {
+                            // store the warp factor in the green channel
                             texel.g() = layer.warp;
+
+                            // store the layer index in the blue channel
+                            texel.b() = (float)L;
 
                             if (texel.r() < 1.0f)
                             {
@@ -541,7 +545,6 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
         
         float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
-        //float warp = options().warpFactor().get() * pow(2, dL);
 
         for (int t = 0; t < image->t(); ++t)
         {
@@ -552,7 +555,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
                 cov.set(u, v);
 
-                // first read the unwarped pixel to get the warping value:
+                // first read the unwarped pixel to get the warping value.
+                // (warp is stored in pixel.g)
                 metaImage.read(cov.x(), cov.y(), pixel);
                 float warp = pixel.g() * pdL;
 
@@ -561,9 +565,20 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
                 cov = warpCoverageCoords(cov, noise, warp);
 
                 if (metaImage.read(cov.x(), cov.y(), pixel))
-                    write(pixel, s, t);
+                {
+                    // only apply the warping if the location of the warped pixel
+                    // came from the same source layer. Otherwise you will get some
+                    // unsavory speckling. (Layer index is stored in pixel.b)
+                    osg::Vec4 unwarpedPixel;
+                    if (metaImage.read(u, v, unwarpedPixel) && pixel.b() != unwarpedPixel.b())
+                        write(unwarpedPixel, s, t);
+                    else
+                        write(pixel, s, t);
+                }
                 else
+                {
                     write(nodata, s, t);
+                }
             }
         }
 

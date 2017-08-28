@@ -1160,9 +1160,9 @@ GeoExtent::expandToInclude( const GeoExtent& rhs )
 {
     if ( isInvalid() || rhs.isInvalid() ) return false;
 
-    if ( !rhs.getSRS()->isEquivalentTo( _srs.get() ) )
+    if ( !rhs.getSRS()->isHorizEquivalentTo( _srs.get() ) )
     {
-        return expandToInclude( transform(rhs.getSRS()) );
+        return expandToInclude( rhs.transform(_srs.get()) ); //transform(rhs.getSRS()) );
     }
     else
     {

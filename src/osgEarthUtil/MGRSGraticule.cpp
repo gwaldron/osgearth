@@ -18,6 +18,7 @@
  */
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/MGRSFormatter>
+#include <osgEarthUtil/UTMLabelingEngine>
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
@@ -797,6 +798,8 @@ MGRSGraticule::rebuild()
                 textTop->addChild(text);
             }
         }
+
+        _root->addChild(new UTMLabelingEngine(_map->getSRS()));
     }
     else
     {

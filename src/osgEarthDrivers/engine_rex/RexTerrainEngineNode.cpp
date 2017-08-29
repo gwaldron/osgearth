@@ -839,7 +839,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
         {
             osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
             drawable = geom.get();
-
+            drawable->setUserDataContainer(udc);
 
             if (!sharedGeom->empty())
             {

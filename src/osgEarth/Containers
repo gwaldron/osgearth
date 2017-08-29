@@ -685,6 +685,10 @@ namespace osgEarth
     template<typename KEY, typename DATA>
     struct PerObjectFastMap
     {
+        struct Functor {
+            virtual void operator()(DATA& data) =0;
+        };
+
         DATA& get(KEY k)
         {
             {
@@ -707,6 +711,13 @@ namespace osgEarth
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
             _data.erase( k );
+        }
+
+        void forEach(Functor& functor)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            for (fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+                functor.operator()(i->second);
         }
 
     private:

@@ -316,7 +316,7 @@ SplatLayer::buildStateSets()
     }
 
     // Next set up the elements that apply to all zones:
-    osg::StateSet* stateset = new osg::StateSet();
+    osg::StateSet* stateset = this->getOrCreateStateSet(); //new osg::StateSet();
 
     // Bind the texture image unit:
     stateset->addUniform(new osg::Uniform(SPLAT_SAMPLER, _splatBinding.unit()));
@@ -364,8 +364,6 @@ SplatLayer::buildStateSets()
     splatting.load(vp, splatting.VertView);
     splatting.load(vp, splatting.Frag);
     splatting.load(vp, splatting.Util);
-
-    this->setStateSet(stateset);
 
     OE_DEBUG << LC << "Statesets built!! Ready!\n";
 }

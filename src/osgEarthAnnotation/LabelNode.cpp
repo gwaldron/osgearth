@@ -141,21 +141,25 @@ LabelNode::setText( const std::string& text )
         return;
     }
 
-    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
-    if ( d )
+    for (unsigned int i=0; i < _geode->getNumDrawables(); i++)
     {
-        const TextSymbol* symbol = _style.get<TextSymbol>();
-
-        osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
-        if (symbol && symbol->encoding().isSet())
+        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(i));
+        if ( d )
         {
-            textEncoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+            const TextSymbol* symbol = _style.get<TextSymbol>();
+
+            osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
+            if (symbol && symbol->encoding().isSet())
+            {
+                textEncoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+            }
+
+            d->setText(text, textEncoding);
+
+            d->dirtyDisplayList();
+            _text = text;
+            return;
         }
-
-        d->setText(text, textEncoding);
-
-        d->dirtyDisplayList();
-        _text = text;
     }
 }
 

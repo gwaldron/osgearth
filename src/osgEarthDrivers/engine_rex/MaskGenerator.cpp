@@ -481,6 +481,11 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 void
 MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
 {
+#if 1
+    min = _ndcMin;
+    max = _ndcMax;
+
+#else
     if (_maskRecords.size() > 0)
     {
         min.x() = _maskRecords[0]._ndcMin.x();
@@ -502,12 +507,13 @@ MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
             if (it->_ndcMax.z() > max.z()) max.z() = it->_ndcMax.z();
         }
     }
+#endif
 }
 
 float
 MaskGenerator::getMarker(float nx, float ny) const
 {
-    float marker = 1.0f; // 1.0 == does not contain
+    float marker = MASK_MARKER_NORMAL;
 
     if (_maskRecords.size() > 0)
     {

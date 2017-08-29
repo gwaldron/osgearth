@@ -186,23 +186,23 @@ struct ToggleLayerVisibility : public ControlEventHandler
 
 struct LayerOpacityHandler : public ControlEventHandler
 {
-    LayerOpacityHandler( ImageLayer* layer ) : _layer(layer) { }
+    LayerOpacityHandler( VisibleLayer* layer ) : _layer(layer) { }
     void onValueChanged( Control* control, float value )
     {
         _layer->setOpacity( value );
     }
-    ImageLayer* _layer;
+    VisibleLayer* _layer;
 };
 
-struct ModelLayerOpacityHandler : public ControlEventHandler
-{
-    ModelLayerOpacityHandler( ModelLayer* layer ) : _layer(layer) { }
-    void onValueChanged( Control* control, float value )
-    {
-        _layer->setOpacity( value );
-    }
-    ModelLayer* _layer;
-};
+//struct ModelLayerOpacityHandler : public ControlEventHandler
+//{
+//    ModelLayerOpacityHandler( ModelLayer* layer ) : _layer(layer) { }
+//    void onValueChanged( Control* control, float value )
+//    {
+//        _layer->setOpacity( value );
+//    }
+//    ModelLayer* _layer;
+//};
 
 struct AddLayerHandler : public ControlEventHandler
 {
@@ -329,13 +329,13 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     grid->setControl( gridCol, gridRow, statusLabel );
     gridCol++;
 
-    if (imageLayer && layer->getEnabled() && imageLayer->getVisible())
+    if (visibleLayer && visibleLayer->getEnabled() && visibleLayer->getVisible())
     {
         // an opacity slider
-        HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, imageLayer->getOpacity() );
+        HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, visibleLayer->getOpacity() );
         opacity->setWidth( 125 );
         opacity->setHeight( 12 );
-        opacity->addEventHandler( new LayerOpacityHandler(imageLayer) );
+        opacity->addEventHandler( new LayerOpacityHandler(visibleLayer) );
         grid->setControl( gridCol, gridRow, opacity );
     }
     gridCol++;

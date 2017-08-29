@@ -159,11 +159,11 @@ namespace osgEarth { namespace QtGui
     {
       DataManagerImageLayerCallback(DataManager* dm) : _dm(dm) { }
 
-      void onOpacityChanged(ImageLayer* layer)
-      {
-        if (_dm.valid())
-          _dm->onMapChanged();
-      }
+      //void onOpacityChanged(ImageLayer* layer)
+      //{
+      //  if (_dm.valid())
+      //    _dm->onMapChanged();
+      //}
 
       void onEnabledChanged(TerrainLayer* layer)
       {

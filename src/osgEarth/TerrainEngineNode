@@ -342,6 +342,7 @@ namespace osgEarth
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
+        bool                               _updateScheduled;
         
         enum InitStage {
             INIT_NONE,

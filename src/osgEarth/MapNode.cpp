@@ -395,7 +395,7 @@ MapNode::init()
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
-    defaultMaterial->setUpdateCallback(new MaterialCallback());
+    MaterialCallback().operator()(defaultMaterial, 0L);
 
     dirtyBound();
 

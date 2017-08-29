@@ -389,8 +389,9 @@ namespace osgEarth
 #define ADJUST_UPDATE_TRAV_COUNT( NODE, DELTA ) \
     { \
         int oldCount = NODE ->getNumChildrenRequiringUpdateTraversal(); \
-        if ( oldCount + DELTA >= 0 ) \
+        if ( oldCount + DELTA >= 0 ) { \
             NODE ->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + DELTA ) ); \
+        } \
     }
 
     /**

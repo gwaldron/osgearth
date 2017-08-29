@@ -31,6 +31,7 @@ osgEarth Sample
                    stroke:                       #ffff00;
                    stroke-width:                 2px;
                    stroke-tessellation-size:     100km;
+                   altitude-clamping:            terrain-gpu;
                    render-depth-offset-min-bias: 1000;
                 }            
             </style>

@@ -80,7 +80,6 @@ TerrainLayerOptions(name, driverOpt)
 void
 ImageLayerOptions::setDefaults()
 {
-    _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
@@ -103,7 +102,6 @@ void
 ImageLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet( "nodata_image",   _noDataImageFilename );
-    conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "min_range",      _minRange );
     conf.getIfSet( "max_range",      _maxRange );
     conf.getIfSet( "shared",         _shared );
@@ -149,7 +147,6 @@ ImageLayerOptions::getConfig() const
     conf.key() = "image";
 
     conf.set( "nodata_image",   _noDataImageFilename );
-    conf.set( "opacity",        _opacity );
     conf.set( "min_range",      _minRange );
     conf.set( "max_range",      _maxRange );
     conf.set( "shared",         _shared );
@@ -379,19 +376,6 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
         ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
-}
-
-void
-ImageLayer::setOpacity( float value ) 
-{
-    options().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
-    fireCallback( &ImageLayerCallback::onOpacityChanged );
-}
-
-float
-ImageLayer::getOpacity() const
-{
-    return options().opacity().get();
 }
 
 void

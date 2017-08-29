@@ -89,6 +89,9 @@ FeatureModelLayer::init()
 
     _root = new osg::Group();
 
+    // Assign the layer's state set to the root node:
+    _root->setStateSet(this->getOrCreateStateSet());
+
     // Callbacks for paged data
     _sgCallbacks = new SceneGraphCallbacks();
 }
@@ -131,7 +134,6 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 osg::Node*
 FeatureModelLayer::getOrCreateNode()
 {
-    OE_DEBUG << LC << "getNode\n";
     return _root.get();
 }
 

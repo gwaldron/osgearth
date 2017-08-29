@@ -54,13 +54,7 @@ namespace osgEarth
 
 
     public: // properties
-
-        /**
-         * The initial opacity of this layer
-         */
-        optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-
+        
         /**
          * The initial minimum camera range at which this layer is visible.
          */
@@ -151,7 +145,7 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<float>       _opacity;
+        //optional<float>       _opacity;
         optional<float>       _minRange;
         optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
@@ -195,7 +189,7 @@ namespace osgEarth
 
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged(class ImageLayer* layer) { }
+        //virtual void onOpacityChanged(class ImageLayer* layer) { }
         virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
         virtual void onColorFiltersChanged(class ImageLayer* layer) { }
 
@@ -258,13 +252,6 @@ namespace osgEarth
 
 
     public: // runtime properties
-
-        /**
-         * Sets the opacity of this image layer.
-         * @param opacity Opacity [0..1] -> [transparent..opaque]
-         */
-        void setOpacity( float opacity );
-        float getOpacity() const;
 
         /**
          * Minimum camera range at which this image layer is visible 

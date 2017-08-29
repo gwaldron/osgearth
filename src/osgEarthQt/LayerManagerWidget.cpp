@@ -72,11 +72,11 @@ namespace
   public:
     WidgetImageLayerCallback(ImageLayerControlWidget* widget) : _widget(widget) {}
 
-    void onOpacityChanged(ImageLayer* layer)
-    {
-      if (_widget)
-        _widget->setLayerOpacity(layer->getOpacity());
-    }
+    //void onOpacityChanged(ImageLayer* layer)
+    //{
+    //  if (_widget)
+    //    _widget->setLayerOpacity(layer->getOpacity());
+    //}
 
     void onEnabledChanged(TerrainLayer* layer)
     {

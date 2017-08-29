@@ -77,7 +77,6 @@ ModelLayerOptions::ModelLayerOptions(const ModelLayerOptions& rhs) :
 VisibleLayerOptions(rhs)
 {
     _driver = optional<ModelSourceOptions>(rhs._driver);
-    _opacity = optional<float>(rhs._opacity);
     _lighting = optional<bool>(rhs._lighting);
     _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
     _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
@@ -88,7 +87,6 @@ ModelLayerOptions& ModelLayerOptions::operator =(const ModelLayerOptions& rhs)
 {
     VisibleLayerOptions::operator =(rhs);
     _driver = optional<ModelSourceOptions>(rhs._driver);
-    _opacity = optional<float>(rhs._opacity);
     _lighting = optional<bool>(rhs._lighting);
     _maskOptions = optional<MaskSourceOptions>(rhs._maskOptions);
     _maskMinLevel = optional<unsigned>(rhs._maskMinLevel);
@@ -101,7 +99,6 @@ void
 ModelLayerOptions::setDefaults()
 {
     _lighting.init    ( true );
-    _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
 }
@@ -114,13 +111,8 @@ ModelLayerOptions::getConfig() const
 
     conf.set( "name",           _name );
     conf.set( "lighting",       _lighting );
-    conf.set( "opacity",        _opacity );
     conf.set( "mask_min_level", _maskMinLevel );
     conf.set( "patch",          _terrainPatch );  
-
-    // Merge the ModelSource options
-    //if ( driver().isSet() )
-    //    conf.merge( driver()->getConfig() );
 
     // Merge the MaskSource options
     if ( mask().isSet() )
@@ -133,7 +125,6 @@ void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "lighting",       _lighting );
-    conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "mask_min_level", _maskMinLevel );
     conf.getIfSet( "patch",          _terrainPatch );
 
@@ -360,10 +351,10 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
             // add a parent group for shaders/effects to attach to without overwriting any model programs directly
             osg::Group* group = new osg::Group();
             group->addChild(node);
-            
-            _alphaEffect = new AlphaEffect();
-            _alphaEffect->setAlpha( options().opacity().get() );
-            _alphaEffect->attach( group->getOrCreateStateSet() );
+
+            // assign the layer's stateset to the group.
+            group->setStateSet(getOrCreateStateSet());
+
             node = group;
 
             // Toggle visibility if necessary
@@ -395,25 +386,6 @@ ModelLayer::getOrCreateNode()
         return _graphs.begin()->second.get();
     else
         return 0L;
-}
-
-float
-ModelLayer::getOpacity() const
-{
-    return options().opacity().get();
-}
-
-void
-ModelLayer::setOpacity(float opacity)
-{
-    if ( options().opacity() != opacity )
-    {
-        options().opacity() = opacity;
-
-        _alphaEffect->setAlpha(opacity);
-
-        fireCallback( &ModelLayerCallback::onOpacityChanged );
-    }
 }
 
 void

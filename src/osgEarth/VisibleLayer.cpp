@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/VisibleLayer>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 
@@ -42,13 +43,15 @@ void
 VisibleLayerOptions::setDefaults()
 {
     _visible.init( true );
+    _opacity.init( 1.0f );
 }
 
 Config
 VisibleLayerOptions::getConfig() const
 {
     Config conf = LayerOptions::getConfig();
-    conf.set( "visible", _visible );
+    conf.set("visible", _visible);
+    conf.set("opacity", _opacity);
     return conf;
 }
 
@@ -56,6 +59,7 @@ void
 VisibleLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet( "visible", _visible );
+    conf.getIfSet("opacity", _opacity);
 }
 
 void
@@ -92,6 +96,10 @@ VisibleLayer::open()
     {
         setVisible(options().visible().get());
     }
+    if (options().opacity().isSet())
+    {
+        setOpacity(options().opacity().get());
+    }
     return Layer::open();
 }
 
@@ -112,6 +120,50 @@ bool
 VisibleLayer::getVisible() const
 {
     return options().visible().get();
+}
+
+namespace
+{
+    const char* opacityFS =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform float oe_visibleLayer_opacity; \n"
+        "void oe_visibleLayer_setOpacity(inout vec4 color) { \n"
+        "    color.a *= oe_visibleLayer_opacity; \n"
+        "} \n";
+}
+
+void
+VisibleLayer::setOpacity(float value)
+{
+    options().opacity() = value;
+
+    // On-demand installation of the opacity shader and rendering hint,
+    // since they do incur a small performance penalty.
+    if (value < 1.0f)
+    {
+        if (!_opacityU.valid())
+        {
+            osg::StateSet* stateSet = getOrCreateStateSet();
+            _opacityU = new osg::Uniform("oe_visibleLayer_opacity", value);
+            stateSet->addUniform(_opacityU.get());
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            vp->setFunction("oe_visibleLayer_setOpacity", opacityFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+            stateSet->setRenderingHint(stateSet->TRANSPARENT_BIN);
+        }
+    }
+    
+    if (_opacityU.valid())
+    {
+        _opacityU->set(value);
+    }
+
+    fireCallback(&VisibleLayerCallback::onOpacityChanged);
+}
+
+float
+VisibleLayer::getOpacity() const
+{
+    return options().opacity().get();
 }
 
 void

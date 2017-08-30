@@ -110,6 +110,9 @@ RTTPicker::RTTPicker(int cameraSize)
 
     // pixels around the click to test
     _buffer = 2;
+    
+    // Cull mask for RTT cameras
+    _cullMask = ~0;
 }
 
 RTTPicker::~RTTPicker()
@@ -139,6 +142,18 @@ RTTPicker::getOrCreateTexture(osg::View* view)
         pc._tex->setMaxAnisotropy(1.0f); // no filtering
     }
     return pc._tex.get();
+}
+
+void
+RTTPicker::setCullMask(osg::Node::NodeMask nm)
+{
+    if ( _cullMask == nm )
+        return;
+    _cullMask = nm;
+    for(PickContexts::const_iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
+    {
+        i->_pickCamera->setCullMask( _cullMask );
+    }
 }
 
 RTTPicker::PickContext&
@@ -173,6 +188,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
     c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
+    c._pickCamera->setCullMask( _cullMask );
 
     c._pickCamera->setGraphicsContext(view->getCamera()->getGraphicsContext());
     

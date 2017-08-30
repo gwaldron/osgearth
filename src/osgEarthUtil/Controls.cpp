@@ -2312,7 +2312,7 @@ ControlCanvas::EventCallback::handleResize(osg::View* view, ControlCanvas* canva
             if ( !gc && view->getNumSlaves() > 0 )
                 gc = view->getSlave(0)._camera->getGraphicsContext();
 
-            if ( gc )
+            if ( gc && gc->getState() )
                 cx._viewContextID = gc->getState()->getContextID();
             else
                 cx._viewContextID = ~0u;

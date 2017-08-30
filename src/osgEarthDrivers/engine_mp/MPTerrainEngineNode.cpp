@@ -1127,7 +1127,7 @@ MPTerrainEngineNode::updateState()
             // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attenuationDistance().get()) );
             
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",

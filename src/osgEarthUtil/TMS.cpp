@@ -605,6 +605,8 @@ TileMapReaderWriter::read( const Config& conf )
     return tileMap;
 }
 
+#define DOUBLE_PRECISION 25
+
 static XmlDocument*
 tileMapToXmlDocument(const TileMap* tileMap)
 {
@@ -622,15 +624,15 @@ tileMapToXmlDocument(const TileMap* tileMap)
     osg::ref_ptr<XmlElement> e_bounding_box = new XmlElement( ELEM_BOUNDINGBOX );
     double minX, minY, maxX, maxY;
     tileMap->getExtents( minX, minY, maxX, maxY );
-    e_bounding_box->getAttrs()[ATTR_MINX] = toString(minX);
-    e_bounding_box->getAttrs()[ATTR_MINY] = toString(minY);
-    e_bounding_box->getAttrs()[ATTR_MAXX] = toString(maxX);
-    e_bounding_box->getAttrs()[ATTR_MAXY] = toString(maxY);
+    e_bounding_box->getAttrs()[ATTR_MINX] = toString(minX, DOUBLE_PRECISION);
+    e_bounding_box->getAttrs()[ATTR_MINY] = toString(minY, DOUBLE_PRECISION);
+    e_bounding_box->getAttrs()[ATTR_MAXX] = toString(maxX, DOUBLE_PRECISION);
+    e_bounding_box->getAttrs()[ATTR_MAXY] = toString(maxY, DOUBLE_PRECISION);
     doc->getChildren().push_back(e_bounding_box.get() );
 
     osg::ref_ptr<XmlElement> e_origin = new XmlElement( ELEM_ORIGIN );
-    e_origin->getAttrs()[ATTR_X] = toString(tileMap->getOriginX());
-    e_origin->getAttrs()[ATTR_Y] = toString(tileMap->getOriginY());
+    e_origin->getAttrs()[ATTR_X] = toString(tileMap->getOriginX(), DOUBLE_PRECISION);
+    e_origin->getAttrs()[ATTR_Y] = toString(tileMap->getOriginY(), DOUBLE_PRECISION);
     doc->getChildren().push_back(e_origin.get());
 
     osg::ref_ptr<XmlElement> e_tile_format = new XmlElement( ELEM_TILE_FORMAT );
@@ -664,7 +666,7 @@ tileMapToXmlDocument(const TileMap* tileMap)
         osg::ref_ptr<XmlElement> e_tile_set = new XmlElement( ELEM_TILESET );
         e_tile_set->getAttrs()[ATTR_HREF] = itr->getHref();
         e_tile_set->getAttrs()[ATTR_ORDER] = toString<unsigned int>(itr->getOrder());
-        e_tile_set->getAttrs()[ATTR_UNITSPERPIXEL] = toString(itr->getUnitsPerPixel());
+        e_tile_set->getAttrs()[ATTR_UNITSPERPIXEL] = toString(itr->getUnitsPerPixel(), DOUBLE_PRECISION);
         e_tile_sets->getChildren().push_back( e_tile_set.get() );
     }
     doc->getChildren().push_back(e_tile_sets.get());
@@ -676,10 +678,10 @@ tileMapToXmlDocument(const TileMap* tileMap)
         for (DataExtentList::const_iterator itr = tileMap->getDataExtents().begin(); itr != tileMap->getDataExtents().end(); ++itr)
         {
             osg::ref_ptr<XmlElement> e_data_extent = new XmlElement( ELEM_DATA_EXTENT );
-            e_data_extent->getAttrs()[ATTR_MINX] = toString(itr->xMin());
-            e_data_extent->getAttrs()[ATTR_MINY] = toString(itr->yMin());
-            e_data_extent->getAttrs()[ATTR_MAXX] = toString(itr->xMax());
-            e_data_extent->getAttrs()[ATTR_MAXY] = toString(itr->yMax());
+            e_data_extent->getAttrs()[ATTR_MINX] = toString(itr->xMin(), DOUBLE_PRECISION);
+            e_data_extent->getAttrs()[ATTR_MINY] = toString(itr->yMin(), DOUBLE_PRECISION);
+            e_data_extent->getAttrs()[ATTR_MAXX] = toString(itr->xMax(), DOUBLE_PRECISION);
+            e_data_extent->getAttrs()[ATTR_MAXY] = toString(itr->yMax(), DOUBLE_PRECISION);
             if ( itr->minLevel().isSet() )
                 e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(*itr->minLevel());
             if ( itr->maxLevel().isSet() )

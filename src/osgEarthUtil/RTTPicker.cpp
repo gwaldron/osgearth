@@ -167,12 +167,14 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
     c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    c._pickCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT ); 
+    //c._pickCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT ); 
     c._pickCamera->setViewport( 0, 0, _rttSize, _rttSize );
     c._pickCamera->setRenderOrder( osg::Camera::PRE_RENDER, 1 );
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
     c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
+
+    c._pickCamera->setGraphicsContext(view->getCamera()->getGraphicsContext());
     
     osg::StateSet* rttSS = c._pickCamera->getOrCreateStateSet();
 
@@ -203,8 +205,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // default value for the objectid override uniform:
     rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getObjectIDUniformName().c_str(), 0u) );
     
-    // install the pick camera on the main camera.
-    view->getCamera()->addChild( c._pickCamera.get() );
+    // install the pick camera as a slave of the view's camera so it will
+    // duplicate the view matrix and projection matrix during the update traversal
+    // The "false" means the pick camera has its own separate subgraph.
+    view->addSlave(c._pickCamera.get(), false);
 
     // associate the RTT camara with the view's camera.
     // (e.g., decluttering uses this to find the "true" viewport)
@@ -228,15 +232,6 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         if ( !_picks.empty() )
         {
             aa.requestRedraw();
-        }
-
-        // synchronize the pick camera associated with this view
-        osg::Camera* cam = aa.asView()->getCamera();
-        if (cam)
-        {
-            PickContext& context = getOrCreatePickContext( aa.asView() );
-            context._pickCamera->setViewMatrix( cam->getViewMatrix() );
-            context._pickCamera->setProjectionMatrix( cam->getProjectionMatrix() );
         }
     }
 

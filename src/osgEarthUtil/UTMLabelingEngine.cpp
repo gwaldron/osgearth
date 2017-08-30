@@ -36,6 +36,8 @@ namespace
     /**
      * Utility class to perform ellipsoid intersections
      * (Used by the UTMLabelingEngine)
+     * TODO: At some point this class can graduate to the core if generally useful,
+     * possibly extending osg::EllipsoidModel.
      */
     class EllipsoidIntersector
     {
@@ -144,6 +146,7 @@ namespace
             //nop
         }
 
+        // Moves the input point to the bottom edge of the viewport.
         void clampToBottom(GeoPoint& p)
         {
             p.transformInPlace(p.getSRS()->getGeographicSRS());
@@ -155,6 +158,7 @@ namespace
             p.fromWorld(p.getSRS(), world);
         }
 
+        // Moves the input point to left edge of the viewport.
         void clampToLeft(GeoPoint& p)
         {
             p.transformInPlace(p.getSRS()->getGeographicSRS());
@@ -168,6 +172,8 @@ namespace
     };
 
 
+    // Information for a single UTM zone. The labeling engine supports
+    // two UTM zones (left and right) at a time.
     struct UTMZone
     {
         osg::ref_ptr<const SpatialReference> utmSRS;
@@ -176,9 +182,34 @@ namespace
     };
 
 
-    inline double mix(double a, double b, double t)
+    // Given a view matrix, return the heading of the camera relative to North;
+    // this works for geocentric maps.
+    // TODO: graduate to a utilities class somewhere in the core if generally useful
+    double getCameraHeading(const osg::Matrix& VM)
     {
-        return a*(1.0 - t) + b*t;
+        osg::Matrixd VMinverse;
+        VMinverse.invert(VM);
+
+        osg::Vec3d N(0, 0, 6356752); // north pole, more or less
+        osg::Vec3d b(-VM(0, 2), -VM(1, 2), -VM(2, 2)); // look vector
+        osg::Vec3d E = osg::Vec3d(0, 0, 0)*VMinverse;
+        osg::Vec3d u = E; u.normalize();
+
+        // account for looking straight downish
+        if (osg::equivalent(b*u, -1.0, 1e-4))
+        {
+            // up vec becomes the look vec.
+            b = osg::Matrixd::transform3x3(VM, osg::Vec3f(0.0, 1.0, 0.0));
+            b.normalize();
+        }
+
+        osg::Vec3d proj_d = b - u*(b*u);
+        osg::Vec3d n = N - E;
+        osg::Vec3d proj_n = n - u*(n*u);
+        osg::Vec3d proj_e = proj_n^u;
+
+        double cameraHeading = atan2(proj_e*proj_d, proj_n*proj_d);
+        return cameraHeading;
     }
 }
 
@@ -188,18 +219,17 @@ UTMLabelingEngine::UTMLabelingEngine(const SpatialReference* srs)
 {
     _srs = srs;
 
+    // Set up the symbology for x-axis labels
     TextSymbol* xText = _xLabelStyle.getOrCreate<TextSymbol>();
     xText->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
     xText->halo()->color().set(0, 0, 0, 1);
     xText->declutter() = false;
 
+    // Set up the symbology for y-axis labels
     TextSymbol* yText = _yLabelStyle.getOrCreate<TextSymbol>();
     yText->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
     yText->halo()->color().set(0, 0, 0, 1);
     yText->declutter() = false;
-
-    //_labels = new osg::Group();
-    //this->addChild(_labels);
 }
 
 void
@@ -207,6 +237,7 @@ UTMLabelingEngine::AcceptCameraData::operator()(UTMLabelingEngine::CameraData& d
 {
     for (LabelNodeVector::iterator i = data.xLabels.begin(); i != data.xLabels.end(); ++i)
         i->get()->accept(_nv);
+
     for (LabelNodeVector::iterator i = data.yLabels.begin(); i != data.yLabels.end(); ++i)
         i->get()->accept(_nv);
 }
@@ -224,10 +255,9 @@ UTMLabelingEngine::traverse(osg::NodeVisitor& nv)
             bool visible = cullTraverse(*cv, data);
             if (visible)
             {
-                for (LabelNodeVector::iterator i = data.xLabels.begin(); i != data.xLabels.end(); ++i)
-                    i->get()->accept(nv);
-                for (LabelNodeVector::iterator i = data.yLabels.begin(); i != data.yLabels.end(); ++i)
-                    i->get()->accept(nv);
+                // traverse all the labels for this camera:
+                AcceptCameraData accept(nv);
+                accept(data);
             }
         }
     }
@@ -244,6 +274,12 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
 {
     osg::Camera* cam = nv.getCurrentCamera();
 
+    // Don't draw the labels if we are too far from North-Up:
+    double heading = getCameraHeading(cam->getViewMatrix());
+    if (osg::RadiansToDegrees(fabs(heading)) > 7.0)
+        return false;
+
+    // Initialize the label pool for this camera if we have not done so:
     if (data.xLabels.empty())
     {
         for (unsigned i = 0; i < MAX_LABELS; ++i)
@@ -267,12 +303,13 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
         }
     }
 
-    // find the rays at the corners of the view frustum.
+    // Intersect the corners of the view frustum with the ellipsoid.
+    // This will yeild the approximate geo-extent of the view.
+    // TODO: graduate this to the core if generally useful - could be helpful
+    // for displaying the extent of the current view.
     osg::Matrix MVP = (*nv.getModelViewMatrix()) * cam->getProjectionMatrix();
     osg::Matrix MVPinv;
     MVPinv.invert(MVP);
-
-    ClipSpace window(MVP, MVPinv);
 
     EllipsoidIntersector ellipsoid(_srs->getEllipsoid());
     ellipsoid.setClipToWorldMatrix(MVPinv);
@@ -352,9 +389,11 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
         }
     }
 
+    // Vertical extent of the frustum in meters:
     double utmDiff = left.LL_utm.distanceTo(left.UL_utm);
 
-    // Intervals by trial and error.
+    // Determine the label interval based on the extent.
+    // These numbers are from trial-and-error.
     double utmInterval;
     if (utmDiff > 150000) return false;
     else if (utmDiff > 18500) utmInterval = 10000;
@@ -362,6 +401,7 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
     else if (utmDiff > 170) utmInterval = 100;
     else utmInterval = 10;
 
+    // Start out with all labels off. We will then turn back on the ones we use:
     for (unsigned i = 0; i < MAX_LABELS; ++i)
     {
         data.xLabels[i]->setNodeMask(0);
@@ -369,14 +409,22 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
     }
 
     //OE_NOTICE << "utmDiff=" << utmDiff << ", utmInterval=" << utmInterval << std::endl;
+    
+    // Use this for clamping geopoints to the edges of the frustum:
+    ClipSpace window(MVP, MVPinv); 
 
+    // Indicies into the label pool
     unsigned xi = 0, yi = 0;
-    // LEFT:
-    {
-        double xStart = utmInterval * ::ceil(left.LL_utm.x() / utmInterval);
-        double yStart = utmInterval * ::ceil(left.LL_utm.y() / utmInterval);
 
-        //OE_NOTICE << "utmDiff = " << utmDiff << " ; utmInterval = " << utmInterval << " ; xStart = " << xStart << std::endl;
+    // Finally, calculate all label positions and update them.
+    // NOTE: It is safe to do this in the CULL traversal since all labels are
+    // dynamic variance AND since all labels are children of this node.
+
+    // LEFT zone:
+    {
+        // Quantize the start location(s) to the interval:
+        double xStart = utmInterval * ::ceil(left.LL_utm.x() / utmInterval);
+
         unsigned numLabels = left.LL_utm.distanceTo(left.LR_utm) / utmInterval;
         if (numLabels < 2) numLabels = 2;
 
@@ -388,11 +436,16 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
             double y = left.LL_utm.y();
             GeoPoint p(left.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
             int xx = ((int)x % 100000) / utmInterval;
-            window.clampToBottom(p);
-            data.xLabels[xi]->setPosition(p);
-            data.xLabels[xi]->setText(Stringify() << std::setprecision(8) << xx);
-            data.xLabels[xi]->setNodeMask(~0);
+            window.clampToBottom(p); // also xforms to geographic
+            if (p.y() < 84.0 && p.y() > -80.0)
+            {
+                data.xLabels[xi]->setPosition(p);
+                data.xLabels[xi]->setText(Stringify() << std::setprecision(8) << xx);
+                data.xLabels[xi]->setNodeMask(~0);
+            }
         }
+        
+        double yStart = utmInterval * ::ceil(left.LL_utm.y() / utmInterval);
 
         numLabels = left.LL_utm.distanceTo(left.UL_utm) / utmInterval;
         if (numLabels < 2) numLabels = 2;
@@ -404,18 +457,21 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
             double y = yStart + utmInterval * i;
             int yy = ((10000000 + (int)y) % 100000) / utmInterval;
             GeoPoint p(left.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
-            window.clampToLeft(p);
-            data.yLabels[yi]->setPosition(p);
-            data.yLabels[yi]->setText(Stringify() << std::setprecision(8) << yy);
-            data.yLabels[yi]->setNodeMask(~0);
+            window.clampToLeft(p); // also xforms to geographic
+            if (p.y() < 84.0 && p.y() > -80.0)
+            {
+                data.yLabels[yi]->setPosition(p);
+                data.yLabels[yi]->setText(Stringify() << std::setprecision(8) << yy);
+                data.yLabels[yi]->setNodeMask(~0);
+            }
         }
     }
 
-    // RIGHT:
+    // RIGHT zone, if we are split:
     if (split)
     {
         double xStart = utmInterval * ::ceil(right.LL_utm.x() / utmInterval);
-        double yStart = utmInterval * ::ceil(right.LL_utm.y() / utmInterval);
+        //double yStart = utmInterval * ::ceil(right.LL_utm.y() / utmInterval);
 
         unsigned numLabels = right.LL_utm.distanceTo(right.LR_utm) / utmInterval;
         if (numLabels < 2) numLabels = 2;
@@ -427,18 +483,15 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
             double y = right.LL_utm.y();
             GeoPoint p(right.utmSRS.get(), x, y, 0, ALTMODE_ABSOLUTE);
             int xx = ((int)x % 100000) / utmInterval;
-            window.clampToBottom(p);
-            data.xLabels[xi]->setPosition(p);
-            data.xLabels[xi]->setText(Stringify() << std::setprecision(8) << xx);
-            data.xLabels[xi]->setNodeMask(~0);
+            window.clampToBottom(p); // also xforms to geographic
+            if (p.y() < 84.0 && p.y() > -80.0)
+            {
+                data.xLabels[xi]->setPosition(p);
+                data.xLabels[xi]->setText(Stringify() << std::setprecision(8) << xx);
+                data.xLabels[xi]->setNodeMask(~0);
+            }
         }
     }
 
     return true;
-}
-
-void
-UTMLabelingEngine::updateTraverse(osg::NodeVisitor& nv)
-{
-
 }

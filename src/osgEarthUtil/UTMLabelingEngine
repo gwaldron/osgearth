@@ -56,9 +56,7 @@ namespace osgEarth { namespace Util
         };
 
         bool cullTraverse(osgUtil::CullVisitor& nv, CameraData& data);
-
-        void updateTraverse(osg::NodeVisitor& nv);
-
+        
         typedef PerObjectFastMap<osg::Camera*, CameraData> CameraDataMap;
         CameraDataMap _cameraDataMap;
 

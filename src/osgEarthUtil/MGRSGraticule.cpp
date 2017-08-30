@@ -799,6 +799,7 @@ MGRSGraticule::rebuild()
             }
         }
 
+        // Install the UTM grid labeler
         _root->addChild(new UTMLabelingEngine(_map->getSRS()));
     }
     else

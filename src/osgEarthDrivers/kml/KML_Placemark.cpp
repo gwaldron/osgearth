@@ -112,6 +112,11 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 // the annotation name:
                 std::string name = getValue(node, "name");
 
+                if (!name.empty())
+                {
+                    OE_INFO << LC << "Placemark: " << name << std::endl;
+                }
+
                 AnnotationNode* featureNode = 0L;
                 AnnotationNode* iconNode    = 0L;
                 AnnotationNode* modelNode   = 0L;

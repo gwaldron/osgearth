@@ -76,7 +76,7 @@ namespace osgEarth
          * Default = 0.
          */
         optional<float>& attenuationDistance() { return _attenuationDistance; }
-        const optional<float>& attentuationDistance() const { return _attenuationDistance; }
+        const optional<float>& attenuationDistance() const { return _attenuationDistance; }
 
         /**
          * Transition time, in seconds, for tile image fade-in when LOD blending is enabled

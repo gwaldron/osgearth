@@ -264,7 +264,7 @@ LandCoverCoverageLayerOptions::getConfig() const
     Config conf = ImageLayerOptions::getConfig();
     conf.key() = "coverage";
     Config mappings("land_cover_mappings");
-    conf.add(mappings);
+    conf.update(mappings);
     for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
         i != _valueMappings.end();
         ++i)

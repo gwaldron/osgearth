@@ -373,7 +373,7 @@ osg::Node* ImageOverlay::createNode(Feature* feature)
             anchor = world;
         }
         verts->push_back( world - anchor );
-    }
+    }    
 
     transform->setMatrix( osg::Matrixd::translate( anchor ) );
 
@@ -406,6 +406,9 @@ osg::Node* ImageOverlay::createNode(Feature* feature)
     }
 
     osg::Vec2Array* texcoords = new osg::Vec2Array(4);
+
+    /*
+    // This code attempts to normalize the coordinates across a split image but doesn't quite work right when the imagery is non-axis aligned
     double width = _upperRight.x() - _lowerLeft.x();
     double height = _upperRight.y() - _lowerLeft.y();
    
@@ -426,15 +429,19 @@ osg::Node* ImageOverlay::createNode(Feature* feature)
         float t = (v.y() - _lowerLeft.y()) / height;
         (*texcoords)[i].set(s,flip ? 1.0f - t : t);
     }
-
-    geometry->setTexCoordArray(0, texcoords);
+    */
+    (*texcoords)[0].set(0.0f, flip ? 1.0 : 0.0f);
+    (*texcoords)[1].set(1.0f, flip ? 1.0 : 0.0f);
+    (*texcoords)[2].set(1.0f, flip ? 0.0 : 1.0f);
+    (*texcoords)[3].set(0.0f, flip ? 0.0 : 1.0f);
+    geometry->setTexCoordArray(0, texcoords);    
 
     //Only run the MeshSubdivider on geocentric maps
     if (getMapNode()->getMap()->isGeocentric())
     {
         MeshSubdivider ms(osg::Matrixd::inverse(transform->getMatrix()), transform->getMatrix());
         ms.run(*geometry, _geometryResolution.as(Units::RADIANS), GEOINTERP_RHUMB_LINE);
-    }        
+    } 
 
     if ( Registry::capabilities().supportsGLSL() )
     {

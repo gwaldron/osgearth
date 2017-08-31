@@ -161,23 +161,31 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._image = new osg::Image();
     c._image->allocateImage(_rttSize, _rttSize, 1, GL_RGBA, GL_UNSIGNED_BYTE);    
     
-    // make an RTT camera and bind it to our imag:
+    // Make an RTT camera and bind it to our image.
+    // Note: don't use RF_INHERIT_VIEWPOINT because it's unnecessary and
+    //       doesn't work with a slave camera anyway
+    // Note: NESTED_RENDER mode makes the RTT camera track the clip planes
+    //       etc. of the master camera; since the master renderes first,
+    //       the setup should always be in place for the slave
     c._pickCamera = new osg::Camera();
     c._pickCamera->setName( "osgEarth::RTTPicker" );
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
     c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    c._pickCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT ); 
     c._pickCamera->setViewport( 0, 0, _rttSize, _rttSize );
-    c._pickCamera->setRenderOrder( osg::Camera::PRE_RENDER, 1 );
+    c._pickCamera->setRenderOrder( osg::Camera::NESTED_RENDER );
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
     c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
+
+    // Necessary to connect the slave to the master (why is this not automatic?)
+    c._pickCamera->setGraphicsContext(view->getCamera()->getGraphicsContext());
     
     osg::StateSet* rttSS = c._pickCamera->getOrCreateStateSet();
 
     // disable all the things that break ObjectID picking:
-    osg::StateAttribute::GLModeValue disable = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
+    osg::StateAttribute::GLModeValue disable = 
+        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
     rttSS->setMode(GL_LIGHTING,  disable );
     rttSS->setMode(GL_CULL_FACE, disable );
@@ -190,7 +198,9 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     
     // Disabling GL_BLEND is not enough, because osg::Text re-enables it
     // without regard for the OVERRIDE.
-    rttSS->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO), osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
+    rttSS->setAttributeAndModes(
+        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
+        osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 
     // install the picking shaders:
     VirtualProgram* vp = createRTTProgram();
@@ -203,8 +213,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // default value for the objectid override uniform:
     rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getObjectIDUniformName().c_str(), 0u) );
     
-    // install the pick camera on the main camera.
-    view->getCamera()->addChild( c._pickCamera.get() );
+    // install the pick camera as a slave of the view's camera so it will
+    // duplicate the view matrix and projection matrix during the update traversal
+    // The "false" means the pick camera has its own separate subgraph.
+    view->addSlave(c._pickCamera.get(), false);
 
     // associate the RTT camara with the view's camera.
     // (e.g., decluttering uses this to find the "true" viewport)
@@ -228,15 +240,6 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         if ( !_picks.empty() )
         {
             aa.requestRedraw();
-        }
-
-        // synchronize the pick camera associated with this view
-        osg::Camera* cam = aa.asView()->getCamera();
-        if (cam)
-        {
-            PickContext& context = getOrCreatePickContext( aa.asView() );
-            context._pickCamera->setViewMatrix( cam->getViewMatrix() );
-            context._pickCamera->setProjectionMatrix( cam->getProjectionMatrix() );
         }
     }
 

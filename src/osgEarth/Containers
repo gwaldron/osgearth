@@ -716,7 +716,7 @@ namespace osgEarth
         void forEach(Functor& functor)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for (fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
+            for (typename fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 

@@ -412,14 +412,14 @@ LandCoverLayerOptions::getConfig() const
 
     if (_coverages.size() > 0)
     {
-        Config images("images");
+        Config images("coverages");
         for (std::vector<LandCoverCoverageLayerOptions>::const_iterator i = _coverages.begin();
             i != _coverages.end();
             ++i)
         {
-            images.add("image", i->getConfig());
+            images.add("coverage", i->getConfig());
         }
-        conf.add(images);
+        conf.update(images);
     }
 
     return conf;

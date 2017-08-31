@@ -31,6 +31,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/PagedNode>
+#include <osgEarth/ShaderUtils>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -287,7 +288,7 @@ namespace
             }
 
             GeometryCompilerOptions gco;
-            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            gco.shaderPolicy() = SHADERPOLICY_INHERIT;
             FeatureNode* node = new FeatureNode(f.get(), _style, gco);
             
             return node;
@@ -338,7 +339,7 @@ namespace
     osg::Node* GeomCell::build()
     {
         GeometryCompilerOptions gco;
-        gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+        gco.shaderPolicy() = SHADERPOLICY_INHERIT;
         FeatureNode* node = new FeatureNode(_feature.get(), _style, gco);
         return node;
     }
@@ -394,7 +395,7 @@ namespace
         osg::Node* build()
         {
             GeometryCompilerOptions gco;
-            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            gco.shaderPolicy() = SHADERPOLICY_INHERIT;
             FeatureNode* node = new FeatureNode(_feature, _style, gco);
             return node;
         }
@@ -452,7 +453,7 @@ namespace
         osg::Node* build()
         {
             GeometryCompilerOptions gco;
-            gco.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+            gco.shaderPolicy() = SHADERPOLICY_INHERIT;
             return new FeatureNode(0L, _sqidFeatures, _style, gco);
         }
     };
@@ -775,7 +776,7 @@ MGRSGraticule::rebuild()
             table[i->get()->getString("gzd")].push_back(i->get());
 
         GeometryCompilerOptions gcOpt;
-        gcOpt.shaderPolicy() = ShaderPolicy::SHADERPOLICY_INHERIT;
+        gcOpt.shaderPolicy() = SHADERPOLICY_INHERIT;
         gcOpt.optimizeStateSharing() = false;
 
         osg::Group* geomTop = new osg::Group();

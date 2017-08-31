@@ -54,6 +54,13 @@ using namespace OpenThreads;
 
 #define LC "[Registry] "
 
+namespace
+{
+    void myCPLErrorHandler(CPLErr errClass, CPLErrorNum errNum, const char* msg)
+    {
+        OE_DEBUG << "[GDAL] " << msg << " (error " << errNum << ")" << std::endl;
+    }
+}
 
 Registry::Registry() :
 osg::Referenced     ( true ),
@@ -74,6 +81,9 @@ _threadPoolSize(2u)
     // support Chinese character in the file name and attributes in ESRI's shapefile
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
     CPLSetConfigOption("SHAPE_ENCODING","");
+
+    // Redirect GDAL/OGR console errors to our own handler
+    CPLPushErrorHandler(myCPLErrorHandler);
 
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();
@@ -154,30 +164,12 @@ _threadPoolSize(2u)
 
     // register the system stock Units.
     Units::registerAll( this );
-
-    //// intiailize the async operations queue.
-    //_opQueue = new osg::OperationQueue();
-
-    //// create the thread pool and tie it to the queue.
-    //for (unsigned i = 0; i < _threadPoolSize; ++i)
-    //{
-    //    osg::OperationThread* t = new osg::OperationThread();
-    //    t->setOperationQueue(_opQueue.get());
-    //    t->start();
-    //    _opThreadPool.push_back(t);
-    //}
 }
 
 Registry::~Registry()
 {
-    //_opQueue->releaseAllOperations();
-    //_opQueue->removeAllOperations();
-
-    //for (unsigned i = 0; i < _opThreadPool.size(); ++i)
-    //{
-    //    _opThreadPool[i]->setDone(true);
-    //    //_opThreadPool[i]->cancel();
-    //}
+    // pop the custom error handler
+    CPLPopErrorHandler();
 }
 
 Registry*

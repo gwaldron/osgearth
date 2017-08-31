@@ -40,6 +40,7 @@
 
 #include <gdal_priv.h>
 #include <ogr_api.h>
+#include <cpl_error.h>
 #include <stdlib.h>
 #include <locale>
 

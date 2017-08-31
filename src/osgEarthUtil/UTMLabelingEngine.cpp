@@ -254,7 +254,8 @@ UTMLabelingEngine::traverse(osg::NodeVisitor& nv)
     }
     else
     {
-        _cameraDataMap.forEach(AcceptCameraData(nv));
+        AcceptCameraData accept(nv);
+        _cameraDataMap.forEach(accept);
     }
     
     osg::Group::traverse(nv);

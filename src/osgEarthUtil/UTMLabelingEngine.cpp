@@ -56,25 +56,16 @@ namespace
                 em->getRadiusPolar());
         }
 
-        //! Must call this before calling any methods that use clip coordinates
-        void setClipToWorldMatrix(const osg::Matrix& m)
-        {
-            _clipToWorld = m;
-        }
-
-        //! Interects a finite ray with an ellipsoid. The ray is defined
-        //! by the X and Y components (in projection aka "clip" space). The function
-        //! uses this information to build a ray from Z=-1 to Z=1.
-        //! @param clipx X coordinate in [-1..+1] clip space
-        //! @param clipy Y coordinate in [-1..+1] clip space
+        //! Interects a line (world space) with an ellipsoid.
+        //! @param p0 First point on the line
+        //! @param p1 Second point on the line
         //! @param out_world Output world coordinates of closest intersection
-        bool intersectClipRay(double clipx, double clipy, osg::Vec3d& out_world)
+        bool intersectLine(const osg::Vec3d& p0_world, const osg::Vec3d& p1_world, osg::Vec3d& out_world)
         {
             double dist2 = 0.0;
             osg::Vec3d v;
-
-            osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * _clipToWorld * _ellipsoidToUnitSphere; // near plane
-            osg::Vec3d p1 = osg::Vec3d(clipx, clipy, 1.0) * _clipToWorld * _ellipsoidToUnitSphere; // far plane
+            osg::Vec3d p0 = p0_world * _ellipsoidToUnitSphere;
+            osg::Vec3d p1 = p1_world * _ellipsoidToUnitSphere;
 
             const double R = 1.0; // for unit sphere.
 
@@ -307,28 +298,39 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
     // This will yeild the approximate geo-extent of the view.
     // TODO: graduate this to the core if generally useful - could be helpful
     // for displaying the extent of the current view.
+
+    // Calculate the "clip to world" matrix = MVPinv.
     osg::Matrix MVP = (*nv.getModelViewMatrix()) * cam->getProjectionMatrix();
     osg::Matrix MVPinv;
     MVPinv.invert(MVP);
 
     EllipsoidIntersector ellipsoid(_srs->getEllipsoid());
-    ellipsoid.setClipToWorldMatrix(MVPinv);
+
+    // For each corner, transform the clip coordinates at the near and far
+    // planes into world space and intersect that line with the ellipsoid:
+    osg::Vec3d p0, p1;
 
     // find the lower-left corner of the frustum:
     osg::Vec3d LL_world;
-    bool LL_ok = ellipsoid.intersectClipRay(-1, -1, LL_world);
+    p0 = osg::Vec3d(-1, -1, -1) * MVPinv;
+    p1 = osg::Vec3d(-1, -1, +1) * MVPinv;
+    bool LL_ok = ellipsoid.intersectLine(p0, p1, LL_world);   
     if (!LL_ok)
         return false;
 
     // find the upper-left corner of the frustum:
     osg::Vec3d UL_world;
-    bool UL_ok = ellipsoid.intersectClipRay(-1, 1, UL_world);
+    p0 = osg::Vec3d(-1, +1, -1) * MVPinv;
+    p1 = osg::Vec3d(-1, +1, +1) * MVPinv;
+    bool UL_ok = ellipsoid.intersectLine(p0, p1, UL_world);
     if (!UL_ok)
         return false;
 
     // find the lower-right corner of the frustum:
     osg::Vec3d LR_world;
-    bool LR_ok = ellipsoid.intersectClipRay(1, -1, LR_world);
+    p0 = osg::Vec3d(+1, -1, -1) * MVPinv;
+    p1 = osg::Vec3d(+1, -1, +1) * MVPinv;
+    bool LR_ok = ellipsoid.intersectLine(p0, p1, LR_world);
     if (!LR_ok)
         return false;
 
@@ -351,7 +353,7 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
 
     if (split)
     {
-        // Calculate the longitude of the zone boundary and fill in the UTMZone values.
+        // Calculate the longitude of the on-screen zone boundary and fill in the UTMZone values.
         double splitLon = (::floor(left.LL_geo.x() / 6.0) + 1.0) * 6.0;
         left.LR_geo.set(_srs.get(), splitLon, left.LL_geo.y(), 0, ALTMODE_ABSOLUTE);
         right.LL_geo = left.LR_geo;

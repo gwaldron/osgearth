@@ -88,7 +88,11 @@ MGRSGraticule::init()
     osg::StateSet* ss = this->getOrCreateStateSet();
 
     // make the shared depth attr:
-    ss->setMode( GL_DEPTH_TEST, 0 );
+    ss->setAttributeAndModes(
+        new osg::Depth(osg::Depth::ALWAYS, 0.f, 1.f, false),
+        osg::StateAttribute::ON);
+
+    //ss->setMode( GL_DEPTH_TEST, 0 );
     ss->setMode( GL_LIGHTING, 0 );
     ss->setMode( GL_BLEND, 1 );
 

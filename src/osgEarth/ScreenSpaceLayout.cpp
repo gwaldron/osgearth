@@ -122,8 +122,9 @@ namespace
     // TODO: a way to clear out this list when drawables go away
     struct DrawableInfo
     {
-        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f) { }
+        DrawableInfo() : _lastAlpha(1.0f), _lastScale(1.0f), _frame(0u) { }
         float _lastAlpha, _lastScale;
+        unsigned _frame;
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
@@ -537,7 +538,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     }
 
                     leaf->_depth = info._lastAlpha;
-                    leaves.push_back( leaf );                
+                    leaves.push_back( leaf );
+
+                    info._frame++;
                 }
                 else
                 {
@@ -558,20 +561,29 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 bool isBbox = dynamic_cast<const osgEarth::Annotation::BboxDrawable*>(drawable) != 0L;
                 bool fullyOut = true;
 
-                if ( info._lastScale != *options.minAnimationScale() )
+                if (info._frame > 0u)
                 {
-                    fullyOut = false;
-                    info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
-                    if ( info._lastScale < *options.minAnimationScale() )
-                        info._lastScale = *options.minAnimationScale();
-                }
+                    if ( info._lastScale != *options.minAnimationScale() )
+                    {
+                        fullyOut = false;
+                        info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                        if ( info._lastScale < *options.minAnimationScale() )
+                            info._lastScale = *options.minAnimationScale();
+                    }
 
-                if ( info._lastAlpha != *options.minAnimationAlpha() )
+                    if ( info._lastAlpha != *options.minAnimationAlpha() )
+                    {
+                        fullyOut = false;
+                        info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                        if ( info._lastAlpha < *options.minAnimationAlpha() )
+                            info._lastAlpha = *options.minAnimationAlpha();
+                    }
+                }
+                else
                 {
-                    fullyOut = false;
-                    info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
-                    if ( info._lastAlpha < *options.minAnimationAlpha() )
-                        info._lastAlpha = *options.minAnimationAlpha();
+                    // prevent first-frame "pop out"
+                    info._lastScale = options.minAnimationScale().get();
+                    info._lastAlpha = options.minAnimationAlpha().get();
                 }
 
                 leaf->_depth = info._lastAlpha;
@@ -587,6 +599,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                             leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
                     }
                 }
+
+                info._frame++;
             }
         }
     }

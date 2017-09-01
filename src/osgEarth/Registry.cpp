@@ -57,7 +57,7 @@ using namespace OpenThreads;
 
 namespace
 {
-    void myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)
+    void CPL_STDCALL myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)
     {
         OE_DEBUG << "[GDAL] " << msg << " (error " << errNum << ")" << std::endl;
     }

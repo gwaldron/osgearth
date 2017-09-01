@@ -33,6 +33,28 @@ using namespace osgEarth::Util;
 
 namespace
 {
+    // Callback to set the "far plane" uniform just before drawing.
+    struct CallHostCameraPreDrawCallback : public osg::Camera::DrawCallback
+    {
+        osg::observer_ptr<osg::Camera> _hostCamera;
+
+        CallHostCameraPreDrawCallback( osg::Camera* hostCamera ) :
+            _hostCamera( hostCamera )
+        {
+        }
+
+        void operator () (osg::RenderInfo& renderInfo) const
+        {
+            osg::ref_ptr<osg::Camera> hostCamera;
+            if ( _hostCamera.lock(hostCamera) )
+            {
+                const osg::Camera::DrawCallback* hostCallback = hostCamera->getPreDrawCallback();
+                if ( hostCallback )
+                    hostCallback->operator()( renderInfo );
+            }
+        }
+    };
+
     // SHADERS for the RTT pick camera.
 
     const char* pickVertexEncode =
@@ -233,6 +255,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // duplicate the view matrix and projection matrix during the update traversal
     // The "false" means the pick camera has its own separate subgraph.
     view->addSlave(c._pickCamera.get(), false);
+    // Add a pre-draw callback that calls the view camera's pre-draw callback.  This
+    // is better than assigning the same pre-draw callback, because the callback can
+    // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)
+    c._pickCamera->setPreDrawCallback( new CallHostCameraPreDrawCallback(view->getCamera()) );
 
     // associate the RTT camara with the view's camera.
     // (e.g., decluttering uses this to find the "true" viewport)

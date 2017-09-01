@@ -737,6 +737,16 @@ namespace osgEarth { namespace Util
          */
         void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
+        /**
+         * Expressly set the initial vertical FOV.
+         * If the manipulator detects that the camera has switched from persective 
+         * to orthographic projection, it will use the last know VFOV of the perspective
+         * projection to match the zoom level in orthographic mode. However, if you start
+         * in orthographic mode, it doesn't have this information; you can provide it
+         * with this method.
+         */
+        void setInitialVFOV(double vfov);
+
     public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
@@ -922,7 +932,6 @@ namespace osgEarth { namespace Util
         virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
         virtual void handleContinuousAction( const Action& action, osg::View* view );
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
-        //virtual bool handleMultiTouchAction( const Action& action, const TouchEvent& te, osg::View* view );
 
         /**
          * Gets the viewpoint of the TetherNode.
@@ -1035,7 +1044,7 @@ namespace osgEarth { namespace Util
         EventType _last_event;
         double    _time_s_last_event;
 
-        double _vfov;
+        double _lastKnownVFOV;
 
         /** updates a camera to switch between prospective and ortho. */
         void updateProjection( osg::Camera* eventCamera );

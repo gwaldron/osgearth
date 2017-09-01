@@ -71,7 +71,7 @@ namespace osgEarth { namespace Util
          * do NOT need to call this method directly; the Picker will call it upon handling
          * a pick event (i.e., when Callback::accept returns true).
          *
-         * Returns true if the pick was succesfully queued; false if not.
+         * Returns true if the pick was successfully queued; false if not.
          */
         virtual bool pick(osg::View* view, float mouseX, float mouseY, Callback* callback);
 
@@ -87,6 +87,13 @@ namespace osgEarth { namespace Util
         virtual bool insertChild(unsigned i, osg::Node* child);
         virtual bool removeChild(osg::Node* child);
         virtual bool replaceChild(osg::Node* oldChild, osg::Node* newChild);
+
+    public: // simulate osg::Camera cull mask methods
+
+        /** Specifies the cull mask for the RTT camera */
+        void setCullMask(osg::Node::NodeMask nm);
+        osg::Node::NodeMask getCullMask() const { return _cullMask; }
+
 
     public: // for debugging
 
@@ -104,6 +111,7 @@ namespace osgEarth { namespace Util
         
         int                    _rttSize;     // size of the RTT image (pixels per side)
         int                    _buffer;      // buffer around pick point to check (pixels)
+        osg::Node::NodeMask    _cullMask;    // cull mask applied to the camera
         osg::ref_ptr<Callback> _defaultCallback;
 
         // Associates a view and a pick camera for that view.
@@ -135,7 +143,7 @@ namespace osgEarth { namespace Util
         // Runs the queue of picks given a frame number.
         void runPicks(unsigned frameNumber);
 
-        // Checks to see if a pick succeeded and fires approprate callback.
+        // Checks to see if a pick succeeded and fires appropriate callback.
         void checkForPickResult(Pick& pick);
 
         // container for common RTT pick camera children (see addChild et al.)

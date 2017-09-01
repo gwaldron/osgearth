@@ -672,7 +672,7 @@ EarthManipulator::reinitialize()
     _setVP1.unset();
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _setVPArcHeight = 0.0;
-    _vfov = 30.0;
+    _lastKnownVFOV = 30.0;
 }
 
 
@@ -1535,7 +1535,7 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
                 double vfov, ar, zn, zf;
                 if (eventCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
                 {
-                    _vfov = vfov;
+                    _lastKnownVFOV = vfov;
                 }
             }
 
@@ -1545,7 +1545,7 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
             {
                 // need to update the ortho projection matrix to reflect the camera distance.
                 double ar = vp->width()/vp->height();
-                double y = _distance * tan(0.5*osg::DegreesToRadians(_vfov));
+                double y = _distance * tan(0.5*osg::DegreesToRadians(_lastKnownVFOV));
                 double x = y * ar;
 
 #if 0 // TODO: derive the pixel offsets and re-instate them.
@@ -1569,7 +1569,7 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
 
                 OE_DEBUG << "ORTHO: "
                     << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
-                    << ", dist = " << _distance << ", vfov=" << _vfov
+                    << ", dist = " << _distance << ", vfov=" << _lastKnownVFOV
                     << ", X = " << x << ", Y = " << y
                     << std::endl;
             }
@@ -1587,7 +1587,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( !established() )
         return false;
 
-    // make sure the camera callback is up to date:
+    // make sure the camera projection is up to date:
     osg::View* view = aa.asView();
     updateProjection( view->getCamera() );
 
@@ -2632,6 +2632,12 @@ void
 EarthManipulator::setDistance( double distance )
 {
     _distance = osg::clampBetween( distance, _settings->getMinDistance(), _settings->getMaxDistance() );
+}
+
+void
+EarthManipulator::setInitialVFOV(double vfov)
+{
+    _lastKnownVFOV = vfov;
 }
 
 void

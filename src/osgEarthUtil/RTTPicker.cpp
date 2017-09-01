@@ -33,6 +33,28 @@ using namespace osgEarth::Util;
 
 namespace
 {
+    // Callback to set the "far plane" uniform just before drawing.
+    struct CallHostCameraPreDrawCallback : public osg::Camera::DrawCallback
+    {
+        osg::observer_ptr<osg::Camera> _hostCamera;
+
+        CallHostCameraPreDrawCallback( osg::Camera* hostCamera ) :
+            _hostCamera( hostCamera )
+        {
+        }
+
+        void operator () (osg::RenderInfo& renderInfo) const
+        {
+            osg::ref_ptr<osg::Camera> hostCamera;
+            if ( _hostCamera.lock(hostCamera) )
+            {
+                const osg::Camera::DrawCallback* hostCallback = hostCamera->getPreDrawCallback();
+                if ( hostCallback )
+                    hostCallback->operator()( renderInfo );
+            }
+        }
+    };
+
     // SHADERS for the RTT pick camera.
 
     const char* pickVertexEncode =
@@ -110,6 +132,9 @@ RTTPicker::RTTPicker(int cameraSize)
 
     // pixels around the click to test
     _buffer = 2;
+    
+    // Cull mask for RTT cameras
+    _cullMask = ~0;
 }
 
 RTTPicker::~RTTPicker()
@@ -139,6 +164,18 @@ RTTPicker::getOrCreateTexture(osg::View* view)
         pc._tex->setMaxAnisotropy(1.0f); // no filtering
     }
     return pc._tex.get();
+}
+
+void
+RTTPicker::setCullMask(osg::Node::NodeMask nm)
+{
+    if ( _cullMask == nm )
+        return;
+    _cullMask = nm;
+    for(PickContexts::const_iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
+    {
+        i->_pickCamera->setCullMask( _cullMask );
+    }
 }
 
 RTTPicker::PickContext&
@@ -177,6 +214,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
     c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
+    c._pickCamera->setCullMask( _cullMask );
 
     // Necessary to connect the slave to the master (why is this not automatic?)
     c._pickCamera->setGraphicsContext(view->getCamera()->getGraphicsContext());
@@ -217,6 +255,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // duplicate the view matrix and projection matrix during the update traversal
     // The "false" means the pick camera has its own separate subgraph.
     view->addSlave(c._pickCamera.get(), false);
+    // Add a pre-draw callback that calls the view camera's pre-draw callback.  This
+    // is better than assigning the same pre-draw callback, because the callback can
+    // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)
+    c._pickCamera->setPreDrawCallback( new CallHostCameraPreDrawCallback(view->getCamera()) );
 
     // associate the RTT camara with the view's camera.
     // (e.g., decluttering uses this to find the "true" viewport)

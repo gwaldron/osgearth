@@ -42,14 +42,17 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayerOptions : public VisibleLayerOptions
     {
     public:
+        //! Construct empty (default) options.
         TerrainLayerOptions();
+
+        //! Deserialize options from a Config structure
         TerrainLayerOptions(const ConfigOptions& options);
+
+        //! Construct empty named options.
         TerrainLayerOptions(const std::string& name);
+
+        //! Construct empty options with TileSource configuration.
         TerrainLayerOptions(const std::string& name, const TileSourceOptions& driverOptions);
-
-        /** dtor */
-        virtual ~TerrainLayerOptions() { }
-
 
         /**
          * Gets the explicity vertical datum identifier that will override a vertical
@@ -92,6 +95,13 @@ namespace osgEarth
         const optional<double>& maxResolution() const { return _maxResolution; }
 
         /**
+         * The maximum level of detail for which this layer should generate new data.
+         * Data from this layer will be upsampled in map tiles above the maxDataLevel.
+         */
+        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
+
+        /**
          * Whether to use exact cropping if image cropping is necessary
          */
         optional<bool>& exactCropping() { return _exactCropping; }
@@ -99,15 +109,10 @@ namespace osgEarth
 
         /**
          * The desired tile size to reproject imagery to if necessary.
+         * TODO: evaluate for possible deprecation
          */
         optional<unsigned int>& reprojectedTileSize() { return _reprojectedTileSize; }
         const optional<unsigned int>& reprojectedTileSize() const { return _reprojectedTileSize; }
-        
-        /**
-         * The loading weight of this MapLayer (for threaded loading policies).
-         */
-        optional<float>& loadingWeight() { return _loadingWeight; }
-        const optional<float>& loadingWeight() const { return _loadingWeight; }
 
         /**
          * The ratio used to expand the extent of a tile when the layer
@@ -118,16 +123,31 @@ namespace osgEarth
         optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
         const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
 
-        /** 
-         * The hostname/port of a proxy server to use for HTTP communications on this layer
-         * Default = no proxy.
-         */
+        //! The hostname/port of a proxy server to use for HTTP communications on this layer
+        //! Default = no proxy.
         optional<ProxySettings>& proxySettings() { return _proxySettings; }
         const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
 
+        //! Number of samples in each dimension.
+        optional<unsigned>& tileSize() { return _tileSize; }
+        const optional<unsigned>& tileSize() const { return _tileSize; }
+
+        //! Value to treat as a "no data" marker.
+        optional<float>& noDataValue() { return _noDataValue; }
+        const optional<float>& noDataValue() const { return _noDataValue; }
+
+        //! Treat any value less than this as a "no data" marker.
+        optional<float>& minValidValue() { return _minValidValue; }
+        const optional<float>& minValidValue() const { return _minValidValue; }
+
+        //! Treat any value greater than this as a "no data" marker.
+        optional<float>& maxValidValue() { return _maxValidValue; }
+        const optional<float>& maxValidValue() const { return _maxValidValue; }
+
+
     public:
-        virtual Config getConfig() const { return getConfig(false); }
-        virtual Config getConfig( bool isolate ) const;
+        virtual Config getConfig() const; // { return getConfig(false); }
+        //virtual Config getConfig( bool isolate ) const;
         virtual void mergeConfig( const Config& conf );
 
     private:
@@ -140,12 +160,15 @@ namespace osgEarth
         optional<unsigned>          _maxLevel;
         optional<double>            _minResolution;
         optional<double>            _maxResolution;
-        optional<float>             _loadingWeight;
+        optional<unsigned>          _maxDataLevel;
         optional<bool>              _exactCropping;
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
-        optional<unsigned>          _maxDataLevel;
+        optional<unsigned>          _tileSize;
         optional<ProxySettings>     _proxySettings;
+        optional<float>             _noDataValue;
+        optional<float>             _minValidValue;
+        optional<float>             _maxValidValue;
     };
 
 
@@ -163,10 +186,13 @@ namespace osgEarth
         META_Layer(osgEarth, TerrainLayer, TerrainLayerOptions);
 
     protected:
+        //! Construct from subclass with a pointer to the concerete options structure.
         TerrainLayer(TerrainLayerOptions* =0L);
 
+        //! Construct from subclass with pointer to concrete options and premade tile source
         TerrainLayer(TerrainLayerOptions*, TileSource*);
 
+        //! DTOR
         virtual ~TerrainLayer();
 
     public: // Layer
@@ -190,23 +216,13 @@ namespace osgEarth
          * Gets the size (i.e. number of samples in each dimension) or the source
          * data for this layer.
          */
-        unsigned getTileSize() const;
+        virtual unsigned getTileSize() const;
         
         /**
-         * Whether the layer represents dynamic data, i.e. tile data that can change.
+         * Whether the layer represents dynamic data, i.e. it generates data that requires
+         * an update traversal.
          */
-        bool isDynamic() const;
-
-        /**
-         * Whether the layer possibly has data int he provided extent.
-         */
-        virtual bool mayHaveDataInExtent(const GeoExtent& e) const;
-
-        /**
-         * Whether the given key falls within the range limits set in the options;
-         * i.e. min/maxLevel or min/maxResolution.
-         */
-        virtual bool isKeyInRange(const TileKey& key) const;
+        virtual bool isDynamic() const;
 
         /** 
          * Whether the data for the specified tile key is in the cache.
@@ -231,11 +247,60 @@ namespace osgEarth
          */
         void setReadOptions(const osgDB::Options* readOptions);
 
+
+    public: // Data availability methods
+
+        /**
+         * Given a TileKey, returns a TileKey representing the best known available.
+         * For example, if the input TileKey exceeds the layer's max LOD, the return
+         * value will be an ancestor key at that max LOD.
+         */
+        virtual TileKey getBestAvailableTileKey(const TileKey& key) const;
+
+        /**
+         * Whether the layer possibly has data in the provided extent.
+         * Best guess given available information.
+         *
+         * @param extent Extent for which to test for data availability
+         * @return True or false
+         */
+        virtual bool mayHaveDataInExtent(const GeoExtent& e) const;
+
+        /**
+         * Whether the layer possibly has real data for the provided TileKey.
+         * Best guess given available information.
+         */
+        virtual bool mayHaveData(const TileKey& key) const;
+
+        /**
+         * Whether the given key falls within the range limits set in the options;
+         * i.e. min/maxLevel or min/maxResolution. (This does not mean that the key
+         * will result in data.)
+         */
+        virtual bool isKeyInLegalRange(const TileKey& key) const;
+
         /**
          * Data Extents reported for this layer are copied into output.
          * Returns true on success, false is there are no extents to report.
          */
-        bool getDataExtents(DataExtentList& output) const;
+        const DataExtentList& getDataExtents() const;
+
+        /**
+         * Gets an extent that is the union of all the extents in getDataExtents().
+         */
+        const GeoExtent& getDataExtentsUnion() const;
+
+
+    public: // Data interpretation methods
+
+        //! Special value representing "no data" in a location
+        virtual float getNoDataValue() const;
+
+        //! Values less than this will be reinterpreted as "no data"
+        virtual float getMinValidValue() const;
+
+        //! Values greater than this weill be reinterpreted as "no data"
+        virtual float getMaxValidValue() const;
 
 
     public: // Layer interface
@@ -299,11 +364,17 @@ namespace osgEarth
 
         CacheBin* getCacheBin(const Profile* profile);
 
+        DataExtentList& dataExtents();
+
+        //! Call this if you call dataExtents() and modify it.
+        void dirtyDataExtents();
+
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
         unsigned                       _tileSize;  
         osg::ref_ptr<MemCache>         _memCache;
+        bool _openCalled;
 
         // profile from tile source or cache, before any overrides applied
         mutable osg::ref_ptr<const Profile> _profileOriginal;
@@ -328,6 +399,8 @@ namespace osgEarth
         bool                     _tileSourceExpected;
         mutable Threading::Mutex _initTileSourceMutex;
         osg::ref_ptr<TileSource> _tileSource;
+        DataExtentList           _dataExtents;
+        mutable GeoExtent        _dataExtentsUnion;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
@@ -340,11 +413,9 @@ namespace osgEarth
         typedef std::map<std::string, osg::ref_ptr<CacheBinMetadata> > CacheBinMetadataMap;
         CacheBinMetadataMap _cacheBinMetadata;
 
-        mutable Threading::Mutex  _mutex;
+        mutable Threading::Mutex _mutex;
 
         mutable osg::ref_ptr<CacheSettings> _cacheSettings;
-
-        bool _openCalled;
 
         void fireCallback(TerrainLayerCallback::MethodPtr method);
 

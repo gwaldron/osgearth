@@ -57,7 +57,7 @@ namespace osgEarth { namespace Features
         optional<std::string>& styleName() { return _styleName; }
         const optional<std::string>& styleName() const { return _styleName; }
 
-
+        
         virtual ~FeatureLevel() { }
 
 
@@ -151,6 +151,12 @@ namespace osgEarth { namespace Features
         optional<float>& minExpiryTime() { return _minExpiryTime; }
         const optional<float>& minExpiryTime() const { return _minExpiryTime; }
 
+        /**
+         * Whether tiles are paged in vs. created at load time (default, paged=true)
+         */
+        optional<bool>& paged() { return _paged; }
+        const optional<bool>& paged() const { return _paged; }
+
 
         /** Adds a new feature level */
         void addLevel( const FeatureLevel& level );
@@ -179,6 +185,7 @@ namespace osgEarth { namespace Features
         optional<float> _priorityOffset;
         optional<float> _priorityScale;
         optional<float> _minExpiryTime;
+        optional<bool>  _paged;
         typedef std::multimap<float,FeatureLevel> Levels;
         Levels _levels;
 

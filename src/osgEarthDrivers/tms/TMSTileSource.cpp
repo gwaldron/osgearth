@@ -94,8 +94,8 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
             profile,
             extents,
             _options.format().value(),
-            _options.tileSize().value(), 
-            _options.tileSize().value() );
+            getPixelsPerTile(),
+            getPixelsPerTile() );
 
         // If this is a new repo, write the tilemap file to disk now.
         if ( isNewRepo )

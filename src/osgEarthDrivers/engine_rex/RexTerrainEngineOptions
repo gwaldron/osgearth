@@ -46,7 +46,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
             _mergesPerFrame         ( 20 ),
-            _expirationRange        ( 0 )
+            _expirationRange        ( 0 ),
+            _rangeMode              ( osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -115,22 +116,27 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::vector<LODOptions>& lods() { return _lods; }
         const std::vector<LODOptions>& lods() const { return _lods; }
 
+        /** Mode to use when calculating LOD switching distances */
+        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
+        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
 
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
-            conf.updateIfSet( "skirt_ratio", _skirtRatio );
-            conf.updateIfSet( "color", _color );
-            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.updateIfSet( "expiration_range", _expirationRange );
-            conf.updateIfSet( "expiration_threshold", _expirationThreshold );
-            conf.updateIfSet( "progressive", _progressive );
-            conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
-            conf.updateIfSet( "normal_maps", _normalMaps );
-            conf.updateIfSet( "normalize_edges", _normalizeEdges);
-            conf.updateIfSet( "morph_terrain", _morphTerrain );
-            conf.updateIfSet( "morph_imagery", _morphImagery );
-            conf.updateIfSet( "merges_per_frame", _mergesPerFrame );
+            conf.set( "skirt_ratio", _skirtRatio );
+            conf.set( "color", _color );
+            conf.set( "quick_release_gl_objects", _quickRelease );
+            conf.set( "expiration_range", _expirationRange );
+            conf.set( "expiration_threshold", _expirationThreshold );
+            conf.set( "progressive", _progressive );
+            conf.set( "high_resolution_first", _highResolutionFirst );
+            conf.set( "normal_maps", _normalMaps );
+            conf.set( "normalize_edges", _normalizeEdges);
+            conf.set( "morph_terrain", _morphTerrain );
+            conf.set( "morph_imagery", _morphImagery );
+            conf.set( "merges_per_frame", _mergesPerFrame );
+            conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
+            conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
             if (!_lods.empty()) {
                 Config lodsConf("lods");
@@ -166,6 +172,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "morph_terrain", _morphTerrain );
             conf.getIfSet( "morph_imagery", _morphImagery );
             conf.getIfSet( "merges_per_frame", _mergesPerFrame );
+            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
+            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
             const Config* lods = conf.child_ptr("lods");
             if (lods) {
@@ -194,6 +202,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>     _morphTerrain;
         optional<bool>     _morphImagery;
         optional<int>      _mergesPerFrame;
+        optional<osg::LOD::RangeMode> _rangeMode;
         std::vector<LODOptions> _lods;
     };
 

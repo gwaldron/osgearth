@@ -94,7 +94,6 @@ AnnotationNode::traverse(osg::NodeVisitor& nv)
                 if (mapNode)
                 {
                     setMapNode(mapNode);
-                    ADJUST_UPDATE_TRAV_COUNT(this, -1);
                 }
             }
 
@@ -228,7 +227,7 @@ AnnotationNode::applyRenderSymbology(const Style& style)
                 (render->backfaceCulling() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
-#ifndef OSG_GLES2_AVAILABLE
+#if !( defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE) || defined(OSG_GL3_AVAILABLE) )
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + render->clipPlane().value();

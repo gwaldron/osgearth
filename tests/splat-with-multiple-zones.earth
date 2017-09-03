@@ -1,0 +1,116 @@
+<!--
+|  Procedural terrain splatting and ground cover;
+|  Demonstrates the use of multiple geographic zones.
+|
+|  Suggest using --logdepth to see the grass when you get in close.
+-->
+
+<map>
+    <options>
+        <terrain driver="rex"/>
+    </options>
+    
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    <!-- Pre-load the splatting nodekit -->
+    <libraries>osgEarthSplat</libraries>
+    
+    <!-- Land cover requires a dictionary that defines all the core classes -->
+    <xi:include href="../data/land_cover_dictionary.xml"/>
+    
+    <!-- Land cover layer defines world wide classes -->
+    <land_cover name="LandCover" max_data_level="15">
+        <cache_policy usage="no_cache"/>
+        <coverages>
+            <coverage name="ESA GLOBCOVER" driver="gdal">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
+                <warp>0.05</warp>
+            </coverage>
+        </coverages>
+    </land_cover>
+        
+    <!-- Procedural terrain imagery from land cover data -->
+    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+        <zones>
+            <zone name="default">
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>
+            <zone name="australia">
+                <boundaries>
+                    <boundary xmin="112" xmax="154" ymin="-43.50" ymax="-11.16" zmax="2000000"/>
+                </boundaries>
+                <surface>
+                    <catalog>../data/splat/splat_catalog_au.xml</catalog>
+                </surface>
+            </zone>
+        </zones>
+    </splat_imagery>
+    
+    <!-- GPU trees from land cover data -->
+    <splat_groundcover name="Trees" land_cover_layer="LandCover">
+        <lod>13</lod>
+        <cast_shadows>true</cast_shadows>
+        <zones>
+            <zone name="default">
+                <groundcover>
+                    <max_distance>6400</max_distance>
+                    <density>3.4</density>
+                    <fill>0.45</fill>
+                    <brightness>2.0</brightness>
+                    <contrast>0.5</contrast>
+                    <biomes>
+                        <biome classes="forest">
+                            <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                            <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                            <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+        </zones>
+    </splat_groundcover>
+
+    <!-- GPU grass from land cover data -->
+    <splat_groundcover name="Grass" land_cover_layer="LandCover">
+        <lod>19</lod>
+        <cast_shadows>false</cast_shadows>
+        <zones>
+            <zone name="default">
+                <groundcover>
+                    <max_distance>150</max_distance>
+                    <density>3.8</density>
+                    <fill>0.50</fill>
+                    <wind>0.15</wind>
+                    <biomes>
+                        <biome name="Grass" classes="forest">
+                            <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+            <zone name="australia">
+                <boundaries>
+                    <boundary xmin="112" xmax="154" ymin="-43.50" ymax="-11.16" zmax="2000000"/>
+                </boundaries>
+                <groundcover>
+                    <max_distance>150</max_distance>
+                    <density>2</density>
+                    <fill>0.50</fill>
+                    <wind>0.15</wind>
+                    <biomes>
+                        <biome name="Grass" classes="forest">
+                            <billboard url="../data/splat/grass2.png" width="0.85" height="0.4"/>
+                        </biome>
+                    </biomes>
+                </groundcover>
+            </zone>
+        </zones>
+    </splat_groundcover>
+            
+    <xi:include href="viewpoints.xml"/>
+</map>

@@ -35,7 +35,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>
@@ -81,11 +81,11 @@ namespace
 
     // callback that will run the MapNode installer on model layers so that
     // MapNodeObservers can have MapNode access
-    struct MapNodeObserverInstaller : public NodeOperation
+    struct MapNodeObserverInstaller : public SceneGraphCallback
     {
         MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        void operator()( osg::Node* node )
+        virtual void onPostMergeNode(osg::Node* node)
         {
             if ( _mapNode.valid() && node )
             {
@@ -284,6 +284,15 @@ MapNode::init()
     _terrainEngine = TerrainEngineNodeFactory::create( terrainOptions );
     _terrainEngineInitialized = false;
 
+    if ( _terrainEngine )
+    {
+        _terrainEngine->setMap( _map.get(), terrainOptions );
+    }
+    else
+    {
+        OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
+    }
+
     // the engine needs a container so we can set lighting state on the container and
     // not on the terrain engine itself. Makeing it a StickyGroup prevents the osgUtil
     // Optimizer from collapsing it if it's empty
@@ -301,59 +310,41 @@ MapNode::init()
             terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
-    if ( _terrainEngine )
-    {
-        // inform the terrain engine of the map information now so that it can properly
-        // initialize it's CoordinateSystemNode. This is necessary in order to support
-        // manipulators and to set up the texture compositor prior to frame-loop
-        // initialization.
-        _terrainEngine->setMap( _map.get(), terrainOptions );
-        _terrainEngineContainer->addChild( _terrainEngine );
-    }
-    else
-    {
-        OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
-    }
+    // a decorator for overlay models:
+    _overlayDecorator = new OverlayDecorator();
+    _terrainEngineContainer->addChild(_overlayDecorator);
+
+    // install the Draping technique for overlays:
+    DrapingTechnique* draping = new DrapingTechnique();
+
+    const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
+    if ( _mapNodeOptions.overlayBlending().isSet() )
+        draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+    if ( envOverlayTextureSize )
+        draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+    else if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+    if ( _mapNodeOptions.overlayMipMapping().isSet() )
+        draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+        draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+    if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+        draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
+
+    draping->reestablish( _terrainEngine );
+    _overlayDecorator->addTechnique( draping );
+
+    // install the Clamping technique for overlays:
+    _overlayDecorator->addTechnique( new ClampingTechnique() );
+
+    _overlayDecorator->setTerrainEngine(_terrainEngine);
+    _overlayDecorator->addChild(_terrainEngine);
 
     // make a group for the model layers. (Sticky otherwise the osg optimizer will remove it)
     _layerNodes = new StickyGroup();
     _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
     this->addChild( _layerNodes );
-
-    // a decorator for overlay models:
-    _overlayDecorator = new OverlayDecorator();
-    this->addChild(_overlayDecorator);
-
-    // install the Draping technique for overlays:
-    {
-        DrapingTechnique* draping = new DrapingTechnique();
-
-        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
-
-        if ( _mapNodeOptions.overlayBlending().isSet() )
-            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-        if ( envOverlayTextureSize )
-            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
-        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
-            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-        if ( _mapNodeOptions.overlayMipMapping().isSet() )
-            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
-        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
-            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
-
-        draping->reestablish( getTerrainEngine() );
-        _overlayDecorator->addTechnique( draping );
-    }
-
-    // install the Clamping technique for overlays:
-    {
-        _overlayDecorator->addTechnique( new ClampingTechnique() );
-    }
-
-    _overlayDecorator->setTerrainEngine(getTerrainEngine());
-    _overlayDecorator->addChild(getTerrainEngine());
 
     // Callback listens for changes in the Map:
     _mapCallback = new MapNodeMapCallbackProxy(this);
@@ -404,7 +395,7 @@ MapNode::init()
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
-    defaultMaterial->setUpdateCallback(new MaterialCallback());
+    MaterialCallback().operator()(defaultMaterial, 0L);
 
     dirtyBound();
 
@@ -613,7 +604,7 @@ MapNode::getLayerNodeGroup() const
 osg::Node*
 MapNode::getLayerNode(Layer* layer) const
 {
-    return layer ? layer->getNode() : 0L;
+    return layer ? layer->getOrCreateNode() : 0L;
 }
 
 
@@ -640,19 +631,35 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
 {
     if (!layer || !layer->getEnabled())
         return;
+    
+    // Communicate terrain resources to the layer:
+    layer->setTerrainResources(getTerrainEngine()->getResources());
 
     // Compatibility, until we refactor things.
     ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
     if (modelLayer)
     {
+        // TODO:  Why go through all the MapNodeObserver stuff when we can just pass in the MapNode here?
         modelLayer->getOrCreateSceneGraph(_map.get(), _map->getReadOptions(), 0L);
+        // Install the MapNodeObserverInstaller so that MapNodeObservers will be notified of the MapNode.
+        modelLayer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
     }
 
-    osg::Node* node = layer->getNode();
+    // Create the layer's node, if it has one:
+    osg::Node* node = layer->getOrCreateNode();
     if (node)
     {
+        // Call setMapNode on any MapNodeObservers on this initial creation.
+        MapNodeReplacer replacer( this );
+        node->accept( replacer );
+
+        // encase the layer's node in a container that will hold its state set:
+        osg::Group* nodeContainer = new osg::Group();
+        nodeContainer->setStateSet(layer->getStateSet());
+        nodeContainer->addChild( node );
+        _layerNodes->addChild( nodeContainer );
+
         OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
-        _layerNodes->addChild(node);
 
         // TODO: move this logic into ModelLayer.
         if (modelLayer)
@@ -677,17 +684,36 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
                 }
             }
         }
+
+        //// If this is a visible layer, we have to re-initialize the visibility
+        //// after calling getOrCreateNode.
+        //VisibleLayer* VL = dynamic_cast<VisibleLayer*>(layer);
+        //if (VL)
+        //    VL->setVisible(VL->getVisible());
     }
 }
 
 void
 MapNode::onLayerRemoved(Layer* layer, unsigned index)
 {
-    if (!layer || !layer->getNode())
+    if (layer == 0L)
         return;
 
-    _layerNodes->removeChild(layer->getNode());
+    osg::Node* node = layer->getOrCreateNode();
+    if (node == 0L)
+        return;
+
+    for (unsigned i = 0; i < _layerNodes->getNumChildren(); ++i)
+    {
+        osg::Group* g = _layerNodes->getChild(i)->asGroup();
+        if (g && g->getNumChildren() > 0 && g->getChild(0) == node)
+        {
+            _layerNodes->removeChild(i);
+            break;
+        }
+    }
 }
+
 
 namespace
 {

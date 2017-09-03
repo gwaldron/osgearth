@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       SimpleOcean Proxy FS
 #pragma vp_entryPoint oe_ocean_fragment

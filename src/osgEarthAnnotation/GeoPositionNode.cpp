@@ -90,7 +90,9 @@ _horizonCullingRequested( DEFAULT_HORIZON_CULLING )
 
 void
 GeoPositionNode::init()
-{    
+{
+    this->removeChildren(0, this->getNumChildren());
+
     _geoxform = new GeoTransform();
     this->addChild( _geoxform );
 
@@ -166,6 +168,33 @@ GeoPositionNode::applyStyle(const Style& style)
 
     // up the chain
     AnnotationNode::applyStyle( style );
+}
+
+void
+GeoPositionNode::setPosition(const GeoPoint& pos)
+{
+    GeoPoint pos2 = pos;
+
+    // The altitude symbol, if there is one, overrides the incoming GeoPoint:
+    const AltitudeSymbol* alt = getStyle().get<AltitudeSymbol>();
+    if (alt)
+    {
+        if (alt->clamping() == alt->CLAMP_TO_TERRAIN)
+        {
+            pos2.z() = 0;
+            pos2.altitudeMode() = ALTMODE_RELATIVE;
+        }
+        else if (alt->clamping() == alt->CLAMP_RELATIVE_TO_TERRAIN)
+        {
+            pos2.altitudeMode() = ALTMODE_RELATIVE;
+        }
+        else if (alt->clamping() == alt->CLAMP_NONE)
+        {
+            pos2.altitudeMode() = ALTMODE_ABSOLUTE;
+        }
+    }
+    _geoxform->setPosition( pos2 );
+    dirty();
 }
 
 bool

@@ -1,0 +1,115 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHANNOTATION_GARS_GRATICLE
+#define OSGEARTHANNOTATION_GARS_GRATICLE
+
+#include <osgEarth/Extension>
+#include <osgEarth/VisibleLayer>
+#include <osgEarthUtil/Common>
+#include <osgEarthSymbology/Style>
+#include <osg/ClipPlane>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Configuration options for the geodetic graticule.
+     */
+    class GARSGraticuleOptions : public VisibleLayerOptions
+    {
+    public:
+        GARSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
+            fromConfig(_conf);
+        }
+        
+    public:
+        //! Style for grid zone designator geometry and text
+        optional<Style>& style() { return _style; }
+        const optional<Style>& style() const { return _style; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
+            conf.key() = "gars_graticule";
+            conf.addObjIfSet("style", _style);
+            return conf;
+        }
+
+        virtual void fromConfig(const Config& conf) {
+            conf.getObjIfSet("style", _style);
+        }
+
+    protected:
+        optional<Style> _style;
+
+        void mergeConfig(const Config& conf) {
+            VisibleLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+    };
+
+    /**
+     * GARS (Global Area Reference System) Graticuler map layer.
+     * http://earth-info.nga.mil/GandG/coordsys/grids/gars.html
+     */
+    class OSGEARTHUTIL_EXPORT GARSGraticule : public VisibleLayer
+    {
+    public:
+        META_Layer(osgEarthUtil, GARSGraticule, GARSGraticuleOptions);
+
+        //! Construct a default GARS graticule
+        GARSGraticule();
+
+        //! Construct a graticule with custom options
+        GARSGraticule(const GARSGraticuleOptions& options);
+
+        //! Call to refresh after setting an option
+        void dirty();
+
+    public: // Layer
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+        
+        virtual osg::Node* getOrCreateNode();
+
+        virtual void init();
+
+    protected:
+
+        /** dtor */
+        virtual ~GARSGraticule() { }        
+
+    private:
+
+        void setUpDefaultStyles();
+        void rebuild();
+        void build30MinCells();
+
+        UID _uid;
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<osg::ClipPlane> _clipPlane;
+        osg::ref_ptr<osg::Group> _root;
+    };  
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHANNOTATION_GARS_GRATICLE

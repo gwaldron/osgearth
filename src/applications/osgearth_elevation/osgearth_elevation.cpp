@@ -107,8 +107,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
                 if (s_mapNode->getMapSRS()->isGeographic())
                 {
-                    osg::ref_ptr<const SpatialReference> tm = s_mapNode->getMapSRS()->createUTMFromLonLat(mapPointGeodetic.x(), mapPointGeodetic.y());
-                    actual_resolution = tm->transformUnits(Distance(actual_resolution, Units::DEGREES), tm.get(), mapPointGeodetic.y());
+                    double metersPerDegree = s_mapNode->getMapSRS()->getEllipsoid()->getRadiusEquator() / 360.0;
+                    actual_resolution *= metersPerDegree * cos(osg::DegreesToRadians(mapPoint.y()));
                 }
 
                 s_mslLabel->setText( Stringify() << elevation << " m" );
@@ -129,7 +129,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 yes = true;
             }
 
-            // finally, get a normal ISECT HAE point.
+            // now get a normal ISECT HAE point.
             GeoPoint isectPoint;
             isectPoint.fromWorld( _terrain->getSRS()->getGeodeticSRS(), world );
             s_mapLabel->setText( Stringify() << isectPoint.alt() << " m");

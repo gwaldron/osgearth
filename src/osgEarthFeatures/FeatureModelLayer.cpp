@@ -50,7 +50,7 @@ FeatureModelLayerOptions::getConfig() const
     conf.merge(GeometryCompilerOptions::getConfig());
     conf.key() = "feature_model";
 
-    conf.updateIfSet("feature_source", _featureSourceLayer);
+    conf.set("feature_source", _featureSourceLayer);
     return conf;
 }
 
@@ -88,6 +88,9 @@ FeatureModelLayer::init()
     VisibleLayer::init();
 
     _root = new osg::Group();
+
+    // Assign the layer's state set to the root node:
+    _root->setStateSet(this->getOrCreateStateSet());
 
     // Callbacks for paged data
     _sgCallbacks = new SceneGraphCallbacks();
@@ -129,9 +132,8 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
 }
 
 osg::Node*
-FeatureModelLayer::getNode() const
+FeatureModelLayer::getOrCreateNode()
 {
-    OE_DEBUG << LC << "getNode\n";
     return _root.get();
 }
 
@@ -154,7 +156,7 @@ FeatureModelLayer::open()
             setStatus(Status(Status::ConfigurationError, "Cannot create feature source"));
         }
     }
-    return Layer::open();
+    return VisibleLayer::open();
 }
 
 void
@@ -200,10 +202,8 @@ FeatureModelLayer::create()
         FeatureModelGraph* fmg = new FeatureModelGraph(
             _session.get(),
             options(),
-            nodeFactory);
-
-        // install the callbacks host:
-        fmg->setSceneGraphCallbacks(_sgCallbacks.get());
+            nodeFactory,
+            _sgCallbacks.get());
 
         _root->removeChildren(0, _root->getNumChildren());
         _root->addChild(fmg);

@@ -40,6 +40,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarthUtil/ViewFitter>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
@@ -520,6 +521,56 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
         double _vfov, _ar, _zn, _zf;
     };
+    
+    struct FitViewToPoints : public osgGA::GUIEventHandler
+    {
+        std::vector<GeoPoint> _points;
+        const SpatialReference* _mapSRS;
+
+        FitViewToPoints(char key, EarthManipulator* manip, const SpatialReference* mapSRS)
+            : _key(key), _manip(manip), _mapSRS(mapSRS)
+        {
+            // Set up a list of control points
+            const SpatialReference* srs = SpatialReference::get("wgs84");
+            _points.push_back(GeoPoint(srs, -120, 30, 0));
+            _points.push_back(GeoPoint(srs, -100, 45, 0));
+        }
+
+        // Projects a point in view space onto the far clip plane of a projection matrix
+        void projectToFarPlane(osg::Vec3d& Pview, const osg::Matrix& projMatrix, const osg::Matrix& projMatrixInv)
+        {
+            osg::Vec4d Pclip = osg::Vec4d(Pview.x(), Pview.y(), Pview.z(), 1.0)* projMatrix;
+            Pclip.z() = Pclip.w();
+            osg::Vec4d Ptemp = Pclip * projMatrixInv;
+            Pview.set(Ptemp.x() / Ptemp.w(), Ptemp.y() / Ptemp.w(), Ptemp.z() / Ptemp.w());
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                ViewFitter fitter(_mapSRS, aa.asView()->getCamera());
+                Viewpoint vp;
+                if (fitter.createViewpoint(_points, vp))
+                {
+                    _manip->setViewpoint(vp);
+                    aa.requestRedraw();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("FitViewToPoints"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+        
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -696,6 +747,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new SetPositionOffset(manip));
     viewer.addEventHandler(new ToggleLDB('L'));
     viewer.addEventHandler(new ToggleSSL(sims, ')'));
+
+    viewer.addEventHandler(new FitViewToPoints('j', manip, mapNode->getMapSRS()));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

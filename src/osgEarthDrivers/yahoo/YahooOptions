@@ -45,7 +45,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("dataset", _dataset);
+            conf.set("dataset", _dataset);
             return conf;
         }
 

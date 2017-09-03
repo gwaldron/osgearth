@@ -103,6 +103,7 @@ namespace osgEarth
               _inAnimTime           ( 0.40f ),
               _outAnimTime          ( 0.00f ),
               _sortByPriority       ( false ),
+              _sortByDistance       ( true ),
               _snapToPixel          ( true ),
               _maxObjects           ( INT_MAX ),
               _renderBinNumber      ( 13 )
@@ -132,6 +133,10 @@ namespace osgEarth
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
+        /** If set, activate the AnnotationData distance-based sorting */
+        optional<bool>& sortByDistance() { return _sortByDistance; }
+        const optional<bool>& sortByDistance() const { return _sortByDistance; }
+
         /** Whether to always start rendering text on a pixel boundary, thereby 
           * minimizing filtering artifacts. */
         optional<bool>& snapToPixel() { return _snapToPixel; }
@@ -155,6 +160,7 @@ namespace osgEarth
         optional<float>    _inAnimTime;
         optional<float>    _outAnimTime;
         optional<bool>     _sortByPriority;
+        optional<bool>     _sortByDistance;
         optional<bool>     _snapToPixel;
         optional<unsigned> _maxObjects;
         optional<int>      _renderBinNumber;

@@ -16,161 +16,197 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_GEODETIC_GRATICLE
-#define OSGEARTHUTIL_GEODETIC_GRATICLE
+#ifndef OSGEARTHUTIL_GEODETIC_GRATICULE_H
+#define OSGEARTHUTIL_GEODETIC_GRATICULE_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/TerrainEffect>
 #include <osgEarth/MapNode>
-#include <osgEarth/MapNodeObserver>
 #include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/Feature>
-#include <vector>
+#include <osgEarthAnnotation/LabelNode>
+#include <osg/ClipPlane>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Features;
+    using namespace osgEarth::Annotation;
     using namespace osgEarth::Symbology;
 
-    /**
-     * Configuration options for the geodetic graticule.
-     */
-    class OSGEARTHUTIL_EXPORT GeodeticGraticuleOptions : public ConfigOptions
+
+    class GeodeticGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        GeodeticGraticuleOptions( const Config& conf =Config() );
+        //! Grid line color
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
 
-        /** dtor */
-        virtual ~GeodeticGraticuleOptions() { }
+        //! Label color
+        optional<Color>& labelColor() { return _labelColor; }
+        const optional<Color>& labelColor() const { return _labelColor; }
+
+        //! Grid line width in pixels
+        optional<float>& lineWidth() { return _lineWidth; }
+        const optional<float>& lineWidth() const { return _lineWidth; }
+
+        //! A target number of grid lines to view on screen at once.
+        optional<int>& gridLines() { return _gridLines; }
+        const optional<int>& gridLines() const { return _gridLines; }
+
+        /** Resolutions for the graticule separated by spaces
+         *  Resolutions are in degrees listed from lowest to highest resolution
+         *  For example:  10 5 2.5 1.25 */
+        optional<std::string>& resolutions() { return _resolutions; }
+        const optional<std::string>& resolutions() const { return _resolutions; }
 
     public:
-        struct Level 
+        GeodeticGraticuleOptions(const ConfigOptions& opt =ConfigOptions()) : VisibleLayerOptions( opt )
         {
-            float    _minRange, _maxRange;
-            unsigned _subdivisionFactor;
-            optional<Style> _lineStyle;
-            optional<Style> _textStyle;
-        };
-
-        /** Default style for grid lines */
-        optional<Style>& lineStyle() { return _defaultLineStyle; }
-        const optional<Style>& lineStyle() const { return _defaultLineStyle; }
-
-        /** Default style for text labels */
-        optional<Style>& textStyle() { return _defaultTextStyle; }
-        const optional<Style>& textStyle() const { return _defaultTextStyle; }
-
-        /** Subdivision levels */
-        const std::vector<Level>& levels() const { return _levels; }
-
-        /** Clear out all the levels */
-        void clearLevels();
-
-        /**
-         * Adds a new level of detail. You should only add levels in descending order of 
-         * maxRange (farthest to closest).
-         *
-         * @param maxRange
-         *      Maximum camera range for this level.
-         * @param minRange
-         *      (optional) Minimum camera range for this level. Though you can set this at any level,
-         *      it typically only makes sense to set this at the deepest level in order to
-         *      disable the graticule when you zoom closer in.
-         * @param subdivisionFactor
-         *      (optional) Number of times to subdivide each tile
-         * @param lineStyle
-         *      (optional) Style to apply to the grid lines at this level
-         * @param textStyle
-         *      (optional) Style to apply to text labels at this level
-         */
-        void addLevel( 
-            float        maxRange, 
-            float        minRange          =0.0f, 
-            unsigned     subdivisionFactor =2u, 
-            const Style& lineStyle         =Style(),
-            const Style& textStyle         =Style() );
+            _lineWidth.init(2.0f);
+            _color.init(Color(Color::Yellow, 0.5f));
+            _labelColor.init(Color::White);
+            _gridLines.init(10);
+            fromConfig( _conf );
+        }
 
     public:
-        Config getConfig() const;
+        virtual Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
+            conf.key() = "geodetic_graticule";
+            conf.addIfSet("line_width", _lineWidth);
+            conf.addIfSet("color",      _color);
+            conf.addIfSet("label_color", _labelColor );
+            conf.addIfSet("grid_lines", _gridLines);
+            conf.addIfSet("resolutions", _resolutions);
+            return conf;
+        }
 
     protected:
-        optional<Style>    _defaultLineStyle;
-        optional<Style>    _defaultTextStyle;
-        std::vector<Level> _levels;
+        virtual void mergeConfig( const Config& conf ) {
+            VisibleLayerOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
 
-        void mergeConfig( const Config& conf );
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("line_width", _lineWidth);
+            conf.getIfSet("color",      _color);
+            conf.getIfSet("label_color", _labelColor);
+            conf.getIfSet("grid_lines", _gridLines);
+            conf.getIfSet("resolutions", _resolutions);
+        }
+
+        optional<float>       _lineWidth;
+        optional<Color>       _color;
+        optional<Color>       _labelColor;
+        optional<int>         _gridLines;
+        optional<std::string> _resolutions;
     };
 
 
     /**
-     * Implements a map graticule. 
-     * 
-     * NOTE: So far, this only works for geocentric maps.
-     * TODO: Add projected support; add text label support
+     * Graticule that shows lat/long lines and automatically places labels.
      */
-    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public osg::Group, public MapNodeObserver
+    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public VisibleLayer
     {
     public:
+        META_Layer(osgEarthUtil, GeodeticGraticule, GeodeticGraticuleOptions);
 
-        /**
-         * Constructs a new graticule for use with the specified map. The graticule
-         * is created with several default levels. If you call addLevel(), the 
-         * default levels are deleted.
-         *
-         * @param map
-         *      Map with which you will use this graticule
-         * @param options
-         *      Optional "options" that configure the graticule. Defaults will be used
-         *      if you don't specify this.
-         */
-        GeodeticGraticule( MapNode* mapNode );
-        GeodeticGraticule( MapNode* mapNode, const GeodeticGraticuleOptions& options);
+        //! Construct a graticule with default settings.
+        GeodeticGraticule();
+
+        //! Construct a graticule with custom settings.
+        GeodeticGraticule(const GeodeticGraticuleOptions& options);
+
+        //! Rebuild the graticule after changing options.
+        void dirty();
+
+    public: // Layer
+
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
+        
+        virtual osg::Node* getOrCreateNode();
+
+        virtual void init();
+
+    public: // VisibleLayer
+
+        virtual void setVisible(bool value);
+
+    protected:
 
         /** dtor */
-        virtual ~GeodeticGraticule() { }
-
-        /** 
-         * Applies a new set of options. The graticule will be rebuilt if necessary.
-         */
-        void setOptions( const GeodeticGraticuleOptions& options );
-
-        /**
-         * Gets the options with which the graticule was built.
-         */
-        const GeodeticGraticuleOptions& getOptions() const { return _options.value(); }
-
-
-    public: // osg::Node
-
-        virtual void traverse(osg::NodeVisitor& nv);
-
-    public: // MapNodeObserver
-
-        virtual void setMapNode( MapNode* mapNode );
-
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
-
+        virtual ~GeodeticGraticule() { }      
 
     private:
-        osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
 
-        unsigned int               _id;
-        osg::observer_ptr<MapNode> _mapNode;
-        osg::Group*                _root;
+        void setUpDefaultStyles();
 
-        optional<GeodeticGraticuleOptions> _options;
-
-    private:
-        unsigned int getID() const { return _id; }
-        void init();
         void rebuild();
-        osg::Node* buildTile( const TileKey& key, Map* map ) const;
-        osg::Node* buildChildren( unsigned level, unsigned x, unsigned y ) const;
 
-        friend class GeodeticGraticuleFactory;
-    };
+        UID _uid;
 
+        osg::ref_ptr<const Profile> _profile;
+
+        osg::ref_ptr<osg::ClipPlane> _clipPlane;
+
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
+        osg::ref_ptr<TerrainEffect> _effect;
+        osg::ref_ptr<osg::NodeCallback > _callback;
+        osg::ref_ptr<LatLongFormatter> _formatter;
+        float _defaultResolution;
+        
+        osg::Vec2f _centerOffset;
+
+        bool _visible;
+        
+
+        std::vector< double > _resolutions;
+
+
+        struct CameraData
+        {
+            osg::ref_ptr<osg::StateSet> _stateset;
+            osg::ref_ptr<osg::Uniform> _resolutionUniform;
+            osg::ref_ptr<osg::StateSet> _labelStateset;
+            std::vector< osg::ref_ptr<LabelNode> > _labelPool;
+            float _resolution;
+            osg::Matrixd _lastViewMatrix;     
+            GeoExtent _viewExtent;
+            double _lon;
+            double _lat;
+            double _metersPerPixel;
+        };
+        typedef std::map<osg::Camera*, CameraData> CameraDataMap;
+        mutable CameraDataMap _cameraDataMap;
+        mutable Threading::Mutex _cameraDataMapMutex;
+        
+        CameraData& getCameraData(osg::Camera*) const;
+
+        double getResolution() const;
+        void setResolution(double resolution);
+
+        void initLabelPool(CameraData&);
+
+        std::string getText(const GeoPoint& location, bool lat);
+
+        osg::ref_ptr<MapNode> _mapNode;
+
+        void installEffect();
+        void removeEffect();
+
+        GeoExtent getViewExtent(osgUtil::CullVisitor*) const;
+
+    public:
+        
+        void updateLabels();
+        void cull(osgUtil::CullVisitor*);
+        osg::StateSet* getStateSet(osgUtil::CullVisitor* cv);
+    };  
 } } // namespace osgEarth::Util
 
-#endif // OSGEARTHUTIL_GEODETIC_GRATICLE
+#endif // OSGEARTHUTIL_GEODETIC_GRATICULE_H

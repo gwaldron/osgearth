@@ -56,6 +56,12 @@ _numTilesHighAtLod0( 1 )
     _namedProfile = namedProfile; // don't set above
 }
 
+ void
+ ProfileOptions::mergeConfig( const Config& conf ) {
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
 void
 ProfileOptions::fromConfig( const Config& conf )
 {
@@ -90,8 +96,8 @@ ProfileOptions::getConfig() const
     }
     else
     {
-        conf.updateIfSet( "srs", _srsInitString );
-        conf.updateIfSet( "vdatum", _vsrsInitString );
+        conf.set( "srs", _srsInitString );
+        conf.set( "vdatum", _vsrsInitString );
 
         if ( _bounds.isSet() )
         {
@@ -101,8 +107,8 @@ ProfileOptions::getConfig() const
             conf.update( "ymax", toString(_bounds->yMax()) );
         }
 
-        conf.updateIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-        conf.updateIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+        conf.set( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+        conf.set( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
     }
     return conf;
 }

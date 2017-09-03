@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
@@ -63,6 +63,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key);
+
+        // Create a standalone tile from a tile model (experimental)
+        osg::Node* createTile(
+            const TerrainTileModel* model,
+            int createTileFlags,
+            unsigned referenceLOD);
         
         // when incremental update is enabled, forces regeneration of tiles
         // in the given region.

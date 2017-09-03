@@ -75,7 +75,6 @@ SET(LIB_PUBLIC_HEADERS
     DateTime
     DateTimeRange
     DepthOffset
-    DPLineSegmentIntersector
     DrapeableNode
     DrapingCullSet
     DrapingTechnique
@@ -128,6 +127,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskSource
     Memory
     MemCache
+    MetaTile
     Metrics
     ModelLayer
     ModelSource
@@ -138,6 +138,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectIndex
     OverlayDecorator
     OverlayNode
+    PagedNode
     PatchLayer
     PhongLightingEffect
     Picker
@@ -160,6 +161,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderUtils
     Shadowing
     SharedSARepo
+    SimplexNoise
     SpatialReference
     StateSetCache
     StateSetLOD
@@ -172,13 +174,13 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
+    TerrainResources
     TerrainTileModel
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
     TilePatchCallback
     Tessellator
-    TextureCompositor
     TileKey
     TileHandler
     TileRasterizer
@@ -192,6 +194,7 @@ SET(LIB_PUBLIC_HEADERS
     Utils
     Version
     VerticalDatum
+    VideoLayer
     Viewpoint
     VirtualProgram
     VisibleLayer
@@ -252,7 +255,6 @@ set(TARGET_SRC
     DateTime.cpp
     DateTimeRange.cpp
     DepthOffset.cpp
-    DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     DrapingCullSet.cpp
     DrapingTechnique.cpp
@@ -299,6 +301,7 @@ set(TARGET_SRC
     MaskSource.cpp
     MemCache.cpp
     Memory.cpp
+    MetaTile.cpp
     Metrics.cpp
     MimeTypes.cpp
     ModelLayer.cpp
@@ -308,6 +311,7 @@ set(TARGET_SRC
     ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+    PagedNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
     PrimitiveIntersector.cpp
@@ -326,6 +330,7 @@ set(TARGET_SRC
     ShaderLoader.cpp
     ShaderUtils.cpp
     Shadowing.cpp
+    SimplexNoise.cpp
     SpatialReference.cpp
     StateSetCache.cpp
     StateSetLOD.cpp
@@ -336,11 +341,11 @@ set(TARGET_SRC
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainResources.cpp
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     TextureBufferSerializer.cpp
-    TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
     TilePatchCallback.cpp
@@ -355,6 +360,7 @@ set(TARGET_SRC
     Utils.cpp
     Version.cpp
     VerticalDatum.cpp
+    VideoLayer.cpp
     Viewpoint.cpp
     VirtualProgram.cpp
     VisibleLayer.cpp

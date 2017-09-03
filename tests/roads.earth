@@ -1,25 +1,76 @@
-<map>
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric">
 
     <options>
-        <terrain driver="rex" max_lod="20">
-            <lods>
-                <lod lod="13" priority_offset="7"/>
-                <lod lod="16" priority_offset="3"/>
-            </lods>
+        <terrain driver="rex" progressive="true">
         </terrain>
     </options>
 
-    <elevation name="ReadyMap elevation" driver="tms" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
+    <image name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
 
-    <!--
-    <feature_source name="roads-data" driver="ogr">
-        <url>H:/data/fhwa/nhpn2005_08/NHPNLine-mercator.shp</url>
-        <build_spatial_index>true</build_spatial_index>
-    </feature_source>
-    -->
-    
+    <image name="Tilekeys" driver="debug">
+    </image>
+
+    <road_surface name="road-surface" min_level="14" max_level="18">
+        <cache_policy usage="no_cache"/>
+        <tile_size>512</tile_size>
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-width: 65m;
+                   stroke-image: "../data/road.png";
+                }
+            </style>
+        </styles>
+    </road_surface>
+
+    <feature_model name="Road verts">
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                    point-fill: #00ffff;
+                    point-size: 12;
+                    stroke: #ffff00;
+                    stroke-width: 2px;
+                    render-depth-test: false;
+                    render-order: 1;
+                }
+            </style>
+        </styles>
+    </feature_model>
+
+    <feature_model name="Road skeleton" visible="false">
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #00ffff7f;
+                    stroke-width: 65m;
+                    render-depth-test: false;
+                    render-order: 2;
+                    stroke-image: "../data/grid.png";
+                }
+            </style>
+        </styles>
+    </feature_model>
+
     <feature_source name="roads-data" driver="tfs">
         <url>http://readymap.org/osm/</url>
         <min_level>14</min_level>
@@ -33,62 +84,26 @@
         </filters>
     </feature_source>
 
-    <flattened_elevation name="Road Flattener" min_level="14" max_level="14">
-        <cache_policy usage="none"/>
-        <base_layer>ReadyMap elevation</base_layer>
-        <feature_source>roads-data</feature_source>
-        <line_width>50m</line_width>
-        <buffer_width>50m</buffer_width>
-    </flattened_elevation>
-
-    <image name="ReadyMap imagery" driver="tms" opacity="0.9" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </image>
-
-    <road_surface min_level="14">
-        <tile_size>256</tile_size>
-        <cache_policy usage="none"/>
-        <feature_source>roads-data</feature_source>
-        <style type="text/css">
-            default {
-               stroke: #ffffff;
-               stroke-width: 25m;
-               stroke-image: "../data/road.png";
-            }                    
-        </style>
-        <outer_width>100</outer_width>
-    </road_surface>
-
-    <!--
-    <image name="Debug" driver="debug"/>
-    -->
-
-    <bumpmap>
-        <image>../data/rock_hard.jpg</image>
-        <octaves>8</octaves>
-        <intensity>8.2</intensity>
-    </bumpmap>     
-
     <viewpoints>
-        <viewpoint>
-            <heading>17.33521725357022</heading>
-            <height>2462.60273069609</height>
-            <lat>46.82181702111031</lat>
-            <long>-121.7814936386096</long>
-            <name>Mt Rainier, Washington</name>
-            <pitch>-21.29241356548601</pitch>
-            <range>23926.75258864516</range>
+        <viewpoint name="45 Lat">
+            <heading>-1.6803</heading>
+            <pitch>-89.8584</pitch>
+            <range>135.785m</range>
+            <long>-121.629455948385</long>
+            <lat>46.76105148181426</lat>
+            <height>0.0005331700667738915</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
-        <viewpoint name="Closeup">
-            <heading>-0.523182</heading>
-            <pitch>-65.9341</pitch>
-            <range>676.617m</range>
-            <long>-121.63097887223</long>
-            <lat>46.76306559231917</lat>
-            <height>930.1141443094239</height>
+        <viewpoint name="Equator">
+            <heading>-2.31914e-008</heading>
+            <pitch>-89.0007</pitch>
+            <range>3664.39m</range>
+            <long>-80.08167477509062</long>
+            <lat>-0.001110080780562921</lat>
+            <height>-3.306940197944641e-005</height>
             <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
         </viewpoint>
     </viewpoints>
 
-    <libraries>osgearthsplat</libraries>
+    <libraries>osgEarthSplat</libraries>
 </map>

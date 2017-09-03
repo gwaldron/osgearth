@@ -75,12 +75,6 @@ namespace osgEarth
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
         /**
-         * The opacity of this layer
-         */
-        optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-
-        /**
          * Masking options for cutting a hole in the terrain to accommodate this model.
          * Note; the mask will NOT honor any visibility or opacity settings on the
          * model layer.
@@ -111,7 +105,6 @@ namespace osgEarth
         void setDefaults();
 
         optional<ModelSourceOptions> _driver;
-        optional<float>              _opacity;
         optional<bool>               _lighting;
         optional<MaskSourceOptions>  _maskOptions;
         optional<unsigned>           _maskMinLevel;
@@ -122,8 +115,7 @@ namespace osgEarth
 
     struct ModelLayerCallback : public VisibleLayerCallback
     {
-        virtual void onOpacityChanged(class ModelLayer* layer) { }
-
+        // Nothing - placeholder
         typedef void (ModelLayerCallback::*MethodPtr)(class ModelLayer* layer);
     };
 
@@ -224,13 +216,6 @@ namespace osgEarth
         void setLightingEnabled( bool value );
         bool isLightingEnabled() const;
 
-        /**
-         * Sets the opacity of this image layer.
-         * @param opacity Opacity [0..1] -> [transparent..opaque]
-         */
-        void setOpacity( float opacity );
-        float getOpacity() const;
-
     public: // Layer
 
         /** Open the layer and return its status */
@@ -240,7 +225,7 @@ namespace osgEarth
         virtual Config getConfig() const;
 
         /** Node creates by this model layer */
-        virtual osg::Node* getNode() const;
+        virtual osg::Node* getOrCreateNode();
 
         /**
          * Sets the read options for this layer to user; this includes

@@ -21,7 +21,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageLayer>
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 #include <osgDB/FileNameUtils>
 #include "Export"
 
@@ -37,7 +37,7 @@ namespace osgEarth { namespace Splat
             : osgEarth::TileSourceOptions(options)
         {
             setDriver("landuse");
-            baseLOD().init( 32u );
+            baseLOD().init( 12u );
             warpFactor().init( 0.01f );
             fromConfig( _conf );
         }
@@ -149,7 +149,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<ImageLayer>     _imageLayer;
         ImageLayerVector             _imageLayers;
         std::vector<float>           _warps;
-        osgEarth::Util::SimplexNoise _noiseGen;
+        osgEarth::SimplexNoise _noiseGen;
     };
 
     /**

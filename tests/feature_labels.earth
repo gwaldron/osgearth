@@ -10,15 +10,14 @@ This shows how to label point features with an attribute.
     </image>
     
     <feature_source name="city-data" driver="ogr">
-        <url>../data/ne_cities.shp</url>
-        <profile>spherical-mercator</profile>
+        <url>../data/cities.shp</url>
     </feature_source>
     
     <feature_model name="cities" feature_source="city-data">        
         <feature_indexing enabled="true"/>
         <styles>
             <selector class="cities">
-                <query><expr><![CDATA[rank_max > 9]]></expr></query>
+                <query><expr><![CDATA[scalerank < 5]]></expr></query>
             </selector>
             <style type="text/css">              
                 cities {
@@ -27,10 +26,10 @@ This shows how to label point features with an attribute.
                     icon-declutter: true;
                     icon-align:     center-bottom;
                     text-content:   [name];
-                    text-priority:  [rank_max];
+                    text-priority:  10-[scalerank];
                     text-align:     center-bottom;
                     text-halo:      #1f1f1f;
-                    text-size:      12+3*([rank_max]-9);
+                    text-size:      6+2*(10-[scalerank]);
                 }     
             </style>
         </styles>

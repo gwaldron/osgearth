@@ -103,6 +103,8 @@ namespace osgEarth
         mutable JobQueue _readbackJobs; // queue for jobs waiting for rtt/glReadPixels to finish
         mutable JobQueue _finishedJobs; // queue for jobs waiting for the promise to resolve
 
+        //osg::ref_ptr<osg::Uniform> _distortionU;
+
     public: // internal
 
         void preDraw(osg::RenderInfo&) const;

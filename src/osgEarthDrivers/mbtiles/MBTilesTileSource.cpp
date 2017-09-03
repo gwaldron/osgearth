@@ -228,7 +228,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
                 if ( !profile )
                 {
-                    return Status::Error( Stringify() << "Profile not recognized: " << profileStr );
+                    OE_WARN << LC << "Profile \"" << profileStr << "\" not recognized; defaulting to spherical-mercator\n";
                 }
             }
 
@@ -250,19 +250,23 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             StringTokenizer(",").tokenize(boundsStr, tokens);
             if (tokens.size() == 4)
             {
-                GeoExtent extent(
-                    osgEarth::SpatialReference::get("wgs84"),
-                    osgEarth::as<double>(tokens[0], 0.0),
-                    osgEarth::as<double>(tokens[1], 0.0), // south
-                    osgEarth::as<double>(tokens[2], 0.0), // east
-                    osgEarth::as<double>(tokens[3], 0.0)  // north
-                    );
+                double minLon = osgEarth::as<double>(tokens[0], 0.0);
+                double minLat = osgEarth::as<double>(tokens[1], 0.0);
+                double maxLon = osgEarth::as<double>(tokens[2], 0.0);
+                double maxLat = osgEarth::as<double>(tokens[3], 0.0);
 
-                // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
-                // since we don't really handle DataExtents with minLevels > 0 just yet.
-                this->getDataExtents().push_back(DataExtent(extent, 0, _maxLevel));
-
-                OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
+                GeoExtent extent(osgEarth::SpatialReference::get("wgs84"), minLon, minLat, maxLon, maxLat);
+                if (extent.isValid())
+                {
+                    // Using 0 for the minLevel is not technically correct, but we use it instead of the proper minLevel to force osgEarth to subdivide
+                    // since we don't really handle DataExtents with minLevels > 0 just yet.
+                    getDataExtents().push_back(DataExtent(extent, 0, _maxLevel));                
+                    OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;                    
+                }
+                else
+                {
+                    OE_WARN << LC << "MBTiles has invalid bounds " << extent.toString() << std::endl;
+                }                
             }
         }
         else
@@ -271,7 +275,6 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             // since we don't really handle DataExtents with minLevels > 0 just yet.
             this->getDataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, _maxLevel));
         }
-
     }
 
     // do we require RGB? for jpeg?

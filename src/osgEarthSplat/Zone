@@ -21,7 +21,7 @@
 
 #include "Export"
 #include "Surface"
-#include "LandCover"
+#include "GroundCover"
 #include <osgEarth/TerrainEngineNode>
 #include <osg/BoundingBox>
 #include <osg/Polytope>
@@ -36,6 +36,49 @@ namespace osgDB {
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
+
+
+    //........................................................................
+
+    /**
+     * Serializable options data for a Zone object
+     */
+    class OSGEARTHSPLAT_EXPORT ZoneOptions : public ConfigOptions
+    {
+    public:
+        ZoneOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig(_conf);
+        }
+
+        //! Name of this zone (readable)
+        optional<std::string> name() { return _name; }
+        const optional<std::string> name() const { return _name; }
+
+        //! Boundary set for this zone (optional)
+        std::vector<osg::BoundingBox>& boundaries() { return _boundaries; }
+        const std::vector<osg::BoundingBox>& boundaries() const { return _boundaries; }
+
+        //! Surface rendering options
+        optional<SurfaceOptions>& surface() { return _surface; }
+        const optional<SurfaceOptions>& surface() const { return _surface; }
+
+        //! Ground cover rendering options        
+        optional<GroundCoverOptions>& groundCover() { return _groundCover; }
+        const optional<GroundCoverOptions>& groundCover() const { return _groundCover; }
+
+    protected:
+        optional<std::string> _name;
+        std::vector<osg::BoundingBox> _boundaries;
+        optional<SurfaceOptions> _surface;
+        optional<GroundCoverOptions> _groundCover;
+
+    public:
+        void fromConfig(const Config& conf);
+        Config getConfig() const;
+    };
+
+    typedef std::vector<ZoneOptions> ZoneOptionsVector;
+    
 
     /**
      * A zone limits a particular surface or land cover layer to a set of
@@ -55,7 +98,9 @@ namespace osgEarth { namespace Splat
         typedef std::vector<Boundary> Boundaries;
 
     public:
-        Zone() : _uid(0) { }
+        Zone();
+
+        Zone(const ZoneOptions& options);
 
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }
@@ -63,13 +108,15 @@ namespace osgEarth { namespace Splat
         Boundaries& getBoundaries() { return _boundaries; }
         const Boundaries& getBoundaries() const { return _boundaries; }
 
+        void setSurface(Surface* surface) { _surface = surface; }
         Surface* getSurface() const { return _surface.get(); }
 
-        LandCover* getLandCover() const { return _landCover.get(); }
+        void setGroundCover(GroundCover* groundCover) { _groundCover = groundCover; }
+        GroundCover* getGroundCover() const { return _groundCover.get(); }
 
-        osg::StateSet* getStateSet() { return _stateSet.get(); }
+        //osg::StateSet* getStateSet() { return _stateSet.get(); }
 
-        osg::StateSet* getOrCreateStateSet();
+        //osg::StateSet* getOrCreateStateSet();
 
         bool contains(const osg::Vec3& points) const;
 
@@ -82,15 +129,18 @@ namespace osgEarth { namespace Splat
         UID                         _uid;
         Boundaries                  _boundaries;
         osg::ref_ptr<Surface>       _surface;
-        osg::ref_ptr<LandCover>     _landCover;
+        osg::ref_ptr<GroundCover>   _groundCover;
         osg::ref_ptr<osg::StateSet> _stateSet;
+        const ZoneOptions           _options;
 
     public:
-        bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
+        bool configure(const Map* map, const osgDB::Options* readOptions);
     };
 
     typedef std::vector<osg::ref_ptr<Zone> > Zones;
 
+
+    
     
     /**
      * Cull callback that will select the most appropriate Zone based on the camera position
@@ -107,48 +157,6 @@ namespace osgEarth { namespace Splat
     protected:
         Zones _zones;
     };
-
-    //........................................................................
-
-    /**
-     * Serializable options data for a Zone object
-     */
-    class OSGEARTHSPLAT_EXPORT ZoneOptions : public ConfigOptions
-    {
-    public:
-        ZoneOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
-            fromConfig(_conf);
-        }
-
-        /** Name of this zone (readable) */
-        optional<std::string> name() { return _name; }
-        const optional<std::string> name() const { return _name; }
-
-        /** Boundary set for this zone (optional) */
-        std::vector<osg::BoundingBox>& boundaries() { return _boundaries; }
-        const std::vector<osg::BoundingBox>& boundaries() const { return _boundaries; }
-
-        /** Surface rendering options */
-        optional<SurfaceOptions>& surface() { return _surface; }
-        const optional<SurfaceOptions>& surface() const { return _surface; }
-
-        /** Land Cover rendering options */
-        optional<LandCoverOptions>& landCover() { return _landCover; }
-        const optional<LandCoverOptions>& landCover() const { return _landCover; }
-
-    protected:
-        optional<std::string>         _name;
-        std::vector<osg::BoundingBox> _boundaries;
-        optional<SurfaceOptions>      _surface;
-        optional<LandCoverOptions>    _landCover;
-
-    public:
-        void fromConfig(const Config& conf);
-        Config getConfig() const;
-    };
-
-    typedef std::vector<ZoneOptions> ZoneOptionsVector;
-
 
 } } // namespace osgEarth::Splat
 

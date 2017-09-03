@@ -56,7 +56,7 @@ void
 StringTokenizer::addDelims( const std::string& delims, bool keep )
 {
     for( unsigned i=0; i<delims.size(); ++i )
-        addDelim( delims.at(i), keep );
+        addDelim( delims[i], keep );
 }
 
 void
@@ -69,7 +69,7 @@ void
 StringTokenizer::addQuotes( const std::string& quotes, bool keep )
 {
     for( unsigned i=0; i<quotes.size(); ++i )
-        addQuote( quotes.at(i), keep );
+        addQuote( quotes[i], keep );
 }
 
 void
@@ -160,7 +160,7 @@ osgEarth::toLegalFileName( const std::string& input )
     std::stringstream buf;
     for( ; pos < input.size(); ++pos )
     {
-        std::string::const_reference c = input.at(pos);
+        std::string::const_reference c = input[pos];
         if ( ::isprint(c) && !::isspace(c) && illegal.find(c) == std::string::npos )
             buf << c;
         else

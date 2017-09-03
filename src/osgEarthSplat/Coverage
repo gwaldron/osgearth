@@ -66,8 +66,8 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "coverage";
-            conf.updateIfSet("layer", _coverageLayer);
-            conf.updateIfSet("legend", _legendURI);
+            conf.set("layer", _coverageLayer);
+            conf.set("legend", _legendURI);
             return conf;
         }
 

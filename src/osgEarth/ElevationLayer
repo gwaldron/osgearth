@@ -56,8 +56,7 @@ namespace osgEarth
         const optional<ElevationNoDataPolicy>& noDataPolicy() const { return _noDataPolicy; }
 
     public:
-        virtual Config getConfig() const { return getConfig(false); }
-        virtual Config getConfig( bool isolate ) const;
+        virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -140,10 +139,6 @@ namespace osgEarth
          */
         bool isOffset() const;
 
-    public: // Layer
-
-        virtual Config getConfig() const;
-
     protected: // Layer
 
         virtual void init();
@@ -153,9 +148,14 @@ namespace osgEarth
         // ctor called by a subclass that owns the options structure
         ElevationLayer(ElevationLayerOptions* optionsPtr);
 
-        // Subclass can override this if setTileSourceExpected(true) was called.
-        virtual osg::HeightField* createHeightFieldImplementation(
+        //! Subclass can override this by calling setTileSourceExpected(false).
+        //! You can create your own normal map, but usually ElevationLayer
+        //! will do this for you. Only do it if you really need to create
+        //! one by hand (for example, if you are compositing elevaition layers).
+        virtual void createImplementation(
             const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            osg::ref_ptr<NormalMap>& out_normalMap,
             ProgressCallback* progress);
         
     private:
@@ -170,11 +170,11 @@ namespace osgEarth
             const TileKey&    key, 
             ProgressCallback* progress);
 
-        // assembles tiles from a layer that is not in the same profile as the map, and
-        // returns a single tile in the map's profile.
-        osg::HeightField* assembleHeightField(
-            const TileKey&     key,
-            ProgressCallback*  progress );
+        void assembleHeightField(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            osg::ref_ptr<NormalMap>& out_normalMap,
+            ProgressCallback* progress);
     };
 
 
@@ -188,8 +188,9 @@ namespace osgEarth
          * Populates an existing height field (hf must already exist) with height
          * values from the elevation layers.
          */
-        bool populateHeightField(
+        bool populateHeightFieldAndNormalMap(
             osg::HeightField*      hf,
+            NormalMap*             normalMap,
             const TileKey&         key,
             const Profile*         haeProfile,
             ElevationInterpolation interpolation,

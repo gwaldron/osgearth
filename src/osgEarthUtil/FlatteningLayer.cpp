@@ -31,7 +31,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#define LC "[FlatteningTileSource] "
+#define LC "[FlatteningLayer] "
 
 #define OE_TEST OE_DEBUG
 
@@ -47,8 +47,14 @@ namespace
     double inline smoothstep(double a, double b, double t)
     {
         // smoothstep (approximates cosine):
-        double mu = t*t*(3.0-2.0*t);
-        return a + (b-a)*mu;
+        t = t*t*(3.0-2.0*t);
+        return a + (b-a)*t;
+    }
+
+    double inline smootherstep(double a, double b, double t)
+    {
+        t = t*t*t*(t*(t*6.0 - 15.0)+10.0);
+        return a + (b-a)*t;
     }
     
     // clamp "a" to [lo..hi].
@@ -168,12 +174,30 @@ namespace
         }
         return Dmin;
     }
+
+
+    struct Widths {
+        Widths(const Widths& rhs) {
+            bufferWidth = rhs.bufferWidth;
+            lineWidth = rhs.lineWidth;
+        }
+
+        Widths(double bufferWidth, double lineWidth) {
+            this->bufferWidth = bufferWidth;
+            this->lineWidth = lineWidth;
+        }
+
+        double bufferWidth;
+        double lineWidth;
+    };
+
+    typedef std::vector<Widths> WidthsList;
     
     // Creates a heightfield that flattens an area intersecting the input polygon geometry.
     // The height of the area is found by sampling a point internal to the polygon.
     // bufferWidth = width of transition from flat area to natural terrain.
-    bool integratePolygons(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                           double bufferWidth, ElevationEnvelope* envelope, 
+    bool integratePolygons(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
+                           WidthsList& widths, ElevationEnvelope* envelope, 
                            bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -205,36 +229,44 @@ namespace
                     P = Pex;
                 
                 bool done = false;
-                double minD2 = bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
+                double minD2 = DBL_MAX;//bufferWidth * bufferWidth; // minimum distance(squared) to closest polygon edge
+                double bufferWidth = 0.0;
 
                 const Polygon* bestPoly = 0L;
 
-                ConstGeometryIterator giter(geom, false);
-                while (giter.hasMore() && !done)
+                for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
-                    const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
-                    if (polygon)
+                    Geometry* component = geom->getComponents()[geomIndex];
+                    Widths width = widths[geomIndex];
+                    ConstGeometryIterator giter(component, false);
+                    while (giter.hasMore() && !done)
                     {
-                        // Does the point P fall within the polygon?
-                        if (polygon->contains2D(P.x(), P.y()))
+                        const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
+                        if (polygon)
                         {
-                            // yes, flatten it to the polygon's centroid elevation;
-                            // and we're dont with this point.
-                            done = true;
-                            bestPoly = polygon;
-                            minD2 = -1.0;
-                        }
-
-                        // If not in the polygon, how far to the closest edge?
-                        else
-                        {
-                            double D2 = getDistanceSquaredToClosestEdge(P, polygon);
-                            if (D2 < minD2)
+                            // Does the point P fall within the polygon?
+                            if (polygon->contains2D(P.x(), P.y()))
                             {
-                                minD2 = D2;
+                                // yes, flatten it to the polygon's centroid elevation;
+                                // and we're dont with this point.
+                                done = true;
                                 bestPoly = polygon;
+                                minD2 = -1.0;
+                                bufferWidth = width.bufferWidth;
                             }
-                        }
+
+                            // If not in the polygon, how far to the closest edge?
+                            else
+                            {
+                                double D2 = getDistanceSquaredToClosestEdge(P, polygon);
+                                if (D2 < minD2)
+                                {
+                                    minD2 = D2;
+                                    bestPoly = polygon;
+                                    bufferWidth = width.bufferWidth;
+                                }
+                            }
+                        }                    
                     }
                 }
 
@@ -252,7 +284,7 @@ namespace
                     {
                         float elevNatural = envelope->getElevation(P.x(), P.y());
                         double blend = clamp(sqrt(minD2)/bufferWidth, 0.0, 1.0); // [0..1] 0=internal, 1=natural
-                        h = smoothstep(elevInternal, elevNatural, blend);
+                        h = smootherstep(elevInternal, elevNatural, blend);
                     }
 
                     hf->setHeight(col, row, h);
@@ -271,6 +303,8 @@ namespace
         return wroteChanges;
     }
 
+
+
     struct Sample {
         double D2;      // distance to segment squared
         osg::Vec3d A;   // endpoint of segment
@@ -281,6 +315,9 @@ namespace
         float elevPROJ; // elevation at point on segment
         float elev;     // flattened elevation
         double D;       // distance
+
+        double innerRadius;
+        double outerRadius;
 
         bool operator < (struct Sample& rhs) const { return D2 < rhs.D2; }
     };
@@ -354,8 +391,8 @@ namespace
      * source elevation into the heightfield as a starting point, and then sample that
      * modifiable heightfield as we go along.
      */
-    bool integrateLines(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                        double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+    bool integrateLines(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
+                        WidthsList& widths, ElevationEnvelope* envelope,
                         bool fillAllPixels, ProgressCallback* progress)
     {
         bool wroteChanges = false;
@@ -367,12 +404,7 @@ namespace
 
         osg::Vec3d Pex, P, PROJ;
 
-        double innerRadius = lineWidth * 0.5;
-        double outerRadius = innerRadius + bufferWidth;
-        double outerRadius2 = outerRadius * outerRadius;
-
         bool needsTransform = ex.getSRS() != geomSRS;
-
         
         // Loop over the new heightfield.
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
@@ -399,79 +431,90 @@ namespace
                 // radius; we will collect up to MaxSamples of these for each heightfield point.
                 static const unsigned Maxsamples = 4;
                 Samples samples;
-                
-                // Search for line segments.
-                ConstGeometryIterator giter(geom);
-                while (giter.hasMore())
+
+                for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
-                    const Geometry* part = giter.next();
-                
-                    for (int i = 0; i < part->size()-1; ++i)
+                    Widths w = widths[geomIndex];
+                    double innerRadius = w.lineWidth * 0.5;
+                    double outerRadius = innerRadius + w.bufferWidth;
+                    double outerRadius2 = outerRadius * outerRadius;
+
+                    Geometry* component = geom->getComponents()[geomIndex];
+                    // Search for line segments.
+                    ConstGeometryIterator giter(component);
+                    while (giter.hasMore())
                     {
-                        // AB is a candidate line segment:
-                        const osg::Vec3d& A = (*part)[i];
-                        const osg::Vec3d& B = (*part)[i+1];
-                    
-                        osg::Vec3d AB = B - A;    // current segment AB
+                        const Geometry* part = giter.next();                        
 
-                        double t;                 // parameter [0..1] on segment AB
-                        double D2;                // shortest distance from point P to segment AB, squared
-                        double L2 = AB.length2(); // length (squared) of segment AB
-                        osg::Vec3d AP = P - A;    // vector from endpoint A to point P
-
-                        if (L2 == 0.0)
+                        for (int i = 0; i < part->size()-1; ++i)
                         {
-                            // trivial case: zero-length segment
-                            t = 0.0;
-                            D2 = AP.length2();
-                        }
-                        else
-                        {
-                            // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
-                            // Clamping it means the closest point won't be beyond the endpoints of the segment.
-                            t = clamp((AP * AB)/L2, 0.0, 1.0);
+                            // AB is a candidate line segment:
+                            const osg::Vec3d& A = (*part)[i];
+                            const osg::Vec3d& B = (*part)[i+1];
 
-                            // project our point P onto segment AB:
-                            PROJ.set( A + AB*t );
+                            osg::Vec3d AB = B - A;    // current segment AB
 
-                            // measure the distance (squared) from P to the projected point on AB:
-                            D2 = (P - PROJ).length2();
-                        }
+                            double t;                 // parameter [0..1] on segment AB
+                            double D2;                // shortest distance from point P to segment AB, squared
+                            double L2 = AB.length2(); // length (squared) of segment AB
+                            osg::Vec3d AP = P - A;    // vector from endpoint A to point P
 
-                        // If the distance from our point to the line segment falls within
-                        // the maximum flattening distance, store it.
-                        if (D2 < outerRadius2)
-                        {
-                            // see if P is a new sample.
-                            Sample* b;
-                            if (samples.size() < Maxsamples)
+                            if (L2 == 0.0)
                             {
-                                // If we haven't collected the maximum number of samples yet,
-                                // just add this to the list:
-                                samples.push_back(Sample());
-                                b = &samples.back();
+                                // trivial case: zero-length segment
+                                t = 0.0;
+                                D2 = AP.length2();
                             }
                             else
                             {
-                                // If we are maxed out on samples, find the farthest one we have so far
-                                // and replace it if the new point is closer:
-                                unsigned max_i = 0;
-                                for (unsigned i=1; i<samples.size(); ++i)
-                                    if (samples[i].D2 > samples[max_i].D2)
-                                        max_i = i;
+                                // Calculate parameter "t" [0..1] which will yield the closest point on AB to P.
+                                // Clamping it means the closest point won't be beyond the endpoints of the segment.
+                                t = clamp((AP * AB)/L2, 0.0, 1.0);
 
-                                b = &samples[max_i];
+                                // project our point P onto segment AB:
+                                PROJ.set( A + AB*t );
 
-                                if (b->D2 < D2)
-                                    b = 0L;
+                                // measure the distance (squared) from P to the projected point on AB:
+                                D2 = (P - PROJ).length2();
                             }
 
-                            if (b)
+                            // If the distance from our point to the line segment falls within
+                            // the maximum flattening distance, store it.
+                            if (D2 <= outerRadius2)
                             {
-                                b->D2 = D2;
-                                b->A = A;
-                                b->B = B;
-                                b->T = t;
+                                // see if P is a new sample.
+                                Sample* b;
+                                if (samples.size() < Maxsamples)
+                                {
+                                    // If we haven't collected the maximum number of samples yet,
+                                    // just add this to the list:
+                                    samples.push_back(Sample());
+                                    b = &samples.back();
+                                }
+                                else
+                                {
+                                    // If we are maxed out on samples, find the farthest one we have so far
+                                    // and replace it if the new point is closer:
+                                    unsigned max_i = 0;
+                                    for (unsigned i=1; i<samples.size(); ++i)
+                                        if (samples[i].D2 > samples[max_i].D2)
+                                            max_i = i;
+
+                                    b = &samples[max_i];
+
+                                    if (b->D2 < D2)
+                                        b = 0L;
+                                }
+
+                                if (b)
+                                {
+                                    b->D2 = D2;
+                                    b->A = A;
+                                    b->B = B;
+                                    b->T = t;
+                                    b->innerRadius = innerRadius;
+                                    b->outerRadius = outerRadius;
+                                }
                             }
                         }
                     }
@@ -494,7 +537,7 @@ namespace
                 {
                     // The original elevation at our point:
                     float elevP = envelope->getElevation(P.x(), P.y());
-
+                    
                     for (unsigned i = 0; i < samples.size(); ++i)
                     {
                         Sample& sample = samples[i];
@@ -504,7 +547,7 @@ namespace
                         // Blend factor. 0 = distance is less than or equal to the inner radius;
                         //               1 = distance is greater than or equal to the outer radius.
                         double blend = clamp(
-                            (sample.D - innerRadius) / (outerRadius - innerRadius),
+                            (sample.D - sample.innerRadius) / (sample.outerRadius - sample.innerRadius),
                             0.0, 1.0);
                         
                         if (sample.T == 0.0)
@@ -535,7 +578,7 @@ namespace
 
                         // smoothstep interpolation of along the buffer (perpendicular to the segment)
                         // will gently integrate the new value into the existing terrain.
-                        sample.elev = smoothstep(sample.elevPROJ, elevP, blend);
+                        sample.elev = smootherstep(sample.elevPROJ, elevP, blend);
                     }
 
                     // Finally, combine our new elevation values and set the new value in the output.
@@ -563,221 +606,37 @@ namespace
     }
     
 
-    bool integrate(const TileKey& key, osg::HeightField* hf, const Geometry* geom, const SpatialReference* geomSRS,
-                   double lineWidth, double bufferWidth, ElevationEnvelope* envelope,
+    bool integrate(const TileKey& key, osg::HeightField* hf, const MultiGeometry* geom, const SpatialReference* geomSRS,
+                   WidthsList& widths, ElevationEnvelope* envelope,
                    bool fillAllPixels, ProgressCallback* progress)
     {
         if (geom->isLinear())
-            return integrateLines(key, hf, geom, geomSRS, lineWidth, bufferWidth, envelope, fillAllPixels, progress);
+            return integrateLines(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
         else
-            return integratePolygons(key, hf, geom, geomSRS, bufferWidth, envelope, fillAllPixels, progress);
+            return integratePolygons(key, hf, geom, geomSRS, widths, envelope, fillAllPixels, progress);
     }
-}
-
-
-
-FlatteningTileSource::FlatteningTileSource(const FlatteningLayerOptions& options) :
-TileSource(options),
-FlatteningLayerOptions(options)
-{
-    setName("FlatteningTileSource");
-}
-
-Status
-FlatteningTileSource::initialize(const osgDB::Options* readOptions)
-{
-    _readOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
-
-    const Profile* profile = getProfile();
-    if ( !profile )
-    {
-        profile = Registry::instance()->getGlobalGeodeticProfile();
-        setProfile( profile );
-    }
-
-    // ready!
-    return Status::OK();
-}
-
-osg::HeightField*
-FlatteningTileSource::createHeightField(const TileKey& key, ProgressCallback* progress)
-{
-    if (getStatus().isError())    
-    {
-        return 0L;
-    }
-    
-    if (!_featureSource.valid())
-    {
-        setStatus(Status(Status::ServiceUnavailable, "No feature source"));
-        return 0L;
-    }
-
-    const FeatureProfile* featureProfile = _featureSource->getFeatureProfile();
-    if (!featureProfile)
-    {
-        setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
-        return 0L;
-    }
-
-    const SpatialReference* featureSRS = featureProfile->getSRS();
-    if (!featureSRS)
-    {
-        setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
-        return 0L;
-    }
-
-    if (_pool->getElevationLayers().empty())
-    {
-        OE_WARN << LC << "Internal error - Pool layer set is empty\n";
-        return 0L;
-    }
-
-    OE_START_TIMER(create);
-
-    // If the feature source has a tiling profile, we are going to have to map the incoming
-    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
-    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
-
-    // Lat/Long extent:
-    GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
-
-    // Buffer the query extent to include the potentially flattened area.
-    double linewidth = SpatialReference::transformUnits(
-        lineWidth().get(),
-        featureSRS,
-        geoExtent.getCentroid().y());
-
-    double bufferwidth = SpatialReference::transformUnits(
-        bufferWidth().get(),
-        featureSRS,
-        geoExtent.getCentroid().y());
-
-    double queryBuffer = 0.5*linewidth + bufferwidth;
-    queryExtent.expand(queryBuffer, queryBuffer);
-
-    // We must do all the feature processing in a projected system since we're using vector math.
-    const SpatialReference* workingSRS =
-        queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
-        queryExtent.getSRS();
-    bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
-
-    // We will collection all the feature geometries in this multigeometry:
-    MultiGeometry geoms;
-
-    if (featureProfile->getProfile())
-    {
-        // Tiled source, must resolve complete set of intersecting tiles:
-        std::vector<TileKey> intersectingKeys;
-        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
-
-        std::set<TileKey> featureKeys;
-        for (int i = 0; i < intersectingKeys.size(); ++i)
-        {        
-            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
-                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
-            else
-                featureKeys.insert(intersectingKeys[i]);
-        }
-
-        // Query and collect all the features we need for this tile.
-        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
-        {
-            Query query;        
-            query.tileKey() = *i;
-
-            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
-            while (cursor.valid() && cursor->hasMore())
-            {
-                Feature* feature = cursor->nextFeature();
-
-                // Transform the feature geometry to our working (projected) SRS.
-                if (needsTransform)
-                    feature->transform(workingSRS);
-
-                //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
-                //      in order to discard geometries we don't care about
-
-                geoms.getComponents().push_back(feature->getGeometry());
-            }
-        }
-    }
-    else
-    {
-        // Non-tiled feaure source, just query arbitrary extent:
-        // Set up the query; bounds must be in the feature SRS:
-        Query query;
-        query.bounds() = queryExtent.bounds();
-
-        // Run the query and fill the list.
-        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
-        while (cursor.valid() && cursor->hasMore())
-        {
-            Feature* feature = cursor->nextFeature();
-
-            // Transform the feature geometry to our working (projected) SRS.
-            if (needsTransform)
-                feature->transform(workingSRS);
-
-            //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
-            //      in order to discard geometries we don't care about
-
-            geoms.getComponents().push_back(feature->getGeometry());
-        }
-    }
-
-    if (!geoms.getComponents().empty())
-    {
-        // Make an empty heightfield to populate:
-        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
-            queryExtent,
-            257, 257,           // base tile size for elevation data
-            0u,                 // no border
-            true);              // initialize to HAE (0.0) heights
-
-        // Initialize to NO DATA.
-        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
-
-        // Create an elevation query envelope at the LOD we are creating
-        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
-
-        // Resolve the buffering widths:
-        double lineWidthLocal = SpatialReference::transformUnits(lineWidth().get(), workingSRS, geoExtent.getCentroid().y());
-        double bufferWidthLocal = SpatialReference::transformUnits(bufferWidth().get(), workingSRS, geoExtent.getCentroid().y());
-
-        bool fill = (this->fill() == true);
-        
-        if(integrate(key, hf, &geoms, workingSRS, lineWidthLocal, bufferWidthLocal, envelope, fill, progress) || (progress && progress->isCanceled()))
-        {
-            // If integrate made any changes, return the new heightfield.
-            // (Or if the operation was canceled...return it anyway and it 
-            // will be discarded).
-            return hf.release();
-        }
-    }
-
-    return 0L;
 }
 
 //........................................................................
 
-#undef  LC
-#define LC "[FlatteningLayer] "
 
 FlatteningLayer::FlatteningLayer(const FlatteningLayerOptions& options) :
 ElevationLayer(&_optionsConcrete),
 _options(&_optionsConcrete),
 _optionsConcrete(options)
 {
-    // always call base class initializes
-    ElevationLayer::init();
-    
     // Experiment with this and see what will work.
-    //_pool.setTileSize(65u);
     _pool = new ElevationPool();
     _pool->setTileSize(257u);
 
-    OE_TEST << LC << "Initialized!\n";
+    init();
+}
+
+void
+FlatteningLayer::init()
+{
+    setTileSourceExpected(false);
+    ElevationLayer::init();
 }
 
 const Status&
@@ -810,6 +669,13 @@ FlatteningLayer::open()
         if (getStatus().isError())
             return getStatus();
     }
+    
+    const Profile* profile = getProfile();
+    if ( !profile )
+    {
+        profile = Registry::instance()->getGlobalGeodeticProfile();
+        setProfile( profile );
+    }
 
     return ElevationLayer::open();
 }
@@ -829,46 +695,12 @@ FlatteningLayer::setFeatureSource(FeatureSource* fs)
                 return;
             }
         }
-        if (_ts)
-        {
-            _ts->setFeatureSource(fs);
-        }
     }
-}
-
-TileSource*
-FlatteningLayer::createTileSource()
-{
-    OE_TEST << LC << "Creating tile source\n";
-    _ts = new FlatteningTileSource(options());
-    _ts->setElevationPool(_pool.get());
-    _ts->setFeatureSource(_featureSource.get());
-    return _ts;
 }
 
 FlatteningLayer::~FlatteningLayer()
 {
-    _baseLayerListener.clear();
     _featureLayerListener.clear();
-}
-
-void
-FlatteningLayer::setBaseLayer(ElevationLayer* layer)
-{
-    OE_INFO << LC << "Setting base layer to "
-        << (layer ? layer->getName() : "null") << std::endl;
-
-    ElevationLayerVector layers;
-
-    if (layer)
-    {
-        // Instead of using all the map's elevation layers, we will use a custom set
-        // consisting of just the base layer. Otherwise, the map will return elevation data
-        // for the very layer we are trying to build!
-        layers.push_back(layer);
-    }
-
-    _pool->setElevationLayers(layers);
 }
 
 void
@@ -888,33 +720,265 @@ FlatteningLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 void
 FlatteningLayer::addedToMap(const Map* map)
 {   
-    if (options().elevationBaseLayer().isSet())
-    {  
-        // Initialize the elevation pool with our map:
-        OE_INFO << LC << "Attaching elevation pool to map\n";
-        _pool->setMap( map );
+    // Initialize the elevation pool with our map:
+    OE_INFO << LC << "Attaching elevation pool to map\n";
+    _pool->setMap( map );
 
-        // Listen for our specified base layer to arrive/depart the map.
-        // setBaseLayer will be automatically called.
-        _baseLayerListener.listen(
-            map, 
-            options().elevationBaseLayer().get(), 
-            this, &FlatteningLayer::setBaseLayer);
         
-        // Listen for our feature source layer to arrive, if there is one.
-        if (options().featureSourceLayer().isSet())
-        {
-            _featureLayerListener.listen(
-                map,
-                options().featureSourceLayer().get(), 
-                this, &FlatteningLayer::setFeatureSourceLayer);
+    // Listen for our feature source layer to arrive, if there is one.
+    if (options().featureSourceLayer().isSet())
+    {
+        _featureLayerListener.listen(
+            map,
+            options().featureSourceLayer().get(), 
+            this, &FlatteningLayer::setFeatureSourceLayer);
+    }
+        
+    // Collect all elevation layers preceding this one and use them for flattening.
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+    for (ElevationLayerVector::iterator i = layers.begin(); i != layers.end(); ++i) {
+        if (i->get() == this) {
+            layers.erase(i);
+            break;
         }
+        else {
+            OE_INFO << LC << "Using: " << i->get()->getName() << "\n";
+        }
+    }
+    if (!layers.empty())
+    {
+        _pool->setElevationLayers(layers);
     }
 }
 
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
-    _baseLayerListener.clear();
     _featureLayerListener.clear();
+}
+
+void
+FlatteningLayer::createImplementation(const TileKey& key,
+                                      osg::ref_ptr<osg::HeightField>& hf,
+                                      osg::ref_ptr<NormalMap>& normalMap,
+                                      ProgressCallback* progress)
+{
+    if (getStatus().isError())    
+    {
+        return;
+    }
+    
+    if (!_featureSource.valid())
+    {
+        setStatus(Status(Status::ServiceUnavailable, "No feature source"));
+        return;
+    }
+
+    const FeatureProfile* featureProfile = _featureSource->getFeatureProfile();
+    if (!featureProfile)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
+        return;
+    }
+
+    const SpatialReference* featureSRS = featureProfile->getSRS();
+    if (!featureSRS)
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
+        return;
+    }
+
+    if (_pool->getElevationLayers().empty())
+    {
+        OE_WARN << LC << "Internal error - Pool layer set is empty\n";
+        return;
+    }
+
+    OE_START_TIMER(create);
+
+    // If the feature source has a tiling profile, we are going to have to map the incoming
+    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
+    GeoExtent queryExtent = key.getExtent().transform(featureSRS);
+
+    // Lat/Long extent:
+    GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+
+    // Buffer the query extent to include the potentially flattened area.
+    /*
+    double linewidth = SpatialReference::transformUnits(
+        options().lineWidth().get(),
+        featureSRS,
+        geoExtent.getCentroid().y());
+
+    double bufferwidth = SpatialReference::transformUnits(
+        options().bufferWidth().get(),
+        featureSRS,
+        geoExtent.getCentroid().y());
+    */
+    // TODO:  JBFIX.  Add a "max" setting somewhere.
+    double linewidth = 10.0;
+    double bufferwidth = 10.0;
+    double queryBuffer = 0.5*linewidth + bufferwidth;
+    queryExtent.expand(queryBuffer, queryBuffer);
+
+    // We must do all the feature processing in a projected system since we're using vector math.
+#if 0
+    osg::ref_ptr<const SpatialReference> workingSRS = queryExtent.getSRS();
+    //if (workingSRS->isGeographic())
+    {
+        osg::Vec3d refPos = queryExtent.getCentroid();
+        workingSRS = workingSRS->createTangentPlaneSRS(refPos);
+    }
+#else
+    const SpatialReference* workingSRS = queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
+        queryExtent.getSRS();
+#endif
+
+    bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
+
+    osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet();
+    styleSheet->setScript(options().getScript());
+    osg::ref_ptr< Session > session = new Session( _map.get(), styleSheet.get());
+
+    // We will collection all the feature geometries in this multigeometry:
+    MultiGeometry geoms;
+    WidthsList widths;
+
+    if (featureProfile->getProfile())
+    {
+        // Tiled source, must resolve complete set of intersecting tiles:
+        std::vector<TileKey> intersectingKeys;
+        featureProfile->getProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+
+        std::set<TileKey> featureKeys;
+        for (int i = 0; i < intersectingKeys.size(); ++i)
+        {        
+            if (intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
+                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
+            else
+                featureKeys.insert(intersectingKeys[i]);
+        }
+
+        // Query and collect all the features we need for this tile.
+        for (std::set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        {
+            Query query;        
+            query.tileKey() = *i;
+
+            osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+            while (cursor.valid() && cursor->hasMore())
+            {
+                Feature* feature = cursor->nextFeature();
+
+                double lineWidth = 0.0;
+                double bufferWidth = 0.0;
+                if (options().lineWidth().isSet())
+                {
+                    NumericExpression lineWidthExpr(options().lineWidth().get());
+                    lineWidth = feature->eval(lineWidthExpr, session);
+                }
+
+                if (options().bufferWidth().isSet())
+                {
+                    NumericExpression bufferWidthExpr(options().bufferWidth().get());
+                    bufferWidth = feature->eval(bufferWidthExpr, session);
+                }
+
+                // Transform the feature geometry to our working (projected) SRS.
+                if (needsTransform)
+                    feature->transform(workingSRS);
+
+                lineWidth = SpatialReference::transformUnits(
+                    Distance(lineWidth),
+                    featureSRS,
+                    geoExtent.getCentroid().y());
+
+                bufferWidth = SpatialReference::transformUnits(
+                    Distance(bufferWidth),
+                    featureSRS,
+                    geoExtent.getCentroid().y());
+
+                //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
+                //      in order to discard geometries we don't care about
+                geoms.getComponents().push_back(feature->getGeometry());
+                widths.push_back(Widths(bufferWidth, lineWidth));
+            }
+        }
+    }
+    else
+    {
+        // Non-tiled feaure source, just query arbitrary extent:
+        // Set up the query; bounds must be in the feature SRS:
+        Query query;
+        query.bounds() = queryExtent.bounds();
+
+        // Run the query and fill the list.
+        osg::ref_ptr<FeatureCursor> cursor = _featureSource->createFeatureCursor(query);
+        while (cursor.valid() && cursor->hasMore())
+        {
+            Feature* feature = cursor->nextFeature();
+
+            double lineWidth = 0.0;
+            double bufferWidth = 0.0;
+            if (options().lineWidth().isSet())
+            {
+                NumericExpression lineWidthExpr(options().lineWidth().get());
+                lineWidth = feature->eval(lineWidthExpr, session);
+            }
+
+            if (options().bufferWidth().isSet())
+            {
+                NumericExpression bufferWidthExpr(options().bufferWidth().get());
+                bufferWidth = feature->eval(bufferWidthExpr, session);
+            }
+
+            // Transform the feature geometry to our working (projected) SRS.
+            if (needsTransform)
+                feature->transform(workingSRS);
+
+            lineWidth = SpatialReference::transformUnits(
+                Distance(lineWidth),
+                featureSRS,
+                geoExtent.getCentroid().y());
+
+            bufferWidth = SpatialReference::transformUnits(
+                Distance(bufferWidth),
+                featureSRS,
+                geoExtent.getCentroid().y());
+
+            // Transform the feature geometry to our working (projected) SRS.
+            if (needsTransform)
+                feature->transform(workingSRS);
+
+            //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
+            //      in order to discard geometries we don't care about
+
+            geoms.getComponents().push_back(feature->getGeometry());
+            widths.push_back(Widths(bufferWidth, lineWidth));
+        }
+    }
+
+    if (!geoms.getComponents().empty())
+    {
+        if (!hf.valid())
+        {
+            // Make an empty heightfield to populate:
+            hf = HeightFieldUtils::createReferenceHeightField(
+                queryExtent,
+                257, 257,           // base tile size for elevation data
+                0u,                 // no border
+                true);              // initialize to HAE (0.0) heights
+
+            // Initialize to NO DATA.
+            hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
+        }
+
+        // Create an elevation query envelope at the LOD we are creating
+        osg::ref_ptr<ElevationEnvelope> envelope = _pool->createEnvelope(workingSRS, key.getLOD());
+
+        bool fill = (options().fill() == true);     
+        
+        integrate(key, hf, &geoms, workingSRS, widths, envelope, fill, progress);
+    }
 }

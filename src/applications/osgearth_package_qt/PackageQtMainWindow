@@ -171,12 +171,14 @@ private slots:
             pathSet = true;
           }
 
-          osgEarth::Drivers::GDALOptions layerOpt;
-          layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          osgEarth::Drivers::GDALOptions gdal;
+          gdal.url() = osgEarth::URI(filePath.toStdString());
+          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
+
+          osgEarth::ElevationLayerOptions layerOpt(fileName, gdal);
           layerOpt.tileSize() = 15;
           
-          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
-          osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
+          osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(layerOpt);
 
           _manager->map()->addLayer(newLayer.get());
         }

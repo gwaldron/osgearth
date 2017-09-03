@@ -183,9 +183,9 @@ ObjectLocator::getOrientationMatrix( osg::Matrixd& output, unsigned inherit ) co
 
         // these look backwards, but it's actually a fast way to avoid inverting a matrix
         if ( _rotOrder == HPR )
-            output.set( roll_q.conj() * pitch_q.conj() * azim_q.conj() );
+            output.makeRotate( roll_q.conj() * pitch_q.conj() * azim_q.conj() );
         else if ( _rotOrder == RPH )
-            output.set( azim_q.conj() * pitch_q.conj() * roll_q.conj() );
+            output.makeRotate( azim_q.conj() * pitch_q.conj() * roll_q.conj() );
 
     }
 

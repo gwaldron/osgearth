@@ -20,7 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/TerrainTileModelFactory>
@@ -99,7 +99,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 }
 
 
-TextureCompositor*
+TerrainResources*
 TerrainEngineNode::getResources() const
 {
     return _textureResourceTracker.get();
@@ -124,7 +124,8 @@ _requireNormalTextures   ( false ),
 _requireParentTextures   ( false ),
 _requireElevationBorder  ( false ),
 _requireFullDataAtFirstLOD( false ),
-_redrawRequired          ( true )
+_redrawRequired          ( true ),
+_updateScheduled( false )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);
@@ -211,7 +212,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         this->setEllipsoidModel( NULL );
     
     // Install an object to manage texture image unit usage:
-    _textureResourceTracker = new TextureCompositor();
+    _textureResourceTracker = new TerrainResources();
     std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
     for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
         _textureResourceTracker->setTextureImageUnitOffLimits( *i );
@@ -368,46 +369,25 @@ namespace
 
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
-{
-#if 0
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        // see if we need to set up the Terrain object with an update ops queue.
-        if ( !_terrainInterface->_updateOperationQueue.valid() )
-        {
-            Threading::ScopedMutexLock lock(s_opqlock);
-            if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
-            {
-                //TODO: think, will this work with >1 view?
-                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-                if ( cv->getCurrentCamera() )
-                {
-                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
-                    if ( view && view->getViewerBase() )
-                    {
-                        osg::OperationQueue* q = view->getViewerBase()->getUpdateOperations();
-                        if ( !q ) {
-                            q = new osg::OperationQueue();
-                            view->getViewerBase()->setUpdateOperations( q );
-                        }
-                        _terrainInterface->_updateOperationQueue = q;
-                    }
-                }
-            }
-        }
-    }
-
-    else 
-#endif
-    
+{    
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         _dirtyCount = 0;
+        if (_updateScheduled == false && _terrainInterface->_updateQueue->empty() == false)
+        {
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+            _updateScheduled = true;
+        }
     }
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
-        _terrainInterface->update();
+        if (_updateScheduled == true )
+        {
+            _terrainInterface->update();
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            _updateScheduled = false;
+        }
     }
 
     osg::CoordinateSystemNode::traverse( nv );

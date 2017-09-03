@@ -58,7 +58,6 @@ namespace osgEarth { namespace Splat
     struct OSGEARTHSPLAT_EXPORT SplatRangeData
     {
         optional<unsigned>        _maxLOD;
-        //optional<float>           _minRange;
         optional<URI>             _imageURI;
         optional<URI>             _modelURI;
         optional<int>             _modelCount;
@@ -153,7 +152,7 @@ namespace osgEarth { namespace Splat
     public: // static utility
 
         /** Reads a splat catalog from a URI. */
-        static SplatCatalog* read(const URI& uri, const osgDB::Options* options);
+        static SplatCatalog* read(const URI& uri, const osgDB::Options* options =0L);
 
 
     protected:

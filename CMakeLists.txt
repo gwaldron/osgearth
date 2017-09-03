@@ -70,33 +70,29 @@ IF (OSGEARTH_EMBED_GIT_SHA)
   get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
-# IPHONE_PORT@tom
-# Trying to get CMake to generate an XCode IPhone project, current efforts are to get iphoneos sdk 3.1 working
-# Added option which needs manually setting to select the IPhone SDK for building. We can only have one of the below 
-# set to true. Should realy have an OSG_BUILD_PLATFORM variable that we set to our desired platform
-OPTION(OSG_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
-OPTION(OSG_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" OFF)
-IF(OSG_BUILD_PLATFORM_IPHONE OR OSG_BUILD_PLATFORM_IPHONE_SIMULATOR)
-  
-  #you need to manually set the default sdk version here
-  SET (IPHONE_SDKVER "6.1")
-  #the below is taken from ogre, it states the gcc stuff needs to happen before PROJECT() is called. I've no clue if we even need it
-  # Force gcc <= 4.2 on iPhone
-  include(CMakeForceCompiler)
-  CMAKE_FORCE_C_COMPILER(llvm-gcc-4.2 GNU)
-  CMAKE_FORCE_CXX_COMPILER(llvm-gcc-4.2 GNU)
-  SET(GCC_THUMB_SUPPORT NO)
+#
+SET(OSGEARTH_USE_GLES FALSE)
 
-        #set either the device sdk or the simulator sdk. Can't find away to separate these in the same project
-        IF(OSG_BUILD_PLATFORM_IPHONE)
-            SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer")
-            SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk")
-        ELSE()
-            SET (IPHONE_DEVROOT "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer")
-            SET (IPHONE_SDKROOT "${IPHONE_DEVROOT}/SDKs/iPhoneSimulator${IPHONE_SDKVER}.sdk")
-        ENDIF()
+# check for iOS build
+OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE "Enable IPhoneSDK Device support" OFF)
+OPTION(OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" OFF)
+
+IF(OSGEARTH_BUILD_PLATFORM_IPHONE OR OSGEARTH_BUILD_PLATFORM_IPHONE_SIMULATOR)
+    SET(OSGEARTH_USE_GLES TRUE)
+    #you need to manually set the default sdk version here
+    SET (IPHONE_SDKVER "10.2" CACHE STRING "iOS SDK-Version")
+    SET (IPHONE_VERSION_MIN "8.0" CACHE STRING "IOS minimum os version, use 7.0 or greater to get 64bit support")
+    SET (IPHONE_PLATFORMSROOT "/Applications/Xcode.app/Contents/Developer/Platforms")
+
+    IF(OSGEARTH_BUILD_PLATFORM_IPHONE)
+        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneOS.platform/Developer/SDKs/iPhoneOS${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
+        SET(CMAKE_OSX_ARCHITECTURES "armv7;armv7s;arm64" CACHE STRING "Build architectures for iOS" FORCE)
+    ELSE()
+        SET(CMAKE_OSX_SYSROOT "${IPHONE_PLATFORMSROOT}/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${IPHONE_SDKVER}.sdk" CACHE STRING "System root for iOS" FORCE)
+        SET(CMAKE_OSX_ARCHITECTURES "i386" CACHE STRING "Build architectures for iOS Simulator" FORCE)
+    ENDIF()
 ENDIF ()
-# IPHONE_PORT@tom
+
 
 # check if STLport is required
 OPTION(USE_STLPORT "Set to ON to build OSGEARTH with stlport instead of the default STL library." OFF)
@@ -122,7 +118,11 @@ IF(CMAKE_SYSTEM MATCHES IRIX)
     SET(CMAKE_THREAD_LIBS_INIT "" CACHE INTERNAL "")
 ENDIF(CMAKE_SYSTEM MATCHES IRIX)
 
-FIND_PACKAGE(OpenGL)
+IF (OSGEARTH_USE_GLES)
+    FIND_PACKAGE(OpenGLES) 
+ELSE ()
+    FIND_PACKAGE(OpenGL)
+ENDIF (OSGEARTH_USE_GLES)
 
 FIND_PACKAGE(CURL)
 FIND_PACKAGE(GDAL)
@@ -150,23 +150,41 @@ ENDIF (WITH_EXTERNAL_DUKTAPE)
 
 OPTION(USE_V8 "Use V8 instead of Duktape if V8 is found" OFF)
 
-FIND_PACKAGE(Qt5Core QUIET)
-FIND_PACKAGE(Qt5Widgets QUIET)
-FIND_PACKAGE(Qt5Gui QUIET)
-FIND_PACKAGE(Qt5OpenGL QUIET)
-IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND )
-    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
-ELSE()
-    FIND_PACKAGE(Qt4)
-    IF (QT4_FOUND)
-        INCLUDE(${QT_USE_FILE})
-		SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
-        SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
-    ENDIF (QT4_FOUND)
-ENDIF ()
-
 OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
 OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
+OPTION(DESIRED_QT_VERSION "The desired Qt version to use")
+
+IF(OSGEARTH_USE_QT)
+  # To select a specific version of QT define DESIRED_QT_VERSION
+  # via cmake -DDESIRED_QT_VERSION=5
+  # QUIET option disables messages if the package cannot be found.
+  IF  (DESIRED_QT_VERSION)
+      IF  (DESIRED_QT_VERSION MATCHES 5)
+          FIND_PACKAGE(Qt5Widgets REQUIRED)
+      ELSEIF (DESIRED_QT_VERSION MATCHES 4)
+          FIND_PACKAGE(Qt4 REQUIRED)
+      ENDIF()
+  ELSE()
+      FIND_PACKAGE(Qt5Widgets QUIET)
+      IF ( NOT Qt5Widgets_FOUND )
+          FIND_PACKAGE(Qt4 REQUIRED)
+      ENDIF()
+  ENDIF()
+ENDIF(OSGEARTH_USE_QT)
+
+
+IF(Qt5Widgets_FOUND)
+  FIND_PACKAGE(Qt5Core QUIET)
+  FIND_PACKAGE(Qt5Gui QUIET)
+  FIND_PACKAGE(Qt5OpenGL QUIET)
+  IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND )
+    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
+  ENDIF ()
+ELSEIF(QT4_FOUND)
+  INCLUDE(${QT_USE_FILE})
+  SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
+  SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
+ENDIF ()
 
 # option to install shaders:
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)
@@ -190,6 +208,11 @@ ENDIF(UNIX)
 
 
 IF(WIN32)
+  FIND_PACKAGE(GLCORE)
+  IF(GLCORE_FOUND)
+      INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
+  ENDIF()    
+
   IF(MSVC)
         # This option is to enable the /MP switch for Visual Studio 2005 and above compilers
         OPTION(WIN32_USE_MP "Set to ON to build osgEarth with the /MP option (Visual Studio 2005 and above)." OFF)
@@ -234,6 +257,12 @@ SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a postfix, usually empty on windows")
 SET(CMAKE_RELWITHDEBINFO_POSTFIX "rd" CACHE STRING "add a postfix, usually empty on windows")
 SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a postfix, usually empty on windows")
+
+INCLUDE(OsgEarthMacroUtils)
+
+DETECT_OSG_VERSION()
+
+SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
 
 FIND_PACKAGE(OSG)
 
@@ -330,12 +359,6 @@ ENDIF(INSTALL_TO_OSG_DIR)
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
-INCLUDE(OsgEarthMacroUtils)
-
-DETECT_OSG_VERSION()
-
-SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
-
 # OE Core
 ADD_SUBDIRECTORY(src)
 
@@ -351,65 +374,36 @@ ADD_SUBDIRECTORY(src)
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.
 IF(APPLE)
 
-        #Here we check if the user specified IPhone SDK
-    IF(OSG_BUILD_PLATFORM_IPHONE OR OSG_BUILD_PLATFORM_IPHONE_SIMULATOR)
-
-        IF(OSG_BUILD_PLATFORM_IPHONE)
-            SET(CMAKE_OSX_ARCHITECTURES "armv7" CACHE STRING "Build architectures for iOS" FORCE)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -miphoneos-version-min=4.1 -mno-thumb -arch armv7 -pipe -no-cpp-precomp" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        ELSE()
-            #simulator uses i386 architectures
-            SET(CMAKE_OSX_ARCHITECTURES "i386" CACHE STRING "Build architectures for iOS Simulator" FORCE)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-thumb -arch i386 -pipe -no-cpp-precomp" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        ENDIF()
-
-        #here we set the specific iphone sdk version. We can only set either device or simulator sdk. So if you want both you currently have to have two seperate projects
-        SET(CMAKE_OSX_SYSROOT "${IPHONE_SDKROOT}" CACHE STRING "System root for iOS" FORCE)
-
-        #hack, force link to opengles
-        set(CMAKE_EXE_LINKER_FLAGS "-framework Foundation -framework OpenGLES")
-
-        #use the IPhone windowing system
-        SET(OSG_WINDOWING_SYSTEM "IOS" CACHE STRING "Forced IPhone windowing system on iOS"  FORCE)
-        SET(OSG_DEFAULT_IMAGE_PLUGIN_FOR_OSX "imageio" CACHE STRING "Forced imageio default image plugin for iOS" FORCE)
-
-        #I think this or similar will be required for IPhone apps
-        #OPTION(OSG_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" ON)
-
-    ELSE()
-
-        # These are just defaults/recommendations, but how we want to build
-        # out of the box. But the user needs to be able to change these options.
-        # So we must only set the values the first time CMake is run, or we
-        # will overwrite any changes the user sets.
-        # FORCE is used because the options are not reflected in the UI otherwise.
-        # Seems like a good place to add version specific compiler flags too.
-        IF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
-            # This is really fragile, but CMake doesn't provide the OS system
-            # version information we need. (Darwin versions can be changed
-            # independently of OS X versions.)
-            # It does look like CMake handles the CMAKE_OSX_SYSROOT automatically.
-            IF(EXISTS /Developer/SDKs/10.5.sdk)
-                SET(CMAKE_OSX_ARCHITECTURES "ppc;i386;ppc64;x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-                SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-            ELSE(EXISTS /Developer/SDKs/10.5.sdk)
-                IF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-                    SET(CMAKE_OSX_ARCHITECTURES "ppc;i386" CACHE STRING "Build architectures for OSX" FORCE)
-                    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.4 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-                ELSE(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-                    # No Universal Binary support
-                    # Should break down further to set the -mmacosx-version-min,
-                    # but the SDK detection is too unreliable here.
-                ENDIF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
-            ENDIF(EXISTS /Developer/SDKs/10.5.sdk)
-        ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
+    # These are just defaults/recommendations, but how we want to build
+    # out of the box. But the user needs to be able to change these options.
+    # So we must only set the values the first time CMake is run, or we
+    # will overwrite any changes the user sets.
+    # FORCE is used because the options are not reflected in the UI otherwise.
+    # Seems like a good place to add version specific compiler flags too.
+    IF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
+        # This is really fragile, but CMake doesn't provide the OS system
+        # version information we need. (Darwin versions can be changed
+        # independently of OS X versions.)
+        # It does look like CMake handles the CMAKE_OSX_SYSROOT automatically.
+        IF(EXISTS /Developer/SDKs/10.5.sdk)
+            SET(CMAKE_OSX_ARCHITECTURES "ppc;i386;ppc64;x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+        ELSE(EXISTS /Developer/SDKs/10.5.sdk)
+            IF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+                SET(CMAKE_OSX_ARCHITECTURES "ppc;i386" CACHE STRING "Build architectures for OSX" FORCE)
+                SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.4 -ftree-vectorize -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+            ELSE(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+                # No Universal Binary support
+                # Should break down further to set the -mmacosx-version-min,
+                # but the SDK detection is too unreliable here.
+            ENDIF(EXISTS /Developer/SDKs/MacOSX10.4u.sdk)
+        ENDIF(EXISTS /Developer/SDKs/10.5.sdk)
+    ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
 
 
-        OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
-        OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
-        SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
-
-    ENDIF()
+    OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
+    OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
+    SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
 ENDIF(APPLE)
 

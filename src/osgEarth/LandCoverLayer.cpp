@@ -20,6 +20,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/MetaTile>
+#include <osgEarth/SimplexNoise>
 
 using namespace osgEarth;
 
@@ -57,6 +59,23 @@ namespace
 
         return out;
     }
+
+    osg::Vec2 warpCoverageCoords(const osg::Vec2& covIn, float noise, float warp)
+    {
+        float n1 = 2.0 * noise - 1.0;
+        return osg::Vec2(
+            covIn.x() + sin(n1*osg::PI*2.0) * warp,
+            covIn.y() + sin(n1*osg::PI*2.0) * warp);
+    }
+
+    float getNoise(SimplexNoise& noiseGen, const osg::Vec2& uv)
+    {
+        // TODO: check that u and v are 0..s and not 0..s-1
+        double n = noiseGen.getTiledValue(uv.x(), uv.y());
+        n = osg::clampBetween(n, 0.0, 1.0);
+        return n;
+    }
+
     
     typedef std::vector<int> CodeMap;
 
@@ -74,9 +93,9 @@ namespace
 
         ~ILayer() { if (read) delete read; }
 
-        void load(const TileKey& key, ImageLayer* sourceLayer, ProgressCallback* progress)
+        void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
-            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInRange(key) )
+            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInLegalRange(key) )
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
@@ -97,7 +116,7 @@ namespace
                 // cannot interpolate coverage data:
                 read->setBilinear( false );
 
-                //warp = sourceWarp;
+                warp = sourceLayer->options().warp().get();
             }
         }
     };
@@ -135,7 +154,7 @@ namespace
         {
             const LandCoverValueMapping* mapping = k->get();
             int value = mapping->getValue();
-            const LandCoverClass* lcClass = coverage->getDictionary()->getClass(mapping->getLandCoverClassName());
+            const LandCoverClass* lcClass = coverage->getDictionary()->getClassByName(mapping->getLandCoverClassName());
             if (lcClass)
             {
                 codemap[value] = lcClass->getValue();
@@ -212,7 +231,7 @@ namespace
             // Create the coverage layer:
             LandCoverCoverageLayer* layer = new LandCoverCoverageLayer( coverageOptions );
 
-            // Set up and open it.^
+            // Set up and open it.
             layer->setTargetProfileHint( profile );
             layer->setReadOptions(readOptions);
             const Status& s = layer->open();
@@ -227,24 +246,13 @@ namespace
                 OE_WARN << "Layer \"" << layer->getName() << "\": " << s.toString() << std::endl;
             }
 
-            //Config conf = ilo.getConfig();
-            //_warps[i] = conf.value("warp", options().warpFactor().get());
+            // Integrate data extents into this tile source.
+            const DataExtentList& de = layer->getDataExtents();
+            for(DataExtentList::const_iterator dei = de.begin(); dei != de.end(); ++dei)
+            {
+                getDataExtents().push_back(*dei);
+            }
         }
-        
-#if 0
-        // set up the noise generator.
-        const float F[4] = { 4.0f, 16.0f, 4.0f, 8.0f };
-        const float P[4] = { 0.8f,  0.6f, 0.8f, 0.9f };
-        const float L[4] = { 2.2f,  1.7f, 3.0f, 4.0f };
-    
-        // Configure the noise function:
-        _noiseGen.setNormalize  ( true );
-        _noiseGen.setRange      ( 0.0, 1.0 );
-        _noiseGen.setFrequency  ( F[0] );
-        _noiseGen.setPersistence( P[0] );
-        _noiseGen.setLacunarity ( L[0] );
-        _noiseGen.setOctaves    ( 8 );
-#endif
 
         return STATUS_OK;
     }
@@ -276,33 +284,14 @@ namespace
         ImageUtils::markAsUnNormalized(out, true);
 
         // Allocate a suitable format:
-        GLenum dataType;
-        GLint  internalFormat;
-    
-        if ( options().bits().isSetTo(16u) )
-        {
-            // 16-bit float:
-            dataType       = GL_FLOAT;
-            internalFormat = GL_LUMINANCE16F_ARB;
-        }
-        else //if ( _options.bits().isSetTo(32u) )
-        {
-            // 32-bit float:
-            dataType       = GL_FLOAT;
-            internalFormat = GL_LUMINANCE32F_ARB;
-        }
-    
+        GLint internalFormat = GL_LUMINANCE32F_ARB;
+
         int tilesize = getPixelsPerTile();
 
-        out->allocateImage(tilesize, tilesize, 1, GL_LUMINANCE, dataType);
+        out->allocateImage(tilesize, tilesize, 1, GL_RGB, GL_FLOAT);
         out->setInternalTextureFormat(internalFormat);
 
-        //float noiseLOD = options().baseLOD().get();
-        //float warp     = options().warpFactor().get();
-
         osg::Vec2 cov;    // coverage coordinates
-        //float     noise;  // noise value
-        //osg::Vec2 noiseCoords;
 
         ImageUtils::PixelWriter write( out );
 
@@ -336,15 +325,15 @@ namespace
 
                     if ( cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f )
                     {
-                        // Noise is like a repeating overlay at the noiseLOD. So sample it using
-                        // straight U/V tile coordinates.
-                        //noiseCoords = getSplatCoords( key, noiseLOD, osg::Vec2(u,v) );
-                        //noise = getNoise( _noiseGen, noiseCoords );
-                        //cov = warpCoverageCoords(cov, noise, layer.warp);
-
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
                         if ( texel.r() != NO_DATA_VALUE )
                         {
+                            // store the warp factor in the green channel
+                            texel.g() = layer.warp;
+
+                            // store the layer index in the blue channel
+                            texel.b() = (float)L;
+
                             if (texel.r() < 1.0f)
                             {
                                 // normalized code; convert
@@ -355,7 +344,6 @@ namespace
                                     if (value >= 0)
                                     {
                                         texel.r() = (float)value;
-                                        //texel.r() = ((float)value)/255.0f;
                                         write.f(texel, u, v);
                                         wrotePixel = true;
                                     }
@@ -393,7 +381,9 @@ namespace
 #define LC "[LandCoverLayerOptions] "
 
 LandCoverLayerOptions::LandCoverLayerOptions(const ConfigOptions& options) :
-ImageLayerOptions(options)
+ImageLayerOptions(options),
+_noiseLOD(12u),
+_warp(0.0f)
 {
     fromConfig(_conf);
 }
@@ -401,11 +391,8 @@ ImageLayerOptions(options)
 void
 LandCoverLayerOptions::fromConfig(const Config& conf)
 {
-    //conf.getIfSet("warp", _warp);
-    //conf.getIfSet("base_lod", _baseLOD);
-    conf.getIfSet("bits", _bits);
-    
-    //_dictionary = new LandCoverDictionary(conf.child("land_cover_dictionary"));
+    conf.getIfSet("warp", _warp);
+    conf.getIfSet("noise_lod", _noiseLOD);
 
     ConfigSet layerConfs = conf.child("coverages").children("coverage");
     for (ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
@@ -420,20 +407,19 @@ LandCoverLayerOptions::getConfig() const
     Config conf = ImageLayerOptions::getConfig();
     conf.key() = "land_cover";
 
-    //conf.addIfSet("warp", _warp);
-    //conf.addIfSet("base_lod", _baseLOD);
-    conf.addIfSet("bits", _bits);    
+    conf.addIfSet("warp", _warp);
+    conf.addIfSet("noise_lod", _noiseLOD);
 
     if (_coverages.size() > 0)
     {
-        Config images("images");
+        Config images("coverages");
         for (std::vector<LandCoverCoverageLayerOptions>::const_iterator i = _coverages.begin();
             i != _coverages.end();
             ++i)
         {
-            images.add("image", i->getConfig());
+            images.add("coverage", i->getConfig());
         }
-        conf.add(images);
+        conf.update(images);
     }
 
     return conf;
@@ -492,4 +478,131 @@ TileSource*
 LandCoverLayer::createTileSource()
 {
     return new LandCoverTileSource(options());
+}
+
+GeoImage
+LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
+{
+    if (true) // warping enabled
+    {
+        MetaImage metaImage;
+
+        for (int x = -1; x <= 1; ++x)
+        {
+            for (int y = -1; y <= 1; ++y)
+            {
+                // compute the neighoring key:
+                TileKey subkey = key.createNeighborKey(x, y);
+                if (!subkey.valid())
+                    continue;
+
+                // compute the closest ancestor key with actual data for the neighbor key:
+                TileKey bestkey = getBestAvailableTileKey(subkey);
+                if (!bestkey.valid())
+                    continue;
+
+                // load the image and store it to the metaimage.
+                GeoImage tile = ImageLayer::createImageImplementation(bestkey, progress);
+                if (tile.valid())
+                {
+                    osg::Matrix scaleBias;
+                    subkey.getExtent().createScaleBias(bestkey.getExtent(), scaleBias);
+                    metaImage.setImage(x, y, tile.getImage(), scaleBias);
+                }
+            }
+        }
+
+        const osg::Image* mainImage = metaImage.getImage(0, 0);
+        if ( !mainImage)
+            return GeoImage::INVALID;
+
+        // new image for the warped data:
+        osg::ref_ptr<osg::Image> image = new osg::Image();
+        image->allocateImage(
+            mainImage->s(),
+            mainImage->t(),
+            mainImage->r(),
+            mainImage->getPixelFormat(),
+            mainImage->getDataType(),
+            mainImage->getPacking());
+        image->setInternalTextureFormat(mainImage->getInternalTextureFormat());
+        ImageUtils::markAsUnNormalized(image.get(), true);
+
+        ImageUtils::PixelWriter write(image.get());
+
+        // Configure the noise function:
+        SimplexNoise noiseGen;
+        noiseGen.setNormalize(true);
+        noiseGen.setRange(0.0, 1.0);
+        noiseGen.setFrequency(4.0);
+        noiseGen.setPersistence(0.8);
+        noiseGen.setLacunarity(2.2);
+        noiseGen.setOctaves(8);
+
+        osg::Vec2d cov;
+        osg::Vec2 noiseCoords;
+        osg::Vec4 pixel;
+        osg::Vec4 nodata(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
+        
+        float pdL = pow(2, (float)key.getLOD() - options().noiseLOD().get());
+
+        for (int t = 0; t < image->t(); ++t)
+        {
+            double v = (double)t / (double)(image->t() - 1);
+            for (int s = 0; s < image->s(); ++s)
+            {
+                double u = (double)s / (double)(image->s() - 1);
+
+                cov.set(u, v);
+
+                // first read the unwarped pixel to get the warping value.
+                // (warp is stored in pixel.g)
+                metaImage.read(cov.x(), cov.y(), pixel);
+                float warp = pixel.g() * pdL;
+
+                noiseCoords = getSplatCoords(key, options().noiseLOD().get(), cov);
+                double noise = getNoise(noiseGen, noiseCoords);
+                cov = warpCoverageCoords(cov, noise, warp);
+
+                if (metaImage.read(cov.x(), cov.y(), pixel))
+                {
+                    // only apply the warping if the location of the warped pixel
+                    // came from the same source layer. Otherwise you will get some
+                    // unsavory speckling. (Layer index is stored in pixel.b)
+                    osg::Vec4 unwarpedPixel;
+                    if (metaImage.read(u, v, unwarpedPixel) && pixel.b() != unwarpedPixel.b())
+                        write(unwarpedPixel, s, t);
+                    else
+                        write(pixel, s, t);
+                }
+                else
+                {
+                    write(nodata, s, t);
+                }
+            }
+        }
+
+        return GeoImage(image.get(), key.getExtent());
+    }
+
+    else
+    {
+        return ImageLayer::createImageImplementation(key, progress);
+    }
+}
+
+const LandCoverClass*
+LandCoverLayer::getClassByUV(const GeoImage& tile, double u, double v) const
+{
+    if (!tile.valid())
+        return 0L;
+
+    if (!_lcDictionary.valid())
+        return 0L;
+
+    ImageUtils::PixelReader read(tile.getImage());
+    read.setBilinear(false); // nearest neighbor only!
+    float value = read(u, v).r();
+
+    return _lcDictionary->getClassByValue((int)value);
 }

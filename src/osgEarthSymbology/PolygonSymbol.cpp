@@ -26,13 +26,16 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(polygon, PolygonSymbol);
 
 PolygonSymbol::PolygonSymbol(const PolygonSymbol& rhs,const osg::CopyOp& copyop):
 Symbol(rhs, copyop),
-_fill(rhs._fill)
+_fill(rhs._fill),
+_outline(rhs._outline)
 {
+    //nop
 }
 
 PolygonSymbol::PolygonSymbol( const Config& conf ) :
 Symbol( conf ),
-_fill ( Fill() )
+_fill ( Fill() ),
+_outline( true )
 {
     mergeConfig(conf);
 }
@@ -43,6 +46,7 @@ PolygonSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "polygon";
     conf.addObjIfSet( "fill", _fill );
+    conf.addIfSet("outline", _outline);
     return conf;
 }
 
@@ -50,6 +54,7 @@ void
 PolygonSymbol::mergeConfig(const Config& conf )
 {
     conf.getObjIfSet( "fill", _fill );
+    conf.getIfSet("outline", _outline);
 }
 
 void

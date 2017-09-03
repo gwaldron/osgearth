@@ -25,40 +25,35 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
 	if (node)
 	{
+        PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
+
 		Color color(Color::White);
 		std::string colorVal = getValue(node, "color");
 		if (!colorVal.empty())
 		{
 			color = Color(Stringify() << "#" << colorVal, Color::ABGR);
+            poly->fill()->color() = color;
 		}
 
-		bool fill = true;	// By default it is true
-		std::string fillVal = getValue(node, "fill");
-		if (!fillVal.empty())
-		{
-			fill = (as<int>(fillVal, 1) == 1);
-			if (!fill)
-			{
-				color.a() = 0;
-			}
-		}
+        if (poly)
+        {
+		    bool fill = true;	// By default it is true
+		    std::string fillVal = getValue(node, "fill");
+		    if (!fillVal.empty())
+		    {
+    			fill = (as<int>(fillVal, 1) == 1);
+			    if (!fill)
+			    {
+                    poly->fill()->color().a() = 0.0f;
+			    }
+		    }
 
-		if (!colorVal.empty() || !style.has<PolygonSymbol>())
-		{
-			PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
-			poly->fill()->color() = color;
-		}
-
-		bool outline = true;	// By default it is true
-		std::string outlineVal = getValue(node, "outline");
-		if (!outlineVal.empty())
-		{
-			outline = (as<int>(outlineVal, 0) == 1);
-		}
-		if (!outline)
-		{
-			LineSymbol* line = style.getOrCreate<LineSymbol>();
-			line->stroke()->color().a() = 0;
-		}
+		    std::string outlineVal = getValue(node, "outline");
+		    if (!outlineVal.empty())
+		    {
+			    bool outline = (as<int>(outlineVal, 0) == 1);
+                poly->outline() = outline;
+		    }
+        }
 	}
 }

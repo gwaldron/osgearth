@@ -41,8 +41,8 @@ FeatureTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::getConfig();
 
-    conf.updateObjIfSet( "features", _featureOptions );
-    conf.updateObjIfSet( "styles", _styles );
+    conf.setObj( "features", _featureOptions );
+    conf.setObj( "styles", _styles );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
@@ -234,7 +234,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                                 Style combinedStyle;
 
                                 // if the style string begins with an open bracket, it's an inline style definition.
-                                if ( styleString.length() > 0 && styleString.at(0) == '{' )
+                                if ( styleString.length() > 0 && styleString[0] == '{' )
                                 {
                                     Config conf( "style", styleString );
                                     conf.setReferrer( sel.styleExpression().get().uriContext().referrer() );

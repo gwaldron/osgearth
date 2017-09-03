@@ -13,13 +13,12 @@ uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime
 
 in vec3 atmos_lightDir;    // light direction (view coords)
 in vec3 atmos_color;       // atmospheric lighting color
-in vec3 atmos_atten;       // atmospheric lighting attentuation factor
+in vec3 atmos_atten;       // atmospheric lighting attenuation factor
 in vec3 atmos_up;          // earth up vector at fragment (in view coords)
 in float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
 in vec3 atmos_vert; 
         
 vec3 vp_Normal;          // surface normal (from osgEarth)
-
 
 //#define MAX_LIGHTS 8
 
@@ -108,14 +107,14 @@ void atmos_fragment_main(inout vec4 color)
                 vec4 VL4 = osg_LightSource[i].position - V;
                 L = normalize(VL4.xyz);
 
-                // calculate attentuation:
+                // calculate attenuation:
                 float distance = length(VL4);
                 attenuation = 1.0 / (
                     osg_LightSource[i].constantAttenuation +
                     osg_LightSource[i].linearAttenuation * distance +
                     osg_LightSource[i].quadraticAttenuation * distance * distance);
 
-                // for a spot light, the attentuation help form the cone:
+                // for a spot light, the attenuation help form the cone:
                 if (osg_LightSource[i].spotCutoff <= 90.0)
                 {
                     vec3 D = normalize(osg_LightSource[i].spotDirection);

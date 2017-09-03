@@ -47,7 +47,8 @@ _magFilter( osg::Texture::LINEAR),
 _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
-_binNumber( 0 )
+_binNumber( 0 ),
+_castShadows( false )
 {
     fromConfig( _conf );
 }
@@ -58,41 +59,42 @@ TerrainOptions::getConfig() const
     Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain";
     
-    conf.updateIfSet( "tile_size", _tileSize );
-    conf.updateIfSet( "vertical_scale", _verticalScale );
-    conf.updateIfSet( "vertical_offset", _verticalOffset );
-    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
-    conf.updateIfSet( "range_factor", _minTileRangeFactor );  
-    conf.updateIfSet( "max_lod", _maxLOD );
-    conf.updateIfSet( "min_lod", _minLOD );
-    conf.updateIfSet( "first_lod", _firstLOD );
-    conf.updateIfSet( "lighting", _enableLighting );
-    conf.updateIfSet( "attenuation_distance", _attenuationDistance );
-    conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
-    conf.updateIfSet( "mipmapping", _enableMipmapping );
-    conf.updateIfSet( "cluster_culling", _clusterCulling );
-    conf.updateIfSet( "blending", _enableBlending );
-    conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
-    conf.updateIfSet( "min_normal_map_lod", _minNormalMapLOD );
-    conf.updateIfSet( "gpu_tessellation", _gpuTessellation );
-    conf.updateIfSet( "debug", _debug );
-    conf.updateIfSet( "bin_number", _binNumber );
-    conf.updateIfSet( "min_expiry_time", _minExpiryTime);
-    conf.updateIfSet( "min_expiry_frames", _minExpiryFrames);
+    conf.set( "tile_size", _tileSize );
+    conf.set( "vertical_scale", _verticalScale );
+    conf.set( "vertical_offset", _verticalOffset );
+    conf.set( "min_tile_range_factor", _minTileRangeFactor );
+    conf.set( "range_factor", _minTileRangeFactor );  
+    conf.set( "max_lod", _maxLOD );
+    conf.set( "min_lod", _minLOD );
+    conf.set( "first_lod", _firstLOD );
+    conf.set( "lighting", _enableLighting );
+    conf.set( "attenuation_distance", _attenuationDistance );
+    conf.set( "lod_transition_time", _lodTransitionTimeSeconds );
+    conf.set( "mipmapping", _enableMipmapping );
+    conf.set( "cluster_culling", _clusterCulling );
+    conf.set( "blending", _enableBlending );
+    conf.set( "mercator_fast_path", _mercatorFastPath );
+    conf.set( "min_normal_map_lod", _minNormalMapLOD );
+    conf.set( "gpu_tessellation", _gpuTessellation );
+    conf.set( "debug", _debug );
+    conf.set( "bin_number", _binNumber );
+    conf.set( "min_expiry_time", _minExpiryTime);
+    conf.set( "min_expiry_frames", _minExpiryFrames);
+    conf.set( "cast_shadows", _castShadows);
 
     //Save the filter settings
-	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+	conf.set("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.set("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.set("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.set("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.set("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.set("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.set("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.set("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.set("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.set("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
     return conf;
 }
@@ -121,6 +123,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bin_number", _binNumber );
     conf.getIfSet( "min_expiry_time", _minExpiryTime);
     conf.getIfSet( "min_expiry_frames", _minExpiryFrames);
+    conf.getIfSet( "cast_shadows", _castShadows);
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

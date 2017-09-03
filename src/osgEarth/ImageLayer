@@ -54,13 +54,7 @@ namespace osgEarth
 
 
     public: // properties
-
-        /**
-         * The initial opacity of this layer
-         */
-        optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-
+        
         /**
          * The initial minimum camera range at which this layer is visible.
          */
@@ -144,15 +138,14 @@ namespace osgEarth
 
     public:
 
-        virtual Config getConfig() const { return getConfig(false); }
-        virtual Config getConfig( bool isolate ) const;
+        virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
         
     private:
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<float>       _opacity;
+        //optional<float>       _opacity;
         optional<float>       _minRange;
         optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
@@ -196,7 +189,7 @@ namespace osgEarth
 
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged(class ImageLayer* layer) { }
+        //virtual void onOpacityChanged(class ImageLayer* layer) { }
         virtual void onVisibleRangeChanged(class ImageLayer* layer) { }
         virtual void onColorFiltersChanged(class ImageLayer* layer) { }
 
@@ -261,13 +254,6 @@ namespace osgEarth
     public: // runtime properties
 
         /**
-         * Sets the opacity of this image layer.
-         * @param opacity Opacity [0..1] -> [transparent..opaque]
-         */
-        void setOpacity( float opacity );
-        float getOpacity() const;
-
-        /**
          * Minimum camera range at which this image layer is visible 
          */
         float getMinVisibleRange() const;
@@ -315,7 +301,7 @@ namespace osgEarth
     public: // methods
 
         virtual bool createTextureSupported() const { return false; }
-        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress) { return 0L; }
+        virtual osg::Texture* createTexture(const TileKey& key, ProgressCallback* progress, osg::Matrixf& textureMatrix) { return 0L; }
 
         /**
          * Creates a GeoImage from this layer corresponding to the provided key. The
@@ -333,14 +319,16 @@ namespace osgEarth
          * Applies the texture compression options to a texture.
          */
         void applyTextureCompressionMode(osg::Texture* texture) const;
-        
+       
         typedef ImageLayerCallback Callback;
 
     public: // Layer
-
-        virtual Config getConfig() const;
         
         virtual const Status& open();
+
+        //! Subclass can override this when not using a TileSource
+        //! by calling setTileSourceExpected(false).
+        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
     protected: // Layer
             
@@ -353,9 +341,6 @@ namespace osgEarth
 
         // Constructor for a subclass that owns the layer options structure
         ImageLayer(ImageLayerOptions* optionsPtr);
-
-        //! Subclass can override this when not using a TileSource
-        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress);
 
     private:
 

@@ -24,6 +24,7 @@
 #include <osgEarth/Bounds>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Units>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Referenced>
 #include <osg/Image>
@@ -512,6 +513,20 @@ namespace osgEarth
          */
         bool createPolytope(osg::Polytope& out) const;
 
+        /**
+         * Computes a scale/bias matrix that transforms parametric coordinates [0..1]
+         * from this extent into the target extent. Return false if the extents are
+         * incompatible (different SRS, etc.)
+         *
+         * For example, if this extent is 100m wide, and the target extent is
+         * 200m wide, the output matrix will have an x_scale = 0.5.
+         *
+         * Note! For the sake of efficiency, this method does NOT check for 
+         * validity nor for SRS equivalence -- so be sure to validate those beforehand.
+         * It also assumes the output matrix is preset to the identity.
+         */
+        bool createScaleBias(const GeoExtent& target, osg::Matrix& output) const;
+
     public:
         static GeoExtent INVALID;
 
@@ -665,8 +680,30 @@ namespace osgEarth
 
     typedef std::vector<GeoImage> GeoImageVector;
 
+
+    class OSGEARTH_EXPORT NormalMap : public osg::Image
+    {
+    public:
+        NormalMap(unsigned s, unsigned t);
+
+        void set(unsigned s, unsigned t, const osg::Vec3& normal, float curvature =0.0f);
+
+        osg::Vec3 getNormal(unsigned s, unsigned t) const;
+
+        osg::Vec3 getNormalByUV(double u, double v) const;
+
+        float getCurvature(unsigned s, unsigned t) const;
+
+        virtual ~NormalMap();
+
+    private:
+        ImageUtils::PixelWriter* _write;
+        ImageUtils::PixelReader* _read;
+    };
+
+
     /**
-     * A georeferenced heightfield.
+     * A georeferenced heightfield and associated normal/curvature map.
      */
     class OSGEARTH_EXPORT GeoHeightField
     {
@@ -680,6 +717,15 @@ namespace osgEarth
         GeoHeightField(
             osg::HeightField* heightField,
             const GeoExtent&  extent );
+
+        //! Constructs a new GeoHeightField
+        //! @param[in] heightField Elevation grid
+        //! @param[in] normalMap   Normal/Curvature map
+        //! @param[in] extent      Geospatial extent of the data
+        GeoHeightField(
+            osg::HeightField* heightField,
+            NormalMap*        normalMap,
+            const GeoExtent&  extent);
 
         /** dtor */
         virtual ~GeoHeightField() { }
@@ -719,6 +765,21 @@ namespace osgEarth
             ElevationInterpolation  interp,
             const SpatialReference* srsWithOutputVerticalDatum,
             float&                  out_elevation ) const;
+
+        bool getElevationAndNormal(
+            const SpatialReference* inputSRS, 
+            double                  x,
+            double                  y,
+            ElevationInterpolation  interp,
+            const SpatialReference* srsWithOutputVerticalDatum,
+            float&                  out_elevation,
+            osg::Vec3&              out_normal ) const;
+
+        //! Gets the elevation at a point (must be in the same SRS; bilinear interpolation)
+        float getElevation(double x, double y) const;
+
+        //! Gets the normal at a point (must be in the same SRS; bilinear interpolation)
+        osg::Vec3 getNormal(double x, double y) const;
         
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding to
@@ -747,6 +808,10 @@ namespace osgEarth
         const osg::HeightField* getHeightField() const;
         osg::HeightField* getHeightField();
 
+        //! Normal map
+        const NormalMap* getNormalMap() const;
+        NormalMap* getNormalMap();
+
         /**
          * Gets a pointer to the underlying OSG heightfield, and releases the internal reference.
          */
@@ -774,8 +839,11 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
+        osg::ref_ptr<NormalMap>        _normalMap;
         GeoExtent                      _extent;
         float                          _minHeight, _maxHeight;
+
+        void init();
     };
 
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;

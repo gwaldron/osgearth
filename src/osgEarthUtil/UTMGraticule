@@ -37,11 +37,11 @@ namespace osgEarth { namespace Util
     /**
      * Configuration options for the geodetic graticule.
      */
-    class /*header only*/ UTMGraticuleOptions : public ConfigOptions
+    class UTMGraticuleOptions : public VisibleLayerOptions
     {
     public:
-        UTMGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : ConfigOptions(conf) {
-            mergeConfig(_conf);
+        UTMGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
+            fromConfig(_conf);
         }
         
     public:
@@ -55,12 +55,17 @@ namespace osgEarth { namespace Util
         const optional<float>& textScale() const { return _textScale; }
 
     public:
-        Config getConfig() const {
-            Config conf = newConfig();
+        virtual Config getConfig() const {
+            Config conf = VisibleLayerOptions::getConfig();
             conf.key() = "utm_graticule";
             conf.addObjIfSet("gzd_style", _gzdStyle);
             conf.addIfSet("text_scale", _textScale);
             return conf;
+        }
+
+        virtual void fromConfig(const Config& conf) {
+            conf.getObjIfSet("gzd_style", _gzdStyle);
+            conf.getIfSet("text_scale", _textScale);
         }
 
     protected:
@@ -68,8 +73,8 @@ namespace osgEarth { namespace Util
         optional<float> _textScale;
 
         void mergeConfig(const Config& conf) {
-            conf.getObjIfSet("gzd_style", _gzdStyle);
-            conf.getIfSet("text_scale", _textScale);
+            VisibleLayerOptions::mergeConfig(conf);
+            fromConfig(conf);
         }
     };
 
@@ -101,54 +106,40 @@ namespace osgEarth { namespace Util
      * Implements a UTM map graticule. 
      * This only works for geocentric maps.
      */
-    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group,
-                                             public MapNodeObserver,
-                                             public UTMGraticuleOptions
+    class OSGEARTHUTIL_EXPORT UTMGraticule : public VisibleLayer
     {
     public:
+        META_Layer(osgEarthUtil, UTMGraticule, UTMGraticuleOptions);
+
+        /**
+         * Construct a new UTM graticule with default settings.
+         */
+        UTMGraticule();
 
         /**
          * Constructs a new graticule for use with the specified map.
          *
-         * @param mapnode
-         *      Map with which you will use this graticule
          * @param options
          *      Optional "options" that configure the graticule. Defaults will be used
          *      if you don't specify this.
          */
-        UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options);
-
-        /**
-         * Constructs a new graticule for use with the specified map,
-         * using default options.
-         *
-         * @param mapnode
-         *      Map with which you will use this graticule
-         */
-        UTMGraticule( MapNode* mapNode );
+        UTMGraticule(const UTMGraticuleOptions& options);
 
         /**
          * If you change any of the options, call this to refresh the display
          * to refelct the new settings.
          */
-        void refresh();
+        void dirty();
 
-        /**
-         * Sets the clip plane to use. If you don't set one, the object will
-         * create both a ClipNode and ClipPlane for geocentric horizon clipping.
-         * If you do set a clip plane, this object will update it automatically,
-         * and we expect that you have the plane registered with an osg::ClipNode
-         * elsewhere in the scene graph.
-         */
-        void setClipPlane(osg::ClipPlane* clipPlane);
-        osg::ClipPlane* getClipPlane() const { return _clipPlane.get(); }
+    public: // Layer
 
+        virtual void addedToMap(const Map* map);
+
+        virtual void removedFromMap(const Map* map);
         
-    public: // MapNodeObserver
+        virtual osg::Node* getOrCreateNode();
 
-        virtual void setMapNode( MapNode* mapNode );
-
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
+        virtual void init();
 
     protected:
 
@@ -156,66 +147,24 @@ namespace osgEarth { namespace Util
         virtual ~UTMGraticule() { }
 
     private:
-        osg::ref_ptr<const Profile>        _profile;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
 
-        osg::observer_ptr<MapNode> _mapNode;
-        osg::Group*                _root;
+        void setUpDefaultStyles();
+
+        void rebuild();
+
+        UID _uid;
+
+        osg::ref_ptr<const Profile> _profile;
+
+        osg::ref_ptr<FeatureProfile> _featureProfile;
 
         osg::ref_ptr<osg::ClipPlane> _clipPlane;
 
-        void ctor();
-        void rebuild();
+        osg::ref_ptr<osg::Group> _root;
+
+        osg::observer_ptr<const Map> _map;
+
         UTMData _utmData;
-    };
-
-    
-    /**
-     * Extension that lets you load and configure an UTM Graticule from an earth file.
-     * Usage:
-     *    <utm_graticule>
-     *       ...
-     *    </utm_graticule>
-     */
-    class UTMGraticuleExtension : public Extension,
-                                  public ExtensionInterface<MapNode>,
-                                  public UTMGraticuleOptions
-    {
-    public:
-        META_Object(osgearth_utm_graticule, UTMGraticuleExtension);
-
-        // CTORs
-        UTMGraticuleExtension() { }
-        UTMGraticuleExtension(const UTMGraticuleOptions& options) : UTMGraticuleOptions(options) { }
-
-        // DTOR
-        virtual ~UTMGraticuleExtension() { }
-
-
-    public: // Extension
-
-        virtual const ConfigOptions& getConfigOptions() const { return *this; }
-
-
-    public: // ExtensionInterface<MapNode>
-
-        bool connect(MapNode* mapNode) {
-            _layer = new ModelLayer("UTM Graticule", new UTMGraticule(mapNode, *this));
-            mapNode->getMap()->addLayer(_layer.get());
-            return true;
-        }
-
-        bool disconnect(MapNode* mapNode) {
-            mapNode->getMap()->removeLayer(_layer.get());
-            //mapNode->onModelLayerRemoved(_layer.get());
-            return true;
-        }
-
-
-    protected: // Object
-        UTMGraticuleExtension(const UTMGraticuleExtension& rhs, const osg::CopyOp& op) { }
-
-        osg::ref_ptr<ModelLayer> _layer;
     };
 
 } } // namespace osgEarth::Util

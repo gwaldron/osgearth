@@ -20,6 +20,7 @@
 #include "Shaders"
 #include "SelectionInfo"
 #include "TerrainCuller"
+#include "GeometryPool"
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -35,6 +36,7 @@
 #include <osg/BlendFunc>
 #include <osg/Depth>
 #include <osg/CullFace>
+#include <osg/ValueObject>
 
 #include <cstdlib> // for getenv
 
@@ -106,7 +108,7 @@ namespace
             TileRenderModel& model = tileNode.renderModel();
             for (int p = 0; p < model._passes.size(); ++p)
             {
-                RenderingPass& pass = model._passes.at(p);
+                RenderingPass& pass = model._passes[p];
 
                 // if the map doesn't contain a layer with a matching UID,
                 // it's gone so remove it from the render model.
@@ -228,6 +230,12 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _terrainOptions.highResolutionFirst() = true;
         OE_INFO << LC << "High Res First option set to true by env var\n";
     }
+
+    // Check for normals debugging.
+    if (::getenv("OSGEARTH_DEBUG_NORMALS"))
+        getOrCreateStateSet()->setDefine("OE_DEBUG_NORMALS");
+    else
+        if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
 
     // check for normal map generation (required for lighting).
     if ( _terrainOptions.normalMaps() == true )
@@ -545,15 +553,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         getEngineContext()->startCull( cv );
         
-        TerrainCuller culler;
-        culler.setFrameStamp(new osg::FrameStamp(*nv.getFrameStamp()));
-        culler.setDatabaseRequestHandler(nv.getDatabaseRequestHandler());
-        culler.pushReferenceViewPoint(cv->getReferenceViewPoint());
-        culler.pushViewport(cv->getViewport());
-        culler.pushProjectionMatrix(cv->getProjectionMatrix());
-        culler.pushModelViewMatrix(cv->getModelViewMatrix(), cv->getCurrentCamera()->getReferenceFrame());
-        culler._camera = cv->getCurrentCamera();
-        culler._context = this->getEngineContext();
+        TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
         culler.setup(_mapFrame, this->getEngineContext()->getRenderBindings());
@@ -606,7 +606,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 //OE_INFO << "   Apply: " << (lastLayer->_layer ? lastLayer->_layer->getName() : "-1") << "; tiles=" << lastLayer->_tiles.size() << std::endl;
                 //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
 
-                cv->apply(*lastLayer);
+                if (lastLayer->_layer)
+                {
+                    if (lastLayer->_layer->preCull(cv))
+                    {
+                        cv->apply(*lastLayer);
+                        lastLayer->_layer->postCull(cv);
+                    }
+                }
+                else
+                {
+                    cv->apply(*lastLayer);
+                }
             }
 
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
@@ -736,6 +747,188 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     return mt;
 }
 
+osg::Node*
+RexTerrainEngineNode::createTile(const TerrainTileModel* model,
+                                 int flags,
+                                 unsigned referenceLOD)
+{
+    if (model == 0L)
+    {
+        OE_WARN << LC << "Illegal: createTile(NULL)" << std::endl;
+        return 0L;
+    }
+
+    // Dimension of each tile in vertices
+    unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
+
+    optional<bool> hasMasks(false);
+    
+    // Trivial rejection test for masking geometry. Check at the top level and
+    // if there's not mask there, there's no mask at the reference LOD either.
+    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
+        model->getKey(),
+        tileSize,
+        getEngineContext()->getMap()
+    );
+
+    bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
+    bool includeTilesWithoutMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
+    
+    if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
+        return 0L;
+
+    // If the ref LOD is higher than the key LOD, build a list of tile keys at the 
+    // ref LOD that match up with the main tile key in the model.
+    std::vector<TileKey> keys;
+    if (referenceLOD > model->getKey().getLOD())
+    {
+        unsigned span = 1 << (referenceLOD - model->getKey().getLOD());
+        unsigned x0 = model->getKey().getTileX() * span;
+        unsigned y0 = model->getKey().getTileY() * span;
+
+        keys.reserve(span*span);
+
+        for (unsigned x=x0; x<x0+span; ++x)
+        {
+            for (unsigned y=y0; y<y0+span; ++y)
+            {
+                keys.push_back(TileKey(referenceLOD, x, y, model->getKey().getProfile()));
+            }
+        }
+    }
+    else
+    {
+        // no reference LOD? Just use the model's key.
+        keys.push_back(model->getKey());
+    }
+
+    // group to hold all the tiles
+    osg::Group* group = new osg::Group();
+
+    maskGenerator = 0L;
+    
+    for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
+    {
+        // Mask generator creates geometry from masking boundaries when they exist.
+        maskGenerator = new MaskGenerator(
+            *key,
+            tileSize,
+            getEngineContext()->getMap());
+
+        if (maskGenerator->hasMasks() == true && includeTilesWithMasks == false)
+            continue;
+
+        if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
+            continue;
+
+        osg::ref_ptr<SharedGeometry> sharedGeom;
+
+        getEngineContext()->getGeometryPool()->getPooledGeometry(
+            *key,
+            _mapFrame.getMapInfo(),
+            tileSize,
+            maskGenerator.get(),
+            sharedGeom);
+
+        osg::ref_ptr<osg::Drawable> drawable = sharedGeom.get();
+
+        osg::UserDataContainer* udc = drawable->getOrCreateUserDataContainer();
+        udc->setUserValue("tile_key", key->str());
+
+        if (sharedGeom.valid())
+        {
+            osg::ref_ptr<osg::Geometry> geom = sharedGeom->makeOsgGeometry();
+            drawable = geom.get();
+            drawable->setUserDataContainer(udc);
+
+            if (!sharedGeom->empty())
+            {
+                // Burn elevation data into the vertex list
+                if (model->elevationModel().valid())
+                {
+                    // Clone the vertex array since it's shared and we're going to alter it
+                    geom->setVertexArray(osg::clone(geom->getVertexArray()));
+
+                    // Apply the elevation model to the verts, noting that the texture coordinate
+                    // runs [0..1] across the tile and the normal is the up vector at each vertex.
+                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+                    osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
+                    osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
+
+                    const osg::HeightField* hf = model->elevationModel()->getHeightField();
+                    const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
+
+                    // Tile coords must be transformed into the local tile's space
+                    // for elevation grid lookup:
+                    osg::Matrix scaleBias;
+                    key->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+
+                    // Apply elevation to each vertex.
+                    for (unsigned i = 0; i < verts->size(); ++i)
+                    {
+                        osg::Vec3& vert = (*verts)[i];
+                        osg::Vec3& up = (*ups)[i];
+                        osg::Vec3& tileCoord = (*tileCoords)[i];
+
+                        // Skip verts on a masking boundary since their elevations are hard-wired.
+                        if (tileCoord.z() != MASK_MARKER_BOUNDARY)
+                        {
+                            osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
+                            n = n * scaleBias;
+                            if (hfmatrix) n = n * (*hfmatrix);
+
+                            float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
+                            if (z != NO_DATA_VALUE)
+                            {
+                                vert += up*z;
+                            }
+                        }
+                    }
+                }
+
+                // Encode the masking extents into a user data object
+                if (maskGenerator->hasMasks())
+                {
+                    // Find the NDC coords of the masking patch geometry:
+                    osg::Vec3d maskMin, maskMax;
+                    maskGenerator->getMinMax(maskMin, maskMax);
+
+                    // Clamp to the tile's extent
+                    maskMin.x() = osg::clampBetween(maskMin.x(), 0.0, 1.0);
+                    maskMin.y() = osg::clampBetween(maskMin.y(), 0.0, 1.0);
+                    maskMax.x() = osg::clampBetween(maskMax.x(), 0.0, 1.0);
+                    maskMax.y() = osg::clampBetween(maskMax.y(), 0.0, 1.0);
+
+                    const GeoExtent& e = key->getExtent();
+                    osg::Vec2d tkMin(e.xMin() + maskMin.x()*e.width(), e.yMin() + maskMin.y()*e.height());
+                    osg::Vec2d tkMax(e.xMin() + maskMax.x()*e.width(), e.yMin() + maskMax.y()*e.height());
+
+                    udc->setUserValue("mask_patch_min", tkMin);
+                    udc->setUserValue("mask_patch_max", tkMax);
+
+                    //OE_INFO << LC << "key " << key->str()
+                    //    << " ext=" << e.toString() << "\n"
+                    //    << " min=" << tkMin.x() << "," << tkMin.y()
+                    //    << "; max=" << tkMax.x() << "," << tkMax.y() << std::endl;
+                }
+            }
+    
+            // Establish a local reference frame for the tile:
+            GeoPoint centroid;
+            key->getExtent().getCentroid(centroid);
+
+            osg::Matrix local2world;
+            centroid.createLocalToWorld(local2world);
+
+            osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
+            xform->addChild(drawable.get());
+
+            group->addChild(xform);
+        }
+    }
+
+    return group;
+}
 
 osg::Node*
 RexTerrainEngineNode::createTile( const TileKey& key )
@@ -905,6 +1098,12 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                         << "unit=" << newBinding.unit() << "\n";
                 }
             }
+
+            // For an image layer, attach the default fragment shader:
+            Shaders shaders;
+            osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            shaders.load(vp, shaders.ENGINE_FRAG);
         }
 
         else
@@ -1089,7 +1288,8 @@ RexTerrainEngineNode::updateState()
 
             // Functions that affect the terrain surface only:
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
-            package.load(surfaceVP, package.ENGINE_FRAG);
+            package.load(surfaceVP, package.ENGINE_ELEVATION_MODEL);
+            //package.load(surfaceVP, package.ENGINE_FRAG);
 
             // Elevation?
             if (this->elevationTexturesRequired())
@@ -1121,6 +1321,12 @@ RexTerrainEngineNode::updateState()
                 }
             }
 
+            // Shadowing?
+            if (_terrainOptions.castShadows() == true)
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
+            }
+
             // assemble color filter code snippets.
             bool haveColorFilters = false;
             {
@@ -1146,7 +1352,7 @@ RexTerrainEngineNode::updateState()
 
                 for( int i=0; i<imageLayers.size(); ++i )
                 {
-                    ImageLayer* layer = imageLayers.at(i);
+                    ImageLayer* layer = imageLayers[i].get();
                     if ( layer->getEnabled() )
                     {
                         // install Color Filter function calls:
@@ -1217,7 +1423,7 @@ RexTerrainEngineNode::updateState()
             // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", -1.0f) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attenuationDistance().get()) );
             
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",

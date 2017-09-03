@@ -26,12 +26,15 @@
 #include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
+#include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgDB/FileNameUtils>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
 
     /**
      * Serializable options to configure a FlatteningLayer.
@@ -43,16 +46,12 @@ namespace osgEarth { namespace Util
         FlatteningLayerOptions(const ConfigOptions& co = ConfigOptions()) :
             ElevationLayerOptions(co)
         {
-            _fill.init(true);
+            _fill.init(false);
             _lineWidth.init(40);
-            _bufferWidth.init(25);
+            _bufferWidth.init(40);
             mergeConfig(_conf);
         }
         
-        /** Name of the elevation layer to sample when flattening. */
-        optional<std::string>& elevationBaseLayer() { return _elevationBaseLayer; }
-        const optional<std::string>& elevationBaseLayer() const { return _elevationBaseLayer; }
-
         /** Name of the feature source layer to use for flattening. */
         optional<std::string>& featureSourceLayer() { return _featureSourceLayer; }
         const optional<std::string>& featureSourceLayer() const { return _featureSourceLayer; }
@@ -62,93 +61,101 @@ namespace osgEarth { namespace Util
         const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
         /** For line features, the width around the line to flatten. */
-        optional<Distance>& lineWidth() { return _lineWidth; }
-        const optional<Distance>& lineWidth() const { return _lineWidth; }
+        optional<NumericExpression>& lineWidth() { return _lineWidth; }
+        const optional<NumericExpression>& lineWidth() const { return _lineWidth; }
 
         /** Width of the buffer between the flattened terrain and the natural terrain,
             which will serve as a transition area. */
-        optional<Distance>& bufferWidth() { return _bufferWidth; }
-        const optional<Distance>& bufferWidth() const { return _bufferWidth; }
+        optional<NumericExpression>& bufferWidth() { return _bufferWidth; }
+        const optional<NumericExpression>& bufferWidth() const { return _bufferWidth; }
 
         //! Whether to write all samples (default=false) with source elev instead of
         //! writing NO_DATA_VALUE where no features exist
         optional<bool>& fill() { return _fill; }
         const optional<bool>& fill() const { return _fill; }
 
+        StyleSheet::ScriptDef* getScript() const { return _script.get(); }
+
     public:
         Config getConfig() const
         {
             Config conf = ElevationLayerOptions::getConfig();
             conf.key() = "flattened_elevation";
-            conf.addIfSet("base_layer", _elevationBaseLayer);
             conf.addObjIfSet("features",  _featureSource);
             conf.addIfSet("feature_source", _featureSourceLayer);
-            conf.addIfSet("line_width", _lineWidth);
-            conf.addIfSet("buffer_width", _bufferWidth);
+            conf.addObjIfSet("line_width", _lineWidth);
+            conf.addObjIfSet("buffer_width", _bufferWidth);
             conf.addIfSet("fill", _fill);
+
+            if ( _script.valid() )
+            {
+                Config scriptConf("script");
+
+                if ( !_script->name.empty() )
+                    scriptConf.set( "name", _script->name );
+                if ( !_script->language.empty() )
+                    scriptConf.set( "language", _script->language );
+                if ( _script->uri.isSet() )
+                    scriptConf.set( "url", _script->uri->base() );
+                if ( !_script->profile.empty() )
+                    scriptConf.set( "profile", _script->profile );
+                else if ( !_script->code.empty() )
+                    scriptConf.value() = _script->code;
+
+                conf.add( scriptConf );
+            }
+
             return conf;
         }
 
     protected:
         void mergeConfig( const Config& conf )
         {
-            conf.getIfSet("base_layer", _elevationBaseLayer);
+            URIContext uriContext = URIContext( conf.referrer() );
+
             conf.getObjIfSet("features",  _featureSource);
             conf.getIfSet("feature_source", _featureSourceLayer);
-            conf.getIfSet("line_width", _lineWidth);
-            conf.getIfSet("buffer_width", _bufferWidth);
+            conf.getObjIfSet("line_width", _lineWidth);
+            conf.getObjIfSet("buffer_width", _bufferWidth);
             conf.getIfSet("fill", _fill);
+
+            // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
+            ConfigSet scripts = conf.children( "script" );
+            for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
+            {
+                _script = new StyleSheet::ScriptDef();
+
+                // load the code from a URI if there is one:
+                if ( i->hasValue("url") )
+                {
+                    _script->uri = URI( i->value("url"), uriContext );
+                    OE_INFO << "Loading script from \"" << _script->uri->full() << std::endl;
+                    _script->code = _script->uri->getString();
+                }
+                else
+                {
+                    _script->code = i->value();
+                }
+
+                // name is optional and unused at the moment
+                _script->name = i->value("name");
+
+                std::string lang = i->value("language");
+                _script->language = lang.empty() ? "javascript" : lang;
+
+                std::string profile = i->value("profile");
+                _script->profile = profile;
+            }
         }
         
     private:
         optional<FeatureSourceOptions>  _featureSource;
         optional<std::string> _featureSourceLayer;
-        optional<Distance> _lineWidth;
-        optional<Distance> _bufferWidth;
-        optional<std::string> _elevationBaseLayer;
+        optional<NumericExpression> _lineWidth;
+        optional<NumericExpression> _bufferWidth;
         optional<bool> _fill;
+        osg::ref_ptr< StyleSheet::ScriptDef > _script;
     };
-
-
-    /**
-     * Tile source that will take elevation data (from elsewhere in the map)
-     * and flatten it according to feature data. For example, given a feature
-     * source defining roads, this driver will generate elevation tiles for
-     * which the elevation around the roads is flat.
-     *
-     * This driver is only suitable for internal use by FlatteningLayer.
-     * It is not exported.
-     */
-    class FlatteningTileSource : public TileSource, FlatteningLayerOptions
-    {
-    public:
-        /** constructor */
-        FlatteningTileSource(const FlatteningLayerOptions& layerOptions);
-
-        /** Elevation pool from which to source elevation samples */
-        void setElevationPool(ElevationPool* pool) { _pool = pool; }
-
-        /** Source of feature data that will drive the flattening. */
-        void setFeatureSource(FeatureSource* fs) { _featureSource = fs; }
-
-
-    public: // TileSource
-
-        // Make sure everything is OK and return open status
-        Status initialize(const osgDB::Options* readOptions);
-
-        // Generate a flattening heightfield for a key
-        osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress);
-
-    protected:
-        virtual ~FlatteningTileSource() { }
-
-        osg::ref_ptr<osgDB::Options> _readOptions;
-        osg::ref_ptr<FeatureSource>  _featureSource;
-
-        ElevationPool* _pool;
-    };
-
 
     /**
      * Elevation layer that overlays modified elevation samples intended to
@@ -163,9 +170,6 @@ namespace osgEarth { namespace Util
         // Create a layer with initial options.
         FlatteningLayer(const FlatteningLayerOptions& options = FlatteningLayerOptions());
 
-        // the elevation layer that we want to flatten
-        void setBaseLayer(ElevationLayer* layer);
-
         // Feature source layer to get a FeatureSource from
         void setFeatureSourceLayer(FeatureSourceLayer* layer);    
         
@@ -174,16 +178,23 @@ namespace osgEarth { namespace Util
 
     public: // ElevationLayer
 
+        virtual void init();
+
         // opens the layer and returns the status
         virtual const Status& open();
 
     protected: // ElevationLayer
 
-        // called by the elevation layer to create our custom tile source
-        virtual TileSource* createTileSource();
+        virtual void createImplementation(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& hf,
+            osg::ref_ptr<NormalMap>& normalMap,
+            ProgressCallback* progres);
 
-        // called by the map when this layer is added/removed
+        //! called by the map when this layer is added
         virtual void addedToMap(const class Map*);
+
+        //! called by the map when this layer is removed
         virtual void removedFromMap(const class Map*);
 
     protected:
@@ -192,13 +203,11 @@ namespace osgEarth { namespace Util
 
     private:
 
-        MapCallback* _mapCallback;
-        FlatteningTileSource* _ts;
         osg::ref_ptr<ElevationPool> _pool;
         osg::ref_ptr<FeatureSource> _featureSource;
-
-        LayerListener<FlatteningLayer, ElevationLayer> _baseLayerListener;
+        osg::ref_ptr<ScriptEngine> _scriptEngine;
         LayerListener<FlatteningLayer, FeatureSourceLayer> _featureLayerListener;
+        osg::observer_ptr< const Map > _map;
     };
 
     REGISTER_OSGEARTH_LAYER(flattened_elevation, FlatteningLayer);

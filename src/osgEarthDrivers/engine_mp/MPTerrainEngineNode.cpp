@@ -219,7 +219,8 @@ bool
 MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
     static const char* libVS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma vp_name MP Terrain SDK (VS)\n"
 
         "in vec4 oe_terrain_attr; \n"
@@ -260,7 +261,8 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
         "} \n";
 
     static const char* libFS =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#pragma vp_name MP Terrain SDK (FS)\n"
 
         "uniform vec4 oe_tile_key; \n"
@@ -1007,6 +1009,12 @@ MPTerrainEngineNode::updateState()
             Color terrainColor = _terrainOptions.color().getOrUse( Color(1,1,1,-1) );
             terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
 
+            // shadowing?
+            if (_terrainOptions.castShadows() == true)
+            {
+                terrainStateSet->setDefine("OE_TERRAIN_CAST_SHADOWS");
+            }
+
             if ( _update_mapf )
             {
                 // assemble color filter code snippets.
@@ -1119,7 +1127,7 @@ MPTerrainEngineNode::updateState()
             // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attenuationDistance().get()) );
             
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",

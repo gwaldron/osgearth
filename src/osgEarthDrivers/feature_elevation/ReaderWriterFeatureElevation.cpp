@@ -133,7 +133,7 @@ public:
             return NULL;
         }
 
-        int tileSize = _options.tileSize().value();        
+        int tileSize = getPixelsPerTile(); //_options.tileSize().value();        
 
 	    if (intersects(key))
         {

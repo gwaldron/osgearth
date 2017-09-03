@@ -155,8 +155,9 @@ namespace osgEarth
             }
         }
 
-        /** Copy of the first child with the given key */
-        Config child( const std::string& key ) const;
+        /** First child with the given key */
+        //Config child( const std::string& key ) const;
+        const Config& child( const std::string& key ) const;
 
         /** Pointer to the first child with the given key, or NULL if none exist */
         const Config* child_ptr( const std::string& key ) const;
@@ -250,6 +251,10 @@ namespace osgEarth
                 add( key, osgEarth::toString<T>( opt.value() ) );
             }
         }
+        template<typename T>
+        void set( const std::string& key, const optional<T>& opt ) {
+            updateIfSet(key, opt);
+        }
         
         /** Adds or replaces a referenced object as a child, but only if it is set */
         template<typename T>
@@ -260,6 +265,10 @@ namespace osgEarth
                 conf.key() = key;
                 add( conf );
             }
+        }
+        template<typename T>
+        void setObj( const std::string& key, const osg::ref_ptr<T>& opt ) {
+            updateObjIfSet(key, opt);
         }
         
         /** Adds or replaces an object as a child, but only if it is set */
@@ -272,6 +281,10 @@ namespace osgEarth
                 add( conf );
             }
         }
+        template<typename T>
+        void setObj( const std::string& key, const optional<T>& obj ) {
+            updateObjIfSet(key, obj);
+        }
         
         /** Adds or replaces an enumeration value as a child, but only if it is set */
         template<typename X, typename Y>
@@ -280,6 +293,10 @@ namespace osgEarth
                 remove(key);
                 add( key, val );
             }
+        }
+        template<typename X, typename Y>
+        void set( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
+            updateIfSet(key, val, target, targetValue);
         }
         
         /** Adds or replaces value as a child */
@@ -293,6 +310,10 @@ namespace osgEarth
             remove(conf.key());
             add( conf );
         }
+        template<typename T>
+        void set( const std::string& key, const T& value ) {
+            update( key, value );
+        }
 
         /** Adds or replaces an object as a child */
         template<typename T>
@@ -302,11 +323,9 @@ namespace osgEarth
             conf.key() = key;
             add( conf );
         }
-
-        /** Same as update */
         template<typename T>
-        void set( const std::string& key, const T& value ) {
-            update( key, value );
+        void setObj( const std::string& key, const T& value ) {
+            updateObj(key, value);
         }
 
         /** Whether this object has the key OR has a child with the key */
@@ -466,6 +485,16 @@ namespace osgEarth
     }
 
     template<> inline
+    void Config::set<Config>( const std::string& key, const optional<Config>& opt ) {
+        if ( opt.isSet() ) {
+            remove(key);
+            Config conf = opt.value();
+            conf.key() = key;
+            add( conf );
+        }
+    }
+
+    template<> inline
     bool Config::getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
         if ( hasChild( key ) ) {
             output = child(key);
@@ -529,7 +558,7 @@ namespace osgEarth
         ConfigOptions( const Config& conf =Config() )
             : _conf( conf ) { }
         ConfigOptions( const ConfigOptions& rhs )
-            : _conf( rhs.getConfig() ) { }
+            : _conf( rhs.getConfig() ) { } //rhs._conf ) { }
 
         virtual ~ConfigOptions();
         
@@ -548,11 +577,7 @@ namespace osgEarth
             mergeConfig( rhs.getConfig() );
         }
 
-        virtual Config getConfig() const { return _conf; }
-
-        virtual Config getConfig( bool isolate ) const { return isolate ? newConfig() : _conf; }
-
-        Config newConfig() const { Config c; c.setReferrer(referrer()); return c; }
+        virtual Config getConfig() const;
 
         bool empty() const { return _conf.empty(); }
 
@@ -581,11 +606,6 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.set("driver", _driver);
-            return conf;
-        }
-        virtual Config getConfig( bool isolate ) const {
-            Config conf = ConfigOptions::getConfig( isolate );
             conf.set("driver", _driver);
             return conf;
         }

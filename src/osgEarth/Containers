@@ -314,14 +314,14 @@ namespace osgEarth
 
     public:
         LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
-            _buf = _max/10;
             _queries = 0;
             _hits = 0;
+            setMaxSize_impl(max);
         }
         LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
-            _buf = _max/10;
             _queries = 0;
             _hits = 0;
+            setMaxSize_impl(max);
         }
 
         /** dtor */
@@ -467,8 +467,8 @@ namespace osgEarth
         }
 
         void setMaxSize_impl( unsigned max ) {
-            _max = max;
-            _buf = max/10;
+            _max = std::max(max,10u);
+            _buf = _max/10u;
             while( _map.size() > _max ) {
                 const K& key = _lru.front();
                 _map.erase( key );

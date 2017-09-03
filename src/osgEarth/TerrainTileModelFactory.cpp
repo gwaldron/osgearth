@@ -66,10 +66,12 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         addElevation( model.get(), frame, key, filter, border, progress );
     }
 
+#if 0
     if ( requirements == 0L || requirements->normalTexturesRequired() )
     {
         addNormalMap( model.get(), frame, key, progress );
     }
+#endif
 
     // done.
     return model.release();
@@ -103,12 +105,13 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             continue;
 
         osg::Texture* tex = 0L;
+        osg::Matrixf textureMatrix;
 
-        if (layer->isKeyInRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
+        if (layer->isKeyInLegalRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
         {
             if (layer->createTextureSupported())
             {
-                tex = layer->createTexture( key, progress );
+                tex = layer->createTexture( key, progress, textureMatrix );
             }
 
             else
@@ -141,6 +144,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             layerModel->setImageLayer(layer);
 
             layerModel->setTexture(tex);
+            layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
 
             model->colorLayers().push_back(layerModel);
 
@@ -221,8 +225,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
+    osg::ref_ptr<NormalMap> normalMap;
 
-    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, progress) && mainHF.valid())
+    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );
@@ -246,14 +251,25 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
         //osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
-        osg::Image* image = conv.convertToR32F(mainHF.get());
+        osg::Image* hfImage = conv.convertToR32F(mainHF.get());
 
-        if ( image )
+        if ( hfImage )
         {
             // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createElevationTexture( image );
+            osg::Texture* texture = createElevationTexture( hfImage );
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
+        }
+
+        if (normalMap.valid())
+        {
+            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+            layerModel->setName( "oe_normal_map" );
+
+            // Made an image, so store this as a texture with no matrix.
+            osg::Texture* texture = createNormalTexture(normalMap.get());
+            layerModel->setTexture( texture );
+            model->normalModel() = layerModel;
         }
     }
 
@@ -302,6 +318,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
                                                 ElevationInterpolation          interpolation,
                                                 unsigned                        border,
                                                 osg::ref_ptr<osg::HeightField>& out_hf,
+                                                osg::ref_ptr<NormalMap>&        out_normalMap,
                                                 ProgressCallback*               progress)
 {
     // check the quick cache.
@@ -317,7 +334,8 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     HFCache::Record rec;
     if ( _heightFieldCacheEnabled && _heightFieldCache.get(cachekey, rec) )
     {
-        out_hf = rec.value().get();
+        out_hf = rec.value()._hf.get();
+        out_normalMap = rec.value()._normalMap.get();
 
         if (progress)
         {
@@ -337,8 +355,15 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             true);              // initialize to HAE (0.0) heights
     }
 
-    bool populated = frame.populateHeightField(
+    if (!out_normalMap.valid())
+    {
+        //OE_INFO << "TODO: check terrain reqs\n";
+        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);        
+    }
+
+    bool populated = frame.populateHeightFieldAndNormalMap(
         out_hf,
+        out_normalMap,
         key,
         true, // convertToHAE
         progress );
@@ -375,7 +400,13 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
 
         // cache it.
         if (_heightFieldCacheEnabled )
-            _heightFieldCache.insert( cachekey, out_hf.get() );
+        {
+            HFCacheValue newValue;
+            newValue._hf = out_hf.get();
+            newValue._normalMap = out_normalMap.get();
+
+            _heightFieldCache.insert( cachekey, newValue );
+        }
     }
 
     return populated;

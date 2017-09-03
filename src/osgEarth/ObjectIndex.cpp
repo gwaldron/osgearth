@@ -22,6 +22,7 @@
 
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Registry>
+#include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/Uniform>
 #include <osg/Geode>
@@ -41,6 +42,7 @@ namespace
 {
     const char* indexVertexInit =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "#pragma vp_entryPoint oe_index_readObjectID \n"
         "#pragma vp_location   vertex_model \n"

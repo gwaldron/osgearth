@@ -27,6 +27,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Extension>
 #include <osg/Texture1D>
+#include <osg/Texture2D>
 #include <osg/TransferFunction>
 
 namespace osgEarth {
@@ -76,6 +77,12 @@ namespace osgEarth { namespace Util
                                            public ContourMapOptions
     {
     public:
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+        typedef osg::Texture2D TextureType;
+#else
+        typedef osg::Texture1D TextureType;
+#endif
+    
         /** construct a new effect */
         ContourMap();
         ContourMap(const ConfigOptions& co);
@@ -98,7 +105,7 @@ namespace osgEarth { namespace Util
 
         int                                   _unit;
         osg::ref_ptr<osg::TransferFunction1D> _xfer;
-        osg::ref_ptr<osg::Texture1D>          _xferTexture;
+        osg::ref_ptr<TextureType>             _xferTexture;
         osg::ref_ptr<osg::Uniform>            _xferSampler;
         osg::ref_ptr<osg::Uniform>            _xferMin;
         osg::ref_ptr<osg::Uniform>            _xferRange;

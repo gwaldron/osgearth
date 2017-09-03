@@ -156,18 +156,18 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     view->getCamera()->setViewMatrixAsLookAt(osg::Vec3d(0,-1,0), osg::Vec3d(0,0,0), osg::Vec3d(0,0,1));
     view->getCamera()->setProjectionResizePolicy(osg::Camera::FIXED);
 
-    osg::Vec3Array* v = new osg::Vec3Array(4);
-    (*v)[0].set(-.5,0,-.5); (*v)[1].set(.5,0,-.5); (*v)[2].set(.5,0,.5); (*v)[3].set(-.5,0,.5);
+    osg::Vec3Array* v = new osg::Vec3Array(6);
+    (*v)[0].set(-.5,0,-.5); (*v)[1].set(.5,0,-.5); (*v)[2].set(.5,0,.5); (*v)[3].set((*v)[2]); (*v)[4].set(-.5,0,.5);(*v)[5].set((*v)[0]);
 
-    osg::Vec2Array* t = new osg::Vec2Array(4);
-    (*t)[0].set(0,0); (*t)[1].set(1,0); (*t)[2].set(1,1); (*t)[3].set(0,1);
+    osg::Vec2Array* t = new osg::Vec2Array(6);
+    (*t)[0].set(0,0); (*t)[1].set(1,0); (*t)[2].set(1,1); (*t)[3].set((*t)[2]); (*t)[4].set(0,1); (*t)[5].set((*t)[0]);
 
     osg::Geometry* g = new osg::Geometry();
     g->setUseVertexBufferObjects(true);
     g->setUseDisplayList(false);
     g->setVertexArray( v );
     g->setTexCoordArray( 0, t );
-    g->addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4) );
+    g->addPrimitiveSet( new osg::DrawArrays(GL_TRIANGLES, 0, 6) );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( g );
@@ -183,7 +183,9 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     stateSet->setMode(GL_CULL_FACE, 0);
     stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
     
-    const char* fs = "void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); }\n";
+    const char* fs =
+    "#version " GLSL_VERSION_STR "\n"
+    "void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); }\n";
     osgEarth::Registry::shaderGenerator().run(geode);
     VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction("swap", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
@@ -214,7 +216,7 @@ main(int argc, char** argv)
     osgViewer::View* mainView = new osgViewer::View();
     mainView->setUpViewInWindow(30, 30, 1024, 1024, 0);
     mainView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
+    
     viewer.addView(mainView);
 
     // Tell the database pager to not modify the unref settings

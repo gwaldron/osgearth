@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
+#include <osgEarth/LandCover>
 
 namespace osgEarth {
     class Map;
@@ -60,7 +61,7 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "surface";
-            conf.updateIfSet("catalog", _catalogURI);
+            conf.set("catalog", _catalogURI);
             return conf;
         }
 
@@ -88,10 +89,13 @@ namespace osgEarth { namespace Splat
          * Loads textures for splatting and generates a sampling function.
          * Returns false if something goes wrong
          */
-        bool loadTextures(const Coverage* coverage, const osgDB::Options* dbo);
+        bool loadTextures(const LandCoverDictionary* landCoverDict, const osgDB::Options* readOptions);
 
         /** Gets the texture definition creates by loadTextures */
         const SplatTextureDef& getTextureDef() const { return _textureDef; }
+
+        osg::StateSet* getOrCreateStateSet();
+        osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
     protected:
         virtual ~Surface() { }
@@ -99,10 +103,9 @@ namespace osgEarth { namespace Splat
     protected:
         osg::ref_ptr<SplatCatalog> _catalog;
         SplatTextureDef            _textureDef;
+        osg::ref_ptr<osg::StateSet> _stateSet;
 
-        //bool createGLSLSamplingCode(const Coverage* coverage, std::string& output) const;
-
-        osg::Texture* createLUTBuffer(const Coverage* coverage) const;
+        osg::Texture* createLUTBuffer(const LandCoverDictionary* lcd) const;
 
     public:
 

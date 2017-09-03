@@ -402,7 +402,11 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asString();
           else
-            OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+          {
+            // Couldn't execute it as code, just take it as a string literal.
+            val = i->first;
+            OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+          }
         }
       }
 
@@ -434,7 +438,11 @@ Feature::eval(StringExpression& expr, Session* session) const
                 if (result.success())
                     val = result.asString();
                 else
-                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                {
+                    // Couldn't execute it as code, just take it as a string literal.
+                    val = i->first;
+                    OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                }
             }
         }
 
@@ -495,6 +503,7 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
 {
     if ( bs.valid() )
     {
+        out_polytope.getMaskStack().clear();
         out_polytope.clear();
 
         // add planes for the four sides of the BS. Normals point inwards.
@@ -649,4 +658,37 @@ void Feature::transform( const SpatialReference* srs )
         getSRS()->transform( geom->asVector(), srs );
     }
     setSRS( srs );
+}
+
+void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
+{
+     // If the feature is geodetic, try to split it across the dateline.
+    if (getSRS() && getSRS()->isGeodetic())
+    {
+        // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
+        double minLon = -540;
+        for (int i = 0; i < 3; i++)
+        {
+            double offset = minLon - -180.0;
+            double maxLon = minLon + 360.0;
+            Bounds bounds(minLon, -90.0, maxLon, 90.0);
+            osg::ref_ptr< Geometry > croppedGeometry;
+            if (getGeometry()->crop(bounds, croppedGeometry))
+            {
+                // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
+                for (int j = 0; j < croppedGeometry->size(); j++)
+                {
+                    (*croppedGeometry)[j].x() -= offset;
+                }
+                osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
+                croppedFeature->setGeometry(croppedGeometry.get());
+                splitFeatures.push_back(croppedFeature);
+            }
+            minLon += 360.0;
+        }
+    }
+    else
+    {
+        splitFeatures.push_back( this );
+    }   
 }

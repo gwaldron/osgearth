@@ -22,6 +22,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/MemCache>
 #include <osgEarth/Metrics>
+#include <osgEarth/ImageUtils>
 #include <osg/Version>
 #include <iterator>
 
@@ -72,15 +73,18 @@ ElevationLayerOptions::setDefaults()
 }
 
 Config
-ElevationLayerOptions::getConfig( bool isolate ) const
+ElevationLayerOptions::getConfig() const
 {
-    Config conf = TerrainLayerOptions::getConfig( isolate );
+    Config conf = TerrainLayerOptions::getConfig();
     conf.key() = "elevation";
 
-    conf.updateIfSet("offset", _offset);
-    conf.updateIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
-    conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
-    conf.updateIfSet("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
+    conf.set("offset", _offset);
+    conf.set("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
+    conf.set("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
+    conf.set("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
+
+    //if (driver().isSet())
+    //    conf.set("driver", driver()->getDriver());
 
     return conf;
 }
@@ -108,11 +112,11 @@ namespace
     // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
     struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        NormalizeNoDataValues(TileSource* source)
+        NormalizeNoDataValues(TerrainLayer* layer)
         {
-            _noDataValue   = source->getNoDataValue();
-            _minValidValue = source->getMinValidValue();
-            _maxValidValue = source->getMaxValidValue();
+            _noDataValue   = layer->getNoDataValue();
+            _minValidValue = layer->getMinValidValue();
+            _maxValidValue = layer->getMaxValidValue();
         }
 
         void operator()(osg::ref_ptr<osg::HeightField>& hf)
@@ -123,8 +127,9 @@ namespace
                 for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
                 {
                     float& value = *i;
-                    if ( osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
+                    if ( osg::isNaN(value) || osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
                     {
+                        OE_DEBUG << "Replaced " << value << " with NO_DATA_VALUE" << std::endl;
                         value = NO_DATA_VALUE;
                     }
                 } 
@@ -208,40 +213,37 @@ ElevationLayer::isOffset() const
     return options().offset().get();
 }
 
-Config
-ElevationLayer::getConfig() const
-{
-    Config layerConf = options().getConfig();
-    layerConf.set("driver", options().driver()->getDriver());
-    layerConf.key() = "elevation";
-    return layerConf;
-}
-
 TileSource::HeightFieldOperation*
 ElevationLayer::getOrCreatePreCacheOp()
 {
-    if ( !_preCacheOp.valid() && getTileSource() )
+    if ( !_preCacheOp.valid() )
     {
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_preCacheOp.valid() )
         {
-            _preCacheOp = new NormalizeNoDataValues( getTileSource() );
+            _preCacheOp = new NormalizeNoDataValues(this);
         }
     }
     return _preCacheOp.get();
 }
 
-osg::HeightField*
-ElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress)
+void
+ElevationLayer::createImplementation(const TileKey& key,
+                                     osg::ref_ptr<osg::HeightField>& out_hf,
+                                     osg::ref_ptr<NormalMap>& out_normalMap,
+                                     ProgressCallback* progress)
 {
-    return createHeightFieldFromTileSource(key, progress);
+    out_hf = createHeightFieldFromTileSource(key, progress);
+    
+    // Do not create a normal map here. The populateHeightField method will
+    // create the normal map.
 }
 
 osg::HeightField*
 ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
                                                 ProgressCallback* progress)
 {
-    osg::HeightField* result = 0L;
+    osg::ref_ptr<osg::HeightField> result;
 
     TileSource* source = getTileSource();
     if ( !source )
@@ -259,7 +261,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     if ( key.getProfile()->isHorizEquivalentTo( getProfile() ) )
     {
         // Only try to get data if the source actually has data
-        if ( !source->hasData(key) )
+        if (!mayHaveData(key))
         {
             OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
@@ -270,7 +272,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
    
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.
-        if ( result )
+        if (result.valid())
         {
             if ( ! key.getExtent().getSRS()->isVertEquivalentTo( getProfile()->getSRS() ) )
             {
@@ -284,7 +286,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         
         // Blacklist the tile if it is the same projection as the source and
         // we can't get it and it wasn't cancelled
-        if (result == 0L)
+        if (!result.valid())
         {
             if ( progress == 0L ||
                  ( !progress->isCanceled() && !progress->needsRetry() ) )
@@ -298,17 +300,21 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     else
     {
         // note: this method takes care of the vertical datum shift internally.
-        result = assembleHeightField( key, progress );
+        osg::ref_ptr<NormalMap> dummyNormalMap;
+        assembleHeightField( key, result, dummyNormalMap, progress );
     }
 
-    return result;
+    return result.release();
 }
 
 
-osg::HeightField*
-ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progress)
+void
+ElevationLayer::assembleHeightField(const TileKey& key,
+                                    osg::ref_ptr<osg::HeightField>& out_hf,
+                                    osg::ref_ptr<NormalMap>& out_normalMap,
+                                    ProgressCallback* progress)
 {			
-    osg::HeightField* result = 0L;
+    //osg::HeightField* result = 0L;
 
     // Collect the heightfields for each of the intersecting tiles.
     GeoHeightFieldVector heightFields;
@@ -326,12 +332,15 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
         {
             const TileKey& layerKey = intersectingTiles[i];
 
-            if ( isKeyInRange(layerKey) )
+            if ( isKeyInLegalRange(layerKey) )
             {
-                osg::HeightField* hf = createHeightFieldImplementation( layerKey, progress );
-                if ( hf )
+                osg::ref_ptr<osg::HeightField> hf;
+                osg::ref_ptr<NormalMap> normalMap;
+                createImplementation(layerKey, hf, normalMap, progress);
+                //osg::HeightField* hf = createHeightFieldImplementation( layerKey, progress );
+                if (hf.valid())
                 {
-                    heightFields.push_back( GeoHeightField(hf, layerKey.getExtent()) );
+                    heightFields.push_back( GeoHeightField(hf.get(), normalMap.get(), layerKey.getExtent()) );
                 }
             }
         }
@@ -354,8 +363,10 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
         //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
         std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());        
 
-        result = new osg::HeightField();
-        result->allocate(width, height);
+        out_hf = new osg::HeightField();
+        out_hf->allocate(width, height);
+
+        out_normalMap = new NormalMap(width, height);
 
         //Go ahead and set up the heightfield so we don't have to worry about it later
         double minx, miny, maxx, maxy;
@@ -373,25 +384,27 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
 
                 //For each sample point, try each heightfield.  The first one with a valid elevation wins.
                 float elevation = NO_DATA_VALUE;
+                osg::Vec3 normal(0,0,1);
+
                 for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     // get the elevation value, at the same time transforming it vertically into the 
                     // requesting key's vertical datum.
                     float e = 0.0;
-                    if (itr->getElevation(key.getExtent().getSRS(), x, y, INTERP_BILINEAR, key.getExtent().getSRS(), e))
+                    osg::Vec3 n;
+                    if (itr->getElevationAndNormal(key.getExtent().getSRS(), x, y, INTERP_BILINEAR, key.getExtent().getSRS(), e, n))
                     {
                         elevation = e;
+                        normal = n;
                         break;
                     }
                 }
-                result->setHeight( c, r, elevation );                
+                out_hf->setHeight( c, r, elevation );   
+                out_normalMap->set( c, r, normal );
             }
         }
     }
-
-    return result;
 }
-
 
 GeoHeightField
 ElevationLayer::createHeightField(const TileKey& key)
@@ -420,6 +433,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
     GeoHeightField result;
     osg::ref_ptr<osg::HeightField> hf;
+    osg::ref_ptr<NormalMap> normalMap;
 
     // Check the memory cache first
     bool fromMemCache = false;
@@ -501,11 +515,15 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
         if ( !hf.valid() )
         {
+            if ( !isKeyInLegalRange(key) )
+                return GeoHeightField::INVALID;
+
             // If no tile source is expected, create a height field by calling
             // the raw inheritable method.
             if (!isTileSourceExpected())
             {
-                hf = createHeightFieldImplementation(key, progress);
+                createImplementation(key, hf, normalMap, progress);
+                //hf = createHeightFieldImplementation(key, progress);
             }
 
             else
@@ -514,11 +532,9 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 if ( !getTileSource() || !getTileSource()->isOK() )
                     return GeoHeightField::INVALID;
 
-                if ( !isKeyInRange(key) )
-                    return GeoHeightField::INVALID;
-
                 // build a HF from the TileSource.
-                hf = createHeightFieldImplementation( key, progress );
+                //hf = createHeightFieldImplementation( key, progress );
+                createImplementation(key, hf, normalMap, progress);
             }
 
             // validate it to make sure it's legal.
@@ -562,7 +578,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
 
         if ( hf.valid() )
         {
-            result = GeoHeightField( hf.get(), key.getExtent() );
+            result = GeoHeightField( hf.get(), normalMap.get(), key.getExtent() );
         }
     }
 
@@ -626,16 +642,138 @@ osg::MixinVector< osg::ref_ptr<ElevationLayer> >( rhs )
 namespace
 {
     typedef osg::ref_ptr<ElevationLayer>          RefElevationLayer;
-    typedef std::pair<RefElevationLayer, TileKey> LayerAndKey;
-    typedef std::vector<LayerAndKey>              LayerAndKeyVector;
+    struct LayerData {
+        RefElevationLayer layer;
+        TileKey key;
+        int index;
+    };
+    //typedef std::pair<RefElevationLayer, TileKey> LayerAndKey;
+    typedef std::vector<LayerData>              LayerDataVector;
+
+    //! Gets the normal vector for elevation data at column s, row t.
+    osg::Vec3 getNormal(const GeoExtent& extent, const osg::HeightField* hf, int s, int t)
+    {
+        int w = hf->getNumColumns();
+        int h = hf->getNumRows();
+
+        osg::Vec2d res(
+            extent.width() / (double)(w-1),
+            extent.height() / (double)(h-1));
+
+        float e = hf->getHeight(s, t);
+
+        double dx = res.x(), dy = res.y();
+
+        if (extent.getSRS()->isGeographic())
+        {
+            double R = extent.getSRS()->getEllipsoid()->getRadiusEquator();
+            double mPerDegAtEquator = (2.0 * osg::PI * R) / 360.0;
+            dy = dy * mPerDegAtEquator;
+            double lat = extent.yMin() + res.y()*(double)t;
+            dx = dx * mPerDegAtEquator * cos(osg::DegreesToRadians(lat));
+        }
+        
+        osg::Vec3d west(0, 0, e), east(0, 0, e), south(0, 0, e), north(0, 0, e);
+
+        if (s > 0)     west.set (-dx, 0, hf->getHeight(s-1, t));
+        if (s < w - 1) east.set ( dx, 0, hf->getHeight(s+1, t));
+        if (t > 0)     south.set(0, -dy, hf->getHeight(s, t-1));
+        if (t < h - 1) north.set(0,  dy, hf->getHeight(s, t+1));
+
+        osg::Vec3d normal = (east - west) ^ (north - south);
+        return normal;
+    }
+
+    //! Creates a normal map for heightfield "hf" and stores it in the
+    //! pre-allocated NormalMap.
+    //!
+    //! "deltaLOD" holds the difference in LODs between the heightfield itself and the LOD
+    //! from which the elevation value came. This will be positive when we had to "fall back" on 
+    //! lower LOD data to fetch an elevation value. When this happens we need to interpolate
+    //! between "real" normals instead of sampling them from the neighboring pixels, otherwise
+    //! ugly faceting will occur.
+    //!
+    //! Unfortunately, it there's an offset layer, this will update the deltaLOD and we will 
+    //! get faceting if the real elevation layer is from a lower LOD. The only solution to this
+    //! would be to sample the elevation data using a spline function instead of bilinear
+    //! interpolation -- but we would need to do that to a separate heightfield (especially for
+    //! normals) in order to maintain terrain correlation. Maybe someday.
+    void createNormalMap(const GeoExtent& extent, const osg::HeightField* hf, const osg::ShortArray* deltaLOD, NormalMap* normalMap)
+    {
+        int w = hf->getNumColumns();
+        int h = hf->getNumRows();
+
+        for (int t = 0; t < hf->getNumRows(); ++t)
+        {
+            for (int s = 0; s<hf->getNumColumns(); ++s)
+            {
+                int step = 1 << (*deltaLOD)[t*h + s];
+
+                osg::Vec3 normal;
+
+                // four corners:
+                int s0=s, s1=s, t0=t, t1=t;
+
+                if (step == 1)
+                {
+                    // Same LOD, simple query
+                    normal = getNormal(extent, hf, s, t);
+                }
+                else
+                {
+                    int s0 = std::max(s - (s % step), 0);
+                    int s1 = (s%step == 0)? s0 : std::min(s0+step, w-1);
+                    int t0 = std::max(t - (t % step), 0);
+                    int t1 = (t%step == 0)? t0 : std::min(t0+step, h-1);
+                    
+                    if (s0 == s1 && t0 == t1)
+                    {
+                        // on-pixel, simple query
+                        normal = getNormal(extent, hf, s0, t0);
+                    }
+                    else if (s0 == s1)
+                    {
+                        // same column; linear interpolate along row
+                        osg::Vec3 S = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 N = getNormal(extent, hf, s0, t1);
+                        normal = S*(double)(t1 - t) + N*(double)(t - t0);
+                    }
+                    else if (t0 == t1)
+                    {
+                        // same row; linear interpolate along column
+                        osg::Vec3 W = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 E = getNormal(extent, hf, s1, t0);
+                        normal = W*(double)(s1 - s) + E*(double)(s - s0);
+                    }
+                    else
+                    {
+                        // bilinear interpolate
+                        osg::Vec3 SW = getNormal(extent, hf, s0, t0);
+                        osg::Vec3 SE = getNormal(extent, hf, s1, t0);
+                        osg::Vec3 NW = getNormal(extent, hf, s0, t1);
+                        osg::Vec3 NE = getNormal(extent, hf, s1, t1);
+
+                        osg::Vec3 S = SW*(double)(s1 - s) + SE*(double)(s - s0);
+                        osg::Vec3 N = NW*(double)(s1 - s) + NE*(double)(s - s0);
+                        normal = S*(double)(t1 - t) + N*(double)(t - t0);
+                    }
+                }
+
+                normal.normalize();
+
+                normalMap->set(s, t, normal, 0.0f);
+            }
+        }
+    }
 }
 
 bool
-ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
-                                          const TileKey&         key,
-                                          const Profile*         haeProfile,
-                                          ElevationInterpolation interpolation,
-                                          ProgressCallback*      progress ) const
+ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
+                                                      NormalMap*             normalMap,
+                                                      const TileKey&         key,
+                                                      const Profile*         haeProfile,
+                                                      ElevationInterpolation interpolation,
+                                                      ProgressCallback*      progress ) const
 {
     // heightfield must already exist.
     if ( !hf )
@@ -654,16 +792,17 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     }
     
     // Collect the valid layers for this tile.
-    LayerAndKeyVector contenders;
-    LayerAndKeyVector offsets;
+    LayerDataVector contenders;
+    LayerDataVector offsets;
 
     // Track the number of layers that would return fallback data.
     unsigned numFallbackLayers = 0;
 
     // Check them in reverse order since the highest priority is last.
-    for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
+    for (int i = size()-1; i>=0; --i)
+    //for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
-        ElevationLayer* layer = i->get();
+        ElevationLayer* layer = (*this)[i].get(); //i->get();
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
@@ -675,32 +814,28 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             bool useLayer = true;
             TileKey bestKey( mappedKey );
 
-            // Is there a tilesource? If not we are cache-only and cannot reject the layer.
-            if ( layer->getTileSource() )
+            // Check whether the non-mapped key is valid according to the user's min/max level settings:
+            if ( !layer->isKeyInLegalRange(key) )
             {
-                // Check whether the non-mapped key is valid according to the user's min/max level settings:
-                if ( !layer->isKeyInRange(key) )
+                useLayer = false;
+            }
+                
+            // Find the "best available" mapped key from the tile source:
+            else 
+            {
+                bestKey = layer->getBestAvailableTileKey(mappedKey);
+                if (bestKey.valid())
+                {
+                    // If the bestKey is not the mappedKey, this layer is providing
+                    // fallback data (data at a lower resolution than requested)
+                    if ( mappedKey != bestKey )
+                    {
+                        numFallbackLayers++;
+                    }
+                }
+                else
                 {
                     useLayer = false;
-                }
-                
-
-                // Find the "best available" mapped key from the tile source:
-                else 
-                {
-                    if ( layer->getTileSource()->getBestAvailableTileKey(mappedKey, bestKey) )
-                    {
-                        // If the bestKey is not the mappedKey, this layer is providing
-                        // fallback data (data at a lower resolution than requested)
-                        if ( mappedKey != bestKey )
-                        {
-                            numFallbackLayers++;
-                        }
-                    }
-                    else
-                    {
-                        useLayer = false;
-                    }
                 }
             }
 
@@ -708,11 +843,19 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             {
                 if ( layer->isOffset() )
                 {
-                    offsets.push_back( std::make_pair(layer, bestKey) );
+                    offsets.push_back(LayerData());
+                    LayerData& ld = offsets.back();
+                    ld.layer = layer;
+                    ld.key = bestKey;
+                    ld.index = i;
                 }
                 else
                 {
-                    contenders.push_back( std::make_pair(layer, bestKey) );
+                    contenders.push_back(LayerData());
+                    LayerData& ld = contenders.back();
+                    ld.layer = layer;
+                    ld.key = bestKey;
+                    ld.index = i;
                 }
             }
         }
@@ -783,7 +926,10 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     bool realData = false;
 
     unsigned int total = numColumns * numRows;
-    unsigned int completed = 0;
+
+    // query resolution interval (x, y) of each sample.
+    osg::ref_ptr<osg::ShortArray> deltaLOD = new osg::ShortArray(total);
+    
     int nodataCount = 0;
 
     for (unsigned c = 0; c < numColumns; ++c)
@@ -794,12 +940,16 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             double y = ymin + (dy * (double)r);
 
             // Collect elevations from each layer as necessary.
-            bool resolved = false;
+            int resolvedIndex = -1;
 
-            for(int i=0; i<contenders.size() && !resolved; ++i)
+            osg::Vec3 normal_sum(0,0,0);
+            unsigned normal_count = 0u;
+
+            for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
             {
-                ElevationLayer* layer = contenders[i].first.get();                
-                TileKey contenderKey = contenders[i].second;
+                ElevationLayer* layer = contenders[i].layer.get();                
+                TileKey contenderKey = contenders[i].key;
+                int index = contenders[i].index;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.
@@ -856,20 +1006,28 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     {
                         realData = true;
                     }
-
+                    
                     float elevation;
                     if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
                     {
                         if ( elevation != NO_DATA_VALUE )
                         {
-                            resolved = true;                    
+                            // remember the index so we can only apply offset layers that
+                            // sit on TOP of this layer.
+                            resolvedIndex = index;
+
                             hf->setHeight(c, r, elevation);
+
+                            if (deltaLOD)
+                            {
+                                (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey.getLOD();
+                            }
                         }
                         else
                         {
                             ++nodataCount;
                         }
-                    }
+                    }                    
                 }
 
 
@@ -891,7 +1049,12 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
             for(int i=offsets.size()-1; i>=0; --i)
             {
-                TileKey contenderKey = offsets[i].second;
+                // Only apply an offset layer if it sits on top of the resolved layer
+                // (or if there was no resolved layer).
+                if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
+                    continue;
+
+                TileKey contenderKey = offsets[i].key;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.
@@ -912,7 +1075,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 GeoHeightField& layerHF = offsetFields[n][i];
                 if ( !layerHF.valid() )
                 {
-                    ElevationLayer* offset = offsets[i].first.get();
+                    ElevationLayer* offset = offsets[i].layer.get();
 
                     layerHF = offset->createHeightField(contenderKey, progress);
                     if ( !layerHF.valid() )
@@ -930,9 +1093,22 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     elevation != NO_DATA_VALUE)
                 {                    
                     hf->getHeight(c, r) += elevation;
+
+                    // Update the resolution tracker to account for the offset. Sadly this
+                    // will wipe out the resolution of the actual data, and might result in 
+                    // normal faceting. See the comments on "createNormalMap" for more info
+                    if (deltaLOD)
+                    {
+                        (*deltaLOD)[r*numColumns + c] = key.getLOD() - contenderKey.getLOD();
+                    }
                 }
             }
         }
+    }
+
+    if (normalMap)
+    {
+        createNormalMap(key.getExtent(), hf, deltaLOD.get(), normalMap);
     }
 
     // Return whether or not we actually read any real data

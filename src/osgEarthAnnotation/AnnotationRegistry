@@ -78,7 +78,12 @@ namespace osgEarth { namespace Annotation
 
     // Macro used to register new annotation types.
 #define OSGEARTH_REGISTER_ANNOTATION( KEY, CLASSNAME ) \
+    extern "C" void osgearth_annotation_##KEY(void) {} \
     static AnnotationRegistrationProxy< CLASSNAME > s_osgEarthAnnotationRegistrationProxy##KEY( #KEY )
+    
+#define USE_OSGEARTH_ANNOTATION( KEY ) \
+    extern "C" void osgearth_annotation_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_annotation_##KEY(osgearth_annotation_##KEY);
 
 
     //--------------------------------------------------------------------

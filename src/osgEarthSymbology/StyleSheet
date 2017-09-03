@@ -75,6 +75,10 @@ namespace osgEarth { namespace Symbology
         Style* getDefaultStyle();
         const Style* getDefaultStyle() const;
 
+	/** Get access to styles for manual configuration */
+	StyleMap& styles() { return _styles; }
+	const StyleMap& styles() const { return _styles; }
+
         /** Selectors pick a style from the sheet based on some criteria. */
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }

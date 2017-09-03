@@ -60,6 +60,7 @@ struct MyComputeRangeCallback : public osgEarth::ComputeRangeCallback
             double angularSize = osg::RadiansToDegrees( 2.0*atan(radius/distance) );
             double dpp = osg::maximum(fov, 1.0e-17) / viewPort->height();
             float pixelSize = angularSize / dpp;
+            //OE_NOTICE << "Returning " << pixelSize << std::endl;
             return pixelSize;
         }
 

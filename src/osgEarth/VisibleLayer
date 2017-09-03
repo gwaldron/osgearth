@@ -40,6 +40,10 @@ namespace osgEarth
         optional<bool>& visible() { return _visible; }
         const optional<bool>& visible() const { return _visible; }
 
+        /** Opacity of the visible layer [0..1] */
+        optional<float>& opacity() { return _opacity; }
+        const optional<float>& opacity() const { return _opacity; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -48,12 +52,14 @@ namespace osgEarth
     private:
         void setDefaults();       
         optional<bool> _visible;
+        optional<float> _opacity;
     };
 
 
     struct VisibleLayerCallback : public LayerCallback
     {
         virtual void onVisibleChanged(class VisibleLayer* layer) { }
+        virtual void onOpacityChanged(class VisibleLayer* layer) { }
         typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
     };
 
@@ -77,6 +83,10 @@ namespace osgEarth
         virtual void setVisible(bool value);
         bool getVisible() const;
 
+        /** Opacity with which to draw this layer. */
+        virtual void setOpacity(float value);
+        float getOpacity() const;
+
     public: // Layer
 
         virtual const Status& open();
@@ -87,7 +97,10 @@ namespace osgEarth
 
     private:
         void fireCallback(VisibleLayerCallback::MethodPtr);
+        osg::ref_ptr<osg::Uniform> _opacityU;
     };
+
+    typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;
 
 } // namespace TerrainLayer
 

@@ -146,6 +146,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Vec2f                         _morphConstants;
         TileRenderModel                    _renderModel;
         std::set<UID>                      _newLayers;
+        bool                               _empty;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

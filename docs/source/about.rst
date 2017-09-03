@@ -34,15 +34,16 @@ Since osgEarth_ is a free open source SDK, the source code is available to
 anyone and we welcome and encourage community participation when it comes
 to testing, adding features, and fixing bugs.
 
-**Support Forum**
+**Public Forum**
 
-    The best way to interact with the osgEarth team and the user community is
+    The first way to interact with the osgEarth team and the user community is
     through the `support forum`_. **Please read** and follow these guidelines for
-    using the forum:
+    using the forum. FOLLOWING THESE GUIDELINES will make it MUCH MORE LIKELY
+    that someone will respond and try to help:
 
     * Sign up for an account and use your real name. You can participate
-      anonymously, but using your real name helps build a stronger community
-      (and makes it more likely that we will get to your question sooner).
+      anonymously, but using your real name helps build a stronger community.
+      Sign your posts too!
       
     * Limit yourself to *one topic* per post. Asking multiple questions in one
       post makes it too hard to keep track of responses.
@@ -54,10 +55,17 @@ to testing, adding features, and fixing bugs.
       
     * Be patient!
 
+**Priority Support**
+
+    If you have several questions, or need more in-depth help involving code
+    review, design, etc., consider purchasing `Priority Support`_ directly
+    from Pelican Mapping (the maintainers of osgEarth). Priority Support
+    gives you tracked, timely, personal email-based assistance!
+
 **OSG Forum**
 
     Since osgEarth_ is built on top of OpenSceneGraph_, many questions we get
-    on the message boards are *really* OSG questions. We will still try our
+    on the message boards are really OSG questions. We will still try our
     best to help. But it's worth your while to join the `OSG Mailing List`_ or
     read the `OSG Forum`_ regularly as well.
     
@@ -109,16 +117,17 @@ Maintainers
 `Pelican Mapping`_ maintains osgEarth_.
 
 
-.. _osgEarth:        http://osgEarth.org
-.. _OpenSceneGraph:  http://openscenegraph.org
-.. _Pelican Mapping: http://pelicanmapping.com
-.. _LGPL:            http://www.gnu.org/copyleft/lesser.html
-.. _Glenn:           http://twitter.com/#!/glennwaldron
-.. _Jason:           http://twitter.com/#!/jasonbeverage
-.. _Jeff:            http://twitter.com/#!/_jeffsmith
-.. _Paul:            http://twitter.com/#!/p_levy
-.. _@pelicanmapping: https://twitter.com/pelicanmapping
-.. _Google+ Page:    https://plus.google.com/b/104014917856468748129/104014917856468748129/posts
+.. _osgEarth:         http://osgEarth.org
+.. _OpenSceneGraph:   http://openscenegraph.org
+.. _Pelican Mapping:  http://pelicanmapping.com
+.. _Priority Support: http://web.pelicanmapping.com/priority-support
+.. _LGPL:             http://www.gnu.org/copyleft/lesser.html
+.. _Glenn:            http://twitter.com/#!/glennwaldron
+.. _Jason:            http://twitter.com/#!/jasonbeverage
+.. _Jeff:             http://twitter.com/#!/_jeffsmith
+.. _Paul:             http://twitter.com/#!/p_levy
+.. _@pelicanmapping:  https://twitter.com/pelicanmapping
+.. _Google+ Page:     https://plus.google.com/b/104014917856468748129/104014917856468748129/posts
 
 .. _support forum:    http://forum.osgearth.osg
 .. _OSG Mailing List: http://lists.openscenegraph.org/listinfo.cgi/osg-users-openscenegraph.org

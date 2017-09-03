@@ -35,7 +35,8 @@ namespace
     static OpenThreads::Atomic s_uniformNameGen;
 
     static const char* s_localShaderSource =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "in vec3 atmos_lightDir;\n"    // light direction (view coords)
         "in vec3 atmos_up;\n"          // earth up vector at fragment (in view coords)

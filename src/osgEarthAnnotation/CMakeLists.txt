@@ -8,11 +8,11 @@ set(LIB_NAME osgEarthAnnotation)
 
 set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-set(LIB_PUBLIC_HEADERS  
+set(LIB_PUBLIC_HEADERS
     AnnotationSettings
     AnnotationEditing
-    AnnotationExtension
     AnnotationData
+    AnnotationLayer
     AnnotationNode
     AnnotationRegistry
     AnnotationUtils
@@ -41,9 +41,9 @@ set(LIB_PUBLIC_HEADERS
 
 set(LIB_COMMON_FILES
     AnnotationEditing.cpp
-    AnnotationExtension.cpp
     AnnotationSettings.cpp
     AnnotationData.cpp
+    AnnotationLayer.cpp
     AnnotationNode.cpp
     AnnotationRegistry.cpp
     AnnotationUtils.cpp
@@ -69,7 +69,7 @@ set(LIB_COMMON_FILES
 
 
 ADD_LIBRARY( ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
-    ${LIB_PUBLIC_HEADERS}  
+    ${LIB_PUBLIC_HEADERS}
     ${LIB_COMMON_FILES}
 )
 

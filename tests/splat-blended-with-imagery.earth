@@ -1,0 +1,46 @@
+<!--
+|  Procedural terrain splatting blended with satellite imagery.
+|  As you get close to the ground, the imagery is replaced with splatting.
+-->
+
+<map>
+    <options>
+        <terrain driver="rex" attenuation_distance="250000">
+        </terrain>
+    </options>
+
+    <libraries>osgEarthSplat</libraries>
+    
+    <xi:include href="../data/land_cover_dictionary.xml"/>
+    
+    <land_cover name="LandCover" max_data_level="15">
+        <cache_policy usage="no_cache"/>
+        <coverages>
+            <coverage name="ESA GLOBCOVER" driver="gdal">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
+                <warp>0.05</warp>
+            </coverage>
+        </coverages>
+    </land_cover>
+    
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+        
+    <splat_imagery name="Splat Imagery" land_cover_layer="LandCover">
+        <zones>
+            <zone name="default">
+                <surface>
+                    <catalog>../data/splat/splat_catalog.xml</catalog>
+                </surface>
+            </zone>
+        </zones>
+    </splat_imagery>
+    
+    <image name="readymap_imagery" driver="tms" min_range="500000">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+            
+    <xi:include href="viewpoints.xml"/>
+</map>

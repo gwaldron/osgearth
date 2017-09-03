@@ -23,7 +23,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ElevationLayer>
 
-#include <osgEarthUtil/SimplexNoise>
+#include <osgEarth/SimplexNoise>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 using namespace osgEarth::Drivers;
@@ -62,8 +62,9 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
             gdal.url() = *_options.classificationPath();
             gdal.interpolation() = osgEarth::INTERP_NEAREST;
             gdal.bilinearReprojection() = false;
-            gdal.tileSize() = 5;
+            //gdal.tileSize() = 5;
             ElevationLayerOptions classOptions("splat", gdal);
+            classOptions.tileSize() = 5;
             classOptions.cachePolicy() = CachePolicy::NO_CACHE;
             _classLayer = new ElevationLayer(classOptions);
 
@@ -174,7 +175,7 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
         osg::ref_ptr<ElevationLayer> _classLayer;
         SplatMaskOptions             _options;
         osg::ref_ptr<osgDB::Options> _dbOptions;
-        osgEarth::Util::SimplexNoise _noise;
+        osgEarth::SimplexNoise _noise;
     };
 
 

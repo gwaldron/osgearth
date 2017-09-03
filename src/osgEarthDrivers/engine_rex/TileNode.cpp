@@ -25,6 +25,7 @@
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
 #include "TerrainCuller"
+#include "RexTerrainEngineNode"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -71,7 +72,8 @@ _minExpiryFrames( 0 ),
 _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
 _count(0),
-_stitchNormalMap(false)
+_stitchNormalMap(false),
+_empty(false)               // an "empty" node exists but has no geometry or children.
 {
     //nop
 }
@@ -85,6 +87,49 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     _context = context;
 
     _key = key;
+
+    // Mask generator creates geometry from masking boundaries when they exist.
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
+        key, 
+        context->getOptions().tileSize().get(),
+        context->getMap());
+
+    MapInfo mapInfo(context->getMap());
+
+    // Get a shared geometry from the pool that corresponds to this tile key:
+    osg::ref_ptr<SharedGeometry> geom;
+    context->getGeometryPool()->getPooledGeometry(
+        key,
+        mapInfo,         
+        context->getOptions().tileSize().get(),
+        masks.get(), 
+        geom);
+
+    // If we donget an empty, that most likely means the tile was completely
+    // contained by a masking boundary. Mark as empty and we are done.
+    if (geom->empty())
+    {
+        OE_DEBUG << LC << "Tile " << _key.str() << " is empty.\n";
+        _empty = true;
+        return;
+    }
+
+    // Create the drawable for the terrain surface:
+    TileDrawable* surfaceDrawable = new TileDrawable(
+        key, 
+        geom.get(),
+        context->getOptions().tileSize().get() );
+
+    // Give the tile Drawable access to the render model so it can properly
+    // calculate its bounding box and sphere.
+    surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
+
+    // Create the node to house the tile drawable:
+    _surface = new SurfaceNode(
+        key,
+        mapInfo,
+        context->getRenderBindings(),
+        surfaceDrawable );
     
     // create a data load request for this new tile:
     _loadRequest = new LoadTileData( this, context );
@@ -109,35 +154,6 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
         (float)fmod(y, m),
         (float)_key.getLOD(),
         -1.0f);
-
-    // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
-        key, 
-        context->getOptions().tileSize().get(),
-        context->getMap());
-
-    MapInfo mapInfo(context->getMap());
-
-    // Get a shared geometry from the pool that corresponds to this tile key:
-    osg::ref_ptr<SharedGeometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, mapInfo, geom, masks.get());
-
-    // Create the drawable for the terrain surface:
-    TileDrawable* surfaceDrawable = new TileDrawable(
-        key, 
-        geom.get(),
-        context->getOptions().tileSize().get() );
-
-    // Give the tile Drawable access to the render model so it can properly
-    // calculate its bounding box and sphere.
-    surfaceDrawable->setModifyBBoxCallback(context->getModifyBBoxCallback());
-
-    // Create the node to house the tile drawable:
-    _surface = new SurfaceNode(
-        key,
-        mapInfo,
-        context->getRenderBindings(),
-        surfaceDrawable );
 
     // initialize all the per-tile uniforms the shaders will need:
     float start = (float)context->getSelectionInfo().visParameters(_key.getLOD())._fMorphStart;
@@ -304,13 +320,33 @@ bool
 TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionInfo)
 {    
     unsigned currLOD = _key.getLOD();
-    if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
+
+    EngineContext* context = culler->getEngineContext();
+
+    if ( *context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
-        return _surface->anyChildBoxIntersectsSphere(
-            culler->getViewPointLocal(), 
-            (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2,
-            culler->getLODScale());
+        float pixelSize = -1.0;
+        if (context->getEngine()->getComputeRangeCallback())
+        {
+            pixelSize = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
+        }    
+        if (pixelSize <= 0.0)
+        {
+            pixelSize = culler->clampedPixelSize(getBound());
+        }
+        return (pixelSize > 512.0);    
     }
+    else
+    {
+        float range = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
+        if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
+        {
+            return _surface->anyChildBoxIntersectsSphere(
+                culler->getViewPointLocal(), 
+                range,
+                culler->getLODScale());
+        }
+    }                 
     return false;
 }
 
@@ -482,15 +518,18 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
+        if (_empty == false)
+        {
+            TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
         
-        if (VisitorData::isSet(nv, "osgEarth.Stealth"))
-        {
-            accept_cull_stealth( culler );
-        }
-        else
-        {
-            accept_cull( culler );
+            if (VisitorData::isSet(nv, "osgEarth.Stealth"))
+            {
+                accept_cull_stealth( culler );
+            }
+            else
+            {
+                accept_cull( culler );
+            }
         }
     }
 
@@ -508,8 +547,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
         }
 
         // Otherwise traverse the surface.
-        // TODO: in what situations should we traverse the landcover as well? GL compile?
-        else 
+        else if (_surface.valid())
         {
             _surface->accept( nv );
         }
@@ -576,7 +614,8 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
                     }
                 }
                 pass->_samplers[SamplerBinding::COLOR]._texture = layer->getTexture();
-                pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+                //pass->_samplers[SamplerBinding::COLOR]._matrix.makeIdentity();
+                pass->_samplers[SamplerBinding::COLOR]._matrix = *layer->getMatrix();
 
                 // Handle an RTT image layer:
                 if (layer->getImageLayer() && layer->getImageLayer()->createTextureSupported())
@@ -629,7 +668,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Other Shared Layers:
     for (unsigned i = 0; i < model->sharedLayers().size(); ++i)
     {
-        TerrainTileImageLayerModel* layerModel = model->sharedLayers().at(i);
+        TerrainTileImageLayerModel* layerModel = model->sharedLayers()[i].get();
         if (layerModel->getTexture())
         {
             // locate the shared binding corresponding to this layer:
@@ -653,7 +692,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
     // Patch Layers
     for (unsigned i = 0; i < model->patchLayers().size(); ++i)
     {
-        TerrainTilePatchLayerModel* layerModel = model->patchLayers().at(i);
+        TerrainTilePatchLayerModel* layerModel = model->patchLayers()[i].get();
     }
 
     if (_childrenReady)

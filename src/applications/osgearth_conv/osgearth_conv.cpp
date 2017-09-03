@@ -56,44 +56,6 @@ int usage(char** argv)
 }
 
 
-// TileHandler that copies images from one tilesource to another.
-struct TileSourceToTileSource : public TileHandler
-{
-    TileSourceToTileSource(TileSource* source, TileSource* dest, bool heightFields)
-        : _source(source), _dest(dest), _heightFields(heightFields)
-    {
-        //nop
-    }
-
-    bool handleTile(const TileKey& key, const TileVisitor& tv)
-    {
-        bool ok = false;
-        if (_heightFields)
-        {
-            osg::ref_ptr<osg::HeightField> hf = _source->createHeightField(key);
-            if ( hf.valid() )
-                ok = _dest->storeHeightField(key, hf.get(), 0L);
-        }
-        else
-        {
-            osg::ref_ptr<osg::Image> image = _source->createImage(key);
-            if ( image.valid() )
-                ok = _dest->storeImage(key, image.get(), 0L);
-        }
-        return ok;
-    }
-
-    bool hasData(const TileKey& key) const
-    {
-        return _source->hasDataInExtent(key.getExtent());
-    }
-
-    TileSource* _source;
-    TileSource* _dest;
-    bool        _heightFields;
-};
-
-
 // TileHandler that copies images from an ImageLayer to a TileSource.
 // This will automatically handle any mosaicing and reprojection that is
 // necessary to translate from one Profile/SRS to another.
@@ -117,7 +79,7 @@ struct ImageLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->getTileSource()->hasDataInExtent(key.getExtent());
+        return _source->mayHaveDataInExtent(key.getExtent());
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -147,7 +109,7 @@ struct ElevationLayerToTileSource : public TileHandler
 
     bool hasData(const TileKey& key) const
     {
-        return _source->getTileSource()->hasDataInExtent(key.getExtent());
+        return _source->mayHaveDataInExtent(key.getExtent());
     }
 
     osg::ref_ptr<ElevationLayer> _source;
@@ -349,48 +311,38 @@ main(int argc, char** argv)
         visitor = new TileVisitor();
     }
 
-    // If the profiles are identical, just use a tile copier.
-    if ( isSameProfile )
+    if (heightFields)
     {
-        OE_NOTICE << LC << "Profiles match - initiating simple tile copy" << std::endl;
-        visitor->setTileHandler( new TileSourceToTileSource(input.get(), output.get(), heightFields) );
+        ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
+        Status layerStatus = layer->open();
+        if (layerStatus.isError())
+        {
+            OE_WARN << "Failed to create input ElevationLayer " << layerStatus.message() << std::endl;
+            return -1;
+        }
+        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
+        {
+            OE_WARN << LC << "Input profile is not valid" << std::endl;
+            return -1;
+        }
+        visitor->setTileHandler( new ElevationLayerToTileSource(layer, output.get()) );
     }
-    else
-    {
-        OE_NOTICE << LC << "Profiles differ - initiating tile transformation" << std::endl;
 
-        if (heightFields)
+    else // image layers
+    {
+        ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
+        Status layerStatus = layer->open();
+        if (layerStatus.isError())
         {
-            ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
-            Status layerStatus = layer->open();
-            if (layerStatus.isError())
-            {
-                OE_WARN << "Failed to create input ElevationLayer " << layerStatus.message() << std::endl;
-                return -1;
-            }
-            if ( !layer->getProfile() || !layer->getProfile()->isOK() )
-            {
-                OE_WARN << LC << "Input profile is not valid" << std::endl;
-                return -1;
-            }
-            visitor->setTileHandler( new ElevationLayerToTileSource(layer, output.get()) );
+            OE_WARN << "Failed to create input ImageLayer " << layerStatus.message() << std::endl;
+            return -1;
         }
-        else
+        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
         {
-            ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
-            Status layerStatus = layer->open();
-            if (layerStatus.isError())
-            {
-                OE_WARN << "Failed to create input ImageLayer " << layerStatus.message() << std::endl;
-                return -1;
-            }
-            if ( !layer->getProfile() || !layer->getProfile()->isOK() )
-            {
-                OE_WARN << LC << "Input profile is not valid" << std::endl;
-                return -1;
-            }
-            visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
+            OE_WARN << LC << "Input profile is not valid" << std::endl;
+            return -1;
         }
+        visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
     }
 
     // Set the level limits:

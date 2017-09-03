@@ -26,10 +26,15 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/PluginLoader>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/TerrainResources>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osgDB/Options>
 #include <vector>
+
+namespace osgUtil {
+    class CullVisitor;
+}
 
 namespace osgEarth
 {
@@ -76,11 +81,17 @@ namespace osgEarth
         optional<std::string>& shaderDefine() { return _shaderDefine; }
         const optional<std::string>& shaderDefine() const { return _shaderDefine; }
 
+        /**
+         * Shader snippet(s) to inject into this layer's stateset.
+         */
+        optional<std::string>& shader() { return _shader; }
+        const optional<std::string>& shader() const { return _shader; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
 
-        Config getConfig() const;
+        virtual Config getConfig() const;
         void fromConfig(const Config& conf);
         virtual void mergeConfig(const Config& conf);
 
@@ -92,6 +103,7 @@ namespace osgEarth
         optional<std::string> _cacheId;
         optional<CachePolicy> _cachePolicy;
         optional<std::string> _shaderDefine;
+        optional<std::string> _shader;
     };
 
 
@@ -176,12 +188,11 @@ namespace osgEarth
 
         /**
          * Gets a optional scene graph provided by the layer (default is NULL).
-         * When this layer is added to a Map, the MapNode will add this node to 
-         * its scene graph; and remove it when the Layer is removed from the Map.
-         * (Note: This method is const to discourage you from *creating* the node in this
-         * method, since the MapNode may call it just to test for the node's existance.)
+         * When this layer is added to a Map, the MapNode will call this method and
+         * add the return value to its scene graph; and remove it when the Layer
+         * is removed from the Map.
          */
-        virtual osg::Node* getNode() const { return 0L; }
+        virtual osg::Node* getOrCreateNode() { return 0L; }
 
     public:
 
@@ -194,21 +205,19 @@ namespace osgEarth
 
     public:
 
-        // *** NOTE *** Everything below this line is experimental and subject to change ***
-
         /**
          * Access the layer's stateset, creating it is necessary
          */
         osg::StateSet* getOrCreateStateSet() {
             if (!_stateSet.valid())
                 _stateSet = new osg::StateSet();
-            return _stateSet.get();
+            return getStateSet();
         }
 
         /**
          * Layer's stateset, or NULL if none exists
          */
-        osg::StateSet* getStateSet() const {
+        virtual osg::StateSet* getStateSet() const {
             return _stateSet.get();
         }
 
@@ -253,6 +262,19 @@ namespace osgEarth
         //! Map will call this function when this Layer is removed from a Map.
         virtual void removedFromMap(const class Map*) { }
 
+        //! MapNode will call this function when terrain resources are available.
+        virtual void setTerrainResources(TerrainResources*) { }
+
+
+    public: // Experimental
+
+        //! Called before culling this layer - return false to reject.
+        virtual bool preCull(osgUtil::CullVisitor*) const;
+
+        //! Called after culling this layer
+        virtual void postCull(osgUtil::CullVisitor*) const;
+
+
     public: // osg::Object
 
         virtual void setName(const std::string& name);
@@ -274,6 +296,7 @@ namespace osgEarth
         virtual void init();
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
+        const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
 
     private:
         UID _uid;
@@ -297,6 +320,10 @@ namespace osgEarth
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
     extern "C" void osgdb_##NAME(void) {} \
     static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
+    
+#define USE_OSGEARTH_LAYER(NAME) \
+    extern "C" void osgdb_##NAME(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_##NAME);
 
 } // namespace osgEarth
 

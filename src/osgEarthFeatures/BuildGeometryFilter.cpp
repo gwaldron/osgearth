@@ -254,12 +254,12 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 }
 
 
-osg::Geode*
+osg::Group*
 BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                                              bool           twosided,
                                              FilterContext& context)
 {
-    osg::Geode* geode = new osg::Geode();
+    osg::Group* group = new osg::Group;    
 
     // establish some referencing
     bool                    makeECEF   = false;
@@ -275,6 +275,10 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         //mapSRS     = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
+    // We need to create a different geode for each texture that is used so they can share statesets.
+    typedef std::map< std::string, osg::ref_ptr< osg::Geode > > TextureToGeodeMap;
+    TextureToGeodeMap geodes;    
+
     // iterate over all features.
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
@@ -286,6 +290,38 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
         if ( !line )
             continue;
+
+        std::string imageURI;
+
+        // Image URI
+        if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
+        {
+            StringExpression temp( *line->imageURI() );
+            imageURI = input->eval( temp, context.getSession());            
+        }
+
+        // Try to find the existing geode, otherwise create one.
+        osg::ref_ptr< osg::Geode > geode;
+        TextureToGeodeMap::iterator itr = geodes.find(imageURI);
+        if (itr != geodes.end())
+        {
+            geode = itr->second;
+        }
+        else
+        {
+            geode = new osg::Geode;
+
+            // Create the texture for the geode.
+            if (imageURI.empty() == false)
+            {
+                osg::ref_ptr<osg::Texture> tex;
+                if (context.getSession()->getResourceCache()->getOrCreateLineTexture(imageURI, tex, context.getDBOptions()))
+                {
+                    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
+                }
+            }
+            geodes[imageURI] = geode;
+        }
 
         // run a symbol script if present.
         if ( line->script().isSet() )
@@ -343,12 +379,30 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             {
                 Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
                 Clamping::setHeights( geom, hats.get() );
-            }
+            }            
         }
-
         polygonizer.installShaders( geode );
     }
-    return geode;
+
+    for (TextureToGeodeMap::iterator itr = geodes.begin(); itr != geodes.end(); ++itr)
+    {
+        // Optimize the Geode
+        osg::Geode* geode = itr->second.get();
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.setTargetMaximumNumberOfVertices(65536);
+        geode->accept(mg);
+
+        osgUtil::Optimizer o;
+        o.optimize( geode,
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+        // Add it to the group
+        group->addChild( geode );
+    }
+
+    return group;
 }
 
 
@@ -1127,45 +1181,14 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     FeatureList splitFeatures;
 
-
     // Split features across the dateline if necessary
-    if (!context.getOutputSRS()->isGeographic())
+    if (context.getOutputSRS() && !context.getOutputSRS()->isGeographic())
     {
-
         for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)
         {
             Feature* f = itr->get();
-            // If the feature is geodetic, try to split it across the dateline.
-            if (f->getSRS()->isGeodetic())
-            {
-                // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
-                double minLon = -540;
-                for (int i = 0; i < 3; i++)
-                {
-                    double offset = minLon - -180.0;
-                    double maxLon = minLon + 360.0;
-                    Bounds bounds(minLon, -90.0, maxLon, 90.0);
-                    osg::ref_ptr< Geometry > croppedGeometry;
-                    if (f->getGeometry()->crop(bounds, croppedGeometry))
-                    {
-                        // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
-                        for (int j = 0; j < croppedGeometry->size(); j++)
-                        {
-                            (*croppedGeometry)[j].x() -= offset;
-                        }
-                        osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
-                        croppedFeature->setGeometry(croppedGeometry.get());
-                        splitFeatures.push_back(croppedFeature);
-                    }
-                    minLon += 360.0;
-                }
-            }
-            else
-            {
-                splitFeatures.push_back( f );
-            }
+            f->splitAcrossDateLine( splitFeatures );
         }
-
     }
     else
     {
@@ -1190,6 +1213,15 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             has_linesymbol     = has_linesymbol     || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() == Units::PIXELS);
             has_polylinesymbol = has_polylinesymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() != Units::PIXELS);
             has_pointsymbol    = has_pointsymbol    || (f->style()->has<PointSymbol>());
+        }
+
+        // if there's a polygon with outlining disabled, nix the line symbol.
+        if (has_polysymbol)
+        {
+            if (poly && poly->outline() == false)
+                has_linesymbol = false;
+            else if (f->style().isSet() && f->style()->has<PolygonSymbol>() && f->style()->get<PolygonSymbol>()->outline() == false)
+                has_linesymbol = false;
         }
 
         // if no style is set, use the geometry type:
@@ -1255,30 +1287,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
         bool twosided = polygons.size() > 0 ? false : true;
-        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
-        if ( geode->getNumDrawables() > 0 )
+        osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context);
+
+        if (lines->getNumChildren() > 0)
         {
-            osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(65536);
-            geode->accept(mg);
-
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(),
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
-            if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
-            {
-                osg::ref_ptr<osg::Texture> tex;
-                if (context.getSession()->getResourceCache()->getOrCreateLineTexture(line->imageURI().get(), tex, context.getDBOptions()))
-                {
-                    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get(), 1);
-                }
-            }
-
-            result->addChild( geode.get() );
+            result->addChild( lines.get() );
         }
+
     }
 
     if ( lines.size() > 0 )

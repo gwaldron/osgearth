@@ -130,14 +130,14 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
         if (light->getLightNum() < 10)
         {
             prefix = UPREFIX "LightSource[#].";
-            prefix.at(prefix.length() - 3) = (char)('0' + light->getLightNum());
+            prefix[prefix.length() - 3] = (char)('0' + light->getLightNum());
         }
         else
         {
             prefix = UPREFIX "LightSource[##].";
             int lightNumTens = light->getLightNum()/10;
-            prefix.at(prefix.length() - 4) = (char)('0'+lightNumTens);
-            prefix.at(prefix.length() - 3) = (char)('0' +(light->getLightNum()-(10*lightNumTens)));
+            prefix[prefix.length() - 4] = (char)('0'+lightNumTens);
+            prefix[prefix.length() - 3] = (char)('0' +(light->getLightNum()-(10*lightNumTens)));
         }
 
         // Lights are positional state so their location in the scene graph is only important

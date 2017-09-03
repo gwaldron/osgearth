@@ -65,11 +65,11 @@ namespace osgEarth { namespace Detail
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.updateIfSet("image", _imageURI);
-            conf.updateIfSet("lod", _lod);
-            conf.updateIfSet("alpha", _alpha);
-            conf.updateIfSet("max_range", _maxRange);
-            conf.updateIfSet("attenuation", _attenDist);
+            conf.set("image", _imageURI);
+            conf.set("lod", _lod);
+            conf.set("alpha", _alpha);
+            conf.set("max_range", _maxRange);
+            conf.set("attenuation", _attenDist);
             return conf;
         }
 

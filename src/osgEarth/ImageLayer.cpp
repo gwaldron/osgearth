@@ -80,7 +80,6 @@ TerrainLayerOptions(name, driverOpt)
 void
 ImageLayerOptions::setDefaults()
 {
-    _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
@@ -103,7 +102,6 @@ void
 ImageLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet( "nodata_image",   _noDataImageFilename );
-    conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "min_range",      _minRange );
     conf.getIfSet( "max_range",      _maxRange );
     conf.getIfSet( "shared",         _shared );
@@ -143,21 +141,20 @@ ImageLayerOptions::fromConfig(const Config& conf)
 }
 
 Config
-ImageLayerOptions::getConfig(bool isolate) const
+ImageLayerOptions::getConfig() const
 {
-    Config conf = TerrainLayerOptions::getConfig( isolate );
+    Config conf = TerrainLayerOptions::getConfig();
     conf.key() = "image";
 
-    conf.updateIfSet( "nodata_image",   _noDataImageFilename );
-    conf.updateIfSet( "opacity",        _opacity );
-    conf.updateIfSet( "min_range",      _minRange );
-    conf.updateIfSet( "max_range",      _maxRange );
-    conf.updateIfSet( "shared",         _shared );
-    conf.updateIfSet( "coverage",       _coverage );
-    conf.updateIfSet( "feather_pixels", _featherPixels );
+    conf.set( "nodata_image",   _noDataImageFilename );
+    conf.set( "min_range",      _minRange );
+    conf.set( "max_range",      _maxRange );
+    conf.set( "shared",         _shared );
+    conf.set( "coverage",       _coverage );
+    conf.set( "feather_pixels", _featherPixels );
 
     if (_transparentColor.isSet())
-        conf.update("transparent_color", colorToString( _transparentColor.value()));
+        conf.set("transparent_color", colorToString( _transparentColor.value()));
 
     if ( _colorFilters.size() > 0 )
     {
@@ -165,32 +162,34 @@ ImageLayerOptions::getConfig(bool isolate) const
         if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
         {
             conf.update( filtersConf );
-            //conf.add( filtersConf );
         }
     }
 
-    conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.set("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.set("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.set("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.set("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.set("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.set("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.set("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.set("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.set("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.set("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
-    conf.updateIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
-    conf.updateIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.updateIfSet("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
-    conf.updateIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
+    conf.set("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.set("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.set("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.set("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
     // uniform names
-    conf.updateIfSet("shared_sampler", _shareTexUniformName);
-    conf.updateIfSet("shared_matrix",  _shareTexMatUniformName);
+    conf.set("shared_sampler", _shareTexUniformName);
+    conf.set("shared_matrix",  _shareTexMatUniformName);
+
+    //if (driver().isSet())
+    //    conf.set("driver", driver()->getDriver());
 
     return conf;
 }
@@ -337,12 +336,6 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
 const Status&
 ImageLayer::open()
 {
-    // Set the tile size to 256 if it's not explicitly set.
-    if (!options().driver()->tileSize().isSet())
-    {
-        options().driver()->tileSize().init( 256 );
-    }
-
     if (!_emptyImage.valid())
         _emptyImage = ImageUtils::createEmptyImage();
 
@@ -375,15 +368,6 @@ ImageLayer::init()
     setRenderType(RENDERTYPE_TILE);
 }
 
-Config
-ImageLayer::getConfig() const
-{    
-    Config conf = options().getConfig();
-    conf.key() = "image";
-    conf.set("driver", options().driver()->getDriver()); // need?
-    return conf;
-}
-
 void
 ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
 {
@@ -392,19 +376,6 @@ ImageLayer::fireCallback(ImageLayerCallback::MethodPtr method)
         ImageLayerCallback* cb = dynamic_cast<ImageLayerCallback*>(i->get());
         if (cb) (cb->*method)( this );
     }
-}
-
-void
-ImageLayer::setOpacity( float value ) 
-{
-    options().opacity() = osg::clampBetween( value, 0.0f, 1.0f );
-    fireCallback( &ImageLayerCallback::onOpacityChanged );
-}
-
-float
-ImageLayer::getOpacity() const
-{
-    return options().opacity().get();
 }
 
 void
@@ -520,6 +491,12 @@ ImageLayer::createImage(const TileKey&    key,
 GeoImage
 ImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress)
 {
+    // Check here in case a subclass calls this method directly.
+    //if ( !isKeyInLegalRange(key) )
+    //{
+    //    return GeoImage::INVALID;
+    //}
+
     return createImageFromTileSource(key, progress);
 }
 
@@ -600,7 +577,8 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     }
 
     // Make sure the request is in range.
-    if ( !isKeyInRange(key) )
+    // TODO: perhaps this should be a call to mayHaveData(key) instead.
+    if ( !isKeyInLegalRange(key) )
     {
         return GeoImage::INVALID;
     }
@@ -769,12 +747,18 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
         return GeoImage::INVALID;
     }
-    
-    if ( !source->hasData( key ) )
+
+    if (!mayHaveData(key))
     {
-        OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+        OE_DEBUG << LC << "createImageFromTileSource: mayHaveData(" << key.str() << ") == false" << std::endl;
         return GeoImage::INVALID;
     }
+
+    //if ( !source->hasData( key ) )
+    //{
+    //    OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+    //    return GeoImage::INVALID;
+    //}
 
     // create an image from the tile source.
     osg::ref_ptr<osg::Image> result = source->createImage( key, op.get(), progress );   
@@ -805,6 +789,13 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 GeoImage
 ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
+    // If we got here, asset that there's a non-null layer profile.
+    if (!getProfile())
+    {
+        setStatus(Status::Error(Status::AssertionFailure, "assembleImage with undefined profile"));
+        return GeoImage::INVALID;
+    }
+
     GeoImage mosaicedImage, result;
 
     // Scale the extent if necessary to apply an "edge buffer"
@@ -1028,7 +1019,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
             else
             {
-                OE_INFO << "FastDXT only works on GL_RGBA or GL_RGB images" << std::endl;
+                OE_DEBUG << "FastDXT only works on GL_RGBA or GL_RGB images" << std::endl;
                 return;
             }
 
@@ -1037,7 +1028,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             osg::Timer_t end = osg::Timer::instance()->tick();
             image->dirty();
             tex->setImage(0, image);
-            OE_INFO << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
+            OE_DEBUG << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
         }
         else
         {

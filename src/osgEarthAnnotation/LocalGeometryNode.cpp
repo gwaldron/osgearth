@@ -81,6 +81,13 @@ _clampDirty(false)
 }
 
 void
+LocalGeometryNode::setLocalOffset(const osg::Vec3f& pos)
+{
+    GeoPositionNode::setLocalOffset(pos);
+    dirty();
+}
+
+void
 LocalGeometryNode::setMapNode(MapNode* mapNode)
 {
     if ( mapNode != getMapNode() )
@@ -218,6 +225,7 @@ LocalGeometryNode::applyAltitudeSymbology(const Style& style)
                 }
             }
         }
+        dirty();
     }
 }
 
@@ -250,7 +258,7 @@ LocalGeometryNode::onTileAdded(const TileKey&          key,
     }
 
     if (needsClamp)
-    {   
+    {
         //clamp(graph, context.getTerrain());
         _clampDirty = true;
         ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -268,7 +276,7 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
         clamper.setTerrainPatch( graph );
         clamper.setTerrainSRS( terrain ? terrain->getSRS() : 0L );
         clamper.setPreserveZ( _clampRelative );
-        clamper.setOffset( getPosition().alt() );
+        //clamper.setOffset( getPosition().alt() );
 
         this->accept( clamper );
 

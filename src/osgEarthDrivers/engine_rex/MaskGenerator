@@ -83,6 +83,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return false;
         }
 
+        //! Gets the LL and UR corners of the "patch rectangle" in NDC space
         void getMinMax(osg::Vec3d& min, osg::Vec3d& max);
 
         osg::DrawElementsUInt* createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* verts, osg::Vec3Array* texCoords,  osg::Vec3Array* normals, osg::Vec3Array* neighbors);

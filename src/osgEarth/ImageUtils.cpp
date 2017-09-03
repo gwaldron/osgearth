@@ -35,7 +35,7 @@
 #define LC "[ImageUtils] "
 
 
-#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE)
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #    define GL_RGB8_INTERNAL  GL_RGB8_OES
 #    define GL_RGB8A_INTERNAL GL_RGBA8_OES
 #else
@@ -1058,7 +1058,7 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
 
     const Capabilities& caps = Registry::capabilities();
 
-#ifndef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) && defined(OSG_GLES3_AVAILABLE)
 
     if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
     {
@@ -1928,9 +1928,15 @@ namespace
 }
     
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
-_image     (image),
 _bilinear  (false)
 {
+    setImage(image);
+}
+
+void
+ImageUtils::PixelReader::setImage(const osg::Image* image)
+{
+    _image = image;
     if (image)
     {
         _normalized = ImageUtils::isNormalized(image);
@@ -1949,23 +1955,29 @@ _bilinear  (false)
 
 osg::Vec4
 ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
+{
+    return operator()((double)u, (double)v, r, m);
+}
+
+osg::Vec4
+ImageUtils::PixelReader::operator()(double u, double v, int r, int m) const
  {
      if ( _bilinear )
      {
-         float sizeS = (float)(_image->s()-1);
-         float sizeT = (float)(_image->t()-1);
+         double sizeS = (double)(_image->s()-1);
+         double sizeT = (double)(_image->t()-1);
 
          // u, v => [0..1]
-         float s = u * sizeS;
-         float t = v * sizeT;
+         double s = u * sizeS;
+         double t = v * sizeT;
 
-         float s0 = std::max(floorf(s), 0.0f);
-         float s1 = std::min(s0+1.0f, sizeS);
-         float smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
+         double s0 = std::max(floorf(s), 0.0f);
+         double s1 = std::min(s0+1.0f, sizeS);
+         double smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
 
-         float t0 = std::max(floorf(t), 0.0f);
-         float t1 = std::min(t0+1.0f, sizeT);
-         float tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
+         double t0 = std::max(floorf(t), 0.0f);
+         double t1 = std::min(t0+1.0f, sizeT);
+         double tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 
          osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left
          osg::Vec4 UR = (*_reader)(this, (int)s1, (int)t0, r, m); // upper right
@@ -1980,8 +1992,8 @@ ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
      else
      {
          return (*_reader)(this,
-             (int)(u * (float)(_image->s()-1)),
-             (int)(v * (float)(_image->t()-1)),
+             (int)(u * (double)(_image->s()-1)),
+             (int)(v * (double)(_image->t()-1)),
              r, m);
      }
 }

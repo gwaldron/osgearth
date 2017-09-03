@@ -1158,8 +1158,8 @@ public:
                 _maxDataLevel = i;
                 double w, h;
                 profile->getTileDimensions(i, w, h);
-                double resX = (w / (double)_options.tileSize().value() );
-                double resY = (h / (double)_options.tileSize().value() );
+                double resX = w / (double)getPixelsPerTile();
+                double resY = h / (double)getPixelsPerTile();
 
                 if (resX < maxResolution || resY < maxResolution)
                 {
@@ -1352,7 +1352,7 @@ public:
 
         GDAL_SCOPED_LOCK;
 
-        int tileSize = _options.tileSize().value();
+        int tileSize = getPixelsPerTile(); //_options.tileSize().value();
 
         osg::ref_ptr<osg::Image> image;
 
@@ -1633,7 +1633,7 @@ public:
                 int success;
                 float nodata = bandGray->GetNoDataValue(&success);
                 if ( !success )
-                    nodata = getOptions().noDataValue().get();
+                    nodata = NO_DATA_VALUE; //getNoDataValue(); //getOptions().noDataValue().get();
 
                 CPLErr err = bandGray->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0);
                 if ( err == CE_None )
@@ -1998,7 +1998,7 @@ public:
 
         GDAL_SCOPED_LOCK;
 
-        int tileSize = _options.tileSize().value();
+        int tileSize = getPixelsPerTile();
 
         //Allocate the heightfield
         osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;

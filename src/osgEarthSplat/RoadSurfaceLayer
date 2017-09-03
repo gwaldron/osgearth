@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
 #include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/StyleSheet>
 #include "Export"
 
 namespace osgEarth { namespace Splat
@@ -59,8 +60,8 @@ namespace osgEarth { namespace Splat
         const optional<Distance>& featureBufferWidth() const { return _bufferWidth; }
 
         //! Style for rendering the road
-        optional<Style>& style() { return _style; }
-        const optional<Style>& style() const { return _style; }
+        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
+        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
 
     public:
         Config getConfig() const
@@ -70,7 +71,7 @@ namespace osgEarth { namespace Splat
             conf.addObjIfSet("features",  _featureSourceOptions);
             conf.addIfSet("feature_source", _featureSourceLayer);
             conf.addIfSet("buffer_width", _bufferWidth);
-            conf.addObjIfSet("style", _style);
+            conf.addObjIfSet("styles", _styles);
             return conf;
         }
 
@@ -86,14 +87,14 @@ namespace osgEarth { namespace Splat
             conf.getObjIfSet("features",  _featureSourceOptions);
             conf.getIfSet("feature_source", _featureSourceLayer);
             conf.getIfSet("buffer_width", _bufferWidth);
-            conf.getObjIfSet("style", _style);
+            conf.getObjIfSet("styles", _styles);
         }
         
     private:
         optional<FeatureSourceOptions> _featureSourceOptions;
         optional<std::string> _featureSourceLayer;
         optional<Distance> _bufferWidth;
-        optional<Style> _style;
+        osg::ref_ptr<StyleSheet> _styles;
     };
 
     /**
@@ -141,7 +142,7 @@ namespace osgEarth { namespace Splat
         virtual void init();
 
         // A node to add to the scene graph for this layer.
-        virtual osg::Node* getNode() const;
+        virtual osg::Node* getOrCreateNode();
 
     protected:
 

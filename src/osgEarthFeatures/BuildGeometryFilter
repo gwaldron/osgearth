@@ -108,7 +108,7 @@ namespace osgEarth { namespace Features
 
         osg::Geode* processPolygons        (FeatureList& input, FilterContext& cx);
         osg::Geode* processLines           (FeatureList& input, FilterContext& cx);
-        osg::Geode* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx);
+        osg::Group* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx);
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
     };
 

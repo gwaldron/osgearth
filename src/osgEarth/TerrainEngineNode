@@ -26,7 +26,7 @@
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TerrainTileNode>
 #include <osgEarth/TerrainEngineRequirements>
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/TilePatchCallback>
 #include <osgEarth/Progress>
@@ -135,7 +135,7 @@ namespace osgEarth
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the object that keeps track of GPU resources in use */
-        TextureCompositor* getResources() const;
+        TerrainResources* getResources() const;
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );
@@ -240,11 +240,6 @@ namespace osgEarth
           * @deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
-    public: // deprecated
-        
-        /** @derepcated Use getResources() instead. */
-        TextureCompositor* getTextureCompositor() const { return getResources(); }
-
     protected:
         TerrainEngineNode();
         virtual ~TerrainEngineNode();
@@ -273,7 +268,7 @@ namespace osgEarth
         // shaders, state, etc.
         virtual void dirtyState() { }
 
-        osg::ref_ptr<TextureCompositor> _textureResourceTracker;
+        osg::ref_ptr<TerrainResources> _textureResourceTracker;
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;
@@ -296,6 +291,28 @@ namespace osgEarth
          * geometry out of a TerrainTileModel. -gw
          */
         virtual osg::Node* createTile(const TileKey& key) =0;
+
+        //! Flags that affect the createTile behavior.
+        enum CreateTileFlags
+        {
+            CREATE_TILE_INCLUDE_TILES_WITH_MASKS     = 1,
+            CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS  = 2,
+            CREATE_TILE_DEFAULT_FLAGS                = ~0 /* all */
+        };
+
+        /**
+         * Utility for creating standalone tile geometry from a tile model.
+         * Note: experimental.
+         * @param model Tile model for which to build a tile
+         * @param flags OR of the CreateTileFlags enums
+         * @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
+         *        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
+         *        Specific a referenceLOD=16, tile will be 33x33.
+         */
+        virtual osg::Node* createTile(
+            const TerrainTileModel* model,
+            int createTileFlags =CREATE_TILE_DEFAULT_FLAGS,
+            unsigned referenceLOD =0u) { return 0L; }
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
@@ -325,6 +342,7 @@ namespace osgEarth
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
+        bool                               _updateScheduled;
         
         enum InitStage {
             INIT_NONE,

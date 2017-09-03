@@ -122,12 +122,12 @@ public:
         osgText::FontResolution resolution(res, res);
         for( unsigned i=0; i<text.length(); ++i )
         {
-            if (text.at(i) == '\n') {
+            if (text[i] == '\n') {
                 y += res + 10;
                 x = 10;
             }
             else {            
-                osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
+                osgText::Glyph* glyph = _font->getGlyph( resolution, text[i] );
                 copySubImageAndColorize( glyph, image, x, y, _color );
                 x += glyph->s() + 1;
             }

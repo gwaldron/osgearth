@@ -43,6 +43,12 @@ namespace osgEarth { namespace Symbology
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
 
+        /** Whether to use a LineStyle (if one exists in the Style) as an outline.
+         * This defaults to true, but you set this to false to suppress outlining
+         * even when a LineStyle exists. */
+        optional<bool>& outline() { return _outline; }
+        const optional<bool>& outline() const { return _outline; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig(const Config& conf);
@@ -50,6 +56,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<Fill> _fill;
+        optional<bool> _outline;
     };
 
 

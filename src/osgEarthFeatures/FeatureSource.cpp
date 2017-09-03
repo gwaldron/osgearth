@@ -76,8 +76,8 @@ FeatureSourceOptions::getConfig() const
 
     conf.updateIfSet   ( "open_write",   _openWrite );
     conf.updateIfSet   ( "name",         _name );
-    conf.updateObjIfSet( "profile",      _profile );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.setObj( "profile",      _profile );
+    conf.setObj( "cache_policy", _cachePolicy );
     conf.updateIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.updateIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.updateIfSet   ( "fid_attribute", _fidAttribute );
@@ -119,7 +119,7 @@ FeatureSource::open(const osgDB::Options* readOptions)
     // Create and initialize the filters.
     for(unsigned i=0; i<_options.filters().size(); ++i)
     {
-        const ConfigOptions& conf = _options.filters().at(i);
+        const ConfigOptions& conf = _options.filters()[i];
         FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
         if ( filter )
         {

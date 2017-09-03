@@ -132,10 +132,20 @@ namespace osgEarth { namespace Features
     };
 
 #define OSGEARTH_REGISTER_FEATUREFILTER( CLASSNAME )\
+    extern "C" void osgearth_featurefilter_##KEY(void) {} \
     static osgEarth::Features::RegisterFeatureFilterProxy<CLASSNAME> s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME;
+    
+#define USE_OSGEARTH_FEATUREFILTER( KEY ) \
+    extern "C" void osgearth_featurefilter_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_featurefilter_##KEY(osgearth_featurefilter_##KEY);
 
 #define OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER( KEY, CLASSNAME)\
+    extern "C" void osgearth_simple_featurefilter_##KEY(void) {} \
     static osgEarth::Features::RegisterFeatureFilterProxy< osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME> > s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new osgEarth::Features::SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
+    
+#define USE_OSGEARTH_SIMPLE_FEATUREFILTER( KEY ) \
+    extern "C" void osgearth_simple_featurefilter_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_simple_featurefilter_##KEY(osgearth_simple_featurefilter_##KEY);
     
 
     //--------------------------------------------------------------------

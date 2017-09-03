@@ -19,10 +19,12 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osgEarth/NodeUtils>
+#include <osgEarthUtil/TopologyGraph>
 #include <osg/Point>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 #define LC "[GeometryPool] "
@@ -52,7 +54,7 @@ _debug   ( false )
     // sign up for the update traversal so we can prune unused pool objects.
     setNumChildrenRequiringUpdateTraversal(1u);
 
-    _tileSize = _options.tileSize().get();
+    //_tileSize = _options.tileSize().get();
 
     // activate debugging mode
     if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
@@ -74,14 +76,15 @@ _debug   ( false )
 }
 
 void
-GeometryPool::getPooledGeometry(const TileKey&               tileKey,
-                                const MapInfo&               mapInfo,
-                                osg::ref_ptr<SharedGeometry>& out,
-                                MaskGenerator*               maskSet)
+GeometryPool::getPooledGeometry(const TileKey&                tileKey,
+                                const MapInfo&                mapInfo,
+                                unsigned                      tileSize,
+                                MaskGenerator*                maskSet,
+                                osg::ref_ptr<SharedGeometry>& out)
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
-    createKeyForTileKey( tileKey, _tileSize, mapInfo, geomKey );
+    createKeyForTileKey( tileKey, tileSize, mapInfo, geomKey );
 
     if ( _enabled )
     {
@@ -99,10 +102,12 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
         else
         {
             // Not found. Create it.
-            out = createGeometry( tileKey, mapInfo, maskSet );
+            out = createGeometry( tileKey, mapInfo, tileSize, maskSet );
 
-            if (!masking)
+            if (!masking && out.valid())
+            {
                 _geometryMap[ geomKey ] = out.get();
+            }
 
             if ( _debug )
             {
@@ -113,25 +118,25 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
 
     else
     {
-        out = createGeometry( tileKey, mapInfo, maskSet );
+        out = createGeometry( tileKey, mapInfo, tileSize, maskSet );
     }
 }
 
 void
 GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
-                                  unsigned                   size,
+                                  unsigned                   tileSize,
                                   const MapInfo&             mapInfo,
                                   GeometryPool::GeometryKey& out) const
 {
     out.lod  = tileKey.getLOD();
-    out.tileY = mapInfo.isGeocentric()? tileKey.getTileY() : 0; //.getExtent().yMin() : 0.0;
-    out.size = size;
+    out.tileY = mapInfo.isGeocentric()? tileKey.getTileY() : 0;
+    out.size = tileSize;
 }
 
 int
-GeometryPool::getNumSkirtElements() const
+GeometryPool::getNumSkirtElements(unsigned tileSize) const
 {
-    return _options.heightFieldSkirtRatio().get() > 0.0 ? (_tileSize-1) * 4 * 6 : 0;
+    return _options.heightFieldSkirtRatio().get() > 0.0 ? (tileSize-1) * 4 * 6 : 0;
 }
 
 namespace
@@ -170,9 +175,20 @@ namespace
     } \
 }
 
+#define addMaskSkirtTriangles(INDEX0, INDEX1) \
+{ \
+    primSet->addElement((INDEX0));   \
+    primSet->addElement((INDEX0)+1); \
+    primSet->addElement((INDEX1));   \
+    primSet->addElement((INDEX1));   \
+    primSet->addElement((INDEX0)+1); \
+    primSet->addElement((INDEX1)+1); \
+}
+
 SharedGeometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              const MapInfo& mapInfo,
+                             unsigned       tileSize,
                              MaskGenerator* maskSet) const
 {    
     // Establish a local reference frame for the tile:
@@ -188,30 +204,28 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // Attempt to calculate the number of verts in the surface geometry.
     bool createSkirt = _options.heightFieldSkirtRatio() > 0.0f;
 
-    unsigned numVertsInSurface    = (_tileSize*_tileSize);
-    unsigned numVertsInSkirt      = createSkirt ? _tileSize*4u - 4u : 0;
+    unsigned numVertsInSurface    = (tileSize*tileSize);
+    unsigned numVertsInSkirt      = createSkirt ? tileSize*4u - 4u : 0;
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
-    unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
-    unsigned numIncidesInSkirt    = getNumSkirtElements();
+    unsigned numIndiciesInSurface = (tileSize-1) * (tileSize-1) * 6;
+    unsigned numIncidesInSkirt    = getNumSkirtElements(tileSize);
     
     // TODO: reconsider this ... 
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
-    // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
-    primSet->setElementBufferObject(new osg::ElementBufferObject());
-
-    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
-
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    SharedGeometry* geom = new SharedGeometry();
+    osg::ref_ptr<SharedGeometry> geom = new SharedGeometry();
     geom->setUseVertexBufferObjects(true);
     //geom->setUseDisplayList(false);
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
+    // Pre-allocate enough space for all triangles.
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
+    primSet->setElementBufferObject(new osg::ElementBufferObject());
+    primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
     geom->setDrawElements(primSet);
 
     // the vertex locations:
@@ -261,19 +275,19 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     geom->setTexCoordArray(texCoords);
     
-    float delta = 1.0/(_tileSize-1);
+    float delta = 1.0/(tileSize-1);
     osg::Vec3d tdelta(delta,0,0);
     tdelta.normalize();
     osg::Vec3d vZero(0,0,0);
 
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
 
-    for(unsigned row=0; row<_tileSize; ++row)
+    for(unsigned row=0; row<tileSize; ++row)
     {
-        float ny = (float)row/(float)(_tileSize-1);
-        for(unsigned col=0; col<_tileSize; ++col)
+        float ny = (float)row/(float)(tileSize-1);
+        for(unsigned col=0; col<tileSize; ++col)
         {
-            float nx = (float)col/(float)(_tileSize-1);
+            float nx = (float)col/(float)(tileSize-1);
 
             osg::Vec3d model;
             locator->unitToModel(osg::Vec3d(nx, ny, 0.0f), model);
@@ -297,7 +311,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             // neighbor:
             if ( neighbors )
             {
-                osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
+                osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
                 neighbors->push_back(modelNeighborLTP);
             }
         }
@@ -308,21 +322,21 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // TODO: do we really need this??
     bool swapOrientation = !locator->orientationOpenGL();
 
-    for(unsigned j=0; j<_tileSize-1; ++j)
+    for(unsigned j=0; j<tileSize-1; ++j)
     {
-        for(unsigned i=0; i<_tileSize-1; ++i)
+        for(unsigned i=0; i<tileSize-1; ++i)
         {
             int i00;
             int i01;
             if (swapOrientation)
             {
-                i01 = j*_tileSize + i;
-                i00 = i01+_tileSize;
+                i01 = j*tileSize + i;
+                i00 = i01+tileSize;
             }
             else
             {
-                i00 = j*_tileSize + i;
-                i01 = i00+_tileSize;
+                i00 = j*tileSize + i;
+                i01 = i00+tileSize;
             }
 
             int i10 = i00+1;
@@ -355,7 +369,70 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    if ( createSkirt )
+    // create mask geometry
+    bool skirtCreated = false;
+
+    if (maskSet)
+    {
+        int s = verts->size();
+        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
+        if (maskPrim && maskPrim->size() > 0)
+        {
+            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
+            geom->setMaskElements(maskPrim);
+
+            if (createSkirt)
+            {
+                // Skirts for masking geometries are complicated. There are two parts.
+                // The first part is the "perimeter" of the tile, i.e the outer edge of the 
+                // tessellation. This code will detect that outer boundary and create skrits
+                // for it.
+                // The second part (NYI) detects the actual inner boundary ("patch geometry")
+                // that patches the tile tessellation to the masking boundary. TDB.
+                TopologyGraph topo;
+                BuildTopologyVisitor visitor(topo);
+                visitor.apply(geom, verts); 
+
+                if (topo._verts.empty() == false)
+                {
+                    TopologyGraph::IndexVector boundary;
+                    topo.createBoundary(boundary);
+                
+                    double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+                    unsigned skirtIndex = verts->size();
+
+                    unsigned matches = 0;
+                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
+                    {
+                        int k;
+                        for (k = 0; k<skirtIndex; ++k)
+                        {
+                            if ((*verts)[k].x() == (*i)->x() && (*verts)[k].y() == (*i)->y())
+                            {
+                                addSkirtDataForIndex(k, height);
+                                matches++;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matches != boundary.size()) {
+                        OE_WARN << LC << "matches != boundary size" << std::endl;
+                    }
+
+                    int n;
+                    for (n = skirtIndex; n<(int)verts->size()-2; n+=2)
+                        addMaskSkirtTriangles(n, n+2);
+
+                    addMaskSkirtTriangles(n, skirtIndex);
+
+                    skirtCreated = true;
+                }
+            }
+        }
+    }
+
+    if ( createSkirt && !skirtCreated )
     {
         // SKIRTS:
         // calculate the skirt extrusion height
@@ -364,17 +441,17 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         unsigned skirtIndex = verts->size();
 
         // first, create all the skirt verts, normals, and texcoords.
-        for(int c=0; c<(int)_tileSize-1; ++c)
+        for(int c=0; c<(int)tileSize-1; ++c)
             addSkirtDataForIndex( c, height ); //top
 
-        for(int r=0; r<(int)_tileSize-1; ++r)
-            addSkirtDataForIndex( r*_tileSize+(_tileSize-1), height ); //right
+        for(int r=0; r<(int)tileSize-1; ++r)
+            addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
     
-        for(int c=_tileSize-1; c>=0; --c)
-            addSkirtDataForIndex( (_tileSize-1)*_tileSize+c, height ); //bottom
+        for(int c=tileSize-1; c>=0; --c)
+            addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
 
-        for(int r=_tileSize-1; r>=0; --r)
-            addSkirtDataForIndex( r*_tileSize, height ); //left
+        for(int r=tileSize-1; r>=0; --r)
+            addSkirtDataForIndex( r*tileSize, height ); //left
     
         // then create the elements indices:
         int i;
@@ -384,18 +461,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         addSkirtTriangles( i, skirtIndex );
     }
 
-    // create mask geometry
-    if (maskSet)
-    {
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
-        if (maskPrim)
-        {
-            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
-            geom->setMaskElements(maskPrim);
-        }
-    }
-
-    return geom;
+    return geom.release();
 }
 
 
@@ -516,6 +582,15 @@ SharedGeometry::~SharedGeometry()
     //nop
 }
 
+bool 
+SharedGeometry::empty() const
+{
+    return
+        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0) &&
+        (_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
+}
+
+
 #ifdef SUPPORTS_VAO
 osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
 {
@@ -525,9 +600,17 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
 
     if (_vertexArray.valid()) vas->assignVertexArrayDispatcher();
     if (_normalArray.valid()) vas->assignNormalArrayDispatcher();
-    if (_texcoordArray.valid()) vas->assignTexCoordArrayDispatcher(1);
-    if (_neighborArray.valid()) vas->assignTexCoordArrayDispatcher(2); // what is the argument?
-
+    unsigned texUnits = 0;
+    if (_neighborArray.valid())
+    {
+        texUnits = 2;
+    }
+    else if (_texcoordArray.valid())
+    {
+        texUnits = 1;
+    }
+    if (texUnits)
+        vas->assignTexCoordArrayDispatcher(texUnits);
     if (state.useVertexArrayObject(_useVertexArrayObject))
     {
         vas->generateVertexArrayObject();
@@ -576,7 +659,11 @@ void SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
 
             osg::State::SetCurrentVertexArrayStateProxy setVASProxy(state, vas);
 
+#if OSG_MIN_VERSION_REQUIRED(3,5,6)
+            state.bindVertexArrayObject(vas);
+#else
             vas->bindVertexArrayObject();
+#endif
 
             if (vbo_glBufferObject) vas->bindVertexBufferObject(vbo_glBufferObject);
             if (ebo_glBufferObject) vas->bindElementBufferObject(ebo_glBufferObject);
@@ -646,6 +733,9 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
 
         if (_texcoordArray.valid() && _texcoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
             vas->setTexCoordArray(state, 0, _texcoordArray.get());
+
+        if (_neighborArray.valid() && _neighborArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+            vas->setTexCoordArray(state, 1, _neighborArray.get());
 
         vas->applyDisablingOfVertexAttributes(state);
     }
@@ -741,3 +831,20 @@ void SharedGeometry::accept(osg::PrimitiveIndexFunctor& pif) const
     _drawElements->accept(pif);
 }
 
+osg::Geometry*
+SharedGeometry::makeOsgGeometry()
+{
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+    geom->setUseDisplayList(false);
+
+    geom->setVertexArray(getVertexArray());
+    geom->setNormalArray(getNormalArray());
+    geom->setTexCoordArray(0, getTexCoordArray());
+    if (getDrawElements())
+        geom->addPrimitiveSet(getDrawElements());
+    if (getMaskElements())
+        geom->addPrimitiveSet(getMaskElements());
+
+    return geom;
+}

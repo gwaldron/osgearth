@@ -1,4 +1,5 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       Shadowing Vertex Shader
 #pragma vp_entryPoint oe_shadow_vertex

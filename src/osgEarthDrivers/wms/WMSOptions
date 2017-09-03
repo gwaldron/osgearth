@@ -89,20 +89,20 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url);
-            conf.updateIfSet("capabilities_url", _capabilitiesUrl);
-            conf.updateIfSet("tile_service_url", _tileServiceUrl);
-            conf.updateIfSet("layers", _layers);
-            conf.updateIfSet("style", _style);
-            conf.updateIfSet("format", _format);
-            conf.updateIfSet("wms_format", _wmsFormat);
-            conf.updateIfSet("wms_version", _wmsVersion);
-            conf.updateIfSet("elevation_unit", _elevationUnit);
-            conf.updateIfSet("srs", _srs);
-            conf.updateIfSet("crs", _crs);
-            conf.updateIfSet("transparent", _transparent);
-            conf.updateIfSet("times", _times);
-            conf.updateIfSet("seconds_per_frame", _secondsPerFrame );
+            conf.set("url", _url);
+            conf.set("capabilities_url", _capabilitiesUrl);
+            conf.set("tile_service_url", _tileServiceUrl);
+            conf.set("layers", _layers);
+            conf.set("style", _style);
+            conf.set("format", _format);
+            conf.set("wms_format", _wmsFormat);
+            conf.set("wms_version", _wmsVersion);
+            conf.set("elevation_unit", _elevationUnit);
+            conf.set("srs", _srs);
+            conf.set("crs", _crs);
+            conf.set("transparent", _transparent);
+            conf.set("times", _times);
+            conf.set("seconds_per_frame", _secondsPerFrame );
             return conf;
         }
 
@@ -127,6 +127,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("crs", _crs);
             conf.getIfSet("transparent", _transparent);
             conf.getIfSet("times", _times);
+            conf.getIfSet("time", _times); // alternative
             conf.getIfSet("seconds_per_frame", _secondsPerFrame );
         }
 

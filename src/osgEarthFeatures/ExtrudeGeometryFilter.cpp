@@ -162,6 +162,13 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 
             // if there's a line symbol, use it to outline the extruded data.
             _outlineSymbol = _style.get<LineSymbol>();
+
+            // ...unless a wall poly symbol overrides it.
+            if (_wallPolygonSymbol.valid() && _wallPolygonSymbol->outline() == false)
+                _outlineSymbol = 0L;
+
+            if (_roofPolygonSymbol.valid() && _roofPolygonSymbol->outline() == false)
+                _outlineSymbol = 0L;
         }
 
         // backup plan for skin symbols:

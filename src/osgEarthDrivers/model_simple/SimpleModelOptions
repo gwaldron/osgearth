@@ -81,13 +81,13 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url );
-            conf.updateIfSet( "lod_scale", _lod_scale );
-            conf.updateIfSet( "location", _location );
-            conf.updateIfSet( "orientation", _orientation);
-            conf.updateIfSet( "loading_priority_scale", _loadingPriorityScale );
-            conf.updateIfSet( "loading_priority_offset", _loadingPriorityOffset );
-            conf.updateIfSet( "paged", _paged);
+            conf.set( "url", _url );
+            conf.set( "lod_scale", _lod_scale );
+            conf.set( "location", _location );
+            conf.set( "orientation", _orientation);
+            conf.set( "loading_priority_scale", _loadingPriorityScale );
+            conf.set( "loading_priority_offset", _loadingPriorityOffset );
+            conf.set( "paged", _paged);
 
             conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
             conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );

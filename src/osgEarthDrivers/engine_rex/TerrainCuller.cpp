@@ -25,22 +25,32 @@
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
-TerrainCuller::TerrainCuller() :
+TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
 _frame(0L),
-_context(0L),
 _camera(0L),
 _currentTileNode(0L),
-_orphanedPassesDetected(0u)
+_orphanedPassesDetected(0u),
+_cv(cullVisitor),
+_context(context)
 {
     setVisitorType(CULL_VISITOR);
     setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    setCullingMode(cullVisitor->getCullingMode());
+
+    setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));
+    setDatabaseRequestHandler(_cv->getDatabaseRequestHandler());
+    pushReferenceViewPoint(_cv->getReferenceViewPoint());
+    pushViewport(_cv->getViewport());
+    pushProjectionMatrix(_cv->getProjectionMatrix());
+    pushModelViewMatrix(_cv->getModelViewMatrix(), _cv->getCurrentCamera()->getReferenceFrame());
+    _camera = _cv->getCurrentCamera();
 }
 
 void
 TerrainCuller::setup(const MapFrame& frame, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
-    _terrain.setup(frame, bindings, frameNum, *this, _camera);
+    _terrain.setup(frame, bindings, frameNum, _cv);
 }
 
 float
@@ -224,5 +234,8 @@ TerrainCuller::apply(osg::Node& node)
         }
     }
 
-    traverse(node);
+    // Handle any CullCallbacks and traverse.
+    osg::Callback* cullCallback = node.getCullCallback();
+    if (cullCallback) cullCallback->run(&node, this);
+    else traverse(node);
 }

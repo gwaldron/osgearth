@@ -50,12 +50,13 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _text             ( text ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -63,7 +64,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const TextSymbol*   symbol ) :
 
-GeoPositionNode( mapNode, position ),
+GeoPositionNode( mapNode ),
 _text             ( text ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
@@ -71,6 +72,7 @@ _followFixedCourse( false )
     Style style;
     style.add( const_cast<TextSymbol*>(symbol) );
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(const std::string&  text,
@@ -86,11 +88,12 @@ _followFixedCourse( false )
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
-GeoPositionNode   ( mapNode, position ),
+GeoPositionNode   ( mapNode ),
 _labelRotationRad ( 0. ),
 _followFixedCourse( false )
 {
     init( style );
+    setPosition( position );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -138,21 +141,25 @@ LabelNode::setText( const std::string& text )
         return;
     }
 
-    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
-    if ( d )
+    for (unsigned int i=0; i < _geode->getNumDrawables(); i++)
     {
-        const TextSymbol* symbol = _style.get<TextSymbol>();
-
-        osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
-        if (symbol && symbol->encoding().isSet())
+        osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(i));
+        if ( d )
         {
-            textEncoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+            const TextSymbol* symbol = _style.get<TextSymbol>();
+
+            osgText::String::Encoding textEncoding = osgText::String::ENCODING_UNDEFINED;
+            if (symbol && symbol->encoding().isSet())
+            {
+                textEncoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+            }
+
+            d->setText(text, textEncoding);
+
+            d->dirtyDisplayList();
+            _text = text;
+            return;
         }
-
-        d->setText(text, textEncoding);
-
-        d->dirtyDisplayList();
-        _text = text;
     }
 }
 
@@ -314,6 +321,8 @@ _followFixedCourse( false )
     conf.getIfSet   ( "text",  _text );
 
     init( *style );
+
+    setPosition(getPosition());
 }
 
 Config

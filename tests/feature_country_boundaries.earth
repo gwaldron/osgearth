@@ -2,7 +2,7 @@
 osgEarth Sample
 -->
 
-<map name="Wordwide Line Vectors" type="geocentric">
+<map name="Worldwide Line Vectors" type="geocentric">
   
     <options>
         <terrain min_lod="16"/>
@@ -21,7 +21,7 @@ osgEarth Sample
     
     <feature_model name="world_boundaries" feature_source="world-data">
         
-        <layout tile_size="500000" crop_features="true">
+        <layout tile_size="500000" crop_features="true" paged="false">
             <level max_range="1e10"/>
         </layout>
                 
@@ -31,6 +31,7 @@ osgEarth Sample
                    stroke:                       #ffff00;
                    stroke-width:                 2px;
                    stroke-tessellation-size:     100km;
+                   altitude-clamping:            terrain-gpu;
                    render-depth-offset-min-bias: 1000;
                 }            
             </style>

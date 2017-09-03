@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/osgUtil::LineSegmentIntersector>
 #include <osgEarth/Utils>
 #include <osg/TriangleFunctor>
 #include <osg/KdTree>
@@ -209,12 +209,12 @@ namespace
 //----------------------------------------------------------------------------    
 
 osgUtil::Intersector* 
-DPLineSegmentIntersector::clone(osgUtil::IntersectionVisitor& iv)
+osgUtil::LineSegmentIntersector::clone(osgUtil::IntersectionVisitor& iv)
 {
     if (_coordinateFrame==MODEL && iv.getModelMatrix()==0)
     {
         //GW: changed the next line
-        osg::ref_ptr<DPLineSegmentIntersector> lsi = new DPLineSegmentIntersector(_start, _end);
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(_start, _end);
         lsi->_parent = this;
         lsi->_intersectionLimit = this->_intersectionLimit;
         return lsi.release();
@@ -249,7 +249,7 @@ DPLineSegmentIntersector::clone(osgUtil::IntersectionVisitor& iv)
     inverse.invert(matrix);
 
     //GW: changed the next line
-    osg::ref_ptr<DPLineSegmentIntersector> lsi = new DPLineSegmentIntersector(_start * inverse, _end * inverse);
+    osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(_start * inverse, _end * inverse);
     lsi->_parent = this;
     lsi->_intersectionLimit = this->_intersectionLimit;
     return lsi.release();
@@ -259,7 +259,7 @@ void intersectWithKdTree(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawab
     , const osg::Vec3d s, const osg::Vec3d e
     , const osg::Vec3d _start, const osg::Vec3d _end
     , osg::KdTree* kdTree
-    , DPLineSegmentIntersector& intersector)
+    , osgUtil::LineSegmentIntersector& intersector)
 {
     osg::KdTree::LineSegmentIntersections intersections;
     intersections.reserve(4);
@@ -321,7 +321,7 @@ void intersectWithQuadTree(osgUtil::IntersectionVisitor& iv, osg::Drawable* draw
     , const osg::Vec3d s, const osg::Vec3d e
     , const osg::Vec3d _start, const osg::Vec3d _end
     , QuadTree* quadTree
-    , DPLineSegmentIntersector& intersector)
+    , osgUtil::LineSegmentIntersector& intersector)
 {
     QuadTree::LineSegmentIntersections intersections;
     intersections.reserve(4);
@@ -379,7 +379,7 @@ void intersectWithQuadTree(osgUtil::IntersectionVisitor& iv, osg::Drawable* draw
     }
 }
 void
-DPLineSegmentIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable)
+osgUtil::LineSegmentIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable)
 {
     if (reachedLimit()) return;
 

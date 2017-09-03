@@ -1,10 +1,11 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_normalMapFragment
 #pragma vp_location   fragment_coloring
 #pragma vp_order      0.2
 
-#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
+#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP, OE_DEBUG_NORMALS)
 
 // import terrain SDK
 vec4 oe_terrain_getNormalAndCurvature(in vec2);
@@ -35,6 +36,8 @@ void oe_normalMapFragment(inout vec4 color)
     //if (curvature < 0.0) color.b = -curvature;
     //color.a = 1.0;
     
+#ifdef OE_DEBUG_NORMALS
     // visualize normals:
-    //color.rgb = encodedNormal.xyz;
+    color.rgb = encodedNormal.xyz;
+#endif
 }

@@ -32,6 +32,9 @@ namespace osgEarth { namespace Util
      * rendering of close and far objects in the same view without
      * z-fighting artifacts.
      *
+     * Note: Only works with perspective projections. For an orthographic
+     * projection it is a NOP.
+     *
      * Note: If you have any RTT cameras that deal with depth data,
      * they need to use a log buffer as well! (e.g., ClampingTechnique)
      *

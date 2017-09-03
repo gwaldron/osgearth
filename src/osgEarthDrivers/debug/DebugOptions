@@ -50,8 +50,8 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet( "color", _colorCode );
-            conf.updateIfSet( "inverty", _invertY );
+            conf.set( "color", _colorCode );
+            conf.set( "inverty", _invertY );
             return conf;
         }
 

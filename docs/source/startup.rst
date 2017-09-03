@@ -95,7 +95,7 @@ Here are a few tips.
 .. _GDAL:           http://www.gdal.org/
 .. _GDAL binaries:  http://www.gisinternals.com/
 .. _FWTools:        http://fwtools.maptools.org/
-.. _AlphaPixel:     http://openscenegraph.alphapixel.com/osg/downloads/openscenegraph-third-party-library-downloads
+.. _AlphaPixel:     http://downloads.alphapixel.org/
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
 .. _LevelDB:        https://github.com/pelicanmapping/leveldb

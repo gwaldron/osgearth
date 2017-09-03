@@ -36,6 +36,8 @@
 #define OSGEARTH_ENV_CACHE_DRIVER  "OSGEARTH_CACHE_DRIVER"
 #define OSGEARTH_ENV_CACHE_PATH    "OSGEARTH_CACHE_PATH"
 #define OSGEARTH_ENV_CACHE_ONLY    "OSGEARTH_CACHE_ONLY"
+#define OSGEARTH_ENV_DEFAULT_COMPRESSOR "OSGEARTH_DEFAULT_COMPRESSOR"
+
 #define OSGEARTH_ENV_NO_CACHE      "OSGEARTH_NO_CACHE"
 #define OSGEARTH_ENV_CACHE_MAX_AGE "OSGEARTH_CACHE_MAX_AGE"
 
@@ -69,7 +71,7 @@ namespace osgEarth
         /** Whether this object support an active cache. */
         bool isCacheEnabled() const;
         bool isCacheDisabled() const { return !isCacheEnabled(); }
-        
+
         /** Cache used by these settings */
         Cache* getCache() const { return _cache.get(); }
         void setCache(Cache* cache) { _cache = cache; }
@@ -86,7 +88,7 @@ namespace osgEarth
         /** Integrates an outside cache policy with the one in these settings. This method
           * also takes care of global (registry) override policy. */
         void integrateCachePolicy(const optional<CachePolicy>& policy);
-        
+
         /** Get/Set the settings in a read-options structure. */
         static CacheSettings* get(const osgDB::Options* readOptions);
         //static bool lock(const osgDB::Options* readOptions, osg::ref_ptr<CacheSettings>& output);
@@ -114,8 +116,8 @@ namespace osgEarth
     public:
         CacheOptions( const ConfigOptions& options =ConfigOptions() )
             : DriverConfigOptions( options )
-        { 
-            fromConfig( _conf ); 
+        {
+            fromConfig( _conf );
         }
 
         /** dtor */
@@ -128,7 +130,7 @@ namespace osgEarth
         }
 
         virtual void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );            
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -168,7 +170,7 @@ namespace osgEarth
          */
         CacheBin* getBin( const std::string& name );
 
-        /** 
+        /**
          * Gets the default caching bin within this cache. This may or may not
          * be supported by the implementation, so be sure to check the result
          * before using it.
@@ -188,7 +190,7 @@ namespace osgEarth
          */
         virtual void removeBin( CacheBin* bin );
 
-        /** 
+        /**
          * Gets an Options structure representing this cache's configuration.
          */
         const CacheOptions& getCacheOptions() const { return _options; }
@@ -233,7 +235,7 @@ namespace osgEarth
 
 //----------------------------------------------------------------------
 
-    /** 
+    /**
      * Factory class that can load and instantiate a Cache implementation based on the
      * information in the CacheOptions settings.
      */

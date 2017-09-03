@@ -19,7 +19,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/DPLineSegmentIntersector>
+#include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/GeoData>
 #include <osgEarth/Utils>
 #include <osg/ClusterCullingCallback>
@@ -678,7 +678,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                         osg::Vec3d vec = end-start; vec.normalize();
                         end -= vec*1.0;
 
-                        DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );
+                        osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
                         i->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
                         osgUtil::IntersectionVisitor iv;
                         iv.setIntersector( i );

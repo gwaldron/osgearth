@@ -189,9 +189,37 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {        
-        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();    
-        return _elevationLayers.populateHeightField(
+        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+
+        return _elevationLayers.populateHeightFieldAndNormalMap(
             hf.get(),
+            0L,         // no normal map to populate
+            key,
+            convertToHAE ? map->getProfileNoVDatum() : 0L,
+            interp,
+            progress );
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool
+MapFrame::populateHeightFieldAndNormalMap(osg::ref_ptr<osg::HeightField>& hf,
+                                          osg::ref_ptr<NormalMap>&        normalMap,
+                                          const TileKey&                  key,
+                                          bool                            convertToHAE,
+                                          ProgressCallback*               progress) const
+{
+    osg::ref_ptr<const Map> map;
+    if ( _map.lock(map) )
+    {        
+        ElevationInterpolation interp = map->getMapOptions().elevationInterpolation().get();
+
+        return _elevationLayers.populateHeightFieldAndNormalMap(
+            hf.get(),
+            normalMap.get(),
             key,
             convertToHAE ? map->getProfileNoVDatum() : 0L,
             interp,
@@ -227,6 +255,10 @@ MapFrame::isCached( const TileKey& key ) const
             if (layer->getCacheSettings()->cachePolicy()->isCacheDisabled())
                 return false;
 
+            //If no data is available on this tile, we'll be fast
+            if (!layer->mayHaveData(key))
+                continue;
+
             // No tile source? skip it
             osg::ref_ptr< TileSource > source = layer->getTileSource();
             if (!source.valid())
@@ -234,10 +266,6 @@ MapFrame::isCached( const TileKey& key ) const
 
             //If the tile is blacklisted, it should also be fast.
             if (source->getBlacklist()->contains(key))
-                continue;
-
-            //If no data is available on this tile, we'll be fast
-            if (!source->hasData(key))
                 continue;
 
             if (!layer->isCached(key))

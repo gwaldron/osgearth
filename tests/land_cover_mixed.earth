@@ -1,20 +1,25 @@
 <map>
+    <options>
+        <terrain driver="rex"/>
+    </options>
+    
     <xi:include href="../data/land_cover_dictionary.xml"/>
 
-    <land_cover name="Land Cover Raster">
+    <land_cover name="Land Cover Raster" max_data_level="15">
         <cache_policy usage="no_cache"/>
 
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
-            </coverage>
+                <warp>0.05</warp>
+            </coverage>  
 
             <coverage name="NCLD 2011" driver="gdal">
                 <url>H:/data/nlcd/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
                 <xi:include href="H:/data/nlcd/land_cover_NLCD.xml"/>
             </coverage>
-
+            
             <coverage name="US Highways" driver="agglite" min_level="10" max_data_level="15" coverage="true">
                 <cache_policy usage="no_cache"/>
                 <features name="roads-data" driver="ogr">
@@ -32,8 +37,10 @@
                 <land_cover_mappings>
                     <mapping value="1" class="asphalt"/>
                 </land_cover_mappings>
-            </coverage>
+            </coverage> 
         </coverages>
+        
+        <noise_lod>12</noise_lod>
 
         <shared_sampler>CLASSMAP</shared_sampler>
         <shared_matrix>CLASSMAP_matrix</shared_matrix>
@@ -68,7 +75,9 @@
         </code>
     </terrainshader>
 
-    <elevation name="ReadyMap 90m" driver="tms" url="http://readymap.org/readymap/tiles/1.0.0/116/"/>
-
+    <elevation name="ReadyMap 90m" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
     <xi:include href="viewpoints.xml"/>
 </map>

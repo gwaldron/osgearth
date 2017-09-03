@@ -1,0 +1,107 @@
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric">
+    
+    <options>
+        <terrain driver="rex" max_lod="18">
+        </terrain>
+    </options>
+
+    <image name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <image name="Tilekeys" driver="debug">
+    </image>
+
+    <road_surface name="road-surface" min_level="14" max_level="18" shared="true" cacheid="road_surface">
+        <cache_policy usage="no_cache"/>
+        <tile_size>512</tile_size>
+        <feature_source>roads-data</feature_source>
+        <style type="text/css">
+            default {
+               stroke: #ffffff;
+               stroke-width: 65m;
+               stroke-image: "../data/road.png";
+            }                    
+        </style>
+    </road_surface>
+    
+    <feature_model name="Road verts">
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                    point-fill: #00ffff;
+                    point-size: 12;
+                    stroke: #ffff00;
+                    stroke-width: 2px;
+                    render-depth-test: false;
+                    render-order: 1;
+                }
+            </style>
+        </styles>
+    </feature_model>
+    
+    <feature_model name="Road skeleton">
+        <feature_source>roads-data</feature_source>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #00ffff7f;
+                    stroke-width: 65m;
+                    render-depth-test: false;
+                    render-order: 2;
+                    stroke-image: "../data/grid.png";
+                }
+            </style>
+        </styles>
+    </feature_model>
+    
+    <feature_source name="roads-data" driver="tfs">
+        <url>http://readymap.org/osm/</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <filters>
+            <script language="javascript">
+              <![CDATA[ ("highway" in feature.properties); ]]>
+            </script>
+        </filters>
+    </feature_source>
+    
+    <viewpoints>
+        <viewpoint name="45 Lat">
+            <heading>-1.6803</heading>
+            <pitch>-89.8584</pitch>
+            <range>135.785m</range>
+            <long>-121.629455948385</long>
+            <lat>46.76105148181426</lat>
+            <height>0.0005331700667738915</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+        <viewpoint name="Equator">
+            <heading>-2.31914e-008</heading>
+            <pitch>-89.0007</pitch>
+            <range>3664.39m</range>
+            <long>-80.08167477509062</long>
+            <lat>-0.001110080780562921</lat>
+            <height>-3.306940197944641e-005</height>
+            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+        </viewpoint>
+    </viewpoints>
+    
+    <libraries>osgEarthSplat</libraries>
+</map>

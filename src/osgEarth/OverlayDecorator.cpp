@@ -358,7 +358,8 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
         params._group = _overlayGroups[i].get();
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
         params._horizonDistance = &pvd._sharedHorizonDistance;      // share it.
-        params._terrainResources = _engine->getResources();
+        if (_engine.valid())
+            params._terrainResources = _engine->getResources();
         params._mainCamera = cam;
     }
 }
@@ -420,7 +421,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     OE_TEST << LC << "------- OD CULL ------------------------" << std::endl;
 
-    if ( _isGeocentric )
+    if ( _isGeocentric && _engine.valid() )
     {
         eyeLen = eye.length();
 

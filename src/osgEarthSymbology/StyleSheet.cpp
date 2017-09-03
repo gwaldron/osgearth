@@ -59,7 +59,7 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
     if ( i != _styles.end() ) {
         return &i->second;
     }
-    else if ( name.length() > 1 && name.at(0) == '#' ) {
+    else if ( name.length() > 1 && name[0] == '#' ) {
         std::string nameWithoutHash = name.substr( 1 );
         return getStyle( nameWithoutHash, fallBackOnDefault );
     }
@@ -78,7 +78,7 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     if ( i != _styles.end() ) {
         return &i->second;
     }
-    else if ( name.length() > 1 && name.at(0) == '#' ) {
+    else if ( name.length() > 1 && name[0] == '#' ) {
         std::string nameWithoutHash = name.substr( 1 );
         return getStyle( nameWithoutHash, fallBackOnDefault );
     }

@@ -640,7 +640,7 @@ SimpleSkyNode::makeMoon()
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
     
-#ifdef OSG_GLES2_AVAILABLE
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 
     set->addUniform(new osg::Uniform("moonTex", 0));
 
@@ -774,7 +774,10 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
     osg::StateSet* sset = geometry->getOrCreateStateSet();
 
+#if !defined(OSG_GL3_AVAILABLE)
+    // In GL3, PointSprite is no longer available, and is always on.
     sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
+#endif
     sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
     Shaders pkg;

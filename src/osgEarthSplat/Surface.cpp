@@ -39,8 +39,12 @@ Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Optio
 {
     SurfaceOptions in(conf);
 
-    // Read in the catalog.
-    _catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
+    if (_catalog.valid() == false && in.catalogURI().isSet())
+    {
+        // Read in the catalog.
+        _catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
+    }
+
     if ( !_catalog.valid() )
     {
         OE_WARN << LC << "Failed to read catalog for surface\n";
@@ -50,28 +54,28 @@ Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Optio
     return true;
 }
 
+osg::StateSet*
+Surface::getOrCreateStateSet()
+{
+    if ( !_stateSet.valid() )
+    {
+        _stateSet = new osg::StateSet();
+    }
+
+    return _stateSet.get();
+}
+
 bool
-Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
+Surface::loadTextures(const LandCoverDictionary* landCoverDict, const osgDB::Options* dbo)
 {
     int numValidTextures = 0;
 
-    if ( coverage == 0L || !_catalog.valid() )
+    if ( landCoverDict == 0L || !_catalog.valid() )
         return false;
 
     if ( _catalog->createSplatTextureDef(dbo, _textureDef) )
     {
-        _textureDef._splatLUTBuffer = createLUTBuffer(coverage);
-#if 0
-        // loaded, now create a sampling function.
-        std::string code;
-        if ( !createGLSLSamplingCode(coverage, code) )
-        {
-            OE_WARN << LC << "Failed to generate sampling code\n";
-            return false;
-        }
-
-        _textureDef._samplingFunction = code;
-#endif
+        _textureDef._splatLUTBuffer = createLUTBuffer(landCoverDict);
     }
     else
     {
@@ -80,36 +84,6 @@ Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
     }
 
     return true;
-}
-
-namespace
-{
-#define INDENTATION 4
-    struct indent {
-        indent(int level) :_level(level){}
-        int _level;
-        friend std::ostream& operator<<(std::ostream& os, const indent& val) {
-            for (int i=0; i<val._level * INDENTATION; ++i) 
-                os << ' ';
-            return os;
-        }
-    };
-
-    void write(std::ostream& buf, const SplatRangeData* rangeData, int I)
-    {
-        buf << indent(I) << "primary = " << (rangeData->_textureIndex) << ".0;\n";
-        //if (rangeData->_detail.isSet()) {
-        //    buf << indent(I) << "detail = " << (rangeData->_detail->_textureIndex) << ".0;\n";
-        //    if (rangeData->_detail->_brightness.isSet())
-        //        buf << indent(I) << "brightness = " << rangeData->_detail->_brightness.get() << ";\n";
-        //    if (rangeData->_detail->_contrast.isSet())
-        //        buf << indent(I) << "contrast = " << rangeData->_detail->_contrast.get() << ";\n";
-        //    if (rangeData->_detail->_threshold.isSet())
-        //        buf << indent(I) << "threshold = " << rangeData->_detail->_threshold.get() << ";\n";
-        //    if (rangeData->_detail->_slope.isSet())
-        //        buf << indent(I) << "slope = " << rangeData->_detail->_slope.get() << ";\n";
-        //}
-    }
 }
 
 #define NUM_FLOATS_PER_LOD 6
@@ -142,7 +116,7 @@ namespace
 }
 
 osg::Texture*
-Surface::createLUTBuffer(const Coverage* coverage) const
+Surface::createLUTBuffer(const LandCoverDictionary* landCoverDict) const
 {
     typedef LOD CoverageClass[NUM_LODS];
 
@@ -150,34 +124,33 @@ Surface::createLUTBuffer(const Coverage* coverage) const
 
     LUT lut;
 
-    // Build the LUT!
-    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-    for (SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
+    for(LandCoverClassVector::const_iterator i = landCoverDict->getClasses().begin();
+        i != landCoverDict->getClasses().end();
+        ++i)
     {
-        const CoverageValuePredicate* pred = p->get();
-
-        if (pred->_exactValue.isSet())
+        const LandCoverClass* lcClass = i->get();
+        int coverageValue = lcClass->getValue();
+        if (coverageValue >= 0 && coverageValue < NUM_CLASSES)
         {
-            int coverageIndex = (int)(::atoi(pred->_exactValue.get().c_str()));
-            if (coverageIndex >= 0 && coverageIndex < NUM_CLASSES)
+            //OE_INFO << LC << "LUT: " << lcClass->getName() << " = " << coverageValue << std::endl;
+            CoverageClass& coverageClass = lut[coverageValue];
+            const std::string& className = lcClass->getName();
+            const SplatLUT::const_iterator k = _textureDef._splatLUT.find(className);
+            if (k != _textureDef._splatLUT.end())
             {
-                CoverageClass& coverageClass = lut[coverageIndex];
-            
-                // Look up by class name:
-                const std::string& className = pred->_mappedClassName.get();
-                const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
-                if (i != _textureDef._splatLUT.end())
+                const SplatRangeDataVector& ranges = k->second;
+                unsigned r = 0;
+                for (unsigned lod = 0; lod < NUM_LODS; ++lod)
                 {
-                    const SplatRangeDataVector& ranges = i->second;
-                    unsigned r = 0;
-                    for (unsigned lod = 0; lod < NUM_LODS; ++lod)
-                    {
-                        const SplatRangeData& range = ranges[r];
-                        write(coverageClass[lod], range);
-                        if (range._maxLOD.isSet() && lod == range._maxLOD.get() && (r + 1) < ranges.size())
-                            ++r;
-                    }
+                    const SplatRangeData& range = ranges[r];
+                    write(coverageClass[lod], range);
+                    if (range._maxLOD.isSet() && lod == range._maxLOD.get() && (r + 1) < ranges.size())
+                        ++r;
                 }
+            }
+            else
+            {
+                OE_WARN << LC << "No splat mapping for land cover class " << className << std::endl;
             }
         }
     }

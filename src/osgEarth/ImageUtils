@@ -349,6 +349,9 @@ namespace osgEarth
              */
             PixelReader(const osg::Image* image);
 
+            /** Sets an image to read. */
+            void setImage(const osg::Image* image);
+
             /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
 
@@ -372,6 +375,7 @@ namespace osgEarth
 
             /** Reads a color from the image by unit coords [0..1] */
             osg::Vec4 operator()(float u, float v, int r=0, int m=0) const;
+            osg::Vec4 operator()(double u, double v, int r=0, int m=0) const;
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {

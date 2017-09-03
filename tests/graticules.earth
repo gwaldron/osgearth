@@ -1,0 +1,50 @@
+<!--
+osgEarth Sample - Graticules
+Run this with osgearth_toc to toggle the various graticule types on and off.
+-->
+
+<map name="osgEarth Graticules" type="geocentric">
+
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>  
+    
+    <gars_graticule name="GARS" visible="false">
+    </gars_graticule>  
+    
+    <mgrs_graticule name="MGRS" visible="false">
+        <gzd_style doc="Grid Zone Designator style (defaults shown)">
+            stroke: #808080ff;
+            stroke-width: 1.0;
+            stroke-tessellation: 20;
+            text-fill: #ffffff4c;
+            text-halo: #0000002c;
+            text-align: center-center;
+        </gzd_style>
+        <sqid_style doc="100km Square Identifier style (defaults shown)"> 
+            stroke: #ffffff4c;
+            stroke-stipple: 0x1111;
+            text-fill: #ffffff4c;
+            text-halo: #0000001c;
+            text-align: center-center;
+        </sqid_style>
+    </mgrs_graticule>
+    
+    <utm_graticule name="UTM" visible="false">
+        <gzd_style>
+            stroke: #ffffff4c;
+            stroke-width: 2px;
+            text-color: #ffffff5f;
+            text-size: 10;
+            text-align: center_center;
+        </gzd_style>
+    </utm_graticule>
+    
+    <geodetic_graticule name="Geodetic" visible="false">
+        <color>#ffff007f</color>
+        <label_color>#ffffffff</label_color>
+        <grid_lines>10</grid_lines>
+        <resolutions>10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125</resolutions>
+    </geodetic_graticule>
+    
+</map>

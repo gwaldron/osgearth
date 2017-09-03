@@ -308,7 +308,7 @@ DuktapeEngine::run(const std::string&   code,
 
     if ( !ok )
     {
-        OE_WARN << LC << "Error: source =" << std::endl << code << std::endl;
+        OE_DEBUG << LC << "Error: source =" << std::endl << code << std::endl;
     }
 
     // pop the return value:

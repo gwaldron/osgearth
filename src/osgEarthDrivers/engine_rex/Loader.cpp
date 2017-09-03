@@ -21,6 +21,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/NodeUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -210,6 +211,7 @@ PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = std::max(value, 0);
     this->setNumChildrenRequiringUpdateTraversal( 1 );
+    
 }
 
 void
@@ -338,7 +340,9 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
             for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
             {
                 Request* req = i->second.get();
+                const unsigned frameDiff = fn - req->getLastFrameSubmitted();
 
+                // Deal with completed requests:
                 if ( req->isFinished() )
                 {
                     //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
@@ -348,9 +352,20 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     _requests.erase( i++ );
                 }
 
-                else if ( !req->isMerging() && (fn - req->getLastFrameSubmitted() > 2) )
+                // Discard requests that are no longer required:
+                else if ( !req->isMerging() && frameDiff > 2 )
                 {
-                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << fn-req->getLastFrameSubmitted() << " frames" << std::endl; 
+                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << frameDiff << " frames" << std::endl; 
+                    req->setState( Request::IDLE );
+                    if ( REPORT_ACTIVITY )
+                        Registry::instance()->endActivity( req->getName() );
+                    _requests.erase( i++ );
+                }
+
+                // Prevent a request from getting stuck in the merge queue:
+                else if ( req->isMerging() && frameDiff > 1800 )
+                {
+                    //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting " << frameDiff << " frames to merge" << std::endl; 
                     req->setState( Request::IDLE );
                     if ( REPORT_ACTIVITY )
                         Registry::instance()->endActivity( req->getName() );

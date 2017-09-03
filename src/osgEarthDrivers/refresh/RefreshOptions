@@ -58,8 +58,8 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url);
-            conf.updateIfSet("frequency", _frequency);            
+            conf.set("url", _url);
+            conf.set("frequency", _frequency);            
             return conf;
         }
 

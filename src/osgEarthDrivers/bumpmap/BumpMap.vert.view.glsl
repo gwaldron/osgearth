@@ -1,8 +1,16 @@
 #version $GLSL_VERSION_STR
+$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_bumpmap_vertexView
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
+#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_IS_PICK_CAMERA)
+
+#if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_PICK_CAMERA)
+
+void oe_bumpmap_vertexView(inout vec4 vertexView) { } 
+
+#else
 
 uniform vec4 oe_tile_key;
 uniform float oe_bumpmap_scale;
@@ -50,3 +58,5 @@ void oe_bumpmap_vertexView(inout vec4 vertexView)
     // propagate normal matrix to fragment stage
     oe_bumpmap_normalMatrix = gl_NormalMatrix;
 }
+
+#endif

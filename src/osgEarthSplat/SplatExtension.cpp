@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include "SplatExtension"
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
@@ -33,7 +34,7 @@ using namespace osgEarth::Splat;
 
 //.........................................................................
 
-REGISTER_OSGEARTH_EXTENSION(osgearth_splat, SplatExtension);
+//REGISTER_OSGEARTH_EXTENSION(osgearth_splat, SplatExtension);
 
 
 SplatExtension::SplatExtension()
@@ -82,14 +83,14 @@ SplatExtension::connect(MapNode* mapNode)
     }
 
     bool enableSurfaceEffect = false;
-    bool enableLandCoverEffect = false;
+    bool enableGroundCoverEffect = false;
 
     // Zone definitions
     Zones myZones;
     for(int i=0; i<zones().size(); ++i)
     {
         osg::ref_ptr<Zone> zone = new Zone();
-        if ( zone->configure(zones().at(i), mapNode->getMap(), _dbo.get()) )
+        if ( zone->configure(zones()[i], mapNode->getMap(), _dbo.get()) )
         {
             myZones.push_back( zone.get() );
 
@@ -98,15 +99,15 @@ SplatExtension::connect(MapNode* mapNode)
                 enableSurfaceEffect = true;
             }
 
-            if ( zone->getLandCover() != 0L )
+            if ( zone->getGroundCover() != 0L )
             {
-                enableLandCoverEffect = true;
+                enableGroundCoverEffect = true;
             }
         }
     }
 
     // Install the noise texture that's used by both effects.
-    if (enableSurfaceEffect || enableLandCoverEffect)
+    if (enableSurfaceEffect || enableGroundCoverEffect)
     {
         osg::StateSet* terrainStateSet = mapNode->getTerrainEngine()->getOrCreateStateSet();
 
@@ -129,14 +130,14 @@ SplatExtension::connect(MapNode* mapNode)
         _splatLayerFactory->install(mapNode);
     }
 
-    if ( enableLandCoverEffect )
+    if ( enableGroundCoverEffect )
     {
         OE_INFO << LC << "Enabling the land cover effect\n";
-        _landCoverLayerFactory = new LandCoverLayerFactory();
-        _landCoverLayerFactory->setDBOptions( _dbo.get() );
-        _landCoverLayerFactory->setZones( myZones );
-        _landCoverLayerFactory->setCoverage( myCoverage.get() );
-        _landCoverLayerFactory->install(mapNode);
+        _GroundCoverLayerFactory = new GroundCoverLayerFactory();
+        _GroundCoverLayerFactory->setDBOptions( _dbo.get() );
+        _GroundCoverLayerFactory->setZones( myZones );
+        _GroundCoverLayerFactory->setCoverage( myCoverage.get() );
+        _GroundCoverLayerFactory->install(mapNode);
     }
 
     // Install the zone switcher; this will select the best zone based on
@@ -158,10 +159,10 @@ SplatExtension::disconnect(MapNode* mapNode)
             _splatLayerFactory = 0L;
         }
 
-        if ( _landCoverLayerFactory.valid() )
+        if ( _GroundCoverLayerFactory.valid() )
         {
-            _landCoverLayerFactory->uninstall(mapNode);
-            _landCoverLayerFactory = 0L;
+            _GroundCoverLayerFactory->uninstall(mapNode);
+            _GroundCoverLayerFactory = 0L;
         }
 
         mapNode->getTerrainEngine()->removeCullCallback( _zoneSwitcher.get() );
@@ -193,3 +194,4 @@ SplatExtension::disconnect(Control* control)
     // NOP
     return true;
 }
+#endif

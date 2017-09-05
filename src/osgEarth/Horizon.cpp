@@ -26,7 +26,10 @@
 
 #define LC "[Horizon] "
 
-#define OSGEARTH_HORIZON_UDC_NAME "osgEarth.Horizon"
+namespace
+{
+    const std::string OSGEARTH_HORIZON_UDC_NAME = "osgEarth.Horizon";
+}
 
 using namespace osgEarth;
 

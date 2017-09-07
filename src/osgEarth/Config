@@ -246,8 +246,8 @@ namespace osgEarth
         /** Adds or replaces a value as a child, but only if it is set */
         template<typename T>
         void updateIfSet( const std::string& key, const optional<T>& opt ) {
+            remove(key);
             if ( opt.isSet() ) {
-                remove(key);
                 add( key, osgEarth::toString<T>( opt.value() ) );
             }
         }
@@ -259,8 +259,8 @@ namespace osgEarth
         /** Adds or replaces a referenced object as a child, but only if it is set */
         template<typename T>
         void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
+            remove(key);
             if ( opt.valid() ) {
-                remove(key);
                 Config conf = opt->getConfig();
                 conf.key() = key;
                 add( conf );
@@ -289,9 +289,11 @@ namespace osgEarth
         /** Adds or replaces an enumeration value as a child, but only if it is set */
         template<typename X, typename Y>
         void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
-            if ( target.isSetTo( targetValue ) ) {
+            if (target.isSet()) {
                 remove(key);
-                add( key, val );
+                if ( target.isSetTo( targetValue ) ) {
+                    add( key, val );
+                }
             }
         }
         template<typename X, typename Y>
@@ -486,8 +488,8 @@ namespace osgEarth
 
     template<> inline
     void Config::set<Config>( const std::string& key, const optional<Config>& opt ) {
+        remove(key);
         if ( opt.isSet() ) {
-            remove(key);
             Config conf = opt.value();
             conf.key() = key;
             add( conf );

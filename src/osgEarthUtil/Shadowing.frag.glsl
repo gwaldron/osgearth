@@ -6,12 +6,33 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.9
 
+#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
+
 uniform sampler2DArray oe_shadow_map;
 uniform float          oe_shadow_color;
 uniform float          oe_shadow_blur;
 
 in vec3 vp_Normal; // stage global
 in vec4 oe_shadow_coord[$OE_SHADOW_NUM_SLICES];
+
+// Parameters of each light:
+struct osg_LightSourceParameters 
+{   
+   vec4 ambient;
+   vec4 diffuse;
+   vec4 specular;
+   vec4 position;
+   vec3 spotDirection;
+   float spotExponent;
+   float spotCutoff;
+   float spotCosCutoff;
+   float constantAttenuation;
+   float linearAttenuation;
+   float quadraticAttenuation;
+
+   bool enabled;
+};  
+uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];
 
 
 #define OE_SHADOW_NUM_SAMPLES 16
@@ -61,7 +82,7 @@ void oe_shadow_fragment(inout vec4 color)
     // pre-pixel biasing to reduce moire/acne
     const float b0 = 0.001;
     const float b1 = 0.01;
-    vec3 L = normalize(gl_LightSource[0].position.xyz);
+    vec3 L = normalize(osg_LightSource[0].position.xyz);
     vec3 N = normalize(vp_Normal);
     float costheta = clamp(dot(L,N), 0.0, 1.0);
     float bias = b0*tan(acos(costheta));

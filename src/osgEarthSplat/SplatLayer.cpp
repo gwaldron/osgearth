@@ -48,7 +48,7 @@ Config
 SplatLayerOptions::getConfig() const
 {
     Config conf = VisibleLayerOptions::getConfig();
-    conf.key() = "splat";
+    conf.key() = "splat_imagery";
     conf.set("land_cover_layer", _landCoverLayerName);
 
     Config zones("zones");

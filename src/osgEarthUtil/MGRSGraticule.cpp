@@ -60,6 +60,17 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 
 //---------------------------------------------------------------------------
 
+MGRSGraticuleOptions::MGRSGraticuleOptions(const ConfigOptions& conf) :
+VisibleLayerOptions(conf)
+{
+    _maxResolution.init(1.0);
+    _gzdURI.init(URI("H:/data/nga/mgrs/MGRS_GZD_WorldWide.shp", conf.referrer()));
+    _sqidURI.init(URI("H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp", conf.referrer()));
+    fromConfig(_conf);
+}
+
+//---------------------------------------------------------------------------
+
 MGRSGraticule::MGRSGraticule() :
 VisibleLayer(&_optionsConcrete),
 _options(&_optionsConcrete)
@@ -741,7 +752,7 @@ MGRSGraticule::rebuild()
 
     // Build the GZD tiles
     osgEarth::Drivers::OGRFeatureOptions gzd_ogr;
-    gzd_ogr.url() = "H:/data/nga/mgrs/MGRS_GZD_WorldWide.shp";
+    gzd_ogr.url() = options().gzdData().get();
     gzd_ogr.buildSpatialIndex() = true;
 
     osg::ref_ptr<FeatureSource> gzd_fs = FeatureSourceFactory::create(gzd_ogr);
@@ -757,7 +768,7 @@ MGRSGraticule::rebuild()
     }
 
     osgEarth::Drivers::OGRFeatureOptions sqid_ogr;
-    sqid_ogr.url() = "H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp";
+    sqid_ogr.url() = options().sqidData().get();
     sqid_ogr.buildSpatialIndex() = true;
 
     osg::ref_ptr<FeatureSource> sqid_fs = FeatureSourceFactory::create(sqid_ogr);

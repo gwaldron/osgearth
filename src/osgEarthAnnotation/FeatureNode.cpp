@@ -49,6 +49,41 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+FeatureNode::FeatureNode(Feature* feature,
+                         const Style& in_style,
+                         const GeometryCompilerOptions& options,
+                         StyleSheet* styleSheet) :
+AnnotationNode(),
+_options           ( options ),
+_needsRebuild      ( true ),
+_styleSheet        ( styleSheet ),
+_clampDirty        (false)
+{
+    _features.push_back( feature );
+
+    Style style = in_style;
+    if (style.empty() && feature->style().isSet())
+    {
+        style = *feature->style();
+    }
+
+    setStyle( style );
+}
+
+FeatureNode::FeatureNode(const FeatureList& features,
+                         const Style& style,
+                         const GeometryCompilerOptions& options,
+                         StyleSheet* styleSheet):
+AnnotationNode(),
+_options        ( options ),
+_needsRebuild   ( true ),
+_styleSheet     ( styleSheet ),
+_clampDirty     ( false )
+{
+    _features.insert( _features.end(), features.begin(), features.end() );
+    setStyle( style );
+}
+
 FeatureNode::FeatureNode(MapNode* mapNode,
                          Feature* feature,
                          const Style& in_style,
@@ -74,7 +109,7 @@ _clampDirty        (false)
 }
 
 FeatureNode::FeatureNode(MapNode* mapNode,
-                         FeatureList& features,
+                         const FeatureList& features,
                          const Style& style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet):

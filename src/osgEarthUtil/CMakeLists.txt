@@ -63,6 +63,7 @@ SET(HEADERS_ROOT
     TMSPackager
     TopologyGraph
     UTMGraticule
+    UTMLabelingEngine
     VerticalScale
     ViewFitter
     WFS
@@ -148,6 +149,7 @@ SET(SOURCES_ROOT
     TMSPackager.cpp
     TopologyGraph.cpp
     UTMGraticule.cpp
+    UTMLabelingEngine.cpp
     VerticalScale.cpp
     ViewFitter.cpp
     WFS.cpp

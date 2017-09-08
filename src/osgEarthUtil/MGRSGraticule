@@ -35,6 +35,7 @@ namespace osgEarth { namespace Util
     {
     public:
         MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions()) : VisibleLayerOptions(conf) {
+            _maxResolution.init(1.0);
             fromConfig(_conf);
         }
 
@@ -46,18 +47,27 @@ namespace osgEarth { namespace Util
         optional<Style>& sqidStyle() { return _sqidStyle; }
         const optional<Style>& sqidStyle() const { return _sqidStyle; }
 
+        typedef std::map<double, Style> StyleMap;
+        optional<StyleMap>& styleMap() { return _styleMap; }
+        const optional<StyleMap>& styleMap() const { return _styleMap; }
+
+        optional<double>& maxResolution() { return _maxResolution; }
+        const optional<double>& maxResolution() const { return _maxResolution; }
+
     public:
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
             conf.key() = "mgrs_graticule";
             conf.addObjIfSet("gzd_style", _gzdStyle);
             conf.addObjIfSet("sqid_style", _sqidStyle);
+            conf.addIfSet("max_resolution", _maxResolution);
             return conf;
         }
 
         virtual void fromConfig(const Config& conf) {
             conf.getObjIfSet("gzd_style", _gzdStyle);
             conf.getObjIfSet("sqid_style", _sqidStyle);
+            conf.getIfSet("max_resolution", _maxResolution);
         }
 
     protected:
@@ -68,6 +78,8 @@ namespace osgEarth { namespace Util
 
         optional<Style> _gzdStyle;
         optional<Style> _sqidStyle;
+        optional<double> _maxResolution;
+        optional<StyleMap> _styleMap;
     };
 
 
@@ -118,7 +130,7 @@ namespace osgEarth { namespace Util
 
     private:
         
-        osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
+        //osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
 
         osg::Node* buildSQIDTiles( const std::string& gzd );
         
@@ -141,6 +153,11 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<const Map> _map;
 
         UTMData _utmData;
+
+        osg::Node* buildGZDGeomTile(const std::string& gzd, const Feature* feature, const Style& style, const Map* map);
+
+        osg::Node* buildGZDTextTile(const std::string& gzd, const Feature* feature, const Style& style);
+
     };
 
 } } // namespace osgEarth::Util

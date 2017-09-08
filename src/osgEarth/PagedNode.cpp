@@ -52,17 +52,16 @@ namespace
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return node->loadChildren();
+            return node->loadChild();
         }
     };
 
     REGISTER_OSGPLUGIN(osgearth_pseudo_pagednode, PagedNodePseudoLoader);
 }
 
-PagedNode::PagedNode():
-	_rangeFactor(6.0f),
-	_additive(false)
+PagedNode::PagedNode()
 {
+    _additive = false;
     _plod = new osg::PagedLOD;
     addChild(_plod);
 
@@ -71,41 +70,26 @@ PagedNode::PagedNode():
     _plod->addChild( _attachPoint );     
 }
 
-float PagedNode::getRangeFactor() const
+void PagedNode::setRangeMode(osg::LOD::RangeMode mode)
 {
-	return _rangeFactor;
+    _plod->setRangeMode(mode);
 }
 
-void PagedNode::setRangeFactor(float rangeFactor)
+void PagedNode::setNode(osg::Node* node)
 {
-	_rangeFactor = rangeFactor;
-}
-
-bool PagedNode::getAdditive() const
-{
-	return _additive;
-}
-
-void PagedNode::setAdditive(bool additive)
-{
-	_additive = additive;
-}
-
-void PagedNode::build()
-{
-    // This is your chance to add something to the attachpoint.
+    if (node)
+        _attachPoint->addChild(node);
 }
 
 void PagedNode::setupPaging()
 {
-    osg::BoundingSphere bs = getKeyBound();
+    osg::BoundingSphere bs = getChildBound();
 
     _plod->setCenter( bs.center() ); 
     _plod->setRadius( bs.radius() );
 
-    if ( hasChildren() )
+    if ( hasChild() )
     {    
-
         // Now setup a filename on the PagedLOD that will load all of the children of this node.
         _plod->setFileName(1, ".osgearth_pseudo_pagednode");
       
@@ -113,21 +97,53 @@ void PagedNode::setupPaging()
         osgDB::Options* options = new osgDB::Options();
         OptionsData<PagedNode>::set(options, "osgEarth.PagedNode", this);
         _plod->setDatabaseOptions( options );
-        
-		// Setup the min and max ranges.
-        float minRange = (float)(bs.radius() * _rangeFactor);        
+
+        // Setup the min and max ranges.
+        float minRange;
+        if ( _range.isSet() )
+        {
+            minRange = _range.get();
+        }
+        else
+        {
+            if (_plod->getRangeMode() == _plod->DISTANCE_FROM_EYE_POINT)
+            {
+                const double rangeFactor = 6.0;
+                minRange = (float)(bs.radius() * rangeFactor);
+            }
+            else
+            {
+                minRange = 256;
+            }
+        }
 
         if (!_additive)
         {
             // Replace mode, the parent is replaced by its children.
-            _plod->setRange( 0, minRange, FLT_MAX );
-            _plod->setRange( 1, 0, minRange );
+            if (_plod->getRangeMode() == _plod->DISTANCE_FROM_EYE_POINT)
+            {
+                _plod->setRange( 0, minRange, FLT_MAX );
+                _plod->setRange( 1, 0, minRange );
+            }
+            else
+            {
+                _plod->setRange(0, 0, minRange);
+                _plod->setRange(1, minRange, FLT_MAX);
+            }
         }
         else
         {
             // Additive, the parent remains and new data is added
-            _plod->setRange( 0, 0, FLT_MAX );
-            _plod->setRange( 1, 0, minRange );
+            if (_plod->getRangeMode() == _plod->DISTANCE_FROM_EYE_POINT)
+            {
+                _plod->setRange( 0, 0, FLT_MAX );
+                _plod->setRange( 1, 0, minRange );
+            }
+            else
+            {
+                _plod->setRange(0, 0, FLT_MAX);
+                _plod->setRange(1, minRange, FLT_MAX);
+            }
         }
     }
     else
@@ -137,17 +153,13 @@ void PagedNode::setupPaging()
     }   
 }
 
-osg::BoundingSphere PagedNode::getKeyBound() const
+osg::BoundingSphere PagedNode::getChildBound() const
 {
     return osg::BoundingSphere();
 }
 
-bool PagedNode::hasChildren() const
+bool PagedNode::hasChild() const
 {
     return true;
 }
 
-osg::Node* PagedNode::loadChildren()
-{
-    return 0;
-}

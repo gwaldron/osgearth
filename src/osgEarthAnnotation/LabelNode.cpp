@@ -178,22 +178,25 @@ LabelNode::setStyle( const Style& style )
 
     const TextSymbol* symbol = _style.get<TextSymbol>();
 
-    if ( _text.empty() )
-        _text = symbol->content()->eval();
-
-    if ( symbol && symbol->onScreenRotation().isSet() )
+    if (symbol)
     {
-        _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->eval());
-    }
+        if ( _text.empty() )
+            _text = symbol->content()->eval();
 
-    // In case of a label must follow a course on map, we project a point from the position
-    // with the given bearing. Then during culling phase we compute both points on the screen
-    // and then we can deduce the screen rotation
-    // may be optimized...
-    else if ( symbol && symbol->geographicCourse().isSet() )
-    {
-        _followFixedCourse = true;
-        _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
+        if ( symbol->onScreenRotation().isSet() )
+        {
+            _labelRotationRad = osg::DegreesToRadians(symbol->onScreenRotation()->eval());
+        }
+
+        // In case of a label must follow a course on map, we project a point from the position
+        // with the given bearing. Then during culling phase we compute both points on the screen
+        // and then we can deduce the screen rotation
+        // may be optimized...
+        else if ( symbol->geographicCourse().isSet() )
+        {
+            _followFixedCourse = true;
+            _labelRotationRad = osg::DegreesToRadians ( symbol->geographicCourse()->eval() );
+        }
     }
 
     osg::Drawable* text = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );

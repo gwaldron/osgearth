@@ -60,14 +60,11 @@ namespace osgEarth
         static SpatialReference* create( osg::CoordinateSystemNode* csn );
 
         /**
-         * Creates an SRS around a pre-existing OGR spatial reference handle. The new
-         * SpatialReference object takes ownership of the handle.
-         *
-         * @param xferOwnership
-         *      If true, the SpatialReference object is responsible for releasing the handle
-         *      upon destruction.
+         * Creates an SRS by cloning a pre-existing OGR spatial reference handle.
+         * The new SRS owns the cloned handle, and the caller retains responsibility
+         * for managing the original handle.
          */
-        static SpatialReference* createFromHandle( void* ogrHandle, bool xferOwnership =false );
+        static SpatialReference* createFromHandle(void* ogrHandle);
 
 
     public: // Basic transformations.

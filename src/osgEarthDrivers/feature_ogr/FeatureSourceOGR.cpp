@@ -213,7 +213,7 @@ public:
                 if (!srHandle)
                     return Status::Error(Status::ResourceUnavailable, Stringify() << "No spatial reference found in \"" << _source << "\"");
 
-                osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
+                osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle(srHandle);
                 if (!srs.valid())
                     return Status::Error(Status::ResourceUnavailable, Stringify() << "Unrecognized SRS found in \"" << _source << "\"");
 

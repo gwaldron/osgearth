@@ -137,6 +137,9 @@ main( int argc, char** argv )
     // install a motion model
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
+    // disable the small-feature culling (so text will work)
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
     // Load an earth file 
     osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
     osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);

@@ -3,6 +3,11 @@
 #######################################################################################################
 MACRO(DETECT_OSG_VERSION)
 
+    # Fall back to OSG_DIR if OSG_INCLUDE_DIR is not defined
+    if(OSG_DIR AND NOT OSG_INCLUDE_DIR AND EXISTS "${OSG_DIR}/include/osg/Version")
+        set(OSG_INCLUDE_DIR "${OSG_DIR}/include")
+    endif()
+
     OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 	
     # Try to ascertain the version...

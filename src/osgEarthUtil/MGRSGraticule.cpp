@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/TessellateOperator>
 
 #include <osgEarthAnnotation/FeatureNode>
 
@@ -64,7 +65,6 @@ MGRSGraticuleOptions::MGRSGraticuleOptions(const ConfigOptions& conf) :
 VisibleLayerOptions(conf)
 {
     _maxResolution.init(1.0);
-    _gzdURI.init(URI("H:/data/nga/mgrs/MGRS_GZD_WorldWide.shp", conf.referrer()));
     _sqidURI.init(URI("H:/data/nga/mgrs/MGRS_100kmSQ_ID/WGS84/ALL_SQID.shp", conf.referrer()));
     fromConfig(_conf);
 }
@@ -750,23 +750,6 @@ MGRSGraticule::rebuild()
     }
     top->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
 
-    // Build the GZD tiles
-    osgEarth::Drivers::OGRFeatureOptions gzd_ogr;
-    gzd_ogr.url() = options().gzdData().get();
-    gzd_ogr.buildSpatialIndex() = true;
-
-    osg::ref_ptr<FeatureSource> gzd_fs = FeatureSourceFactory::create(gzd_ogr);
-    if (!gzd_fs.valid())
-    {
-        setStatus(Status::ResourceUnavailable, "Cannot access GZD dataset");
-        return;
-    }
-    if (gzd_fs->open().isError())
-    {
-        setStatus(Status::ResourceUnavailable, "Cannot open GZD feature source");
-        return;
-    }
-
     osgEarth::Drivers::OGRFeatureOptions sqid_ogr;
     sqid_ogr.url() = options().sqidData().get();
     sqid_ogr.buildSpatialIndex() = true;
@@ -796,7 +779,11 @@ MGRSGraticule::rebuild()
         osg::Group* textTop = new osg::Group();
         top->addChild(textTop);
 
-        osg::ref_ptr<FeatureCursor> gzd_cursor = gzd_fs->createFeatureCursor();
+        // build the GZD feature set
+        FeatureList gzdFeatures;
+        loadGZDFeatures(map->getSRS()->getGeographicSRS(), gzdFeatures);
+        osg::ref_ptr<FeatureListCursor> gzd_cursor = new FeatureListCursor(gzdFeatures);
+
         while (gzd_cursor.valid() && gzd_cursor->hasMore())
         {
             osg::ref_ptr<Feature> feature = gzd_cursor->nextFeature();
@@ -812,6 +799,10 @@ MGRSGraticule::rebuild()
                 text->setupData(feature.get(), table[gzd], &options());
                 text->setupPaging();
                 textTop->addChild(text);
+            }
+            else
+            {
+                OE_WARN << LC << "INTERNALL ERROR: GZD empty!" << std::endl;
             }
         }
 
@@ -866,6 +857,92 @@ MGRSGraticule::buildGZDTextTile(const std::string& name, const Feature* f, const
     return 0L;
     //group = ClusterCullingFactory::createAndInstall( group, centerECEF )->asGroup();
     //return group;
+}
+
+// Algorithmically builds the world GZD cells
+void
+MGRSGraticule::loadGZDFeatures(const SpatialReference* geosrs, FeatureList& output) const
+{
+    std::map<std::string, GeoExtent> _gzd;
+
+    // build the base Grid Zone Designator (GZD) loolup table. This is a table
+    // that maps the GZD string to its extent.
+    static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );
+
+    // build the lateral zones:
+    for( unsigned zone = 0; zone < 60; ++zone )
+    {
+        for( unsigned row = 0; row < s_gzdRows.size(); ++row )
+        {
+            double yMaxExtra = row == s_gzdRows.size()-1 ? 4.0 : 0.0; // extra 4 deg for row X
+
+            GeoExtent cellExtent(
+                geosrs,
+                -180.0 + double(zone)*6.0,
+                -80.0  + row*8.0,
+                -180.0 + double(zone+1)*6.0,
+                -80.0  + double(row+1)*8.0 + yMaxExtra );
+
+            _gzd[ Stringify() << (zone+1) << s_gzdRows[row] ] = cellExtent;
+        }        
+    }
+
+    // the polar zones (UPS):
+    _gzd["1Y"] = GeoExtent( geosrs, -180.0,  84.0,   0.0,  90.0 );
+    _gzd["1Z"] = GeoExtent( geosrs,    0.0,  84.0, 180.0,  90.0 );
+    _gzd["1A"] = GeoExtent( geosrs, -180.0, -90.0,   0.0, -80.0 );
+    _gzd["1B"] = GeoExtent( geosrs,    0.0, -90.0, 180.0, -80.0 );
+
+    // replace the "exception" zones in Norway and Svalbard
+    _gzd["31V"] = GeoExtent( geosrs, 0.0, 56.0, 3.0, 64.0 );
+    _gzd["32V"] = GeoExtent( geosrs, 3.0, 56.0, 12.0, 64.0 );
+    _gzd["31X"] = GeoExtent( geosrs, 0.0, 72.0, 9.0, 84.0 );
+    _gzd["33X"] = GeoExtent( geosrs, 9.0, 72.0, 21.0, 84.0 );
+    _gzd["35X"] = GeoExtent( geosrs, 21.0, 72.0, 33.0, 84.0 );
+    _gzd["37X"] = GeoExtent( geosrs, 33.0, 72.0, 42.0, 84.0 );
+
+    // ..and remove the non-existant zones:
+    _gzd.erase( "32X" );
+    _gzd.erase( "34X" );
+    _gzd.erase( "36X" );
+
+    // Now go through the table and create features for these things
+    for (std::map<std::string, GeoExtent>::const_iterator i = _gzd.begin(); i != _gzd.end(); ++i)
+    {
+        const std::string& gzd = i->first;
+        const GeoExtent& extent = i->second;
+
+        Vec3dVector points;
+
+        TessellateOperator::tessellateGeo(
+            osg::Vec3d(extent.west(), extent.south(), 0),
+            osg::Vec3d(extent.east(), extent.south(), 0), 
+            20, GEOINTERP_RHUMB_LINE, points);
+        points.resize(points.size()-1);
+
+        TessellateOperator::tessellateGeo(
+            osg::Vec3d(extent.east(), extent.south(), 0),
+            osg::Vec3d(extent.east(), extent.north(), 0), 
+            20, GEOINTERP_GREAT_CIRCLE, points);
+        points.resize(points.size()-1);
+
+        TessellateOperator::tessellateGeo(
+            osg::Vec3d(extent.east(), extent.north(), 0),
+            osg::Vec3d(extent.west(), extent.north(), 0), 
+            20, GEOINTERP_RHUMB_LINE, points);
+        points.resize(points.size()-1);
+
+        TessellateOperator::tessellateGeo(
+            osg::Vec3d(extent.west(), extent.north(), 0),
+            osg::Vec3d(extent.west(), extent.south(), 0), 
+            20, GEOINTERP_GREAT_CIRCLE, points);
+
+        osg::ref_ptr<LineString> line = new LineString(&points);
+        Feature* feature = new Feature(line.get(), geosrs);
+        std::string gzd_padded = gzd.length() < 3 ? ("0" + gzd) : gzd;
+        feature->set("gzd", gzd_padded);
+        output.push_back(feature);
+    }
 }
 
 osg::Node*

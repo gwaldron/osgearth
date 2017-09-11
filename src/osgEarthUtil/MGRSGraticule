@@ -36,10 +36,6 @@ namespace osgEarth { namespace Util
     public:
         MGRSGraticuleOptions(const ConfigOptions& conf =ConfigOptions());
 
-        //! Location of the GZD feature data
-        optional<URI>& gzdData() { return _gzdURI; }
-        const optional<URI>& gzdData() const { return _gzdURI; }
-
         //! Location of the SQID feature data
         optional<URI>& sqidData() { return _sqidURI; }
         const optional<URI>& sqidData() const { return _sqidURI; }
@@ -63,7 +59,6 @@ namespace osgEarth { namespace Util
         virtual Config getConfig() const {
             Config conf = VisibleLayerOptions::getConfig();
             conf.key() = "mgrs_graticule";
-            conf.set("gzd_data", _gzdURI);
             conf.set("sqid_data", _sqidURI);
             conf.setObj("gzd_style", _gzdStyle);
             conf.setObj("sqid_style", _sqidStyle);
@@ -72,7 +67,6 @@ namespace osgEarth { namespace Util
         }
 
         virtual void fromConfig(const Config& conf) {
-            conf.getIfSet("gzd_data", _gzdURI);
             conf.getIfSet("sqid_data", _sqidURI);
             conf.getObjIfSet("gzd_style", _gzdStyle);
             conf.getObjIfSet("sqid_style", _sqidStyle);
@@ -85,7 +79,6 @@ namespace osgEarth { namespace Util
             fromConfig(conf);
         }
 
-        optional<URI> _gzdURI;
         optional<URI> _sqidURI;
         optional<Style> _gzdStyle;
         optional<Style> _sqidStyle;
@@ -168,6 +161,8 @@ namespace osgEarth { namespace Util
         osg::Node* buildGZDGeomTile(const std::string& gzd, const Feature* feature, const Style& style, const Map* map);
 
         osg::Node* buildGZDTextTile(const std::string& gzd, const Feature* feature, const Style& style);
+
+        void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
 
     };
 

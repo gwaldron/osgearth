@@ -209,6 +209,11 @@ namespace osgEarth { namespace Symbology
         virtual void rewind( Orientation ori );
 
         /**
+         * Makes the last point the same as the first point. Suitable for rings and polygons.
+         */
+        virtual void close();
+
+        /**
          * Removes consecutive duplicates in the geometry to prepare for tesselation.
          */
         virtual void removeDuplicates();
@@ -257,6 +262,8 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~PointSet();
 
+        virtual void close();
+
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
     };
@@ -275,6 +282,8 @@ namespace osgEarth { namespace Symbology
         virtual ~LineString();
 
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
+
+        virtual void close();
 
     public:
         virtual Type getType() const { return Geometry::TYPE_LINESTRING; }
@@ -397,6 +406,7 @@ namespace osgEarth { namespace Symbology
         virtual Bounds getBounds() const;
         virtual void rewind( Orientation ori );
         virtual void removeColinearPoints();
+        virtual void close();
 
     public:
         GeometryCollection& getComponents() { return _parts; }

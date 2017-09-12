@@ -643,6 +643,14 @@ Geometry::getLength() const
     return length;
 }
 
+// ensures that the first and last points are idential.
+void 
+Geometry::close()
+{
+    if ( size() > 0 && front() != back() )
+        push_back( front() );
+}
+
 //----------------------------------------------------------------------------
 
 PointSet::PointSet( const PointSet& rhs ) :
@@ -653,6 +661,12 @@ Geometry( rhs )
 
 PointSet::~PointSet()
 {
+}
+
+void
+PointSet::close()
+{
+    //NOP. Don't close point sets..
 }
 
 //----------------------------------------------------------------------------
@@ -690,6 +704,12 @@ LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
         }
     }
     return false;
+}
+
+void
+LineString::close()
+{
+    //NOP - dont' close line strings.
 }
 
 //----------------------------------------------------------------------------
@@ -742,12 +762,10 @@ Ring::open()
         erase( end()-1 );
 }
 
-// ensures that the first and last points are idential.
-void 
+void
 Ring::close()
 {
-    if ( size() > 0 && front() != back() )
-        push_back( front() );
+    Geometry::close();
 }
 
 // whether the ring is open.
@@ -972,6 +990,15 @@ MultiGeometry::isValid() const
             valid = false;
     }
     return valid;
+}
+
+void
+MultiGeometry::close()
+{
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    {
+        i->get()->close();
+    }
 }
 
 // opens and rewinds the polygon to the specified orientation.

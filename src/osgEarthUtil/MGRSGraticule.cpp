@@ -33,6 +33,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/PagedNode>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Endian>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -48,12 +49,6 @@
 
 #include <fstream>
 #include <sstream>
-
-#ifdef WIN32
-#include <WinSock2.h>
-#else
-#include <netinet/in.h>
-#endif
 
 #define LC "[MGRSGraticule] "
 
@@ -123,7 +118,7 @@ namespace
             // We will need a local XY SRS for geometry simplification:
             const SpatialReference* xysrs = SpatialReference::get("spherical-mercator");
 
-            u_long count = ::htonl(sqids.size());
+            u_long count = OE_ENCODE_LONG(sqids.size());
             out.write(reinterpret_cast<const char*>(&count), sizeof(u_long));
 
             for (FeatureList::iterator i = sqids.begin(); i != sqids.end(); ++i)
@@ -156,15 +151,15 @@ namespace
 
                 Geometry* g = f->getGeometry();
 
-                u_short numPoints = (u_short)g->size();
+                u_short numPoints = OE_ENCODE_SHORT((u_short)g->size());
                 out.write(reinterpret_cast<const char*>(&numPoints), sizeof(u_short));
                                    
                 for (Geometry::const_iterator p = g->begin(); p != g->end(); ++p)
                 {
-                    uint64_t x = ::htond(p->x());
+                    uint64_t x = OE_ENCODE_DOUBLE(p->x());
                     out.write(reinterpret_cast<const char*>(&x), sizeof(uint64_t));
 
-                    uint64_t y = ::htond(p->y());
+                    uint64_t y = OE_ENCODE_DOUBLE(p->y());
                     out.write(reinterpret_cast<const char*>(&y), sizeof(uint64_t));
                 }
             }
@@ -187,7 +182,7 @@ namespace
 
         u_long count;
         fin.read(reinterpret_cast<char*>(&count), sizeof(u_long));
-        count = ::ntohl(count);
+        count = OE_DECODE_LONG(count);
 
         const SpatialReference* wgs84 = SpatialReference::get("wgs84");
 
@@ -205,6 +200,13 @@ namespace
 
             u_short numPoints;
             fin.read(reinterpret_cast<char*>(&numPoints), sizeof(u_short));
+            numPoints = OE_DECODE_SHORT(numPoints);
+
+            if (numPoints > 16384)
+            {
+                OE_WARN << LC << "sqid bin file is corrupt.. abort!" << std::endl;
+                exit(-1);
+            }
 
             osgEarth::Symbology::Ring* line = new osgEarth::Symbology::Ring();
             for (u_short n = 0; n < numPoints; ++n)
@@ -215,7 +217,7 @@ namespace
                 uint64_t y;
                 fin.read(reinterpret_cast<char*>(&y), sizeof(uint64_t));
 
-                line->push_back(osg::Vec3d(::ntohd(x), ::ntohd(y), 0));
+                line->push_back(osg::Vec3d(OE_DECODE_DOUBLE(x), OE_DECODE_DOUBLE(y), 0));
             }
 
             if (line->getTotalPointCount() > 0)

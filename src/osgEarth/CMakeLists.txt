@@ -84,6 +84,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLOD
     ElevationPool
     ElevationQuery
+    Endian
     Export
     Extension
     FadeEffect

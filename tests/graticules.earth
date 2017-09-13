@@ -13,19 +13,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
     </gars_graticule>  
     
     <mgrs_graticule name="MGRS" visible="true">
-        <gzd_style doc="Grid Zone Designator style (defaults shown)">
-            stroke: #808080ff;
-            stroke-width: 1.0;
-            stroke-tessellation: 20;
-            text-fill: #ffffffcc;
-            text-halo: #0000002c;
-        </gzd_style>
-        <sqid_style doc="100km Square Identifier style (defaults shown)"> 
-            stroke: #ffffff4c;
-            stroke-stipple: 0x1111;
-            text-fill: #ffffff;
-            text-halo: #000000bc;
-        </sqid_style>
+        <sqid_data>../data/mgrs_sqid.bin</sqid_data>
     </mgrs_graticule>
     
     <utm_graticule name="UTM" visible="false">

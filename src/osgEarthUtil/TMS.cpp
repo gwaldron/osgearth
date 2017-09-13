@@ -461,11 +461,34 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::Options* op
     ReadResult r = URI(location).readString(options);
     if ( r.failed() )
     {
-        OE_DEBUG << LC << "Failed to read TMS tile map file from " << location
+	OE_DEBUG << LC << "Failed to read TMS tile map file from " << location
             << " ... " << r.errorDetail() << std::endl;
+#if 1  // Read capabilities from cached file
+	OE_WARN << LC << "Failed to read TMS tile map file from " << location
+	    << " ... " << r.errorDetail() << std::endl;
+	std::stringstream cache_filepath;
+	cache_filepath << "/tmp/tms_" << hashToString(location);
+	r = URI(cache_filepath.str()).readString(options);
+	if ( r.failed() )
+	{
+	    OE_WARN << LC << "Failed to read TMS tile map file from cache" << cache_filepath.str()
+		<< " ... " << r.errorDetail() << std::endl;
+	return 0L;
+	}
+#else
         return 0L;
+#endif
     }
-    
+#if 1  // Cache capabilities to file
+    else
+    {
+	std::stringstream cache_filepath;
+	cache_filepath << "/tmp/tms_" << hashToString(location);
+	std::ofstream out(cache_filepath.str().c_str());
+	out << r.getString();
+    }
+#endif
+
     // Read tile map into a Config:
     Config conf;
     std::stringstream buf( r.getString() );

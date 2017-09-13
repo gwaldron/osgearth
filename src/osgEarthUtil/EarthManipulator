@@ -747,6 +747,11 @@ namespace osgEarth { namespace Util
          */
         void setInitialVFOV(double vfov);
 
+        /**
+         * The last detected VFOV of a perspective camera (or the initial FOV if started in ortho)
+         */
+        double getLastKnownVFOV() const { return _lastKnownVFOV; }
+
     public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }

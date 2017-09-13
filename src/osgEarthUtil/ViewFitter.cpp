@@ -38,7 +38,8 @@ namespace
 
 ViewFitter::ViewFitter(const SpatialReference* mapSRS, const osg::Camera* camera) :
 _mapSRS(mapSRS),
-_camera(camera)
+_camera(camera),
+_vfov(30.0f)
 {
     //nop
 }
@@ -52,13 +53,15 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     osg::Matrix projMatrix = _camera->getProjectionMatrix();
     osg::Matrix viewMatrix = _camera->getViewMatrix();
 
-    // Orthographic matrix is not yet supported.
-    bool isOrtho = osg::equivalent(projMatrix(3,3), 1.0);
-    if (isOrtho)
-    {
-        OE_WARN << LC << "Orthographic camera is not supported" << std::endl;
-        return false;
-    }
+    bool isPerspective = !osg::equivalent(projMatrix(3,3), 1.0);
+
+    //// Orthographic matrix is not yet supported.
+    //bool isOrtho = osg::equivalent(projMatrix(3,3), 1.0);
+    //if (isOrtho)
+    //{
+    //    OE_WARN << LC << "Orthographic camera is not supported" << std::endl;
+    //    return false;
+    //}
 
     // Convert the point set to world space:
     std::vector<osg::Vec3d> world(points.size());
@@ -68,28 +71,58 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
         GeoPoint p = points[i].transform(_mapSRS.get());
         p.toWorld(world[i]);
     }
-
-    // Rewrite the projection matrix so the far plane is at the ellipsoid. 
-    // We do this so we can project our control points onto a common plane.
-    double fovy_deg, ar, znear, zfar;
-    projMatrix.getPerspective(fovy_deg, ar, znear, zfar);
-    znear = 1.0;
+    
     double eyeDist;
+    double fovy_deg, ar;
+    double zfar;
 
-    if (_mapSRS->isGeographic())
+    if (isPerspective)
     {
-        zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
-                            _mapSRS->getEllipsoid()->getRadiusPolar());
-        eyeDist = zfar * 2.0;
+        // For a perspective matrix, rewrite the projection matrix so 
+        // the far plane is the radius of the ellipsoid. We do this so
+        // we can project our control points onto a common plane.
+        double znear;
+        projMatrix.getPerspective(fovy_deg, ar, znear, zfar);
+        znear = 1.0;
+
+        if (_mapSRS->isGeographic())
+        {
+            zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
+                                _mapSRS->getEllipsoid()->getRadiusPolar());
+            eyeDist = zfar * 2.0;
+        }
+        else
+        {
+            osg::Vec3d eye, center, up2;
+            viewMatrix.getLookAt(eye, center, up2);
+            eyeDist = eye.length();
+            zfar = eyeDist;
+        }
+
+        projMatrix.makePerspective(fovy_deg, ar, znear, zfar);
     }
-    else
+
+    else // isOrtho
     {
-        osg::Vec3d eye, center, up2;
-        viewMatrix.getLookAt(eye, center, up2);
-        eyeDist = eye.length();
-        zfar = eyeDist;
+        fovy_deg = _vfov;
+        double L, R, B, T, N, F;
+        projMatrix.getOrtho(L, R, B, T, N, F);
+        ar = (R - L) / (T - B);
+
+        if (_mapSRS->isGeographic())
+        {
+            zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
+                                _mapSRS->getEllipsoid()->getRadiusPolar());
+            eyeDist = zfar * 2.0;
+        }
+        else
+        {
+            osg::Vec3d eye, center, up2;
+            viewMatrix.getLookAt(eye, center, up2);
+            eyeDist = eye.length();
+            zfar = eyeDist;
+        }
     }
-    projMatrix.makePerspective(fovy_deg, ar, znear, zfar);
 
     // Calculate the "centroid" of our point set:
     osg::Vec3d lookFrom;
@@ -124,8 +157,15 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     std::vector<osg::Vec3d> view(world.size());
     for (int i = 0; i < world.size(); ++i)
     {
+        // Transform into view space (camera-relative):
         view[i] = world[i] * viewMatrix;
-        projectToFarPlane(view[i], projMatrix, projMatrixInv);
+
+        // For a perspective projection, we have to project each point
+        // on to the far clipping plane. No need to do this in orthographic
+        // since the X and Y would not change.
+        if (isPerspective)
+            projectToFarPlane(view[i], projMatrix, projMatrixInv);
+
         Mx = osg::maximum(Mx, osg::absolute(view[i].x()));
         My = osg::maximum(My, osg::absolute(view[i].y()));
     }

@@ -44,9 +44,13 @@ namespace osgEarth { namespace Util
         //! the camera is orthographic.
         bool createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& out) const;
 
+        //! Sets the reference VFOV when using an orthographic camera.
+        void setReferenceVFOV(float vfov_degrees);
+
     protected:
         osg::ref_ptr<const osg::Camera> _camera;
         osg::ref_ptr<const SpatialReference> _mapSRS;
+        float _vfov;
     };
 
 } } // namespace osgEarth::Util

@@ -536,15 +536,6 @@ namespace
             _points.push_back(GeoPoint(srs, -100, 45, 0));
         }
 
-        // Projects a point in view space onto the far clip plane of a projection matrix
-        void projectToFarPlane(osg::Vec3d& Pview, const osg::Matrix& projMatrix, const osg::Matrix& projMatrixInv)
-        {
-            osg::Vec4d Pclip = osg::Vec4d(Pview.x(), Pview.y(), Pview.z(), 1.0)* projMatrix;
-            Pclip.z() = Pclip.w();
-            osg::Vec4d Ptemp = Pclip * projMatrixInv;
-            Pview.set(Ptemp.x() / Ptemp.w(), Ptemp.y() / Ptemp.w(), Ptemp.z() / Ptemp.w());
-        }
-
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)

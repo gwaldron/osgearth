@@ -112,7 +112,7 @@ namespace
                 sqid_cursor->fill(sqids);
 
             // Open the output stream:
-            std::ofstream out(uri.full(), std::ostream::out | std::ostream::binary);
+            std::ofstream out(uri.full().c_str(), std::ostream::out | std::ostream::binary);
             out.imbue(std::locale::classic());
 
             // We will need a local XY SRS for geometry simplification:
@@ -174,7 +174,7 @@ namespace
     {
         output.clear();
 
-        std::ifstream fin(uri.full(), std::ostream::in | std::ostream::binary);
+        std::ifstream fin(uri.full().c_str(), std::ostream::in | std::ostream::binary);
         fin.imbue(std::locale::classic());
 
         if (fin.eof() || fin.is_open() == false)

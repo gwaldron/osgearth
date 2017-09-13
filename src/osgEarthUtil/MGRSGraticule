@@ -19,13 +19,17 @@
 #ifndef OSGEARTHUTIL_MGRS_GRATICLE
 #define OSGEARTHUTIL_MGRS_GRATICLE
 
-#include <osgEarthUtil/UTMGraticule>
+#include <osgEarthUtil/Common>
 #include <osgEarth/VisibleLayer>
+#include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Feature>
+#include <osg/ClipPlane>
 
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
 
     /**
@@ -134,17 +138,9 @@ namespace osgEarth { namespace Util
 
     private:
         
-        //osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
-
-        osg::Node* buildSQIDTiles( const std::string& gzd );
-        
-        friend class MGRSGraticulePseudoLoader;
-
         void setUpDefaultStyles();
 
         void rebuild();
-
-        UID _uid;
 
         osg::ref_ptr<const Profile> _profile;
 
@@ -155,12 +151,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Group> _root;
 
         osg::observer_ptr<const Map> _map;
-
-        UTMData _utmData;
-
-        osg::Node* buildGZDGeomTile(const std::string& gzd, const Feature* feature, const Style& style, const Map* map);
-
-        osg::Node* buildGZDTextTile(const std::string& gzd, const Feature* feature, const Style& style);
 
         void loadGZDFeatures(const SpatialReference* srs, FeatureList& output) const;
 

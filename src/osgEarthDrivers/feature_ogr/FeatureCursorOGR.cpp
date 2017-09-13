@@ -170,7 +170,7 @@ _filters          ( filters )
         }
 
 
-        OE_DEBUG << LC << "SQL: " << expr << std::endl;
+        OE_INFO << LC << "SQL: " << expr << std::endl;
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 
         if ( _resultSetHandle )
@@ -243,11 +243,16 @@ FeatureCursorOGR::readChunk()
             {
                 osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get() );
 
-                if (feature.valid() &&
-                    !_source->isBlacklisted( feature->getFID() ) &&
-                    validateGeometry( feature->getGeometry() ))
+                if (feature.valid() && !_source->isBlacklisted(feature->getFID()))
                 {
-                    filterList.push_back( feature.release() );
+                    if (validateGeometry( feature->getGeometry() ))
+                    {
+                        filterList.push_back( feature.release() );
+                    }
+                    else
+                    {
+                        OE_DEBUG << LC << "Invalid geometry found at feature " << feature->getFID() << std::endl;
+                    }
                 }
                 OGR_F_Destroy( handle );
             }

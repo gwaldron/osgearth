@@ -250,7 +250,6 @@ namespace osgEarth
          */
         const ColorFilterChain& getColorFilters() const;
 
-
     public: // runtime properties
 
         /**

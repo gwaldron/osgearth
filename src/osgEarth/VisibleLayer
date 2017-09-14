@@ -95,8 +95,9 @@ namespace osgEarth
 
         virtual void init();
 
-    private:
         void fireCallback(VisibleLayerCallback::MethodPtr);
+
+    private: 
         osg::ref_ptr<osg::Uniform> _opacityU;
     };
 

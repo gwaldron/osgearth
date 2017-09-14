@@ -200,6 +200,11 @@ namespace osgEarth
         /** Opens the layer and initializes the data source. */
         virtual const Status& open();
 
+    public: // VisibleLayer
+
+        //! Override the opacity setter
+        virtual void setOpacity(float value);
+
     public:
 
         /**

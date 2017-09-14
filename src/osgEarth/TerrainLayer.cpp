@@ -457,6 +457,15 @@ TerrainLayer::getCacheSettings() const
     return _cacheSettings.get();
 }
 
+void
+TerrainLayer::setOpacity(float value)
+{
+    // For terrain layers, we don't want to install the transparency program
+    // nor mess with the rendering bins. The terrain engine will handle
+    // opacity on its own
+    options().opacity() = value;
+    VisibleLayer::fireCallback(&VisibleLayerCallback::onOpacityChanged);
+}
 
 void
 TerrainLayer::setTargetProfileHint( const Profile* profile )

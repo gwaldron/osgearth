@@ -211,6 +211,8 @@ _geometryResolution(default_geometryResolution)
 void
 ImageOverlay::postCTOR()
 {
+    _updateScheduled = false;
+
     _root = new osg::Group;
 
     // place the geometry under a drapeable node so it will project onto the terrain    
@@ -753,11 +755,22 @@ ImageOverlay::setControlPoint(ControlPoint controlPoint, double lon_deg, double 
 
 void
 ImageOverlay::traverse(osg::NodeVisitor &nv)
-{     
-    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR && _dirty)
+{
+    if (_dirty && nv.getVisitorType() == nv.EVENT_VISITOR)
     {
-        init();        
+        _updateScheduled = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
     }
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {
+        if (_dirty)
+            init();
+
+        _updateScheduled = false;
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+    }
+
     AnnotationNode::traverse(nv);
 }
 

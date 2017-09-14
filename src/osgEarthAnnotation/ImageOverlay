@@ -183,6 +183,8 @@ namespace osgEarth { namespace Annotation
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
 
+        bool _updateScheduled;
+
         osg::ref_ptr< TerrainCallbackAdapter<ImageOverlay> > _clampCallback;
         
         void clamp(osg::Node* patch, const Terrain* terrain);

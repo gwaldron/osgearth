@@ -26,13 +26,13 @@
 
 using namespace osgEarth;
 
-TEST_CASE( "GeoExtent transformMBR preserves the crossesAntimerdian properly" ) {
+TEST_CASE( "GeoExtent transformMBR preserves the crossesAntimeridian properly" ) {
 
-    // Create an extent that crosses the antimerdian.
+    // Create an extent that crosses the antimeridian.
     GeoExtent ext(SpatialReference::create("wgs84"), 178, 30, 183.4, 34.5);
     REQUIRE(ext.crossesAntimeridian());
     
-    // Transform it and make sure it still crosses the antimerdian.
+    // Transform it and make sure it still crosses the antimeridian.
     GeoExtent transformed;
     ext.transform(SpatialReference::create("wgs84"), transformed);
     REQUIRE(transformed.crossesAntimeridian());
@@ -43,9 +43,9 @@ TEST_CASE( "GeoExtent contains work" ) {
     REQUIRE(ext.contains(5.0, 5.0));
 }
 
-TEST_CASE( "GeoExtent contains works when the extent cross the antimerdian" ) {
+TEST_CASE( "GeoExtent contains works when the extent cross the antimeridian" ) {
 
-    // Create an extent that crosses the antimerdian.
+    // Create an extent that crosses the antimeridian.
     GeoExtent ext(SpatialReference::create("wgs84"), -180.001, -90.0, 179.995, 90.0);
     REQUIRE(ext.contains(5.0, 0.0));
 }
@@ -92,7 +92,7 @@ TEST_CASE( "GeoExtent expandToInclude works") {
     }
 }
 
-TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimerdian") {
+TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimeridian") {
     
     GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
     REQUIRE(ext.crossesAntimeridian());
@@ -123,7 +123,3 @@ TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimerdi
         REQUIRE(ext.crossesAntimeridian());
     }
 }
-
-
-
-

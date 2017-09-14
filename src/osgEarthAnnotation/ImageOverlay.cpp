@@ -222,8 +222,6 @@ ImageOverlay::postCTOR()
     d->addChild( _root );
 
     init();
-
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 void

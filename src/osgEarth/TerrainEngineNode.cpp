@@ -131,7 +131,7 @@ _updateScheduled( false )
     ADJUST_EVENT_TRAV_COUNT(this, 1);
 
     // register for update traversals so we can process terrain callbacks
-    ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    //ADJUST_UPDATE_TRAV_COUNT(this, 1);
 }
 
 TerrainEngineNode::~TerrainEngineNode()

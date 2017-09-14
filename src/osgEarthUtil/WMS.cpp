@@ -146,7 +146,23 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
         {
             std::istringstream in( rr.getString() );
             caps = read( in );
+#if 1  // Cache capabilities to file
+	    std::stringstream cache_filepath;
+	    cache_filepath << "/tmp/wms_" << hashToString(location);
+	    std::ofstream out(cache_filepath.str().c_str());
+	    out << in.str();
+#endif
         }
+#if 1  // Read capabilities from cached file
+	else
+	{
+	    OE_WARN << "Failed to read WMS Capabilities. Attempting to read local cache"<<std::endl;
+	    std::stringstream cache_filepath;
+	    cache_filepath << "/tmp/wms_" << hashToString(location);
+	    std::ifstream in( cache_filepath.str().c_str() );
+	    caps = read( in );
+	}
+#endif
     }
     else
     {

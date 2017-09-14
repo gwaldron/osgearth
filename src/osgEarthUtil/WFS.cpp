@@ -80,9 +80,28 @@ WFSCapabilitiesReader::read( const URI& location, const osgDB::Options* dbOption
     if ( !buffer.empty() )
     {
         std::stringstream buf(buffer);
+
+#if 1  // Cache capabilities to file
+	std::stringstream cache_filepath;
+	cache_filepath << "/tmp/wfs_" << hashToString(location.full());
+	std::ofstream out(cache_filepath.str().c_str());
+	out << buf.str();
+#endif
+
         return read(buf);
     }
+#if 1  // Read capabilities from cached file
+    else
+    {
+	OE_WARN << "Failed to read WFS Capabilities. Attempting to read local cache"<<std::endl;
+	std::stringstream cache_filepath;
+	cache_filepath << "/tmp/wfs_" << hashToString(location.full());
+	std::ifstream in( cache_filepath.str().c_str() );
+	return read( in );
+    }
+#else
     else return 0L;
+#endif
 }
 
 WFSCapabilities*

@@ -1265,7 +1265,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         TimeStamp filetime = getCurlFileTime(_curl_handle);
 
         OE_NOTICE << LC
-            << "GET(" << response_code << ", " << response._mimeType << ") : \""
+            << "GET(" << response_code << ") " << response._mimeType << ": \""
             << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
             << std::setprecision(4) << response.getDuration() << "s" << std::endl;
 

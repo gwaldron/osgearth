@@ -47,6 +47,11 @@ namespace osgEarth
         * Dumps the stats to the console.
         */
         static void dump();
+
+		/**
+		* Clears the current stats
+		*/
+		static void clear();
     };
 
     class /*OSGEARTH_EXPORT*/ ScopedProfiler

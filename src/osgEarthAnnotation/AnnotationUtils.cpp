@@ -203,7 +203,10 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 #endif
 
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-    float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;
+    
+    float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
+    size *= Registry::instance()->getDevicePixelRatio();
+
     t->setCharacterSize( size );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
@@ -295,8 +298,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setUseVertexBufferObjects(true);
     geom->setStateSet(dstate);
 
-    float s = scale * image->s();
-    float t = scale * image->t();
+    float s = Registry::instance()->getDevicePixelRatio() * scale * image->s();
+    float t = Registry::instance()->getDevicePixelRatio() * scale * image->t();
 
     float x0 = (float)pixelOffset.x() - s/2.0;
     float y0 = (float)pixelOffset.y() - t/2.0;

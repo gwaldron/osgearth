@@ -277,6 +277,19 @@ namespace osgEarth
         //! Access to the general-purpose async operations queue
         osg::OperationQueue* getAsyncOperationQueue() const { return _opQueue.get(); }
 
+
+        /**
+         * Gets the device pixel ratio.
+         */
+        float getDevicePixelRatio() const;
+
+        /**
+        * Sets the device pixel ratio.  This value will be used to scale the size of objects specified in pixels.
+        * This value is useful when running in high dpi environments on high resolution displays.
+        */
+        void setDevicePixelRatio(float devicePixelRatio);
+
+
     protected:
         virtual ~Registry();
         Registry();
@@ -357,6 +370,8 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<osg::OperationThread> > ThreadPool;
         ThreadPool _opThreadPool;
         unsigned _threadPoolSize;
+
+        float _devicePixelRatio;
     };
 }
 

@@ -27,7 +27,6 @@
 
 #include <osgEarthAnnotation/FeatureNode>
 
-#include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
@@ -43,7 +42,7 @@
 #include <osg/ClipNode>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
-#include <osgDB/WriteFile>
+//#include <osgDB/WriteFile>
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
@@ -58,9 +57,9 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
 
-#define MGRS_GRATICULE_PSEUDOLOADER_EXTENSION "osgearthutil_mgrs_graticule"
-
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
+
+//#define DEBUG_MODE
 
 //---------------------------------------------------------------------------
 
@@ -69,7 +68,27 @@ VisibleLayerOptions(conf)
 {
     _maxResolution.init(1.0);
     _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
+    _styleSheet = new StyleSheet();
     fromConfig(_conf);
+}
+
+Config
+MGRSGraticuleOptions::getConfig() const
+{
+    Config conf = VisibleLayerOptions::getConfig();
+    conf.key() = "mgrs_graticule";
+    conf.set("sqid_data", _sqidURI);
+    conf.set("max_resolution", _maxResolution);
+    conf.setObj("styles", _styleSheet);
+    return conf;
+}
+
+void
+MGRSGraticuleOptions::fromConfig(const Config& conf)
+{
+    conf.getIfSet("sqid_data", _sqidURI);
+    conf.getIfSet("max_resolution", _maxResolution);
+    conf.getObjIfSet("styles", _styleSheet);
 }
 
 //---------------------------------------------------------------------------
@@ -231,11 +250,51 @@ namespace
             }
             else
             {
-                OE_WARN << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
+                OE_INFO << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
             }
         }
         return true;
     }
+
+    struct LocalStats : public osg::Object
+    {
+        META_Object(osgEarth, LocalStats);
+        LocalStats() : osg::Object(), _gzdNode(0), _gzdText(0), _sqidText(0), _geomCell(0), _geomGrid(0) { }
+        unsigned _gzdNode, _gzdText, _sqidText, _geomCell, _geomGrid;
+        LocalStats(const LocalStats& rhs, const osg::CopyOp&) { }
+    };
+
+    struct LocalRoot : public osg::Group
+    {
+#ifdef DEBUG_MODE
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+            {
+                osg::UserDataContainer* udc = nv.getOrCreateUserDataContainer();
+                LocalStats* stats = new LocalStats();
+                stats->setName("stats");
+                unsigned index = udc->addUserObject(stats);
+
+                osg::Group::traverse(nv);
+
+                Registry::instance()->startActivity("GZDGeom", Stringify() << stats->_gzdNode);
+                Registry::instance()->startActivity("GZDText", Stringify() << stats->_gzdText);
+                Registry::instance()->startActivity("SQIDText", Stringify() << stats->_sqidText);
+                Registry::instance()->startActivity("GeomCell", Stringify() << stats->_geomCell);
+                Registry::instance()->startActivity("GeomGrid", Stringify() << stats->_geomGrid);
+
+                udc->removeUserObject(index);
+            }
+            else
+            {
+                osg::Group::traverse(nv);
+            }
+        }
+#endif
+    };
+
+#define STATS(nv) (dynamic_cast<LocalStats*>(nv.getUserDataContainer()->getUserObject("stats")))
 }
 
 //---------------------------------------------------------------------------
@@ -273,7 +332,6 @@ MGRSGraticule::init()
         new osg::Depth(osg::Depth::ALWAYS, 0.f, 1.f, false),
         osg::StateAttribute::ON);
 
-    //ss->setMode( GL_DEPTH_TEST, 0 );
     ss->setMode( GL_LIGHTING, 0 );
     ss->setMode( GL_BLEND, 1 );
 
@@ -299,7 +357,7 @@ MGRSGraticule::getOrCreateNode()
 {
     if (_root.valid() == false)
     {
-        _root = new osg::Group();
+        _root = new LocalRoot();
 
         // install the range callback for clip plane activation
         _root->addCullCallback( new RangeUniformCullCallback() );
@@ -333,7 +391,6 @@ namespace
         }
     }
 
-
     struct GeomCell : public PagedNode
     {
         double _size;        
@@ -348,6 +405,8 @@ namespace
         bool hasChild() const;
         osg::BoundingSphere getChildBound() const;
         osg::Node* build();
+
+        void traverse(osg::NodeVisitor&);
     };
 
 
@@ -372,9 +431,8 @@ namespace
         {
             _feature = feature;
             _options = options;
-            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(_size*0.1);
-            if (i != options->styleMap()->end())
-                _style = i->second;
+            std::string styleName = Stringify() << (int)(_size*0.1);
+            _style = *options->styleSheet()->getStyle(styleName, true);
             setNode(build());
         }
 
@@ -474,6 +532,15 @@ namespace
             
             return node;
         }
+        
+#ifdef DEBUG_MODE
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+                STATS(nv)->_geomGrid++;
+            PagedNode::traverse(nv);
+        }
+#endif
     };
     
 
@@ -490,9 +557,8 @@ namespace
         _feature = feature;
         _options = options;
         _hasChild = _size > options->maxResolution().get();
-        const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(_size);
-        if (i != options->styleMap()->end())
-            _style = i->second;
+        std::string styleName = Stringify() << (int)(_size);
+        _style = *options->styleSheet()->getStyle(styleName, true);
         setNode( build() );
     }
 
@@ -511,7 +577,6 @@ namespace
 
     osg::BoundingSphere GeomCell::getChildBound() const
     {
-        //osg::ref_ptr<Geom1kmGrid> child = new Geom1kmGrid();
         osg::ref_ptr<GeomGrid> child = new GeomGrid(_size);
         child->setupData(_feature, _options);
         return child->getBound();
@@ -523,6 +588,15 @@ namespace
         gco.shaderPolicy() = SHADERPOLICY_INHERIT;
         FeatureNode* node = new FeatureNode(_feature.get(), _style, gco);
         return node;
+    }
+
+    void GeomCell::traverse(osg::NodeVisitor& nv)
+    {
+#ifdef DEBUG_MODE
+        if (nv.getVisitorType() == nv.CULL_VISITOR)
+            STATS(nv)->_geomCell++;
+#endif
+        PagedNode::traverse(nv);
     }
 
 
@@ -545,9 +619,8 @@ namespace
         {
             _feature = feature;
             _options = options;
-            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(100000.0);
-            if (i != options->styleMap()->end())
-                _style = i->second;
+            std::string styleName("100000");
+            _style = *options->styleSheet()->getStyle(styleName, true);
             setNode( build() );
         }
 
@@ -602,9 +675,13 @@ namespace
         {
             _sqidFeatures = sqidFeatures;
             _options = options;
-            const MGRSGraticuleOptions::StyleMap::const_iterator i = options->styleMap()->find(100000.0);
-            if (i != options->styleMap()->end())
-                _style = i->second;
+
+            std::string styleName("100000");
+            _style = *options->styleSheet()->getStyle(styleName, true);
+
+            // remove any text symbology; that gets built elsewhere.
+            _style.remove<TextSymbol>();
+           
             setNode(build());
         }
 
@@ -621,12 +698,6 @@ namespace
                 group->addChild(geom);
                 
                 GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
-
-                if (feature->getString("gzd") == "32N" && feature->getString("sqid") == "KF")
-                {
-                    OE_NOTICE << "SQID100kmCell " << extent.toString() << std::endl;
-                }
-
             }
 
             return group;
@@ -688,9 +759,11 @@ namespace
         {
             osg::Group* group = new osg::Group();
 
+            // Extract just the line and altitude symbols:
+            const Style& gzdStyle = *_options->styleSheet()->getStyle("gzd");
             Style lineStyle;
-            lineStyle.add( const_cast<LineSymbol*>(_options->gzdStyle()->get<LineSymbol>()) );
-            lineStyle.add( const_cast<AltitudeSymbol*>(_options->gzdStyle()->get<AltitudeSymbol>()) );
+            lineStyle.add( const_cast<LineSymbol*>(gzdStyle.get<LineSymbol>()) );
+            lineStyle.add( const_cast<AltitudeSymbol*>(gzdStyle.get<AltitudeSymbol>()) );
             
             GeoExtent extent(f->getSRS(), f->getGeometry()->getBounds());
 
@@ -747,6 +820,81 @@ namespace
     
             return ClusterCullingFactory::createAndInstall(group, centerECEF);
         }
+        
+#ifdef DEBUG_MODE
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+                STATS(nv)->_gzdNode++;
+            PagedNode::traverse(nv);
+        }
+#endif
+    };
+
+
+    struct SQIDTextGrid : public osg::Group
+    {
+        SQIDTextGrid(const std::string& name, FeatureList& features, const MGRSGraticuleOptions* options)
+        {
+            setName(name);
+
+            const Style& style = *options->styleSheet()->getStyle("100000", true);
+            if (style.has<TextSymbol>() == false)
+                return;
+
+            const TextSymbol* textSymPrototype = style.get<TextSymbol>();
+            osg::ref_ptr<TextSymbol> textSym = new TextSymbol(*style.get<TextSymbol>());
+
+            if (textSym->size().isSet() == false)
+                textSym->size() = 24.0f;
+
+            if (textSym->alignment().isSet() == false)
+                textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
+        
+            TextSymbolizer symbolizer( textSym.get() );
+            
+            GeoExtent fullExtent;
+
+            for (FeatureList::const_iterator f = features.begin(); f != features.end(); ++f)
+            {
+                const Feature* feature = f->get();
+                std::string sqid = feature->getString("sqid");
+                osgText::Text* drawable = symbolizer.create(sqid);
+                drawable->setCharacterSizeMode(drawable->SCREEN_COORDS);
+                drawable->getOrCreateStateSet()->setRenderBinToInherit();
+            
+                GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
+
+                const SpatialReference* ecef = feature->getSRS()->getECEF();
+
+                osg::Vec3d LL;
+                findPointClosestTo(feature, osg::Vec3d(extent.xMin(), extent.yMin(), 0), LL);
+                osg::Vec3d positionECEF;
+                extent.getSRS()->transform(LL, ecef, positionECEF );
+        
+                osg::Matrixd L2W;
+                ecef->createLocalToWorld( positionECEF, L2W );
+                osg::MatrixTransform* mt = new osg::MatrixTransform(L2W);
+                mt->addChild(drawable);
+
+                addChild(mt);
+
+                fullExtent.expandToInclude(extent);
+            }
+
+            OE_DEBUG << LC << "Created " << features.size() << " text elements for " << getName() << std::endl;
+            
+            Registry::shaderGenerator().run(this, Registry::stateSetCache());
+        }
+        
+#ifdef DEBUG_MODE
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+                STATS(nv)->_sqidText++;
+            osg::Group::traverse(nv);
+        }
+#endif
     };
 
 
@@ -767,12 +915,16 @@ namespace
 
         bool hasChild() const
         {
-            return _options->sqidStyle()->has<TextSymbol>();
+            return _options->styleSheet()->getStyle("100000", true)->has<TextSymbol>();
         }
 
         osg::Node* loadChild()
         {
-            return buildSQID();
+            //return buildSQID();
+            return new SQIDTextGrid(getName(), _sqidFeatures, _options);
+            //SQID100kmTextGrid* child = new SQID100kmTextGrid(getName(), getChildBound());
+            //child->setupData(_sqidFeatures, _options);
+            //return child->build();
         }
 
         osg::BoundingSphere getChildBound() const
@@ -789,10 +941,7 @@ namespace
 
         osg::Node* buildGZD(const Feature* f)
         {
-            const Style& style = _options->gzdStyle().get();
-
-            if (style.has<TextSymbol>() == false)
-                return 0L;
+            Style style = *_options->styleSheet()->getStyle("gzd", true);
 
             const TextSymbol* textSymPrototype = style.get<TextSymbol>();
 
@@ -813,64 +962,25 @@ namespace
             const SpatialReference* ecef = f->getSRS()->getECEF();
             osg::Vec3d positionECEF;
             extent.getSRS()->transform( osg::Vec3d(extent.xMin(),extent.yMin(),0), ecef, positionECEF );
-
-            Registry::shaderGenerator().run(drawable, Registry::stateSetCache());
         
             osg::Matrixd L2W;
             ecef->createLocalToWorld( positionECEF, L2W );
             osg::MatrixTransform* mt = new osg::MatrixTransform(L2W);
             mt->addChild(drawable); 
 
+            Registry::shaderGenerator().run(drawable, Registry::stateSetCache());
+
             return ClusterCullingFactory::createAndInstall(mt, positionECEF);
         }
 
-        osg::Node* buildSQID()
+#ifdef DEBUG_MODE
+        void traverse(osg::NodeVisitor& nv)
         {
-            const Style& style = _options->sqidStyle().get();
-            const TextSymbol* textSymPrototype = style.get<TextSymbol>();
-            osg::ref_ptr<TextSymbol> textSym = textSymPrototype ? new TextSymbol(*textSymPrototype) : new TextSymbol();
-
-            if (textSym->size().isSet() == false)
-                textSym->size() = 24.0f;
-            if (textSym->alignment().isSet() == false)
-                textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
-        
-            TextSymbolizer symbolizer( textSym );
-
-            osg::Group* group = new osg::Group();
-
-            GeoExtent fullExtent;
-
-            for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
-            {
-                const Feature* feature = f->get();
-                //std::string sqid = feature->getString("MGRS");
-                std::string sqid = feature->getString("sqid");
-                osgText::Text* drawable = symbolizer.create(sqid);
-                drawable->setCharacterSizeMode(drawable->SCREEN_COORDS);
-                drawable->getOrCreateStateSet()->setRenderBinToInherit();
-            
-                GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
-
-                const SpatialReference* ecef = feature->getSRS()->getECEF();
-                osg::Vec3d LL;
-                findPointClosestTo(feature, osg::Vec3d(extent.xMin(), extent.yMin(), 0), LL);
-                osg::Vec3d positionECEF;
-                extent.getSRS()->transform(LL, ecef, positionECEF );
-        
-                osg::Matrixd L2W;
-                ecef->createLocalToWorld( positionECEF, L2W );
-                osg::MatrixTransform* mt = new osg::MatrixTransform(L2W);
-                mt->addChild(drawable);
-
-                group->addChild(mt);
-
-                fullExtent.expandToInclude(extent);
-            }
-            
-            Registry::shaderGenerator().run(group, Registry::stateSetCache());
-            return group;
+            if (nv.getVisitorType() == nv.CULL_VISITOR)
+                STATS(nv)->_gzdText++;
+            PagedNode::traverse(nv);
         }
+#endif
     };
 }
 
@@ -943,10 +1053,6 @@ MGRSGraticule::rebuild()
             table[i->get()->getString("gzd")].push_back(i->get());
         }
 
-        GeometryCompilerOptions gcOpt;
-        gcOpt.shaderPolicy() = SHADERPOLICY_INHERIT;
-        gcOpt.optimizeStateSharing() = false;
-
         osg::Group* geomTop = new osg::Group();
         top->addChild(geomTop);
 
@@ -957,6 +1063,8 @@ MGRSGraticule::rebuild()
         FeatureList gzdFeatures;
         loadGZDFeatures(map->getSRS()->getGeographicSRS(), gzdFeatures);
         osg::ref_ptr<FeatureListCursor> gzd_cursor = new FeatureListCursor(gzdFeatures);
+
+        unsigned count = 0u;
 
         while (gzd_cursor.valid() && gzd_cursor->hasMore())
         {
@@ -973,6 +1081,8 @@ MGRSGraticule::rebuild()
                 text->setupData(feature.get(), table[gzd], &options());
                 text->setupPaging();
                 textTop->addChild(text);
+
+                ++count;
             }
             else
             {
@@ -982,6 +1092,10 @@ MGRSGraticule::rebuild()
 
         // Install the UTM grid labeler
         _root->addChild(new UTMLabelingEngine(_map->getSRS()));
+
+        osg::ref_ptr<StateSetCache> sscache = new StateSetCache();
+        sscache->optimize(geomTop);
+        sscache->optimize(textTop);
     }
     else
     {
@@ -1080,76 +1194,94 @@ MGRSGraticule::setUpDefaultStyles()
 {
     float alpha = 0.35f;
 
-    if (!options().gzdStyle().isSet())
+    StyleSheet* styles = options().styleSheet().get();
+    if (styles)
     {
-        LineSymbol* line = options().gzdStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color().set(1,0,0,0.25); // = Color::Gray;
-        line->stroke()->width() = 4.0;
-        line->tessellation() = 20;
-
-        TextSymbol* text = options().gzdStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color::Gray;
-        text->halo()->color() = Color::Black;
-        text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM; //CENTER_CENTER;
-    }
-
-    if (!options().sqidStyle().isSet())
-    {
-        LineSymbol* line = options().sqidStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::Gray;
-        line->stroke()->stipplePattern() = 0x1111;
-
-        TextSymbol* text = options().sqidStyle()->getOrCreate<TextSymbol>();
-        text->size() = 28.0f;
-        text->fill()->color() = Color(Color::White, 0.5f);
-        text->halo()->color() = Color(Color::Gray, 0.5f);
-        text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM; //CENTER_CENTER;
-    }
-
-    if (!options().styleMap().isSet())
-    {
-        MGRSGraticuleOptions::StyleMap& styles = options().styleMap().mutable_value();
-        // SQID 100km
+        // GZD
+        if (styles->getStyle("gzd", false) == 0L)
         {
-            Style& style = styles[100000];
+            Style style("gzd");
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            line->stroke()->color().set(1, 0, 0, 0.25);
+            line->stroke()->width() = 4.0;
+            line->tessellation() = 20;
+            TextSymbol* text = style.getOrCreate<TextSymbol>();
+            text->fill()->color() = Color::Gray;
+            text->halo()->color() = Color::Black;
+            text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
+            styles->addStyle(style);
+        }
+
+        // SQID 100km (support "sqid" as an alias for "100000")
+        const Style* sqid = styles->getStyle("sqid", false);
+        if (sqid)
+        {
+            Style alias(*sqid);
+            alias.setName("100000");
+            styles->addStyle(alias);
+        }
+
+        if (styles->getStyle("100000", false) == 0L)
+        {
+            Style style("100000");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(1,1,0,alpha);
             line->stroke()->width() = 3;
+            TextSymbol* text = style.getOrCreate<TextSymbol>();
+            text->fill()->color() = Color::Gray;
+            text->halo()->color() = Color::Black;
+            text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
+            styles->addStyle(style);
         }
+
         // 10km
+        if (styles->getStyle("10000", false) == 0L)
         {
-            Style& style = styles[10000];
+            Style style("10000");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(0,1,0,alpha);
             line->stroke()->width() = 2;
+            styles->addStyle(style);
         }
+
         // 1km
+        if (styles->getStyle("1000", false) == 0L)
         {
-            Style& style = styles[1000];
+            Style style("1000");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(.5,.5,1,alpha);
             line->stroke()->width() = 2;
+            styles->addStyle(style);
         }
+
         // 100m
+        if (styles->getStyle("100", false) == 0L)
         {
-            Style& style = styles[100];
+            Style style("100");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(1,1,1,alpha);
             line->stroke()->width() = 1;
+            styles->addStyle(style);
         }
+
         // 10m
+        if (styles->getStyle("10", false) == 0L)
         {
-            Style& style = styles[10];
+            Style style("10");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(1,1,1,alpha);
             line->stroke()->width() = 1;
+            styles->addStyle(style);
         }
+
         // 1m
+        if (styles->getStyle("1", false) == 0L)
         {
-            Style& style = styles[1];
+            Style style("1");
             LineSymbol* line = style.getOrCreate<LineSymbol>();
             line->stroke()->color().set(1,1,1,alpha);
             line->stroke()->width() = 0.5;
+            styles->addStyle(style);
         }
     }
 }

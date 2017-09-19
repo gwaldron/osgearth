@@ -14,6 +14,44 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
     
     <mgrs_graticule name="MGRS" visible="true">
         <sqid_data>../data/mgrs_sqid.bin</sqid_data>
+        <styles>
+            <style type="text/css">
+                gzd {
+                    stroke: #ff000059;
+                    stroke-width: 4px;
+                    stroke-tessellation: 20;
+                    text-fill: #7f7f7fff;
+                    text-align: left_bottom;
+                }
+                100000 {
+                    stroke: #ffff0059;
+                    stroke-width: 3px;
+                    text-size: 28;
+                    text-fill: #ffffff7f;
+                    text-align: left_bottom;
+                }
+                10000 {
+                    stroke: #00ff0059;
+                    stroke-width: 2px;
+                }
+                1000 {
+                    stroke: #7f7fff59;
+                    stroke-width: 2px;
+                }
+                100 {
+                    stroke: #ffffff59;
+                    stroke-width: 1px;
+                }
+                10 {
+                    stroke: #ffffff59;
+                    stroke-width: 1px;
+                }
+                1 {
+                    stroke: #ffffff59;
+                    stroke-width: 1px;
+                }                
+            </style>
+        </styles>
     </mgrs_graticule>
     
     <utm_graticule name="UTM" visible="false">

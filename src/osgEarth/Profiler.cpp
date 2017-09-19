@@ -73,3 +73,10 @@ void Profiler::dump()
         OE_NOTICE << itr->first << ": calls=" << S_CALL_COUNT[itr->first] << "  time=" << itr->second << "s" << std::endl;
     }
 }
+
+void Profiler::clear()
+{
+	S_ELAPSED_TIMES.clear();
+	S_CALL_COUNT.clear();
+	S_START_TIMES.clear();
+}

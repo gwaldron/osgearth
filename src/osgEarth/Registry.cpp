@@ -73,7 +73,8 @@ _defaultFont        ( 0L ),
 _terrainEngineDriver( "mp" ),
 _cacheDriver        ( "filesystem" ),
 _overrideCachePolicyInitialized( false ),
-_threadPoolSize(2u)
+_threadPoolSize(2u),
+_devicePixelRatio(1.0f)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -702,6 +703,18 @@ Registry::getOffLimitsTextureImageUnits() const
 {
     Threading::ScopedMutexLock exclusive(_regMutex);
     return _offLimitsTextureImageUnits;
+}
+
+float
+Registry::getDevicePixelRatio() const
+{
+    return _devicePixelRatio;
+}
+
+void
+Registry::setDevicePixelRatio(float devicePixelRatio)
+{
+    _devicePixelRatio = devicePixelRatio;
 }
 
 

@@ -10,7 +10,6 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarthSymbology/BillboardSymbol>
-#include <osgEarthSymbology/BillboardResource>
 
 #include <osg/Texture2DArray>
 

@@ -39,7 +39,8 @@ namespace
 ViewFitter::ViewFitter(const SpatialReference* mapSRS, const osg::Camera* camera) :
 _mapSRS(mapSRS),
 _camera(camera),
-_vfov(30.0f)
+_vfov(30.0f),
+_buffer_m(0.0)
 {
     //nop
 }
@@ -54,14 +55,6 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     osg::Matrix viewMatrix = _camera->getViewMatrix();
 
     bool isPerspective = !osg::equivalent(projMatrix(3,3), 1.0);
-
-    //// Orthographic matrix is not yet supported.
-    //bool isOrtho = osg::equivalent(projMatrix(3,3), 1.0);
-    //if (isOrtho)
-    //{
-    //    OE_WARN << LC << "Orthographic camera is not supported" << std::endl;
-    //    return false;
-    //}
 
     // Convert the point set to world space:
     std::vector<osg::Vec3d> world(points.size());
@@ -169,6 +162,10 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
         Mx = osg::maximum(Mx, osg::absolute(view[i].x()));
         My = osg::maximum(My, osg::absolute(view[i].y()));
     }
+
+    // Apply the edge buffer:
+    Mx += _buffer_m;
+    My += _buffer_m;
 
     // Calculate optimal new Z (distance from view plane)
     double half_fovy_rad = osg::DegreesToRadians(fovy_deg) * 0.5;

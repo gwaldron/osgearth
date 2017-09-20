@@ -541,6 +541,7 @@ namespace
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
                 ViewFitter fitter(_mapSRS, aa.asView()->getCamera());
+                fitter.setBuffer( 100000.0 );
                 Viewpoint vp;
                 if (fitter.createViewpoint(_points, vp))
                 {

@@ -44,6 +44,12 @@ namespace osgEarth { namespace Util
         //! the camera is orthographic.
         bool createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& out) const;
 
+        //! Sets a buffer (in meters) to apply to the view fit. Applying a buffer will
+        //! expand the view so that the points are at least "buffer" meters inside the
+        //! edge of the fitted view.
+        void setBuffer(double value_meters) { _buffer_m = value_meters; }
+        double getBuffer() const { return _buffer_m; }
+
         //! Sets the reference VFOV when using an orthographic camera.
         void setReferenceVFOV(float vfov_degrees);
 
@@ -51,6 +57,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osg::Camera> _camera;
         osg::ref_ptr<const SpatialReference> _mapSRS;
         float _vfov;
+        double _buffer_m;
     };
 
 } } // namespace osgEarth::Util

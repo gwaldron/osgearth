@@ -66,7 +66,6 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 MGRSGraticuleOptions::MGRSGraticuleOptions(const ConfigOptions& conf) :
 VisibleLayerOptions(conf)
 {
-    _maxResolution.init(1.0);
     _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     _styleSheet = new StyleSheet();
     fromConfig(_conf);
@@ -78,8 +77,8 @@ MGRSGraticuleOptions::getConfig() const
     Config conf = VisibleLayerOptions::getConfig();
     conf.key() = "mgrs_graticule";
     conf.set("sqid_data", _sqidURI);
-    conf.set("max_resolution", _maxResolution);
     conf.setObj("styles", _styleSheet);
+    conf.set("use_default_styles", _useDefaultStyles);
     return conf;
 }
 
@@ -87,8 +86,8 @@ void
 MGRSGraticuleOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet("sqid_data", _sqidURI);
-    conf.getIfSet("max_resolution", _maxResolution);
     conf.getObjIfSet("styles", _styleSheet);
+    conf.getIfSet("use_default_styles", _useDefaultStyles);
 }
 
 //---------------------------------------------------------------------------
@@ -556,7 +555,6 @@ namespace
     {
         _feature = feature;
         _options = options;
-        _hasChild = _size > options->maxResolution().get();
         std::string styleName = Stringify() << (int)(_size);
         _style = *options->styleSheet()->getStyle(styleName, true);
         setNode( build() );
@@ -572,7 +570,8 @@ namespace
 
     bool GeomCell::hasChild() const
     {
-        return _hasChild;
+        std::string sizeStr = Stringify() << (int)(_size/10);
+        return _options->styleSheet()->getStyle(sizeStr, false) != 0L;
     }
 
     osg::BoundingSphere GeomCell::getChildBound() const
@@ -634,7 +633,7 @@ namespace
 
         bool hasChild() const
         {
-            return true;
+            return _options->styleSheet()->getStyle("10000", false) != 0L;
         }
 
         osg::BoundingSphere getChildBound() const
@@ -729,6 +728,11 @@ namespace
             setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
             setRange(640);
             setAdditive(false);
+        }
+
+        bool hasChild() const
+        {
+            return _options->styleSheet()->getStyle("100000", false) != 0L;
         }
 
         osg::Node* loadChild()
@@ -915,16 +919,13 @@ namespace
 
         bool hasChild() const
         {
-            return _options->styleSheet()->getStyle("100000", true)->has<TextSymbol>();
+            const Style* s = _options->styleSheet()->getStyle("100000", false);
+            return s && s->has<TextSymbol>();
         }
 
         osg::Node* loadChild()
         {
-            //return buildSQID();
             return new SQIDTextGrid(getName(), _sqidFeatures, _options);
-            //SQID100kmTextGrid* child = new SQID100kmTextGrid(getName(), getChildBound());
-            //child->setupData(_sqidFeatures, _options);
-            //return child->build();
         }
 
         osg::BoundingSphere getChildBound() const
@@ -996,7 +997,10 @@ MGRSGraticule::rebuild()
 
     // Set up some reasonable default styling for a caller that did not
     // set styles in the options.
-    setUpDefaultStyles();
+    if (options().useDefaultStyles() == true)
+    {
+        setUpDefaultStyles();
+    }
     
     // clear everything out and start over
     _root->removeChildren( 0, _root->getNumChildren() );
@@ -1091,7 +1095,18 @@ MGRSGraticule::rebuild()
         }
 
         // Install the UTM grid labeler
-        _root->addChild(new UTMLabelingEngine(_map->getSRS()));
+        UTMLabelingEngine* labeler = new UTMLabelingEngine(_map->getSRS());
+        _root->addChild(labeler);
+
+        // Figure out the maximum labeling resolution
+        StyleSheet* ss = _options->styleSheet().get();
+        double maxRes = 100000.0;
+        if (ss->getStyle("10000", false)) maxRes = 10000.0;
+        if (ss->getStyle("1000", false)) maxRes = 1000.0;
+        if (ss->getStyle("100", false)) maxRes = 100.0;
+        if (ss->getStyle("10", false)) maxRes = 10.0;
+        if (ss->getStyle("1", false)) maxRes = 1.0;
+        labeler->setMaxResolution(maxRes);
 
         osg::ref_ptr<StateSetCache> sscache = new StateSetCache();
         sscache->optimize(geomTop);

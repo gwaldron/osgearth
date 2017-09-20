@@ -43,6 +43,9 @@ namespace osgEarth { namespace Util
         //! Construct a new labeling engine with the map's SRS
         UTMLabelingEngine(const SpatialReference* srs);
 
+        //! Sets the maximum resolution (meters) at which to render labels
+        void setMaxResolution(double value);
+
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
@@ -68,6 +71,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<const SpatialReference> _srs;
         Style _xLabelStyle, _yLabelStyle;
+        double _maxRes;
     };
 
 } } // namespace osgEarth::Util

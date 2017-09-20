@@ -206,7 +206,8 @@ namespace
 
 //........................................................................
 
-UTMLabelingEngine::UTMLabelingEngine(const SpatialReference* srs)
+UTMLabelingEngine::UTMLabelingEngine(const SpatialReference* srs) :
+_maxRes(1.0)
 {
     _srs = srs;
 
@@ -221,6 +222,13 @@ UTMLabelingEngine::UTMLabelingEngine(const SpatialReference* srs)
     yText->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
     yText->halo()->color().set(0, 0, 0, 1);
     yText->declutter() = false;
+}
+
+void
+UTMLabelingEngine::setMaxResolution(double value)
+{
+    _maxRes = std::max(value, 1.0);
+    OE_INFO << LC << "Max resolution = " << _maxRes << std::endl;
 }
 
 void
@@ -294,6 +302,16 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
             data.yLabels.push_back(label);
         }
     }
+
+    // Start out with all labels off. We will then turn back on the ones we use:
+    for (unsigned i = 0; i < MAX_LABELS; ++i)
+    {
+        data.xLabels[i]->setNodeMask(0);
+        data.yLabels[i]->setNodeMask(0);
+    }
+
+    if (_maxRes > 10000.0)
+        return false;
 
     // Intersect the corners of the view frustum with the ellipsoid.
     // This will yeild the approximate geo-extent of the view.
@@ -399,17 +417,10 @@ UTMLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data)
     // These numbers are from trial-and-error.
     double utmInterval;
     if (utmDiff > 150000) return false;
-    else if (utmDiff > 18500) utmInterval = 10000;
-    else if (utmDiff > 1750) utmInterval = 1000;
-    else if (utmDiff > 170) utmInterval = 100;
-    else utmInterval = 10;
-
-    // Start out with all labels off. We will then turn back on the ones we use:
-    for (unsigned i = 0; i < MAX_LABELS; ++i)
-    {
-        data.xLabels[i]->setNodeMask(0);
-        data.yLabels[i]->setNodeMask(0);
-    }
+    else if (utmDiff > 18500) utmInterval = std::max(10000.0, _maxRes);
+    else if (utmDiff > 1750) utmInterval = std::max(1000.0, _maxRes);
+    else if (utmDiff > 170) utmInterval = std::max(100.0, _maxRes);
+    else utmInterval = std::max(10.0, _maxRes);
 
     //OE_NOTICE << "utmDiff=" << utmDiff << ", utmInterval=" << utmInterval << std::endl;
     

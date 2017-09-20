@@ -54,15 +54,20 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
         </styles>
     </mgrs_graticule>
     
-    <utm_graticule name="UTM" visible="false">
-        <gzd_style>
-            stroke: #ffffff4c;
-            stroke-width: 2px;
-            text-color: #ffffff5f;
-            text-size: 1000;
-            text-align: center_center;
-        </gzd_style>
-    </utm_graticule>
+    <mgrs_graticule name="UTM" visible="false">
+        <use_default_styles>false</use_default_styles>
+        <styles>
+            <style type="text/css">
+                gzd {
+                    stroke: #ffffff59;
+                    stroke-width: 3px;
+                    stroke-tessellation: 20;
+                    text-fill: #7f7f7fff;
+                    text-align: left_bottom;
+                }        
+            </style>
+        </styles>
+    </mgrs_graticule>
     
     <geodetic_graticule name="Geodetic" visible="false">
         <color>#ffff007f</color>

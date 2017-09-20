@@ -58,11 +58,10 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<StyleSheet>& styleSheet() { return _styleSheet; }
         const osg::ref_ptr<StyleSheet>& styleSheet() const { return _styleSheet; }
 
-        //! Maximum grid resolution of the graticule.
-        //! This defaults to 1 but can be set to any grid size to limit the
-        //! subdivision of the grid.
-        optional<double>& maxResolution() { return _maxResolution; }
-        const optional<double>& maxResolution() const { return _maxResolution; }
+        //! Whether to apply default styles when you do not expressly
+        //! set them for all levels. Defaults to true.
+        optional<bool>& useDefaultStyles() { return _useDefaultStyles; }
+        const optional<bool>& useDefaultStyles() const { return _useDefaultStyles; }
 
     public:
         virtual Config getConfig() const;
@@ -76,8 +75,8 @@ namespace osgEarth { namespace Util
         }
 
         optional<URI> _sqidURI;
-        optional<double> _maxResolution;
         osg::ref_ptr<StyleSheet> _styleSheet;
+        optional<bool> _useDefaultStyles;
     };
 
 

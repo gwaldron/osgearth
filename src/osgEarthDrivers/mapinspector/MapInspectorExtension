@@ -34,8 +34,7 @@ namespace osgEarth { namespace MapInspector
      */
     class MapInspectorExtension : public Extension,
                                   public ExtensionInterface<MapNode>,
-                                  public ExtensionInterface<Control>,
-                                  public MapCallback //TODO: remove, bad double-inheritance
+                                  public ExtensionInterface<Control>
     {
     public:
         META_Object(osgearth_ext_MapInspector, MapInspectorExtension);
@@ -47,6 +46,7 @@ namespace osgEarth { namespace MapInspector
         // DTOR
         virtual ~MapInspectorExtension();
 
+        void updateUI();
 
     public: // ExtensionInterface<MapNode>
 
@@ -60,11 +60,7 @@ namespace osgEarth { namespace MapInspector
         bool connect(Control* control);
 
         bool disconnect(Control* control);
-
         
-    public: // MapCallback
-
-        void onMapModelChanged(const MapModelChange& change);
 
 
     protected: // Object
@@ -75,6 +71,7 @@ namespace osgEarth { namespace MapInspector
     private:
         osg::observer_ptr<MapNode> _mapNode;
         osg::ref_ptr<Control>      _ui;
+        osg::ref_ptr<MapCallback>  _mapCallback;
 
         void ctor();
     };

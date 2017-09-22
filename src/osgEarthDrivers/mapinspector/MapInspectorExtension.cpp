@@ -35,6 +35,20 @@ using namespace osgEarth::MapInspector;
 REGISTER_OSGEARTH_EXTENSION(osgearth_mapinspector, MapInspectorExtension)
 
 
+namespace
+{
+    struct MapCallbackProxy : public MapCallback
+    {
+        MapInspectorExtension* _extension;
+        MapCallbackProxy(MapInspectorExtension* extension) : _extension(extension) { }
+        void onMapModelChanged(const MapModelChange& change)
+        {
+            _extension->updateUI();
+        }
+    };
+}
+
+
 MapInspectorExtension::MapInspectorExtension()
 {
     ctor();
@@ -55,11 +69,12 @@ MapInspectorExtension::ctor()
 {
     OE_INFO << LC << "loaded\n";
     _ui = new MapInspectorUI();
+    _mapCallback = new MapCallbackProxy(this);
 }
 
 
 void 
-MapInspectorExtension::onMapModelChanged(const MapModelChange& change)
+MapInspectorExtension::updateUI()
 {
     osg::ref_ptr<MapNode> mapNode;
     _mapNode.lock(mapNode);
@@ -73,7 +88,7 @@ MapInspectorExtension::connect(MapNode* mapNode)
     if ( mapNode )
     {
         _mapNode = mapNode;
-        _mapNode->getMap()->addMapCallback(this);
+        _mapNode->getMap()->addMapCallback(_mapCallback.get());
         static_cast<MapInspectorUI*>(_ui.get())->reinit(mapNode);
     }
     
@@ -86,7 +101,7 @@ MapInspectorExtension::disconnect(MapNode* mapNode)
     OE_INFO << LC << "disconnected\n";
 
     if ( mapNode )
-        mapNode->getMap()->removeMapCallback(this);
+        mapNode->getMap()->removeMapCallback(_mapCallback.get());
 
     static_cast<MapInspectorUI*>(_ui.get())->reinit(0L);
     return true;

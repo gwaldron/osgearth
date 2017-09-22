@@ -348,24 +348,32 @@ namespace osgEarth
         /** dtor */
         virtual ~GeoExtent() { }
 
+        //! Set from the SW and NE corners.
+        void set(double west, double south, double east, double north);
+
         bool operator == ( const GeoExtent& rhs ) const;
         bool operator != ( const GeoExtent& rhs ) const;
 
         /** Gets the spatial reference system underlying this extent. */
         const SpatialReference* getSRS() const { return _srs.get(); }
 
+        //! Coordinates of the bounding edges, normalized for the lat/long frame if necessary
         double west() const { return _west; }
-        double east() const { return _east; }
+        double east() const { return normalizeX(_west+_width); }
         double south() const { return _south; }
-        double north() const { return _north; }
+        double north() const { return _south+_height; }
 
-        double xMin() const { return west(); }
-        double xMax() const { return east(); }
-        double yMin() const { return south(); }
-        double yMax() const { return north(); }
+        //! Coordinates of the bounds, NOT normalized to the lat/long frame.
+        double xMin() const { return _west; }
+        double xMax() const { return _west + _width; }
+        double yMin() const { return _south; }
+        double yMax() const { return _south + _height; }
 
-        double width() const;
-        double height() const;
+        //! East-to-west span of the extent
+        double width() const { return _width; }
+
+        //! North-to-south span of the extent
+        double height() const { return _height; }
 
         /**
          * Gets the centroid of the bounds
@@ -374,20 +382,14 @@ namespace osgEarth
         osg::Vec3d getCentroid() const { osg::Vec3d r; getCentroid(r.x(), r.y()); return r; }
         bool getCentroid( GeoPoint& output ) const;
 
-        /**
-         * Returns true is that extent is in a Geographic (lat/long) SRS that spans
-         * the antimedirian (180 degrees east/west).
-         */
+        //! True if the extent is geographic and crosses the 180 degree meridian.
         bool crossesAntimeridian() const;
 
-        /**
-         * Returns the raw bounds in a single function call
-         */
-        void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
+        //! Raw bounds of the extent (unnormalized)
+        void getBounds(double& xmin, double& ymin, double& xmax, double& ymax) const;
 
         /** True if this object defines a real, valid extent with positive area */
         bool isValid() const;
-        bool defined() const { return isValid(); }
         bool isInvalid() const { return !isValid(); }
 
         /**
@@ -500,12 +502,7 @@ namespace osgEarth
         /**
          * Normalize the longitude values in this GeoExtent
          */
-        void normalize();
-
-        /**
-         * Given a longitude value, normalize it so that it exists within the GeoExtents longitude frame.
-         */
-        double normalizeLongitude( double longitude ) const;
+        //void normalize();
 
         /**
          * Generate a polytope in world coordinates that bounds the extent.
@@ -532,10 +529,17 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const SpatialReference> _srs;
-        double _west, _east, _south, _north;
+        //double _west, _east, _south, _north;
+        double _west, _width, _south, _height;
         GeoCircle _circle;
 
         void recomputeCircle();
+
+        double normalizeX( double longitude ) const;
+
+        void clamp();
+
+        bool isGeographic() const { return isValid() && _srs->isGeographic(); }
     };
 
     /**

@@ -148,7 +148,7 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
     double maxLat = osg::clampBelow(center.y() + radiusDegrees, 90.0);
 
     osgEarth::GeoExtent extent(srs, minLon, minLat, maxLon, maxLat);
-    extent.normalize();
+//    extent.normalize();
 
     return extent;
 }

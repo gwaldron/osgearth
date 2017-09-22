@@ -654,71 +654,73 @@ GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
 GeoExtent::GeoExtent():
-_west   ( DBL_MAX ),
-_east   ( DBL_MAX ),
-_south  ( DBL_MAX ),
-_north  ( DBL_MAX )
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     //NOP - invalid
 }
 
 GeoExtent::GeoExtent(const SpatialReference* srs) :
-_srs    ( srs ),
-_west   ( DBL_MAX ),
-_east   ( DBL_MAX ),
-_south  ( DBL_MAX ),
-_north  ( DBL_MAX )
+_srs(srs),
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     //NOP - invalid
 }
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
                      double west, double south, double east, double north ) :
-_srs    ( srs ),
-_west   ( west ),
-_east   ( east ),
-_south  ( south ),
-_north  ( north )
+_srs( srs )
 {
-    if ( isValid() )
-    {
-        if (_srs->isGeographic() && (_east-_west < 360.0))
-        {
-            _west = s_normalizeLongitude(_west);
-            _east = s_normalizeLongitude(_east);
-        }
-        recomputeCircle();
-    }
+    set(west, south, east, north);
 }
 
 
-GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds ) :
-_srs    ( srs ),
-_west   ( bounds.xMin() ),
-_east   ( bounds.xMax() ),
-_south  ( bounds.yMin() ),
-_north  ( bounds.yMax() )
-{    
-    if ( isValid() )
-    {
-        if (_srs->isGeographic() && (_east-_west < 360.0))
-        {
-            _west = s_normalizeLongitude(_west);
-            _east = s_normalizeLongitude(_east);
-        }
-        recomputeCircle();
-    }
+GeoExtent::GeoExtent(const SpatialReference* srs, const Bounds& bounds) :
+_srs( srs )
+{
+    set(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax());
 }
 
-GeoExtent::GeoExtent( const GeoExtent& rhs ) :
-_srs   ( rhs._srs ),
-_east  ( rhs._east ),
-_west  ( rhs._west ),
-_south ( rhs._south ),
-_north ( rhs._north ),
-_circle( rhs._circle )
+GeoExtent::GeoExtent(const GeoExtent& rhs) :
+_srs(rhs._srs),
+_west(rhs._west),
+_width(rhs._width),
+_south(rhs._south),
+_height(rhs._height),
+_circle(rhs._circle)
 {
     //NOP
+}
+
+void
+GeoExtent::set(double west, double south, double east, double north)
+{
+    // In this method, east is always to the east of west!
+    // If it appears not to be, that means the extent crosses the antimeridian.
+
+    _west = normalizeX(west);
+    _south = south;
+    _width = 0.0;
+    _height = 0.0;
+
+    if (isGeographic())
+    {
+        // ensure east >= west in a geographic frame.
+        while (east < _west)
+            east += 360.0;
+    }
+    _width = std::max(0.0, east - _west);
+
+    _south = south;
+    _height = std::max(0.0, north-_south);
+
+    clamp();
+    recomputeCircle();
 }
 
 bool
@@ -754,71 +756,39 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 bool
 GeoExtent::isValid() const
 {
-    return 
-        _srs.valid()       && 
-        _east  != DBL_MAX  && _east  != -DBL_MAX &&
-        _west  != DBL_MAX  && _west  != -DBL_MAX &&
-        _north != DBL_MAX  && _north != -DBL_MAX &&
-        _south != DBL_MAX  && _south != -DBL_MAX &&
-        width() >= 0.0 &&
-        height() >= 0.0;
-}
-
-double
-GeoExtent::width() const
-{    
-    return crossesAntimeridian() ?
-        (180.0-_west) + (_east+180.0) :
-        _east - _west;
-}
-
-double
-GeoExtent::height() const
-{
-    return _north - _south;
+    return _srs.valid() && _width >= 0.0 && _height >= 0.0;
 }
 
 bool
-GeoExtent::getCentroid( double& out_x, double& out_y ) const
+GeoExtent::getCentroid(double& out_x, double& out_y) const
 {
-    if ( isInvalid() ) return false;
+    if (isInvalid()) return false;
 
+    out_x = normalizeX(west() + 0.5*width());
     out_y = south() + 0.5*height();
-    out_x = west() + 0.5*width();
-
-    if ( _srs->isGeographic() )
-        out_x = s_normalizeLongitude( out_x );        
     return true;
 }
 
 bool
 GeoExtent::crossesAntimeridian() const
 {
-    return _srs.valid() && _srs->isGeographic() && east() < west();
+    return _srs.valid() && _srs->isGeographic() && west()+width() > 180.0;
 }
 
 bool
-GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) const
+GeoExtent::splitAcrossAntimeridian(GeoExtent& out_west, GeoExtent& out_east) const
 {
-    bool success = false;
-
     if ( crossesAntimeridian() )
     {
-        double minLon, maxLon;
-        s_getLongitudeFrame( west(), minLon, maxLon );
-        out_west._srs   = _srs.get();
-        out_west._west  = west();
-        out_west._south = south();
-        out_west._east  = maxLon;
-        out_west._north = north();
+        out_west = *this;
+        out_west._west = west();
+        out_west._width = 180.0 - west();
+        out_west.recomputeCircle();
 
-        out_east._srs   = _srs.get();
-        out_east._west  = minLon;
-        out_east._south = south();
-        out_east._east  = east();
-        out_east._north = north();
-
-        success = true;
+        out_east = *this;
+        out_east._west = -180.0;
+        out_east._width = width() - out_west._width;
+        out_east.recomputeCircle();
     }
     else if ( !_srs->isGeographic() )
     {
@@ -829,26 +799,26 @@ GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) c
         {
             out_west = w.transform( _srs.get() );
             out_east = e.transform( _srs.get() );
-            success = out_west.isValid() && out_east.isValid();
         }
     }
-    return success;
+
+    return out_west.isValid() && out_east.isValid();
 }
 
 GeoExtent
-GeoExtent::transform( const SpatialReference* to_srs ) const 
+GeoExtent::transform(const SpatialReference* to_srs) const 
 {       
-    //TODO: this probably doesn't work across the antimeridian
-    if ( _srs.valid() && to_srs )
+    //TODO: this may not work across the antimeridian - unit test required
+    if ( isValid() && to_srs )
     {
+        // do not normalize the X values here.
         double xmin = west(), ymin = south();
-        double xmax = east(), ymax = north();
+        double xmax = west() + width(), ymax = south() + height();
         
-        if ( _srs->transformExtentToMBR( to_srs, xmin, ymin, xmax, ymax ) )
+        if ( _srs->transformExtentToMBR(to_srs, xmin, ymin, xmax, ymax) )
         {
             return GeoExtent( to_srs, xmin, ymin, xmax, ymax );
         }
-
     }
     return GeoExtent::INVALID;
 }
@@ -866,10 +836,8 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
 {
     xmin = west();
     ymin = south();
-    xmax = east();
-    ymax = north();
-    if (getSRS() && getSRS()->isGeographic() && crossesAntimeridian() && xmin > xmax)
-        xmin -= 360.0;
+    xmax = west() + width();
+    ymax = south() + height();
 }
 
 Bounds
@@ -889,41 +857,59 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     osg::Vec3d xy( x, y, 0 );
     osg::Vec3d localxy = xy;
 
-    if (srs &&
-        !srs->isEquivalentTo( _srs.get() ) &&
-        !srs->transform(xy, _srs.get(), localxy) )
-    {    
-        return false;
-    }
-    else
+    // See if we need to xform the input:
+    if (srs && srs->isHorizEquivalentTo(_srs.get()) == false)
     {
-        // normalize a geographic longitude to -180:+180
-        if ( _srs->isGeographic() )
+        // If the transform fails, bail out with error
+        if (srs->transform(xy, _srs.get(), localxy) == false)
         {
-            localxy.x() = normalizeLongitude( localxy.x() );            
+            return false;
         }
-
-        double west, east, south, north;
-        getBounds(west, south, east, north);
-
-        //Account for small rounding errors along the edges of the extent
-        if (osg::equivalent(west, localxy.x())) localxy.x() = west;
-        if (osg::equivalent(east, localxy.x())) localxy.x() = east;
-        if (osg::equivalent(south, localxy.y())) localxy.y() = south;
-        if (osg::equivalent(north, localxy.y())) localxy.y() = north;
-
-        return localxy.x() >= west && localxy.x() <= east && localxy.y() >= south && localxy.y() <= north;        
     }
+
+    // Bring the X coordinate into normal range:
+    localxy.x() = normalizeX(localxy.x());
+    
+    // Quantize the X coordinate to account for tiny rounding errors:
+    if (osg::equivalent(west(), localxy.x()))
+        localxy.x() = west();
+    if (osg::equivalent(east(), localxy.x()))
+        localxy.x() = east();
+    
+    // For the geographic frame, recast the X coordinate so it is
+    // greater than or equal to the west edge of the local extent:
+    if (isGeographic())
+    {
+        while (localxy.x() < _west)
+            localxy.x() += 360.0;
+    }
+    
+    // Test the X coordinate:
+    if (localxy.x() - west() > width())
+        return false;
+
+    // Quantize the Y coordinate to account for tiny rounding errors:
+    if (osg::equivalent(south(), localxy.y()))
+        localxy.y() = south();
+    if (osg::equivalent(north(), localxy.y()))
+        localxy.y() = north();
+
+    // Test the Y coordinate:
+    if (localxy.y() < south() || localxy.y() > north())
+        return false;
+
+    // Pass.
+    return true;
 }
 
 bool
-GeoExtent::contains( const GeoPoint& rhs ) const
+GeoExtent::contains(const GeoPoint& rhs) const
 {
     return contains( rhs.x(), rhs.y(), rhs.getSRS() );
 }
 
 bool
-GeoExtent::contains( const Bounds& rhs ) const
+GeoExtent::contains(const Bounds& rhs) const
 {
     return
         isValid() &&
@@ -934,7 +920,7 @@ GeoExtent::contains( const Bounds& rhs ) const
 }
 
 bool
-GeoExtent::contains( const GeoExtent& rhs ) const
+GeoExtent::contains(const GeoExtent& rhs) const
 {
     return
         isValid() &&
@@ -945,17 +931,20 @@ GeoExtent::contains( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::intersects( const GeoExtent& rhs, bool checkSRS ) const
+GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
 {
     if ( !isValid() || !rhs.isValid() )
         return false;
 
+    // Transform the incoming extent if necessary:
     if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
     {
         GeoExtent rhsExt = rhs.transform(getSRS());
         return this->intersects( rhsExt );
     }
 
+    // If either of the extents crosses the antimeridian, split them
+    // and test each part separately.
     if ( rhs.crossesAntimeridian() )
     {
         GeoExtent rhsWest, rhsEast;
@@ -970,16 +959,17 @@ GeoExtent::intersects( const GeoExtent& rhs, bool checkSRS ) const
     }
     else
     {
+        // Yes, it is a peculiarity that we consider abutting extents to NOT intersect,
+        // while a point on the edge of an extent IS contained by that extent.
         bool exclusive =
-            _west >= rhs.east() ||
-            _east <= rhs.west() ||
-            _south >= rhs.north() ||
-            _north <= rhs.south();
+            west() >= rhs.east() ||
+            east() <= rhs.west() ||
+            south() >= rhs.north() ||
+            north() <= rhs.south();
 
-        return !exclusive;
+        return exclusive == false;
     }
 }
-
 
 void
 GeoExtent::recomputeCircle()
@@ -997,7 +987,6 @@ GeoExtent::recomputeCircle()
         {
             double ext = std::max( width(), height() );
             _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
-            //_circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
         }
         else // isGeographic
         {
@@ -1015,136 +1004,110 @@ GeoExtent::recomputeCircle()
             radius2 = std::max(radius2, (center-sw).length2());
 
             _circle.setRadius( sqrt(radius2) );
-#if 0
-            double extDegrees;
-            double metersPerDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-
-            if ( width() > height() )
-            {
-                extDegrees = width();
-                double widestLatitude = std::min( fabs(north()), fabs(south()) );
-                metersPerDegree *= cos(osg::DegreesToRadians(widestLatitude));
-            }
-            else
-            {
-                extDegrees = height();
-            }
-
-            double extMeters = extDegrees * metersPerDegree;
-            _circle.setRadius( 0.5*extMeters * 1.414121356237 ); /*sqrt(2)*/
-#endif
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
     }
 }
 
-
 void
-GeoExtent::expandToInclude( double x, double y )
+GeoExtent::expandToInclude(double x, double y)
 {
-    // If the point is already in the extent, just return.
-    if (contains(x,y)) return;
+    // First, bring the X coordinate into the local frame.
+    x = normalizeX(x);
 
-    double west, east, south, north;
-    getBounds(west, south, east, north);
-
-    if ( west == DBL_MAX )
+    // Invalid? Set to a point.
+    if (isInvalid())
     {
-        west = x;
-        east = x;
-        south = y;
-        north = y;
+        set(x, y, x, y);
+        return;
     }
-    else if (west < east && x >= west && x <= east )
+
+    // Check each coordinate separately:
+    double cx, cy;
+    getCentroid(cx, cy);
+    bool containsX = contains(x, cy);
+    bool containsY = contains(cx, y);
+
+    // Expand along the Y axis:
+    if (!containsY)
     {
-        //nop. already in horizontal extent.
-    }
-    else if ( getSRS() && getSRS()->isGeographic() )
-    {
-        x = normalizeLongitude( x );        
-
-        // calculate possible expansion distances. The lesser of the two
-        // will be the direction in which we expand.
-
-        // west:
-        double dw;
-        if ( x > west )
-            dw = west - (x-360.);
-        else
-            dw = west - x;
-
-        // east:
-        double de;
-        if ( x < east )
-            de = (x+360.) - east;
-        else
-            de = x - east;
-
-        // this is the empty space available - growth beyond this 
-        // automatically yields full extent [-180..180]
-        double maxWidth = 360.0-width();
-        
-        // Special case for when 
-        if (maxWidth == 360.0 && (dw == 360.0 || de == 360.0))
+        if (y < south())
         {
-            // reached full extent
-            west = -180.0;
-            east =  180.0;
+            _height += (_south-y);
+            _south = y;
         }
-        // if both are > 180, then the point is already in our extent.
-        else if ( dw <= 180. || de <= 180. )
+        else if (y > north())
         {
-            if ( dw < de )
+            _height = y - south();
+        }
+    }
+
+    if (!containsX)
+    {
+        if (isGeographic())
+        {
+            // Figure out which way to expand: to the west or to the east.
+            // We want the shortest distance of the two. To figure this out
+            // we'll convert the longitudes into cylindrical vectors and 
+            // use a dot product to find the shortest expansion distance.
+            double xRad = osg::DegreesToRadians(x);
+            double westRad = osg::DegreesToRadians(west());
+            double eastRad = osg::DegreesToRadians(east());
+
+            osg::Vec2d xVec(cos(xRad), sin(xRad)); xVec.normalize();
+            osg::Vec2d westVec(cos(westRad), sin(westRad)); westVec.normalize();
+            osg::Vec2d eastVec(cos(eastRad), sin(eastRad)); eastVec.normalize();
+
+            // calculate the distances using the dot product
+            double eastDist = -(xVec*eastVec);
+            double westDist = -(xVec*westVec);
+
+            if (eastDist <= westDist) // expand to the east:
             {
-                if ( dw < maxWidth )
+                if (x >= east())
                 {
-                    // expand westward
-                    west -= dw;                    
+                    _width += x - east();
                 }
                 else
                 {
-                    // reached full extent
-                    west = -180.0;
-                    east =  180.0;
+                    _width += (180.0 - east()) + (x - (-180.0));
                 }
             }
-            else
+            else // expand to the west:
             {
-                if ( de < maxWidth )
+                if (x <= west())
                 {
-                    // expand eastward
-                    east += de;
+                    _width += west() - x;
+                    _west = x;
                 }
                 else
                 {
-                    // reached full extent.
-                    west = -180.0;
-                    east =  180.0;
+                    _width += (180.0 - x) + (west() - (-180.0));
+                    _west = x;
                 }
             }
         }
-        //else already inside longitude extent
+        else
+        {
+            // projected mode is the same approach as Y
+            if (x < west())
+            {
+                _width += _west - x;
+                _west = x;
+            }
+            else if (x > east())
+            {
+                _width = x - west();
+            }
+        }
     }
-    else
+
+    if (!containsX || !containsY)
     {
-        west = std::min(west, x);
-        east = std::max(east, x);
+        clamp();
+        recomputeCircle();
     }
-
-    _west = west;
-    _east = east;
-
-    if (_srs->isGeographic() && (_east-_west < 360.0))
-    {
-        _west = s_normalizeLongitude(_west);
-        _east = s_normalizeLongitude(_east);
-    }
-
-    _south = std::min(south, y);
-    _north = std::max(north, y);
-
-    recomputeCircle();
 }
 
 void
@@ -1156,18 +1119,19 @@ GeoExtent::expandToInclude(const Bounds& rhs)
 }
 
 bool
-GeoExtent::expandToInclude( const GeoExtent& rhs )
+GeoExtent::expandToInclude(const GeoExtent& rhs)
 {
-    if ( isInvalid() || rhs.isInvalid() ) return false;
+    if ( isInvalid() || rhs.isInvalid() )
+        return false;
 
     if ( !rhs.getSRS()->isHorizEquivalentTo( _srs.get() ) )
     {
-        return expandToInclude( rhs.transform(_srs.get()) ); //transform(rhs.getSRS()) );
+        return expandToInclude( rhs.transform(_srs.get()) );
     }
     else
     {
-        // include the centroid first in order to honor an 
-        // antimeridian-crossing profile
+        // include the centroid first in order to get the optimal
+        // expansion direction.
         expandToInclude( rhs.getCentroid() );
         expandToInclude( rhs.west(), rhs.south() );
         expandToInclude( rhs.east(), rhs.north() );
@@ -1175,8 +1139,20 @@ GeoExtent::expandToInclude( const GeoExtent& rhs )
     }
 }
 
+namespace
+{
+    void sort4(double* n, bool* b)
+    {
+        if (n[0] > n[1]) std::swap(n[0], n[1]), std::swap(b[0], b[1]);
+        if (n[2] > n[3]) std::swap(n[2], n[3]), std::swap(b[2], b[3]);
+        if (n[0] > n[2]) std::swap(n[0], n[2]), std::swap(b[0], b[2]);
+        if (n[1] > n[3]) std::swap(n[1], n[3]), std::swap(b[1], b[3]);
+        if (n[1] > n[2]) std::swap(n[1], n[2]), std::swap(b[1], b[2]);
+    }
+}
+
 GeoExtent
-GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
+GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
 {
     if ( isInvalid() || rhs.isInvalid() || !_srs->isHorizEquivalentTo( rhs.getSRS() ) )
         return GeoExtent::INVALID;
@@ -1190,34 +1166,57 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
 
     GeoExtent result( *this );
 
-    double westAngle, eastAngle;
-    
-    // see if the rhs western boundary intersects our extent:
-    westAngle = s_westToEastLongitudeDistance( west(), rhs.west() );
-    eastAngle = s_westToEastLongitudeDistance( rhs.west(), east() );
-    if ( westAngle < width() && eastAngle < width() ) // yes, so adjust the result eastward:
+    if (isGeographic())
     {
-        result._west += westAngle;
+        // Sort the four X coordinates, remembering whether each one is west or east edge:
+        double x[4];
+        bool iswest[4];
+        x[0] = west(), x[1] = east(), x[2] = rhs.west(), x[3] = rhs.east();
+        iswest[0] = true, iswest[1] = false, iswest[2] = true, iswest[3] = false;
+        sort4(x, iswest);
+
+        // find the western-most west coord:
+        int iw = -1;
+        for (int i=0; i<4 && iw<0; ++i)
+        {
+            if (iswest[i])
+                iw = i;
+        }
+
+        // iterate from there, finding the LAST west coord and stopping on the 
+        // FIRST east coord found.
+        int q = iw+4;
+        int ie = -1;
+        for (int i = iw; i < q && ie < 0; ++i)
+        {
+            int j = i;
+            if (j >= 4) j-=4;
+            if (iswest[j])
+                iw = j; // found a better west coord; remember it.
+            else
+                ie = j; // found the western-most east coord; done.
+        }
+
+        result._west = x[iw];
+        if (ie >= iw)
+            result._width = x[ie] - x[iw];
+        else
+            result._width = (180.0 - x[iw]) + (x[ie] - (-180.0)); // crosses the antimeridian
+    }
+    else
+    {
+        // projected mode is simple
+        result._west = std::max(west(), rhs.west());
+        double eastTemp = std::min(east(), rhs.east());
+        result._width = eastTemp - result._west;
     }
 
-    // now see if the rhs eastern boundary intersects out extent:
-    westAngle = s_westToEastLongitudeDistance( west(), rhs.east() );
-    eastAngle = s_westToEastLongitudeDistance( rhs.east(), east() );
-    if ( westAngle < width() && eastAngle < width() ) // yes, so adjust again:
-    {
-        result._east -= eastAngle;
-    }
+    result._south = std::max(south(), rhs.south());
+    double northTemp = std::min(north(), rhs.north());
+    result._height = northTemp - result._south;
 
-    // normalize our new longitudes
-    if (_srs->isGeographic())
-    {
-        result._west = s_normalizeLongitude( result._west );
-        result._east = s_normalizeLongitude( result._east );
-    }
-
-    // latitude is easy, just clamp it
-    result._south = std::max( south(), rhs.south() );
-    result._north = std::min( north(), rhs.north() );
+    result.clamp();
+    result.recomputeCircle();
 
     OE_DEBUG << "Intersection of " << this->toString() << " and " << rhs.toString() << " is: " 
         << result.toString()
@@ -1232,35 +1231,42 @@ GeoExtent::scale(double x_scale, double y_scale)
     if ( isInvalid() )
         return;
 
-    double orig_width = width();
-    double orig_height = height();
+    double cx = _west + 0.5*_width;
+    _width *= x_scale;
+    _west = normalizeX(cx - 0.5*_width);
 
-    double new_width  = orig_width  * x_scale;
-    double new_height = orig_height * y_scale;
+    double cy = _south + 0.5*_height;
+    _height *= y_scale;
+    _south = cy - 0.5*_height;
 
-    double halfXDiff = (new_width - orig_width) / 2.0;
-    double halfYDiff = (new_height - orig_height) /2.0;
-
-    _west  -= halfXDiff;
-    _east  += halfXDiff;
-    _south -= halfYDiff;
-    _north += halfYDiff;
-
+    clamp();
     recomputeCircle();
 }
 
 void
-GeoExtent::expand( double x, double y )
+GeoExtent::expand(double x, double y)
 {
     if ( isInvalid() )
         return;
 
-    _west  -= .5*x;
-    _east  += .5*x;
-    _south -= .5*y;
-    _north += .5*y;
+    _west = normalizeX(_west - 0.5*x);
+    _width += x;
 
+    _south = _south - 0.5*y;
+    _height += y;
+
+    clamp();
     recomputeCircle();
+}
+
+void
+GeoExtent::clamp()
+{
+    if (isGeographic())
+    {
+        _width = osg::clampBetween(_width, 0.0, 360.0);
+        _height = osg::clampBetween(_height, 0.0, 180.0);
+    }
 }
 
 double
@@ -1269,39 +1275,17 @@ GeoExtent::area() const
     return isValid() ? width() * height() : 0.0;
 }
 
-void
-GeoExtent::normalize()
+double
+GeoExtent::normalizeX(double x) const
 {
     if (isValid() && _srs->isGeographic())
     {
-        _west = s_normalizeLongitude( _west );
-        _east = s_normalizeLongitude( _east );
+        while (x < -180.0)
+            x += 360.0;
+        while ( x > 180.0 )
+            x -= 360.0;
     }
-}
-
-double
-GeoExtent::normalizeLongitude( double longitude ) const
-{
-    if (isValid() && _srs->isGeographic())
-    {   
-        double west, east, south, north;
-        getBounds(west, south, east, north);
-
-        double lon = s_normalizeLongitude(longitude);
-
-        // Shift the coordinate to the west
-        if (west < -180.0 && longitude > east)
-        {
-            return lon - 360.0;
-        }
-        // Shift the coordinate to the east
-        else if (east > 180.0 && longitude < west)
-        {
-            return lon + 360.0;
-        }
-        return lon;
-    }
-    return longitude;
+    return x;
 }
 
 std::string
@@ -1351,10 +1335,10 @@ GeoExtent::createPolytope(osg::Polytope& tope) const
         // convert 4 corners to world space (ECEF)
         osg::Vec3d center(0.0, 0.0, 0.0);
         osg::Vec3d sw, se, nw, ne;
-        GeoPoint(getSRS(), _west, _south, 0.0, ALTMODE_ABSOLUTE).toWorld( sw );
-        GeoPoint(getSRS(), _east, _south, 0.0, ALTMODE_ABSOLUTE).toWorld( se );
-        GeoPoint(getSRS(), _east, _north, 0.0, ALTMODE_ABSOLUTE).toWorld( ne );
-        GeoPoint(getSRS(), _west, _north, 0.0, ALTMODE_ABSOLUTE).toWorld( nw );
+        GeoPoint(getSRS(), west(), south(), 0.0, ALTMODE_ABSOLUTE).toWorld( sw );
+        GeoPoint(getSRS(), east(), south(), 0.0, ALTMODE_ABSOLUTE).toWorld( se );
+        GeoPoint(getSRS(), east(), north(), 0.0, ALTMODE_ABSOLUTE).toWorld( ne );
+        GeoPoint(getSRS(), west(), north(), 0.0, ALTMODE_ABSOLUTE).toWorld( nw );
 
         // bounding planes in ECEF space:
         tope.add( osg::Plane(center, nw, sw) ); // west
@@ -1371,8 +1355,8 @@ GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrix& output) const
 {    
     double scalex = width() / rhs.width();
     double scaley = height() / rhs.height();
-    double biasx  = (xMin()-rhs.xMin()) / rhs.width();
-    double biasy  = (yMin()-rhs.yMin()) / rhs.height();
+    double biasx  = (west()-rhs.west()) / rhs.width();
+    double biasy  = (south()-rhs.south()) / rhs.height();
 
     output(0,0) = scalex;
     output(1,1) = scaley;
@@ -1384,21 +1368,21 @@ GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrix& output) const
 
 /***************************************************************************/
 
-DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
 GeoExtent(extent)
 {
     _minLevel = minLevel;
     _maxLevel = maxLevel;
 }
 
-DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel) :
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel) :
 GeoExtent(extent),
 _maxLevel( 25 )
 {
     _minLevel = minLevel;
 }
 
-DataExtent::DataExtent(const osgEarth::GeoExtent& extent ) :
+DataExtent::DataExtent(const GeoExtent& extent ) :
 GeoExtent(extent),
 _minLevel( 0 ),
 _maxLevel( 25 )
@@ -1862,6 +1846,7 @@ namespace
         // the sample grid into the source coordinate system.
         double *srcPointsX = new double[numPixels * 2];
         double *srcPointsY = srcPointsX + numPixels;
+
         dest_extent.getSRS()->transformExtentPoints(
             src_extent.getSRS(),
             dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,

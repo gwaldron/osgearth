@@ -573,9 +573,11 @@ namespace
             osg::Vec3d v0_w = (*data._verts)[line._i0] * L2W;
             osg::Vec3d v1_w = (*data._verts)[line._i1] * L2W;
 
-            double g0 = angleBetween(v0_w, v1_w);
+            bool validLine = 
+                !osg::equivalent(v0_w.length2(), 0.0) &&
+                !osg::equivalent(v1_w.length2(), 0.0);
 
-            if ( g0 > granularity )
+            if ( validLine && angleBetween(v0_w, v1_w) > granularity )
             {
                 data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
 

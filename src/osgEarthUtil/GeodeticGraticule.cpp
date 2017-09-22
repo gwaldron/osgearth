@@ -480,7 +480,6 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     double maxLat = osg::clampBelow(center.y() + radiusDegrees, 90.0);
 
     osgEarth::GeoExtent extent(srs, minLon, minLat, maxLon, maxLat);
-    extent.normalize();
 
     return extent;
 }

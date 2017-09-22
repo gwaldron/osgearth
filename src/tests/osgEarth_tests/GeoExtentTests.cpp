@@ -26,63 +26,92 @@
 
 using namespace osgEarth;
 
-TEST_CASE( "GeoExtent transformMBR preserves the crossesAntimeridian properly" ) {
-
-    // Create an extent that crosses the antimeridian.
-    GeoExtent ext(SpatialReference::create("wgs84"), 178, 30, 183.4, 34.5);
-    REQUIRE(ext.crossesAntimeridian());
+TEST_CASE( "GeoExtent" ) {
     
-    // Transform it and make sure it still crosses the antimeridian.
-    GeoExtent transformed;
-    ext.transform(SpatialReference::create("wgs84"), transformed);
-    REQUIRE(transformed.crossesAntimeridian());
-}
-
-TEST_CASE( "GeoExtent contains work" ) {
-    GeoExtent ext(SpatialReference::create("wgs84"), -10.0, -10.0, 10.0, 10.0);
-    REQUIRE(ext.contains(5.0, 5.0));
-}
-
-TEST_CASE( "GeoExtent contains works when the extent cross the antimeridian" ) {
-
-    // Create an extent that crosses the antimeridian.
-    GeoExtent ext(SpatialReference::create("wgs84"), -180.001, -90.0, 179.995, 90.0);
-    REQUIRE(ext.contains(5.0, 0.0));
-}
-
-TEST_CASE( "GeoExtent expandToInclude works") {
+    const SpatialReference* WGS84 = SpatialReference::get("wgs84");
     
-    GeoExtent ext(SpatialReference::create("wgs84"), -10.0, -10.0, 10.0, 10.0);          
+    SECTION("Create an extent that crosses the antimeridian") {
+        GeoExtent ext(SpatialReference::create("wgs84"), 178, 30, 183.4, 34.5);
+        REQUIRE(ext.crossesAntimeridian());
+    
+        // Transform it and make sure it still crosses the antimeridian.
+        GeoExtent transformed;
+        ext.transform(SpatialReference::create("wgs84"), transformed);
+        REQUIRE(transformed.crossesAntimeridian());
+    }
+
+    SECTION("GeoExtent contains simple") {
+        GeoExtent ext(WGS84, -10.0, -10.0, 10.0, 10.0);
+        REQUIRE(ext.contains(5.0, 5.0));
+    }
+
+    SECTION( "GeoExtent contains works when the extent cross the antimeridian" ) {
+        GeoExtent ext(WGS84, -180.001, -90.0, 179.995, 90.0);
+        REQUIRE(ext.contains(5.0, 0.0));
+    }
+
+    SECTION("GeoExtent contains a point on the boundary") {
+        GeoExtent ext(WGS84, -100, -80, 100, 80);
+        REQUIRE(ext.contains(-100, -80));
+    }
 
     SECTION("expandToInclude is a noop when point is within the extent") {
+        GeoExtent ext(WGS84, -10.0, -10.0, 10.0, 10.0);          
         ext.expandToInclude(0.0, 0.0);
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), -10.0, -10.0, 10.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, -10.0, -10.0, 10.0, 10.0));
     }
 
     SECTION("expandToInclude expand to the east and north") {
+        GeoExtent ext(WGS84, -10.0, -10.0, 10.0, 10.0);          
         ext.expandToInclude(15.0, 15.0);
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), -10.0, -10.0, 15.0, 15.0));
+        REQUIRE(ext == GeoExtent(WGS84, -10.0, -10.0, 15.0, 15.0));
     }
 
     SECTION("expandToInclude expand to the west and south") {
+        GeoExtent ext(WGS84, -10.0, -10.0, 10.0, 10.0);          
         ext.expandToInclude(-15.0, -15.0);
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), -15.0, -15.0, 10.0, 10.0));
+        REQUIRE(ext == GeoExtent(WGS84, -15.0, -15.0, 10.0, 10.0));
+    }
+
+    SECTION("expandToInclude to include the antimeridian to the east") {
+        GeoExtent ext(WGS84, 160.0, -10.0, 170.0, 10.0);
+        ext.expandToInclude(-160.0, 0.0);
+        REQUIRE(ext == GeoExtent(WGS84, 160.0, -10.0, -160.0, 10.0));
+    }
+
+    SECTION("expandToInclude to include the antimeridian to the west") {
+        GeoExtent ext(WGS84, -170.0, -10.0, -160.0, 10.0);
+        ext.expandToInclude(160.0, 0.0);
+        REQUIRE(ext == GeoExtent(WGS84, 160.0, -10.0, -160.0, 10.0));
+    }
+
+    SECTION("expandToInclude across the antimeridian to the east") {
+        GeoExtent ext(WGS84, 160.0, -10.0, -170.0, 10.0);
+        ext.expandToInclude(-160.0, 0.0);
+        REQUIRE(ext == GeoExtent(WGS84, 160.0, -10.0, -160.0, 10.0));
+    }
+
+    SECTION("expandToInclude across the antimeridian to the west") {
+        GeoExtent ext(WGS84, 170.0, -10.0, -160.0, 10.0);
+        ext.expandToInclude(160.0, 0.0);
+        REQUIRE(ext == GeoExtent(WGS84, 160.0, -10.0, -160.0, 10.0));
     }
 
     SECTION("multiple expandToIncludes") {
+        GeoExtent ext(WGS84, -10.0, -10.0, 10.0, 10.0);
         ext.expandToInclude(-15.0, -15.0);
         ext.expandToInclude(15.0, 15.0);
-        REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), -15.0, -15.0, 15.0, 15.0));
+        REQUIRE(ext == GeoExtent(WGS84, -15.0, -15.0, 15.0, 15.0));
     }
 
     SECTION("calling expandToInclude on an invalid extent just takes the incoming value.") {
-        GeoExtent invalid(SpatialReference::create("wgs84"));
+        GeoExtent invalid(WGS84);
         invalid.expandToInclude(-15.0, -15.0);        
-        REQUIRE(invalid == GeoExtent(SpatialReference::create("wgs84"), -15.0, -15.0, -15.0, -15.0));
+        REQUIRE(invalid == GeoExtent(WGS84, -15.0, -15.0, -15.0, -15.0));
     }
 
     SECTION("expandToInclude expands to the full extent") {
-        GeoExtent full(SpatialReference::create("wgs84"));
+        GeoExtent full(WGS84);
         full.expandToInclude(-180.0, -90);
         // First point should result in zero width
         REQUIRE(full.width() == 0.0);
@@ -90,26 +119,91 @@ TEST_CASE( "GeoExtent expandToInclude works") {
         // Seond point should result in full width
         REQUIRE(full.width() == 360.0);
     }
-}
 
-TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimeridian") {
+    SECTION("Intersect 2 non-overlapping extents") {
+        GeoExtent e1(WGS84, -10, -10, 10, 10);
+        GeoExtent e2(WGS84, 20, 20, 30, 30);
+        REQUIRE(e1.intersects(e2)==false);
+        REQUIRE(e1.intersectionSameSRS(e2).isInvalid());
+    }
+
+    SECTION("Intersect 2 simple overlapping extents") {
+        GeoExtent e1(WGS84, -10, -10, 10, 10);
+        GeoExtent e2(WGS84, 5, 5, 20, 20);
+        REQUIRE(e1.intersects(e2)==true);
+        REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, 5, 5, 10, 10));
+    }
+
+    SECTION("Intersect non-overlapping anti-meridian extent with a simple extent") {
+        GeoExtent e1(WGS84, 170, -10, -170, 10);
+        GeoExtent e2(WGS84, 20, 20, 30, 30);
+        REQUIRE(e1.intersects(e2)==false);
+        REQUIRE(e1.intersectionSameSRS(e2).isInvalid());
+    }
+
+    SECTION("Intersect overlapping anti-meridian extent with a simple extent") {
+        GeoExtent e1(WGS84, 170, -10, -170, 10);
+        GeoExtent e2(WGS84, -175, -60, -165, 60);
+        REQUIRE(e1.intersects(e2)==true);
+        REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, -175, -10, -170, 10));
+    }
+
+    SECTION("Intersect 2 non-overlapping anti-meridian extents") {
+        GeoExtent e1(WGS84, 170, -10, -170, 10);
+        GeoExtent e2(WGS84, 130, -50, -120, -40);
+        REQUIRE(e1.intersects(e2)==false);
+        REQUIRE(e1.intersectionSameSRS(e2).isInvalid());
+    }
+
+    SECTION("Intersect 2 overlapping anti-meridian extents") {
+        GeoExtent e1(WGS84, 170, -10, -170, 10);
+        GeoExtent e2(WGS84, 130, -50, -120, 5);
+        REQUIRE(e1.intersects(e2)==true);
+        REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, 170, -10, -170, 5));
+    }
+
+    SECTION("2 extents tht abut do not intersect") {
+        GeoExtent e1(WGS84, 0, 0, 10, 10);
+        GeoExtent e2(WGS84, 10, 0, 20, 10);
+        REQUIRE(e1.intersects(e2)==false);
+        REQUIRE(e1.intersectionSameSRS(e2).isInvalid());
+    }
     
-    GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
-    REQUIRE(ext.crossesAntimeridian());
-    REQUIRE(ext.east() == -175.0);
+    SECTION("Scaling") {
+        GeoExtent e1(WGS84, -10, -10, 10, 10);
+        e1.scale(2, 2);
+        REQUIRE(e1 == GeoExtent(WGS84, -20, -20, 20, 20));
+    }
+
+    SECTION("ExpandBy") {
+        GeoExtent e1(WGS84, -10, -10, 10, 10);
+        e1.expand(5, 5);
+        REQUIRE(e1 == GeoExtent(WGS84, -12.5, -12.5, 12.5, 12.5));
+    }
+
+
+    // Older ones
+    SECTION("Normalization across the antimeridian") {
+        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
+        REQUIRE(ext.crossesAntimeridian());
+        REQUIRE(ext.east() == -175.0);
+    }
 
     SECTION("expandToInclude is a noop when point is within the extent") {
+        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(180.0, 0.0);
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0));
     }
 
     SECTION("expandToInclude expand to the west") {
+        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(170.0, 0.0);        
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 170.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
     }
 
     SECTION("expandToInclude expand to the east") {
+        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(186.0, 0.0);        
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 175.0, -10.0, 186.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
@@ -118,6 +212,7 @@ TEST_CASE( "GeoExtent expandToInclude works with values that cross the antimerid
     SECTION("expandToInclude expands to the closest side of the bounds") {
         // This seems like it would expand to the east, but b/c of wrapping the final point is actually closer to the 
         // west side, so it will expand westward.
+        GeoExtent ext(SpatialReference::create("wgs84"), 175.0, -10.0, 185.0, 10.0);
         ext.expandToInclude(525.0, 0.0);        
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 165.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());

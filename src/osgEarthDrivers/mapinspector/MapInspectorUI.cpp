@@ -106,12 +106,19 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
         for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)
         {
             const DataExtent& e = *i;
-            Polygon* p = new Polygon();
-            p->push_back( e.xMin(), e.yMin() );
-            p->push_back( e.xMax(), e.yMin() );
-            p->push_back( e.xMax(), e.yMax() );
-            p->push_back( e.xMin(), e.yMax() );
-            collection->add( p );
+            if (e.isValid())
+            {
+                Polygon* p = new Polygon();
+                p->push_back( e.west(), e.south() );
+                p->push_back( e.east(), e.south() );
+                p->push_back( e.east(), e.north() );
+                p->push_back( e.west(), e.north() );
+                collection->add( p );
+            }
+            else
+            {
+                OE_WARN << LC << "Invalid data extent: " << e.toString() << std::endl;
+            }
         }
 
         // poly:

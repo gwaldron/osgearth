@@ -256,11 +256,13 @@ ImageOverlay::init()
         f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
 
         FeatureList features;
+        /*
         if (!mapSRS->isGeographic())
         {
             f->splitAcrossDateLine(features);
         }
         else
+        */
         {
             features.push_back( f );
         }

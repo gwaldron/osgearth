@@ -53,10 +53,7 @@ _tileSize( 257u )
 
 ElevationPool::~ElevationPool()
 {
-    _opQueue->releaseAllOperations();
-
-    for (unsigned i = 0; i<_opThreads.size(); ++i)
-        _opThreads[i]->setDone(true);
+    stopThreading();
 }
 
 void
@@ -72,6 +69,15 @@ ElevationPool::clear()
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     clearImpl();
+}
+
+void
+ElevationPool::stopThreading()
+{
+    _opQueue->releaseAllOperations();
+    
+    for (unsigned i = 0; i<_opThreads.size(); ++i)
+    _opThreads[i]->setDone(true);
 }
 
 void

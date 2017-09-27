@@ -33,6 +33,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Utils>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -146,7 +147,7 @@ namespace
         options->setFileLocationCallback(flc);
         p->setDatabaseOptions(options);
         // so we can find the FMG instance in the pseudoloader.
-        options->getOrCreateUserDataContainer()->addUserObject(fmg);
+        OptionsData<FeatureModelGraph>::set(options, USER_OBJECT_NAME, fmg);
 
         return p;
 
@@ -179,12 +180,16 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         unsigned lod, x, y;
         sscanf( uri.c_str(), "%d_%d_%d.%*s", &lod, &x, &y );
 
-        osg::ref_ptr<FeatureModelGraph> graph =
-            dynamic_cast<FeatureModelGraph*>(const_cast<osg::Object*>(
-                osg::getUserObject(readOptions, USER_OBJECT_NAME)));
+        osg::ref_ptr<FeatureModelGraph> graph;
+        if (!OptionsData<FeatureModelGraph>::lock(readOptions, USER_OBJECT_NAME, graph))
+        {
+           OE_WARN << LC << "Internal error - no FeatureModelGraph object in OptionsData\n";
+           return ReadResult::ERROR_IN_READING_FILE;
+        }
 
         //osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
-        if ( graph.valid() )
+        // graph is valid at this point, otherwise the above lock would not succeed
+        //if ( graph.valid() )
         {
             // Take a reference on the map to avoid map destruction during thread operation
             //osg::ref_ptr<const Map> map = graph->getSession()->getMap();
@@ -196,8 +201,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
                 return ReadResult(node);
             }
         }
-
-        return ReadResult::ERROR_IN_READING_FILE;
     }
 };
 

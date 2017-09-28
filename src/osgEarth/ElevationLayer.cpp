@@ -975,7 +975,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 {
                     // We couldn't get the heightfield from the cache, so try to create it.
                     // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
-                    while (!layerHF.valid() && actualKey.valid())
+                    while (!layerHF.valid() && actualKey.valid() && layer->isKeyInLegalRange(actualKey))
                     {
                         layerHF = layer->createHeightField(actualKey, progress);
                         if (!layerHF.valid())

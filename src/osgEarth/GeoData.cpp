@@ -697,28 +697,42 @@ _circle(rhs._circle)
     //NOP
 }
 
+bool
+GeoExtent::isGeographic() const
+{
+    return _srs.valid() && _srs->isGeographic();
+}
+
 void
 GeoExtent::set(double west, double south, double east, double north)
 {
     // In this method, east is always to the east of west!
     // If it appears not to be, that means the extent crosses the antimeridian.
 
-    _west = normalizeX(west);
-    _south = south;
-    _width = 0.0;
-    _height = 0.0;
+    west = normalizeX(west);
+    double width = 0.0;
+    double height = 0.0;
 
     if (isGeographic())
     {
         // ensure east >= west in a geographic frame.
-        while (east < _west)
+        while (east < west)
             east += 360.0;
     }
-    _width = std::max(0.0, east - _west);
+    width = std::max(0.0, east - west);
 
+    height = std::max(0.0, north-south);
+
+    setOriginAndSize(west, south, width, height);
+}
+
+void
+GeoExtent::setOriginAndSize(double west, double south, double width, double height)
+{
+    _west = west;
     _south = south;
-    _height = std::max(0.0, north-_south);
-
+    _width = width;
+    _height = height;
     clamp();
     recomputeCircle();
 }
@@ -772,7 +786,7 @@ GeoExtent::getCentroid(double& out_x, double& out_y) const
 bool
 GeoExtent::crossesAntimeridian() const
 {
-    return _srs.valid() && _srs->isGeographic() && west()+width() > 180.0;
+    return _srs.valid() && _srs->isGeographic() && east() < west(); //west()+width() > 180.0;
 }
 
 bool
@@ -781,14 +795,10 @@ GeoExtent::splitAcrossAntimeridian(GeoExtent& out_west, GeoExtent& out_east) con
     if ( crossesAntimeridian() )
     {
         out_west = *this;
-        out_west._west = west();
-        out_west._width = 180.0 - west();
-        out_west.recomputeCircle();
+        out_west.setOriginAndSize(west(), south(), 180.0 - west(), height());
 
         out_east = *this;
-        out_east._west = -180.0;
-        out_east._width = width() - out_west._width;
-        out_east.recomputeCircle();
+        out_east.setOriginAndSize(-180.0, south(), width() - out_west.width(), height());
     }
     else if ( !_srs->isGeographic() )
     {
@@ -1232,15 +1242,18 @@ GeoExtent::scale(double x_scale, double y_scale)
         return;
 
     double cx = _west + 0.5*_width;
-    _width *= x_scale;
-    _west = normalizeX(cx - 0.5*_width);
+    //_width *= x_scale;
+    //_west = normalizeX(cx - 0.5*_width);
 
     double cy = _south + 0.5*_height;
-    _height *= y_scale;
-    _south = cy - 0.5*_height;
-
-    clamp();
-    recomputeCircle();
+    //_height *= y_scale;
+    //_south = cy - 0.5*_height;
+     
+    setOriginAndSize(
+        normalizeX(cx - 0.5*_width*x_scale),
+        cy - 0.5*_height*y_scale,
+        _width * x_scale,
+        _height * y_scale);
 }
 
 void
@@ -1249,19 +1262,36 @@ GeoExtent::expand(double x, double y)
     if ( isInvalid() )
         return;
 
-    _west = normalizeX(_west - 0.5*x);
-    _width += x;
-
-    _south = _south - 0.5*y;
-    _height += y;
-
-    clamp();
-    recomputeCircle();
+    setOriginAndSize(
+        normalizeX(_west - 0.5*x),
+        _south - 0.5*y,
+        _width + x,
+        _height + y);
 }
 
 void
 GeoExtent::clamp()
 {
+    if (osg::equivalent(_west, floor(_west)))
+        _west = floor(_west);
+    else if (osg::equivalent(_west, ceil(_west)))
+        _west = ceil(_west);
+
+    if (osg::equivalent(_south, floor(_south)))
+        _south = floor(_south);
+    else if (osg::equivalent(_south, ceil(_south)))
+        _south = ceil(_south);
+
+    if (osg::equivalent(_width, floor(_width)))
+        _width = floor(_width);
+    else if (osg::equivalent(_width, ceil(_width)))
+        _width = ceil(_width);
+
+    if (osg::equivalent(_height, floor(_height)))
+        _height = floor(_height);
+    else if (osg::equivalent(_height, ceil(_height)))
+        _height = ceil(_height);
+
     if (isGeographic())
     {
         _width = osg::clampBetween(_width, 0.0, 360.0);

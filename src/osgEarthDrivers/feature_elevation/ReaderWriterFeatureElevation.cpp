@@ -26,6 +26,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Progress>
 
 #include <osgEarthFeatures/TransformFilter>
 
@@ -49,6 +50,7 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
 #include <osgEarth/Profiler>
+#include <osgEarth/Metrics>
 
 
 class FeatureElevationTileSource : public TileSource
@@ -112,6 +114,12 @@ public:
 
 				setProfile( profile );
 			}
+
+            DataExtent de(_extents);
+                //_features->getFeatureProfile()->getFirstLevel(),
+                //_features->getFeatureProfile()->getMaxLevel()));
+
+            getDataExtents().push_back(de);
         }
 
         return STATUS_OK;
@@ -133,10 +141,13 @@ public:
             return NULL;
         }
 
+        METRIC_SCOPED("fe.chf");
+
         int tileSize = getPixelsPerTile(); //_options.tileSize().value();        
 
 	    if (intersects(key))
         {
+            METRIC_BEGIN("fe.chf.query_features");
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
@@ -150,7 +161,7 @@ public:
             // assemble a spatial query. It helps if your features have a spatial index.
             Query query;
             query.bounds() = extentInFeatureSRS.bounds();
-
+            
 		    FeatureList featureList;
             osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
             while ( cursor.valid() && cursor->hasMore() )
@@ -159,13 +170,19 @@ public:
                 if ( f && f->getGeometry() )
                     featureList.push_back(f);
             }
+            METRIC_END("fe.chf.query_features");
 
             // We now have a feature list in feature SRS.
 
             bool transformRequired = !keySRS->isHorizEquivalentTo(featureSRS);
 		    
-			if (!featureList.empty())
+            if (!featureList.empty())
 			{
+                METRIC_SCOPED("fe.chf.iterate_grid");
+
+                if (progress && progress->isCanceled())
+                    return 0L;
+
                 //Only allocate the heightfield if we actually intersect any features.
                 osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
                 hf->allocate(tileSize, tileSize);
@@ -183,9 +200,14 @@ public:
 						double geoY = ymin + (dy * (double)r);
 
 						float h = NO_DATA_VALUE;
+                        
+                        METRIC_SCOPED("fe.chf.iterate_features");
 
 						for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
 						{
+                            if (progress && progress->isCanceled())
+                                return 0L;
+
 							osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
 
 							if (!boundary)

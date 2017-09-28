@@ -539,7 +539,9 @@ namespace osgEarth
 
         void clamp();
 
-        bool isGeographic() const { return isValid() && _srs->isGeographic(); }
+        bool isGeographic() const;
+
+        void setOriginAndSize(double west, double south, double width, double height);
     };
 
     /**

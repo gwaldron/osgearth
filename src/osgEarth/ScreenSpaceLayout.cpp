@@ -195,6 +195,29 @@ ScreenSpaceLayoutOptions::getConfig() const
 
 //----------------------------------------------------------------------------
 
+template<typename T>
+struct LCGIterator
+{
+    T& _vec;
+    unsigned _seed;
+    unsigned _n;
+    unsigned _index;
+    unsigned _a, _c;
+    LCGIterator(T& vec) : _vec(vec), _seed(0u), _index(0u) {
+        _n = vec.size();
+        _a = _n+1;
+        _c = 15487457u; // a very large prime
+    }
+    bool hasMore() const { 
+        return _index < _n;
+    }
+    const typename T::value_type& next() {
+        _seed = (_a*_seed + _c) % _n;
+        _index++;
+        return _vec[_seed];
+    }
+};
+
 /**
  * A custom RenderLeaf sorting algorithm for decluttering objects.
  *
@@ -323,6 +346,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); 
             i != leaves.end() && local._passed.size() < limit; 
             ++i )
+        //LCGIterator<osgUtil::RenderBin::RenderLeafList> i(leaves);
+        //while (i.hasMore() && local._passed.size() < limit)
         {
             bool visible = true;
 

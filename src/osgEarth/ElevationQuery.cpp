@@ -130,8 +130,13 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
         float elevation;
         double z = (*i).z();
         GeoPoint p(pointsSRS, *i, ALTMODE_ABSOLUTE);
-        if ( getElevationImpl(p, elevation, desiredResolution, 0L) )
+        if ( getElevationImpl(p, elevation, desiredResolution, 0L))
         {
+            if (elevation == NO_DATA_VALUE)
+            {
+                elevation = 0.0;
+            }
+
             (*i).z() = ignoreZ ? elevation : elevation + z;
         }
     }

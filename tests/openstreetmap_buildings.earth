@@ -9,7 +9,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <options>
         <terrain driver="rex"/>
     </options>
-    
+
     <feature_source name="buildings-data" driver="tfs">
         <url>http://readymap.org/osm-buildings/</url>
         <min_level>14</min_level>
@@ -79,10 +79,12 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
         <cache_policy usage="none"/>
     </image>
 
+<!--
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </elevation>
+    -->
 
     <xi:include href="viewpoints.xml"/>
 

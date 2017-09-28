@@ -24,10 +24,12 @@
 
 using namespace osgEarth;
 
+#define LC "[Metrics] "
 
 namespace
 {
     static osg::ref_ptr< MetricsBackend > s_metrics_backend;
+    static bool s_metrics_debug = false;
 
     class MetricsStartup
     {
@@ -38,6 +40,11 @@ namespace
             if (metricsFile)
             {
                 Metrics::setMetricsBackend(new ChromeMetricsBackend(std::string(metricsFile)));
+            }
+            const char* metricsVerbose = ::getenv("OSGEARTH_METRICS_DEBUG");
+            if (metricsVerbose)
+            {
+                s_metrics_debug = true;
             }
         }
 
@@ -54,6 +61,9 @@ void Metrics::begin(const std::string& name, const Config& args)
 {
     if (s_metrics_backend.valid())
     {
+        if (s_metrics_debug)
+            OE_INFO << LC << "begin: " << name << "  " << (args.empty() ? "" : args.toJSON(false)) << std::endl;
+
         s_metrics_backend->begin(name, args);
     }
 }
@@ -126,6 +136,9 @@ void Metrics::end(const std::string& name, const Config& args)
     if (s_metrics_backend.valid())
     {
         s_metrics_backend->end(name, args);
+
+        if (s_metrics_debug)
+            OE_INFO << LC << "end: " << name << "  " << (args.empty() ? "" : args.toJSON(false)) << std::endl;
     }
 }
 

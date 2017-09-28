@@ -243,7 +243,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         {
                             osg::Vec3d& p = (*geom)[i];
 
-                            if (p.z() != NO_DATA_VALUE)
+                            if (elevations[i] != NO_DATA_VALUE)
                             {
                                 p.z() *= scaleZ;
                                 p.z() += offsetZ;
@@ -321,7 +321,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         {
                             osg::Vec3d& p = (*geom)[i];
 
-                            if (p.z() != NO_DATA_VALUE)
+                            if (elevations[i] != NO_DATA_VALUE)
                             {
                                 p.z() *= scaleZ;
                                 p.z() += offsetZ;

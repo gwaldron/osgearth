@@ -9,19 +9,19 @@ Shows how to use JavaScript to create geometry parametrically.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="cities" driver="feature_geom">
-
-        <features name="cities" driver="ogr" build_spatial_index="true">
-            <url>../data/ne_cities.shp</url>
-        </features>
-
+    <feature_source name="cities-data" driver="ogr">
+        <url>../data/cities_mercator.shp</url>
+        <build_spatial_index>true</build_spatial_index>
+    </feature_source>
+    
+    <feature_model name="City Population" feature_source="cities-data">
         <styles>
             <script profile="full">
               <![CDATA[
-                var min_rank = 12;
+                var maxRank = 2;
                 function makePopCircles() {
-                    if (feature.properties.rank_max >= min_rank) {
-                        var radius = (feature.properties.rank_max-min_rank+1) * 75000;
+                    if (feature.properties.scalerank <= maxRank) {
+                        var radius = (maxRank-feature.properties.scalerank+1) * 75000;
                         feature.geometry = feature.geometry.buffer(radius);
                         feature.properties.height = radius*1.5;
                     }
@@ -42,29 +42,20 @@ Shows how to use JavaScript to create geometry parametrically.
                     render-bin:        DepthSortedBin;
                 }     
             </style>
-        </styles>
-        
-    </model>
+        </styles>        
+    </feature_model>
     
     
-    <model name="cities" driver="feature_geom">
-
-        <features name="cities" driver="ogr">
-            <url>../data/ne_cities.shp</url>
-            <build_spatial_index>true</build_spatial_index>
-        </features>
-        
+    <feature_model name="City Labels" feature_source="cities-data">        
         <layout>
             <level name="far" style="large"  max_range="1e10"/>
         </layout>
-
         <styles>
             <selector name="large" class="label-large">
                 <query>
-                    <expr> <![CDATA[ rank_max >= 12 ]]> </expr>
+                    <expr> <![CDATA[ scalerank <= 2 ]]> </expr>
                 </query>
-            </selector>
-            
+            </selector>            
             <style type="text/css">              
                 label-large {
                     text-declutter: true;
@@ -72,12 +63,11 @@ Shows how to use JavaScript to create geometry parametrically.
                     text-size:      16.0;
                     text-align:     center_center;
                     text-halo:      #1f1f1f;
-                    text-priority:  [rank_max];
+                    text-priority:  [scalerank];
                 }
             </style>
-        </styles>
-        
-    </model>
+        </styles>        
+    </feature_model>
     
     <screen_space_layout>
         <out_animation_time>  0.0  </out_animation_time>

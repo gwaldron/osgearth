@@ -114,6 +114,12 @@ public:
 
 				setProfile( profile );
 			}
+
+            DataExtent de(_extents);
+                //_features->getFeatureProfile()->getFirstLevel(),
+                //_features->getFeatureProfile()->getMaxLevel()));
+
+            getDataExtents().push_back(de);
         }
 
         return STATUS_OK;

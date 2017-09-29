@@ -1178,40 +1178,53 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
 
     if (isGeographic())
     {
-        // Sort the four X coordinates, remembering whether each one is west or east edge:
-        double x[4];
-        bool iswest[4];
-        x[0] = west(), x[1] = east(), x[2] = rhs.west(), x[3] = rhs.east();
-        iswest[0] = true, iswest[1] = false, iswest[2] = true, iswest[3] = false;
-        sort4(x, iswest);
-
-        // find the western-most west coord:
-        int iw = -1;
-        for (int i=0; i<4 && iw<0; ++i)
+        if (width() == 360.0)
         {
-            if (iswest[i])
-                iw = i;
+            result._west = rhs._west;
+            result._width = rhs._width;
         }
-
-        // iterate from there, finding the LAST west coord and stopping on the 
-        // FIRST east coord found.
-        int q = iw+4;
-        int ie = -1;
-        for (int i = iw; i < q && ie < 0; ++i)
+        else if (rhs.width() == 360.0)
         {
-            int j = i;
-            if (j >= 4) j-=4;
-            if (iswest[j])
-                iw = j; // found a better west coord; remember it.
-            else
-                ie = j; // found the western-most east coord; done.
+            result._west = _west;
+            result._width = _width;
         }
-
-        result._west = x[iw];
-        if (ie >= iw)
-            result._width = x[ie] - x[iw];
         else
-            result._width = (180.0 - x[iw]) + (x[ie] - (-180.0)); // crosses the antimeridian
+        {
+            // Sort the four X coordinates, remembering whether each one is west or east edge:
+            double x[4];
+            bool iswest[4];
+            x[0] = west(), x[1] = east(), x[2] = rhs.west(), x[3] = rhs.east();
+            iswest[0] = true, iswest[1] = false, iswest[2] = true, iswest[3] = false;
+            sort4(x, iswest);
+
+            // find the western-most west coord:
+            int iw = -1;
+            for (int i=0; i<4 && iw<0; ++i)
+            {
+                if (iswest[i])
+                    iw = i;
+            }
+
+            // iterate from there, finding the LAST west coord and stopping on the 
+            // FIRST east coord found.
+            int q = iw+4;
+            int ie = -1;
+            for (int i = iw; i < q && ie < 0; ++i)
+            {
+                int j = i;
+                if (j >= 4) j-=4;
+                if (iswest[j])
+                    iw = j; // found a better west coord; remember it.
+                else
+                    ie = j; // found the western-most east coord; done.
+            }
+
+            result._west = x[iw];
+            if (ie >= iw)
+                result._width = x[ie] - x[iw];
+            else
+                result._width = (180.0 - x[iw]) + (x[ie] - (-180.0)); // crosses the antimeridian
+        }
     }
     else
     {

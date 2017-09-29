@@ -205,9 +205,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     
     float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;    
-    size *= Registry::instance()->getDevicePixelRatio();
 
-    t->setCharacterSize( size );
+    t->setCharacterSize( size * Registry::instance()->getDevicePixelRatio() );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
     osgText::Font* font = 0L;

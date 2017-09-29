@@ -90,6 +90,8 @@ namespace osgEarth
 
         /** Clears any cached tiles from the elevation pool. */
         void clear();
+        
+        void stopThreading();
 
     protected:
 

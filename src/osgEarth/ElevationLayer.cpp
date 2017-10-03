@@ -948,7 +948,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
             {
                 ElevationLayer* layer = contenders[i].layer.get();                
-                TileKey contenderKey = contenders[i].key;
+                TileKey& contenderKey = contenders[i].key;
                 int index = contenders[i].index;
 
                 // If there is a border, the edge points may not fall within the key extents 
@@ -967,7 +967,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 if ( heightFailed[n][i] )
                     continue;
 
-                TileKey actualKey = contenderKey;
+                TileKey& actualKey = contenderKey;
 
                 GeoHeightField& layerHF = heightFields[n][i];
 

@@ -61,6 +61,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Access to terrain engine resources */
         EngineContext* getEngineContext() { return _context; }
 
+        /** The CullVIsitor that parents this culler. */
+        osgUtil::CullVisitor& getParent() { return *_cv; }
+
     public: // osg::NodeVisitor
         void apply(osg::Node& node);
         

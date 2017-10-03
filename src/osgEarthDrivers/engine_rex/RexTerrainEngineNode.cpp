@@ -578,6 +578,9 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         //std::stringstream buf;
 
+        int layersDrawn = 0;
+        //bool dump = culler.getFrameStamp()->getFrameNumber() % 100 == 0;
+
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
             ++i)
@@ -618,12 +621,18 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 {
                     cv->apply(*lastLayer);
                 }
+
+                ++layersDrawn;
+                //if (dump)
+                //{
+                //    OE_INFO << "   Layer tiles = " << lastLayer->_tiles.size() << std::endl;
+                //}
             }
 
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
         }
 
-        //Registry::instance()->startActivity("DRAW\n", buf.str());
+        Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
 
         // The last layer to render must clear up the OSG state,
         // otherwise it will be corrupt and can lead to crashing.

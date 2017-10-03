@@ -73,6 +73,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         DrawTileCommand* addDrawCommand(UID sourceUID, const TileRenderModel* model, const RenderingPass* pass, TileNode* node);
 
+        bool _culled[1024];
     };
 
 } } } // namespace 

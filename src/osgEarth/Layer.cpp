@@ -99,6 +99,7 @@ _options(optionsPtr? optionsPtr : &_optionsConcrete)
     _uid = osgEarth::Registry::instance()->createUID();
     _renderType = RENDERTYPE_NONE;
     _status = Status::OK();
+    // init() will be called by base class
 }
 
 Layer::~Layer()
@@ -133,6 +134,8 @@ Layer::init()
     {
         osg::Object::setName(options().name().get());
     }
+
+    _worldBoundComputed = false;
 }
 
 const Status&
@@ -258,4 +261,26 @@ Layer::postCull(osgUtil::CullVisitor* cv) const
 {
     //if (getStateSet())
     //    cv->popStateSet();
+}
+
+osg::BoundingSphere
+Layer::computeBound(const SpatialReference* mapSRS) const
+{
+    osg::BoundingSphere bs;
+    return bs;
+}
+
+const osg::BoundingSphere&
+Layer::getBound(const SpatialReference* mapSRS) const
+{
+    if (_worldBoundComputed == false)
+    {
+        Threading::ScopedMutexLock lock(_worldBoundMutex);
+        if (_worldBoundComputed == false)
+        {
+            _worldBound = computeBound(mapSRS);
+            _worldBoundComputed = true;
+        }
+    }
+    return _worldBound;
 }

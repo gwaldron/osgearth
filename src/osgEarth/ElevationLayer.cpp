@@ -1054,7 +1054,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 if (resolvedIndex >= 0 && offsets[i].index < resolvedIndex)
                     continue;
 
-                TileKey contenderKey = offsets[i].key;
+                TileKey &contenderKey = offsets[i].key;
 
                 // If there is a border, the edge points may not fall within the key extents 
                 // and we may need to fetch a neighboring key.

@@ -249,7 +249,7 @@ main( int argc, char** argv )
 
     mapNode->addChild(new HorizonNode());
 
-    viewer.getView(1)->getCamera()->addCullCallback( new VisitorData::Install("osgEarth.Stealth") );
+    viewer.getView(1)->getCamera()->setCullCallback( new VisitorData::Install("osgEarth.Stealth") );
 
     while (!viewer.done())
     {

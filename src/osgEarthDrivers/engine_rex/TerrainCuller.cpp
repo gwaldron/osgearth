@@ -189,19 +189,29 @@ TerrainCuller::apply(osg::Node& node)
         {
             TileRenderModel& renderModel = _currentTileNode->renderModel();
 
+            for (unsigned p = 0; p < renderModel._passes.size(); ++p)
+            {
+                _culled[p] = true;
+                const RenderingPass& pass = renderModel._passes[p];                
+                if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                {
+                    // cull against layer's BS
+                    _culled[p] = isCulled(pass._layer->getBound(_context->getMap()->getSRS()));
+                }
+            }
+
             // push the surface matrix:
             osg::Matrix mvm = *getModelViewMatrix();
             surface->computeLocalToWorldMatrix(mvm, this);
             pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
-                        
+
             // First go through any legit rendering pass data in the Tile and
             // and add a DrawCommand for each.
             for (unsigned p = 0; p < renderModel._passes.size(); ++p)
             {
-                const RenderingPass& pass = renderModel._passes[p];
-                
-                if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                if (_culled[p] == false)
                 {
+                    const RenderingPass& pass = renderModel._passes[p];
                     if (addDrawCommand(pass._sourceUID, &renderModel, &pass, _currentTileNode))
                     {
                         ++_currentTileDrawCommands;

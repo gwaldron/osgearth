@@ -374,6 +374,9 @@ namespace osgEarth
         //! Call this if you call dataExtents() and modify it.
         void dirtyDataExtents();
 
+        //! Computes world bounds for this layer
+        virtual osg::BoundingSphere computeBound(const SpatialReference* mapSRS) const;
+
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;

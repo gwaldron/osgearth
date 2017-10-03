@@ -217,4 +217,11 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(ext == GeoExtent(SpatialReference::create("wgs84"), 165.0, -10.0, 185.0, 10.0));
         REQUIRE(ext.crossesAntimeridian());
     }
+
+    SECTION("Validate input") {
+        REQUIRE(GeoExtent(WGS84, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX).isInvalid());
+        REQUIRE(GeoExtent(WGS84, 0, 0, 1, DBL_MAX).isInvalid());
+        REQUIRE(GeoExtent(WGS84, 0.0, 0.0, 10.0, -10.0).isInvalid());
+        REQUIRE(GeoExtent(WGS84, sqrt(-1.0), 0.0, 10.0, 10.0).isInvalid());
+    }
 }

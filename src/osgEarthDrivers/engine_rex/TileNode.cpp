@@ -369,7 +369,7 @@ TileNode::cull_stealth(TerrainCuller* culler)
     {
         for(int i=0; i<4; ++i)
         {
-            getSubTile(i)->accept_cull_stealth( culler );
+            getSubTile(i)->accept( *culler );
         }
     }
 
@@ -522,7 +522,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
         {
             TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
         
-            if (VisitorData::isSet(nv, "osgEarth.Stealth"))
+            if (VisitorData::isSet(culler->getParent(), "osgEarth.Stealth"))
             {
                 accept_cull_stealth( culler );
             }

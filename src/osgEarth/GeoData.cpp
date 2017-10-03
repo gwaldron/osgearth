@@ -706,9 +706,19 @@ GeoExtent::isGeographic() const
 void
 GeoExtent::set(double west, double south, double east, double north)
 {
+    // Validate input.
+    if (west  == DBL_MAX || west  == -DBL_MAX || east  == DBL_MAX || east  == -DBL_MAX ||
+        south == DBL_MAX || south == -DBL_MAX || north == DBL_MAX || north == -DBL_MAX ||
+        osg::isNaN(west) || osg::isNaN(south) || osg::isNaN(east) || osg::isNaN(north) ||
+        south > north)
+    {
+        _west = _south = 0.0;
+        _width = _height = -1.0;
+        return;
+    }
+
     // In this method, east is always to the east of west!
     // If it appears not to be, that means the extent crosses the antimeridian.
-
     west = normalizeX(west);
     double width = 0.0;
     double height = 0.0;

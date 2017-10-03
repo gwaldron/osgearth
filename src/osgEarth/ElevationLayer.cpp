@@ -881,6 +881,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     double   dx         = key.getExtent().width() / (double)(numColumns-1);
     double   dy         = key.getExtent().height() / (double)(numRows-1);
 
+#if 0
     // If the incoming heightfield requests a positive border width, 
     // we need to adjust the extents so that we request data outside the
     // extent of the tile key:
@@ -892,6 +893,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
         xmin -= dx * (double)border;
         ymin -= dy * (double)border;
     }
+#endif
     
     // We will load the actual heightfields on demand. We might not need them all.
 #if 0
@@ -956,6 +958,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
                 int n = 4; // index 4 is the center/default tile
 
+#if 0
                 if (border > 0u && !contenderKey.getExtent().contains(x, y))
                 {
                     int dTx = x < contenderKey.getExtent().xMin() ? -1 : x > contenderKey.getExtent().xMax() ? +1 : 0;
@@ -963,6 +966,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     contenderKey = contenderKey.createNeighborKey(dTx, dTy);
                     n = (dTy+1)*3 + (dTx+1);
                 }
+#endif
 
                 if ( heightFailed[n][i] )
                     continue;
@@ -1061,6 +1065,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
                 int n = 4; // index 4 is the center/default tile
 
+#if 0
                 if (border > 0u && !contenderKey.getExtent().contains(x, y))
                 {
                     int dTx = x < contenderKey.getExtent().xMin() ? -1 : x > contenderKey.getExtent().xMax() ? +1 : 0;
@@ -1068,6 +1073,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                     contenderKey = contenderKey.createNeighborKey(dTx, dTy);
                     n = (dTy+1)*3 + (dTx+1);
                 }
+#endif
                 
                 if ( offsetFailed[n][i] == true )
                     continue;

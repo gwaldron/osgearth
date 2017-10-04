@@ -650,6 +650,15 @@ GeoCircle::intersects( const GeoCircle& rhs ) const
 #undef  LC
 #define LC "[GeoExtent] "
 
+namespace {
+    bool is_valid(double n) {
+        return
+            osg::isNaN(n) == false &&
+            n != DBL_MAX &&
+            n != -DBL_MAX;
+    }
+}
+
 GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
@@ -707,9 +716,10 @@ void
 GeoExtent::set(double west, double south, double east, double north)
 {
     // Validate input.
-    if (west  == DBL_MAX || west  == -DBL_MAX || east  == DBL_MAX || east  == -DBL_MAX ||
-        south == DBL_MAX || south == -DBL_MAX || north == DBL_MAX || north == -DBL_MAX ||
-        osg::isNaN(west) || osg::isNaN(south) || osg::isNaN(east) || osg::isNaN(north) ||
+    if (!is_valid(west) ||
+        !is_valid(south) ||
+        !is_valid(east) ||
+        !is_valid(north) ||
         south > north)
     {
         _west = _south = 0.0;
@@ -871,7 +881,7 @@ GeoExtent::bounds() const
 bool
 GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 {
-    if ( isInvalid() )
+    if (isInvalid() || !is_valid(x) || !is_valid(y))
         return false;
 
     osg::Vec3d xy( x, y, 0 );
@@ -1033,6 +1043,9 @@ GeoExtent::recomputeCircle()
 void
 GeoExtent::expandToInclude(double x, double y)
 {
+    if (!is_valid(x) || !is_valid(y))
+        return;
+
     // First, bring the X coordinate into the local frame.
     x = normalizeX(x);
 
@@ -1261,16 +1274,12 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
 void
 GeoExtent::scale(double x_scale, double y_scale)
 {
-    if ( isInvalid() )
+    if (isInvalid() || !is_valid(x_scale) || !is_valid(y_scale))
         return;
 
     double cx = _west + 0.5*_width;
-    //_width *= x_scale;
-    //_west = normalizeX(cx - 0.5*_width);
 
     double cy = _south + 0.5*_height;
-    //_height *= y_scale;
-    //_south = cy - 0.5*_height;
      
     setOriginAndSize(
         normalizeX(cx - 0.5*_width*x_scale),
@@ -1282,7 +1291,7 @@ GeoExtent::scale(double x_scale, double y_scale)
 void
 GeoExtent::expand(double x, double y)
 {
-    if ( isInvalid() )
+    if (isInvalid() || !is_valid(x) || !is_valid(y))
         return;
 
     setOriginAndSize(
@@ -1331,7 +1340,7 @@ GeoExtent::area() const
 double
 GeoExtent::normalizeX(double x) const
 {
-    if (isValid() && _srs->isGeographic())
+    if (isValid() && is_valid(x) && _srs->isGeographic())
     {
         while (x < -180.0)
             x += 360.0;

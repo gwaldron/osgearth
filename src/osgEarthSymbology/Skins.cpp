@@ -167,6 +167,8 @@ SkinResource::createTexture(osg::Image* image) const
     // don't resize them, let it be
     tex->setResizeNonPowerOfTwoHint(false);
 
+    ImageUtils::activateMipMaps(tex);
+
     return tex;
 }
 

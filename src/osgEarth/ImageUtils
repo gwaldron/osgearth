@@ -338,6 +338,15 @@ namespace osgEarth
         static osg::Image* upSampleNN(const osg::Image* src, int quadrant);
 
         /**
+         * Activates mipmapping for a texture image if the correct filters exist.
+         *
+         * If OSG has an ImageProcessor service installed, this method will use that
+         * to generate mipmaps. If not, the method will be a NOP and the GPU wil
+         * generate mipmaps (if necessary) upon GPU transfer.
+         */
+        static void activateMipMaps(osg::Texture* texture);
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

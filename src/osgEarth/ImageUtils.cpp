@@ -1310,6 +1310,34 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 }
 
 
+void
+ImageUtils::activateMipMaps(osg::Texture* tex)
+{
+#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+    if (tex == 0L)
+        return;
+
+    // Verify that this texture requests mipmaps:
+    osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
+    if (minFilter == tex->LINEAR_MIPMAP_LINEAR ||
+        minFilter == tex->LINEAR_MIPMAP_NEAREST ||
+        minFilter == tex->NEAREST_MIPMAP_LINEAR ||
+        minFilter == tex->NEAREST_MIPMAP_NEAREST)
+    {
+        // See if we have a CPU mipmap generator:
+        osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
+        if (ip)
+        {
+            for (unsigned i = 0; i < tex->getNumImages(); ++i)
+            {
+                ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
+            }
+        }
+    }
+#endif
+}
+
+
 bool
 ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
 {

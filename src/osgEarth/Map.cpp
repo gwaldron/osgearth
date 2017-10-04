@@ -55,20 +55,20 @@ Map::Map() :
 osg::Object(),
 _dataModelRevision(0)
 {
-    ctor();
+    ctor(0);
 }
 
-Map::Map( const MapOptions& options ) :
+Map::Map(const MapOptions& options, const osgDB::Options* readOptions) :
 osg::Object(),
 _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
 {
-    ctor();
+   ctor(readOptions);
 }
 
 void
-Map::ctor()
+Map::ctor(const osgDB::Options* readOptions)
 {
     // Set the object name.
     osg::Object::setName("osgEarth.Map");
@@ -88,7 +88,14 @@ Map::ctor()
     }
 
     // the map-side dbOptions object holds I/O information for all components.
-    _readOptions = osg::clone( Registry::instance()->getDefaultOptions() );
+    if (readOptions != 0)
+    {
+       _readOptions = osg::clone(readOptions);
+    }
+    else
+    {
+       _readOptions = osg::clone(Registry::instance()->getDefaultOptions());
+    }
 
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions

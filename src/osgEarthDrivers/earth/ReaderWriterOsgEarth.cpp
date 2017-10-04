@@ -92,6 +92,7 @@ namespace
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
+
     public:
         ReaderWriterEarth()
         {
@@ -286,7 +287,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     }
 
                     EarthFileSerializer2 ser;
-                    node = ser.deserialize( conf, refURI );
+                    node = ser.deserialize(conf, refURI, readOptions);
                 }
             }
 

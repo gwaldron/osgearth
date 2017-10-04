@@ -270,7 +270,8 @@ private:
         }
 
 
-        result->setFirstLevel(_minLevel);
+        // Use the max level for now as the min level.
+        result->setFirstLevel(_maxLevel);
         result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
         result->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;

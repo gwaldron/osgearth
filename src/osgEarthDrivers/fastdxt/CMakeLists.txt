@@ -1,5 +1,5 @@
-OPTION(ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." OFF)
-IF(ENABLE_FASTDXT)
+OPTION(OSGEARTH_ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." ON)
+IF(OSGEARTH_ENABLE_FASTDXT)
 
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
@@ -38,4 +38,4 @@ ENDIF()
 
 SETUP_PLUGIN(fastdxt)
 
-ENDIF(ENABLE_FASTDXT)
+ENDIF(OSGEARTH_ENABLE_FASTDXT)

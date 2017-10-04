@@ -1080,44 +1080,32 @@ GeoExtent::expandToInclude(double x, double y)
     {
         if (isGeographic())
         {
-            // Figure out which way to expand: to the west or to the east.
-            // We want the shortest distance of the two. To figure this out
-            // we'll convert the longitudes into cylindrical vectors and 
-            // use a dot product to find the shortest expansion distance.
-            double xRad = osg::DegreesToRadians(x);
-            double westRad = osg::DegreesToRadians(west());
-            double eastRad = osg::DegreesToRadians(east());
-
-            osg::Vec2d xVec(cos(xRad), sin(xRad)); xVec.normalize();
-            osg::Vec2d westVec(cos(westRad), sin(westRad)); westVec.normalize();
-            osg::Vec2d eastVec(cos(eastRad), sin(eastRad)); eastVec.normalize();
-
-            // calculate the distances using the dot product
-            double eastDist = -(xVec*eastVec);
-            double westDist = -(xVec*westVec);
-
-            if (eastDist <= westDist) // expand to the east:
+            if (x > west())
             {
-                if (x >= east())
+                double w0 = x - west(); // non-wrap-around width
+                double w1 = (180.0 - x) + (west() - (-180.0) + _width); // wrap-around width
+                if (w0 <= w1)
                 {
-                    _width += x - east();
+                    _width = w0;
                 }
                 else
                 {
-                    _width += (180.0 - east()) + (x - (-180.0));
+                    _west = x;
+                    _width = w1;
                 }
             }
-            else // expand to the west:
+            else // (x < west())
             {
-                if (x <= west())
+                double w0 = _width + (west() - x); // non-wrap-around
+                double w1 = (x - (-180.0)) + (180.0 - west()); // wrap-around
+                if (w0 < w1)
                 {
-                    _width += west() - x;
                     _west = x;
+                    _width = w0;
                 }
                 else
                 {
-                    _width += (180.0 - x) + (west() - (-180.0));
-                    _west = x;
+                    _width = w1;
                 }
             }
         }

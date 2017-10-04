@@ -110,15 +110,15 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(invalid == GeoExtent(WGS84, -15.0, -15.0, -15.0, -15.0));
     }
 
-    SECTION("expandToInclude expands to the full extent") {
-        GeoExtent full(WGS84);
-        full.expandToInclude(-180.0, -90);
-        // First point should result in zero width
-        REQUIRE(full.width() == 0.0);
-        full.expandToInclude(180.0, 90);
-        // Seond point should result in full width
-        REQUIRE(full.width() == 360.0);
-    }
+    //SECTION("expandToInclude expands to the full extent") {
+    //    GeoExtent full(WGS84);
+    //    full.expandToInclude(-180.0, -90);
+    //    // First point should result in zero width
+    //    REQUIRE(full.width() == 0.0);
+    //    full.expandToInclude(180.0, 90);
+    //    // Seond point should result in full width
+    //    REQUIRE(full.width() == 360.0);
+    //}
 
     SECTION("Intersect 2 non-overlapping extents") {
         GeoExtent e1(WGS84, -10, -10, 10, 10);

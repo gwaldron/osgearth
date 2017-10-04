@@ -437,6 +437,8 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }
 
+    ImageUtils::activateMipMaps(tex);
+
     return tex;
 }
 

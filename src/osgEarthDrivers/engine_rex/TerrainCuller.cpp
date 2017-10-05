@@ -195,8 +195,9 @@ TerrainCuller::apply(osg::Node& node)
                 const RenderingPass& pass = renderModel._passes[p];                
                 if (pass._layer.valid() && pass._layer->getRenderType() == Layer::RENDERTYPE_TILE)
                 {
-                    // cull against layer's BS
-                    _culled[p] = isCulled(pass._layer->getBound(_context->getMap()->getSRS()));
+                    // cull against layer's BS - DISABLED PENDING REVIEW
+                    //_culled[p] = isCulled(pass._layer->getBound(_context->getMap()->getSRS()));
+                    _culled[p] = false;
                 }
             }
 

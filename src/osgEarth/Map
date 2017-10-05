@@ -32,7 +32,7 @@
 
 namespace osgEarth
 {
-    class MapInfo;
+    class MapInfo;   
 
     /**
      * Map is the main data model that the MapNode will render. It is a
@@ -48,7 +48,7 @@ namespace osgEarth
         Map();
 
         /** Construct a new empty map with options */
-        Map(const MapOptions& options);
+        Map(const MapOptions& options, const osgDB::Options* readOptions=0);
 
     public:
         /**
@@ -290,7 +290,7 @@ namespace osgEarth
 
 
     private:
-        void ctor();
+        void ctor(const osgDB::Options* readOptions);
         void calculateProfile();
 
         friend class MapInfo;

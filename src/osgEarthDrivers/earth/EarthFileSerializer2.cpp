@@ -385,7 +385,7 @@ _rewriteAbsolutePaths( false )
 
 
 osg::Node*
-EarthFileSerializer2::deserialize(const Config& conf, const std::string& referrer, const osgDB::Options* options) const
+EarthFileSerializer2::deserialize( const Config& conf, const std::string& referrer ) const
 {
     // First, pre-load any extension DLLs.
     preloadExtensionLibs(conf);
@@ -393,7 +393,6 @@ EarthFileSerializer2::deserialize(const Config& conf, const std::string& referre
     preloadExtensionLibs(conf.child("external"));
 
     MapOptions mapOptions( conf.child( "options" ) );
-    
 
     // legacy: check for name/type in top-level attrs:
     if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
@@ -403,8 +402,8 @@ EarthFileSerializer2::deserialize(const Config& conf, const std::string& referre
         if ( conf.hasValue("type") ) legacy.add( "type", conf.value("type") );
         mapOptions.mergeConfig( legacy );
     }
-    
-    osg::ref_ptr< Map > map = new Map( mapOptions , options);    
+
+    osg::ref_ptr< Map > map = new Map( mapOptions );
 
     // Start a batch update of the map:
     map->beginUpdate();

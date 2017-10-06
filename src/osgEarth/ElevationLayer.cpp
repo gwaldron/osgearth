@@ -945,7 +945,6 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
             int resolvedIndex = -1;
 
             osg::Vec3 normal_sum(0,0,0);
-            unsigned normal_count = 0u;
 
             for(int i=0; i<contenders.size() && resolvedIndex<0; ++i)
             {

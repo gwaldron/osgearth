@@ -50,8 +50,6 @@ CacheEstimator::getNumTiles() const
 
     for (unsigned int level = _minLevel; level <= _maxLevel; level++)
     {
-        double coverageRatio = 0.0;
-
         if (_extents.empty())
         {
             unsigned int wide, high;
@@ -63,7 +61,6 @@ CacheEstimator::getNumTiles() const
             for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); ++itr)
             {
                 const GeoExtent& extent = *itr;
-                double boundsArea = extent.area();
 
                 TileKey ll = _profile->createTileKey(extent.xMin(), extent.yMin(), level);
                 TileKey ur = _profile->createTileKey(extent.xMax(), extent.yMax(), level);

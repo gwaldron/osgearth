@@ -258,11 +258,6 @@ ImageUtils::resizeImage(const osg::Image* input,
         PixelReader read( input );
         PixelWriter write( output.get() );
 
-        unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
-
-        unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
-        unsigned int   dataRowSizeBytes = output->getRowSizeInBytes() >> mipmapLevel;
-
         for( unsigned int output_row=0; output_row < out_t; output_row++ )
         {
             // get an appropriate input row
@@ -927,7 +922,6 @@ ImageUtils::upSampleNN(const osg::Image* src, int quadrant)
     int seed = *(int*)dst->data(0,0);
 
     Random rng(seed+quadrant);
-    int c = 0;
 
     for(int t=0; t<dst->t(); t+=2)
     {

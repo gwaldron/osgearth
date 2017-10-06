@@ -134,9 +134,7 @@ namespace
 
     // Experimental.
     void optimizeProjectionMatrix(OverlayDecorator::TechRTTParams& params, double maxFarNearRatio)
-    {
-        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-        
+    {        
         // t0,t1,t2,t3 will form a polygon that tightly fits the
         // main camera's frustum. Texture near the camera will get
         // more resolution then texture far away.

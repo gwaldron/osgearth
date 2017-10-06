@@ -240,7 +240,6 @@ namespace osgEarth
 
     private:
 
-        unsigned           _id;
         osg::ref_ptr<Map>  _map;
         osg::Group*        _layerNodes;
         OverlayDecorator*  _overlayDecorator;

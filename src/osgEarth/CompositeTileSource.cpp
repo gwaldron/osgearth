@@ -295,7 +295,6 @@ osg::HeightField* CompositeTileSource::createHeightField(
             ProgressCallback*     progress )
 {    
     unsigned size = getPixelsPerTile(); //int size = *getOptions().tileSize();    
-    bool hae = false;
     osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
     heightField->allocate(size, size);
 

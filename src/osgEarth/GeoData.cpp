@@ -1868,9 +1868,6 @@ namespace
             height = osg::minimum(image->s(), image->t());
         }
 
-        // need to know this in order to choose the right interpolation algorithm
-        const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
-
         osg::Image *result = new osg::Image();
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
         result->allocateImage(width, height, 1, image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);

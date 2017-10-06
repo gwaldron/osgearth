@@ -474,8 +474,6 @@ ElevationEnvelope::getElevationExtrema(const std::vector<osg::Vec3d>& input,
 
     min = FLT_MAX, max = -FLT_MAX;
 
-    unsigned count = 0;
-
     osg::Vec3d centroid;
 
     for (std::vector<osg::Vec3d>::const_iterator v = input.begin(); v != input.end(); ++v)

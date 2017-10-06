@@ -195,9 +195,11 @@ namespace osgEarth
         virtual osg::Node* getOrCreateNode() { return 0L; }
 
         /**
-         * World bounds of this layer, if available
+         * Extent of this layer's data. 
+         * This method may return GeoExtent::INVALID which just means that the
+         * information is unavailable.
          */
-        const osg::BoundingSphere& getBound(const SpatialReference* mapSRS) const;
+        virtual const GeoExtent& getExtent() const;
 
     public:
 
@@ -303,8 +305,6 @@ namespace osgEarth
         const Status& setStatus(const Status& status) { _status = status; return _status; }
         const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
 
-        virtual osg::BoundingSphere computeBound(const SpatialReference* mapSRS) const;
-
     private:
         UID _uid;
         osg::ref_ptr<osg::StateSet> _stateSet;
@@ -315,9 +315,6 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
         osg::ref_ptr<osgDB::Options> _readOptions;
-        mutable osg::BoundingSphere _worldBound;
-        mutable bool _worldBoundComputed;
-        mutable Threading::Mutex _worldBoundMutex;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

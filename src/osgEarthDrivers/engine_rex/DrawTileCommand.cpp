@@ -38,6 +38,11 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         ds._ext->glUniform4fv(ds._tileKeyUL, 1, _keyValue.ptr());
     }
 
+    if (ds._layerOrderUL >= 0 && !ds._layerOrder.isSetTo(_order))
+    {
+        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_order);
+    }
+
     // Elevation coefficients (can probably be terrain-wide)
     if (ds._elevTexelCoeffUL >= 0 && !ds._elevTexelCoeff.isSetTo(_elevTexelCoeff))
     {

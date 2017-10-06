@@ -32,6 +32,14 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    struct LayerExtent
+    {
+        LayerExtent() : _computed(false) { }
+        bool _computed;
+        GeoExtent _extent;
+    };
+    typedef std::vector<LayerExtent> LayerExtentVector;
+
     /**
      * Node visitor responsible for assembling a TerrainRenderData that 
      * contains all the information necessary to render the terrain.
@@ -47,13 +55,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _currentTileDrawCommands;
         unsigned _orphanedPassesDetected;
         osgUtil::CullVisitor* _cv;
+        LayerExtentVector* _layerExtents;
 
     public:
         /** A new terrain culler */
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const MapFrame& frame, const RenderBindings& bindings);
+        void setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }
@@ -71,9 +80,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     private:
 
-        DrawTileCommand* addDrawCommand(UID sourceUID, const TileRenderModel* model, const RenderingPass* pass, TileNode* node);
+        DrawTileCommand* addDrawCommand(
+            UID sourceUID, 
+            const TileRenderModel* model, 
+            const RenderingPass* pass, 
+            TileNode* node,
+            unsigned orderInTile);
 
-        bool _culled[1024];
     };
 
 } } } // namespace 

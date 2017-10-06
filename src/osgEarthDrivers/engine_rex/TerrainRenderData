@@ -47,7 +47,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void sortDrawCommands();
 
         /** Add a Drawable for a layer. Add these in the order you wish to render them. */
-        LayerDrawable* addLayerDrawable(const Layer*);
+        LayerDrawable* addLayerDrawable(const Layer*, const MapFrame& frame);
 
         /** Layers to draw */
         LayerDrawableList& layers() { return _layerList; }

@@ -356,6 +356,9 @@ namespace osgEarth
         // CTOR initialization; call from subclass.
         virtual void init();
 
+        //! Extent of this layer's data.
+        virtual const GeoExtent& getExtent() const;
+
     protected:
 
         // Creates the driver the supplies the actual data.
@@ -373,9 +376,6 @@ namespace osgEarth
 
         //! Call this if you call dataExtents() and modify it.
         void dirtyDataExtents();
-
-        //! Computes world bounds for this layer
-        virtual osg::BoundingSphere computeBound(const SpatialReference* mapSRS) const;
 
     protected:
 

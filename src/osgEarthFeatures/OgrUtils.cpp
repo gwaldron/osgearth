@@ -85,48 +85,59 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
 
     OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
 
-    if (
-        wkbType == wkbPolygon ||
-        wkbType == wkbPolygon25D )
+    int numPoints, numGeoms;
+
+    switch (wkbType)
     {
-        output = createPolygon( geomHandle );
-    }
-    else if (
-        wkbType == wkbLineString ||
-        wkbType == wkbLineString25D )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
+    case wkbPolygon:
+    case wkbPolygon25D:
+    case wkbPolygonM:
+    case wkbPolygonZM:
+        output = createPolygon(geomHandle);
+        break;
+
+    case wkbLineString:
+    case wkbLineString25D:
+    case wkbLineStringM:
+    case wkbLineStringZM:
+        numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::LineString( numPoints );
         populate( geomHandle, output, numPoints );
-    }
-    else if (
-        wkbType == wkbLinearRing )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
+        break;
+
+    case wkbLinearRing:
+        numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::Ring( numPoints );
         populate( geomHandle, output, numPoints );
-    }
-    else if ( 
-        wkbType == wkbPoint ||
-        wkbType == wkbPoint25D )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
+        break;
+
+    case wkbPoint:
+    case wkbPoint25D:
+    case wkbPointM:
+    case wkbPointZM:
+        numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::PointSet( numPoints );
         populate( geomHandle, output, numPoints );
-    }
-    else if (
-        wkbType == wkbGeometryCollection ||
-        wkbType == wkbGeometryCollection25D ||
-        wkbType == wkbMultiPoint ||
-        wkbType == wkbMultiPoint25D ||
-        wkbType == wkbMultiLineString ||
-        wkbType == wkbMultiLineString25D ||
-        wkbType == wkbMultiPolygon ||
-        wkbType == wkbMultiPolygon25D )
-    {
-        Symbology::MultiGeometry* multi = new Symbology::MultiGeometry();
+        break;
 
-        int numGeoms = OGR_G_GetGeometryCount( geomHandle );
+    case wkbGeometryCollection:
+    case wkbGeometryCollection25D:
+    case wkbGeometryCollectionM:
+    case wkbGeometryCollectionZM:
+    case wkbMultiPoint:
+    case wkbMultiPoint25D:
+    case wkbMultiPointM:
+    case wkbMultiPointZM:
+    case wkbMultiLineString:
+    case wkbMultiLineString25D:
+    case wkbMultiLineStringM:
+    case wkbMultiLineStringZM:
+    case wkbMultiPolygon:
+    case wkbMultiPolygon25D:
+    case wkbMultiPolygonM:
+    case wkbMultiPolygonZM:
+        Symbology::MultiGeometry* multi = new Symbology::MultiGeometry();
+        numGeoms = OGR_G_GetGeometryCount( geomHandle );
         for( int n=0; n<numGeoms; n++ )
         {
             OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomHandle, n );
@@ -136,8 +147,8 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
                 if ( geom ) multi->getComponents().push_back( geom );
             }
         } 
-
         output = multi;
+        break;
     }
 
     return output;

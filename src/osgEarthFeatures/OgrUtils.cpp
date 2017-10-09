@@ -25,6 +25,14 @@
 
 using namespace osgEarth::Features;
 
+#ifndef GDAL_VERSION_AT_LEAST
+#define GDAL_VERSION_AT_LEAST(MAJOR, MINOR, REV) ((GDAL_VERSION_MAJOR>MAJOR) || (GDAL_VERSION_MAJOR==MAJOR && (GDAL_VERSION_MINOR>MINOR || (GDAL_VERSION_MINOR==MINOR && GDAL_VERSION_REV>=REV))))
+#endif
+
+#if GDAL_VERSION_AT_LEAST(2,1,0)
+#  define GDAL_HAS_M_TYPES
+#endif
+
 
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
@@ -91,15 +99,19 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
     {
     case wkbPolygon:
     case wkbPolygon25D:
+#ifdef GDAL_HAS_M_TYPES
     case wkbPolygonM:
     case wkbPolygonZM:
+#endif
         output = createPolygon(geomHandle);
         break;
 
     case wkbLineString:
     case wkbLineString25D:
+#ifdef GDAL_HAS_M_TYPES
     case wkbLineStringM:
     case wkbLineStringZM:
+#endif
         numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::LineString( numPoints );
         populate( geomHandle, output, numPoints );
@@ -113,8 +125,10 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
 
     case wkbPoint:
     case wkbPoint25D:
+#ifdef GDAL_HAS_M_TYPES
     case wkbPointM:
     case wkbPointZM:
+#endif
         numPoints = OGR_G_GetPointCount( geomHandle );
         output = new Symbology::PointSet( numPoints );
         populate( geomHandle, output, numPoints );
@@ -122,20 +136,22 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
 
     case wkbGeometryCollection:
     case wkbGeometryCollection25D:
-    case wkbGeometryCollectionM:
-    case wkbGeometryCollectionZM:
     case wkbMultiPoint:
     case wkbMultiPoint25D:
-    case wkbMultiPointM:
-    case wkbMultiPointZM:
     case wkbMultiLineString:
     case wkbMultiLineString25D:
-    case wkbMultiLineStringM:
-    case wkbMultiLineStringZM:
     case wkbMultiPolygon:
     case wkbMultiPolygon25D:
+#ifdef GDAL_HAS_M_TYPES
+    case wkbGeometryCollectionM:
+    case wkbGeometryCollectionZM:
+    case wkbMultiPointM:
+    case wkbMultiPointZM:
+    case wkbMultiLineStringM:
+    case wkbMultiLineStringZM:
     case wkbMultiPolygonM:
     case wkbMultiPolygonZM:
+#endif
         Symbology::MultiGeometry* multi = new Symbology::MultiGeometry();
         numGeoms = OGR_G_GetGeometryCount( geomHandle );
         for( int n=0; n<numGeoms; n++ )

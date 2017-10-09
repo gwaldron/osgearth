@@ -80,6 +80,8 @@ distribution.
 	#endif
 #endif	
 
+namespace osgEarth
+{
 class TiXmlDocument;
 class TiXmlElement;
 class TiXmlComment;
@@ -87,6 +89,8 @@ class TiXmlUnknown;
 class TiXmlAttribute;
 class TiXmlText;
 class TiXmlDeclaration;
+}
+
 class TiXmlParsingData;
 
 const int TIXML_MAJOR_VERSION = 2;
@@ -125,6 +129,8 @@ struct TiXmlCursor
 
 	@sa TiXmlNode::Accept()
 */
+namespace osgEarth
+{
 class TiXmlVisitor
 {
 public:
@@ -149,6 +155,7 @@ public:
 	/// Visit an unknow node
 	virtual bool Visit( const TiXmlUnknown& /*unknown*/ )			{ return true; }
 };
+} // namespace osgEarth
 
 // Only used by Attribute::Query functions
 enum 
@@ -191,6 +198,8 @@ const TiXmlEncoding TIXML_DEFAULT_ENCODING = TIXML_ENCODING_UNKNOWN;
 	A Decleration contains: Attributes (not on tree)
 	@endverbatim
 */
+namespace osgEarth
+{
 class TiXmlBase
 {
 	friend class TiXmlNode;
@@ -737,17 +746,17 @@ public:
 	*/
 	virtual bool Accept( TiXmlVisitor* visitor ) const = 0;
 
+#ifdef TIXML_USE_STL
+    // The real work of the input operator.
+    virtual void StreamIn( std::istream* in, TIXML_STRING* tag ) = 0;
+#endif
+
 protected:
 	TiXmlNode( NodeType _type );
 
 	// Copy to the allocated object. Shared functionality between Clone, Copy constructor,
 	// and the assignment operator.
 	void CopyTo( TiXmlNode* target ) const;
-
-	#ifdef TIXML_USE_STL
-	    // The real work of the input operator.
-	virtual void StreamIn( std::istream* in, TIXML_STRING* tag ) = 0;
-	#endif
 
 	// Figure out what is at *p, and parse it. Returns null if it is not an xml node.
 	TiXmlNode* Identify( const char* start, TiXmlEncoding encoding );
@@ -1546,7 +1555,7 @@ private:
 	TiXmlCursor errorLocation;
 	bool useMicrosoftBOM;		// the UTF-8 BOM were found when read. Note this, and try to write.
 };
-
+} // namespace osgEarth
 
 /**
 	A TiXmlHandle is a class that wraps a node pointer with null checks; this is
@@ -1628,6 +1637,9 @@ private:
 	}
 	@endverbatim
 */
+
+using namespace osgEarth;
+
 class TiXmlHandle
 {
 public:

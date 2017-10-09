@@ -280,6 +280,8 @@ FeatureModelGraph::ctor()
 {
     // So we can pass it to the pseudoloader
     setName(USER_OBJECT_NAME);
+    
+    OE_TEST << LC << "ctor" << std::endl;
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
@@ -635,8 +637,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
                         const std::string& uri,
                         const osgDB::Options* readOptions)
 {
-    OE_DEBUG << LC
-        << "load: " << lod << "_" << tileX << "_" << tileY << std::endl;
+    OE_TEST << LC << "load " << lod << "_" << tileX << "_" << tileY << std::endl;
 
     osg::Group* result = 0L;
     
@@ -993,6 +994,8 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                              const TileKey* key,
                              const osgDB::Options* readOptions)
 {
+    OE_TEST << LC << "buildTile " << (key? key->str(): "no key") << std::endl;
+
     osg::ref_ptr<osg::Group> group;
 
     // Try to read it from a cache:
@@ -1134,6 +1137,8 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                          FeatureIndexBuilder*  index,
                          const osgDB::Options* readOptions)
 {
+    OE_TEST << LC << "build " << workingExtent.toString() << std::endl;
+
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
     FeatureSource* source = _session->getFeatureSource();
@@ -1281,7 +1286,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
                                     osg::Group*           parent,
                                     const osgDB::Options* readOptions)
 {
-    OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
+    OE_TEST << LC << "buildStyleGroups " << selector->name() << std::endl;
 
     // if the selector uses an expression to select the style name, then we must perform the
     // query and then SORT the features into style groups.
@@ -1330,6 +1335,8 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
                                                osg::Group*             parent,
                                                const osgDB::Options*   readOptions)
 {
+    OE_TEST << LC << "queryAndSortIntoStyleGroups " << std::endl;
+
     // the profile of the features
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
@@ -1408,9 +1415,9 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
                                     const FilterContext&  contextPrototype,
                                     const osgDB::Options* readOptions)
 {
-    osg::Group* styleGroup = 0L;
+    OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
 
-    OE_DEBUG << LC << "Created style group \"" << style.getName() << "\"\n";
+    osg::Group* styleGroup = 0L;
 
     FilterContext context(contextPrototype);
 
@@ -1469,6 +1476,8 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
                                     FeatureIndexBuilder*  index,
                                     const osgDB::Options* readOptions)
 {
+    OE_TEST << LC << "createStyleGroup " << style.getName() << std::endl;
+
     osg::Group* styleGroup = 0L;
 
     // the profile of the features
@@ -1615,6 +1624,8 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
               _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
               (_modelSource.valid() && _modelSource->outOfSyncWith(_modelSourceRev))))
         {
+            OE_TEST << LC << "out of sync - requesting update" << std::endl;
+
             _pendingUpdate = true;
             ADJUST_UPDATE_TRAV_COUNT( this, 1 );
         }
@@ -1629,6 +1640,8 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
     {
         if ( _pendingUpdate )
         {
+            OE_TEST << LC << "pending update detected" << std::endl;
+
             redraw();
             _pendingUpdate = false;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
@@ -1712,6 +1725,8 @@ void
 FeatureModelGraph::redraw()
 {
     OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
+
+    OE_TEST << LC << "redraw " << std::endl;
 
     // clear it out
     removeChildren( 0, getNumChildren() );

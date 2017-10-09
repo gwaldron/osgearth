@@ -70,6 +70,7 @@ _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
+_optimizeVertexOrdering( true ),
 _validate              ( false ),
 _maxPolyTilingAngle    ( 45.0f )
 {
@@ -89,6 +90,7 @@ _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
 _optimize              ( s_defaults.optimize().value() ),
+_optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
 _validate              ( s_defaults.validate().value() ),
 _maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() )
 {
@@ -109,6 +111,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.getIfSet   ( "optimize", _optimize );
+    conf.getIfSet   ("optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.getIfSet   ( "validate", _validate );
     conf.getIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
 
@@ -132,6 +135,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.addIfSet   ( "optimize", _optimize );
+    conf.addIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
     conf.addIfSet   ( "validate", _validate );
     conf.addIfSet   ( "max_polygon_tiling_angle", _maxPolyTilingAngle );
 
@@ -490,6 +494,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
+
+        if (_options.optimizeVertexOrdering().isSet())
+            filter.optimizeVertexOrdering() = *_options.optimizeVertexOrdering();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )

@@ -81,6 +81,13 @@ namespace osgEarth { namespace Features
         optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle_deg; }
         const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle_deg; }
 
+        /**
+         * Whether to run vertex order optimizations on the resulting geometry.
+         * This can speed up draw performance at the expense of increasing build time.
+         */
+        optional<bool>& optimizeVertexOrdering() { return _optimizeVertexOrdering; }
+        const optional<bool>& optimizeVertexOrdering() const { return _optimizeVertexOrdering; }
+
     protected:
         Style                      _style;
 
@@ -88,6 +95,7 @@ namespace osgEarth { namespace Features
         optional<GeoInterpolation> _geoInterp;
         optional<StringExpression> _featureNameExpr;
         optional<float>            _maxPolyTilingAngle_deg;
+        optional<bool>             _optimizeVertexOrdering;
         
         void tileAndBuildPolygon(
             Geometry*               input,

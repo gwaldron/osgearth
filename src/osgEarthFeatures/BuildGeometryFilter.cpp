@@ -95,7 +95,8 @@ BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
-_maxPolyTilingAngle_deg( 45.0f )
+_maxPolyTilingAngle_deg( 45.0f ),
+_optimizeVertexOrdering( false )
 {
     //nop
 }
@@ -212,7 +213,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                     }
 
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                    OE_TEST << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+                    //OE_TEST << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                     MeshSubdivider ms( _world2local, _local2world );
                     if ( input->geoInterp().isSet() )
@@ -392,11 +393,14 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         mg.setTargetMaximumNumberOfVertices(65536);
         geode->accept(mg);
 
-        osgUtil::Optimizer o;
-        o.optimize( geode,
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+        if (_optimizeVertexOrdering == true)
+        {
+            osgUtil::Optimizer o;
+            o.optimize( geode,
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+        }
 
         // Add it to the group
         group->addChild( geode );
@@ -965,7 +969,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         osgGeom->setPrimitiveSetList( geode->getDrawable(0)->asGeometry()->getPrimitiveSetList() );
     }
 
-    osgUtil::SmoothingVisitor::smooth( *osgGeom );
+    //osgUtil::SmoothingVisitor::smooth( *osgGeom );
 }
 
 // builds and tessellates a polygon (with or without holes)
@@ -1273,11 +1277,20 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             mg.setTargetMaximumNumberOfVertices(65536);
             geode->accept(mg);
 
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(),
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            if (_optimizeVertexOrdering == true)
+            {
+                osg::Timer_t t = osg::Timer::instance()->tick();
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(),
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+                OE_WARN << "OVO time = " << osg::Timer::instance()->delta_s(t, osg::Timer::instance()->tick()) << std::endl;
+            }
+
+            // Generate normals
+            osgUtil::SmoothingVisitor sv;
+            geode->accept(sv);
 
             result->addChild( geode.get() );
         }

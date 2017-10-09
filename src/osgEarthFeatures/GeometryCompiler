@@ -97,6 +97,10 @@ namespace osgEarth { namespace Features
         optional<bool>& optimize() { return _optimize; }
         const optional<bool>& optimize() const { return _optimize; }
 
+        /** Whether to run the vertex order optimizer on geometry. */
+        optional<bool>& optimizeVertexOrdering() { return _optimizeVertexOrdering; }
+        const optional<bool>& optimizeVertexOrdering() const { return _optimizeVertexOrdering; }
+
         /** Whether to run a geometry validation pass on teh resulting group. This is for debugging
         purposes and will dump issues to the console. */
         optional<bool>& validate() { return _validate; }
@@ -127,6 +131,7 @@ namespace osgEarth { namespace Features
         optional<ShaderPolicy>         _shaderPolicy;
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;
+        optional<bool>                 _optimizeVertexOrdering;
         optional<bool>                 _validate;
         optional<float>                _maxPolyTilingAngle;
 

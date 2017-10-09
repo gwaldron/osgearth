@@ -116,6 +116,7 @@ namespace osgEarth { namespace Features
         LayerListener<FeatureModelLayer, FeatureSourceLayer> _featureSourceLayerListener;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
+        bool _graphDirty;
         void create();
 
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;

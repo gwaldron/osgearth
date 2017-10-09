@@ -88,11 +88,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                 return 0L;
             }
         }
-        //if (drawable->_extent.isValid() &&
-        //    drawable->_extent.intersects(tileNode->getKey().getExtent()) == false)
-        //{
-        //    return 0L;
-        //}
 
         drawable->_tiles.push_back(DrawTileCommand());
         DrawTileCommand& tile = drawable->_tiles.back();
@@ -100,21 +95,15 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         // install everything we need in the Draw Command:
         tile._colorSamplers = pass ? &pass->_samplers : 0L;
         tile._sharedSamplers = &model->_sharedSamplers;
-        tile._matrix = surface->getMatrix();
-        tile._modelViewMatrix = *this->getModelViewMatrix();
+        tile._modelViewMatrix = this->getModelViewMatrix();
         tile._keyValue = tileNode->getTileKeyValue();
         tile._geom = surface->getDrawable()->_geom.get();
         tile._morphConstants = tileNode->getMorphConstants();
-        tile._key = tileNode->getKey();
+        tile._key = &tileNode->getKey();
         tile._order = (int)orderInTile;
 
-#if 1
         osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
         tile._range = getDistanceToViewPoint(c, true);
-#else
-        osg::Vec3f eyeWorld = getViewPointLocal() * surface->getMatrix();
-        tile._range = (eyeWorld - surface->getBound().center()).length();
-#endif
 
         const osg::Image* elevRaster = tileNode->getElevationRaster();
         if (elevRaster)
@@ -238,7 +227,9 @@ TerrainCuller::apply(osg::Node& node)
                 }
             }
 
-            // If the culler added no draw commands for this tile... do something!
+            // If the culler added no draw commands for this tile... we still need
+            // to draw something or else there will be a hole! So draw a blank tile.
+            // UID = -1 is the special UID code for a blank.
             if (_currentTileDrawCommands == 0)
             {
                 //OE_INFO << LC << "Adding blank render for tile " << _currentTileNode->getKey().str() << std::endl;
@@ -247,8 +238,6 @@ TerrainCuller::apply(osg::Node& node)
                     ++_currentTileDrawCommands;
                 }
             }
-
-            //addDrawCommand(-1, &renderModel, 0L, _currentTileNode);
                 
             popModelViewMatrix();
 

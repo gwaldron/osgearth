@@ -58,7 +58,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     }
 
     // MVM for this tile:
-    state.applyModelViewMatrix(_modelViewMatrix);
+    state.applyModelViewMatrix(_modelViewMatrix.get());
     
     // MVM uniforms for GL3 core:
     if (state.getUseModelViewAndProjectionUniforms())
@@ -135,7 +135,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             dc.normalTexture    = (*_sharedSamplers)[SamplerBinding::NORMAL]._texture.get();
             dc.coverageTexture  = (*_sharedSamplers)[SamplerBinding::COVERAGE]._texture.get();
         }
-        dc.key = &_key;
+        dc.key = _key;
         dc.range = _range;
         _drawCallback->draw(ri, dc, layerData);
 

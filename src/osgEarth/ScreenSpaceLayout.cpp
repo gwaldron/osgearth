@@ -864,7 +864,7 @@ ScreenSpaceLayout::activate(osg::StateSet* stateSet) //, int binNum)
         stateSet->setRenderBinDetails(
             binNum,
             OSGEARTH_SCREEN_SPACE_LAYOUT_BIN,
-            osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
+            osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
 
         // Force a single shared layout bin per render stage
         stateSet->setNestRenderBins( false );

@@ -458,7 +458,7 @@ namespace osgEarth
         /**
          * Gets a geo circle bounding this extent.
          */
-        const GeoCircle& getBoundingGeoCircle() const { return _circle; }
+        GeoCircle computeBoundingGeoCircle() const;
 
         /**
          * Grow this extent to include the specified point (which is assumed to be
@@ -500,11 +500,6 @@ namespace osgEarth
         double area() const;
 
         /**
-         * Normalize the longitude values in this GeoExtent
-         */
-        //void normalize();
-
-        /**
          * Generate a polytope in world coordinates that bounds the extent.
          * Return false if the extent it invalid.
          */
@@ -529,11 +524,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const SpatialReference> _srs;
-        //double _west, _east, _south, _north;
         double _west, _width, _south, _height;
-        GeoCircle _circle;
-
-        void recomputeCircle();
 
         double normalizeX( double longitude ) const;
 

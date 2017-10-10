@@ -100,7 +100,7 @@ void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, unsigned 
     {
         TileKey key(lod, 0, 0, profile);
         GeoExtent e = key.getExtent();
-        const GeoCircle& c = e.getBoundingGeoCircle();
+        GeoCircle c = e.computeBoundingGeoCircle();
         double range = c.getRadius() * mtrf * 2.0;
 
         _vecVisParams[lod]._visibilityRange = range;

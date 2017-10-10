@@ -700,8 +700,7 @@ _srs(rhs._srs),
 _west(rhs._west),
 _width(rhs._width),
 _south(rhs._south),
-_height(rhs._height),
-_circle(rhs._circle)
+_height(rhs._height)
 {
     //NOP
 }
@@ -754,7 +753,6 @@ GeoExtent::setOriginAndSize(double west, double south, double width, double heig
     _width = width;
     _height = height;
     clamp();
-    recomputeCircle();
 }
 
 bool
@@ -974,18 +972,42 @@ GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
     }
 
     // If either of the extents crosses the antimeridian, split them
-    // and test each part separately.
+    // and test each part separately. We could call splitAcrossAntimeridian
+    // here, but doing it manually is faster since we don't have to 
+    // recompute the bounding circle.
     if ( rhs.crossesAntimeridian() )
     {
-        GeoExtent rhsWest, rhsEast;
-        rhs.splitAcrossAntimeridian( rhsWest, rhsEast );
-        return rhsWest.intersects(*this) || rhsEast.intersects(*this);
+        GeoExtent temp(getSRS());
+        temp._south = rhs._south;
+        temp._height = rhs._height;
+        
+        // west side of antimeridian:
+        temp._west = rhs._west;
+        temp._width = (180.0 - rhs._west);
+        if (intersects(temp))
+            return true;
+
+        // east side of antimeridian:
+        temp._west = -180.0;
+        temp._width = rhs.east() - (-180.0);
+        return intersects(temp);
     }
+
     else if ( crossesAntimeridian() )
     {
-        GeoExtent west, east;
-        splitAcrossAntimeridian(west, east);
-        return rhs.intersects(west) || rhs.intersects(east);
+        GeoExtent temp(getSRS());
+        temp._south = _south;
+        temp._height = _height;
+
+        // west side of antimeridian:
+        temp._west = _west;
+        temp._width = (180.0 - _west);
+        if (temp.intersects(rhs))
+            return true;
+
+        temp._west = -180.0;
+        temp._width = east() - (-180.0);
+        return temp.intersects(rhs);
     }
     else
     {
@@ -1001,12 +1023,14 @@ GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
     }
 }
 
-void
-GeoExtent::recomputeCircle()
+GeoCircle
+GeoExtent::computeBoundingGeoCircle() const
 {
+    GeoCircle circle;
+
     if ( !isValid() )
     {
-        _circle.setRadius( -1.0 );
+        circle.setRadius( -1.0 );
     }
     else 
     {
@@ -1016,7 +1040,7 @@ GeoExtent::recomputeCircle()
         if ( getSRS()->isProjected() )
         {
             double ext = std::max( width(), height() );
-            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
         }
         else // isGeographic
         {
@@ -1033,11 +1057,13 @@ GeoExtent::recomputeCircle()
             radius2 = std::max(radius2, (center-ne).length2());
             radius2 = std::max(radius2, (center-sw).length2());
 
-            _circle.setRadius( sqrt(radius2) );
+            circle.setRadius( sqrt(radius2) );
         }
 
-        _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
+        circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
     }
+
+    return circle;
 }
 
 void
@@ -1127,7 +1153,6 @@ GeoExtent::expandToInclude(double x, double y)
     if (!containsX || !containsY)
     {
         clamp();
-        recomputeCircle();
     }
 }
 
@@ -1250,7 +1275,6 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
     result._height = northTemp - result._south;
 
     result.clamp();
-    result.recomputeCircle();
 
     OE_DEBUG << "Intersection of " << this->toString() << " and " << rhs.toString() << " is: " 
         << result.toString()

@@ -380,6 +380,8 @@ namespace
 void
 DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
+    OE_INFO << LC << "Using texture size = " << _textureSize.get() << std::endl;
+
     // create the projected texture:
     osg::Texture2D* projTexture = new DrapingTexture(); 
 
@@ -700,7 +702,6 @@ DrapingTechnique::onInstall( TerrainEngineNode* engine )
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
         _textureSize.init( osg::minimum( 2048u, maxSize ) );
     }
-    OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
 }
 
 void

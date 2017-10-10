@@ -226,6 +226,8 @@ ClampingTechnique::reestablish(TerrainEngineNode* engine)
 void
 ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
+    OE_INFO << LC << "Using texture size = " << _textureSize.get() << std::endl;
+
     // To store technique-specific per-view info:
     LocalPerViewData* local = new LocalPerViewData();
     params._techniqueData = local;
@@ -502,8 +504,6 @@ ClampingTechnique::onInstall( TerrainEngineNode* engine )
     {
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
         _textureSize.init( osg::minimum( 4096u, maxSize ) );
-
-        OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
 }
 

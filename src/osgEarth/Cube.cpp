@@ -527,6 +527,57 @@ CubeSpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                            double&                 in_out_xmax,
                                            double&                 in_out_ymax ) const
 {
+    // input bounds:
+    Bounds inBounds(in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax);
+
+    Bounds outBounds;
+
+    // for each CUBE face, find the intersection of the input bounds and that face.
+    for (int face = 0; face < 6; ++face)
+    {
+        Bounds faceBounds( (double)(face), 0.0, (double)(face+1), 1.0);
+
+        Bounds intersection = faceBounds.intersectionWith(inBounds);
+
+        // if they intersect (with a non-zero area; abutting doesn't count in this case)
+        // transform the intersection and include in the result.
+        if (intersection.isValid() && intersection.area2d() > 0.0)
+        {
+            double
+                xmin = intersection.xMin(), ymin = intersection.yMin(),
+                xmax = intersection.xMax(), ymax = intersection.yMax();
+
+            if (transformInFaceExtentToMBR(to_srs, face, xmin, ymin, xmax, ymax))
+            {
+                outBounds.expandBy(Bounds(xmin, ymin, xmax, ymax));
+            }
+        }
+    }
+
+    if (outBounds.valid())
+    {
+        in_out_xmin = outBounds.xMin();
+        in_out_ymin = outBounds.yMin();
+        in_out_xmax = outBounds.xMax();
+        in_out_ymax = outBounds.yMax();
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool
+CubeSpatialReference::transformInFaceExtentToMBR(const SpatialReference* to_srs,
+                                                 int                     face,
+                                                 double&                 in_out_xmin,
+                                                 double&                 in_out_ymin,
+                                                 double&                 in_out_xmax,
+                                                 double&                 in_out_ymax ) const
+{
+    
+
     // note: this method only works when the extent is isolated to one face of the cube. If you
     // want to transform an artibrary extent, you need to break it up into separate extents for
     // each cube face.
@@ -535,7 +586,7 @@ CubeSpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     double face_xmin = in_out_xmin, face_ymin = in_out_ymin;
     double face_xmax = in_out_xmax, face_ymax = in_out_ymax;
 
-    int face;
+    //int face;
     CubeUtils::cubeToFace( face_xmin, face_ymin, face_xmax, face_ymax, face );
 
     // for equatorial faces, the normal transformation process will suffice (since it will call into

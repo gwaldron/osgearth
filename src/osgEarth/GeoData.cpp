@@ -953,9 +953,9 @@ GeoExtent::contains(const GeoExtent& rhs) const
     return
         isValid() &&
         rhs.isValid() &&
-        contains( rhs.west(), rhs.south() ) &&
-        contains( rhs.east(), rhs.north() ) &&
-        contains( rhs.getCentroid() );   // this accounts for the antimeridian
+        contains( rhs.west(), rhs.south(), rhs.getSRS() ) &&
+        contains( rhs.east(), rhs.north(), rhs.getSRS() ) &&
+        contains( rhs.getCentroid(), rhs.getSRS() );   // this accounts for the antimeridian
 }
 
 bool

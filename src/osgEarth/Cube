@@ -144,7 +144,14 @@ namespace osgEarth
     protected: // SpatialReference overrides
 
         void _init();
-
+        
+        bool transformInFaceExtentToMBR(
+            const SpatialReference* to_srs,
+            int                     face,
+            double&                 in_out_xmin,
+            double&                 in_out_ymin,
+            double&                 in_out_xmax,
+            double&                 in_out_ymax ) const;
     };
 
     /**

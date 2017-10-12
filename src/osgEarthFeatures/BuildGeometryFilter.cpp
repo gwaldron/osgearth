@@ -254,6 +254,25 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
     return geode;
 }
 
+namespace
+{
+    struct CopyHeightsCallback : public PolygonizeLinesOperator::Callback
+    {
+        osg::FloatArray* _heights;
+        osg::ref_ptr<osg::FloatArray> _newHeights;
+        CopyHeightsCallback(osg::FloatArray* heights) : _heights(heights) {
+            if (_heights) {
+                _newHeights = new osg::FloatArray();
+                _newHeights->reserve(_heights->size() * 3);
+            }
+        }
+        void operator()(unsigned i) {
+            if (_newHeights.valid() && _heights) {
+                _newHeights->push_back((*_heights)[i]);
+            }
+        }
+    };
+}
 
 osg::Group*
 BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
@@ -351,11 +370,20 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             if ( part->size() < 2 )
                 continue;
 
+            // GPU clamping enabled?
+            bool gpuClamping =
+                _style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+
             // collect all the pre-transformation HAT (Z) values.
-            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
-            hats->reserve( part->size() );
-            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
-                hats->push_back( i->z() );
+            osg::ref_ptr<osg::FloatArray> hats = 0L;
+            if (gpuClamping)
+            {
+                hats = new osg::FloatArray();
+                hats->reserve( part->size() );
+                for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+                    hats->push_back( i->z() );
+            }
 
             // transform the geometry into the target SRS and localize it about
             // a local reference point.
@@ -364,7 +392,8 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             transformAndLocalize( part->asVector(), featureSRS, verts.get(), normals.get(), outputSRS, _world2local, makeECEF );
 
             // turn the lines into polygons.
-            osg::Geometry* geom = polygonizer( verts.get(), normals.get(), twosided );
+            CopyHeightsCallback copyHeights(hats.get());
+            osg::Geometry* geom = polygonizer( verts.get(), normals.get(), gpuClamping? &copyHeights : 0L, twosided );
             if ( geom )
             {
                 geode->addDrawable( geom );
@@ -375,11 +404,11 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 context.featureIndex()->tagDrawable( geom, input );
 
             // install clamping attributes if necessary
-            if (_style.has<AltitudeSymbol>() &&
-                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            if (gpuClamping)
             {
                 Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
-                Clamping::setHeights( geom, hats.get() );
+                Clamping::setHeights( geom, copyHeights._newHeights.get() );
+                //OE_WARN << "heights = " << hats->size() << ", new hats = " << copyHeights._newHeights->size() << ", verts=" << geom->getVertexArray()->getNumElements() << std::endl;
             }            
         }
         polygonizer.installShaders( geode );
@@ -397,9 +426,10 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         {
             osgUtil::Optimizer o;
             o.optimize( geode,
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+                osgUtil::Optimizer::INDEX_MESH
+                | osgUtil::Optimizer::VERTEX_PRETRANSFORM
+                | osgUtil::Optimizer::VERTEX_POSTTRANSFORM
+                );
         }
 
         // Add it to the group

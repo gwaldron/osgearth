@@ -72,12 +72,10 @@ namespace
             }
         }
 
-        void apply(osg::Geode& geode) 
+        void apply(osg::Drawable& drawable)
         {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                apply( geode.getDrawable(i)->asGeometry() );
-            }
+            osg::Geometry* geom = drawable.asGeometry();
+            if (geom) apply(geom);
         }
     };
 }

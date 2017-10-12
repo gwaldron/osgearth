@@ -79,6 +79,18 @@ _host(host)
     //nop
 }
 
+SceneGraphCallbacks*
+PagedLODWithSceneGraphCallbacks::getSceneGraphCallbacks() const
+{
+    return _host.get();
+}
+
+void
+PagedLODWithSceneGraphCallbacks::setSceneGraphCallbacks(SceneGraphCallbacks* host)
+{
+    _host = host;
+}
+
 bool
 PagedLODWithSceneGraphCallbacks::addChild(osg::Node* child)
 {

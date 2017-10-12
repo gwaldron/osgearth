@@ -15,7 +15,7 @@ to extruded buildings.
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
       
-    <model name="buildings" driver="feature_geom">
+    <feature_model name="buildings">
              
         <features name="buildings" driver="ogr">
             <url>../data/boston_buildings_utm19.shp</url>
@@ -71,10 +71,10 @@ to extruded buildings.
                 }
             </style>
         </styles>   
-    </model>
+    </feature_model>
     
     
-    <model name="Streets" driver="feature_geom" enabled="true">
+    <feature_model name="Streets" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
 			<resample min_length="25" max_length="25"/>
@@ -94,10 +94,10 @@ to extruded buildings.
                 }
             </style>
         </styles>        
-    </model>
+    </feature_model>
 	
 	
-	<model name="streetlamps" driver="feature_geom">
+	<feature_model name="streetlamps">
 
         <features name="street centerlines" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
@@ -125,10 +125,10 @@ to extruded buildings.
 				<url>../data/scripts/createLineOffsetPoints.js</url>
 			</script>
         </styles>   
-    </model>
+    </feature_model>
     
     
-    <model name="Parks" driver="feature_geom" enabled="true">
+    <feature_model name="Parks" enabled="true">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
         </features>
@@ -154,16 +154,13 @@ to extruded buildings.
                 }
             </style>
         </styles>        
-    </model>
-    
-    
+    </feature_model>
+        
     <viewpoints>
         <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
         <viewpoint name="Boston Downtown 1" heading="117" lat="42.3568" long="-71.0585" height="0" pitch="-20.4" range="1500" />
         <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
         <viewpoint name="Boston Street Level" heading="-145.64081" lat="42.364015" long="-71.054149" pitch="-9.701" range="144.95"/>
     </viewpoints>
-
-    <sky driver="simple" hours="14.0"/>
   
 </map>

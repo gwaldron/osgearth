@@ -13,7 +13,7 @@ is randomized, but it is randomized exactly the same way each time.
     <!-- Our features layer. The "feature_geom" driver will analyze the
          style sheet and determine how to render the feature data. -->
          
-    <model name="trees" driver="feature_geom" enabled="true">
+    <feature_model name="trees" enabled="true">
           
         <!-- Feature data set to load. This is a set of polygons representing
              the public parks in Washington DC -->
@@ -72,7 +72,7 @@ is randomized, but it is randomized exactly the same way each time.
                 }                
             </style>
         </styles>        
-    </model>
+    </feature_model>
     
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>

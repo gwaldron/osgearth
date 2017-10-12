@@ -43,11 +43,6 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     ds.refresh(ri, _drawState->_bindings);
 
-    if (ds._layerOrderUL >= 0)
-    {
-        ds._ext->glUniform1i(ds._layerOrderUL, (GLint)_order);
-    }
-
     if (_layer)
     {
         if (ds._layerUidUL >= 0)

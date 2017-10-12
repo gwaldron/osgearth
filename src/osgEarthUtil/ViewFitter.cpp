@@ -61,7 +61,12 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
 
     for (int i = 0; i < points.size(); ++i)
     {
-        GeoPoint p = points[i].transform(_mapSRS.get());
+        // force absolute altitude mode - we don't care about clamping here
+        GeoPoint p = points[i];
+        p.altitudeMode() = ALTMODE_ABSOLUTE;
+
+        // transform to the map's srs and then to world coords.
+        p = p.transform(_mapSRS.get());
         p.toWorld(world[i]);
     }
     

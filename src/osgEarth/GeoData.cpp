@@ -38,68 +38,7 @@
 #include <iomanip>
 #include <cmath>
 
-#define LC "[GeoData] "
-
-
 using namespace osgEarth;
-
-
-namespace
-{
-    double s_cint( double x )
-    {
-        double dummy;
-        if (modf(x,&dummy) >= .5)
-            return x >= 0.0 ? ceil(x) : floor(x);
-        else
-            return x < 0.0 ? ceil(x) : floor(x);
-    }
-
-    double s_roundNplaces( double x, int n )
-    {
-        double off = pow(10.0, n);
-        return s_cint(x*off)/off;
-    }
-
-    double s_normalizeLongitude( double x, double minLon = -180.0, double maxLon = 180.0 )
-    {
-        double result = x;
-        while( result < minLon ) result += 360.;
-        while( result > maxLon ) result -= 360.;
-        return result;
-    }
-
-    double s_westToEastLongitudeDistance( double west, double east )
-    {
-        return west < east ? east-west : fmod(east,360.)-west;
-    }
-
-    /**
-     * Given a longitude value determine what longitude frame it is in.
-     * The base longitude frame is -180 to 180.  As values cross the antimeridian the frame is offset by 360 degrees.
-     */
-    void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
-    {
-        minLongitude = -180.0;
-        maxLongitude =  180.0;
-
-        while ( longitude < minLongitude || longitude > maxLongitude)
-        {
-            if (longitude < minLongitude)
-            {
-                minLongitude -= 360.0;
-                maxLongitude -= 360.0;
-            }
-            else if (longitude > maxLongitude)
-            {
-                minLongitude += 360.0;
-                maxLongitude += 360.0;
-            }
-        }
-    }
-}
-
-//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[GeoPoint] "
@@ -700,8 +639,7 @@ _srs(rhs._srs),
 _west(rhs._west),
 _width(rhs._width),
 _south(rhs._south),
-_height(rhs._height),
-_circle(rhs._circle)
+_height(rhs._height)
 {
     //NOP
 }
@@ -754,7 +692,6 @@ GeoExtent::setOriginAndSize(double west, double south, double width, double heig
     _width = width;
     _height = height;
     clamp();
-    recomputeCircle();
 }
 
 bool
@@ -885,51 +822,41 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
         return false;
 
     osg::Vec3d xy( x, y, 0 );
-    osg::Vec3d localxy = xy;
+    osg::Vec3d local = xy;
 
     // See if we need to xform the input:
     if (srs && srs->isHorizEquivalentTo(_srs.get()) == false)
     {
         // If the transform fails, bail out with error
-        if (srs->transform(xy, _srs.get(), localxy) == false)
+        if (srs->transform(xy, _srs.get(), local) == false)
         {
             return false;
         }
     }
 
-    // Bring the X coordinate into normal range:
-    localxy.x() = normalizeX(localxy.x());
-    
-    // Quantize the X coordinate to account for tiny rounding errors:
-    if (osg::equivalent(west(), localxy.x()))
-        localxy.x() = west();
-    if (osg::equivalent(east(), localxy.x()))
-        localxy.x() = east();
-    
-    // For the geographic frame, recast the X coordinate so it is
-    // greater than or equal to the west edge of the local extent:
-    if (isGeographic())
-    {
-        while (localxy.x() < _west)
-            localxy.x() += 360.0;
-    }
-    
-    // Test the X coordinate:
-    if (localxy.x() - west() > width())
-        return false;
-
     // Quantize the Y coordinate to account for tiny rounding errors:
-    if (osg::equivalent(south(), localxy.y()))
-        localxy.y() = south();
-    if (osg::equivalent(north(), localxy.y()))
-        localxy.y() = north();
+    if (osg::equivalent(south(), local.y()))
+        local.y() = south();
+    if (osg::equivalent(north(), local.y()))
+        local.y() = north();
 
     // Test the Y coordinate:
-    if (localxy.y() < south() || localxy.y() > north())
+    if (local.y() < south() || local.y() > north())
         return false;
 
-    // Pass.
-    return true;
+    // Bring the X coordinate into normal range:
+    local.x() = normalizeX(local.x());
+    
+    // Quantize the X coordinate to account for tiny rounding errors:
+    if (osg::equivalent(west(), local.x()))
+        local.x() = west();
+    if (osg::equivalent(east(), local.x()))
+        local.x() = east();
+
+    // account for the antimeridian wrap-around:
+    double a0 = west(), a1 = west() + width();
+    double b0 = east() - width(), b1 = east();
+    return (a0 <= local.x() && local.x() <= a1) || (b0 <= local.x() && local.x() <= b1);
 }
 
 bool
@@ -955,10 +882,13 @@ GeoExtent::contains(const GeoExtent& rhs) const
     return
         isValid() &&
         rhs.isValid() &&
-        contains( rhs.west(), rhs.south() ) &&
-        contains( rhs.east(), rhs.north() ) &&
-        contains( rhs.getCentroid() );   // this accounts for the antimeridian
+        contains( rhs.west(), rhs.south(), rhs.getSRS() ) &&
+        contains( rhs.east(), rhs.north(), rhs.getSRS() ) &&
+        contains( rhs.getCentroid(), rhs.getSRS() );   // this accounts for the antimeridian
 }
+
+#undef  OVERLAPS
+#define OVERLAPS(A, B, C, D) (!(B <= C || A >= D))
 
 bool
 GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
@@ -969,44 +899,54 @@ GeoExtent::intersects(const GeoExtent& rhs, bool checkSRS) const
     // Transform the incoming extent if necessary:
     if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
     {
-        GeoExtent rhsExt = rhs.transform(getSRS());
-        return this->intersects( rhsExt );
+        if (_srs->isContiguous())
+        {
+            GeoExtent rhsExt = rhs.transform(getSRS());
+            return this->intersects( rhsExt, false );
+        }
+        else
+        {
+            // non-contiguous projection? convert to a contiguous one:
+            GeoExtent thisGeo = transform(getSRS()->getGeographicSRS());
+            GeoExtent rhsGeo = rhs.transform(getSRS()->getGeographicSRS());
+            return thisGeo.intersects(rhsGeo, false);
+        }
     }
 
-    // If either of the extents crosses the antimeridian, split them
-    // and test each part separately.
-    if ( rhs.crossesAntimeridian() )
-    {
-        GeoExtent rhsWest, rhsEast;
-        rhs.splitAcrossAntimeridian( rhsWest, rhsEast );
-        return rhsWest.intersects(*this) || rhsEast.intersects(*this);
-    }
-    else if ( crossesAntimeridian() )
-    {
-        GeoExtent west, east;
-        splitAcrossAntimeridian(west, east);
-        return rhs.intersects(west) || rhs.intersects(east);
-    }
-    else
-    {
-        // Yes, it is a peculiarity that we consider abutting extents to NOT intersect,
-        // while a point on the edge of an extent IS contained by that extent.
-        bool exclusive =
-            west() >= rhs.east() ||
-            east() <= rhs.west() ||
-            south() >= rhs.north() ||
-            north() <= rhs.south();
+    // Trivial reject: y-dimension does not overlap:
+    bool y_excl = south() >= rhs.north() || north() <= rhs.south();
+    if (y_excl)
+        return false;
 
-        return exclusive == false;
+    // Trivial reject: x-dimension does not overlap in projected SRS:
+    if (!_srs->isGeographic())
+    {
+        bool x_excl = west() >= rhs.east() || east() <= rhs.west();
+        return x_excl == false;
     }
+
+    // By now we know that Y overlaps and we are in a geographic SRS
+    // and therefore must consider the antimeridian wrap-around in X.
+    // a and b are "this"; c and d are "rhs":
+    double a0 = east() - width(), a1 = east();
+    double b0 = west(), b1 = west() + width();
+    double c0 = rhs.east() - rhs.width(), c1 = rhs.east();
+    double d0 = rhs.west(), d1 = rhs.west() + rhs.width();
+    return
+        OVERLAPS(a0, a1, c0, c1) ||
+        OVERLAPS(a0, a1, d0, d1) ||
+        OVERLAPS(b0, b1, c0, c1) ||
+        OVERLAPS(b0, b1, d0, d1);
 }
 
-void
-GeoExtent::recomputeCircle()
+GeoCircle
+GeoExtent::computeBoundingGeoCircle() const
 {
+    GeoCircle circle;
+
     if ( !isValid() )
     {
-        _circle.setRadius( -1.0 );
+        circle.setRadius( -1.0 );
     }
     else 
     {
@@ -1016,7 +956,7 @@ GeoExtent::recomputeCircle()
         if ( getSRS()->isProjected() )
         {
             double ext = std::max( width(), height() );
-            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
         }
         else // isGeographic
         {
@@ -1033,11 +973,13 @@ GeoExtent::recomputeCircle()
             radius2 = std::max(radius2, (center-ne).length2());
             radius2 = std::max(radius2, (center-sw).length2());
 
-            _circle.setRadius( sqrt(radius2) );
+            circle.setRadius( sqrt(radius2) );
         }
 
-        _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
+        circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
     }
+
+    return circle;
 }
 
 void
@@ -1127,7 +1069,6 @@ GeoExtent::expandToInclude(double x, double y)
     if (!containsX || !containsY)
     {
         clamp();
-        recomputeCircle();
     }
 }
 
@@ -1149,6 +1090,7 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
     {
         return expandToInclude( rhs.transform(_srs.get()) );
     }
+
     else
     {
         // include the centroid first in order to get the optimal
@@ -1156,8 +1098,9 @@ GeoExtent::expandToInclude(const GeoExtent& rhs)
         expandToInclude( rhs.getCentroid() );
         expandToInclude( rhs.west(), rhs.south() );
         expandToInclude( rhs.east(), rhs.north() );
-        return true;
     }
+
+    return true;
 }
 
 namespace
@@ -1250,7 +1193,6 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
     result._height = northTemp - result._south;
 
     result.clamp();
-    result.recomputeCircle();
 
     OE_DEBUG << "Intersection of " << this->toString() << " and " << rhs.toString() << " is: " 
         << result.toString()

@@ -110,7 +110,7 @@ public:
             buf << key.str();
         }        
 
-        double r = key.getExtent().getBoundingGeoCircle().getRadius();
+        double r = key.getExtent().computeBoundingGeoCircle().getRadius();
         buf << "\nr = " << (int)r << "m";
         
         std::string text;

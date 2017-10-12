@@ -551,17 +551,20 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
+        // Marks the start of the cull pass
         getEngineContext()->startCull( cv );
         
+        // Initialize a new culler
         TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
-        culler.setup(_mapFrame, this->getEngineContext()->getRenderBindings());
+        culler.setup(_mapFrame, _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
 
-        // Assemble the terrain drawable:
+        // Assemble the terrain drawables:
         _terrain->accept(culler);
 
-        // If we're using geometry pooling, optimize the drawable for shared state:
+        // If we're using geometry pooling, optimize the drawable for shared state
+        // by sorting the draw commands
         if (getEngineContext()->getGeometryPool()->isEnabled())
         {
             culler._terrain.sortDrawCommands();
@@ -623,16 +626,13 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 }
 
                 ++layersDrawn;
-                //if (dump)
-                //{
-                //    OE_INFO << "   Layer tiles = " << lastLayer->_tiles.size() << std::endl;
-                //}
             }
 
             //buf << (lastLayer->_layer ? lastLayer->_layer->getName() : "none") << " (" << lastLayer->_tiles.size() << ")\n";
         }
 
-        Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
+        // Uncomment this to see how many layers were drawn
+        //Registry::instance()->startActivity("Layers", Stringify()<<layersDrawn);
 
         // The last layer to render must clear up the OSG state,
         // otherwise it will be corrupt and can lead to crashing.
@@ -650,6 +650,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         // pop the common terrain state set
         cv->popStateSet();
 
+        // marks the end of the cull pass
         this->getEngineContext()->endCull( cv );
 
         // If the culler found any orphaned data, we need to update the render model
@@ -1061,6 +1062,20 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 void
+RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
+{
+    if (layer->getUID() + 1 > _cachedLayerExtents.size())
+    {
+        _cachedLayerExtents.resize(layer->getUID()+1);
+    }
+
+    // Store the layer's extent in the map's SRS:
+    LayerExtent& le = _cachedLayerExtents[layer->getUID()];
+    le._extent = layer->getExtent().transform(_mapFrame.getMapInfo().getSRS());
+    le._computed = true;
+}
+
+void
 RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
 {
     if ( tileLayer && tileLayer->getEnabled() )
@@ -1113,6 +1128,10 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             shaders.load(vp, shaders.ENGINE_FRAG);
+            
+            // Since we have a new layer, cache its extent in the map's SRS.
+            // We will use this information when culling tiles in the TerrainCuller.
+            cacheLayerExtentInMapSRS(tileLayer);
         }
 
         else

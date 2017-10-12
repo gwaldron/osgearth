@@ -78,7 +78,7 @@ TerrainRenderData::setup(const MapFrame& frame,
                     if (imgLayer == 0L && layer->getRenderType() == Layer::RENDERTYPE_TILE)
                     {
                         tileLayers().push_back(layer);
-                        addLayerDrawable(layer);
+                        addLayerDrawable(layer, frame);
                     }
                     else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
                     {
@@ -88,12 +88,12 @@ TerrainRenderData::setup(const MapFrame& frame,
                             patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
                             patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
-                            addLayerDrawable(layer);
+                            addLayerDrawable(layer, frame);
                         }
                     }
                     else
                     {
-                        addLayerDrawable(layer);
+                        addLayerDrawable(layer, frame);
                     }
                 }
             }
@@ -101,12 +101,26 @@ TerrainRenderData::setup(const MapFrame& frame,
     }
 
     // Include a "blank" layer for missing data.
-    LayerDrawable* blank = addLayerDrawable(0L);
+    LayerDrawable* blank = addLayerDrawable(0L, frame);
     blank->getOrCreateStateSet()->setDefine("OE_TERRAIN_RENDER_IMAGERY", osg::StateAttribute::OFF);
 }
 
+namespace
+{
+    struct DebugCallback : public osg::Drawable::DrawCallback
+    {
+        std::string _s;
+        DebugCallback(const std::string& s) : _s(s) { }
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* d) const {
+            OE_WARN << "  Drawing Layer: " << _s << std::endl;
+            d->drawImplementation(ri);
+        }
+
+    };
+}
+
 LayerDrawable*
-TerrainRenderData::addLayerDrawable(const Layer* layer)
+TerrainRenderData::addLayerDrawable(const Layer* layer, const MapFrame& frame)
 {
     UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
@@ -121,6 +135,6 @@ TerrainRenderData::addLayerDrawable(const Layer* layer)
         ld->setStateSet(layer->getStateSet());
         ld->_renderType = layer->getRenderType();
     }
-
+    //ld->setDrawCallback(new DebugCallback(layer ? layer->getName() : "[blank]"));
     return ld;
 }

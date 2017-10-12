@@ -38,6 +38,7 @@
 #include "SelectionInfo"
 #include "SurfaceNode"
 #include "TileDrawable"
+#include "TerrainCuller"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -99,18 +100,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Access to the asychronous data loader */
         Loader* getLoader() const { return _loader.get(); }
 
-    //public:
-    //    class ElevationChangedCallback : public ElevationLayerCallback
-    //    {
-    //    public:
-    //        ElevationChangedCallback( RexTerrainEngineNode* terrain );
-
-    //       virtual void onVisibleChanged( VisibleLayer* layer );
-
-    //        RexTerrainEngineNode* _terrain;
-    //        friend class RexTerrainEngineNode;
-    //    };
-
     protected:
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
@@ -128,39 +117,39 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
 
+        // Various methods that trigger when the Map model changes.
         void addElevationLayer( ElevationLayer* layer );
         void addTileLayer( Layer* layer );
-
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
         void toggleElevationLayer( ElevationLayer* layer );
-
         void moveElevationLayer( ElevationLayer* layerMoved );
         
+        //! refresh the statesets of the terrain and the imagelayer tile surface
         void updateState(); 
 
+        //! one-time allocation of render units for the terrain
         void setupRenderBindings();
+        
+        //! Adds a Layer to the cachedLayerExtents vector.
+        void cacheLayerExtentInMapSRS(Layer* layer); 
 
-
-
-        /**
-         * Utility function to compute the heightfield sample size required to match the vertices at the highest level of detail in rex
-         * if a tile key was requested at the given level of detail.
-         */
+        //! computes the heightfield sample size required to match the vertices at the highest
+        //! level of detail in rex if a tile key was requested at the given level of detail.
         unsigned int computeSampleSize(unsigned int levelOfDetail);
 
 
     private:
         RexTerrainEngineOptions _terrainOptions;
 
-        UID                _uid;
-        bool               _batchUpdateInProgress;
-        bool               _refreshRequired;
-        bool               _stateUpdateRequired;
-
-        //osg::ref_ptr<ElevationChangedCallback> _elevationCallback;
-
+        UID _uid;
+        bool _batchUpdateInProgress;
+        bool _refreshRequired;
+        bool _stateUpdateRequired;
         MapFrame _mapFrame;
+
+        LayerExtentVector _cachedLayerExtents;          // extents of each layer, in the Map's SRS. UID = vector index (for speed)
+
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
@@ -168,7 +157,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      
         EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;
-        //OpenThreads::Mutex _engineContextMutex;
 
         osg::Timer _timer;
         unsigned   _tileCount;

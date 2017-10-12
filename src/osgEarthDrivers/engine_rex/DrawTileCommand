@@ -37,11 +37,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct DrawTileCommand
     {
-        // Model matrix assocaited with this tile.
-        osg::Matrixd _matrix;
-
         // ModelView matrix to apply before rendering this tile
-        osg::Matrixf _modelViewMatrix;
+        //osg::Matrixf _modelViewMatrix;
+        osg::ref_ptr<const osg::RefMatrix> _modelViewMatrix;
 
         // Samplers that are shared between all rendering passes
         const Samplers* _sharedSamplers;
@@ -52,8 +50,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Tile geometry, if present
         osg::ref_ptr<SharedGeometry> _geom;
 
-        // Tile key - just for debugging
-        TileKey _key;
+        // Tile key
+        const TileKey* _key;
 
         // Tile key value to push to uniform just before drawing
         osg::Vec4f _keyValue;
@@ -77,6 +75,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Distance from camera to center of tile
         float _range;
 
+        // Tile draw order
+        int _order;
+
 
         void draw(osg::RenderInfo& ri, DrawState& ds, osg::Referenced* layerData) const;
 
@@ -86,8 +87,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // difference based on benchmarking.
         bool operator < (const DrawTileCommand& rhs) const
         {
-            if (_key.getLOD() > rhs._key.getLOD()) return true;
-            if (_key.getLOD() < rhs._key.getLOD()) return false;
+            if (_key->getLOD() > rhs._key->getLOD()) return true;
+            if (_key->getLOD() < rhs._key->getLOD()) return false;
             return _geom < rhs._geom;
         }
 
@@ -98,7 +99,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _elevTexelCoeff(1.0f, 0.0f),
             _drawCallback(0L),
             _drawPatch(false),
-            _range(0.0f) { }
+            _range(0.0f),
+            _order(0) { }
     };
 
     /**

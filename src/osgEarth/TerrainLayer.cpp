@@ -1033,21 +1033,10 @@ TerrainLayer::getDataExtentsUnion() const
     return _dataExtentsUnion;
 }
 
-osg::BoundingSphere
-TerrainLayer::computeBound(const SpatialReference* mapSRS) const
+const GeoExtent&
+TerrainLayer::getExtent() const
 {
-    osg::BoundingSphere bs;
-    GeoExtent e = getDataExtentsUnion();
-    if (e.isValid())
-    {
-        e = e.transform(mapSRS);
-        const GeoCircle& circle = e.getBoundingGeoCircle();
-        osg::Vec3d cw;
-        circle.getCenter().toWorld(cw);
-        bs.set(cw, circle.getRadius());
-        //OE_INFO << LC << " ex = " << e.toString() << "; bs = " << cw.x() << "," << cw.y() << "," << cw.z() << " r " << circle.getRadius() << std::endl;
-    }
-    return bs;
+    return getDataExtentsUnion();
 }
 
 void

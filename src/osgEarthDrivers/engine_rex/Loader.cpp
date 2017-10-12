@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Metrics>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -211,6 +212,7 @@ PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = std::max(value, 0);
     this->setNumChildrenRequiringUpdateTraversal( 1 );
+    OE_INFO << LC << "Merges per frame = " << _mergesPerFrame << std::endl;
     
 }
 
@@ -232,7 +234,6 @@ bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
     // check that the request is not already completed but unmerged:
-    //if ( request && !request->isMerging() && nv.getDatabaseRequestHandler() )
     if ( request && !request->isMerging() && !request->isFinished() && nv.getDatabaseRequestHandler() )
     {
         //OE_INFO << LC << "load (" << request->getTileKey().str() << ")" << std::endl;
@@ -312,24 +313,31 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
             setFrameStamp(nv.getFrameStamp());
         }
 
-        int count;
-        for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
+        // process pending merges.
         {
-            Request* req = _mergeQueue.begin()->get();
-            if ( req && req->_lastTick >= _checkpoint )
+            METRIC_BEGIN("loader.merge");
+            int count;
+            for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
             {
-                OE_START_TIMER(req_apply);
-                req->apply( getFrameStamp() );
-                double s = OE_STOP_TIMER(req_apply);
+                Request* req = _mergeQueue.begin()->get();
+                if ( req && req->_lastTick >= _checkpoint )
+                {
+                    OE_START_TIMER(req_apply);
+                    req->apply( getFrameStamp() );
+                    double s = OE_STOP_TIMER(req_apply);
 
-                req->setState(Request::FINISHED);
+                    req->setState(Request::FINISHED);
+                }
+
+                _mergeQueue.erase( _mergeQueue.begin() );
             }
-
-            _mergeQueue.erase( _mergeQueue.begin() );
+            METRIC_END("loader.merge");
         }
 
         // cull finished requests.
         {
+            METRIC_SCOPED("loader.cull");
+
             Threading::ScopedMutexLock lock( _requestsMutex );
 
             unsigned fn = 0;

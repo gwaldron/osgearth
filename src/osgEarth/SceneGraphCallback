@@ -85,6 +85,16 @@ namespace osgEarth
     public:
         PagedLODWithSceneGraphCallbacks(SceneGraphCallbacks* host);
 
+        /**
+         * Gets the SceneGraphCallbacks.
+         */
+        SceneGraphCallbacks* getSceneGraphCallbacks() const;
+
+        /**
+         * Sets the SceneGraphCallbacks
+         */
+        void setSceneGraphCallbacks(SceneGraphCallbacks* host);
+
     public: // osg::Group
         
         virtual bool addChild(osg::Node* child);

@@ -170,6 +170,16 @@ FeatureModelLayer::open()
     return VisibleLayer::open();
 }
 
+const GeoExtent&
+FeatureModelLayer::getExtent() const
+{
+    static GeoExtent s_invalid;
+
+    return _featureSource.valid() && _featureSource->getFeatureProfile() ?
+        _featureSource->getFeatureProfile()->getExtent() :
+        s_invalid;
+}
+
 void
 FeatureModelLayer::addedToMap(const Map* map)
 {

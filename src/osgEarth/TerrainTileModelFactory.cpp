@@ -47,6 +47,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TileKey&                   key,
                                          const CreateTileModelFilter&     filter,
                                          const TerrainEngineRequirements* requirements,
+                                         bool  isRootKey,
                                          ProgressCallback*                progress)
 {
     // Make a new model:
@@ -63,7 +64,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
-        addElevation( model.get(), frame, key, filter, border, progress );
+        addElevation( model.get(), frame, key, filter, border, isRootKey, progress );
     }
 
 #if 0
@@ -209,7 +210,8 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
-                                      unsigned                     border,
+                                      unsigned                     border,    
+                                      bool isRootKey,
                                       ProgressCallback*            progress)
 {    
     // make an elevation layer.
@@ -227,7 +229,15 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid())
+    // If we didn't generate a heightfield but this is a root key, then generate an empty heightfield
+    // so elevation textures and normal maps will propagate down to any children.
+    if ((!getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) || !mainHF.valid()) && isRootKey)
+    {
+        // ALWAYS use 257x257 b/c that is what rex always uses.
+        mainHF = HeightFieldUtils::createReferenceHeightField(key.getExtent(), 257, 257, 0u, true);
+    }
+
+    if (mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );

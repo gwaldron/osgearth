@@ -73,7 +73,8 @@ _lastTraversalTime(0.0),
 _lastTraversalFrame(0.0),
 _count(0),
 _stitchNormalMap(false),
-_empty(false)               // an "empty" node exists but has no geometry or children.
+_empty(false),              // an "empty" node exists but has no geometry or children.,
+_isRootTile(false)
 {
     //nop
 }

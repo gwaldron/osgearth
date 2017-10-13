@@ -71,7 +71,7 @@ FeatureSourceLayer::open()
             return setStatus(Status::Error(Status::ServiceUnavailable, "Unable to create feature source"));
     }
 
-    Status fsStatus = _featureSource->open(_readOptions.get());
+    Status fsStatus = _featureSource->open(getReadOptions());
     if (fsStatus.isError())
     {
         setStatus(fsStatus);

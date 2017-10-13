@@ -27,6 +27,7 @@
 #include <osgEarth/PluginLoader>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TerrainResources>
+#include <osgEarth/Cache>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osgDB/Options>
@@ -201,6 +202,11 @@ namespace osgEarth
          */
         virtual const GeoExtent& getExtent() const;
 
+        /**
+         * Returns or generates a caching ID for this layer
+         */
+        virtual std::string getCacheID() const;
+
     public:
 
         /** Adds a property notification callback to this layer */
@@ -315,6 +321,7 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;
         CallbackVector _callbacks;
         osg::ref_ptr<osgDB::Options> _readOptions;
+        osg::ref_ptr<CacheSettings> _cacheSettings;
 
         // allow the map access to the addedToMap/removedFromMap methods
         friend class Map;

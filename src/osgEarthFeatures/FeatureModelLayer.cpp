@@ -187,8 +187,11 @@ FeatureModelLayer::addedToMap(const Map* map)
 
     // Save a reference to the map since we'll need it to
     // create a new session object later.
-    _session = new Session(map);
-    _session->setStyles( options().styles().get() );
+    _session = new Session(
+        map, 
+        options().styles().get(), 
+        0L,  // feature source - will set later
+        getReadOptions());
 
     if (options().featureSourceLayer().isSet())
     {

@@ -200,6 +200,9 @@ namespace osgEarth
         /** Opens the layer and initializes the data source. */
         virtual const Status& open();
 
+        //! Cache ID for this layer
+        virtual std::string getCacheID() const;
+
     public: // VisibleLayer
 
         //! Override the opacity setter

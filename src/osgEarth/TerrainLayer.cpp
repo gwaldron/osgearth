@@ -968,7 +968,8 @@ void
 TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
 {
     // clone the options, or create it not set
-    Layer::setReadOptions(readOptions);
+    _readOptions = Registry::cloneOrCreateOptions(readOptions);
+    //Layer::setReadOptions(readOptions);
 
     // store HTTP proxy settings in the options:
     storeProxySettings( _readOptions );
@@ -981,6 +982,11 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     _cacheBinMetadata.clear();
 }
 
+std::string
+TerrainLayer::getCacheID() const
+{
+    return _runtimeCacheId;
+}
 
 const DataExtentList&
 TerrainLayer::getDataExtents() const

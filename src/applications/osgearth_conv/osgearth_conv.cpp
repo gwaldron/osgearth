@@ -120,6 +120,8 @@ struct ElevationLayerToTileSource : public TileHandler
 // Custom progress reporter
 struct ProgressReporter : public osgEarth::ProgressCallback
 {
+    ProgressReporter() : _first(true) { }
+
     bool reportProgress(double             current,
                         double             total,
                         unsigned           currentStage,
@@ -128,13 +130,32 @@ struct ProgressReporter : public osgEarth::ProgressCallback
     {
         _mutex.lock();
 
-        float percentage = current/total*100.0f;
+        if (_first)
+        {
+            _first = false;
+            _start = osg::Timer::instance()->tick();
+        }
+        osg::Timer_t now = osg::Timer::instance()->tick();
+
+        
+
+        float percentage = current/total;
+
+        double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
+        double projectedTotalTime = timeSoFar/percentage;
+        double timeToGo = projectedTotalTime - timeSoFar;
+        double minsToGo = timeToGo/60.0;
+        double secsToGo = fmod(timeToGo,60.0);
+        double minsTotal = projectedTotalTime/60.0;
+        double secsTotal = fmod(projectedTotalTime,60.0);
+
         std::cout
             << std::fixed
             << std::setprecision(1) << "\r"
             << (int)current << "/" << (int)total
-            << " (" << percentage << "%)"
-            << "                        "
+            << " (" << (100.0f*percentage) << "%, " 
+            << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
+            << (int)minsToGo << "m" << (int)secsToGo << "s remaining)        "
             << std::flush;
 
         if ( percentage >= 100.0f )
@@ -146,6 +167,8 @@ struct ProgressReporter : public osgEarth::ProgressCallback
     }
 
     Threading::Mutex _mutex;
+    bool _first;
+    osg::Timer_t _start;
 };
 
 
@@ -345,6 +368,16 @@ main(int argc, char** argv)
         visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
     }
 
+    // set the manula extents, if specified:
+    bool userSetExtents = false;
+    double minlat, minlon, maxlat, maxlon;
+    while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
+    {
+        GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
+        visitor->addExtent( extent );
+        userSetExtents = true;
+    }
+
     // Set the level limits:
     unsigned minLevel = ~0;
     bool minLevelSet = args.read("--min-level", minLevel);
@@ -363,6 +396,11 @@ main(int argc, char** argv)
                 maxLevel = i->maxLevel().value();
             if ( !minLevelSet && i->minLevel().isSet() && i->minLevel().value() < minLevel )
                 minLevel = i->minLevel().value();
+
+            if (userSetExtents == false)
+            {
+                visitor->addExtent(*i);
+            }
         }
     }
 
@@ -376,14 +414,6 @@ main(int argc, char** argv)
         maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
         visitor->setMaxLevel( maxLevel );
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
-    }
-
-    // set the extents:
-    double minlat, minlon, maxlat, maxlon;
-    while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
-    {
-        GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
-        visitor->addExtent( extent );
     }
 
     // Ready!!!

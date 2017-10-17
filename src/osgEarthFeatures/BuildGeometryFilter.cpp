@@ -1315,7 +1315,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     osgUtil::Optimizer::INDEX_MESH |
                     osgUtil::Optimizer::VERTEX_PRETRANSFORM |
                     osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-                OE_WARN << "OVO time = " << osg::Timer::instance()->delta_s(t, osg::Timer::instance()->tick()) << std::endl;
+                OE_INFO << "Vertex ordering optimization took " << osg::Timer::instance()->delta_s(t, osg::Timer::instance()->tick()) << std::endl;
             }
 
             // Generate normals

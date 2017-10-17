@@ -227,7 +227,18 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid())
+    bool hfOK = getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+
+    if (hfOK == false && key.getLOD() == _options.firstLOD().get())
+    {
+        OE_DEBUG << LC << "No HF at key " << key.str() << ", making placeholder" << std::endl;
+        mainHF = new osg::HeightField();
+        mainHF->allocate(1, 1);
+        mainHF->setHeight(0, 0, 0.0f);
+        hfOK = true;
+    }
+
+    if (hfOK && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );
@@ -250,7 +261,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
-        //osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
         osg::Image* hfImage = conv.convertToR32F(mainHF.get());
 
         if ( hfImage )

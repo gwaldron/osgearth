@@ -252,6 +252,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
+    const RenderSymbol*    render    = style.get<RenderSymbol>();
 
     // Perform tessellation first.
     if ( line )
@@ -497,6 +498,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         if (_options.optimizeVertexOrdering().isSet())
             filter.optimizeVertexOrdering() = *_options.optimizeVertexOrdering();
+
+        if (render && render->maxCreaseAngle().isSet())
+            filter.maxCreaseAngle() = render->maxCreaseAngle().get();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )

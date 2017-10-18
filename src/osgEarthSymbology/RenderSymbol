@@ -81,6 +81,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>& decal() { return _decal; }
         const optional<bool>& decal() const { return _decal; }
 
+        /** maximum crease angle for normal smoothing (default=0) */
+        optional<Angle>& maxCreaseAngle() { return _maxCreaseAngle; }
+        const optional<Angle>& maxCreaseAngle() const { return _maxCreaseAngle; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -97,6 +101,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string>        _renderBin;
         optional<bool>               _transparent;
         optional<bool>               _decal;
+        optional<Angle>              _maxCreaseAngle;
         
         /** dtor */
         virtual ~RenderSymbol() { }

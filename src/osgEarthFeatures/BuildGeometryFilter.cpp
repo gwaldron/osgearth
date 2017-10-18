@@ -96,7 +96,8 @@ _style        ( style ),
 _maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
 _maxPolyTilingAngle_deg( 45.0f ),
-_optimizeVertexOrdering( false )
+_optimizeVertexOrdering( false ),
+_maximumCreaseAngle( 0.0f )
 {
     //nop
 }
@@ -1320,6 +1321,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
             // Generate normals
             osgUtil::SmoothingVisitor sv;
+            sv.setCreaseAngle(_maximumCreaseAngle->as(Units::RADIANS));
             geode->accept(sv);
 
             result->addChild( geode.get() );

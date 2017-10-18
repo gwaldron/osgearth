@@ -88,6 +88,14 @@ namespace osgEarth { namespace Features
         optional<bool>& optimizeVertexOrdering() { return _optimizeVertexOrdering; }
         const optional<bool>& optimizeVertexOrdering() const { return _optimizeVertexOrdering; }
 
+        /**
+         * Maximum angle at which the smoother (for 3D polygon normal generation) should
+         * smooth normals across polygon boundaries. Default is 0 degrees. This corresponds
+         * to the SmoothingVisitor::setCreaseAngle value.
+         */
+        optional<Angle>& maxCreaseAngle() { return _maximumCreaseAngle; }
+        const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
+
     protected:
         Style                      _style;
 
@@ -96,6 +104,7 @@ namespace osgEarth { namespace Features
         optional<StringExpression> _featureNameExpr;
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
+        optional<Angle>            _maximumCreaseAngle;
         
         void tileAndBuildPolygon(
             Geometry*               input,

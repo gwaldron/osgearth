@@ -32,12 +32,6 @@ void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
     oe_layer_texc       = oe_layer_texMatrix       * oe_layer_tilec;
 	oe_layer_texcParent = oe_layer_texParentMatrix * oe_layer_tilec;
 
-    // faster (MAD) version of matrix mult
-	//oe_layer_texc.xy	   = oe_layer_tilec.xy*oe_layer_texMatrix[0][0] + oe_layer_texMatrix[3].xy;
-    //oe_layer_texc.zw       = oe_layer_tilec.zw;
-    //oe_layer_texcParent.xy = oe_layer_tilec.xy*oe_layer_texParentMatrix[0][0] + oe_layer_texParentMatrix[3].xy;
-    //oe_layer_texcParent.zw = oe_layer_tilec.zw;
-
    float range = max(-vertexView.z, 0.0);
 
    float attenMin    = oe_layer_minRange - oe_layer_attenuationRange;

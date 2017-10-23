@@ -118,7 +118,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             else
             {
                 GeoImage geoImage = layer->createImage( key, progress );
-           
+
                 if ( geoImage.valid() )
                 {
                     if ( layer->isCoverage() )
@@ -128,7 +128,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                 }
             }
         }
-        
+
         // if this is the first LOD, and the engine requires that the first LOD
         // be populated, make an empty texture if we didn't get one.
         if (tex == 0L &&
@@ -137,7 +137,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
         {
             tex = _emptyTexture.get();
         }
-         
+
         if (tex)
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
@@ -210,10 +210,10 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
-                                      unsigned                     border,    
+                                      unsigned                     border,
                                       bool isRootKey,
                                       ProgressCallback*            progress)
-{    
+{
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
@@ -229,15 +229,18 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    // If we didn't generate a heightfield but this is a root key, then generate an empty heightfield
-    // so elevation textures and normal maps will propagate down to any children.
-    if ((!getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) || !mainHF.valid()) && isRootKey)
+    bool hfOK = getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+
+    if (hfOK == false && key.getLOD() == _options.firstLOD().get())
     {
-        // ALWAYS use 257x257 b/c that is what rex always uses.
-        mainHF = HeightFieldUtils::createReferenceHeightField(key.getExtent(), 257, 257, 0u, true);
+        OE_DEBUG << LC << "No HF at key " << key.str() << ", making placeholder" << std::endl;
+        mainHF = new osg::HeightField();
+        mainHF->allocate(1, 1);
+        mainHF->setHeight(0, 0, 0.0f);
+        hfOK = true;
     }
 
-    if (mainHF.valid())
+    if (hfOK && mainHF.valid())
     {
         osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );
@@ -253,14 +256,13 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                 if ( h < layerModel->getMinHeight() )
                     layerModel->setMinHeight( h );
             }
-        }        
+        }
 
         // needed for normal map generation
         model->heightFields().setNeighbor(0, 0, mainHF.get());
 
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
-        //osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
         osg::Image* hfImage = conv.convertToR32F(mainHF.get());
 
         if ( hfImage )
@@ -368,7 +370,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     if (!out_normalMap.valid())
     {
         //OE_INFO << "TODO: check terrain reqs\n";
-        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);        
+        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
     }
 
     bool populated = frame.populateHeightFieldAndNormalMap(
@@ -432,7 +434,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);
 
-    osg::Texture::FilterMode magFilter = 
+    osg::Texture::FilterMode magFilter =
         layer ? layer->options().magFilter().get() : osg::Texture::LINEAR;
     osg::Texture::FilterMode minFilter =
         layer ? layer->options().minFilter().get() : osg::Texture::LINEAR;

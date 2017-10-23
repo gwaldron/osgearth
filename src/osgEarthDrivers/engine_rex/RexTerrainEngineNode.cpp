@@ -295,15 +295,20 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // Prime with existing layers:
     _batchUpdateInProgress = true;
 
-    ElevationLayerVector elevationLayers;
-    map->getLayers( elevationLayers );
-    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
-        addElevationLayer( i->get() );
+    LayerVector layers;
+    map->getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        addLayer(i->get());
 
-    ImageLayerVector imageLayers;
-    map->getLayers( imageLayers );
-    for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-        addTileLayer( i->get() );
+    //ElevationLayerVector elevationLayers;
+    //map->getLayers( elevationLayers );
+    //for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
+    //    addElevationLayer( i->get() );
+
+    //ImageLayerVector imageLayers;
+    //map->getLayers( imageLayers );
+    //for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+    //    addTileLayer( i->get() );
 
     _batchUpdateInProgress = false;
     
@@ -1033,10 +1038,7 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
-                if (change.getLayer()->getRenderType() == Layer::RENDERTYPE_TILE)
-                    addTileLayer( change.getLayer() );
-                else if (change.getElevationLayer())
-                    addElevationLayer(change.getElevationLayer());
+                addLayer(change.getLayer());
                 break;
 
             case MapModelChange::REMOVE_LAYER:
@@ -1074,6 +1076,23 @@ RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
     le._extent = layer->getExtent().transform(_mapFrame.getMapInfo().getSRS());
     le._computed = true;
+}
+
+void
+RexTerrainEngineNode::addLayer(Layer* layer)
+{
+    if (layer)
+    {
+        if (layer->getEnabled())
+        {
+            if (layer->getRenderType() == Layer::RENDERTYPE_TILE)
+                addTileLayer(layer);
+            else if (dynamic_cast<ElevationLayer*>(layer))
+                addElevationLayer(dynamic_cast<ElevationLayer*>(layer));
+        }
+
+        cacheLayerExtentInMapSRS(layer);
+    }
 }
 
 void
@@ -1129,10 +1148,6 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             shaders.load(vp, shaders.ENGINE_FRAG);
-            
-            // Since we have a new layer, cache its extent in the map's SRS.
-            // We will use this information when culling tiles in the TerrainCuller.
-            cacheLayerExtentInMapSRS(tileLayer);
         }
 
         else

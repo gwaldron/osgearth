@@ -9,8 +9,7 @@ This shows how to label point features with an attribute (with some extra zing).
         <url>../data/world.tif</url>
     </image>
     
-    <model name="cities" driver="feature_geom">
-
+    <feature_model name="cities">
         <features name="cities" driver="ogr">
             <url>../data/world.shp</url>
         </features>
@@ -38,11 +37,8 @@ This shows how to label point features with an attribute (with some extra zing).
 					altitude-technique: scene;
                 }     
             </style>
-        </styles>
-        
-    </model>
-    
-    <options lighting="false"/>
+        </styles>        
+    </feature_model>
     
     <screen_space_layout>
         <out_animation_time>  0.0  </out_animation_time>

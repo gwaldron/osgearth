@@ -231,7 +231,10 @@ namespace osgEarth
          * Sets the read options for this layer to user; this includes
          * Cache and CachePolicy information potentially.
          */
-        virtual void setReadOptions(const osgDB::Options* readOptions);
+        //virtual void setReadOptions(const osgDB::Options* readOptions);
+
+        //! Generate a cache ID for this layer
+        virtual std::string getCacheID() const;
 
     protected:
 

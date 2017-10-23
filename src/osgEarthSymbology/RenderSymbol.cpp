@@ -35,7 +35,8 @@ _clipPlane(rhs._clipPlane),
 _minAlpha(rhs._minAlpha),
 _renderBin(rhs._renderBin),
 _transparent(rhs._transparent),
-_decal(rhs._decal)
+_decal(rhs._decal),
+_maxCreaseAngle(rhs._maxCreaseAngle)
 {
 }
 
@@ -48,7 +49,8 @@ _order          ( 0 ),
 _clipPlane      ( 0 ),
 _minAlpha       ( 0.0f ),
 _transparent    ( false ),
-_decal          ( false )
+_decal          ( false ),
+_maxCreaseAngle ( 0.0 )
 {
     mergeConfig(conf);
 }
@@ -68,6 +70,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "render_bin",       _renderBin );
     conf.addIfSet   ( "transparent",      _transparent );
     conf.addIfSet   ( "decal",            _decal);
+    conf.addIfSet   ("max_crease_angle",  _maxCreaseAngle);
     return conf;
 }
 
@@ -84,6 +87,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "render_bin",       _renderBin );
     conf.getIfSet   ( "transparent",      _transparent );
     conf.getIfSet   ( "decal",            _decal);
+    conf.getIfSet   ("max_crease_angle",  _maxCreaseAngle);
 }
 
 void
@@ -136,5 +140,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "render-decal")) {
         style.getOrCreate<RenderSymbol>()->decal() = as<bool>(c.value(), *defaults.decal());
+    }
+    else if (match(c.key(), "render-max-crease-angle")) {
+        style.getOrCreate<RenderSymbol>()->maxCreaseAngle() = Angle(as<double>(c.value(), defaults.maxCreaseAngle()->as(Units::DEGREES)), Units::DEGREES);
     }
 }

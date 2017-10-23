@@ -126,9 +126,10 @@ _stroke( stroke )
 
 
 osg::Geometry*
-PolygonizeLinesOperator::operator()(osg::Vec3Array* verts, 
-                                    osg::Vec3Array* normals,
-                                    bool            twosided) const
+PolygonizeLinesOperator::operator()(osg::Vec3Array*  verts, 
+                                    osg::Vec3Array*  normals,
+                                    Callback*        callback,
+                                    bool             twosided) const
 {
     // number of verts on the original line.
     unsigned lineSize = verts->size();
@@ -160,6 +161,13 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     }
     geom->setNormalArray( normals );
     geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
+    // run the callback on the initial spine.
+    if (callback)
+    {
+        for (unsigned i = 0; i<verts->size(); ++i)
+            (*callback)(i);
+    }
 
     // Set up the buffering vector attribute array.
     osg::Vec3Array* spine = 0L;
@@ -250,6 +258,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 // buffering vector.
                 if ( spine ) spine->push_back( (*verts)[i] );
 
+                if (callback) (*callback)(i);
+
                 // render the front end-cap.
                 if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
                 {
@@ -270,6 +280,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                         tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                         normals->push_back( (*normals)[i] );
                         if ( spine ) spine->push_back( (*verts)[i] );
+                        if (callback) (*callback)(i);
                     }
                 }
                 else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
@@ -281,12 +292,14 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                     normals->push_back( normals->back() );
                     if ( spine ) spine->push_back( (*verts)[i] );
+                    if (callback) (*callback)(i);
 
                     verts->push_back( (*verts)[i] - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, side );
                     tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (verts->back() - (*verts)[i]) * sqrt(2.0f) );
+                    if (callback) (*callback)(i);
                 }
             }
             else
@@ -342,6 +355,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     normals->push_back( (*normals)[i] );
 
                     if ( spine ) spine->push_back( (*verts)[i] );
+                    if (callback) (*callback)(i);
                 }
 
                 else if ( _stroke.lineJoin() == Stroke::LINEJOIN_ROUND )
@@ -354,6 +368,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (*verts)[i] );
+                    if (callback) (*callback)(i);
 
                     // insert the edge-rounding points:
                     float angle = acosf( (prevBufVec * bufVec)/(halfWidth*halfWidth) );
@@ -373,6 +388,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                         normals->push_back( (*normals)[i] );
 
                         if ( spine ) spine->push_back( (*verts)[i] );
+                        if (callback) (*callback)(i);
                     }
                 }
 
@@ -392,6 +408,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
         normals->push_back( (*normals)[i] );
         if ( spine ) spine->push_back( (*verts)[i] );
+        if (callback) (*callback)(i);
 
         if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
         {
@@ -412,6 +429,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
                 normals->push_back( (*normals)[i] );
                 if ( spine ) spine->push_back( (*verts)[i] );
+                if (callback) (*callback)(i);
             }
         }
         else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
@@ -423,12 +441,14 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
             normals->push_back( normals->back() );
             if ( spine ) spine->push_back( (*verts)[i] );
+            if (callback) (*callback)(i);
 
             verts->push_back( (*verts)[i] + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, side );
             tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
             normals->push_back( (*normals)[i] );
             if ( spine ) spine->push_back( (*verts)[i] );
+            if (callback) (*callback)(i);
         }
     }
 

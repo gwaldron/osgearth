@@ -1,0 +1,61 @@
+<!--
+ osgEarth example - use a layer shader to simulate day/night transition
+ 
+ Earth at night imagery: 
+ https://earthobservatory.nasa.gov/Features/NightLights/page3.php
+-->
+<map name="Day/Night Transition">
+    
+    <options>
+        <terrain driver="rex"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+
+    <image name="EarthAtNight" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/26/</url>
+        <shader>
+          <![CDATA[
+            #pragma vp_entryPoint dayNight
+            #pragma vp_location fragment_coloring
+            #pragma import_defines(OE_NUM_LIGHTS)
+
+            // stage global - interpolated UP vector at fragment
+            vec3 vp_Normal;
+
+            struct osg_LightSourceParameters 
+            {   
+               vec4 ambient;
+               vec4 diffuse;
+               vec4 specular;
+               vec4 position;
+               vec3 spotDirection;
+               float spotExponent;
+               float spotCutoff;
+               float spotCosCutoff;
+               float constantAttenuation;
+               float linearAttenuation;
+               float quadraticAttenuation;
+               bool enabled;
+            };  
+            uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];
+
+            void dayNight(inout vec4 color)
+            {
+                vec3 L = normalize(osg_LightSource[0].position.xyz);
+                vec3 N = normalize(vp_Normal);
+                float NdotL = dot(N,L);
+                float vmin = -0.55;
+                float vmax = 0.0;
+                float day = (clamp(NdotL, vmin, vmax) - vmin)/(vmax-vmin);
+                color.a *= (1.0 - day);
+            }
+          ]]>
+        </shader>
+    </image>      
+
+    <sky driver="simple" hours="14.0" ambient="0.2"/>
+    
+</map>

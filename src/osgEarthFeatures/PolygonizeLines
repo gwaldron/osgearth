@@ -40,6 +40,11 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT PolygonizeLinesOperator
     {
     public:
+        struct Callback {
+            virtual void operator()(unsigned i) = 0;
+        };
+
+    public:
         /**
          * Construct the operator
          * @param[in ] stroke Line rendering properties
@@ -54,11 +59,13 @@ namespace osgEarth { namespace Features
          * @param[in ] normals  Localized normals associated with the input verts.
          *                      Used to determine the plane in which to polygonize each
          *                      line segment. Optional; can be NULL
+         * @param[in ] callback Called for each new point added to the polygonized line
+         *                      with the source line index. Optional, call be NULL.
          * @param[in ] twosided Generate polygons on both sides of the center line.
          *
          * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, bool twosided =true) const;
+        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, Callback* callback =0L, bool twosided =true) const;
 
         /**
          * Installs an auto-scaling shader on a stateset.

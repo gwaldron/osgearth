@@ -118,6 +118,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void refresh(bool force =false);
 
         // Various methods that trigger when the Map model changes.
+        void addLayer(Layer* layer);
         void addElevationLayer( ElevationLayer* layer );
         void addTileLayer( Layer* layer );
         void removeImageLayer( ImageLayer* layerRemoved );

@@ -38,6 +38,8 @@ _clearOsgState(false)
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    //OE_INFO << LC << (_layer ? _layer->getName() : "[empty]") << " tiles=" << _tiles.size() << std::endl;
+
     // Get this context's state values:
     PerContextDrawState& ds = _drawState->getPCDS(ri.getContextID());
 
@@ -47,8 +49,8 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     {
         if (ds._layerUidUL >= 0)
             ds._ext->glUniform1i(ds._layerUidUL,      (GLint)_layer->getUID());
-        if (ds._layerOpacityUL >= 0 && _imageLayer)
-            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_imageLayer->getOpacity());
+        if (ds._layerOpacityUL >= 0 && _visibleLayer)
+            ds._ext->glUniform1f(ds._layerOpacityUL,  (GLfloat)_visibleLayer->getOpacity());
         if (ds._layerMinRangeUL >= 0 && _imageLayer)
             ds._ext->glUniform1f(ds._layerMinRangeUL, (GLfloat)_imageLayer->getMinVisibleRange());
         if (ds._layerMaxRangeUL >= 0 && _imageLayer)

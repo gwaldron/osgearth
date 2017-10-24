@@ -59,9 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Draw state shared by all layers during one frame.
         osg::ref_ptr<DrawState> _drawState;
 
-        // Layers that are not part of the Tile Model, like overlays or
-        // dynamically draw layers... probably need a better nomenclature 
-        LayerVector& tileLayers() { return _tileLayers; }
+        // Layers of type RENDERTYPE_PATCH
         PatchLayerVector& patchLayers() { return _patchLayers; }
         
     private:
@@ -69,7 +67,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         LayerDrawableList     _layerList;
         LayerDrawableMap      _layerMap;
         const RenderBindings* _bindings;
-        LayerVector           _tileLayers;
         PatchLayerVector      _patchLayers;
     };
 

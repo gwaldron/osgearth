@@ -55,7 +55,8 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    addImageLayers(model.get(), frame, requirements, key, filter, progress);
+    //addImageLayers(model.get(), frame, requirements, key, filter, progress);
+    addColorLayers(model.get(), frame, requirements, key, filter, progress);
 
     addPatchLayers(model.get(), frame, key, filter, progress);
 
@@ -75,6 +76,100 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 
     // done.
     return model.release();
+}
+
+void
+TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
+                                        const MapFrame&   frame,
+                                        const TerrainEngineRequirements* reqs,
+                                        const TileKey&    key,
+                                        const CreateTileModelFilter& filter,
+                                        ProgressCallback* progress)
+{
+    OE_START_TIMER(fetch_image_layers);
+
+    int order = 0;
+
+    for (LayerVector::const_iterator i = frame.layers().begin();
+        i != frame.layers().end();
+        ++i)
+    {
+        Layer* layer = i->get();
+
+        if (layer->getRenderType() != layer->RENDERTYPE_TILE)
+            continue;
+
+        if (!layer->getEnabled())
+            continue;
+
+        if (!filter.accept(layer))
+            continue;
+
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+        if (imageLayer)
+        {
+            osg::Texture* tex = 0L;
+            osg::Matrixf textureMatrix;
+
+            if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveDataInExtent(key.getExtent()))
+            {
+                if (imageLayer->createTextureSupported())
+                {
+                    tex = imageLayer->createTexture( key, progress, textureMatrix );
+                }
+
+                else
+                {
+                    GeoImage geoImage = imageLayer->createImage( key, progress );
+           
+                    if ( geoImage.valid() )
+                    {
+                        if ( imageLayer->isCoverage() )
+                            tex = createCoverageTexture(geoImage.getImage(), imageLayer);
+                        else
+                            tex = createImageTexture(geoImage.getImage(), imageLayer);
+                    }
+                }
+            }
+        
+            // if this is the first LOD, and the engine requires that the first LOD
+            // be populated, make an empty texture if we didn't get one.
+            if (tex == 0L &&
+                _options.firstLOD() == key.getLOD() &&
+                reqs && reqs->fullDataAtFirstLodRequired())
+            {
+                tex = _emptyTexture.get();
+            }
+         
+            if (tex)
+            {
+                TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+
+                layerModel->setImageLayer(imageLayer);
+
+                layerModel->setTexture(tex);
+                layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
+
+                model->colorLayers().push_back(layerModel);
+
+                if (imageLayer->isShared())
+                    model->sharedLayers().push_back(layerModel);
+
+                if (imageLayer->isDynamic())
+                    model->setRequiresUpdateTraverse(true);
+            }
+        }
+
+        else // non-image kind of TILE layer:
+        {
+            TerrainTileColorLayerModel* colorModel = new TerrainTileColorLayerModel();
+            colorModel->setLayer(layer);
+            model->colorLayers().push_back(colorModel);
+        }
+    }
+
+    if (progress)
+        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_image_layers);
 }
 
 void

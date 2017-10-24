@@ -372,7 +372,8 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
             group->addChild(node);
 
             // assign the layer's stateset to the group.
-            group->setStateSet(getOrCreateStateSet());
+            osg::StateSet* groupSS = getOrCreateStateSet();
+            group->setStateSet(groupSS);
 
             node = group;
 
@@ -387,7 +388,12 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
             {
                 osg::StateSet* ss = node->getOrCreateStateSet();
                 ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+              
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+            }
+            else
+            {
+                groupSS->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
             }
 
             // save it.

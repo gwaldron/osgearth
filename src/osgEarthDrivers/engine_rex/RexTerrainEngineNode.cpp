@@ -112,7 +112,7 @@ namespace
 
                 // if the map doesn't contain a layer with a matching UID,
                 // it's gone so remove it from the render model.
-                if (!_frame.containsLayer(pass._sourceUID))
+                if (!_frame.containsLayer(pass.sourceUID()))
                 {
                     model._passes.erase(model._passes.begin()+p);
                     --p;
@@ -163,6 +163,7 @@ _stateUpdateRequired  ( false )
     if ( Registry::capabilities().supportsGLSL() )
     {
         osg::StateSet* stateset = getOrCreateStateSet();
+        stateset->setName("RexTerrainEngineNode");
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName("RexTerrainEngineNode");
         vp->setIsAbstract(true);    // cannot run by itself, requires additional children
@@ -173,6 +174,7 @@ _stateUpdateRequired  ( false )
     // TODO: replace with a "renderer" object that can return statesets
     // for different layer types, or something.
     _imageLayerStateSet = new osg::StateSet();
+    _imageLayerStateSet->setName("Surface");
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -530,7 +532,6 @@ RexTerrainEngineNode::dirtyState()
     updateState();
 }
 
-
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
@@ -575,19 +576,17 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
             culler._terrain.sortDrawCommands();
         }
 
-        // The common stateset for the terrain:
+        // The common stateset for the terrain group:
         cv->pushStateSet(_terrain->getOrCreateStateSet());
 
-        // Push all the layers to draw on to the cull visitor,
-        // keeping track of render order.
+        // Push all the layers to draw on to the cull visitor in the order in which
+        // they appear in the map.
         LayerDrawable* lastLayer = 0L;
         unsigned order = 0;
         bool surfaceStateSetPushed = false;
-
-        //std::stringstream buf;
-
         int layersDrawn = 0;
-        //bool dump = culler.getFrameStamp()->getFrameNumber() % 100 == 0;
+
+        osg::State::StateSetStack stateSetStack;
 
         for(LayerDrawableList::iterator i = culler._terrain.layers().begin();
             i != culler._terrain.layers().end();
@@ -619,10 +618,17 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
                 if (lastLayer->_layer)
                 {
-                    if (lastLayer->_layer->preCull(cv))
+                    stateSetStack.clear();
+
+                    if (lastLayer->_layer->cull(cv, stateSetStack))
                     {
+                        for (unsigned j = 0; j<stateSetStack.size(); ++j)
+                            cv->pushStateSet(stateSetStack[j]);
+
                         cv->apply(*lastLayer);
-                        lastLayer->_layer->postCull(cv);
+
+                        for (unsigned j = 0; j<stateSetStack.size(); ++j)
+                            cv->popStateSet();
                     }
                 }
                 else
@@ -654,7 +660,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 
         // pop the common terrain state set
         cv->popStateSet();
-
+        
         // marks the end of the cull pass
         this->getEngineContext()->endCull( cv );
 
@@ -1283,7 +1289,9 @@ RexTerrainEngineNode::updateState()
     else
     {
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
-        osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
+        terrainStateSet->setName("Terrain Group");
+
+        osg::StateSet* surfaceStateSet = getSurfaceStateSet();    // just the surface
         
         //terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
         
@@ -1320,11 +1328,6 @@ RexTerrainEngineNode::updateState()
 
             surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
 
-            if (_terrainOptions.enableBlending() == true)
-            {
-                surfaceStateSet->setDefine("OE_TERRAIN_BLEND_IMAGERY");
-            }
-
             // Funtions that affect only the terrain surface:
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
             surfaceVP->setName("Rex Surface");
@@ -1346,6 +1349,11 @@ RexTerrainEngineNode::updateState()
                 package.load(surfaceVP, package.NORMAL_MAP_VERT);
                 package.load(surfaceVP, package.NORMAL_MAP_FRAG);
                 surfaceStateSet->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
+            }
+
+            if (_terrainOptions.enableBlending() == true)
+            {
+                surfaceStateSet->setDefine("OE_TERRAIN_BLEND_IMAGERY");
             }
 
             // Morphing?

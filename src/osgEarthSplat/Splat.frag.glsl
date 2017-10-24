@@ -12,7 +12,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma include Splat.types.glsl
 
 // statset defines
-#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT_MODE, OE_SPLAT_GPU_NOISE, OE_TERRAIN_RENDER_NORMAL_MAP)
+#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT_MODE, OE_SPLAT_GPU_NOISE, OE_TERRAIN_RENDER_NORMAL_MAP, OE_TERRAIN_BLEND_IMAGERY)
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
@@ -320,12 +320,29 @@ void oe_splat_complex(inout vec4 color)
     // recalcluate blending ratio
     float lodBlend = clamp((rangeOuter - env.range) / (rangeOuter - rangeInner), 0, 1);
        
-    // Blend:
+    // Blend the two samples based on LOD factor:
     vec4 texel = mix(texel0, texel1, lodBlend);
 
+#if 0
     color = mix(color, texel, texel.a);
     color.a = oe_layer_order > 0 ? texel.a : 1.0;
+    
+#else
 
+#ifdef OE_TERRAIN_BLEND_IMAGERY
+
+    if (oe_layer_order == 0)
+    {
+        color.rgb = texel.rgb*texel.a + color.rgb*(1.0-texel.a);
+        color.a = max(color.a, texel.a);
+    }
+    else
+#endif
+    {
+        color = mix(color, texel, texel.a);
+        color.a = texel.a;
+    }
+#endif
     // uncomment to visualize slope, noise, etc.
     //color.rgba = vec4(env.noise.x,0,0,1);  
 }

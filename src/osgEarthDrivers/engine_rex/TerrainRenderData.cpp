@@ -70,17 +70,7 @@ TerrainRenderData::setup(const MapFrame& frame,
 
                 if (render)
                 {
-                    ImageLayer* imgLayer = dynamic_cast<ImageLayer*>(layer);
-
-                    // Make a list of "global" layers. There are layers whose data is not
-                    // represented in the TerrainTileModel, like a splatting layer or a patch
-                    // layer. The data for these is dynamic and not based on data fetched.
-                    if (imgLayer == 0L && layer->getRenderType() == Layer::RENDERTYPE_TILE)
-                    {
-                        tileLayers().push_back(layer);
-                        addLayerDrawable(layer, frame);
-                    }
-                    else if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
+                    if (layer->getRenderType() == Layer::RENDERTYPE_PATCH)
                     {
                         PatchLayer* patchLayer = static_cast<PatchLayer*>(layer); // asumption!
 
@@ -127,6 +117,7 @@ TerrainRenderData::addLayerDrawable(const Layer* layer, const MapFrame& frame)
     _layerList.push_back(ld);
     _layerMap[uid] = ld;
     ld->_layer = layer;
+    ld->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
     ld->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
     ld->_order = _layerList.size() - 1;
     ld->_drawState = _drawState.get();

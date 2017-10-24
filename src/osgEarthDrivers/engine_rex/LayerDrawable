@@ -49,6 +49,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Pointer back to the actual Map layer, if there is one
         const Layer* _layer;
 
+        // If _layer is a VisibleLayer, this will be set as well, otherwise NULL
+        const VisibleLayer* _visibleLayer;
+
         // If _layer is an ImageLayer, this will be set as well, otherwise NULL
         const ImageLayer* _imageLayer;
 

@@ -54,50 +54,50 @@ _requiresUpdateTraverse( false )
     //NOP
 }
 
-const TerrainTileImageLayerModel*
-TerrainTileModel::findSharedLayerByName(const std::string& name) const
-{
-    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
-        i != _sharedLayers.end();
-        ++i)
-    {
-        if ( i->get()->getName() == name )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
-
-const TerrainTileImageLayerModel*
-TerrainTileModel::findSharedLayerByUID(const UID& uid) const
-{
-    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
-        i != _sharedLayers.end();
-        ++i)
-    {
-        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
-
-const TerrainTileImageLayerModel*
-TerrainTileModel::findColorLayerByUID(const UID& uid) const
-{
-    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin();
-        i != _colorLayers.end();
-        ++i)
-    {
-        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
+//const TerrainTileImageLayerModel*
+//TerrainTileModel::findSharedLayerByName(const std::string& name) const
+//{
+//    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
+//        i != _sharedLayers.end();
+//        ++i)
+//    {
+//        if ( i->get()->getName() == name )
+//        {
+//            return i->get();
+//        }
+//    }
+//    return 0L;
+//}
+//
+//const TerrainTileImageLayerModel*
+//TerrainTileModel::findSharedLayerByUID(const UID& uid) const
+//{
+//    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
+//        i != _sharedLayers.end();
+//        ++i)
+//    {
+//        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
+//        {
+//            return i->get();
+//        }
+//    }
+//    return 0L;
+//}
+//
+//const TerrainTileImageLayerModel*
+//TerrainTileModel::findColorLayerByUID(const UID& uid) const
+//{
+//    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin();
+//        i != _colorLayers.end();
+//        ++i)
+//    {
+//        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
+//        {
+//            return i->get();
+//        }
+//    }
+//    return 0L;
+//}
 
 osg::Texture* 
 TerrainTileModel::getNormalTexture() const

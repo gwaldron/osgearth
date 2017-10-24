@@ -112,21 +112,38 @@ namespace osgEarth
     typedef std::vector< osg::ref_ptr<TerrainTileLayerModel> > TerrainTileLayerModelVector;
 
     /**
-     * Layer based on an ImageLayer from the map.
+     * Layer based on a color layer (ImageLayer or any other RENDERTYPE_TILE layer)
      */
-    class OSGEARTH_EXPORT TerrainTileImageLayerModel : public TerrainTileLayerModel
+    class OSGEARTH_EXPORT TerrainTileColorLayerModel : public TerrainTileLayerModel
     {
     public:
-        TerrainTileImageLayerModel() { }
+        TerrainTileColorLayerModel() : TerrainTileLayerModel() { }
+
+        void setLayer(Layer* layer) { _layer = layer; }
+        Layer* getLayer() const { return _layer.get(); }
+
+    protected:
+        virtual ~TerrainTileColorLayerModel() { }
+        osg::ref_ptr<Layer> _layer;
+    };
+    typedef std::vector< osg::ref_ptr<TerrainTileColorLayerModel> > TerrainTileColorLayerModelVector;
+
+    /**
+     * Layer based on an ImageLayer from the map.
+     */
+    class OSGEARTH_EXPORT TerrainTileImageLayerModel : public TerrainTileColorLayerModel
+    {
+    public:
+        TerrainTileImageLayerModel() : TerrainTileColorLayerModel() { }
 
     public:
         /** Source layer */
-        void setImageLayer(ImageLayer* layer) { _layer = layer; }
-        const ImageLayer* getImageLayer() const { return _layer.get(); }
+        void setImageLayer(ImageLayer* layer) { _imageLayer = layer; setLayer(layer); }
+        const ImageLayer* getImageLayer() const { return _imageLayer.get(); }
 
     protected:
         virtual ~TerrainTileImageLayerModel() { }
-        osg::ref_ptr<ImageLayer> _layer;
+        osg::ref_ptr<ImageLayer> _imageLayer;
         osg::ref_ptr<osg::Node> _node;
     };
     typedef std::vector< osg::ref_ptr<TerrainTileImageLayerModel> > TerrainTileImageLayerModelVector;
@@ -200,8 +217,8 @@ namespace osgEarth
         const TileKey& getKey() const { return _key; }
 
         /** Color layers (rendered one at a time in order) */
-        TerrainTileImageLayerModelVector& colorLayers() { return _colorLayers; }
-        const TerrainTileImageLayerModelVector& colorLayers() const { return _colorLayers; }
+        TerrainTileColorLayerModelVector& colorLayers() { return _colorLayers; }
+        const TerrainTileColorLayerModelVector& colorLayers() const { return _colorLayers; }
 
         TerrainTilePatchLayerModelVector& patchLayers() { return _patchLayers; }
         const TerrainTilePatchLayerModelVector& patchLayers() const { return _patchLayers; }
@@ -217,11 +234,6 @@ namespace osgEarth
         /** Shared raster layers (bound for all rendering) */
         TerrainTileImageLayerModelVector& sharedLayers() { return _sharedLayers; }
         const TerrainTileImageLayerModelVector& sharedLayers() const { return _sharedLayers; }
-
-        /** Try to find a layer */
-        const TerrainTileImageLayerModel* findColorLayerByUID(const UID& uid) const;
-        const TerrainTileImageLayerModel* findSharedLayerByUID(const UID& uid) const;
-        const TerrainTileImageLayerModel* findSharedLayerByName(const std::string& name) const;
 
         /** Height field neighborhood surrounding the tile */
         /** TODO: does this need to be in the model itself? probably not */
@@ -242,7 +254,7 @@ namespace osgEarth
     protected:
         TileKey                                 _key;
         Revision                                _revision;
-        TerrainTileImageLayerModelVector        _colorLayers;
+        TerrainTileColorLayerModelVector        _colorLayers;
         TerrainTilePatchLayerModelVector        _patchLayers;
         TerrainTileImageLayerModelVector        _sharedLayers;
         osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;

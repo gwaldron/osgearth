@@ -221,24 +221,13 @@ namespace osgEarth
         /**
          * Access the layer's stateset, creating it is necessary
          */
-        osg::StateSet* getOrCreateStateSet() {
-            if (!_stateSet.valid())
-                _stateSet = new osg::StateSet();
-            return getStateSet();
-        }
+        osg::StateSet* getOrCreateStateSet();
 
         /**
          * Layer's stateset, or NULL if none exists
          */
-        virtual osg::StateSet* getStateSet() const {
+        osg::StateSet* getStateSet() const {
             return _stateSet.get();
-        }
-
-        /**
-         * Sets a new stateset on this layer
-         */
-        void setStateSet(osg::StateSet* stateSet) {
-            _stateSet = stateSet;
         }
 
         /**
@@ -282,10 +271,7 @@ namespace osgEarth
     public: // Experimental
 
         //! Called before culling this layer - return false to reject.
-        virtual bool preCull(osgUtil::CullVisitor*) const;
-
-        //! Called after culling this layer
-        virtual void postCull(osgUtil::CullVisitor*) const;
+        virtual bool cull(const osgUtil::CullVisitor*, osg::State::StateSetStack& stateSetStack) const;
 
 
     public: // osg::Object

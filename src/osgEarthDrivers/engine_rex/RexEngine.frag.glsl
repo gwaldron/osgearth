@@ -66,11 +66,12 @@ void oe_rexEngine_frag(inout vec4 color)
 #endif
 
     // Integrate layer opacity into the texture:
+    //texel.a = mix(texel.a, texel.a*oe_layer_rangeOpacity, isImageLayer);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, isImageLayer);
+    
+#ifdef OE_TERRAIN_BLEND_IMAGERY
 
     float isFirstImageLayer = (isImageLayer == 1.0 && oe_layer_order == 0) ? 1.0 : 0.0;
-
-#ifdef OE_TERRAIN_BLEND_IMAGERY
 
     // If this is a first image layer, blend with the incoming terrian color.
     // Otherwise, apply directly and let GL blending do the rest.

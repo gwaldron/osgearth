@@ -99,6 +99,10 @@ FeatureModelLayer::init()
 
     // Graph needs rebuilding
     _graphDirty = true;
+
+    // Depth sorting by default
+    getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+
 }
 
 void

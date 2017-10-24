@@ -99,6 +99,14 @@ namespace osgEarth
             const CreateTileModelFilter&     filter,
             ProgressCallback*                progress);
 
+        virtual void addColorLayers(
+            TerrainTileModel*                model,
+            const MapFrame&                  frame,
+            const TerrainEngineRequirements* reqs,
+            const TileKey&                   key,
+            const CreateTileModelFilter&     filter,
+            ProgressCallback*                progress);
+
         virtual void addElevation(
             TerrainTileModel*            model,
             const MapFrame&              frame,

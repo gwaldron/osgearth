@@ -304,18 +304,11 @@ Layer::removeCallback(LayerCallback* cb)
 }
 
 bool
-Layer::preCull(osgUtil::CullVisitor* cv) const
+Layer::cull(const osgUtil::CullVisitor* cv, osg::State::StateSetStack& stateSetStack) const
 {
     //if (getStateSet())
     //    cv->pushStateSet(getStateSet());
     return true;
-}
-
-void
-Layer::postCull(osgUtil::CullVisitor* cv) const
-{
-    //if (getStateSet())
-    //    cv->popStateSet();
 }
 
 const GeoExtent&
@@ -323,4 +316,15 @@ Layer::getExtent() const
 {
     static GeoExtent s_invalid = GeoExtent::INVALID;
     return s_invalid;
+}
+
+osg::StateSet*
+Layer::getOrCreateStateSet()
+{
+    if (!_stateSet.valid())
+    {
+        _stateSet = new osg::StateSet();
+        _stateSet->setName("Layer");
+    }
+    return _stateSet.get();
 }

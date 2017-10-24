@@ -148,7 +148,7 @@ VisibleLayer::setOpacity(float value)
             stateSet->addUniform(_opacityU.get());
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             vp->setFunction("oe_visibleLayer_setOpacity", opacityFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
-            stateSet->setRenderingHint(stateSet->TRANSPARENT_BIN);
+            // NOTE: do not alter the render bin here - it will screw up terrain rendering order!
         }
     }
     

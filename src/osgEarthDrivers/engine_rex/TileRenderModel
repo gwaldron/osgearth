@@ -49,27 +49,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
      */
     struct RenderingPass
     {
-        bool _orphaned;
-
-        /** UID of the layer responsible for this rendering pass (usually an ImageLayer) */
-        UID _sourceUID;
-
-        /** Samplers specific to this rendering pass (COLOR, COLOR_PARENT) */
-        Samplers _samplers;
-
-        /** Layer respsonible for this rendering pass */
-        osg::ref_ptr<const Layer> _layer;
-
-        /** ImageLayer responsible for this rendering pass (if _layer is an image layer) */
-        osg::ref_ptr<const ImageLayer> _imageLayer;
-
+    public:
         RenderingPass() :
-            _orphaned(false), _sourceUID(-1), _samplers(SamplerBinding::COLOR_PARENT+1) { }
+            _sourceUID(-1),
+            _samplers(SamplerBinding::COLOR_PARENT+1),
+            _visibleLayer(0L)
+            { }
         
-        /** Whether this pass is no longer usable because it's source layer disappeared from the map */
-        bool orphaned() const {
-            return _orphaned;
-        }
+        UID sourceUID() const { return _sourceUID; }
+        Samplers& samplers() { return _samplers; }
+        const Samplers& samplers() const  { return _samplers; }
+        const Layer* layer() const { return _layer.get(); }
+        const VisibleLayer* visibleLayer() const { return _visibleLayer; }
 
         void releaseGLObjects(osg::State* state) const
         {
@@ -84,6 +75,28 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 if (_samplers[s]._texture.valid() && _samplers[s]._matrix.isIdentity())
                     _samplers[s]._texture->resizeGLObjectBuffers(size);
         }
+
+        void setLayer(const Layer* layer) {
+            _layer = layer;
+            if (layer) {
+                _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+                _sourceUID = layer->getUID();
+            }
+        }
+
+    private:
+        /** UID of the layer responsible for this rendering pass (usually an ImageLayer) */
+        UID _sourceUID;
+
+        /** Samplers specific to this rendering pass (COLOR, COLOR_PARENT) */
+        Samplers _samplers;
+
+        /** Layer respsonible for this rendering pass */
+        osg::ref_ptr<const Layer> _layer;
+
+        /** VisibleLayer responsible for this rendering pass (is _layer is a VisibleLayer) */
+        const VisibleLayer* _visibleLayer;
+
     };
 
     /**
@@ -114,7 +127,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const RenderingPass* getPass(UID uid) const
         {
             for (unsigned i = 0; i < _passes.size(); ++i) {
-                if (_passes[i]._sourceUID == uid)
+                if (_passes[i].sourceUID() == uid)
                     return &_passes[i];
             }
             return 0L;
@@ -124,7 +137,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RenderingPass* getPass(UID uid)
         {
             for (unsigned i = 0; i < _passes.size(); ++i) {
-                if (_passes[i]._sourceUID == uid)
+                if (_passes[i].sourceUID() == uid)
                     return &_passes[i];
             }
             return 0L;

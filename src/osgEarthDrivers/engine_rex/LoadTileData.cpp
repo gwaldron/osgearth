@@ -78,6 +78,7 @@ LoadTileData::invoke()
         _mapFrame,
         tilenode->getKey(),           
         _filter,
+        tilenode->getIsRootTile(),
         progress.get() );
 }
 

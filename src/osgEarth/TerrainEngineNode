@@ -86,6 +86,7 @@ namespace osgEarth
             const MapFrame&              frame,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
+            bool                         isRootKey,
             ProgressCallback*            progress ) =0;
 
         
@@ -194,7 +195,8 @@ namespace osgEarth
             const MapFrame&              frame,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
-            ProgressCallback*            progress );
+            bool isRootKey,
+            ProgressCallback*            progress);
 
         void notifyOfTerrainTileNodeCreation(
             const TileKey& key, 

@@ -103,6 +103,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual void setMinimumExpirationFrames(unsigned int minExpiryFrames) { _minExpiryFrames = minExpiryFrames; }
 
         virtual void loadChildren();
+
+        bool getIsRootTile() const { return _isRootTile; }
+        void setIsRootTile(bool isRoot) { _isRootTile = isRoot; }
         
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
@@ -146,6 +149,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileRenderModel                    _renderModel;
         std::set<UID>                      _newLayers;
         bool                               _empty;
+        bool                               _isRootTile;
 
         osg::observer_ptr<TileNode> _eastNeighbor;
         osg::observer_ptr<TileNode> _southNeighbor;

@@ -60,11 +60,24 @@ namespace osgEarth
         //! Call this after setting up your data on the attach point
         void setupPaging();
 
+        /**
+         * Gets the range factor
+         */
+        float getRangeFactor() const { return _rangeFactor; }
+
+        /**
+         * Sets the range factor
+         */
+        void setRangeFactor(float rangeFactor) { _rangeFactor = rangeFactor; }
+
         //! Sets the page-in rage mode (distance v. pixel-size; default is distance)
         void setRangeMode(const osg::LOD::RangeMode);
 
         //! Sets the range (or pixel size) at which to page in the child data.
         void setRange(float range) { _range = range; }
+
+        //! Gets whether this node is additive.
+        bool getAdditive() const { return _additive; }
 
         //! Sets whether the child replaces the default node (non-additive)
         //! or renders alongside the default node (additive)
@@ -75,6 +88,7 @@ namespace osgEarth
         osg::PagedLOD* _plod;
         bool _additive;
         optional<float> _range;
+        float _rangeFactor;
     };    
 }
 

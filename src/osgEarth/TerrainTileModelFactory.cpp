@@ -47,6 +47,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TileKey&                   key,
                                          const CreateTileModelFilter&     filter,
                                          const TerrainEngineRequirements* requirements,
+                                         bool  isRootKey,
                                          ProgressCallback*                progress)
 {
     // Make a new model:
@@ -64,7 +65,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
-        addElevation( model.get(), frame, key, filter, border, progress );
+        addElevation( model.get(), frame, key, filter, border, isRootKey, progress );
     }
 
 #if 0
@@ -212,7 +213,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
             else
             {
                 GeoImage geoImage = layer->createImage( key, progress );
-           
+
                 if ( geoImage.valid() )
                 {
                     if ( layer->isCoverage() )
@@ -222,7 +223,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
                 }
             }
         }
-        
+
         // if this is the first LOD, and the engine requires that the first LOD
         // be populated, make an empty texture if we didn't get one.
         if (tex == 0L &&
@@ -231,7 +232,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
         {
             tex = _emptyTexture.get();
         }
-         
+
         if (tex)
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
@@ -305,8 +306,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
                                       unsigned                     border,
+                                      bool isRootKey,
                                       ProgressCallback*            progress)
-{    
+{
     // make an elevation layer.
     OE_START_TIMER(fetch_elevation);
 
@@ -349,7 +351,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                 if ( h < layerModel->getMinHeight() )
                     layerModel->setMinHeight( h );
             }
-        }        
+        }
 
         // needed for normal map generation
         model->heightFields().setNeighbor(0, 0, mainHF.get());
@@ -463,7 +465,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     if (!out_normalMap.valid())
     {
         //OE_INFO << "TODO: check terrain reqs\n";
-        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);        
+        out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
     }
 
     bool populated = frame.populateHeightFieldAndNormalMap(
@@ -527,7 +529,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint(false);
 
-    osg::Texture::FilterMode magFilter = 
+    osg::Texture::FilterMode magFilter =
         layer ? layer->options().magFilter().get() : osg::Texture::LINEAR;
     osg::Texture::FilterMode minFilter =
         layer ? layer->options().minFilter().get() : osg::Texture::LINEAR;

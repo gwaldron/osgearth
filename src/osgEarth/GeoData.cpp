@@ -2287,8 +2287,11 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
 
 
     // first xform the input point into our local SRS:
-    if ( inputSRS && !inputSRS->transform(xy, extentSRS, local) )
-        return false;
+    if (inputSRS != extentSRS)
+    {
+        if (inputSRS && !inputSRS->transform(xy, extentSRS, local))
+            return false;
+    }
 
     // check that the point falls within the heightfield bounds:
     if ( _extent.contains(local.x(), local.y()) )

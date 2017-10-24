@@ -162,12 +162,17 @@
 
     <!-- Land cover dictionary -->
     <xi:include href="../data/land_cover_dictionary.xml"/>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
 
     <!-- Land cover layer -->
     <land_cover name="LandCover" max_data_level="15">
         <cache_policy usage="no_cache"/>
         <coverages>
             <coverage name="ESA GLOBCOVER" driver="gdal">
+                <profile>global-geodetic</profile>
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <xi:include href="../data/land_cover_ESA_GLOBCOVER.xml"/>
             </coverage>

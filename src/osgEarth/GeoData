@@ -358,22 +358,22 @@ namespace osgEarth
         const SpatialReference* getSRS() const { return _srs.get(); }
 
         //! Coordinates of the bounding edges, normalized for the lat/long frame if necessary
-        double west() const { return _west; }
-        double east() const { return normalizeX(_west+_width); }
-        double south() const { return _south; }
-        double north() const { return _south+_height; }
+        inline double west() const { return _west; }
+        inline double east() const { return normalizeX(_west+_width); }
+        inline double south() const { return _south; }
+        inline double north() const { return _south+_height; }
 
         //! Coordinates of the bounds, NOT normalized to the lat/long frame.
-        double xMin() const { return _west; }
-        double xMax() const { return _west + _width; }
-        double yMin() const { return _south; }
-        double yMax() const { return _south + _height; }
+        inline double xMin() const { return _west; }
+        inline double xMax() const { return _west + _width; }
+        inline double yMin() const { return _south; }
+        inline double yMax() const { return _south + _height; }
 
         //! East-to-west span of the extent
-        double width() const { return _width; }
+        inline double width() const { return _width; }
 
         //! North-to-south span of the extent
-        double height() const { return _height; }
+        inline double height() const { return _height; }
 
         /**
          * Gets the centroid of the bounds

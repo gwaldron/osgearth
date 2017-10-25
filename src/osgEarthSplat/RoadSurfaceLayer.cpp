@@ -196,6 +196,9 @@ void addFeatureToMap(Feature* feature, const Style& style, StyleToFeatures& map)
 
 void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
 {
+    if ( styles == 0L )
+        return;
+
     if ( styles->selectors().size() > 0 )
     {
         for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )

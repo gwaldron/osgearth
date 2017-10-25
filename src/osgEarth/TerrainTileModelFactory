@@ -80,7 +80,6 @@ namespace osgEarth
          * @param key          Tile key for which to create the model
          * @param layers       Set of layer UIDs for which to fetch data; NULL => all layers
          * @param requirements Hints that tell the factory what types of data to add
-         * @param isRootKey    Whether this is a root key or not.
          * @param progress     Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
@@ -88,7 +87,6 @@ namespace osgEarth
             const TileKey&                   key,
             const CreateTileModelFilter&     filter,
             const TerrainEngineRequirements* requirements,
-            bool                             isRootKey,
             ProgressCallback*                progress);
 
     protected:
@@ -115,7 +113,6 @@ namespace osgEarth
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             unsigned                     border,
-            bool                         isRootKey,
             ProgressCallback*            progress);
 
         virtual void addNormalMap(

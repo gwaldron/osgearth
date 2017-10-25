@@ -47,7 +47,6 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TileKey&                   key,
                                          const CreateTileModelFilter&     filter,
                                          const TerrainEngineRequirements* requirements,
-                                         bool  isRootKey,
                                          ProgressCallback*                progress)
 {
     // Make a new model:
@@ -65,7 +64,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
-        addElevation( model.get(), frame, key, filter, border, isRootKey, progress );
+        addElevation( model.get(), frame, key, filter, border, progress );
     }
 
 #if 0
@@ -306,7 +305,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
                                       unsigned                     border,
-                                      bool isRootKey,
                                       ProgressCallback*            progress)
 {
     // make an elevation layer.

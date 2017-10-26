@@ -50,7 +50,11 @@
 
 #define OE_TEST OE_NULL
 
-#define USE_GPU_SCREEN_SPACE_LINES true
+namespace
+{
+    static bool USE_GPU_SCREEN_SPACE_LINES =
+        (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L);
+}
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

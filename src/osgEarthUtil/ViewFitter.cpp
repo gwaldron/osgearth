@@ -34,6 +34,11 @@ namespace
         osg::Vec4d Ptemp = Pclip * projMatrixInv;
         Pview.set(Ptemp.x() / Ptemp.w(), Ptemp.y() / Ptemp.w(), Ptemp.z() / Ptemp.w());
     }
+
+    double mix(double a, double b, double t)
+    {
+        return a*(1.0-t) + b*t;
+    }
 }
 
 ViewFitter::ViewFitter(const SpatialReference* mapSRS, const osg::Camera* camera) :
@@ -74,6 +79,12 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     double fovy_deg, ar;
     double zfar;
 
+    // Calculate the "centroid" of our point set:
+    osg::Vec3d lookFrom;
+    for (int i = 0; i < world.size(); ++i)
+        lookFrom += world[i];
+    lookFrom /= world.size();
+
     if (isPerspective)
     {
         // For a perspective matrix, rewrite the projection matrix so 
@@ -85,8 +96,18 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
 
         if (_mapSRS->isGeographic())
         {
-            zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
-                                _mapSRS->getEllipsoid()->getRadiusPolar());
+            osg::Vec3d C = lookFrom;
+            C.normalize();
+            C.z() = fabs(C.z());
+            double t = C * osg::Vec3d(0,0,1); // dot product
+
+            zfar = mix(_mapSRS->getEllipsoid()->getRadiusEquator(),
+                       _mapSRS->getEllipsoid()->getRadiusPolar(),
+                       t);
+
+            //zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
+            //                    _mapSRS->getEllipsoid()->getRadiusPolar());
+            
             eyeDist = zfar * 2.0;
         }
         else
@@ -109,8 +130,17 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
 
         if (_mapSRS->isGeographic())
         {
-            zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
-                                _mapSRS->getEllipsoid()->getRadiusPolar());
+            osg::Vec3d C = lookFrom;
+            C.normalize();
+            C.z() = fabs(C.z());
+            double t = C * osg::Vec3d(0,0,1); // dot product
+
+            zfar = mix(_mapSRS->getEllipsoid()->getRadiusEquator(),
+                       _mapSRS->getEllipsoid()->getRadiusPolar(),
+                       t);
+
+            //zfar = osg::maximum(_mapSRS->getEllipsoid()->getRadiusEquator(),
+            //                    _mapSRS->getEllipsoid()->getRadiusPolar());
             eyeDist = zfar * 2.0;
         }
         else
@@ -121,12 +151,6 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
             zfar = eyeDist;
         }
     }
-
-    // Calculate the "centroid" of our point set:
-    osg::Vec3d lookFrom;
-    for (int i = 0; i < world.size(); ++i)
-        lookFrom += world[i];
-    lookFrom /= world.size();
 
     // Set up a new view matrix to look down on that centroid:
     osg::Vec3d lookAt, up;

@@ -104,9 +104,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         virtual void loadChildren();
 
-        bool getIsRootTile() const { return _isRootTile; }
-        void setIsRootTile(bool isRoot) { _isRootTile = isRoot; }
-        
         /** Merge new Tile model data into this tile's rendering data model. */
         void merge(const TerrainTileModel* dataModel, const RenderBindings& bindings);
 

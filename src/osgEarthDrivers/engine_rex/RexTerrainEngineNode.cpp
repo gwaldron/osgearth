@@ -476,7 +476,6 @@ RexTerrainEngineNode::dirtyTerrain()
     for( unsigned i=0; i<keys.size(); ++i )
     {
         TileNode* tileNode = new TileNode();
-        tileNode->setIsRootTile(true);
 
         if (_terrainOptions.minExpiryFrames().isSet())
         {

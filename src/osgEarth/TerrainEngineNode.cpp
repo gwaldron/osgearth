@@ -313,7 +313,6 @@ TerrainTileModel*
 TerrainEngineNode::createTileModel(const MapFrame&              frame,
                                    const TileKey&               key,
                                    const CreateTileModelFilter& filter,
-                                   bool isRootKey,
                                    ProgressCallback*            progress
     )
 {
@@ -324,8 +323,7 @@ TerrainEngineNode::createTileModel(const MapFrame&              frame,
         frame, 
         key, 
         filter,
-        requirements, 
-        isRootKey,
+        requirements,         
         progress);
 
     if ( model.valid() )

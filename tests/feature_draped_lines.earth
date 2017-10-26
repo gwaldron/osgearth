@@ -6,10 +6,6 @@ i.e. "altitude-clamping: terrain-drape".
 -->
 
 <map name="Draped Lines Demo">
-  
-    <options>
-        <terrain min_lod="16"/>
-    </options>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -27,7 +23,7 @@ i.e. "altitude-clamping: terrain-drape".
             <style type="text/css">
                 world {
                    stroke:             #ffff00;
-                   stroke-width:       5px;
+                   stroke-width:       4px;
                    altitude-clamping:  terrain-drape;
                 }            
             </style>

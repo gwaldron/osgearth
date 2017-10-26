@@ -277,6 +277,31 @@ namespace osgEarth
     {
         Config dumpRenderBin(osgUtil::RenderBin* bin) const;
     };
+
+
+    /**
+     * Cull callback for cameras that sets the oe_ViewportSize uniform.
+     */
+    class OSGEARTH_EXPORT InstallViewportSizeUniform : public osg::NodeCallback
+    {
+    public:
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+            const osg::Camera* camera = cv->getCurrentCamera();
+            bool pushed = false;
+            if (camera && camera->getViewport()) {
+                osg::ref_ptr<osg::StateSet> ss = new osg::StateSet();
+                ss->addUniform(new osg::Uniform("oe_ViewportSize", osg::Vec2f(
+                    camera->getViewport()->width(),
+                    camera->getViewport()->height())));
+                cv->pushStateSet(ss.get());
+                pushed = true;
+            }
+            traverse(node, nv);
+            if (pushed)
+                cv->popStateSet();
+        }
+    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

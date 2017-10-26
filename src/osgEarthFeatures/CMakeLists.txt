@@ -10,6 +10,18 @@ ENDIF(GEOS_FOUND)
 
 SET(LIB_NAME osgEarthFeatures)
 
+set(TARGET_GLSL
+    GPULinesScreenProj.vert.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+set(TARGET_IN
+    Shaders.cpp.in)
+
+configure_shaders(
+    Shaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
@@ -40,6 +52,7 @@ SET(LIB_PUBLIC_HEADERS
     FilterContext
     GeometryCompiler
     GeometryUtils
+    GPULines
     LabelSource
     MVT
     OgrUtils
@@ -52,6 +65,7 @@ SET(LIB_PUBLIC_HEADERS
     Script
     ScriptEngine
     ScriptFilter
+    Shaders
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
@@ -85,6 +99,7 @@ SET(TARGET_SRC
     FilterContext.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
+    GPULines.cpp
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
@@ -100,7 +115,8 @@ SET(TARGET_SRC
     TessellateOperator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp
-    VirtualFeatureSource.cpp    
+    VirtualFeatureSource.cpp 
+    ${SHADERS_CPP}
 )
 
 IF(PROTOBUF_FOUND AND PROTOBUF_PROTOC_EXECUTABLE)
@@ -122,9 +138,12 @@ IF(PROTOBUF_FOUND AND PROTOBUF_PROTOC_EXECUTABLE)
 
 ENDIF()
 
-ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+ADD_LIBRARY(${LIB_NAME}
+    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TARGET_SRC}
+    ${TARGET_GLSL}
+    ${TARGET_IN}
 )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})

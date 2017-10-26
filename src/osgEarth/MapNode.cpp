@@ -400,6 +400,9 @@ MapNode::init()
 
     dirtyBound();
 
+    // install a callback that sets the viewport size uniform:
+    this->addCullCallback(new InstallViewportSizeUniform());
+
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 

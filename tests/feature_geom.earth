@@ -5,10 +5,10 @@ Basic example of how to read feature data from a shapefile and build
 OSG geometry out of it.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric" version="2">
+<map name="Feature Geometry Demo">
     	
-    <image name="world" driver="gdal">
-        <url>../data/world.tif</url>
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     
     <feature_model name="states">
@@ -18,9 +18,9 @@ OSG geometry out of it.
         <styles>
             <style type="text/css">
                 states {
-                   stroke:          #ffff00;
-                   altitude-offset: 1000;      
-				   render-lighting: false;
+                   stroke:          #ffff00; 
+                   stroke-width:    2px;
+                   render-depth-offset: true;
                 }                    
             </style>
         </styles>        

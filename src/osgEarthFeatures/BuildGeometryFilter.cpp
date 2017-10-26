@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/PolygonizeLines>
+#include <osgEarthFeatures/GPULines>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
@@ -48,6 +49,8 @@
 #define LC "[BuildGeometryFilter] "
 
 #define OE_TEST OE_NULL
+
+#define USE_GPU_SCREEN_SPACE_LINES true
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -289,11 +292,9 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
     if ( context.isGeoreferenced() )
     {
-        //makeECEF   = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
         outputSRS = context.getOutputSRS();
         makeECEF = outputSRS->isGeographic();
-        //mapSRS     = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
     // We need to create a different geode for each texture that is used so they can share statesets.
@@ -353,6 +354,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
         // The operator we'll use to make lines into polygons.
         PolygonizeLinesOperator polygonizer( *line->stroke() );
+        //GPULinesOperator gpuLines(*line->stroke() );
 
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.
@@ -395,6 +397,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             // turn the lines into polygons.
             CopyHeightsCallback copyHeights(hats.get());
             osg::Geometry* geom = polygonizer( verts.get(), normals.get(), gpuClamping? &copyHeights : 0L, twosided );
+            //osg::Geometry* geom = gpuLines(verts.get());
             if ( geom )
             {
                 geode->addDrawable( geom );
@@ -413,6 +416,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             }            
         }
         polygonizer.installShaders( geode );
+        //gpuLines.installShaders(geode);
     }
 
     for (TextureToGeodeMap::iterator itr = geodes.begin(); itr != geodes.end(); ++itr)
@@ -445,7 +449,8 @@ osg::Geode*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
-
+    
+    const bool makeGPULines = USE_GPU_SCREEN_SPACE_LINES;
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
     const SpatialReference* outputSRS = 0L;
@@ -453,12 +458,13 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
     // set up referencing information:
     if ( context.isGeoreferenced() )
     {
-        //makeECEF   = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
         outputSRS  = context.getOutputSRS();
         makeECEF = outputSRS->isGeographic();
     }
 
+    optional<Stroke> masterStroke;
+    
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -471,12 +477,17 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         if ( !line )
             continue;
 
+        if (!masterStroke.isSet())
+            masterStroke = line->stroke().get();
+
         // run a symbol script if present.
         if ( line->script().isSet() )
         {
             StringExpression temp( line->script().get() );
             input->eval( temp, &context );
         }
+
+        GPULinesOperator gpuLines(line->stroke().get());
 
         GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
@@ -495,34 +506,45 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
-            GLenum primMode = dynamic_cast<Ring*>(part) ? GL_LINE_LOOP : GL_LINE_STRIP;
-
+            bool closeTheLoop = (dynamic_cast<Ring*>(part) != 0L);
+            
             // resolve the color:
             osg::Vec4f primaryColor = line->stroke()->color();
 
-            osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            // build the geometry:d
+            osg::Vec3Array* allPoints = new osg::Vec3Array();
+
+            transformAndLocalize( part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF );
+
+            osg::ref_ptr<osg::Geometry> osgGeom;
+
+            if (makeGPULines)
+            {
+                // Lines tessellated on the GPU - replacement for deprecated glLineWidth               
+                osgGeom = gpuLines(allPoints, closeTheLoop);
+            }
+            else
+            {
+                // normal GL lines
+                osgGeom = new osg::Geometry();
+                osgGeom->setUseVertexBufferObjects(true);
+                osgGeom->setUseDisplayList(false);
+                GLenum primMode = closeTheLoop ? GL_LINE_LOOP : GL_LINE_STRIP;
+                osgGeom->addPrimitiveSet(new osg::DrawArrays(primMode, 0, allPoints->getNumElements()));
+                osgGeom->setVertexArray(allPoints);
+            }
+
+            //if ( input->style().isSet() )
+            //{
+            //    //TODO: re-evaluate this. does it hinder geometry merging?
+            //    applyLineSymbology( osgGeom->getOrCreateStateSet(), line );
+            //}
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
             {
                 const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
                 osgGeom->setName( name );
-            }
-
-            // build the geometry:
-            osg::Vec3Array* allPoints = new osg::Vec3Array();
-
-            transformAndLocalize( part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF );
-
-            osgGeom->addPrimitiveSet( new osg::DrawArrays(primMode, 0, allPoints->getNumElements()) );
-            osgGeom->setVertexArray( allPoints );
-
-            if ( input->style().isSet() )
-            {
-                //TODO: re-evaluate this. does it hinder geometry merging?
-                applyLineSymbology( osgGeom->getOrCreateStateSet(), line );
             }
 
             // subdivide the mesh if necessary to conform to an ECEF globe;
@@ -561,6 +583,12 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 Clamping::setHeights( osgGeom, hats.get() );
             }
         }
+    }
+
+    if (makeGPULines)
+    {
+        GPULinesOperator op(masterStroke.get());
+        op.installShaders(geode);
     }
 
     return geode;
@@ -1344,6 +1372,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( lines.size() > 0 )
     {
         OE_TEST << LC << "Building " << lines.size() << " lines." << std::endl;
+        
         osg::ref_ptr<osg::Geode> geode = processLines(lines, context);
         if ( geode->getNumDrawables() > 0 )
         {
@@ -1351,7 +1380,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             mg.setTargetMaximumNumberOfVertices(65536);
             geode->accept(mg);
 
-            applyLineSymbology( geode->getOrCreateStateSet(), line );
+            if (USE_GPU_SCREEN_SPACE_LINES == false)
+                applyLineSymbology( geode->getOrCreateStateSet(), line );
+
             result->addChild( geode.get() );
         }
     }

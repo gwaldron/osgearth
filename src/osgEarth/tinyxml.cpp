@@ -34,6 +34,8 @@ distribution.
 
 FILE* TiXmlFOpen( const char* filename, const char* mode );
 
+using namespace osgEarth;
+
 bool TiXmlBase::condenseWhiteSpace = true;
 
 // Microsoft compiler security

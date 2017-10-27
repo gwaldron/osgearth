@@ -22,7 +22,7 @@
 FIND_PATH(GDAL_INCLUDE_DIR gdal.h
   $ENV{GDAL_DIR}
   NO_DEFAULT_PATH
-    PATH_SUFFIXES include
+    PATH_SUFFIXES include include/gdal
 )
 
 FIND_PATH(GDAL_INCLUDE_DIR gdal.h

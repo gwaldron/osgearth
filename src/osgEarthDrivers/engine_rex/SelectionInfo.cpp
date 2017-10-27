@@ -31,29 +31,9 @@ const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
 const double   SelectionInfo::_fLodLowerBound   = 12.0;
 const double   SelectionInfo::_fMorphStartRatio = 0.66;
 
-unsigned SelectionInfo::lodForMorphing(bool isProjected)
+unsigned SelectionInfo::getLODForMorphing(bool isProjected)
 {
     return (isProjected) ? 0 : _uiLODForMorphingRoundEarth;
-}
-
-double SelectionInfo::morphStartRatio(void) 
-{
-    return _fMorphStartRatio;
-}
-
-unsigned SelectionInfo::numLods(void) const
-{
-    return _numLods;
-}
-
-unsigned SelectionInfo::gridDimX(void) const
-{
-    return _uiGridDimensions.first;
-}
-
-unsigned SelectionInfo::gridDimY(void) const
-{
-    return _uiGridDimensions.second;
 }
 
 VisParameters SelectionInfo::visParameters(unsigned lod) const
@@ -72,7 +52,7 @@ bool SelectionInfo::initialized(void) const
     return _vecVisParams.size()>0;
 }
 
-void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, unsigned uiTileSize, const Profile* profile, double mtrf)
+void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, const Profile* profile, double mtrf)
 {
     if (initialized())
     {
@@ -84,8 +64,6 @@ void SelectionInfo::initialize(unsigned uiFirstLod, unsigned uiMaxLod, unsigned 
         OE_INFO << LC <<"Error: Inconsistent First and Max LODs"<<std::endl;
         return;
     }
-    _uiGridDimensions.first  = uiTileSize;
-    _uiGridDimensions.second = uiTileSize;
 
     _uiFirstLOD = uiFirstLod;
 

@@ -39,8 +39,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
             _normalizeEdges    ( true ),
-            _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
             _smoothing         ( false ),
@@ -68,14 +66,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          *  the appearance of seams when using lighting, but requires extra CPU work. */
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
-
-        /** Mode to use when calculating LOD switching distances */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
-        optional<float>& tilePixelSize() { return _tilePixelSize; }
-        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
 
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
@@ -114,9 +104,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.set( "skirt_ratio", _skirtRatio );
             conf.set( "quick_release_gl_objects", _quickRelease );
             conf.set( "normalize_edges", _normalizeEdges);
-            conf.set( "tile_pixel_size", _tilePixelSize );
-            conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.set( "color", _color );
             conf.set( "incremental_update", _incrementalUpdate );
             conf.set( "elevation_smoothing", _smoothing );
@@ -136,10 +123,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "normalize_edges", _normalizeEdges );
-            conf.getIfSet( "tile_pixel_size", _tilePixelSize );
-
-            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
             conf.getIfSet( "incremental_update", _incrementalUpdate );
             conf.getIfSet( "elevation_smoothing", _smoothing );
@@ -151,8 +134,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>                _quickRelease;
         optional<float>               _lodFallOff;
         optional<bool>                _normalizeEdges;
-        optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float>               _tilePixelSize;
         optional<Color>               _color;
         optional<bool>                _incrementalUpdate;
         optional<bool>                _smoothing;

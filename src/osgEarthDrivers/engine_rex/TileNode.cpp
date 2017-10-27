@@ -324,7 +324,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 
     EngineContext* context = culler->getEngineContext();
 
-    if ( *context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    if (context->getOptions().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
     {
         float pixelSize = -1.0;
         if (context->getEngine()->getComputeRangeCallback())
@@ -335,12 +335,12 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         {
             pixelSize = culler->clampedPixelSize(getBound());
         }
-        return (pixelSize > 512.0);    
+        return (pixelSize > context->getOptions().tilePixelSize().get() * 2);
     }
     else
     {
         float range = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
-        if (currLOD < selectionInfo.numLods() && currLOD != selectionInfo.numLods()-1)
+        if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
         {
             return _surface->anyChildBoxIntersectsSphere(
                 culler->getViewPointLocal(), 
@@ -936,7 +936,7 @@ TileNode::load(TerrainCuller* culler)
 {    
     const SelectionInfo& si = _context->getSelectionInfo();
     int lod     = getKey().getLOD();
-    int numLods = si.numLods();
+    int numLods = si.getNumLODs();
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;

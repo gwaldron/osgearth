@@ -48,7 +48,9 @@ _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
 _binNumber( 0 ),
-_castShadows( false )
+_castShadows(false),
+_rangeMode(osg::LOD::DISTANCE_FROM_EYE_POINT),
+_tilePixelSize(256)
 {
     fromConfig( _conf );
 }
@@ -80,7 +82,10 @@ TerrainOptions::getConfig() const
     conf.set( "bin_number", _binNumber );
     conf.set( "min_expiry_time", _minExpiryTime);
     conf.set( "min_expiry_frames", _minExpiryFrames);
-    conf.set( "cast_shadows", _castShadows);
+    conf.set("cast_shadows", _castShadows);
+    conf.set("tile_pixel_size", _tilePixelSize);
+    conf.set("range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
+    conf.set("range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
     //Save the filter settings
 	conf.set("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -123,7 +128,10 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bin_number", _binNumber );
     conf.getIfSet( "min_expiry_time", _minExpiryTime);
     conf.getIfSet( "min_expiry_frames", _minExpiryFrames);
-    conf.getIfSet( "cast_shadows", _castShadows);
+    conf.getIfSet("cast_shadows", _castShadows);
+    conf.getIfSet("tile_pixel_size", _tilePixelSize);
+    conf.getIfSet("range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN);
+    conf.getIfSet("range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

@@ -46,8 +46,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
             _mergesPerFrame         ( 20 ),
-            _expirationRange        ( 0 ),
-            _rangeMode              ( osg::LOD::DISTANCE_FROM_EYE_POINT )
+            _expirationRange        ( 0 )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -116,11 +115,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::vector<LODOptions>& lods() { return _lods; }
         const std::vector<LODOptions>& lods() const { return _lods; }
 
-        /** Mode to use when calculating LOD switching distances */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-    protected:
+    public:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.set( "skirt_ratio", _skirtRatio );
@@ -135,8 +130,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.set( "morph_terrain", _morphTerrain );
             conf.set( "morph_imagery", _morphImagery );
             conf.set( "merges_per_frame", _mergesPerFrame );
-            conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
             if (!_lods.empty()) {
                 Config lodsConf("lods");
@@ -153,6 +146,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             return conf;
         }
 
+    protected:
         virtual void mergeConfig( const Config& conf ) {
             TerrainOptions::mergeConfig( conf );
             fromConfig( conf );
@@ -172,8 +166,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "morph_terrain", _morphTerrain );
             conf.getIfSet( "morph_imagery", _morphImagery );
             conf.getIfSet( "merges_per_frame", _mergesPerFrame );
-            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
 
             const Config* lods = conf.child_ptr("lods");
             if (lods) {
@@ -202,7 +194,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>     _morphTerrain;
         optional<bool>     _morphImagery;
         optional<int>      _mergesPerFrame;
-        optional<osg::LOD::RangeMode> _rangeMode;
         std::vector<LODOptions> _lods;
     };
 

@@ -26,6 +26,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/GeoCommon>
 #include <osg/Texture>
+#include <osg/LOD>
 
 namespace osgEarth
 {    
@@ -195,6 +196,14 @@ namespace osgEarth
          */
         optional<bool>& castShadows() { return _castShadows; }
         const optional<bool>& castShadows() const { return _castShadows; }
+
+        /** Mode to use when calculating LOD switching distances */
+        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
+        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
+
+        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
+        optional<float>& tilePixelSize() { return _tilePixelSize; }
+        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
    
     public:
         virtual Config getConfig() const;
@@ -235,6 +244,8 @@ namespace osgEarth
         optional<int> _minExpiryFrames;
         optional<double> _minExpiryTime;
         optional<bool> _castShadows;
+        optional<osg::LOD::RangeMode> _rangeMode;
+        optional<float>               _tilePixelSize;
     };
 }
 

@@ -217,6 +217,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         _terrainOptions.morphTerrain() = false;
     }
 
+    if (_terrainOptions.rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+    {
+        OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << _terrainOptions.tilePixelSize().get() << std::endl;
+    }
+
     // if the envvar for tile expiration is set, overide the options setting
     const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
     if ( val )
@@ -334,7 +339,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
         std::min( _terrainOptions.maxLOD().get(), maxLOD ),
-        _terrainOptions.tileSize().get(),
         _mapFrame.getMapInfo().getProfile(),        
         _terrainOptions.minTileRangeFactor().get() );
 

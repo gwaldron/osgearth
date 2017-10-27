@@ -289,13 +289,13 @@ namespace osgEarth
         /** Adds or replaces an enumeration value as a child, but only if it is set */
         template<typename X, typename Y>
         void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
-            if (target.isSet()) {
+            if (target.isSetTo(targetValue)) {
                 remove(key);
-                if ( target.isSetTo( targetValue ) ) {
-                    add( key, val );
-                }
+                add( key, val );
             }
         }
+
+        // If target is set to targetValue, set key to val.
         template<typename X, typename Y>
         void set( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
             updateIfSet(key, val, target, targetValue);

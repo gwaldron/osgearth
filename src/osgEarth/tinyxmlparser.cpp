@@ -170,8 +170,9 @@ void TiXmlBase::ConvertUTF32ToUTF8( unsigned long input, char* output, int* leng
 }
 
 
-struct TiXmlParsingData
+class TiXmlParsingData
 {
+public:
 	friend class TiXmlDocument;
 
     void Stamp( const char* now, TiXmlEncoding encoding );

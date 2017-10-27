@@ -335,7 +335,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         {
             pixelSize = culler->clampedPixelSize(getBound());
         }
-        return (pixelSize > context->getOptions().tilePixelSize().get() * 2);
+        return (pixelSize > context->getOptions().tilePixelSize().get() * 4);
     }
     else
     {

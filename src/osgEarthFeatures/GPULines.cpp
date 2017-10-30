@@ -44,9 +44,9 @@ _stroke( stroke )
     //nop
 }
 
-#define SLOT_PREVIOUS 6
-#define SLOT_NEXT 7
-#define SLOT_SIGNED_WIDTH 8
+#define SLOT_PREVIOUS 9
+#define SLOT_NEXT 10
+#define SLOT_SIGNED_WIDTH 11
 
 osg::Geometry*
 GPULinesOperator::operator()(osg::Vec3Array* input, bool closeTheLoop) const
@@ -127,10 +127,10 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool closeTheLoop) const
     for (int i = 0; i < positions->size() - 2; i += 2)
     {
         els->addElement(i+0);
-        els->addElement(i+1);
-        els->addElement(i+2);
         els->addElement(i+2);
         els->addElement(i+1);
+        els->addElement(i+1);
+        els->addElement(i+2);
         els->addElement(i+3);
     }
     geom->addPrimitiveSet(els);

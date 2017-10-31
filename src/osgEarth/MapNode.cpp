@@ -391,12 +391,13 @@ MapNode::init()
         }
     }
 
+    // VRV_PATCH, don't use OSG's GL material system
     // install a default material for everything in the map
-    osg::Material* defaultMaterial = new MaterialGL3();
+    osg::Material* defaultMaterial = new osg::Material();
     defaultMaterial->setDiffuse(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     defaultMaterial->setAmbient(defaultMaterial->FRONT, osg::Vec4(1,1,1,1));
     stateset->setAttributeAndModes(defaultMaterial, 1);
-    MaterialCallback().operator()(defaultMaterial, 0L);
+    //MaterialCallback().operator()(defaultMaterial, 0L);
 
     dirtyBound();
 

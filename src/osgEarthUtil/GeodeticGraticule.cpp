@@ -30,6 +30,8 @@
 
 #define LC "[GeodeticGraticule] "
 
+#define OE_TEST OE_NULL
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
@@ -408,6 +410,8 @@ GeodeticGraticule::cull(osgUtil::CullVisitor* cv)
             cdata._resolution = (float)resolution;
             cdata._resolutionUniform->set(cdata._resolution);
         }
+
+        OE_TEST << "EW=" << cdata._viewExtent.width() << ", ortho=" << isOrtho << ", hW=" << halfWidth << ", res=" << resolution << ", mPP=" << cdata._metersPerPixel << std::endl;
     }
 
     // traverse the label pool for this camera.
@@ -445,11 +449,16 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     {
         proj.getOrtho(nLeft, nRight, nBottom, nTop, nearPlane, farPlane);
 
-        //farPlane = eye.length()-1000;
         fLeft = nLeft;
         fRight = nRight;
         fBottom = nBottom;
         fTop = nTop;
+
+        // In an ortho projection the near plane can be negative;
+        // That will disrupt our extent calculation, so we want to clamp
+        // it to be between the eyepoint and the far plane.
+        nearPlane = osg::clampBetween(nearPlane, 0.0, farPlane);
+        farPlane = osg::clampBetween(farPlane, 1.0, eye.length() - srs->getEllipsoid()->getRadiusPolar());
     }
     else
     {

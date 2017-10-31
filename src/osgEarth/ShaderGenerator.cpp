@@ -93,6 +93,7 @@ using namespace osgEarth;
 #define VERTEX_VIEW_FUNCTION  "oe_sg_vert_view"
 #define FRAGMENT_FUNCTION     "oe_sg_frag"
 
+#define ALPHA_NAME     "osg_alpha_threshold"
 // other stuff
 #define INDENT "    "
 
@@ -957,10 +958,22 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         {
             std::string fragSource = Stringify()
                 << "#version " << version << "\n" GLSL_PRECISION "\n"
-                << fragHeadSource
-                << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n"
-                << fragBodySource
-                << "}\n";
+                << fragHeadSource << ";\n"
+                << "layout(std140) uniform " ALPHA_NAME "_block"
+                "{\n"
+                "   vec4 " ALPHA_NAME";\n"
+                "};\n"
+                "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n"
+                <<
+                fragBodySource
+                <<
+                "   float alpha = clamp(color.a,0.0,1.0);\n"
+                "   if ((( alpha < " ALPHA_NAME ".x && alpha  > " ALPHA_NAME ".y && alpha != " ALPHA_NAME ".z ) ||"
+                "     color.z == " ALPHA_NAME ".w)) \n"
+                "   { \n"
+                "     discard;\n"
+                "   }\n"
+                "}\n";
 
             vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f);
         }

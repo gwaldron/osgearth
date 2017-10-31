@@ -56,6 +56,8 @@ struct MyGraphicsContext
         traits->doubleBuffer = false;
         traits->sharedContext = 0;
         traits->pbuffer = false;
+        traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
+        traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
 
         // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
         // you try to create them. So by default we will only use the unmapped/pbuffer method

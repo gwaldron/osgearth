@@ -483,6 +483,14 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
     {
+        EarthManipulator* em = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        if (em)
+        {
+            double V, A, N, F;
+            view->getCamera()->getProjectionMatrixAsPerspective(V, A, N, F);
+            em->setInitialVFOV( V );
+        }
+
         view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
     }
 

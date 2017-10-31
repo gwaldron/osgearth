@@ -424,10 +424,12 @@ ShaderGenerator::run(osg::Node*         graph,
 
         // perform GL state sharing
         optimizeStateSharing( graph, cache );
-
+// VANTAGE CHANGE, just use standard materials which we've upgraded to support UBOS
+#if 0
         // generate uniforms and uniform callbacks for lighting and material elements.
         GenerateGL3LightingUniforms generateUniforms;
         graph->accept(generateUniforms);
+#endif
 
         osg::StateSet* stateset = cloneOrCreateStateSet(graph);
 

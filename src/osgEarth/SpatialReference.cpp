@@ -32,10 +32,6 @@
 
 using namespace osgEarth;
 
-// took this out, see issue #79
-//#define USE_CUSTOM_MERCATOR_TRANSFORM 1
-//#undef USE_CUSTOM_MERCATOR_TRANSFORM
-
 //------------------------------------------------------------------------
 
 namespace
@@ -50,44 +46,7 @@ namespace
             return lowercase ? toLower(val) : val;
         }
         return "";
-    }    
-
-    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-    bool sphericalMercatorToGeographic( std::vector<osg::Vec3d>& points )
-    {
-        for( unsigned i=0; i<points.size(); ++i )
-        {
-            double x = osg::clampBetween(points[i].x(), MERC_MINX, MERC_MAXX);
-            double y = osg::clampBetween(points[i].y(), MERC_MINY, MERC_MAXY);
-            double xr = -osg::PI + ((x-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
-            double yr = -osg::PI + ((y-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
-            points[i].x() = osg::RadiansToDegrees( xr );
-            points[i].y() = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
-            // z doesn't change here.
-        }
-        return true;
-    }
-
-    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-    bool geographicToSphericalMercator( std::vector<osg::Vec3d>& points )
-    {
-        for( unsigned i=0; i<points.size(); ++i )
-        {
-            double lon = osg::clampBetween(points[i].x(), -180.0, 180.0);
-            double lat = osg::clampBetween(points[i].y(), -90.0, 90.0);
-            double xr = (osg::DegreesToRadians(lon) - (-osg::PI)) / (2.0*osg::PI);
-            double sinLat = sin(osg::DegreesToRadians(lat));
-            double oneMinusSinLat = 1-sinLat;
-            if ( oneMinusSinLat != 0.0 )
-            {
-                double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
-                points[i].x() = osg::clampBetween(MERC_MINX + (xr * MERC_WIDTH), MERC_MINX, MERC_MAXX);
-                points[i].y() = osg::clampBetween(MERC_MINY + (yr * MERC_HEIGHT), MERC_MINY, MERC_MAXY);
-                // z doesn't change here.
-            }
-        }
-        return true;
-    }
+    } 
 
     void geodeticToECEF(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
     {
@@ -1053,25 +1012,8 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     const SpatialReference* inputSRS = preTransform( points );
     if ( !inputSRS )
         return false;
-
-    // Spherical Mercator is a special case transformation, because we want to bypass
-    // any normal horizontal datum conversion. In other words we ignore the ellipsoid
-    // of the other SRS and just do a straight spherical conversion.
-    if ( inputSRS->isGeographic() && outputSRS->isSphericalMercator() )
-    {        
-        inputSRS->transformZ( points, outputSRS, true );
-        success = geographicToSphericalMercator( points );
-        return success;
-    }
-
-    else if ( inputSRS->isSphericalMercator() && outputSRS->isGeographic() )
-    {     
-        success = sphericalMercatorToGeographic( points );
-        inputSRS->transformZ( points, outputSRS, true );
-        return success;
-    }
-
-    else if ( inputSRS->isECEF() && !outputSRS->isECEF() )
+        
+    if ( inputSRS->isECEF() && !outputSRS->isECEF() )
     {
         const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
         ECEFtoGeodetic(points, outputGeoSRS->getEllipsoid());

@@ -18,6 +18,6 @@ void oe_contour_fragment( inout vec4 color )
     float height = oe_terrain_getElevation(oe_layer_tilec.st);
     float height_normalized = (height-oe_contour_min)/oe_contour_range;
     float lookup = clamp( height_normalized, 0.0, 1.0 );
-    vec4 texel = texture1D( oe_contour_xfer, lookup );
+    vec4 texel = texture( oe_contour_xfer, lookup );
     color.rgb = mix(color.rgb, texel.rgb, texel.a * oe_contour_opacity);
 }

@@ -268,7 +268,7 @@ createControlPanel( osgViewer::View* view )
     ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
     s_masterGrid = new Grid();
-    s_masterGrid->setBackColor(0,0,0,0.5);
+    //s_masterGrid->setBackColor(0,0,0,0.5);
     s_masterGrid->setMargin( 10 );
     s_masterGrid->setPadding( 10 );
     s_masterGrid->setChildSpacing( 10 );
@@ -308,10 +308,18 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     int gridRow = grid->getNumRows();
 
     VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+
+    // only show layers that derive from VisibleLayer
+    if (!visibleLayer)
+        return;
+
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+
+    // don't show hidden coverage layers
+    if (imageLayer && imageLayer->isCoverage() && !imageLayer->getVisible())
+        return;
+    
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-    ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
 
     // a checkbox to enable/disable the layer:
     if (visibleLayer && layer->getEnabled() && !(imageLayer && imageLayer->isCoverage()))

@@ -26,12 +26,23 @@
 
 #define LC "[GPULines] "
 
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+#define OE_GLES_AVAILABLE
+#endif
+
 using namespace osgEarth::Features;
 
 
 // References:
 // https://mattdesl.svbtle.com/drawing-lines-is-hard
 // https://github.com/mattdesl/webgl-lines
+
+
+// static attribute binding locations. Changable by the user.
+int GPULines::PreviousVertexAttrLocation = 9;
+int GPULines::NextVertexAttrLocation = 10;
+int GPULines::WidthAttrLocation = 11;
+
 
 GPULinesOperator::GPULinesOperator()
 {
@@ -43,10 +54,6 @@ _stroke( stroke )
 {
     //nop
 }
-
-#define SLOT_PREVIOUS 9
-#define SLOT_NEXT 10
-#define SLOT_SIGNED_WIDTH 11
 
 osg::Geometry*
 GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
@@ -77,23 +84,23 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
     osg::Vec3Array* previous = new osg::Vec3Array();
     previous->reserve(outputSize);
     previous->setBinding(previous->BIND_PER_VERTEX);
-    geom->setVertexAttribArray(SLOT_PREVIOUS, previous);
-    geom->setVertexAttribBinding(SLOT_PREVIOUS, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(SLOT_PREVIOUS, false);
+    geom->setVertexAttribArray(GPULines::PreviousVertexAttrLocation, previous);
+    geom->setVertexAttribBinding(GPULines::PreviousVertexAttrLocation, osg::Geometry::BIND_PER_VERTEX);
+    geom->setVertexAttribNormalize(GPULines::PreviousVertexAttrLocation, false);
 
     osg::Vec3Array* next = new osg::Vec3Array();
     next->reserve(outputSize);
     next->setBinding(next->BIND_PER_VERTEX);
-    geom->setVertexAttribArray(SLOT_NEXT, next);
-    geom->setVertexAttribBinding(SLOT_NEXT, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(SLOT_NEXT, false);
+    geom->setVertexAttribArray(GPULines::NextVertexAttrLocation, next);
+    geom->setVertexAttribBinding(GPULines::NextVertexAttrLocation, osg::Geometry::BIND_PER_VERTEX);
+    geom->setVertexAttribNormalize(GPULines::NextVertexAttrLocation, false);
 
-    osg::FloatArray* direction = new osg::FloatArray();
-    direction->reserve(outputSize);
-    direction->setBinding(next->BIND_PER_VERTEX);
-    geom->setVertexAttribArray(SLOT_SIGNED_WIDTH, direction);
-    geom->setVertexAttribBinding(SLOT_SIGNED_WIDTH, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(SLOT_SIGNED_WIDTH, false);
+    osg::FloatArray* widths = new osg::FloatArray();
+    widths->reserve(outputSize);
+    widths->setBinding(next->BIND_PER_VERTEX);
+    geom->setVertexAttribArray(GPULines::WidthAttrLocation, widths);
+    geom->setVertexAttribBinding(GPULines::WidthAttrLocation, osg::Geometry::BIND_PER_VERTEX);
+    geom->setVertexAttribNormalize(GPULines::WidthAttrLocation, false);
 
     float thickness = _stroke.width().get();
 
@@ -105,8 +112,8 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
         positions->push_back(c);
 
         // opposite directions:
-        direction->push_back(-thickness); 
-        direction->push_back(thickness);
+        widths->push_back(-thickness); 
+        widths->push_back(thickness);
 
         int prevIndex = i-1;
         if (prevIndex < 0)
@@ -125,16 +132,15 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
         next->push_back(n);
     }
 
-#if 0
-    geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, positions->size()));
-#else
     // generate the triangle set.
-    unsigned elSize = (inputSize + (isLoop? 1 : 0)) * 6;
+    unsigned numEls = (inputSize + (isLoop? 1 : 0)) * 6;
     osg::DrawElements* els = 
-        elSize > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt  ( GL_TRIANGLES ) :
-        elSize > 0xFF   ? (osg::DrawElements*)new osg::DrawElementsUShort( GL_TRIANGLES ) :
+#ifndef OE_GLES_AVAILABLE
+        numEls > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt  ( GL_TRIANGLES ) :
+#endif
+        numEls > 0xFF   ? (osg::DrawElements*)new osg::DrawElementsUShort( GL_TRIANGLES ) :
                           (osg::DrawElements*)new osg::DrawElementsUByte ( GL_TRIANGLES );
-    els->reserveElements(elSize);
+    els->reserveElements(numEls);
 
     int e;
     for (e = 0; e < positions->size()-2; e += 2)
@@ -158,7 +164,6 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
     }
 
     geom->addPrimitiveSet(els);
-#endif
 
     return geom;
 }
@@ -171,13 +176,8 @@ GPULinesOperator::installShaders(osg::Node* node) const
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     GPULineShaders shaders;
     shaders.loadAll(vp);
-    vp->addBindAttribLocation("oe_GPULines_prev", SLOT_PREVIOUS);
-    vp->addBindAttribLocation("oe_GPULines_next", SLOT_NEXT);
-    vp->addBindAttribLocation("oe_GPULines_width", SLOT_SIGNED_WIDTH);
+    vp->addBindAttribLocation("oe_GPULines_prev", GPULines::PreviousVertexAttrLocation);
+    vp->addBindAttribLocation("oe_GPULines_next", GPULines::NextVertexAttrLocation);
+    vp->addBindAttribLocation("oe_GPULines_width", GPULines::WidthAttrLocation);
     ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-
-    //const char* frag =
-    //    "in vec4 lineColor;\n"
-    //    "void colorLines(inout vec4 color) { color = lineColor; }\n";
-    //vp->setFunction("colorLines", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
 }

@@ -30,6 +30,26 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
     /**
+     * Static application-wide settings for GPU Line Generation
+     * You can set these in your app if you don't like the defaults.
+     */
+    class OSGEARTHFEATURES_EXPORT GPULines
+    {        
+    public:
+        //! Binding location for "previous" vertex attribute
+        static int PreviousVertexAttrLocation;
+
+        //! Binding location for "next" vertex attribute
+        static int NextVertexAttrLocation;
+
+        //! Binding location for "width" attribute
+        static int WidthAttrLocation; 
+
+    private:
+        GPULines() { }
+    };
+
+    /**
      * Assembles a drawable for rendering lines on the GPU.
      */
     class OSGEARTHFEATURES_EXPORT GPULinesOperator

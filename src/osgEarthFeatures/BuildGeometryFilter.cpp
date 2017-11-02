@@ -478,11 +478,26 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
             _style.get<LineSymbol>();
 
+        // if there's no line symbol, bail.
         if ( !line )
             continue;
 
+        // save the first stroke to use for shader generation of GPU lines if used
         if (!masterStroke.isSet())
+        {
             masterStroke = line->stroke().get();
+
+            // print a warning message for NYI symbols
+            if (makeGPULines)
+            {
+                if (masterStroke->stipple().isSet() ||
+                    masterStroke->stippleFactor().isSet() ||
+                    masterStroke->stipplePattern().isSet())
+                {
+                    OE_WARN << LC << "Line stippling is not available for GPU lines" << std::endl;
+                }
+            }
+        }
 
         // run a symbol script if present.
         if ( line->script().isSet() )
@@ -491,6 +506,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             input->eval( temp, &context );
         }
 
+        // GPU line generator (if used)
         GPULinesOperator gpuLines(line->stroke().get());
 
         GeometryIterator parts( input->getGeometry(), true );
@@ -510,12 +526,12 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
-            bool closeTheLoop = (dynamic_cast<Ring*>(part) != 0L);
+            bool isRing = (dynamic_cast<Ring*>(part) != 0L);
             
             // resolve the color:
             osg::Vec4f primaryColor = line->stroke()->color();
 
-            // build the geometry:d
+            // generate the geometry:
             osg::Vec3Array* allPoints = new osg::Vec3Array();
 
             transformAndLocalize( part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF );
@@ -524,8 +540,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             if (makeGPULines)
             {
-                // Lines tessellated on the GPU - replacement for deprecated glLineWidth               
-                osgGeom = gpuLines(allPoints, closeTheLoop);
+                // Lines tessellated on the GPU - replacement for deprecated glLineWidth
+                osgGeom = gpuLines(allPoints, isRing);
             }
             else
             {
@@ -533,7 +549,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 osgGeom = new osg::Geometry();
                 osgGeom->setUseVertexBufferObjects(true);
                 osgGeom->setUseDisplayList(false);
-                GLenum primMode = closeTheLoop ? GL_LINE_LOOP : GL_LINE_STRIP;
+                GLenum primMode = isRing ? GL_LINE_LOOP : GL_LINE_STRIP;
                 osgGeom->addPrimitiveSet(new osg::DrawArrays(primMode, 0, allPoints->getNumElements()));
                 osgGeom->setVertexArray(allPoints);
             }
@@ -544,47 +560,50 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             //    applyLineSymbology( osgGeom->getOrCreateStateSet(), line );
             //}
 
-            // embed the feature name if requested. Warning: blocks geometry merge optimization!
-            if ( _featureNameExpr.isSet() )
+            if (osgGeom.valid())
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
-                osgGeom->setName( name );
-            }
+                // embed the feature name if requested. Warning: blocks geometry merge optimization!
+                if ( _featureNameExpr.isSet() )
+                {
+                    const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
+                    osgGeom->setName( name );
+                }
 
-            // subdivide the mesh if necessary to conform to an ECEF globe;
-            // but if the tessellation is set to zero, or if the style specifies a
-            // tessellation size, skip this step.
-            if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
-            {
-                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+                // subdivide the mesh if necessary to conform to an ECEF globe;
+                // but if the tessellation is set to zero, or if the style specifies a
+                // tessellation size, skip this step.
+                if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
+                {
+                    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                    OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
-                MeshSubdivider ms( _world2local, _local2world );
-                //ms.setMaxElementsPerEBO( INT_MAX );
-                if ( input->geoInterp().isSet() )
-                    ms.run( *osgGeom, threshold, *input->geoInterp() );
-                else
-                    ms.run( *osgGeom, threshold, *_geoInterp );
-            }
+                    MeshSubdivider ms( _world2local, _local2world );
+                    //ms.setMaxElementsPerEBO( INT_MAX );
+                    if ( input->geoInterp().isSet() )
+                        ms.run( *osgGeom, threshold, *input->geoInterp() );
+                    else
+                        ms.run( *osgGeom, threshold, *_geoInterp );
+                }
 
-            // assign the primary color (PER_VERTEX required for later optimization)
-            osg::Vec4Array* colors = new osg::Vec4Array;
-            colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
-            osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+                // assign the primary color (PER_VERTEX required for later optimization)
+                osg::Vec4Array* colors = new osg::Vec4Array;
+                colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
+                osgGeom->setColorArray( colors );
+                osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-            geode->addDrawable( osgGeom );
+                geode->addDrawable( osgGeom );
 
-            // record the geometry's primitive set(s) in the index:
-            if ( context.featureIndex() )
-                context.featureIndex()->tagDrawable( osgGeom, input );
+                // record the geometry's primitive set(s) in the index:
+                if ( context.featureIndex() )
+                    context.featureIndex()->tagDrawable( osgGeom, input );
 
-            // install clamping attributes if necessary
-            if (_style.has<AltitudeSymbol>() &&
-                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
-            {
-                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
-                Clamping::setHeights( osgGeom, hats.get() );
+                // install clamping attributes if necessary
+                if (_style.has<AltitudeSymbol>() &&
+                    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+                {
+                    Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                    Clamping::setHeights( osgGeom, hats.get() );
+                }
             }
         }
     }

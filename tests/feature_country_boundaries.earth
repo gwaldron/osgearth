@@ -2,37 +2,30 @@
 osgEarth Sample
 -->
 
-<map name="Worldwide Line Vectors" type="geocentric">
-  
-    <options>
-        <terrain min_lod="16"/>
-    </options>
+<map name="Worldwide Line Vectors">
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
-        <cache_policy usage="no_cache"/>
     </image>
             
     <feature_source name="world-data" driver="ogr">
         <url>../data/world.shp</url>
-        <build_spatial_index>true</build_spatial_index>
         <convert type="line"/>
     </feature_source>
     
     <feature_model name="world_boundaries" feature_source="world-data">
         
-        <layout tile_size="500000" crop_features="true" paged="false">
+        <layout tile_size="500000" crop_features="true" paged="true">
             <level max_range="1e10"/>
         </layout>
                 
         <styles>
             <style type="text/css">
                 world {
-                   stroke:                       #ffff00;
-                   stroke-width:                 2px;
-                   stroke-tessellation-size:     100km;
-                   altitude-clamping:            terrain-gpu;
-                   render-depth-offset-min-bias: 1000;
+                   stroke:              #ffff00;
+                   stroke-width:        4px;
+                   stroke-tessellation-size: 250km;
+                   render-depth-offset: true;
                 }            
             </style>
         </styles>

@@ -23,16 +23,19 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     float len = thickness;
     float orientation = sign(oe_GPULines_width);
 
-    // starting point uses (next - current)
     vec2 dir = vec2(0.0);
 
-    if (currUnit == prevUnit)
+    // The following vertex comparisons must be done in model 
+    // space because the equivalency gets mashed after projection.
+
+    // starting point uses (next - current)
+    if (gl_Vertex.xyz == oe_GPULines_prev)
     {
         dir = normalize(nextUnit - currUnit);
     }
     
     // ending point uses (current - previous)
-    else if (currUnit == nextUnit)
+    else if (gl_Vertex.xyz == oe_GPULines_next)
     {
         dir = normalize(currUnit - prevUnit);
     }
@@ -42,24 +45,28 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     {        
         vec2 dirA = normalize(currUnit - prevUnit);
         vec2 dirB = normalize(nextUnit - currUnit);
-        vec2 tangent = normalize(dirA+dirB);
-        vec2 perp = vec2(-dirA.y, dirA.x);
-        vec2 miter = vec2(-tangent.y, tangent.x);
-        dir = tangent;
-        len = thickness / dot(miter, perp);
-        len = clamp(len, -thickness*2.0, thickness*2.0);
-
-        // simpler version, not as nice:
-        //dir = normalize(currUnit - prevUnit);
+        if (dot(dirA,dirB) < -0.99)
+        {
+            dir = normalize(currUnit-prevUnit);
+        }
+        else
+        {
+            vec2 tangent = normalize(dirA+dirB);
+            vec2 perp = vec2(-dirA.y, dirA.x);
+            vec2 miter = vec2(-tangent.y, tangent.x);
+            dir = tangent;
+            len = thickness / dot(miter, perp);
+            len = clamp(len, -thickness*2.0, thickness*2.0);
+        }
     }
 
-    // calculate the normal vector in pixels
-    vec2 normalPixels = vec2(-dir.y, dir.x) * len/2.0;
+    // calculate the extrusion vector in pixels
+    vec2 extrudePixels = vec2(-dir.y, dir.x) * len/2.0;
 
     // and convert to unit space:
-    vec2 normalUnit = normalPixels / oe_ViewportSize;
+    vec2 extrudeUnit = extrudePixels / oe_ViewportSize;
 
     // and from that make a clip-coord offset vector
-    vec4 offset = vec4(normalUnit*orientation*currClip.w, 0.0, 0.0);
+    vec4 offset = vec4(extrudeUnit*orientation*currClip.w, 0.0, 0.0);
     currClip += offset;
 }

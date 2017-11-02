@@ -55,7 +55,7 @@ namespace
     class DrapingCamera : public osg::Camera
     {
     public:
-        DrapingCamera() : osg::Camera(), _camera(0L)
+        DrapingCamera(DrapingManager& dm) : osg::Camera(), _dm(dm), _camera(0L)
         {
             setCullingActive( false );
         }
@@ -69,13 +69,14 @@ namespace
         }
 
         void traverse(osg::NodeVisitor& nv)
-        {            
-            DrapingCullSet& cullSet = DrapingCullSet::get(_camera);
+        {
+            DrapingCullSet& cullSet = _dm.get(_camera);
             cullSet.accept( nv );
         }
 
     protected:
         virtual ~DrapingCamera() { }
+        DrapingManager& _dm;
         const osg::Camera* _camera;
     };
 
@@ -397,7 +398,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
-    params._rttCamera = new DrapingCamera(); //new osg::Camera();
+    params._rttCamera = new DrapingCamera(_drapingManager);
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
     // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
@@ -575,7 +576,7 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 const osg::BoundingSphere&
 DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
 {
-    return DrapingCullSet::get(params._mainCamera).getBound();
+    return _drapingManager.get(params._mainCamera).getBound();
 }
 
 void

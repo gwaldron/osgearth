@@ -36,6 +36,7 @@ namespace osgEarth
     class MapNodeCullData;
     class SpatialReference;
     class ResourceReleaser;
+    class DrapingManager;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -252,6 +253,7 @@ namespace osgEarth
         bool               _terrainEngineInitialized;
         osg::Group*        _terrainEngineContainer;
         ResourceReleaser*  _resourceReleaser;
+        DrapingManager*    _drapingManager;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 
@@ -267,6 +269,10 @@ namespace osgEarth
         osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
+
+        DrapingManager* getDrapingManager();
+        friend class DrapingTechnique;
+        friend class DrapeableNode;
     };
 
 } // namespace osgEarth

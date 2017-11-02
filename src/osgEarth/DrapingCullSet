@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
 
@@ -36,10 +37,6 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT DrapingCullSet
     {
-    public:
-        /** Gets the per-thread cull set associated with a camera. */
-        static DrapingCullSet& get(const osg::Camera*);
-
     public:
         struct Entry
         {            
@@ -69,6 +66,19 @@ namespace osgEarth
         std::vector<Entry>  _entries;
         osg::BoundingSphere _bs;
         bool                _frameCulled;
+    };
+
+    /**
+     * Houses all the active DrapingCullSets under an osgEarth TerrainEngine.
+     */
+    class OSGEARTH_EXPORT DrapingManager
+    {
+    public:
+        //! Gets the draping cull set associated with a camera.
+        DrapingCullSet& get(const osg::Camera*);
+
+    private:
+        PerObjectFastMap<const osg::Camera*, DrapingCullSet> _sets;
     };
 
 } // namespace osgEarth

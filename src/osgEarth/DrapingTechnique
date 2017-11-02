@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/DrapingCullSet>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 #include <vector>
@@ -126,6 +127,10 @@ namespace osgEarth
         bool                          _rttBlending;
         bool                          _attachStencil;
         double                        _maxFarNearRatio;
+
+        mutable DrapingManager _drapingManager;
+        DrapingManager& getDrapingManager() { return _drapingManager; }
+        friend class MapNode;
 
         struct TechData : public osg::Referenced
         {

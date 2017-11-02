@@ -335,6 +335,8 @@ MapNode::init()
     draping->reestablish( _terrainEngine );
     _overlayDecorator->addTechnique( draping );
 
+    _drapingManager = &draping->getDrapingManager();
+
     // install the Clamping technique for overlays:
     _overlayDecorator->addTechnique( new ClampingTechnique() );
 
@@ -784,4 +786,10 @@ MapNode::traverse( osg::NodeVisitor& nv )
         if (dynamic_cast<osgUtil::BaseOptimizerVisitor*>(&nv) == 0L)
             osg::Group::traverse( nv );
     }
+}
+
+DrapingManager*
+MapNode::getDrapingManager()
+{
+    return _drapingManager;
 }

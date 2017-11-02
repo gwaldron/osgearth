@@ -22,12 +22,11 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
+#include <osgEarth/MapNode>
 #include <osg/Group>
 
 namespace osgEarth
 {
-    class MapNode;
-
     /**
      * Base class for a graph that can be "draped" on the MapNode terrain
      * using the overlay decorator.
@@ -64,6 +63,8 @@ namespace osgEarth
         virtual ~DrapeableNode() { }
 
         bool _drapingEnabled;
+        bool _updateRequested;
+        osg::observer_ptr<MapNode> _mapNode;
     };
 
 } // namespace osgEarth

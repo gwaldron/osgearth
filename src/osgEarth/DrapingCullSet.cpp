@@ -27,19 +27,18 @@
 using namespace osgEarth;
 
 
-
-
 DrapingCullSet&
-DrapingCullSet::get(const osg::Camera* cam)
-{    
-    static PerObjectFastMap<const osg::Camera*, DrapingCullSet> sets;
-
+DrapingManager::get(const osg::Camera* cam)
+{
     // Known issue: it is possible for a draping cull set to be "orphaned" - this
     // would happen if the cull set were populated and then not used. This is a
     // very unlikely scenario (because the scene graph would have to change mid-cull)
     // but nevertheless possible.
-    return sets.get(cam);
+    return _sets.get(cam);
 }
+
+//............................................................................
+
 
 DrapingCullSet::DrapingCullSet() :
 _frameCulled( true )

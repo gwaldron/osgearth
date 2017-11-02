@@ -21,6 +21,9 @@
 #include <osgEarth/DrapingCullSet>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[DrapeableNode] "
 
@@ -28,7 +31,8 @@ using namespace osgEarth;
 
 
 DrapeableNode::DrapeableNode() :
-_drapingEnabled( true )
+_drapingEnabled( true ),
+_updateRequested( true )
 {
     // Unfortunetly, there's no way to return a correct bounding sphere for
     // the node since the draping will move it to the ground. The bounds
@@ -36,6 +40,9 @@ _drapingEnabled( true )
     // have to ensure that this node makes it into the draping cull set so it
     // can be frustum-culled at the proper time.
     setCullingActive( !_drapingEnabled );
+
+    // activate an update traversal to find the MapNode
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 DrapeableNode::DrapeableNode(const DrapeableNode& rhs, const osg::CopyOp& copy) :
@@ -59,16 +66,37 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 {
     if ( _drapingEnabled && nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // access the cull visitor:
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-
         // find the cull set for this camera:
-        DrapingCullSet& cullSet = DrapingCullSet::get( cv->getCurrentCamera() );
-        cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
+        osg::ref_ptr<MapNode> mapNode;
+        if (_mapNode.lock(mapNode))
+        {
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+            DrapingCullSet& cullSet = mapNode->getDrapingManager()->get( cv->getCurrentCamera() );
+            cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
+        }
+    }
+
+    else if (_drapingEnabled && nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {        
+        if (_updateRequested)
+        {
+            if (_mapNode.valid() == false)
+            {
+                _mapNode = osgEarth::findInNodePath<MapNode>(nv);
+            }
+
+            if (_mapNode.valid())
+            {
+                _updateRequested = false;
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            }
+        }
+
+        osg::Group::traverse(nv);
     }
     else
     {
-        osg::Group::traverse( nv );
+        osg::Group::traverse(nv);
     }
 }
 

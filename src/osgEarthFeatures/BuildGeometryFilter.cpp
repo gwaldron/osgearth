@@ -519,10 +519,20 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 continue;
 
             // collect all the pre-transformation HAT (Z) values.
+            // (Note: GPU Lines have doubled-up vertices, so for that case we 
+            // have to add 2 hats for every input point.)
             osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
-            hats->reserve( part->size() );
+            if (makeGPULines)
+                hats->reserve(part->size() * 2);
+            else
+                hats->reserve(part->size());
+
             for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
+            {
                 hats->push_back( i->z() );
+                if (makeGPULines)
+                    hats->push_back(i->z());
+            }
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
@@ -553,12 +563,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 osgGeom->addPrimitiveSet(new osg::DrawArrays(primMode, 0, allPoints->getNumElements()));
                 osgGeom->setVertexArray(allPoints);
             }
-
-            //if ( input->style().isSet() )
-            //{
-            //    //TODO: re-evaluate this. does it hinder geometry merging?
-            //    applyLineSymbology( osgGeom->getOrCreateStateSet(), line );
-            //}
 
             if (osgGeom.valid())
             {

@@ -27,12 +27,13 @@
 
 using namespace osgEarth;
 
-const int   Clamping::AnchorAttrLocation        = osg::Drawable::ATTRIBUTE_6;
+int         Clamping::AnchorAttrLocation        = osg::Drawable::ATTRIBUTE_6;
+int         Clamping::HeightsAttrLocation       = osg::Drawable::FOG_COORDS;
+
 const char* Clamping::AnchorAttrName            = "oe_clamp_attrs";
 const char* Clamping::HasAttrsUniformName       = "oe_clamp_hasAttrs";
 const char* Clamping::AltitudeOffsetUniformName = "oe_clamp_altitudeOffset";
 
-const int   Clamping::HeightsAttrLocation       = osg::Drawable::FOG_COORDS;
 const char* Clamping::HeightsAttrName           = "oe_clamp_height";
 
 const float Clamping::ClampToAnchor = 1.0f;
@@ -106,7 +107,8 @@ Clamping::installHasAttrsUniform(osg::StateSet* stateset)
 {
     if ( stateset )
     {
-        stateset->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );
+        stateset->setDefine("OE_CLAMP_HAS_ATTRIBUTES");
+        //stateset->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );
     }
 }
 

@@ -40,9 +40,15 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT Clamping
     {
-    public:
+    public: // mutable
+
         // GLSL attribute binding location for clamping vertex attributes
-        static const int AnchorAttrLocation;
+        static int AnchorAttrLocation;
+
+        // GLSL attribute binding location for clamping vertex heights
+        static int HeightsAttrLocation;
+
+    public: // non-mutable
 
         // Name of the clamping anchor vertex attribute
         static const char* AnchorAttrName;
@@ -54,9 +60,6 @@ namespace osgEarth
         // Name of the uniform used to apply an altitude offset to clamped geometry
         static const char* AltitudeOffsetUniformName;
 
-        // GLSL attribute binding location for clamping vertex heights
-        static const int HeightsAttrLocation;
-
         // Name of the clamping heights array attribute
         static const char* HeightsAttrName;
 
@@ -65,6 +68,8 @@ namespace osgEarth
         // to the reference vertex in the attribute data, or to the ground.
         static const float ClampToAnchor;
         static const float ClampToGround;
+
+    public: // utility methods
 
         // Installs a uniform on the stateset indicating that geometry has the
         // clamping vertex attribute installed.

@@ -116,7 +116,7 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
         widths->push_back(thickness);
 
         int prevIndex = i-1;
-        if (prevIndex < 0)
+        if (prevIndex < 0) 
             prevIndex = isLoop ? inputSize-1 : i;
 
         const osg::Vec3& p = (*input)[prevIndex];

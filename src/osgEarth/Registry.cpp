@@ -157,12 +157,15 @@ _devicePixelRatio(1.0f)
         _defaultFont = osgText::Font::getDefaultFont();
 #endif
     }
+
+#if OSG_VERSION_LESS_THAN(3,5,8)
     if ( _defaultFont.valid() )
     {
         // mitigates mipmapping issues that cause rendering artifacts
         // for some fonts/placement
         _defaultFont->setGlyphImageMargin( 2 );
     }
+#endif
 
     // register the system stock Units.
     Units::registerAll( this );

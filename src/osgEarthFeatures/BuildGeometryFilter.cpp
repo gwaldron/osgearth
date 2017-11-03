@@ -486,17 +486,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         if (!masterStroke.isSet())
         {
             masterStroke = line->stroke().get();
-
-            // print a warning message for NYI symbols
-            if (makeGPULines)
-            {
-                if (masterStroke->stipple().isSet() ||
-                    masterStroke->stippleFactor().isSet() ||
-                    masterStroke->stipplePattern().isSet())
-                {
-                    OE_WARN << LC << "Line stippling is not available for GPU lines" << std::endl;
-                }
-            }
         }
 
         // run a symbol script if present.

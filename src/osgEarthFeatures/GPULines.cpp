@@ -142,28 +142,41 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
                           (osg::DrawElements*)new osg::DrawElementsUByte ( GL_TRIANGLES );
     els->reserveElements(numEls);
 
+    // IMPORTANT!
+    // Don't change the order of these elements! Because of the way
+    // GPU line stippling works, it is critical that the provoking vertex
+    // be at the beginning of each line segment. In this case we are using
+    // GL_TRIANGLES and thus the provoking vertex (PV) is the FINAL vert
+    // in each triangle.
     int e;
     for (e = 0; e < positions->size()-2; e += 2)
     {
-        els->addElement(e+0);
-        els->addElement(e+2);
+        els->addElement(e+3);
         els->addElement(e+1);
-        els->addElement(e+1);
+        els->addElement(e+0); // PV
         els->addElement(e+2);
         els->addElement(e+3);
+        els->addElement(e+0); // PV
     }
 
     if (isLoop)
     {
-        els->addElement(e+0);
-        els->addElement(0);
+        els->addElement(1);
         els->addElement(e+1);
-        els->addElement(e+1);
+        els->addElement(e+0); // PV
         els->addElement(0);
         els->addElement(1);
+        els->addElement(e+0); // PV
     }
 
     geom->addPrimitiveSet(els);
+    
+    if (_stroke.stipplePattern().isSet())
+    {
+        geom->getOrCreateStateSet()->setDefine(
+            "OE_GPULINES_STIPPLE_PATTERN", 
+            Stringify() << _stroke.stipplePattern().get() );
+    }
 
     return geom;
 }

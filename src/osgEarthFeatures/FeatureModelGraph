@@ -33,10 +33,6 @@
 #include <osg/Node>
 #include <set>
 
-namespace osgEarth {
-    class ClampableNode;
-}
-
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
@@ -220,11 +216,7 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
-        OpenThreads::ReentrantMutex      _clampableMutex;
-
-        osg::Group*                      _overlayInstalled;
-        osg::ref_ptr<osg::Group>         _overlayPlaceholder;
-        osg::ref_ptr<ClampableNode>      _clampable;
+        OpenThreads::ReentrantMutex      _redrawMutex;
         DepthOffsetAdapter               _depthOffsetAdapter;
 
         OpenThreads::Atomic _cacheReads;
@@ -249,8 +241,6 @@ namespace osgEarth { namespace Features
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
         void applyRenderSymbology(const Style& style, osg::Node* node);
-        void checkForGlobalStyles(const Style& style);
-        void changeOverlay();
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output);
     };
 

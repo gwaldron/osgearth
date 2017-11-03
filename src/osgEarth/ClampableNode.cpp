@@ -28,41 +28,23 @@
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
-
-namespace
-{
-    static osg::Group* getTechniqueGroup(MapNode* m)
-    {
-        return m ? m->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
-    }
-}
-
-//------------------------------------------------------------------------
 
 ClampableNode::ClampableNode() :
-OverlayNode(0L, true, &getTechniqueGroup),
-_updatePending(false)
-{
-    _adapter.setGraph( this );
-}
-
-ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
-OverlayNode( mapNode, active, &getTechniqueGroup ),
-_updatePending( false )
+_depthOffsetUpdateRequested(false),
+_mapNodeUpdateRequested(true)
 {
     _adapter.setGraph( this );
 
-    if ( _adapter.isDirty() )
-        _adapter.recalculate();
+    // for the mapnode update:
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 void
 ClampableNode::setDepthOffsetOptions(const DepthOffsetOptions& options)
 {
     _adapter.setDepthOffsetOptions(options);
-    if ( _adapter.isDirty() && !_updatePending )
-        scheduleUpdate();
+    if ( _adapter.isDirty() && !_depthOffsetUpdateRequested )
+        scheduleDepthOffsetUpdate();
 }
 
 const DepthOffsetOptions&
@@ -72,34 +54,79 @@ ClampableNode::getDepthOffsetOptions() const
 }
 
 void
-ClampableNode::scheduleUpdate()
+ClampableNode::scheduleDepthOffsetUpdate()
 {
-    if ( !_updatePending && getDepthOffsetOptions().enabled() == true )
+    if ( !_depthOffsetUpdateRequested && getDepthOffsetOptions().enabled() == true )
     {
-        ADJUST_UPDATE_TRAV_COUNT(this, 1);
-        _updatePending = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        _depthOffsetUpdateRequested = true;
     }
-}
-
-osg::BoundingSphere
-ClampableNode::computeBound() const
-{
-    static Threading::Mutex s_mutex;
-    {
-        Threading::ScopedMutexLock lock(s_mutex);
-        const_cast<ClampableNode*>(this)->scheduleUpdate();
-    }
-    return OverlayNode::computeBound();
 }
 
 void
 ClampableNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( _updatePending && nv.getVisitorType() == nv.UPDATE_VISITOR )
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        _adapter.recalculate();
-        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-        _updatePending = false;
+        // find the cull set for this camera:
+        osg::ref_ptr<MapNode> mapNode;
+        if (_mapNode.lock(mapNode))
+        {
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            ClampingCullSet& cullSet = mapNode->getClampingManager()->get( cv->getCurrentCamera() );
+            cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
+        }
     }
-    OverlayNode::traverse( nv );
+
+    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    {        
+        if (_mapNodeUpdateRequested)
+        {
+            if (_mapNode.valid() == false)
+            {
+                _mapNode = osgEarth::findInNodePath<MapNode>(nv);
+            }
+
+            if (_mapNode.valid())
+            {
+                _mapNodeUpdateRequested = false;
+                ADJUST_UPDATE_TRAV_COUNT(this, -1);
+            }
+        }
+
+        if (_depthOffsetUpdateRequested)
+        {
+            _adapter.recalculate();
+            _depthOffsetUpdateRequested = false;
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
+
+        osg::Group::traverse(nv);
+    }
+    else
+    {
+        osg::Group::traverse(nv);
+    }
+}
+
+
+//...........................................................................
+
+#undef  LC
+#define LC "[ClampableNode Serializer] "
+
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+namespace
+{
+    REGISTER_OBJECT_WRAPPER(
+        ClampableNode,
+        new osgEarth::ClampableNode,
+        osgEarth::ClampableNode,
+        "osg::Object osg::Node osg::Group osgEarth::ClampableNode")
+    {
+        //nop
+    }
 }

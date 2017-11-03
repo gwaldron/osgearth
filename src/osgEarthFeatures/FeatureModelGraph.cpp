@@ -24,8 +24,6 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/Capabilities>
-#include <osgEarth/Clamping>
-#include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
@@ -250,8 +248,6 @@ _options            ( options ),
 _factory            ( factory ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
-_overlayInstalled   ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE ),
 _sgCallbacks        ( callbacks )
 {
     ctor();
@@ -268,8 +264,6 @@ _factory            ( factory ),
 _modelSource        ( modelSource ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
-_overlayInstalled   ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE ),
 _sgCallbacks        (callbacks)
 {
     ctor();
@@ -671,7 +665,6 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
             
 
-#if 1
             // Construct a tile key that will be used to query the source for this tile.            
             // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
             // osgEarth tilekeys use a lower left so we need to invert it.
@@ -680,9 +673,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             int invertedTileY = h - tileY - 1;
 
             TileKey key(lod, tileX, invertedTileY, featureProfile->getProfile());
-#else
-            TileKey key(lod, tileX, tileY, featureProfile->getProfile());
-#endif
+
             geometry = buildTile( level, tileExtent, &key, readOptions );
             result = geometry;
         }
@@ -1509,49 +1500,6 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     return styleGroup;
 }
 
-
-void
-FeatureModelGraph::checkForGlobalStyles( const Style& style )
-{
-    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
-
-    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-    if ( alt )
-    {
-        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
-            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN)
-        {
-            if ( alt->technique() == AltitudeSymbol::TECHNIQUE_GPU && !_clampable.valid() )
-            {
-                _clampable = new ClampableNode( 0L );
-                _overlayChange = OVERLAY_INSTALL_CLAMPABLE;
-            }
-        }
-    }
-    
-    const RenderSymbol* render = style.get<RenderSymbol>();
-
-    if ( _clampable.valid() )
-    {
-        // if we're using extrusion, don't perform depth offsetting:
-        const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
-        if ( extrusion )
-        {
-            DepthOffsetOptions d = _clampable->getDepthOffsetOptions();
-            d.enabled() = false;
-            _clampable->setDepthOffsetOptions( d );
-        }
-
-        // check for explicit depth offset render settings (note, this could
-        // override the automatic disable put in place by the presence of an
-        // ExtrusionSymbol above)
-        if ( render && render->depthOffset().isSet() )
-        {
-            _clampable->setDepthOffsetOptions(*render->depthOffset());
-        }
-    }
-}
-
 void
 FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
 {
@@ -1602,11 +1550,6 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 {
     osg::Group* styleGroup = _factory->getOrCreateStyleGroup( style, _session.get() );
 
-    // Check the style and see if we need to active GPU clamping. GPU clamping
-    // is currently all-or-nothing for a single FMG.
-    // Warning. This needs attention w.r.t. caching, since the "global" styles don't cache. -gw
-    checkForGlobalStyles( style );
-
     // Apply render symbology at the style group level.
     applyRenderSymbology(style, styleGroup);
 
@@ -1627,12 +1570,7 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
             OE_TEST << LC << "out of sync - requesting update" << std::endl;
 
             _pendingUpdate = true;
-            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-        }
-
-        else if ( _overlayChange != OVERLAY_NO_CHANGE )
-        {
-            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+            ADJUST_UPDATE_TRAV_COUNT( this, +1 );
         }
     }
 
@@ -1644,13 +1582,6 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 
             redraw();
             _pendingUpdate = false;
-            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-        }
-
-        else if ( _overlayChange != OVERLAY_NO_CHANGE )
-        {
-            changeOverlay();
-            _overlayChange = OVERLAY_NO_CHANGE;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
     }
@@ -1677,54 +1608,9 @@ FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 }
 
 void
-FeatureModelGraph::changeOverlay()
-{
-    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
-
-    if (_overlayChange == OVERLAY_INSTALL_CLAMPABLE &&
-        _clampable.valid()                          && 
-        _clampable.get() != _overlayInstalled )
-    {
-        runPostMergeOperations( _clampable.get() );
-        osgEarth::replaceGroup( _overlayInstalled, _clampable.get() );
-        _overlayInstalled   = _clampable.get();
-        //_drapeable          = 0L;
-        _overlayPlaceholder = 0L;
-        OE_DEBUG << LC << "Installed clampable decorator on layer " << getName() << std::endl;
-    }
-
-    //else if (
-    //    _overlayChange == OVERLAY_INSTALL_DRAPEABLE && 
-    //    _drapeable.valid()                          && 
-    //    _drapeable.get() != _overlayInstalled )
-    //{
-    //    runPostMergeOperations( _drapeable.get() );
-    //    osgEarth::replaceGroup( _overlayInstalled, _drapeable.get() );
-    //    _overlayInstalled   = _drapeable.get();
-    //    _overlayPlaceholder = 0L;
-    //    _clampable          = 0L;
-    //    OE_DEBUG << LC << "Installed drapeable decorator on layer " << getName() << std::endl;
-    //}
-
-    else if (
-        _overlayChange == OVERLAY_INSTALL_PLACEHOLDER && 
-        _overlayPlaceholder.valid()                   && 
-        _overlayPlaceholder.get() != _overlayInstalled)
-    {
-        runPostMergeOperations( _overlayPlaceholder.get() );
-        osgEarth::replaceGroup( _overlayInstalled, _overlayPlaceholder.get() );
-        _overlayInstalled = _overlayPlaceholder.get();
-        _clampable        = 0L;
-        //_drapeable        = 0L;
-        OE_INFO << LC << "Installed null decorator on layer " << getName() << std::endl;
-    }
-}
-
-
-void
 FeatureModelGraph::redraw()
 {
-    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_clampableMutex);
+    OpenThreads::ScopedLock< OpenThreads::ReentrantMutex > lk(_redrawMutex);
 
     OE_TEST << LC << "redraw " << std::endl;
 
@@ -1739,12 +1625,6 @@ FeatureModelGraph::redraw()
             Registry::objectIndex(),
             _options.featureIndexing().get() );
     }
-
-    // zero out any decorators
-    _clampable          = 0L;
-    //_drapeable          = 0L;
-    _overlayPlaceholder = new osg::Group();
-    _overlayInstalled   = _overlayPlaceholder;
 
     osg::Node* node = 0;
     // if there's a display schema in place, set up for quadtree paging.
@@ -1796,13 +1676,6 @@ FeatureModelGraph::redraw()
         fader->setAttenuationDistance( *_options.fading()->attenuationDistance() );
         fader->addChild( node );
         node = fader;
-    }
-
-    // overlay placeholder. this will make it easier to 
-    // replace with a clamper/draper later if necessary
-    {
-        _overlayInstalled->addChild( node );
-        node = _overlayInstalled;
     }
 
     addChild( node );

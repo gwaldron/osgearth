@@ -216,7 +216,7 @@ ImageOverlay::postCTOR()
     _root = new osg::Group;
 
     // place the geometry under a drapeable node so it will project onto the terrain    
-    DrapeableNode* d = new DrapeableNode(); // getMapNode() );
+    DrapeableNode* d = new DrapeableNode();
     addChild( d );
 
     d->addChild( _root );

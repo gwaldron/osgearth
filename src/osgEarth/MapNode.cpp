@@ -334,11 +334,12 @@ MapNode::init()
 
     draping->reestablish( _terrainEngine );
     _overlayDecorator->addTechnique( draping );
-
     _drapingManager = &draping->getDrapingManager();
 
     // install the Clamping technique for overlays:
-    _overlayDecorator->addTechnique( new ClampingTechnique() );
+    ClampingTechnique* clamping = new ClampingTechnique();
+    _overlayDecorator->addTechnique(clamping);
+    _clampingManager = &clamping->getClampingManager();
 
     _overlayDecorator->setTerrainEngine(_terrainEngine);
     _overlayDecorator->addChild(_terrainEngine);
@@ -792,4 +793,10 @@ DrapingManager*
 MapNode::getDrapingManager()
 {
     return _drapingManager;
+}
+
+ClampingManager*
+MapNode::getClampingManager()
+{
+    return _clampingManager;
 }

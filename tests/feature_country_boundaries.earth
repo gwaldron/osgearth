@@ -4,9 +4,13 @@ osgEarth Sample
 
 <map name="Worldwide Line Vectors">
 
-    <image name="world" driver="gdal">
-        <url>../data/world.tif</url>
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
+
+    <elevation name="readymap_elevation" driver="tms" vdatum="egm96">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
             
     <feature_source name="world-data" driver="ogr">
         <url>../data/world.shp</url>
@@ -22,10 +26,12 @@ osgEarth Sample
         <styles>
             <style type="text/css">
                 world {
-                   stroke:              #ffff00;
-                   stroke-width:        4px;
-                   stroke-tessellation-size: 250km;
-                   render-depth-offset: true;
+                   stroke:                       #ffff00;
+                   stroke-width:                 2px;
+                   stroke-tessellation-size:     1km;
+                   render-depth-offset-min-bias: 1km;
+                   render-lighting:              false;
+                   altitude-clamping:            terrain-gpu;
                 }            
             </style>
         </styles>

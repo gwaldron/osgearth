@@ -143,12 +143,4 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
         // mark this set so it will reset for the next frame
         _frameCulled = true;
     }
-
-    else
-    {
-        for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
-        {
-            
-        }
-    }
 }

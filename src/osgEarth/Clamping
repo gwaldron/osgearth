@@ -25,6 +25,9 @@
 #include <osgEarth/Common>
 #include <osg/Node>
 #include <osg/Geometry>
+#include <osgEarth/ClampableNode>
+#include <osg/ObserverNodePath>
+#include <osg/Camera>
 
 namespace osgEarth
 {
@@ -87,6 +90,56 @@ namespace osgEarth
         static void setHeights(
             osg::Geometry*   geom,
             osg::FloatArray* heights );
+    };
+    
+
+    /**
+     * Culling set for tracking groups whose contents should be GPU-clamped
+     */
+    class OSGEARTH_EXPORT ClampingCullSet
+    {
+    public:
+        struct Entry
+        {            
+            osg::ref_ptr<osg::Group>     _node;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            osg::ObserverNodePath        _path;
+            int                          _frame;
+        };
+
+    public:
+        ClampingCullSet();
+        ~ClampingCullSet() { } // not virtual
+
+        /** Pushes a node and its matrix into the cull set */
+        void push(ClampableNode* node, const osg::NodePath& path, const osg::FrameStamp* stamp);
+
+        /** Runs a node visitor on the cull set, optionally popping as it goes along. */
+        void accept(osg::NodeVisitor& nv);
+
+        /** Bounds of this set */
+        const osg::BoundingSphere& getBound() const { return _bs; }
+
+        /** Number of elements in the set */
+        unsigned size() const { return _entries.size(); }
+
+    private:
+        std::vector<Entry>  _entries;
+        osg::BoundingSphere _bs;
+        bool                _frameCulled;
+    };
+
+    /**
+     * Houses all the active DrapingCullSets under an osgEarth TerrainEngine.
+     */
+    class OSGEARTH_EXPORT ClampingManager
+    {
+    public:
+        //! Gets the cull set associated with a camera.
+        ClampingCullSet& get(const osg::Camera*);
+
+    private:
+        PerObjectFastMap<const osg::Camera*, ClampingCullSet> _sets;
     };
 }
 

@@ -839,7 +839,7 @@ AnnotationUtils::installOverlayParent(osg::Node* node, const Style& style)
     // GPU-clamped geometry
     else if ( ap.gpuClamping )
     {
-        ClampableNode* clampable = new ClampableNode( 0L );
+        ClampableNode* clampable = new ClampableNode();
         clampable->addChild( node );
         node = clampable;
 

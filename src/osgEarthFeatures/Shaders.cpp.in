@@ -7,10 +7,7 @@ namespace osgEarth { namespace Features
     GPULineShaders::GPULineShaders()
     {
         // GPU Screen Projected Lines
-        GPULinesScreenProjVertex = "GPULinesScreenProj.vert.glsl";
-        _sources[GPULinesScreenProjVertex] = "@GPULinesScreenProj.vert.glsl@";
-
-        //GPULinesScreenProjFragment = "GPULinesScreenProj.frag.glsl";
-        //_sources[GPULinesScreenProjFragment] = "@GPULinesScreenProj.frag.glsl@";
+        GPULinesScreenProj = "GPULinesScreenProj.glsl";
+        _sources[GPULinesScreenProj] = "@GPULinesScreenProj.glsl@";
     }
 } }

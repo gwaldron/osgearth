@@ -173,9 +173,15 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
     
     if (_stroke.stipplePattern().isSet())
     {
-        geom->getOrCreateStateSet()->setDefine(
+        osg::StateSet* ss = geom->getOrCreateStateSet();
+
+        ss->setDefine(
             "OE_GPULINES_STIPPLE_PATTERN", 
             Stringify() << _stroke.stipplePattern().get() );
+
+        ss->setDefine(
+            "OE_GPULINES_STIPPLE_FACTOR",
+            Stringify() << _stroke.stippleFactor().get() );
     }
 
     return geom;

@@ -32,7 +32,7 @@ namespace osgEarth { namespace Features
     public:
         GPULineShaders();
 
-        std::string GPULinesScreenProjVertex; //, GPULinesFragment;
+        std::string GPULinesScreenProj;
 	};	
 
 } } // namespace osgEarth::Features

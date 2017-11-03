@@ -27,7 +27,8 @@ osgEarth Sample
             <style type="text/css">
                 world {
                    stroke:                       #ffff00;
-                   stroke-width:                 2px;
+                   stroke-width:                 3px;
+                   stroke-stipple-pattern:       0xf0f0;
                    stroke-tessellation-size:     1km;
                    render-depth-offset-min-bias: 1km;
                    render-lighting:              false;

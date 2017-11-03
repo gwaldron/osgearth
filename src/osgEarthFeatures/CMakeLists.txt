@@ -11,7 +11,7 @@ ENDIF(GEOS_FOUND)
 SET(LIB_NAME osgEarthFeatures)
 
 set(TARGET_GLSL
-    GPULinesScreenProj.vert.glsl)
+    GPULinesScreenProj.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

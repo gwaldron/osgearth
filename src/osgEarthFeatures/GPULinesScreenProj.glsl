@@ -113,7 +113,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_GPULinesProj_Stippler_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines (OE_GPULINES_STIPPLE_PATTERN)
+#pragma import_defines (OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_STIPPLE_FACTOR)
 
 flat in vec2 oe_GPULines_rv;
 void oe_GPULinesProj_Stippler_FS(inout vec4 color)
@@ -121,6 +121,7 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 
     const int pattern = OE_GPULINES_STIPPLE_PATTERN;
+    const int factor = OE_GPULINES_STIPPLE_FACTOR;
 
     // coordinate of the fragment, shifted to 0:
     vec2 coord = gl_FragCoord.xy - 0.5;
@@ -132,9 +133,9 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
         * coord;
 
     // sample the stippling pattern (16-bits repeating)
-    int ci = int(mod(coordProj.x, 16));
-    int p = pattern & (1 << ci);
-    if (p == 0)
+    //int ci = int(mod(coordProj.x, 16));
+    int ci = int(mod(coordProj.x, 16 * factor)) / factor;
+    if ((pattern & (1 << ci)) == 0)
         discard; 
 #endif
 }

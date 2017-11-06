@@ -65,7 +65,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
             vec2 miter = vec2(-tangent.y, tangent.x);
             dir = tangent;
             len = thickness / dot(miter, perp);
-            len = clamp(len, -thickness*2.0, thickness*2.0);
+            len = clamp(len, -thickness*4.0, thickness*4.0);
         }
         fragDir = dirB;
     }
@@ -126,10 +126,11 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
     // coordinate of the fragment, shifted to 0:
     vec2 coord = gl_FragCoord.xy - 0.5;
                 
-    // project the frag coord onto the X-axis so we can sample the 
+    // rotate the frag coord onto the X-axis so we can sample the 
     // stipple pattern:
     vec2 coordProj =
-        mat2(oe_GPULines_rv.x, -oe_GPULines_rv.y, oe_GPULines_rv.y, oe_GPULines_rv.x)
+        mat2(oe_GPULines_rv.x, -oe_GPULines_rv.y,
+             oe_GPULines_rv.y,  oe_GPULines_rv.x)
         * coord;
 
     // sample the stippling pattern (16-bits repeating)

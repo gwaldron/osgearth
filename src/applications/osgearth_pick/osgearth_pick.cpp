@@ -60,7 +60,7 @@ struct MyPickCallback : public RTTPicker::Callback
     void onHit(ObjectID id)
     {
         // First see whether it's a feature:
-        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
         Feature* feature = index ? index->getFeature( id ) : 0L;
 
         if ( feature )
@@ -72,7 +72,7 @@ struct MyPickCallback : public RTTPicker::Callback
         else
         {
             // Check whether it's an annotation:
-            AnnotationNode* anno = Registry::objectIndex()->get<AnnotationNode>( id );
+            AnnotationNode* anno = Registry::objectIndex()->get<AnnotationNode>(id).get();
             if ( anno )
             {
                 s_fidLabel->setText( Stringify() << "ObjectID = " << id );

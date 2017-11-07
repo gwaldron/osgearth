@@ -217,8 +217,8 @@ main(int argc, char** argv)
     osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osgb.5,5,5.scale");
 
     //Create 2 moving planes
-    osg::Node* plane1 = createPlane(plane, GeoPoint(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE), mapSRS, 5000, 20);
-    osg::Node* plane2 = createPlane(plane, GeoPoint(geoSRS, -121.321, 46.2589, 1390.09, ALTMODE_ABSOLUTE), mapSRS, 3000, 5);
+    osg::Node* plane1 = createPlane(plane.get(), GeoPoint(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE), mapSRS, 5000, 20);
+    osg::Node* plane2 = createPlane(plane.get(), GeoPoint(geoSRS, -121.321, 46.2589, 1390.09, ALTMODE_ABSOLUTE), mapSRS, 3000, 5);
     root->addChild( plane1 );
     root->addChild( plane2 );
 
@@ -229,7 +229,7 @@ main(int argc, char** argv)
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
 
     //Create another plane and attach a RadialLineOfSightNode to it using the RadialLineOfSightTether
-    osg::Node* plane3 = createPlane(plane, GeoPoint(geoSRS, -121.463, 46.3548, 1348.71, ALTMODE_ABSOLUTE), mapSRS, 10000, 5);
+    osg::Node* plane3 = createPlane(plane.get(), GeoPoint(geoSRS, -121.463, 46.3548, 1348.71, ALTMODE_ABSOLUTE), mapSRS, 10000, 5);
     losGroup->addChild( plane3 );
     RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );
     tetheredRadial->setRadius( 5000 );

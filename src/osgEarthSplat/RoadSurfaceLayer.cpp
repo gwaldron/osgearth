@@ -364,7 +364,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         GeometryCompiler compiler;
 
         StyleToFeatures map;
-        sortFeaturesIntoStyleGroups(options().styles(), features, fc, map);
+        sortFeaturesIntoStyleGroups(options().styles().get(), features, fc, map);
         osg::ref_ptr< osg::Group > group;
         if (!map.empty())
         {

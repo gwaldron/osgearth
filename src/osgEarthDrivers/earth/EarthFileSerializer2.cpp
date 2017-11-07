@@ -418,12 +418,12 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         {
             Config temp = *i;
             temp.key() = "elevation";
-            addLayer(temp, map);
+            addLayer(temp, map.get());
         }
 
         else if ( i->key() == "elevation" ) // || i->key() == "heightfield" )
         {
-            addLayer(*i, map);
+            addLayer(*i, map.get());
         }
     }
 
@@ -471,7 +471,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
         else if ( !isReservedWord(i->key()) ) // plugins/extensions.
         {
             // try to add as a plugin Layer first:
-            bool addedLayer = addLayer(*i, map); 
+            bool addedLayer = addLayer(*i, map.get()); 
 
             // failing that, try to load as an extension:
             if ( !addedLayer )
@@ -487,13 +487,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
     map->endUpdate();
 
     // If any errors occurred, report them now.
-    reportErrors(map);
+    reportErrors(map.get());
 
     // Yes, MapOptions and MapNodeOptions share the same Config node. Weird but true.
     MapNodeOptions mapNodeOptions( conf.child("options") );
 
     // Create a map node.
-    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map.get(), mapNodeOptions );
 
     // Apply the external conf if there is one.
     if (!externalConfig.empty())

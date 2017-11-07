@@ -260,7 +260,7 @@ namespace
             {
                 osg::ref_ptr<MPGeometry> stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
                 stitchGeom->setName("stitchGeom");
-                d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, stitchGeom) );
+                d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, stitchGeom.get()) );
             }
         }
     }
@@ -354,26 +354,26 @@ namespace
         // allocate and assign vertices
         d.surfaceVerts = new osg::Vec3Array();
         d.surfaceVerts->reserve( d.numVerticesInSurface );
-        d.surface->setVertexArray( d.surfaceVerts );
+        d.surface->setVertexArray( d.surfaceVerts.get() );
 
         // allocate and assign normals
         d.normals = new osg::Vec3Array();
         d.normals->reserve( d.numVerticesInSurface );
-        d.surface->setNormalArray( d.normals );
+        d.surface->setNormalArray( d.normals.get() );
         d.surface->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
         // vertex attribution
         // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
         d.surfaceAttribs = new osg::Vec4Array();
         d.surfaceAttribs->reserve( d.numVerticesInSurface );
-        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceAttribs );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceAttribs.get() );
         d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
         d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
 
         // for each vertex, index 0 holds the interpolated elevation from the lower lod (for morphing)
         d.surfaceAttribs2 = new osg::Vec4Array();
         d.surfaceAttribs2->reserve( d.numVerticesInSurface );
-        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, d.surfaceAttribs2 );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, d.surfaceAttribs2.get() );
         d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
         d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
         
@@ -587,7 +587,7 @@ namespace
 
                 if ( hf )
                 {
-                    validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
+                    validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), heightValue, INTERP_TRIANGULATE );
                 }
 
                 ndc.z() = heightValue * d.heightScale + d.heightOffset;
@@ -1061,10 +1061,10 @@ namespace
 
             osg::ref_ptr<osg::Vec3Array> stitch_verts = new osg::Vec3Array();
             stitch_verts->reserve(trig->getInputPointArray()->size());
-            stitch_geom->setVertexArray(stitch_verts);
+            stitch_geom->setVertexArray(stitch_verts.get());
 
             osg::ref_ptr<osg::Vec3Array> stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
-            stitch_geom->setNormalArray( stitch_norms );
+            stitch_geom->setNormalArray( stitch_norms.get() );
             stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
 
@@ -1072,14 +1072,14 @@ namespace
             // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
             osg::ref_ptr<osg::Vec4Array> surfaceAttribs = new osg::Vec4Array();
             surfaceAttribs->reserve( trig->getInputPointArray()->size() );
-            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, surfaceAttribs );
+            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, surfaceAttribs.get() );
             stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
             stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
 
             // for each vertex, index 0 holds the interpolated elevation from the lower lod (for morphing)
             osg::ref_ptr<osg::Vec4Array> surfaceAttribs2 = new osg::Vec4Array();
             surfaceAttribs2->reserve( trig->getInputPointArray()->size() );
-            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, surfaceAttribs2 );
+            stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, surfaceAttribs2.get() );
             stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
             stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
 
@@ -1126,7 +1126,7 @@ namespace
                 // Calculate and store the "old height", i.e the height value from
                 // the parent LOD.
                 float heightValue = 0.0;
-                d.model->_elevationData.getHeight( local_zero, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
+                d.model->_elevationData.getHeight( local_zero, d.model->_tileLocator.get(), heightValue, INTERP_TRIANGULATE );
 
                 float     oldHeightValue = heightValue;
                 osg::Vec3 oldNormal;
@@ -1183,7 +1183,7 @@ namespace
             osg::ref_ptr<osg::DrawElementsUInt> tris = trig->getTriangles();
             if ( tris && tris->getNumIndices() >= 3 )
             {
-                stitch_geom->addPrimitiveSet(tris);
+                stitch_geom->addPrimitiveSet(tris.get());
             }
 
             // Finally, add it to the geode.
@@ -1975,7 +1975,7 @@ namespace
         // in the case of full-masking, this will be empty
         if ( elements->getNumIndices() > 0 )
         {
-            d.surface->insertPrimitiveSet(0, elements); // because we always want this first.
+            d.surface->insertPrimitiveSet(0, elements.get()); // because we always want this first.
         }
     }
 

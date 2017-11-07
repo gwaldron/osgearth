@@ -343,7 +343,7 @@ TritonDrawable::~TritonDrawable()
     osg::ref_ptr<osgEarth::TerrainCallback> callback;
     if ( _mapNode.lock(mapNode) && _terrainChangedCallback.lock(callback) && mapNode->getTerrain() )
     {
-        _mapNode->getTerrain()->removeTerrainCallback( callback );
+        _mapNode->getTerrain()->removeTerrainCallback( callback.get() );
     }
 }
 
@@ -728,7 +728,7 @@ void TritonDrawable::setupHeightMap(osg::State& state)
     _heightCamera->setRenderOrder(osg::Camera::PRE_RENDER);
     _heightCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     _heightCamera->setImplicitBufferAttachmentMask(0, 0);
-    _heightCamera->attach(osg::Camera::COLOR_BUFFER, _heightMap);
+    _heightCamera->attach(osg::Camera::COLOR_BUFFER, _heightMap.get());
     _heightCamera->setCullMask( ~TRITON_OCEAN_MASK );
     _heightCamera->setAllowEventFocus(false);
     _heightCamera->setFinalDrawCallback(new PassHeightMapToTritonCallback(_TRITON.get()));

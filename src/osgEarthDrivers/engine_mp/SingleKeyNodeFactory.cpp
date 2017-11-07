@@ -117,7 +117,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         osg::BoundingSphere bs = tileNode->getBound();
         TilePagedLOD* plod = new TilePagedLOD( _engine->getUID(), _liveTiles.get(), _releaser.get() );
         plod->setCenter  ( bs.center() );
-        plod->addChild   ( tileNode );
+        plod->addChild   ( tileNode.get() );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engine->getUID() << ".osgearth_engine_mp_tile" );
         
         double rangeFactor = _options.minTileRangeFactor().get();

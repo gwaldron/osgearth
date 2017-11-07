@@ -406,7 +406,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
             layerModel->setName( "oe_normal_map" );
 
             // Made an image, so store this as a texture with no matrix.
-            osg::Texture* texture = createNormalTexture( image );
+            osg::Texture* texture = createNormalTexture( image.get() );
             layerModel->setTexture( texture );
             model->normalModel() = layerModel;
         }

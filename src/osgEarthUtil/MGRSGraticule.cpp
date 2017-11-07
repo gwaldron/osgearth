@@ -577,7 +577,7 @@ namespace
     osg::BoundingSphere GeomCell::getChildBound() const
     {
         osg::ref_ptr<GeomGrid> child = new GeomGrid(_size);
-        child->setupData(_feature, _options);
+        child->setupData(_feature.get(), _options);
         return child->getBound();
     }
 
@@ -955,7 +955,7 @@ namespace
             if (textSym->alignment().isSet() == false)
                 textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
         
-            TextSymbolizer symbolizer( textSym );
+            TextSymbolizer symbolizer( textSym.get() );
             osgText::Text* drawable = symbolizer.create(getName());
             drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
             drawable->getOrCreateStateSet()->setRenderBinToInherit();

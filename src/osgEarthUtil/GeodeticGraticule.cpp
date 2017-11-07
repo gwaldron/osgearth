@@ -582,7 +582,7 @@ GeodeticGraticule::updateLabels()
             for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
             {
                 GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
-                LabelNode* label = cdata._labelPool[labelIndex++];
+                LabelNode* label = cdata._labelPool[labelIndex++].get();
 
                 label->setNodeMask(~0u);
                 label->setPosition(point);
@@ -603,7 +603,7 @@ GeodeticGraticule::updateLabels()
                 {
                     continue;
                 }
-                LabelNode* label = cdata._labelPool[labelIndex++];
+                LabelNode* label = cdata._labelPool[labelIndex++].get();
                 label->setNodeMask(~0u);
                 label->setPosition(point);
                 std::string text = getText( point, true);

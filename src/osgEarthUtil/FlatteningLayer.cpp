@@ -236,7 +236,7 @@ namespace
 
                 for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
                 {
-                    Geometry* component = geom->getComponents()[geomIndex];
+                    Geometry* component = geom->getComponents()[geomIndex].get();
                     Widths width = widths[geomIndex];
                     ConstGeometryIterator giter(component, false);
                     while (giter.hasMore() && !done)
@@ -439,7 +439,7 @@ namespace
                     double outerRadius = innerRadius + w.bufferWidth;
                     double outerRadius2 = outerRadius * outerRadius;
 
-                    Geometry* component = geom->getComponents()[geomIndex];
+                    Geometry* component = geom->getComponents()[geomIndex].get();
                     // Search for line segments.
                     ConstGeometryIterator giter(component);
                     while (giter.hasMore())
@@ -876,13 +876,13 @@ FlatteningLayer::createImplementation(const TileKey& key,
                 if (options().lineWidth().isSet())
                 {
                     NumericExpression lineWidthExpr(options().lineWidth().get());
-                    lineWidth = feature->eval(lineWidthExpr, session);
+                    lineWidth = feature->eval(lineWidthExpr, session.get());
                 }
 
                 if (options().bufferWidth().isSet())
                 {
                     NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                    bufferWidth = feature->eval(bufferWidthExpr, session);
+                    bufferWidth = feature->eval(bufferWidthExpr, session.get());
                 }
 
                 // Transform the feature geometry to our working (projected) SRS.
@@ -924,13 +924,13 @@ FlatteningLayer::createImplementation(const TileKey& key,
             if (options().lineWidth().isSet())
             {
                 NumericExpression lineWidthExpr(options().lineWidth().get());
-                lineWidth = feature->eval(lineWidthExpr, session);
+                lineWidth = feature->eval(lineWidthExpr, session.get());
             }
 
             if (options().bufferWidth().isSet())
             {
                 NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                bufferWidth = feature->eval(bufferWidthExpr, session);
+                bufferWidth = feature->eval(bufferWidthExpr, session.get());
             }
 
             // Transform the feature geometry to our working (projected) SRS.
@@ -979,6 +979,6 @@ FlatteningLayer::createImplementation(const TileKey& key,
 
         bool fill = (options().fill() == true);     
         
-        integrate(key, hf, &geoms, workingSRS, widths, envelope, fill, progress);
+        integrate(key, hf.get(), &geoms, workingSRS, widths, envelope.get(), fill, progress);
     }
 }

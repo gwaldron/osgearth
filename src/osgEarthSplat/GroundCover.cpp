@@ -358,7 +358,7 @@ GroundCover::createTexture() const
 
     for(int b=0; b<getBiomes().size(); ++b)
     {
-        const GroundCoverBiome* biome = getBiomes()[b];
+        const GroundCoverBiome* biome = getBiomes()[b].get();
 
         for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
         {

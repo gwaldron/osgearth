@@ -464,7 +464,7 @@ ImageOverlay::updateFilters()
         _texture->setFilter(osg::Texture::MAG_FILTER, *_magFilter);
 
         
-        if (ImageUtils::isPowerOfTwo( _image ) && !(!_image->isMipmap() && ImageUtils::isCompressed(_image)))
+        if (ImageUtils::isPowerOfTwo( _image.get() ) && !(!_image->isMipmap() && ImageUtils::isCompressed(_image.get())))
         {
             _texture->setFilter(osg::Texture::MIN_FILTER, *_minFilter);
         }

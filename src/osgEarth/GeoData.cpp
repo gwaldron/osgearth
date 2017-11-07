@@ -697,7 +697,7 @@ GeoExtent::setOriginAndSize(double west, double south, double width, double heig
 bool
 GeoExtent::getCentroid(GeoPoint& out) const
 {
-    out = GeoPoint(_srs, getCentroid(), ALTMODE_ABSOLUTE);
+    out = GeoPoint(_srs.get(), getCentroid(), ALTMODE_ABSOLUTE);
     return true;
 }
 

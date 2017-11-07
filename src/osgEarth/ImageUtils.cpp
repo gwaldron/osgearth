@@ -234,7 +234,7 @@ ImageUtils::resizeImage(const osg::Image* input,
         {
             output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
-            markAsNormalized(output, isNormalized(input));
+            markAsNormalized(output.get(), isNormalized(input));
         }
         else
         {
@@ -629,8 +629,8 @@ ImageUtils::buildNearestNeighborMipmaps(const osg::Image* input)
     for( int level=0; level<numMipmapLevels; ++level )
     {
         osg::ref_ptr<osg::Image> temp;
-        ImageUtils::resizeImage(input2, level_s, level_t, result, level, false);
-        ImageUtils::resizeImage(input2, level_s, level_t, temp, 0, false);
+        ImageUtils::resizeImage(input2.get(), level_s, level_t, result, level, false);
+        ImageUtils::resizeImage(input2.get(), level_s, level_t, temp, 0, false);
         level_s >>= 1;
         level_t >>= 1;
         input2 = temp.get();

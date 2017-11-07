@@ -985,7 +985,7 @@ public:
         // The warp profile, if provided, takes precedence.
         if ( warpProfile )
         {
-            profile = warpProfile;
+            profile = warpProfile.get();
             if ( profile )
             {
                 OE_DEBUG << LC << INDENT << "Using warp Profile: " << profile->toString() <<  std::endl;
@@ -1195,7 +1195,7 @@ public:
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );
         // record the data extent in profile space:
         _bounds = Bounds(minX, minY, maxX, maxY);
-        _extents = GeoExtent( srs, _bounds);
+        _extents = GeoExtent( srs.get(), _bounds);
         GeoExtent profile_extent = _extents.transform( profile->getSRS() );
 
         if (dataExtents.empty())
@@ -1610,10 +1610,10 @@ public:
                 image = new osg::Image();
                 image->allocateImage( tileSize, tileSize, 1, GL_LUMINANCE, glDataType );
                 image->setInternalTextureFormat( internalFormat );
-                ImageUtils::markAsUnNormalized( image, true );
+                ImageUtils::markAsUnNormalized( image.get(), true );
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
-                ImageUtils::PixelWriter write(image);
+                ImageUtils::PixelWriter write(image.get());
 
                 // initialize all coverage texels to NODATA. -gw
                 osg::Vec4 temp;
@@ -1755,12 +1755,12 @@ public:
             {
                 image->allocateImage(tileSize, tileSize, 1, GL_LUMINANCE, GL_FLOAT);
                 image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
-                ImageUtils::markAsUnNormalized(image, true);
+                ImageUtils::markAsUnNormalized(image.get(), true);
 
                 // initialize all coverage texels to NODATA. -gw
                 osg::Vec4 temp;
                 temp.r() = NO_DATA_VALUE;
-                ImageUtils::PixelWriter write(image);
+                ImageUtils::PixelWriter write(image.get());
                 for(int s=0; s<image->s(); ++s) {
                     for(int t=0; t<image->t(); ++t) {
                         write(temp, s, t);
@@ -1775,7 +1775,7 @@ public:
 
             bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
-            ImageUtils::PixelWriter write(image);
+            ImageUtils::PixelWriter write(image.get());
 
             for (int src_row = 0, dst_row = tile_offset_top;
                 src_row < target_height;

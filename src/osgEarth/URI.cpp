@@ -445,7 +445,7 @@ namespace
                     if ( !gotResultFromCallback )
                     {
                         // no callback, just read from a local file.
-                        result = reader.fromFile( uri.full(), localOptions );
+                        result = reader.fromFile( uri.full(), localOptions.get() );
                     }
                 }
 
@@ -471,7 +471,7 @@ namespace
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
                     {                                                
-                        result = reader.fromCache( bin, uri.cacheKey() );                        
+                        result = reader.fromCache( bin.get(), uri.cacheKey() );                        
                         if ( result.succeeded() )
                         {                                        
                             expired = cp->isExpired(result.lastModifiedTime());
@@ -484,7 +484,7 @@ namespace
                     {                        
                         // Need to do this to support nested PLODs and Proxynodes.
                         osg::ref_ptr<osgDB::Options> remoteOptions =
-                            Registry::instance()->cloneOrCreateOptions( localOptions );
+                            Registry::instance()->cloneOrCreateOptions( localOptions.get() );
                         remoteOptions->getDatabasePathList().push_front( osgDB::getFilePath(uri.full()) );
 
                         // Store the existing object from the cache if there is one.
@@ -526,7 +526,7 @@ namespace
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() && bin )
                             {
                                 OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
-                                bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions );
+                                bin->write( uri.cacheKey(), result.getObject(), result.metadata(), remoteOptions.get() );
                             }
                         }
                     }

@@ -172,7 +172,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             {
                 for (CameraSet::const_iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
                 {
-                    SilverLiningContextNode* newNode = new SilverLiningContextNode(this, i->get(), _light, _mapSRS, _options, _callback);
+                    SilverLiningContextNode* newNode = new SilverLiningContextNode(this, i->get(), _light.get(), _mapSRS, _options, _callback.get());
                     _contexts[i->get()] = newNode;
                     _contextList.push_back(newNode);
                 }

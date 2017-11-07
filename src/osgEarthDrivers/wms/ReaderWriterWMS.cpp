@@ -448,7 +448,7 @@ public:
             return ImageUtils::createEmptyImage();
         }
 
-        _sequenceCache.insert( seq );
+        _sequenceCache.insert( seq.get() );
         return seq.release();
     }
 

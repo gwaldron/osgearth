@@ -236,9 +236,9 @@ public:
                   if (f)
                   {
                       //Reproject the feature to the dest SRS if it's not already
-                      if (!f->getSRS()->isEquivalentTo( _srs ) )
+                      if (!f->getSRS()->isEquivalentTo( _srs.get() ) )
                       {
-                          f->transform( _srs );
+                          f->transform( _srs.get() );
                       }
                       features.push_back( f );
                   }
@@ -323,7 +323,7 @@ void
     osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1);
 
 
-    TileKey rootKey = TileKey(0, 0, 0, profile );    
+    TileKey rootKey = TileKey(0, 0, 0, profile.get() );    
 
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
@@ -339,9 +339,9 @@ void
         osg::ref_ptr< Feature > feature = cursor->nextFeature();
 
         //Reproject the feature to the dest SRS if it's not already
-        if (!feature->getSRS()->isEquivalentTo( _srs ) )
+        if (!feature->getSRS()->isEquivalentTo( _srs.get() ) )
         {
-            feature->transform( _srs );
+            feature->transform( _srs.get() );
         }
 
         if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())
@@ -376,13 +376,13 @@ void
     // Print the width of tiles at each level
     for (int i = 0; i <= highestLevel; ++i)
     {
-        TileKey tileKey(i, 0, 0, profile);
+        TileKey tileKey(i, 0, 0, profile.get());
         GeoExtent tileExtent = tileKey.getExtent();
         OE_NOTICE << "Level " << i << " tile size: " << tileExtent.width() << std::endl;
     }
 #endif
 
-    WriteFeaturesVisitor write(features, destination, _method, _srs);
+    WriteFeaturesVisitor write(features, destination, _method, _srs.get());
     root->accept( &write );
 
     //Write out the meta doc

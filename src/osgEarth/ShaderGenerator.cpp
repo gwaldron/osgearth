@@ -756,7 +756,7 @@ ShaderGenerator::apply(osgSim::LightPointNode& node)
             node.setStateSet(replacement.get() );
         }
         
-        disableUnsupportedAttributes(stateset);
+        disableUnsupportedAttributes(stateset.get());
         _state->popStateSet();
     }
 }
@@ -840,7 +840,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         new osg::StateSet();
 
     // likewise, create a VP that we might populate.
-    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(original, newStateSet);
+    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(original, newStateSet.get());
 
     // we'll set this to true if the new stateset goes into effect and
     // needs to be returned.

@@ -184,7 +184,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
         GeoPoint pos(geoSRS, lon0, lat0);
 
-        TrackNode* track = new TrackNode(mapNode, pos, image, schema);
+        TrackNode* track = new TrackNode(mapNode, pos, image.get(), schema);
 
         track->setFieldValue( FIELD_NAME,     Stringify() << "Track:" << i );
         track->setFieldValue( FIELD_POSITION, Stringify() << s_format(pos) );

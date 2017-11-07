@@ -62,7 +62,7 @@ GeoPositionNodeEditor::GeoPositionNodeEditor(GeoPositionNode* node):
 _node( node )
 {
     _dragger  = new SphereDragger( _node->getMapNode());  
-    _dragger->addPositionChangedCallback(new DraggerCallback(_node, this) );        
+    _dragger->addPositionChangedCallback(new DraggerCallback(_node.get(), this) );        
     addChild(_dragger);
     updateDraggers();
 }

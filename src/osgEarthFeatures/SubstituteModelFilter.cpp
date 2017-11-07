@@ -479,14 +479,14 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     // Process the feature set, using clustering if requested
     bool ok = true;
 
-    process( features, symbol, context.getSession(), attachPoint.get(), newContext );
+    process( features, symbol.get(), context.getSession(), attachPoint.get(), newContext );
     if (_cluster)
     {
         // Extract the unclusterable things
-        osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
+        osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint.get());
 
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
-        MeshFlattener::run(attachPoint);
+        MeshFlattener::run(attachPoint.get());
 
         // Add the unclusterables back to the attach point after the rest of the graph was flattened.
         if (unclusterables.valid())

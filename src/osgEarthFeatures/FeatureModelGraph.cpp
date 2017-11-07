@@ -1204,7 +1204,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                     combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // query, sort, and add each style group to th parent:
-                    queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group, readOptions );
+                    queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group.get(), readOptions );
                 }
 
                 // otherwise, all feature returned by this query will have the same style:

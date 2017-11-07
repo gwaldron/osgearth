@@ -276,7 +276,7 @@ TileModelFactory::buildElevation(const TileKey&    key,
     if (_meshHFCache->getOrCreateHeightField(frame, key, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
     {
         model->_elevationData = TileModel::ElevationData(
-            hf,
+            hf.get(),
             GeoLocator::createForKey( key, mapInfo ),
             isFallback );
 
@@ -393,7 +393,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             else
             {
                 model->_normalData = TileModel::NormalData(
-                    hf,
+                    hf.get(),
                     GeoLocator::createForKey( key, mapInfo ),
                     isFallback );
 
@@ -409,7 +409,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             key.getExtent(), EMPTY_NORMAL_MAP_SIZE, EMPTY_NORMAL_MAP_SIZE, 0u, true );
 
         model->_normalData = TileModel::NormalData(
-            hf,
+            hf.get(),
             GeoLocator::createForKey( key, mapInfo ),
             false );
 

@@ -173,7 +173,7 @@ public:
                     OE_DEBUG << LC << "API calls = " << c << std::endl;
             
                 // fetch it:
-                ReadResult metadataResult = URI(request).readString(_readOptions, progress);
+                ReadResult metadataResult = URI(request).readString(_readOptions.get(), progress);
 
                 if ( metadataResult.failed() )
                 {

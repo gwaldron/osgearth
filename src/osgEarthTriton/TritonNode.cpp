@@ -107,7 +107,7 @@ TritonNode::create()
     if ( _callback.valid() )
         _TRITON->setCallback( _callback.get() );
 
-    TritonDrawable* drawable = new TritonDrawable(mapNode, _TRITON);
+    TritonDrawable* drawable = new TritonDrawable(mapNode.get(), _TRITON.get());
     _drawable = drawable;
     _alphaUniform = getOrCreateStateSet()->getOrCreateUniform("oe_ocean_alpha", osg::Uniform::FLOAT);
     _alphaUniform->set(getAlpha());

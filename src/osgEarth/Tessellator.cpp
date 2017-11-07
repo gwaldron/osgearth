@@ -162,7 +162,7 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
                     else
                     {
                         // tessellation failed, add old primitive set back
-                        geom.addPrimitiveSet(primitive);
+                        geom.addPrimitiveSet(primitive.get());
                         success = false;
                     }
 
@@ -181,7 +181,7 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
                     else
                     {
                         // tessellation failed, add old primitive set back
-                        geom.addPrimitiveSet(primitive);
+                        geom.addPrimitiveSet(primitive.get());
                         success = false;
                     }
                 }

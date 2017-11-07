@@ -113,25 +113,25 @@ TransientUserDataStore::unitTest()
   osg::ref_ptr<osg::Referenced> data1 = new osg::Referenced;
   osg::ref_ptr<osg::Referenced> data2 = new osg::Referenced;
   osg::ref_ptr<osg::Referenced> data3 = new osg::Referenced;
-  tuds.store(owner1, "foo", data1);
-  tuds.store(owner1, "foo", data2);
-  tuds.store(owner1, "foo", data1);
+  tuds.store(owner1.get(), "foo", data1.get());
+  tuds.store(owner1.get(), "foo", data2.get());
+  tuds.store(owner1.get(), "foo", data1.get());
   data1 = NULL;
-  tuds.store(owner1, "foo", data2);
+  tuds.store(owner1.get(), "foo", data2.get());
   data2 = new osg::Referenced;
-  tuds.store(owner1, "foo", data3);
-  tuds.store(owner1, "foo", data2);
+  tuds.store(owner1.get(), "foo", data3.get());
+  tuds.store(owner1.get(), "foo", data2.get());
   data1 = new osg::Referenced;
   owner1 = owner2;
-  tuds.store(owner1, "foo", data3);
-  tuds.store(owner1, "foo", data1);
-  tuds.store(owner3, "foo", data1);
+  tuds.store(owner1.get(), "foo", data3.get());
+  tuds.store(owner1.get(), "foo", data1.get());
+  tuds.store(owner3.get(), "foo", data1.get());
   owner3 = NULL;
-  tuds.store(owner1, "foo", data2);
-  tuds.store(owner2, "foo", data2);
+  tuds.store(owner1.get(), "foo", data2.get());
+  tuds.store(owner2.get(), "foo", data2.get());
   owner1 = owner2 = owner3 = NULL;
   owner1 = new osg::Referenced;
-  tuds.store(owner1, "foo", data3);
+  tuds.store(owner1.get(), "foo", data3.get());
   return true;
 }
 

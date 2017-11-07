@@ -70,7 +70,7 @@ _distance    ( Distance(50000.0, Units::METERS) )
     _terrainCallback = new TerrainChangedCallback(this);
     
     if ( mapNode )
-        mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
+        mapNode->getTerrain()->addTerrainCallback( _terrainCallback.get() );
 
     osg::StateSet* stateSet = this->getOrCreateStateSet();
     stateSet->setMode( GL_BLEND, 1 );

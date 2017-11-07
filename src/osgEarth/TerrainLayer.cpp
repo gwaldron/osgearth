@@ -972,7 +972,7 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
     //Layer::setReadOptions(readOptions);
 
     // store HTTP proxy settings in the options:
-    storeProxySettings( _readOptions );
+    storeProxySettings( _readOptions.get() );
     
     // store the referrer for relative-path resolution
     URIContext( options().referrer() ).store( _readOptions.get() );

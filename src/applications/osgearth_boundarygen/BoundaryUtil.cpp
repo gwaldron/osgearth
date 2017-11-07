@@ -647,5 +647,5 @@ BoundaryUtil::simpleBoundaryTest(const osg::Vec3dArray& boundary)
   outterPoly->push_back(osg::Vec3d(boundsBounds.xMin() - 10.0, boundsBounds.yMax() + 10.0, boundsBounds.zMin()));
 
   osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
-  return outterPoly->difference(boundsPoly, outPoly);
+  return outterPoly->difference(boundsPoly.get(), outPoly);
 }

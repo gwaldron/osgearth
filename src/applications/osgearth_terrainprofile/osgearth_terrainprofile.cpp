@@ -390,7 +390,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
-    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
+    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator.get() ) );
 
     viewer.setSceneData( root );    
 

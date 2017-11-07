@@ -555,7 +555,7 @@ EarthManipulator::~EarthManipulator()
     osg::ref_ptr<MapNode> mapNode = _mapNode;
     if (mapNode.valid() && _terrainCallback && mapNode->getTerrain())
     {
-        mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
+        mapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
     }
 }
 
@@ -699,7 +699,7 @@ EarthManipulator::established()
     }
     _terrainCallback = new ManipTerrainCallback( this );
     if (_mapNode->getTerrain())
-        _mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
+        _mapNode->getTerrain()->addTerrainCallback( _terrainCallback.get() );
 
     // Cache the SRS.
     _srs = _mapNode->getMapSRS();
@@ -1073,7 +1073,7 @@ EarthManipulator::setViewpointFrame(double time_s)
         osg::Vec3d startWorld;
         osg::ref_ptr<osg::Node> startNode;
         if ( _setVP0->getNode(startNode) )
-            startWorld = computeWorld(startNode);
+            startWorld = computeWorld(startNode.get());
         else
             _setVP0->focalPoint()->transform( _srs.get() ).toWorld(startWorld);
 
@@ -1081,7 +1081,7 @@ EarthManipulator::setViewpointFrame(double time_s)
         osg::Vec3d endWorld;
         osg::ref_ptr<osg::Node> endNode;
         if ( _setVP1->getNode(endNode) )
-            endWorld = computeWorld(endNode);
+            endWorld = computeWorld(endNode.get());
         else
             _setVP1->focalPoint()->transform( _srs.get() ).toWorld(endWorld);
 

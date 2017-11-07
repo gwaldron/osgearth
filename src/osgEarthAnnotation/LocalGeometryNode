@@ -88,7 +88,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Gets the external node attached to this annotation (if applicable)
          */
-        osg::Node* getNode() { return _node; }
+        osg::Node* getNode() { return _node.get(); }
 
         /**
          * Sets an external node to attach to this annotation

@@ -522,7 +522,7 @@ struct DeformationHandler : public osgGA::GUIEventHandler
                 else if (_tool == TOOL_BLAST)
                 {
                     // Apply a simple blast radius
-                    applyBlast(_mapPoint, _radius, -_radius, itr->first, itr->second);
+                    applyBlast(_mapPoint, _radius, -_radius, itr->first, itr->second.get());
                 }
                 s_deformations->addHeightField( itr->first, itr->second.get());
             }

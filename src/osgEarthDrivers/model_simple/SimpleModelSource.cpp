@@ -271,7 +271,7 @@ public:
                 osg::ref_ptr<StateSetCache> cache = new StateSetCache();
 
                 Registry::shaderGenerator().run(
-                    result,
+                    result.get(),
                     _options.url()->base(),
                     cache.get() );
             }

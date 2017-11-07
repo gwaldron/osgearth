@@ -182,7 +182,7 @@ namespace osgEarth
         TerrainTileElevationModel();
 
         void setHeightField(const osg::HeightField* value) { _heightField = value; }
-        const osg::HeightField* getHeightField() const { return _heightField; }
+        const osg::HeightField* getHeightField() const { return _heightField.get(); }
 
         /** Minimum height in the tile */
         void setMinHeight(float value) { _minHeight = value; }

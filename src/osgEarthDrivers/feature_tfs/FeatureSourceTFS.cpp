@@ -112,7 +112,7 @@ public:
             fp->setTiled( true );
             fp->setFirstLevel( *_options.minLevel() );
             fp->setMaxLevel( *_options.maxLevel() );
-            fp->setProfile( profile );
+            fp->setProfile( profile.get() );
             if ( _options.geoInterp().isSet() )
                 fp->geoInterp() = _options.geoInterp().get();
         }

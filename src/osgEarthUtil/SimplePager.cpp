@@ -104,7 +104,7 @@ namespace
 
             return pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),
-                tracker);
+                tracker.get());
         }
     };
 

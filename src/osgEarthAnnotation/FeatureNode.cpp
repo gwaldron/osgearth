@@ -296,7 +296,7 @@ FeatureNode::setStyle(const Style& style)
 
 StyleSheet* FeatureNode::getStyleSheet() const
 {
-    return _styleSheet;
+    return _styleSheet.get();
 }
 
 void FeatureNode::setStyleSheet(StyleSheet* styleSheet)
@@ -308,7 +308,7 @@ Feature* FeatureNode::getFeature()
 {
     if (_features.size() == 1)
     {
-        return _features.front();
+        return _features.front().get();
     }
     return 0;
 }

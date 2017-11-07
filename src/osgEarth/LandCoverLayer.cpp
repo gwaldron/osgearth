@@ -316,7 +316,7 @@ namespace
                         continue;
 
                     if ( !layer.image.valid() )
-                        layer.load(key, _coverages[L], progress);
+                        layer.load(key, _coverages[L].get(), progress);
 
                     if ( !layer.valid )
                         continue;

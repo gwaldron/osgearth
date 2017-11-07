@@ -380,7 +380,7 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
                   osg::Vec3d newModelEnd = newWorldEnd * worldToModel;
 
                   osg::ref_ptr<osgEarth::PrimitiveIntersector> pi2 = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, newModelStart, newModelEnd, pi->getThickness(), true);
-                  osgUtil::IntersectionVisitor iv2(pi2);
+                  osgUtil::IntersectionVisitor iv2(pi2.get());
                   iv2.setTraversalMask(iv->getTraversalMask());
                   path[0]->accept(iv2);
 

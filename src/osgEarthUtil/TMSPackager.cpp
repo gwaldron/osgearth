@@ -111,7 +111,7 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             // convert to RGB if necessary
             if ( _packager->getExtension() == "jpg" && final->getPixelFormat() != GL_RGB )
             {
-                final = ImageUtils::convertToRGB8( final );
+                final = ImageUtils::convertToRGB8( final.get() );
             }
 
             // use the TileSource provided if set, else use writeImageFile
@@ -124,7 +124,7 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             {
                 // attempt to create the output folder:
                 osgEarth::makeDirectoryForFile( path );
-                return osgDB::writeImageFile(*final, path, _packager->getOptions());
+                return osgDB::writeImageFile(*final.get(), path, _packager->getOptions());
             }
         }
     }
@@ -336,7 +336,7 @@ void TMSPackager::setApplyAlphaMask(bool applyAlphaMask)
 
 TileVisitor* TMSPackager::getTileVisitor() const
 {
-    return _visitor;
+    return _visitor.get();
 }
 
 void TMSPackager::setVisitor(TileVisitor* visitor)
@@ -432,7 +432,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 
 
     _handler = new WriteTMSTileHandler(layer, map, this);
-    _visitor->setTileHandler( _handler );
+    _visitor->setTileHandler( _handler.get() );
     _visitor->run( map->getProfile() );
 }
 

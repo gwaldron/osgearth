@@ -442,7 +442,7 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
             if (_startNode.valid())
             {
-                osg::Vec3d worldStart = getNodeCenter(_startNode);
+                osg::Vec3d worldStart = getNodeCenter(_startNode.get());
 
                 //Convert to mappoint since that is what LOS expects
                 GeoPoint mapStart;
@@ -452,7 +452,7 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
             if (_endNode.valid())
             {
-                osg::Vec3d worldEnd = getNodeCenter( _endNode );
+                osg::Vec3d worldEnd = getNodeCenter( _endNode.get() );
 
                 //Convert to mappoint since that is what LOS expects
                 GeoPoint mapEnd;
@@ -517,13 +517,13 @@ LinearLineOfSightEditor::LinearLineOfSightEditor(LinearLineOfSightNode* los):
 _los(los)
 {
     _startDragger  = new osgEarth::Annotation::SphereDragger( _los->getMapNode());
-    _startDragger->addPositionChangedCallback(new LOSDraggerCallback(_los, true ) );    
+    _startDragger->addPositionChangedCallback(new LOSDraggerCallback(_los.get(), true ) );    
     static_cast<osgEarth::Annotation::SphereDragger*>(_startDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_startDragger);
 
     _endDragger = new osgEarth::Annotation::SphereDragger( _los->getMapNode());
     static_cast<osgEarth::Annotation::SphereDragger*>(_endDragger)->setColor(osg::Vec4(0,0,1,0));
-    _endDragger->addPositionChangedCallback(new LOSDraggerCallback(_los, false ) );
+    _endDragger->addPositionChangedCallback(new LOSDraggerCallback(_los.get(), false ) );
 
     addChild(_endDragger);
 

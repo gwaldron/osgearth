@@ -108,7 +108,7 @@ namespace osgEarth { namespace Features
         /**
          * Session associated with this feature graph.
          */
-        Session* getSession() { return _session; }
+        Session* getSession() { return _session.get(); }
 
         /**
          * Mark the feature graph dirty and in need of regeneration 

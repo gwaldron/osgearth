@@ -613,14 +613,14 @@ namespace
                 geom.removePrimitiveSet(0);
 
             // set the new VBO.
-            geom.setVertexArray( data._verts );
+            geom.setVertexArray( data._verts.get() );
             if ( geom.getVertexArray()->getVertexBufferObject() && data._verts->getVertexBufferObject() )
             {
                 data._verts->getVertexBufferObject()->setUsage( geom.getVertexArray()->getVertexBufferObject()->getUsage() );
             }
 
-            if ( data._colors )
-                geom.setColorArray( data._colors );
+            if ( data._colors.valid() )
+                geom.setColorArray( data._colors.get() );
 
 #ifdef STRIPIFY_LINES
             // detect and assemble line strips/loop

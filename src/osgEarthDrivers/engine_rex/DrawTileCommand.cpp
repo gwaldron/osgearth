@@ -77,7 +77,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             const Sampler& sampler = (*_colorSamplers)[s];
             SamplerState& samplerState = ds._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
                 state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);
@@ -93,7 +93,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             // Need a special uniform for color parents.
             if (s == SamplerBinding::COLOR_PARENT)
             {
-                if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture != 0L))
+                if (ds._parentTextureExistsUL >= 0 && !ds._parentTextureExists.isSetTo(sampler._texture.get() != 0L))
                 {
                     ds._ext->glUniform1f(ds._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
                     ds._parentTextureExists = sampler._texture.valid();
@@ -109,7 +109,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
             const Sampler& sampler = (*_sharedSamplers)[s];
             SamplerState& samplerState = ds._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture))
+            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
             {
                 state.setActiveTextureUnit((*dsMaster._bindings)[s].unit());
                 sampler._texture->apply(state);

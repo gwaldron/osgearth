@@ -846,7 +846,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                         osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                         if (convertedImg.valid())
                         {
-                            image = GeoImage(convertedImg, image.getExtent());
+                            image = GeoImage(convertedImg.get(), image.getExtent());
                         }
                     }
                 }
@@ -898,7 +898,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
                             osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                             if (convertedImg.valid())
                             {
-                                image = GeoImage(convertedImg, image.getExtent());
+                                image = GeoImage(convertedImg.get(), image.getExtent());
                             }
                         }
 

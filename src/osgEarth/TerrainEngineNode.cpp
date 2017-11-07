@@ -232,14 +232,14 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     // Manually trigger the map callbacks the first time:
     if (_map->getProfile())
-        onMapInfoEstablished(MapInfo(_map));
+        onMapInfoEstablished(MapInfo(_map.get()));
 
     // Create a layer controller. This object affects the uniforms
     // that control layer appearance properties
-    _imageLayerController = new ImageLayerController(_map, this);
+    _imageLayerController = new ImageLayerController(_map.get(), this);
 
     // register the layer Controller it with all pre-existing image layers:
-    MapFrame mapf(_map);
+    MapFrame mapf(_map.get());
     ImageLayerVector imageLayers;
     mapf.getLayers(imageLayers);
 

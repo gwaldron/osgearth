@@ -72,7 +72,7 @@ public:
 
     void onHit(ObjectID id)
     {
-        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
         Feature* feature = index ? index->getFeature( id ) : 0L;
         if ( feature && feature->getFID() != _lastFID )
         {

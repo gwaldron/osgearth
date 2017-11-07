@@ -319,7 +319,7 @@ Geometry::crop( const Bounds& bounds, osg::ref_ptr<Geometry>& output ) const
     (*poly)[1].set(bounds.xMax(), bounds.yMin(), 0);
     (*poly)[2].set(bounds.xMax(), bounds.yMax(), 0);
     (*poly)[3].set(bounds.xMin(), bounds.yMax(), 0);
-    return crop(poly, output);
+    return crop(poly.get(), output);
 }
 
 bool

@@ -72,7 +72,7 @@ namespace
         return isCCW(x1, y1, x3, y3, x4, y4) != isCCW(x2, y2, x3, y3, x4, y4) && isCCW(x1, y1, x2, y2, x3, y3) != isCCW(x1, y1, x2, y2, x4, y4);
     }
 
-    bool holeCompare(osgEarth::Symbology::Ring* i, osgEarth::Symbology::Ring* j)
+    bool holeCompare(const osg::ref_ptr<Ring>& i, const osg::ref_ptr<Ring>& j)
     {
         return i->getBounds().xMax() > j->getBounds().xMax();
     }
@@ -199,7 +199,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 hats->push_back( i->z() );
 
             // build the geometry:
-            tileAndBuildPolygon(part, featureSRS, outputSRS, makeECEF, true, osgGeom, w2l);
+            tileAndBuildPolygon(part, featureSRS, outputSRS, makeECEF, true, osgGeom.get(), w2l);
             //buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
@@ -242,13 +242,13 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
 
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
-                    context.featureIndex()->tagDrawable( osgGeom, input );
+                    context.featureIndex()->tagDrawable( osgGeom.get(), input );
 
                 // install clamping attributes if necessary
                 if (_style.has<AltitudeSymbol>() &&
                     _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
                 {
-                    Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                    Clamping::applyDefaultClampingAttrs( osgGeom.get(), input->getDouble("__oe_verticalOffset", 0.0) );
                 }
             }
             else
@@ -419,8 +419,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 //OE_WARN << "heights = " << hats->size() << ", new hats = " << copyHeights._newHeights->size() << ", verts=" << geom->getVertexArray()->getNumElements() << std::endl;
             }            
         }
-        polygonizer.installShaders( geode );
-        //gpuLines.installShaders(geode);
+        polygonizer.installShaders( geode.get() );
     }
 
     for (TextureToGeodeMap::iterator itr = geodes.begin(); itr != geodes.end(); ++itr)
@@ -588,14 +587,14 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
-                    context.featureIndex()->tagDrawable( osgGeom, input );
+                    context.featureIndex()->tagDrawable( osgGeom.get(), input );
 
                 // install clamping attributes if necessary
                 if (_style.has<AltitudeSymbol>() &&
                     _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
                 {
-                    Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
-                    Clamping::setHeights( osgGeom, hats.get() );
+                    Clamping::applyDefaultClampingAttrs( osgGeom.get(), input->getDouble("__oe_verticalOffset", 0.0) );
+                    Clamping::setHeights( osgGeom.get(), hats.get() );
                 }
             }
         }
@@ -686,18 +685,18 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-            geode->addDrawable( osgGeom );
+            geode->addDrawable( osgGeom.get() );
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagDrawable( osgGeom, input );
+                context.featureIndex()->tagDrawable( osgGeom.get(), input );
 
             // install clamping attributes if necessary
             if (_style.has<AltitudeSymbol>() &&
                 _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
             {
-                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
-                Clamping::setHeights( osgGeom, hats.get() );
+                Clamping::applyDefaultClampingAttrs( osgGeom.get(), input->getDouble("__oe_verticalOffset", 0.0) );
+                Clamping::setHeights( osgGeom.get(), hats.get() );
             }
         }
     }

@@ -103,7 +103,7 @@ void TileVisitor::estimate()
     CacheEstimator est;
     est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
-    est.setProfile( _profile ); 
+    est.setProfile( _profile.get() ); 
     for (unsigned int i = 0; i < _extents.size(); i++)
     {                
         est.addExtent( _extents[ i ] );
@@ -270,7 +270,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 bool MultithreadedTileVisitor::handleTile( const TileKey& key )        
 {    
     // Add the tile to the task queue.
-    _taskService->add( new HandleTileTask(_tileHandler, this, key ) );
+    _taskService->add( new HandleTileTask(_tileHandler.get(), this, key ) );
     return true;
 }
 
@@ -297,7 +297,7 @@ bool TaskList::load( const std::string &filename)
                 as<unsigned int>(parts[0], 0u), 
                 as<unsigned int>(parts[1], 0u), 
                 as<unsigned int>(parts[2], 0u),
-                _profile ) );
+                _profile.get() ) );
         }
     }
 
@@ -470,7 +470,7 @@ void MultiprocessTileVisitor::processBatch()
     // Add the task file as a temp file to the task to make sure it gets deleted
     task->addTempFile( filename );
 
-    _taskService->add(task);
+    _taskService->add(task.get());
     _batch.clear();
 }
 

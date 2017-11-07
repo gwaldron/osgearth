@@ -206,7 +206,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
         osgEarth::Bounds bounds = feature->getGeometry()->getBounds();
         const osg::Vec2d& center = bounds.center2d();
-        GeoPoint centroid(featureSRS, center.x(), center.y());
+        GeoPoint centroid(featureSRS.get(), center.x(), center.y());
         double   centroidElevation = 0.0;
 
         // If we aren't doing per vertex clamping go ahead and get the centroid.
@@ -237,7 +237,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                 {
                     std::vector<float> elevations;
 
-                    if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
+                    if ( eq.getElevations( geom->asVector(), featureSRS.get(), elevations, _maxRes ) )
                     {
                         for( unsigned i=0; i<geom->size(); ++i )
                         {
@@ -315,7 +315,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                     std::vector<float> elevations;
                     elevations.reserve( geom->size() );
                     
-                    if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
+                    if ( eq.getElevations( geom->asVector(), featureSRS.get(), elevations, _maxRes ) )
                     {
                         for( unsigned i=0; i<geom->size(); ++i )
                         {
@@ -333,7 +333,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                                 // the feature's SRS.
                                 if ( !vertEquiv )
                                 {
-                                    featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                                    featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
                                 }
 
                                 if ( hat > maxHAT )
@@ -364,7 +364,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         // the feature's SRS.
                         if ( !vertEquiv )
                         {
-                            featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                            featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
                         }
 
                         if ( hat > maxHAT )
@@ -385,7 +385,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             {
                 if ( perVertex )
                 {
-                    eq.getElevations( geom->asVector(), featureSRS, true, _maxRes );
+                    eq.getElevations( geom->asVector(), featureSRS.get(), true, _maxRes );
                     
                     // if necessary, transform the Z values (which are now in the map SRS) back
                     // into the feature's SRS.
@@ -398,7 +398,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         for( unsigned i=0; i<geom->size(); ++i )
                         {
                             osg::Vec3d& p = (*geom)[i];
-                            featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                            featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
                         }
                     }
                 }
@@ -414,7 +414,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         p.z() = centroidElevation;
                         if ( !vertEquiv )
                         {
-                            featureSRSWithMapVertDatum->transform(p, featureSRS, p);
+                            featureSRSWithMapVertDatum->transform(p, featureSRS.get(), p);
                         }
                     }
                 }

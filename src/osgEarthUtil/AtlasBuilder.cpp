@@ -118,7 +118,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     // clone the Resource library so we can re-write the URIs and add 
     // texture matrix information.
     out._lib = new ResourceLibrary( inputLib->getConfig() );
-    out._lib->initialize( _options );
+    out._lib->initialize( _options.get() );
     out._lib->uri().unset();
 
     // store a mapping from atlasbuilder source to skin.
@@ -138,7 +138,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             continue;
         }
 
-        osg::ref_ptr<osg::Image> image = skin->createImage( _options );
+        osg::ref_ptr<osg::Image> image = skin->createImage( _options.get() );
         if ( image.valid() )
         {
             OE_INFO << LC << "Loaded skin file: " << skin->imageURI()->full() << std::endl;
@@ -153,9 +153,9 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             }
 
             // normalize to RGBA8
-            image = ImageUtils::convertToRGBA8(image);
+            image = ImageUtils::convertToRGBA8(image.get());
 
-            maintab->addSource( image );
+            maintab->addSource( image.get() );
 
             // for each aux pattern, either load and resize the aux image or create
             // an empty placeholder.
@@ -185,7 +185,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                 if ( auxImage.valid() )
                 {
                     OE_INFO << LC << "  Found aux file: " << auxFile << std::endl;
-                    auxImage = ImageUtils::convertToRGBA8(auxImage);
+                    auxImage = ImageUtils::convertToRGBA8(auxImage.get());
                 }
                 else
                 {
@@ -205,7 +205,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     OE_INFO << "  ...resized " << auxFile << " to match atlas size" << std::endl;
                 }
 
-                if ( !ImageUtils::sameFormat(image, auxImage.get()) ) 
+                if ( !ImageUtils::sameFormat(image.get(), auxImage.get()) ) 
                 {
                     auxImage = ImageUtils::convertToRGBA8(auxImage.get());
                 }

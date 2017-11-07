@@ -389,7 +389,7 @@ GroundCoverLayer::buildStateSets()
 
                 osg::ref_ptr<osg::Shader> layerShader = groundCover->createShader();
                 layerShader->setType(osg::Shader::GEOMETRY);
-                vp->setShader(layerShader);
+                vp->setShader(layerShader.get());
 
                 OE_INFO << LC << "Established zone \"" << zone->getName() << "\" at LOD " << getLOD() << "\n";
 

@@ -202,7 +202,7 @@ main(int argc, char** argv)
         }
 
         // Does a Sky already exist (loaded from the earth file)?
-        SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);
+        SkyNode* sky = osgEarth::findTopMostNodeOfType<SkyNode>(node.get());
         if (!sky)
         {
             // Add phong lighting.

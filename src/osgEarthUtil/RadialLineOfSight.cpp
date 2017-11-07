@@ -677,7 +677,7 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         if ( los->getMapNode() )
         {
-            osg::Vec3d worldCenter = getNodeCenter( _node );
+            osg::Vec3d worldCenter = getNodeCenter( _node.get() );
 
             //Convert center to mappoint since that is what LOS expects
             GeoPoint mapCenter;
@@ -747,7 +747,7 @@ _los(los)
 {
 
     _dragger  = new osgEarth::Annotation::SphereDragger(_los->getMapNode());
-    _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los ) );    
+    _dragger->addPositionChangedCallback(new RadialLOSDraggerCallback(_los.get() ) );    
     static_cast<osgEarth::Annotation::SphereDragger*>(_dragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_dragger);    
 

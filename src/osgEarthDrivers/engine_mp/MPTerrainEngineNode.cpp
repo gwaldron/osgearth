@@ -748,7 +748,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     }
 
     model->_elevationData = TileModel::ElevationData(
-        hf,
+        hf.get(),
         GeoLocator::createForKey( sampleKey, mapInfo ),
         false );        
 

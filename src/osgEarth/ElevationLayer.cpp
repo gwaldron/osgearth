@@ -280,7 +280,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
                     getProfile()->getSRS()->getVerticalDatum(),    // from
                     key.getExtent().getSRS()->getVerticalDatum(),  // to
                     key.getExtent(),
-                    result );
+                    result.get() );
             }
         }
         
@@ -496,7 +496,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
             {            
                 bool expired = policy.isExpired(r.lastModifiedTime());
                 cachedHF = r.get<osg::HeightField>();
-                if ( cachedHF && validateHeightField(cachedHF) )
+                if ( cachedHF && validateHeightField(cachedHF.get()) )
                 {
                     if (!expired)
                     {
@@ -550,7 +550,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                  !fromCache    &&
                  policy.isCacheWriteable() )
             {
-                cacheBin->write(cacheKey, hf, 0L);
+                cacheBin->write(cacheKey, hf.get(), 0L);
             }
 
             // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
@@ -703,9 +703,9 @@ namespace
         int w = hf->getNumColumns();
         int h = hf->getNumRows();
 
-        for (int t = 0; t < hf->getNumRows(); ++t)
+        for (int t = 0; t < (int)hf->getNumRows(); ++t)
         {
-            for (int s = 0; s<hf->getNumColumns(); ++s)
+            for (int s = 0; s<(int)hf->getNumColumns(); ++s)
             {
                 int step = 1 << (*deltaLOD)[t*h + s];
 

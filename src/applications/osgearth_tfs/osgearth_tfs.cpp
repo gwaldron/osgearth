@@ -236,7 +236,7 @@ int main(int argc, char** argv)
     packager.setDestSRS( destSRS );
     packager.setLod0Extent(ext);
 
-    packager.package( features, destination, layer, description );
+    packager.package( features.get(), destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;
 

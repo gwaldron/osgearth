@@ -291,7 +291,7 @@ seed( osg::ArgumentParser& args )
     
     if (verbose)
     {
-        visitor->setProgressCallback( progress );
+        visitor->setProgressCallback( progress.get() );
     }
 
     if ( minLevel >= 0 )
@@ -322,7 +322,7 @@ seed( osg::ArgumentParser& args )
         {
             OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();        
-            seeder.run(layer, map);
+            seeder.run(layer.get(), map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -344,7 +344,7 @@ seed( osg::ArgumentParser& args )
         {
             OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();        
-            seeder.run(layer, map);
+            seeder.run(layer.get(), map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {

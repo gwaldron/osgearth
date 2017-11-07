@@ -108,7 +108,7 @@ AlphaEffect::detach()
             osg::ref_ptr<osg::StateSet> stateset;
             if ( (*it).lock(stateset) )
             {
-                detach( stateset );
+                detach( stateset.get() );
                 (*it) = 0L;
             }
         }

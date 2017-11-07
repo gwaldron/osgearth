@@ -379,7 +379,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         if (maskPrim && maskPrim->size() > 0)
         {
             maskPrim->setElementBufferObject(primSet->getElementBufferObject());
-            geom->setMaskElements(maskPrim);
+            geom->setMaskElements(maskPrim.get());
 
             if (createSkirt)
             {
@@ -391,7 +391,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                 // that patches the tile tessellation to the masking boundary. TDB.
                 TopologyGraph topo;
                 BuildTopologyVisitor visitor(topo);
-                visitor.apply(geom, verts); 
+                visitor.apply(geom.get(), verts); 
 
                 if (topo._verts.empty() == false)
                 {

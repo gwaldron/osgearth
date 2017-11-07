@@ -61,7 +61,7 @@ namespace osgEarth { namespace Util
         unsigned int getFirstLevel() const { return _firstLevel;}
         void setFirstLevel(unsigned int value) { _firstLevel = value;}
 
-        const SpatialReference* getSRS() const { return _srs;}
+        const SpatialReference* getSRS() const { return _srs.get();}
         void setSRS( const SpatialReference* srs ) { _srs = srs;}
 
     private:

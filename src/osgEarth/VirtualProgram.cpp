@@ -309,7 +309,7 @@ namespace
     }
 
     struct SortByType {
-        bool operator()(osg::Shader* lhs, osg::Shader* rhs) {
+        bool operator()(const osg::ref_ptr<osg::Shader>& lhs, const osg::ref_ptr<osg::Shader>& rhs) {
             return (int)lhs->getType() < (int)rhs->getType();
         }
     };

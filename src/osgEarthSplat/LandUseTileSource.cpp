@@ -246,7 +246,7 @@ LandUseTileSource::createImage(const TileKey&    key,
                     continue;
 
                 if ( !layer.image.valid() )
-                    layer.load(key, _imageLayers[L], _warps[L], progress);
+                    layer.load(key, _imageLayers[L].get(), _warps[L], progress);
 
                 if ( !layer.valid )
                     continue;

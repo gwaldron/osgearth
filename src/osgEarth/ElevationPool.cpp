@@ -146,7 +146,7 @@ ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
         else
         {
             OE_TEST << LC << "Populating from layers (" << keyToUse.str() << ")\n";
-            ok = _layers.populateHeightFieldAndNormalMap(hf, 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
+            ok = _layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
 
         if (ok)
@@ -359,7 +359,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
     out_resolution = 0.0f;
     bool foundTile = false;
 
-    GeoPoint p(_inputSRS, x, y, 0.0f, ALTMODE_ABSOLUTE);
+    GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
 
     if (p.transformInPlace(_frame.getProfile()->getSRS()))
     {

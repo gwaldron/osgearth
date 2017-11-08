@@ -4,12 +4,19 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_clamp_vertex
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
-#pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES)
+#pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES, OE_GPULINES_STIPPLE_PATTERN)
 #pragma include GPUClamping.vert.lib.glsl
 
 #ifdef OE_CLAMP_HAS_ATTRIBUTES
 in vec4 oe_clamp_attrs;     // vertex attribute
 in float oe_clamp_height;   // vertex attribute
+#endif
+
+#ifdef OE_GPULINES_STIPPLE_PATTERN
+in vec3 oe_GPULines_prev;
+in vec3 oe_GPULines_next;
+vec4 oe_GPULines_prevViewClamped;
+vec4 oe_GPULines_nextViewClamped;
 #endif
 
 out float oe_clamp_alpha;
@@ -84,5 +91,13 @@ void oe_clamp_vertex(inout vec4 vertexView)
     if ( oe_clamp_alpha > 0.0 )
     {
         oe_clamp_clampViewSpaceVertex(vertexView);
+
+#ifdef OE_GPULINES_STIPPLE_PATTERN
+        oe_GPULines_prevViewClamped = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
+        oe_clamp_clampViewSpaceVertex(oe_GPULines_prevViewClamped);
+
+        oe_GPULines_nextViewClamped = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
+        oe_clamp_clampViewSpaceVertex(oe_GPULines_nextViewClamped);
+#endif
     }
 }

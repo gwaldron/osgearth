@@ -232,6 +232,9 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
+    // set a define so the shaders know we are running GPU clamping.
+    local->_groupStateSet->setDefine("OE_GPU_CLAMPING");
+
     // uniform for the horizon distance (== max clamping distance)
     local->_horizonDistance2Uniform = local->_groupStateSet->getOrCreateUniform(
         "oe_clamp_horizonDistance2",

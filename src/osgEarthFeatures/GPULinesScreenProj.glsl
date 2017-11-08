@@ -13,14 +13,13 @@ in float oe_GPULines_width;
 
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 flat out vec2 oe_GPULines_rv;
+#endif
 
 #ifdef OE_GPU_CLAMPING
-// Stage globals set in GPUClamping.vert.glsl only when stippling is enabled
+// Stage globals set in GPUClamping.vert.glsl only when OE_GPU_LINES is enabled
 vec4 oe_GPULines_prevViewClamped;
 vec4 oe_GPULines_nextViewClamped;
 #endif // OE_GPU_CLAMPING
-
-#endif // OE_GPULINES_STIPPLE_PATTERN
 
 void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 {
@@ -28,7 +27,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         oe_ViewportSize.x/oe_ViewportSize.y,
         1.0);
 
-#if defined(OE_GPU_CLAMPING) && defined(OE_GPULINES_STIPPLE_PATTERN)
+#if defined(OE_GPU_CLAMPING)
     vec4 prevClip = gl_ProjectionMatrix * oe_GPULines_prevViewClamped;
     vec4 nextClip = gl_ProjectionMatrix * oe_GPULines_nextViewClamped;
 #else

@@ -201,4 +201,5 @@ GPULinesOperator::installShaders(osg::Node* node) const
     vp->addBindAttribLocation("oe_GPULines_width", GPULines::WidthAttrLocation);
     ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
     ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false));
+    ss->setDefine("OE_GPU_LINES");
 }

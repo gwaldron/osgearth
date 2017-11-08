@@ -22,7 +22,6 @@ vec4 oe_GPULines_nextViewClamped;
 
 #endif // OE_GPULINES_STIPPLE_PATTERN
 
-
 void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 {
     vec2 arVec = vec2(
@@ -72,10 +71,14 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     {
         vec2 dirA = normalize(currUnit - prevUnit);
         vec2 dirB = normalize(nextUnit - currUnit);
+
+        // Edge case: segment that doubles back on itself:
         if (dot(dirA,dirB) < -0.99)
         {
-            dir = normalize(currUnit-prevUnit);
+            dir = dirA;
         }
+
+        // Normal case - create a mitered corner:
         else
         {
             vec2 tangent = normalize(dirA+dirB);
@@ -83,7 +86,14 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
             vec2 miter = vec2(-tangent.y, tangent.x);
             dir = tangent;
             len = thickness / dot(miter, perp);
-            len = clamp(len, -thickness*4.0, thickness*4.0);
+
+            // limit the length of a mitered corner, to prevent unsightly spikes
+            const limit = 2.0;
+            if (len > thickness*limit)
+            {
+                len = thickness;
+                dir = dirB;
+            }
         }
         stippleDir = dirB;
     }

@@ -88,7 +88,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
             len = thickness / dot(miter, perp);
 
             // limit the length of a mitered corner, to prevent unsightly spikes
-            const limit = 2.0;
+            const float limit = 2.0;
             if (len > thickness*limit)
             {
                 len = thickness;

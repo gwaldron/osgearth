@@ -89,7 +89,8 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     }
 
     // calculate the extrusion vector in pixels
-    vec2 extrudePixels = vec2(-dir.y, dir.x) * len/2.0;
+    // note: seems like it should be len/2, BUT we are in [-1..1] space
+    vec2 extrudePixels = vec2(-dir.y, dir.x) * len;
 
     // and convert to unit space:
     vec2 extrudeUnit = extrudePixels / oe_ViewportSize;

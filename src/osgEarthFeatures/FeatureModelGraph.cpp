@@ -485,7 +485,7 @@ FeatureModelGraph::dirty()
     _dirty = true;
 }
 
-std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
+//std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
 
 osg::BoundingSphered
 FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,

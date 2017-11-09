@@ -151,39 +151,5 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
         GLenum ptype = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
 
         _geom->render(ptype, ri);
-#if 0
-        // Set up the vertex arrays:
-        _geom->drawVertexArraysImplementation(ri);
-
-        if (_drawPatch)
-        {
-            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-            {
-                osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(i));
-                osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
-                state.bindElementBufferObject(ebo);
-                if (ebo)
-                    glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
-            }
-        }
-
-        else
-        {
-            if (_geom->referenceCount() <= 1)
-            {
-                OE_WARN << LC << "Big trouble\n";
-                exit(-1);
-            }
-
-            for (unsigned i = 0; i < _geom->getNumPrimitiveSets(); ++i)
-            {
-                osg::PrimitiveSet* ps = _geom->getPrimitiveSet(i);
-                if (ps)
-                {
-                    ps->draw(*ri.getState(), true);
-                }
-            }
-        }
-#endif
     }    
 }

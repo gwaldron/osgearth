@@ -306,7 +306,7 @@ namespace
 
         osg::Vec2 cov;    // coverage coordinates
 
-        ImageUtils::PixelWriter write( out );
+        ImageUtils::PixelWriter write( out.get() );
 
         float du = 1.0f / (float)(out->s()-1);
         float dv = 1.0f / (float)(out->t()-1);

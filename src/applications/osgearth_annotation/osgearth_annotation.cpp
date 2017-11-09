@@ -83,14 +83,14 @@ main(int argc, char** argv)
 
     // Group to hold all our annotation elements.
     osg::Group* annoGroup = new osg::Group();
-    root->addChild( annoGroup );
+    MapNode::get(node)->addChild( annoGroup );
 
     // Make a group for labels
     osg::Group* labelGroup = new osg::Group();
     annoGroup->addChild( labelGroup );
 
     osg::Group* editGroup = new osg::Group();
-    root->addChild( editGroup );
+    MapNode::get(node)->addChild( editGroup );
 
     // Style our labels:
     Style labelStyle;
@@ -150,7 +150,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         
         FeatureNode* fnode = new FeatureNode(mapNode, feature, geomStyle);
-        
+
         annoGroup->addChild( fnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );

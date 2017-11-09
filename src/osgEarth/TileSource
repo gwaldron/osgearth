@@ -162,8 +162,6 @@ namespace osgEarth
         void write(const std::string &filename) const;
 
     private:
-        //typedef std::set<TileKey> BlacklistedTiles;
-        //BlacklistedTiles _tiles;
         mutable LRUCache<TileKey, bool> _tiles; // using as a set (value unused)
     };
 
@@ -328,6 +326,12 @@ namespace osgEarth
          */
         const TileSourceOptions& getOptions() const { return _options; }
 
+        /**
+         * Set the L2 cache size default (if the size was not set in 
+         * the options or environment). Must call this before open().
+         */
+        void setDefaultL2CacheSize(int size);
+
     public:
 
         /* methods required by osg::Object */
@@ -413,7 +417,7 @@ namespace osgEarth
     private:
 
         osg::ref_ptr<const Profile> _profile;
-        const TileSourceOptions     _options;
+        TileSourceOptions _options;
 
         friend class Map;
         friend class MapEngine;

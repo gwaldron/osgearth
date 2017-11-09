@@ -22,6 +22,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/MetaTile>
 #include <osgEarth/SimplexNoise>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 
@@ -88,18 +90,27 @@ namespace
         float     warp;
         ImageUtils::PixelReader* read;
         unsigned* codeTable;
+        unsigned loads;
 
-        ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f) { }
+        ILayer() : valid(true), read(0L), scale(1.0f), warp(0.0f), loads(0) { }
 
         ~ILayer() { if (read) delete read; }
 
         void load(const TileKey& key, LandCoverCoverageLayer* sourceLayer, ProgressCallback* progress)
         {
-            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInLegalRange(key) )
+            if (sourceLayer->getEnabled() && 
+                sourceLayer->isKeyInLegalRange(key) &&
+                sourceLayer->mayHaveDataInExtent(key.getExtent()))
             {
                 for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
                 {
                     image = sourceLayer->createImage(k, progress);
+
+                    // check for cancelation:
+                    if (progress && progress->isCanceled())
+                    {
+                        break;
+                    }
                 } 
             }
 
@@ -207,7 +218,9 @@ namespace
         TileSource(options),
         _options(&options)
     {
-        //nop
+        // Increase the L2 cache size since the parent LandCoverLayer is going to be
+        // using meta-tiling to create mosaics for warping
+        setDefaultL2CacheSize(64);
     }
 
     Status
@@ -280,8 +293,8 @@ namespace
         std::vector<ILayer> layers(_coverages.size());
 
         // Allocate the new coverage image; it will contain unnormalized values.
-        osg::Image* out = new osg::Image();
-        ImageUtils::markAsUnNormalized(out, true);
+        osg::ref_ptr<osg::Image> out = new osg::Image();
+        ImageUtils::markAsUnNormalized(out.get(), true);
 
         // Allocate a suitable format:
         GLint internalFormat = GL_LUMINANCE32F_ARB;
@@ -304,6 +317,8 @@ namespace
         else
             nodata.set(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
 
+        unsigned pixelsWritten = 0u;
+
         for(float u=0.0f; u<=1.0f; u+=du)
         {
             for(float v=0.0f; v<=1.0f; v+=dv)
@@ -311,6 +326,9 @@ namespace
                 bool wrotePixel = false;
                 for(int L = layers.size()-1; L >= 0 && !wrotePixel; --L)
                 {
+                    if (progress && progress->isCanceled())
+                        return 0L;
+
                     ILayer& layer = layers[L];
                     if ( !layer.valid )
                         continue;
@@ -318,7 +336,7 @@ namespace
                     if ( !layer.image.valid() )
                         layer.load(key, _coverages[L].get(), progress);
 
-                    if ( !layer.valid )
+                    if (!layer.valid)
                         continue;
 
                     osg::Vec2 cov(layer.scale*u + layer.bias.x(), layer.scale*v + layer.bias.y());
@@ -326,6 +344,7 @@ namespace
                     if ( cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f )
                     {
                         osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
+
                         if ( texel.r() != NO_DATA_VALUE )
                         {
                             // store the warp factor in the green channel
@@ -346,6 +365,7 @@ namespace
                                         texel.r() = (float)value;
                                         write.f(texel, u, v);
                                         wrotePixel = true;
+                                        pixelsWritten++;
                                     }
                                 }
                             }
@@ -358,6 +378,7 @@ namespace
                                     texel.r() = (float)_codemaps[L][code];
                                     write.f(texel, u, v);
                                     wrotePixel = true;
+                                    pixelsWritten++;
                                 }
                             }
                         }
@@ -371,7 +392,7 @@ namespace
             }
         }
 
-        return out;
+        return pixelsWritten > 0u? out.release() : 0L;
     }
 }
 
@@ -491,23 +512,26 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         {
             for (int y = -1; y <= 1; ++y)
             {
+                if (progress && progress->isCanceled())
+                    return GeoImage::INVALID;
+
                 // compute the neighoring key:
                 TileKey subkey = key.createNeighborKey(x, y);
-                if (!subkey.valid())
-                    continue;
-
-                // compute the closest ancestor key with actual data for the neighbor key:
-                TileKey bestkey = getBestAvailableTileKey(subkey);
-                if (!bestkey.valid())
-                    continue;
-
-                // load the image and store it to the metaimage.
-                GeoImage tile = ImageLayer::createImageImplementation(bestkey, progress);
-                if (tile.valid())
+                if (subkey.valid())
                 {
-                    osg::Matrix scaleBias;
-                    subkey.getExtent().createScaleBias(bestkey.getExtent(), scaleBias);
-                    metaImage.setImage(x, y, tile.getImage(), scaleBias);
+                    // compute the closest ancestor key with actual data for the neighbor key:
+                    TileKey bestkey = getBestAvailableTileKey(subkey);
+                    if (bestkey.valid())
+                    {
+                        // load the image and store it to the metaimage.
+                        GeoImage tile = ImageLayer::createImageImplementation(bestkey, progress);
+                        if (tile.valid())
+                        {
+                            osg::Matrix scaleBias;
+                            subkey.getExtent().createScaleBias(bestkey.getExtent(), scaleBias);
+                            metaImage.setImage(x, y, tile.getImage(), scaleBias);
+                        }
+                    }
                 }
             }
         }
@@ -552,6 +576,9 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
             for (int s = 0; s < image->s(); ++s)
             {
                 double u = (double)s / (double)(image->s() - 1);
+                
+                if (progress && progress->isCanceled())
+                    return GeoImage::INVALID;
 
                 cov.set(u, v);
 

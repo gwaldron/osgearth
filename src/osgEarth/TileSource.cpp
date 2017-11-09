@@ -26,6 +26,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
 #include <osgEarth/MapFrame>
+#include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -206,29 +207,6 @@ _noDataValue( (float)SHRT_MIN ),
 _minValidValue( -32000.0f ),
 _maxValidValue(  32000.0f )
 {
-    // Initialize the l2 cache size to the options.
-    int l2CacheSize = *options.L2CacheSize();
-
-    // See if it was overridden with an env var.
-    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
-    if ( l2env )
-    {
-        l2CacheSize = as<int>( std::string(l2env), 0 );
-    }
-
-    // Env cache-only mode also disables the L2 cache.
-    char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
-    if ( noCacheEnv )
-    {
-        l2CacheSize = 0;
-    }
-
-    // Initialize the l2 cache if it's size is > 0
-    if ( l2CacheSize > 0 )
-    {
-        _memCache = new MemCache( l2CacheSize );
-    }
-
     if (_options.blacklistFilename().isSet())
     {
         _blacklistFilename = _options.blacklistFilename().value();
@@ -259,16 +237,48 @@ TileSource::~TileSource()
     }
 }
 
+void
+TileSource::setDefaultL2CacheSize(int size)
+{
+    if (_options.L2CacheSize().isSet() == false)
+    {
+        _options.L2CacheSize().init(size);
+    }
+}
+
 const Status&
 TileSource::open(const Mode&           openMode,
-                 const osgDB::Options* options)
+                 const osgDB::Options* readOptions)
 {
     if (!_openCalled)
     {
         _mode = openMode;
 
+        // Initialize the l2 cache size to the options.
+        int l2CacheSize = _options.L2CacheSize().get();
+
+        // See if it was overridden with an env var.
+        char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+        if ( l2env )
+        {
+            l2CacheSize = as<int>( std::string(l2env), 0 );
+        }
+
+        // Env cache-only mode also disables the L2 cache.
+        char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
+        if ( noCacheEnv )
+        {
+            l2CacheSize = 0;
+        }
+
+        // Initialize the l2 cache if it's size is > 0
+        if ( l2CacheSize > 0 )
+        {
+            _memCache = new MemCache( l2CacheSize );
+        }
+
         // Initialize the underlying data store
-        Status status = initialize(options);
+        Status status = initialize(readOptions);
 
         // Check the return status. The TileSource MUST have a valid
         // Profile after initialization.
@@ -324,9 +334,19 @@ TileSource::createImage(const TileKey&        key,
 
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
+    // Check for cancelation. The TileSource implementation should do this
+    // internally but we check here once last time just in case the 
+    // implementation does not.
+    if (progress && progress->isCanceled())
+    {
+        return 0L;
+    }
+
+    // Run the pre-caching operation if there is one:
     if ( prepOp )
         (*prepOp)( newImage );
 
+    // Cache to the L2 cache:
     if ( newImage.valid() && _memCache.valid() )
     {
         _memCache->getOrCreateDefaultBin()->write(key.str(), newImage.get(), 0L);
@@ -354,6 +374,14 @@ TileSource::createHeightField(const TileKey&        key,
     }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
+    
+    // Check for cancelation. The TileSource implementation should do this
+    // internally but we check here once last time just in case the 
+    // implementation does not.
+    if (progress && progress->isCanceled())
+    {
+        return 0L;
+    }
 
     if ( prepOp )
         (*prepOp)( newHF );

@@ -240,68 +240,68 @@ TileSource::~TileSource()
 void
 TileSource::setDefaultL2CacheSize(int size)
 {
-	if (_options.L2CacheSize().isSet() == false)
-	{
-		_options.L2CacheSize().init(size);
-	}
+    if (_options.L2CacheSize().isSet() == false)
+    {
+        _options.L2CacheSize().init(size);
+    }
 }
 
 const Status&
 TileSource::open(const Mode&           openMode,
-const osgDB::Options* readOptions)
+                 const osgDB::Options* readOptions)
 {
-	if (!_openCalled)
-	{
-		_mode = openMode;
+    if (!_openCalled)
+    {
+        _mode = openMode;
 
-		// Initialize the l2 cache size to the options.
-		int l2CacheSize = _options.L2CacheSize().get();
+        // Initialize the l2 cache size to the options.
+        int l2CacheSize = _options.L2CacheSize().get();
 
-		// See if it was overridden with an env var.
-		char const* l2env = ::getenv("OSGEARTH_L2_CACHE_SIZE");
-		if (l2env)
-		{
-			l2CacheSize = as<int>(std::string(l2env), 0);
-		}
+        // See if it was overridden with an env var.
+        char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+        if ( l2env )
+        {
+            l2CacheSize = as<int>( std::string(l2env), 0 );
+        }
 
-		// Env cache-only mode also disables the L2 cache.
-		char const* noCacheEnv = ::getenv("OSGEARTH_MEMORY_PROFILE");
-		if (noCacheEnv)
-		{
-			l2CacheSize = 0;
-		}
+        // Env cache-only mode also disables the L2 cache.
+        char const* noCacheEnv = ::getenv( "OSGEARTH_MEMORY_PROFILE" );
+        if ( noCacheEnv )
+        {
+            l2CacheSize = 0;
+        }
 
-		// Initialize the l2 cache if it's size is > 0
-		if (l2CacheSize > 0)
-		{
-			_memCache = new MemCache(l2CacheSize);
-		}
+        // Initialize the l2 cache if it's size is > 0
+        if ( l2CacheSize > 0 )
+        {
+            _memCache = new MemCache( l2CacheSize );
+        }
 
-		// Initialize the underlying data store
-		Status status = initialize(readOptions);
+        // Initialize the underlying data store
+        Status status = initialize(readOptions);
 
-		// Check the return status. The TileSource MUST have a valid
-		// Profile after initialization.
-		if (status == STATUS_OK)
-		{
-			if (getProfile() != 0L)
-			{
-				_status = status;
-			}
-			else
-			{
-				_status = Status::Error("No profile available");
-			}
-		}
-		else
-		{
-			_status = status;
-		}
+        // Check the return status. The TileSource MUST have a valid
+        // Profile after initialization.
+        if ( status == STATUS_OK )
+        {
+            if ( getProfile() != 0L )
+            {
+                _status = status;
+            }
+            else 
+            {
+                _status = Status::Error("No profile available");
+            }
+        }
+        else
+        {
+            _status = status;
+        }
 
-		_openCalled = true;
-	}
+        _openCalled = true;
+    }
 
-	return _status;
+    return _status;
 }
 
 int
@@ -318,80 +318,80 @@ TileSource::setPixelsPerTile(unsigned size)
 
 osg::Image*
 TileSource::createImage(const TileKey&        key,
-ImageOperation*       prepOp,
-ProgressCallback*     progress)
+                        ImageOperation*       prepOp, 
+                        ProgressCallback*     progress )
 {
-	if (getStatus().isError())
-		return 0L;
+    if (getStatus().isError())
+        return 0L;
 
-	// Try to get it from the memcache fist
-	if (_memCache.valid())
-	{
-		ReadResult r = _memCache->getOrCreateDefaultBin()->readImage(key.str(), 0L);
-		if (r.succeeded())
-			return r.releaseImage();
-	}
+    // Try to get it from the memcache fist
+    if (_memCache.valid())
+    {
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage(key.str(), 0L);
+        if ( r.succeeded() )
+            return r.releaseImage();
+    }
 
-	osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
+    osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
-	// Check for cancelation. The TileSource implementation should do this
-	// internally but we check here once last time just in case the 
-	// implementation does not.
-	if (progress && progress->isCanceled())
-	{
-		return 0L;
-	}
+    // Check for cancelation. The TileSource implementation should do this
+    // internally but we check here once last time just in case the 
+    // implementation does not.
+    if (progress && progress->isCanceled())
+    {
+        return 0L;
+    }
 
-	// Run the pre-caching operation if there is one:
-	if (prepOp)
-		(*prepOp)(newImage);
+    // Run the pre-caching operation if there is one:
+    if ( prepOp )
+        (*prepOp)( newImage );
 
-	// Cache to the L2 cache:
-	if (newImage.valid() && _memCache.valid())
-	{
-		_memCache->getOrCreateDefaultBin()->write(key.str(), newImage.get(), 0L);
-	}
+    // Cache to the L2 cache:
+    if ( newImage.valid() && _memCache.valid() )
+    {
+        _memCache->getOrCreateDefaultBin()->write(key.str(), newImage.get(), 0L);
+    }
 
-	return newImage.release();
+    return newImage.release();
 }
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-HeightFieldOperation* prepOp,
-ProgressCallback*     progress)
+                              HeightFieldOperation* prepOp, 
+                              ProgressCallback*     progress )
 {
-	if (getStatus().isError())
-		return 0L;
+    if (getStatus().isError())
+        return 0L;
 
-	// Try to get it from the memcache first:
-	if (_memCache.valid())
-	{
-		ReadResult r = _memCache->getOrCreateDefaultBin()->readObject(key.str(), 0L);
-		if (r.succeeded())
-		{
-			return r.release<osg::HeightField>();
-		}
-	}
+    // Try to get it from the memcache first:
+    if (_memCache.valid())
+    {
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject(key.str(), 0L);
+        if ( r.succeeded() )
+        {
+            return r.release<osg::HeightField>();
+        }
+    }
 
-	osg::ref_ptr<osg::HeightField> newHF = createHeightField(key, progress);
+    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
+    
+    // Check for cancelation. The TileSource implementation should do this
+    // internally but we check here once last time just in case the 
+    // implementation does not.
+    if (progress && progress->isCanceled())
+    {
+        return 0L;
+    }
 
-	// Check for cancelation. The TileSource implementation should do this
-	// internally but we check here once last time just in case the 
-	// implementation does not.
-	if (progress && progress->isCanceled())
-	{
-		return 0L;
-	}
+    if ( prepOp )
+        (*prepOp)( newHF );
 
-	if (prepOp)
-		(*prepOp)(newHF);
+    if ( newHF.valid() && _memCache.valid() )
+    {
+        _memCache->getOrCreateDefaultBin()->write(key.str(), newHF.get(), 0L);
+    }
 
-	if (newHF.valid() && _memCache.valid())
-	{
-		_memCache->getOrCreateDefaultBin()->write(key.str(), newHF.get(), 0L);
-	}
-
-	return newHF.release();
+    return newHF.release();
 }
 
 osg::Image*

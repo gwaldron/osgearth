@@ -934,6 +934,8 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
     
     int nodataCount = 0;
 
+    TileKey scratchKey; // Storage if a new key needs to be constructed
+
     for (unsigned c = 0; c < numColumns; ++c)
     {
         double x = xmin + (dx * (double)c);
@@ -971,7 +973,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 if ( heightFailed[n][i] )
                     continue;
 
-                TileKey& actualKey = contenderKey;
+                TileKey* actualKey = &contenderKey;
 
                 GeoHeightField& layerHF = heightFields[n][i];
 
@@ -979,19 +981,24 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
                 {
                     // We couldn't get the heightfield from the cache, so try to create it.
                     // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
-                    while (!layerHF.valid() && actualKey.valid() && layer->isKeyInLegalRange(actualKey))
+                    while (!layerHF.valid() && actualKey->valid() && layer->isKeyInLegalRange(*actualKey))
                     {
-                        layerHF = layer->createHeightField(actualKey, progress);
+                        layerHF = layer->createHeightField(*actualKey, progress);
                         if (!layerHF.valid())
                         {
-                            actualKey = actualKey.createParentKey();
+                            if (actualKey != &scratchKey)
+                            {
+                                scratchKey = *actualKey;
+                                actualKey = &scratchKey;
+                            }
+                            *actualKey = actualKey->createParentKey();
                         }
                     }
 
                     // Mark this layer as fallback if necessary.
                     if (layerHF.valid())
                     {
-                        heightFallback[n][i] = (actualKey != contenderKey); // actualKey != contenders[i].second;
+                        heightFallback[n][i] = (*actualKey != contenderKey); // actualKey != contenders[i].second;
                         numHeightFieldsInCache++;
                     }
                     else
@@ -1024,7 +1031,7 @@ ElevationLayerVector::populateHeightFieldAndNormalMap(osg::HeightField*      hf,
 
                             if (deltaLOD)
                             {
-                                (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey.getLOD();
+                                (*deltaLOD)[r*numColumns + c] = key.getLOD() - actualKey->getLOD();
                             }
                         }
                         else

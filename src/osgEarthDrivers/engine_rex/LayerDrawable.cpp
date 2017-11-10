@@ -45,6 +45,10 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     ds.refresh(ri, _drawState->_bindings);
 
+    std::string buf("oe_draw_layer::");
+    buf += getName();
+    ds._ext->glPushDebugGroup(GL_DEBUG_SOURCE_THIRD_PARTY, 1, -1, buf.c_str());
+
     if (_layer)
     {
         if (ds._layerUidUL >= 0)
@@ -90,4 +94,5 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // current MVM, which will by definition be wrong!)
         //ri.getState()->apply();
     }
+    ds._ext->glPopDebugGroup();
 }

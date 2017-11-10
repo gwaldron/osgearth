@@ -114,6 +114,9 @@ TerrainRenderData::addLayerDrawable(const Layer* layer, const MapFrame& frame)
 {
     UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();
+    if (layer) {
+       ld->setName(layer->getName());
+    }
     _layerList.push_back(ld);
     _layerMap[uid] = ld;
     ld->_layer = layer;

@@ -230,12 +230,6 @@ FeatureNode::build()
             ClampableNode* clampable = new ClampableNode();
             clampable->addChild( _attachPoint );
             this->addChild( clampable );
-
-            const RenderSymbol* render = style.get<RenderSymbol>();
-            if ( render && render->depthOffset().isSet() )
-            {
-                clampable->setDepthOffsetOptions( *render->depthOffset() );
-            }
         }
 
         else
@@ -245,8 +239,10 @@ FeatureNode::build()
             // set default lighting based on whether we are extruding:
             setLightingIfNotSet( style.has<ExtrusionSymbol>() );
 
-            applyRenderSymbology( style );
+            //applyRenderSymbology( style );
         }
+
+        applyRenderSymbology(style);
 
         if ( getMapNode()->getTerrain() )
         {

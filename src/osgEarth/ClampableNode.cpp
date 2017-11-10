@@ -30,37 +30,10 @@ using namespace osgEarth;
 
 
 ClampableNode::ClampableNode() :
-_depthOffsetUpdateRequested(false),
 _mapNodeUpdateRequested(true)
 {
-    _adapter.setGraph( this );
-
     // for the mapnode update:
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-}
-
-void
-ClampableNode::setDepthOffsetOptions(const DepthOffsetOptions& options)
-{
-    _adapter.setDepthOffsetOptions(options);
-    if ( _adapter.isDirty() && !_depthOffsetUpdateRequested )
-        scheduleDepthOffsetUpdate();
-}
-
-const DepthOffsetOptions&
-ClampableNode::getDepthOffsetOptions() const
-{
-    return _adapter.getDepthOffsetOptions();
-}
-
-void
-ClampableNode::scheduleDepthOffsetUpdate()
-{
-    if ( !_depthOffsetUpdateRequested && getDepthOffsetOptions().enabled() == true )
-    {
-        ADJUST_UPDATE_TRAV_COUNT(this, +1);
-        _depthOffsetUpdateRequested = true;
-    }
 }
 
 void
@@ -92,13 +65,6 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
                 _mapNodeUpdateRequested = false;
                 ADJUST_UPDATE_TRAV_COUNT(this, -1);
             }
-        }
-
-        if (_depthOffsetUpdateRequested)
-        {
-            _adapter.recalculate();
-            _depthOffsetUpdateRequested = false;
-            ADJUST_UPDATE_TRAV_COUNT(this, -1);
         }
 
         osg::Group::traverse(nv);

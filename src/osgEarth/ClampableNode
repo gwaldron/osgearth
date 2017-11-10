@@ -30,27 +30,15 @@ namespace osgEarth
     class MapNode;
 
     /**
-     * Node graph that can be "clamped" on the MapNode terrain
-     * using the overlay decorator.
-     *
-     * Usage: Create this node and put it anywhere in the scene graph. The
-     * subgraph of this node will be draped on the MapNode's terrain.
+     * Node graph that can be GPU-clamped on the terrain
+     * using the overlay decorator. Just live somewhere under
+     * the MapNode in the scene graph.
      */
-    class OSGEARTH_EXPORT ClampableNode : public osg::Group, 
-                                          public DepthOffsetInterface
+    class OSGEARTH_EXPORT ClampableNode : public osg::Group
     {
     public:
         //! Constructs a new clampable node.
         ClampableNode();
-
-
-    public: // DepthOffsetInterface
-
-        /** Sets the depth offsetting options. See DepthOffset */
-        void setDepthOffsetOptions( const DepthOffsetOptions& options );
-
-        /** Gets the depth offsetting options. See DepthOffset */
-        const DepthOffsetOptions& getDepthOffsetOptions() const;
 
     public: // osg::Node
 
@@ -59,11 +47,8 @@ namespace osgEarth
     protected:
         void setUniforms();
         void dirty();
-        void scheduleDepthOffsetUpdate();
 
-        DepthOffsetAdapter _adapter;
-        bool               _depthOffsetUpdateRequested;
-        bool               _mapNodeUpdateRequested;
+        bool _mapNodeUpdateRequested;
         osg::observer_ptr<MapNode> _mapNode;
 
         virtual ~ClampableNode() { }

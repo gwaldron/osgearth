@@ -845,27 +845,7 @@ AnnotationUtils::installOverlayParent(osg::Node* node, const Style& style)
         ClampableNode* clampable = new ClampableNode();
         clampable->addChild( node );
         node = clampable;
-
-        const RenderSymbol* render = style.get<RenderSymbol>();
-        if ( render && render->depthOffset().isSet() )
-        {
-            clampable->setDepthOffsetOptions( *render->depthOffset() );
-        }
     }
-
-#if 0 // TODO -- constuct a callback instead.
-
-    // scenegraph-clamped geometry
-    else if ( ap.sceneClamping )
-    {
-        // save for later when we need to reclamp the mesh on the CPU
-        _altitude = style.get<AltitudeSymbol>();
-
-        // activate the terrain callback:
-        setCPUAutoClamping( true );
-    }
-
-#endif
 
     return node;
 }

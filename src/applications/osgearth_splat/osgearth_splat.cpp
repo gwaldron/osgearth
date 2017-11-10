@@ -90,6 +90,7 @@ main(int argc, char** argv)
     // http://due.esrin.esa.int/page_globcover.php
     GDALOptions coverageDriver;
     coverageDriver.url() = "H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif"; 
+    coverageDriver.profile() = ProfileOptions("global-geodetic");
 
     LandCoverCoverageLayerOptions coverage;
     coverage.driver() = coverageDriver;

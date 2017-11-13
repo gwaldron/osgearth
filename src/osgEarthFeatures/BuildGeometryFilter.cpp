@@ -37,11 +37,11 @@
 #include <osg/LineStipple>
 #include <osg/Point>
 #include <osg/MatrixTransform>
+#include <osg/TriangleIndexFunctor>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/Simplifier>
-#include <osgUtil/SmoothingVisitor>
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <iterator>
@@ -1042,8 +1042,6 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         osgGeom->setVertexArray( geode->getDrawable(0)->asGeometry()->getVertexArray() );
         osgGeom->setPrimitiveSetList( geode->getDrawable(0)->asGeometry()->getPrimitiveSetList() );
     }
-
-    //osgUtil::SmoothingVisitor::smooth( *osgGeom );
 }
 
 // builds and tessellates a polygon (with or without holes)
@@ -1213,32 +1211,77 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
         //v->reserve(v->size() + allPoints->size());
         std::copy(allPoints->begin(), allPoints->end(), std::back_inserter(*v));
     }
-
-    //// Normal computation.
-    //// Not completely correct, but better than no normals at all. TODO: update this
-    //// to generate a proper normal vector in ECEF mode.
-    ////
-    //// We cannot accurately rely on triangles from the tessellation, since we could have
-    //// very "degraded" triangles (close to a line), and the normal computation would be bad.
-    //// In this case, we would have to average the normal vector over each triangle of the polygon.
-    //// The Newell's formula is simpler and more direct here.
-    //osg::Vec3 normal( 0.0, 0.0, 0.0 );
-    //for ( size_t i = 0; i < poly->size(); ++i )
-    //{
-    //    osg::Vec3 pi = (*poly)[i];
-    //    osg::Vec3 pj = (*poly)[ (i+1) % poly->size() ];
-    //    normal[0] += ( pi[1] - pj[1] ) * ( pi[2] + pj[2] );
-    //    normal[1] += ( pi[2] - pj[2] ) * ( pi[0] + pj[0] );
-    //    normal[2] += ( pi[0] - pj[0] ) * ( pi[1] + pj[1] );
-    //}
-    //normal.normalize();
-
-    //osg::Vec3Array* normals = new osg::Vec3Array();
-    //normals->push_back( normal );
-    //osgGeom->setNormalArray( normals );
-    //osgGeom->setNormalBinding( osg::Geometry::BIND_OVERALL );
 }
 
+
+namespace
+{
+    struct GenerateNormalFunctor
+    {
+        osg::Vec3Array* _verts;
+        osg::Vec3Array* _normals;
+
+        GenerateNormalFunctor() : _verts(0L), _normals(0L) { }
+
+        void set(osg::Vec3Array *cb, osg::Vec3Array *nb)
+        {
+            _verts = cb;
+            _normals = nb;
+        }
+
+        inline void operator()(unsigned i1, unsigned i2, unsigned i3)
+        {
+            const osg::Vec3& v1 = (*_verts)[i1];
+            const osg::Vec3& v2 = (*_verts)[i2];
+            const osg::Vec3& v3 = (*_verts)[i3];
+
+            // calc orientation of triangle.
+            osg::Vec3 normal = (v2 - v1) ^ (v3 - v1);
+            normal.normalize();
+            
+            (*_normals)[i1] += normal;
+            (*_normals)[i2] += normal;
+            (*_normals)[i3] += normal;
+        }
+
+        void finish()
+        {
+            for (unsigned i = 0; i < _normals->size(); ++i)
+            {
+                (*_normals)[i].normalize();
+            }
+        }
+    };
+
+    struct GenerateNormals : public osg::NodeVisitor
+    {
+        GenerateNormals() : osg::NodeVisitor()
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        inline void apply(osg::Drawable& drawable)
+        {
+            osg::Geometry* geom = drawable.asGeometry();
+            if (geom)
+            {                
+                osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+
+                osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
+                normals->setBinding(normals->BIND_PER_VERTEX);
+                
+                osg::TriangleIndexFunctor<GenerateNormalFunctor> f;
+                f.set(verts, normals);
+                geom->accept(f);
+                f.finish();
+
+                geom->setNormalArray(normals);
+            }
+            traverse(drawable);
+        }
+    };
+}
 
 osg::Node*
 BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
@@ -1362,10 +1405,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                 OE_INFO << "Vertex ordering optimization took " << osg::Timer::instance()->delta_s(t, osg::Timer::instance()->tick()) << std::endl;
             }
 
-            // Generate normals
-            osgUtil::SmoothingVisitor sv;
-            sv.setCreaseAngle(_maximumCreaseAngle->as(Units::RADIANS));
-            geode->accept(sv);
+            // Generate normals. CANNOT use OSG's SmoothingVisitor because it adds verts
+            // but ignores other vertex attribute arrays.
+            GenerateNormals gen;
+            geode->accept(gen);
 
             result->addChild( geode.get() );
         }

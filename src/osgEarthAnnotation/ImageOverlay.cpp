@@ -758,19 +758,27 @@ ImageOverlay::setControlPoint(ControlPoint controlPoint, double lon_deg, double 
 void
 ImageOverlay::traverse(osg::NodeVisitor &nv)
 {
-    if (_dirty && nv.getVisitorType() == nv.EVENT_VISITOR)
+    if (nv.getVisitorType() == nv.EVENT_VISITOR)
     {
-        _updateScheduled = true;
-        ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        if (_dirty == true && _updateScheduled == false)
+        {
+            _updateScheduled = true;
+            ADJUST_UPDATE_TRAV_COUNT(this, +1);
+        }
     }
 
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         if (_dirty)
+        {
             init();
+        }
 
-        _updateScheduled = false;
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        if (_updateScheduled)
+        {
+            _updateScheduled = false;
+            ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        }
     }
 
     AnnotationNode::traverse(nv);

@@ -435,6 +435,7 @@ HTTPClient::initializeImpl()
     if (disable)
     {
         _simResponseCode = 503L; // SERVICE UNAVAILABLE
+        OE_WARN << LC << "HTTP traffic disabled" << std::endl;
     }
 
     // Dumps out HTTP request/response info

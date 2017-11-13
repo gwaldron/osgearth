@@ -237,13 +237,13 @@ main(int argc, char** argv)
             overlay->setImage( image );
             overlay->setBounds(imageBounds[i]);
             
-            root->addChild( overlay );
+            mapNode->addChild( overlay );
 
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
             osg::Node* editor = new ImageOverlayEditor( overlay, moveVert);
             editor->setNodeMask( 0 );
-            root->addChild( editor );      
+            mapNode->addChild( editor );      
             
             // Add an image preview
             ImageControl* imageCon = new ImageControl( image );

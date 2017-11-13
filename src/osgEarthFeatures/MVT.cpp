@@ -435,7 +435,7 @@ bool
 
                 if (geometry)
                 {
-                    oeFeature->setGeometry( geometry );
+                    oeFeature->setGeometry( geometry.get() );
                     features.push_back(oeFeature.get());
                 }
             }

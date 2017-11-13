@@ -27,7 +27,7 @@ Shows how to use Levels and Selectors together when rendering feature data.
     <model name="cities" driver="feature_geom">
 
         <features name="cities" driver="ogr">
-            <url>../data/ne_cities.shp</url>
+            <url>../data/cities.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
         

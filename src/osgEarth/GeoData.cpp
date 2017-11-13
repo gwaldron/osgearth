@@ -28,6 +28,7 @@
 
 #include <osg/Notify>
 #include <osg/Timer>
+#include <osgShadow/ConvexPolyhedron>
 
 #include <gdal_priv.h>
 #include <gdalwarper.h>
@@ -1340,6 +1341,34 @@ GeoExtent::createPolytope(osg::Polytope& tope) const
     }
 
     return true;
+}
+
+osg::BoundingSphered
+GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
+{
+    osg::BoundingSphered bs;
+
+    if (getSRS()->isProjected())
+    {
+        osg::Vec3d w;
+        GeoPoint(getSRS(), xMin(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+    }
+
+    else // geocentric
+    {
+        osg::Vec3d w;
+        GeoPoint(getSRS(), xMin(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMax(), yMin(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMax(), yMax(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMin(), yMax(), minElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMin(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMax(), yMin(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMax(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+        GeoPoint(getSRS(), xMin(), yMax(), maxElev, ALTMODE_ABSOLUTE).toWorld(w); bs.expandBy(w);
+    }
+
+    return bs;
 }
 
 bool

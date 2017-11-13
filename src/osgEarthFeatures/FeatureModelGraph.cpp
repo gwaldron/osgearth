@@ -507,7 +507,10 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     {
         workingExtent = extent.transform( _usableMapExtent.getSRS() ); // safe.
     }
+    
+    return workingExtent.createWorldBoundingSphere(-11000, 9000); // lowest and highest points on earth
 
+#if 0
     workingExtent.getCentroid( center.x(), center.y() );
     
     if ( mapf )
@@ -559,6 +562,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     }
 
     return osg::BoundingSphered( center, (center-corner).length() );
+#endif
 }
 
 osg::Node*

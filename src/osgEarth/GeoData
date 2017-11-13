@@ -519,6 +519,12 @@ namespace osgEarth
          */
         bool createScaleBias(const GeoExtent& target, osg::Matrix& output) const;
 
+        /**
+         * Generates a BoundingSphere encompassing the extent and a vertical 
+         * volume, in world coordinates.
+         */
+        osg::BoundingSphered createWorldBoundingSphere(double minElev, double maxElev) const;
+
     public:
         static GeoExtent INVALID;
 

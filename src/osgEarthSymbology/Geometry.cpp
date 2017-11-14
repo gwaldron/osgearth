@@ -37,7 +37,7 @@ using namespace geos;
 using namespace geos::operation;
 #endif
 
-#define GEOS_OUT OE_DEBUG
+#define GEOS_OUT OE_INFO
 
 #define LC "[Geometry] "
 

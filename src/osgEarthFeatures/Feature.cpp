@@ -542,6 +542,18 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
     return false;
 }
 
+GeoExtent
+Feature::calculateExtent() const
+{    
+    GeoExtent e(getSRS());
+    ConstGeometryIterator gi(getGeometry(), false);
+    while (gi.hasMore()) {
+        const Geometry* part = gi.next();
+        for (Geometry::const_iterator v = part->begin(); v != part->end(); ++v)
+            e.expandToInclude(*v);
+    }
+    return e;
+}
 
 std::string
 Feature::getGeoJSON() const

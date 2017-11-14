@@ -192,6 +192,11 @@ namespace osgEarth { namespace Features
          */
         static bool getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope );
 
+        /**
+         * Calculates the extent of this feature.
+         */
+        GeoExtent calculateExtent() const;
+
 
         const AttributeTable& getAttrs() const { return _attrs; }
 

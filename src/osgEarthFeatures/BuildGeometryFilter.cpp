@@ -1370,7 +1370,22 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         }
 
         if ( has_polysymbol )
-            polygons.push_back( f );
+        {
+#if 0 // Placeholder. We probably need this, but let's wait and see
+            // split polygons that cross the andimeridian:
+            if (f->getSRS()->isGeographic() &&
+                f->calculateExtent().crossesAntimeridian())
+            {
+                FeatureList temp;
+                f->splitAcrossDateLine(temp);
+                std::copy(temp.begin(), temp.end(), std::back_inserter(polygons));
+            }
+            else
+#endif
+            {
+                polygons.push_back( f );
+            }
+        }
 
         if ( has_linesymbol )
             lines.push_back( f );

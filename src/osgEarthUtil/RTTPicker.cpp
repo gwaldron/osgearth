@@ -178,6 +178,21 @@ RTTPicker::setCullMask(osg::Node::NodeMask nm)
     }
 }
 
+namespace
+{
+    struct MyUpdateSlave : public osg::View::Slave::UpdateSlaveCallback
+    {
+        void updateSlave(osg::View& view, osg::View::Slave& slave)
+        {
+            osg::Camera* cam = slave._camera.get();
+            cam->setProjectionResizePolicy(view.getCamera()->getProjectionResizePolicy());
+            cam->setProjectionMatrix(view.getCamera()->getProjectionMatrix());
+            cam->setViewMatrix(view.getCamera()->getViewMatrix());
+            cam->inheritCullSettings(*(view.getCamera()), cam->getInheritanceMask());            
+        }
+    };
+}
+
 RTTPicker::PickContext&
 RTTPicker::getOrCreatePickContext(osg::View* view)
 {
@@ -255,6 +270,9 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // duplicate the view matrix and projection matrix during the update traversal
     // The "false" means the pick camera has its own separate subgraph.
     view->addSlave(c._pickCamera.get(), false);
+    osg::View::Slave& slave = view->getSlave(view->getNumSlaves()-1);
+    slave._updateSlaveCallback = new MyUpdateSlave();
+
     // Add a pre-draw callback that calls the view camera's pre-draw callback.  This
     // is better than assigning the same pre-draw callback, because the callback can
     // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)

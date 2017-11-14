@@ -321,12 +321,31 @@ public:
         // extend just outside the actual extents so we don't get edge artifacts:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
+        double cropXMin, cropYMin, cropXMax, cropYMax;
+        cropExtent.getBounds(cropXMin, cropYMin, cropXMax, cropYMax);
+
+        // GEOS crop won't abide by weird extents, so if we're in geographic space
+        // we must clamp the scaled extent back to a legal range.
+        if (cropExtent.crossesAntimeridian())
+        {
+            osg::Vec3d centroid = imageExtent.getCentroid();
+            if (centroid.x() < 0.0) // tile is east of antimeridian
+            {
+                cropXMin = -180.0;
+                cropXMax = cropExtent.east();
+            }
+            else
+            {
+                cropXMin = cropExtent.west();
+                cropXMax = 180.0;
+            }
+        }
 
         osg::ref_ptr<Symbology::Polygon> cropPoly = new Symbology::Polygon( 4 );
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMin(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMin(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
-        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
+        cropPoly->push_back( osg::Vec3d(cropXMin, cropYMin, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMax, cropYMin, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMax, cropYMax, 0) );
+        cropPoly->push_back( osg::Vec3d(cropXMin, cropYMax, 0) );
 
         // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
         optional<NumericExpression> covValue;

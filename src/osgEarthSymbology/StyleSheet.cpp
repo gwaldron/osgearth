@@ -232,7 +232,11 @@ StyleSheet::mergeConfig( const Config& conf )
     ConfigSet libraries = conf.children( "library" );
     for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )
     {
-        ResourceLibrary* resLib = new ResourceLibrary( *i );
+        const Config& libConf = *i;
+        ResourceLibrary* resLib = new ResourceLibrary( libConf );
+        if (resLib && libConf.value("name").empty() == false)
+            resLib->setName(libConf.value("name"));
+
         _resLibs[resLib->getName()] = resLib;
     }
 

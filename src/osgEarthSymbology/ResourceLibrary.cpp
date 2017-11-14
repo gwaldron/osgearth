@@ -52,7 +52,8 @@ _initialized( false )
 void
 ResourceLibrary::mergeConfig( const Config& conf )
 {
-    _name = conf.value( "name" );
+    if (_name.empty())
+        _name = conf.value( "name" );
 
     conf.getIfSet( "url", _uri );
 
@@ -82,7 +83,7 @@ ResourceLibrary::mergeConfig( const Config& conf )
 Config
 ResourceLibrary::getConfig() const
 {
-    Config conf("resources");
+    Config conf("library");
     {
         Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 

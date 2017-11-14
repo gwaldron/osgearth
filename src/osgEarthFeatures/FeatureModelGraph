@@ -27,7 +27,6 @@
 #include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/DepthOffset>
 #include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
@@ -217,7 +216,6 @@ namespace osgEarth { namespace Features
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
         OpenThreads::ReentrantMutex      _redrawMutex;
-        DepthOffsetAdapter               _depthOffsetAdapter;
 
         OpenThreads::Atomic _cacheReads;
         OpenThreads::Atomic _cacheHits;

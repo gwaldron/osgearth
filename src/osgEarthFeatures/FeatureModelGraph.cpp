@@ -1508,8 +1508,9 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
     {
         if ( render->depthOffset().isSet() )
         {
-            _depthOffsetAdapter.setGraph( this );
-            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
+            DepthOffsetAdapter doa;
+            doa.setGraph(node);
+            doa.setDepthOffsetOptions( *render->depthOffset() );
         }
 
         if ( render->renderBin().isSet() )

@@ -38,6 +38,8 @@ distribution.
 #include <string.h>
 #include <assert.h>
 
+#include <osgEarth/Export>
+
 // Help out windows:
 #if defined( _DEBUG ) && !defined( DEBUG )
 #define DEBUG
@@ -133,7 +135,7 @@ struct TiXmlCursor
 */
 namespace osgEarth
 {
-class TiXmlVisitor
+class OSGEARTH_EXPORT TiXmlVisitor
 {
 public:
 	virtual ~TiXmlVisitor() {}
@@ -202,7 +204,7 @@ const TiXmlEncoding TIXML_DEFAULT_ENCODING = TIXML_ENCODING_UNKNOWN;
 */
 namespace osgEarth
 {
-class TiXmlBase
+class OSGEARTH_EXPORT TiXmlBase
 {
 	friend class TiXmlNode;
 	friend class TiXmlElement;
@@ -431,7 +433,7 @@ private:
 	in a document, or stand on its own. The type of a TiXmlNode
 	can be queried, and it can be cast to its more defined type.
 */
-class TiXmlNode : public TiXmlBase
+class OSGEARTH_EXPORT TiXmlNode : public TiXmlBase
 {
 	friend class TiXmlDocument;
 	friend class TiXmlElement;
@@ -787,7 +789,7 @@ private:
 		  part of the tinyXML document object model. There are other
 		  suggested ways to look at this problem.
 */
-class TiXmlAttribute : public TiXmlBase
+class OSGEARTH_EXPORT TiXmlAttribute : public TiXmlBase
 {
 	friend class TiXmlAttributeSet;
 
@@ -911,7 +913,7 @@ private:
 		- I like circular lists
 		- it demonstrates some independence from the (typical) doubly linked list.
 */
-class TiXmlAttributeSet
+class OSGEARTH_EXPORT TiXmlAttributeSet
 {
 public:
 	TiXmlAttributeSet();
@@ -948,7 +950,7 @@ private:
 	and can contain other elements, text, comments, and unknowns.
 	Elements also contain an arbitrary number of attributes.
 */
-class TiXmlElement : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlElement : public TiXmlNode
 {
 public:
 	/// Construct an element.
@@ -1163,7 +1165,7 @@ private:
 
 /**	An XML comment.
 */
-class TiXmlComment : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlComment : public TiXmlNode
 {
 public:
 	/// Constructs an empty comment.
@@ -1213,7 +1215,7 @@ private:
 	you generally want to leave it alone, but you can change the output mode with 
 	SetCDATA() and query it with CDATA().
 */
-class TiXmlText : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlText : public TiXmlNode
 {
 	friend class TiXmlElement;
 public:
@@ -1286,7 +1288,7 @@ private:
 	handled as special cases, not generic attributes, simply
 	because there can only be at most 3 and they are always the same.
 */
-class TiXmlDeclaration : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlDeclaration : public TiXmlNode
 {
 public:
 	/// Construct an empty declaration.
@@ -1355,7 +1357,7 @@ private:
 
 	DTD tags get thrown into TiXmlUnknowns.
 */
-class TiXmlUnknown : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlUnknown : public TiXmlNode
 {
 public:
 	TiXmlUnknown() : TiXmlNode( TiXmlNode::TINYXML_UNKNOWN )	{}
@@ -1394,7 +1396,7 @@ private:
 	XML pieces. It can be saved, loaded, and printed to the screen.
 	The 'value' of a document node is the xml file name.
 */
-class TiXmlDocument : public TiXmlNode
+class OSGEARTH_EXPORT TiXmlDocument : public TiXmlNode
 {
 public:
 	/// Create an empty document, that has no name.
@@ -1640,7 +1642,7 @@ private:
 	@endverbatim
 */
 
-class TiXmlHandle
+class OSGEARTH_EXPORT TiXmlHandle
 {
 public:
 	/// Create a handle from any node (at any depth of the tree.) This can be a null pointer.
@@ -1739,7 +1741,7 @@ private:
 	fprintf( stdout, "%s", printer.CStr() );
 	@endverbatim
 */
-class TiXmlPrinter : public osgEarth::TiXmlVisitor
+class OSGEARTH_EXPORT TiXmlPrinter : public osgEarth::TiXmlVisitor
 {
 public:
 	TiXmlPrinter() : depth( 0 ), simpleTextPrint( false ),

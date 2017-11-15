@@ -41,9 +41,9 @@ Help us add useful sources of Free data to this list.
 
     * `OpenStreetMap`_ - Worldwide, community-sources street and land use data (vectors and rasterized tiles)
     
-    * `DIVA-GIS`_ - Free low-resolution vector data for any country
-    
     * `Natural Earth`_ - Free vector and raster map data at various scales
+    
+    * `DIVA-GIS`_ - Free low-resolution vector data for any country
     
 
 .. _CGIAR:                      http://srtm.csi.cgiar.org/
@@ -107,11 +107,34 @@ Tips for Preparing your own Data
 
         gdaladdo -r average myimage.tif 2 4 8 16
 
+
+**Building tile sets with osgearth_conv**
+
+   Pre-tiling your imagery can speed up load time dramatically, especially over the network.   
+   In fact, if you want to serve your data over the network, this is the only way!
+
+   *osgearth_conv* is a low-level conversion tool that comes with osgEarth. One useful 
+   application of the tool is tile up a large GeoTIFF (or other input) in a tiled format.   
+   Note: this approach only works with drivers that support writing (MBTiles, TMS).
+
+   To make a portable MBTiles file::
+
+       osgearth_conv --in driver gdal --in url myLargeFile.tif
+                     --out driver mbtiles --out filename myData.mbtiles
+                     --format jpg
+
+   TMS is a useful format for serving tiles from a web server::
+
+       osgearth_conv --in driver gdal --in url myLargeData.tif
+                     --out driver tms --out filename myLargeData/tms.xml
+                     --format jpg
+
+   That will yield a folder (called "myLargeData") that you can deploy on the web.
+
         
-**Building tile sets**
+**Building tile sets with the packager**
 
     Another way to speed up imagery and elevation loading in osgEarth is to build **tile sets**.
-    In fact, if you want to serve your data over the network, this is the only way!
     
     This process takes the source data and chops it up into a quad-tree hierarchy of discrete
     *tiles* that osgEarth can load very quickly. Normally, if you load a GeoTIFF (for example),
@@ -140,3 +163,13 @@ Tips for Preparing your own Data
         --keep-empties                      Writes fully transparent image tiles (normally discarded)
         --db-options                        An optional OSG options string
         --verbose                           Displays progress of the operation
+        
+**Spatial indexing for feature data**
+
+    Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index.
+    Using the *ogrinfo* tool (included with GDAL/OGR binary distributions) you can create a 
+    spatial index for your vector data like so::
+
+        ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
+
+    For shapefiles, this will generate a ".qix" file that contains the spatial index information.

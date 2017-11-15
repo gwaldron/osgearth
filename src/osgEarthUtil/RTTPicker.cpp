@@ -143,9 +143,22 @@ RTTPicker::~RTTPicker()
     for (PickContexts::iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
     {
         PickContext& pc = *i;
-        while( pc._pickCamera->getNumParents() > 0 )
+
+        osg::ref_ptr<osg::View> view;
+        if (pc._view.lock(view))
         {
-            pc._pickCamera->getParent(0)->removeChild( pc._pickCamera.get() );
+            unsigned numSlaves = pc._view->getNumSlaves();
+            for (unsigned k = 0; k < numSlaves; ++k)
+            {
+                if (pc._view->getSlave(k)._camera.get() == pc._pickCamera.get())
+                {
+                    // Remove children of the pick camera so GL objects don't get released when
+                    // we remove the slave
+                    pc._pickCamera->removeChildren(0, pc._pickCamera->getNumChildren());
+                    pc._view->removeSlave(k);
+                    break;
+                }
+            }
         }
     }
 }

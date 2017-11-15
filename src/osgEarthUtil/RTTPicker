@@ -33,6 +33,10 @@ namespace osgEarth { namespace Util
 {
     /**
      * Picks objects using an RTT camera and Vertex Attributes.
+     *
+     * Note. The Picker will change the View Slave configuration in OSG,
+     * so you should call Viewer::stopThreading() before adding or
+     * removing a picker, and Viewer::startThreading when you're done.
      */
     class OSGEARTHUTIL_EXPORT RTTPicker : public osgEarth::Picker
     {

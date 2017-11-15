@@ -23,7 +23,6 @@ SET(HEADERS_ROOT
     Ephemeris
     ExampleResources
     Export
-    FeatureQueryTool
     FlatteningLayer
     Fog
     Formatter
@@ -113,7 +112,6 @@ SET(SOURCES_ROOT
     EarthManipulator.cpp
     Ephemeris.cpp
     ExampleResources.cpp
-    FeatureQueryTool.cpp
     FlatteningLayer.cpp
     Fog.cpp
     FractalElevationLayer.cpp

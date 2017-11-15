@@ -19,13 +19,17 @@
 # This makes the presumption that you are include gdal.h like
 # #include "gdal.h"
 
+SET(GDAL_DIR "" CACHE PATH "Root folder of GDAL dependency")
+
 FIND_PATH(GDAL_INCLUDE_DIR gdal.h
-  $ENV{GDAL_DIR}
-  NO_DEFAULT_PATH
+    ${GDAL_DIR}
+    $ENV{GDAL_DIR}
+    NO_DEFAULT_PATH
     PATH_SUFFIXES include include/gdal
 )
 
 FIND_PATH(GDAL_INCLUDE_DIR gdal.h
+   ${GDAL_DIR}
     PATHS ${CMAKE_PREFIX_PATH} # Unofficial: We are proposing this.
     NO_DEFAULT_PATH
     PATH_SUFFIXES include
@@ -33,6 +37,7 @@ FIND_PATH(GDAL_INCLUDE_DIR gdal.h
 
 FIND_PATH(GDAL_INCLUDE_DIR gdal.h
   PATHS
+  ${GDAL_DIR}/include
   ~/Library/Frameworks/gdal.framework/Headers
   /Library/Frameworks/gdal.framework/Headers
   /usr/local/include/gdal
@@ -59,7 +64,8 @@ FIND_PATH(GDAL_INCLUDE_DIR gdal.h
 FIND_LIBRARY(GDAL_LIBRARY 
   NAMES gdal gdal_i gdal1.8.0 gdal1.7.0 gdal1.6.0 gdal1.5.0 gdal1.4.0 gdal1.3.2 GDAL 
   PATHS
-  c:/Program Files/FWTools2.1.0/lib
+  c:/Program Files/FWTools2.1.0/lib 
+  ${GDAL_DIR}/lib
   $ENV{GDAL_DIR}
   NO_DEFAULT_PATH
   PATH_SUFFIXES lib64 lib
@@ -67,13 +73,15 @@ FIND_LIBRARY(GDAL_LIBRARY
 FIND_LIBRARY(GDAL_LIBRARY 
   NAMES gdal gdal_i gdal1.8.0 gdal1.7.0 gdal1.6.0 gdal1.5.0 gdal1.4.0 gdal1.3.2 GDAL 
   PATHS ${CMAKE_PREFIX_PATH} # Unofficial: We are proposing this.
-   c:/Program Files/FWTools2.1.0/lib
+    c:/Program Files/FWTools2.1.0/lib
+    ${GDAL_DIR}/lib
     NO_DEFAULT_PATH
     PATH_SUFFIXES lib64 lib
 )
 FIND_LIBRARY(GDAL_LIBRARY 
   NAMES gdal gdal_i gdal1.8.0 gdal1.7.0 gdal1.6.0 gdal1.5.0 gdal1.4.0 gdal1.3.2 GDAL 
   PATHS
+    ${GDAL_DIR}/lib
     ~/Library/Frameworks
     /Library/Frameworks
     /usr/local

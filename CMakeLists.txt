@@ -1,27 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.4 FATAL_ERROR)
-
-if(COMMAND cmake_policy)
-    # Works around warnings libraries linked against that don't
-    # have absolute paths (e.g. -lpthreads)
-    cmake_policy(SET CMP0003 NEW)
-
-    # Works around warnings about escaped quotes in ADD_DEFINITIONS
-    # statements.
-    cmake_policy(SET CMP0005 OLD)
-    
-    
-    IF(COMMAND cmake_policy)
-            IF(${CMAKE_MAJOR_VERSION} GREATER 2)
-                # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
-                cmake_policy(SET CMP0043 NEW)
-            ENDIF()
-    ENDIF()
-
-    # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
-    if(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
-        cmake_policy(SET CMP0020 OLD)
-    endif(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
-endif(COMMAND cmake_policy)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
 
 #
 # Set up CMake to use Solution Folders in VS.
@@ -32,7 +9,7 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 8)
+SET(OSGEARTH_MINOR_VERSION 9)
 SET(OSGEARTH_PATCH_VERSION 0)
 SET(OSGEARTH_SOVERSION     0)
 
@@ -137,18 +114,12 @@ FIND_PACKAGE(RocksDB)
 FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
 
-FIND_PACKAGE(Protobuf QUIET)
-
-# JavaScript Engines:
-SET(V8_DIR "" CACHE PATH "set to base V8 install path")
-FIND_PACKAGE(V8)
+FIND_PACKAGE(PROTOBUF QUIET)
 
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
     FIND_PACKAGE(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
-
-OPTION(USE_V8 "Use V8 instead of Duktape if V8 is found" OFF)
 
 OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
 OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
@@ -232,25 +203,6 @@ IF(WIN32)
     ENDIF(MSVC)
 ENDIF(WIN32)
 
-########################################################################################################
-##### these were settings located in SetupCommon.cmake used in Luigi builds.... find out what are useful
-########################################################################################################
-#luigi#SET(CMAKE_VERBOSE_MAKEFILE TRUE)
-#luigi#SET(CMAKE_SKIP_RPATH TRUE)
-#luigi#SET(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
-#luigi#IF(UNIX)
-#luigi#    LIST_CONTAINS(contains "g++" ${CMAKE_CXX_COMPILER_LIST})
-#luigi#    IF (contains)
-#luigi#        MESSAGE(${MY_MESSAGE_DEFAULT} "${CMAKE_CURRENT_LIST_FILE}:${CMAKE_CURRENT_LIST_LINE} setting  CMAKE_CXX_COMPILER to g++")
-#luigi#        SET(CMAKE_CXX_COMPILER "g++")
-#luigi#        SET(CMAKE_CXX_COMPILER_LOADED 2)
-#luigi#        SET(CMAKE_CXX_COMPILER_WORKS 2)
-#luigi#    ENDIF (contains)
-#luigi#    SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
-#luigi#    SET(CMAKE_CXX_FLAGS_DEBUG "-ggdb -gstabs")
-#luigi#ENDIF(UNIX)
-########################################################################################################
-
 # Common to all platforms:
 
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
@@ -311,11 +263,6 @@ SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
 
-#SET(INSTALL_BINDIR VIRTUALPLANETBUILDER/bin)
-#SET(INSTALL_INCDIR VIRTUALPLANETBUILDER/include)
-#SET(INSTALL_LIBDIR VIRTUALPLANETBUILDER/lib)
-#SET(INSTALL_DOCDIR VIRTUALPLANETBUILDER/doc)
-
 ################################################################################
 # User Options
 
@@ -363,13 +310,6 @@ OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
 # OE Core
 ADD_SUBDIRECTORY(src)
-
-# VPB Applications
-# OPTION(BUILD_APPLICATIONS "Enable to build OSGEARTH Applications" ON)
-# IF   (BUILD_APPLICATIONS)
-    # ADD_SUBDIRECTORY(applications)
-# ENDIF(BUILD_APPLICATIONS)
-
 
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4

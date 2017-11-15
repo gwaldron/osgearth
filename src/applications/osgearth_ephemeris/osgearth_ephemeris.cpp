@@ -93,12 +93,12 @@ main(int argc, char** argv)
 
         app.sunPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Sun");
         app.sunPos->setDynamic(true);
-        root->addChild( app.sunPos.get() );
+        mapNode->addChild( app.sunPos.get() );
 
         app.moonPos = new PlaceNode(mapNode, GeoPoint(), mark.get(), "Moon");
         app.moonPos->setDynamic(true);
 
-        root->addChild( app.moonPos.get() );        
+        mapNode->addChild( app.moonPos.get() );        
 
 
         app.sky = osgEarth::findTopMostNodeOfType<SkyNode>(node);        

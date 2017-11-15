@@ -183,8 +183,8 @@ namespace
 
             int i_plus_1 = i < segments-1? i+1 : 0;
             el->push_back( 0 );
-            el->push_back( 1 + i_plus_1 );
             el->push_back( 1 + i );
+            el->push_back( 1 + i_plus_1 );
         }
 
         return geom;
@@ -565,11 +565,7 @@ SimpleSkyNode::makeSun()
     osg::StateSet* set = sun->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
 
-    set->getOrCreateUniform( "atmos_sunAlpha", osg::Uniform::FLOAT )->set( 1.0f );
-
     // configure the stateset
-    set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
 
     // create shaders
@@ -586,7 +582,7 @@ SimpleSkyNode::makeSun()
         ShaderLoader::load(pkg.Sun_Frag, pkg) );
     program->addShader( fs );
 
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+    set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
@@ -640,7 +636,7 @@ SimpleSkyNode::makeMoon()
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
     
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+#if 1 //defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 
     set->addUniform(new osg::Uniform("moonTex", 0));
 

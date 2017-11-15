@@ -125,6 +125,7 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<osg::Camera>    _pickCamera;
             osg::ref_ptr<osg::Image>     _image;
             osg::ref_ptr<osg::Texture2D> _tex;
+            int _numPicks;
         };
         // use a container that does not invalidate iters on insertion, since we hold
         // pointers to PickContext objects in the _picks member

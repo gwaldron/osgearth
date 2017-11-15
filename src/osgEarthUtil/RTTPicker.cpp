@@ -286,6 +286,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     osg::View::Slave& slave = view->getSlave(view->getNumSlaves()-1);
     slave._updateSlaveCallback = new MyUpdateSlave();
 
+    // Pick camera starts out deactivated.
+    c._numPicks = 0;
+    c._pickCamera->setNodeMask(0);
+
     // Add a pre-draw callback that calls the view camera's pre-draw callback.  This
     // is better than assigning the same pre-draw callback, because the callback can
     // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)
@@ -367,9 +371,16 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._v        = v;
     pick._callback = callbackToUse;
     pick._frame    = view->getFrameStamp() ? view->getFrameStamp()->getFrameNumber() : 0u;
-    
+   
     // Queue it up.
     _picks.push( pick );
+    
+    // Activate the pick camera if necessary:
+    pick._context->_numPicks++;
+    if (pick._context->_numPicks == 1)
+    {
+        pick._context->_pickCamera->setNodeMask(~0);
+    }
     
     return true;
 }
@@ -444,6 +455,14 @@ namespace
 void
 RTTPicker::checkForPickResult(Pick& pick)
 {
+    // decremenet the pick count for the pick context,
+    // and disable the camera if the pick count reaches zero.
+    pick._context->_numPicks--;
+    if (pick._context->_numPicks == 0)
+    {
+        pick._context->_pickCamera->setNodeMask(0);
+    }
+
     // decode the results
     osg::Image* image = pick._context->_image.get();
     ImageUtils::PixelReader read( image );

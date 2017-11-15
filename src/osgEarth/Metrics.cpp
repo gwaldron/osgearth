@@ -219,7 +219,6 @@ int Metrics::run(osgViewer::Viewer& viewer)
             viewer.getCamera()->getStats()->collectStats("gpu", true);
         }
 
-        double totalFrameTime = 0.0;
         // Report memory and fps every 10 frames.
         unsigned int reportEvery = 10;
 

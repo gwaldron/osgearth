@@ -785,12 +785,7 @@ HeightFieldUtils::createNormalMap(const osg::Image* elevation,
 
     int sMax = (int)elevation->s()-1;
     int tMax = (int)elevation->t()-1;
-    
-    double xcells = (double)(sMax);
-    double ycells = (double)(tMax);
-    double xres = 1.0/xcells;
-    double yres = 1.0/ycells;
-    
+        
     // north-south interval in meters:
     double xInterval = extent.width() / (double)(sMax);
     double yInterval = extent.height() / (double)(tMax);

@@ -86,7 +86,6 @@ namespace
                             int pushes = 0;
                             for( int k = i+1; k < (int)ownerPath.size(); ++k )
                             {
-                                osg::Node* node = ownerPath[k];
                                 osg::StateSet* ss = ownerPath[k]->getStateSet();
                                 if ( ss )
                                 {

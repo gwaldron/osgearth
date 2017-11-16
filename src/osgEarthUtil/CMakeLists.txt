@@ -40,7 +40,6 @@ SET(HEADERS_ROOT
     MGRSGraticule
     MouseCoordsTool
     MultiElevationLayer
-    ObjectLocator
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -127,7 +126,6 @@ SET(SOURCES_ROOT
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
-    ObjectLocator.cpp
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp

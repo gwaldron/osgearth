@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/SceneGraphCallback>
@@ -219,14 +218,6 @@ namespace osgEarth { namespace Features
 
         OpenThreads::Atomic _cacheReads;
         OpenThreads::Atomic _cacheHits;
-
-        enum OverlayChange {
-            OVERLAY_NO_CHANGE,
-            OVERLAY_INSTALL_PLACEHOLDER,
-            OVERLAY_INSTALL_CLAMPABLE,
-            OVERLAY_INSTALL_DRAPEABLE
-        };
-        OverlayChange                    _overlayChange;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 

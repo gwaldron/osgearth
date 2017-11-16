@@ -71,9 +71,6 @@ if(OSGEARTH_QT_BUILD_LEGACY_WIDGETS)
     SET(LIB_PUBLIC_HEADERS
     #   header files go here
         Actions
-        #AnnotationDialogs
-        #AnnotationListWidget
-        #AnnotationToolbar
         CollapsiblePairWidget
         Common
         DataManager
@@ -97,9 +94,6 @@ if(OSGEARTH_QT_BUILD_LEGACY_WIDGETS)
         ${LIB_RC_SRCS}
         ${LIB_UI_SRCS}
         ${LIB_MOC_SRCS}
-        #AnnotationDialogs.cpp
-        #AnnotationListWidget.cpp
-        #AnnotationToolbar.cpp
         CollapsiblePairWidget.cpp
         DataManager.cpp
         LayerManagerWidget.cpp

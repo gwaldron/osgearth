@@ -6,11 +6,6 @@ namespace osgEarth
 {
     Shaders::Shaders()
     {
-        // AlphaEffect
-        AlphaEffectFragment = "AlphaEffect.frag.glsl";
-        _sources[AlphaEffectFragment] = "@AlphaEffect.frag.glsl@";
-
-
         // Depth Offset
         DepthOffsetVertex = "DepthOffset.vert.glsl";
        _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";

@@ -37,7 +37,6 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureDisplayLayout
-    FeatureDrawSet
     FeatureIndex
     FeatureListSource
     FeatureMaskLayer
@@ -56,7 +55,6 @@ SET(LIB_PUBLIC_HEADERS
     LabelSource
     MVT
     OgrUtils
-    OptimizerHints
     PolygonizeLines
     ResampleFilter
     ScaleFilter
@@ -85,7 +83,6 @@ SET(TARGET_SRC
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
-    FeatureDrawSet.cpp
     FeatureListSource.cpp
     FeatureMaskLayer.cpp
     FeatureModelGraph.cpp
@@ -103,7 +100,6 @@ SET(TARGET_SRC
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp
-    OptimizerHints.cpp
     PolygonizeLines.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

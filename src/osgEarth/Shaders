@@ -31,7 +31,6 @@ namespace osgEarth
     public:
         Shaders();
 
-        std::string AlphaEffectFragment;
         std::string DepthOffsetVertex;
         std::string DrapingVertex, DrapingFragment;
         std::string GPUClampingVertex, GPUClampingFragment, GPUClampingVertexLib;

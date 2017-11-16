@@ -467,10 +467,6 @@ TileNode::cull(TerrainCuller* culler)
         _lastAcceptSurfaceFrame.exchange( culler->getFrameStamp()->getFrameNumber() );
     }
 
-       
-    // Run any patch callbacks.
-    //context->invokeTilePatchCallbacks(cv, getTileKey(), _payloadStateSet.get(), _patch.get() );
-
     // If this tile is marked dirty, try loading data.
     if ( _dirty && canLoadData )
     {

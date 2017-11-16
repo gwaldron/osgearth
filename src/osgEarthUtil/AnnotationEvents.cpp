@@ -34,6 +34,7 @@ AnnotationEventCallback::AnnotationEventCallback( AnnotationEventHandler* handle
 _hoverEnabled( true ),
 _mouseDown   ( false )
 {
+    OE_DEPRECATED(AnnotationEventCallback, RTTPicker);
     if ( handler )
         addHandler( handler );
 }

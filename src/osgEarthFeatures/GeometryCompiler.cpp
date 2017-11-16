@@ -27,7 +27,6 @@
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthFeatures/Session>
 #include <osgEarth/Utils>
-#include <osgEarth/AutoScale>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -434,12 +433,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             if ( trackHistory ) history.push_back( "substitute" );
 
             resultGroup->addChild( node );
-
-            // enable auto scaling on the group?
-            if ( model && model->autoScale() == true )
-            {
-                resultGroup->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN );
-            }
         }
     }
 

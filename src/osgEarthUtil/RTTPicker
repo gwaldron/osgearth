@@ -143,13 +143,15 @@ namespace osgEarth { namespace Util
             unsigned               _frame;
             PickContext*           _context;
         };
-        std::queue<Pick> _picks;
+        std::list<Pick> _picks;
+        unsigned _picksSize;
+        //std::queue<Pick> _picks;
 
         // Runs the queue of picks given a frame number.
         void runPicks(unsigned frameNumber);
 
         // Checks to see if a pick succeeded and fires appropriate callback.
-        void checkForPickResult(Pick& pick);
+        bool checkForPickResult(Pick& pick, unsigned frameNumber);
 
         // container for common RTT pick camera children (see addChild et al.)
         osg::ref_ptr<osg::Group> _group;

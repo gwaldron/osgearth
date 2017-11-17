@@ -135,6 +135,9 @@ RTTPicker::RTTPicker(int cameraSize)
     
     // Cull mask for RTT cameras
     _cullMask = ~0;
+
+    // Size of the picks list (don't use list::size)
+    _picksSize = 0u;
 }
 
 RTTPicker::~RTTPicker()
@@ -314,13 +317,13 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         }
 
         // if there are picks in the queue, need to continuing rendering:
-        if ( !_picks.empty() )
+        if ( _picksSize > 0u )
         {
             aa.requestRedraw();
         }
     }
 
-    else if ( _defaultCallback.valid() && _defaultCallback->accept(ea, aa) )
+    if ( _defaultCallback.valid() && _defaultCallback->accept(ea, aa) )
     {        
         pick( aa.asView(), ea.getX(), ea.getY(), _defaultCallback.get() );
         aa.requestRedraw();
@@ -373,7 +376,8 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._frame    = view->getFrameStamp() ? view->getFrameStamp()->getFrameNumber() : 0u;
    
     // Queue it up.
-    _picks.push( pick );
+    _picks.push_back( pick );
+    _picksSize++;
     
     // Activate the pick camera if necessary:
     pick._context->_numPicks++;
@@ -388,17 +392,33 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
 void
 RTTPicker::runPicks(unsigned frameNumber)
 {
-    while( _picks.size() > 0 )
+    if (_picks.size() > 0)
     {
-        Pick& pick = _picks.front();
-        if ( frameNumber > pick._frame )
+        for (std::list<Pick>::iterator i = _picks.begin(); i != _picks.end(); )
         {
-            checkForPickResult(pick);
-            _picks.pop();
-        }
-        else
-        {
-            break;
+            bool pickExpired = false;
+            Pick& pick = *i;
+            if (frameNumber > pick._frame)
+            {
+                pickExpired = checkForPickResult(pick, frameNumber);
+                if (pickExpired)
+                {
+                    // Decrement the pick count for this pick's camera. If it reaches zero,
+                    // disable the camera.
+                    pick._context->_numPicks--;
+                    if (pick._context->_numPicks == 0)
+                    {
+                        pick._context->_pickCamera->setNodeMask(0);
+                    }
+
+                    // Remove the pick.
+                    i = _picks.erase(i);
+                    _picksSize--;
+                }
+            }
+
+            if (pickExpired == false)
+                ++i;
         }
     }
 }
@@ -452,17 +472,9 @@ namespace
     };
 }
 
-void
-RTTPicker::checkForPickResult(Pick& pick)
+bool
+RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
 {
-    // decremenet the pick count for the pick context,
-    // and disable the camera if the pick count reaches zero.
-    pick._context->_numPicks--;
-    if (pick._context->_numPicks == 0)
-    {
-        pick._context->_pickCamera->setNodeMask(0);
-    }
-
     // decode the results
     osg::Image* image = pick._context->_image.get();
     ImageUtils::PixelReader read( image );
@@ -471,9 +483,10 @@ RTTPicker::checkForPickResult(Pick& pick)
     //osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
     //osgDB::writeImageFile(*image, "out.tif", o.get());
 
+    bool hit = false;
     osg::Vec4f value;
     SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);
-    while(iter.next())
+    while (iter.next() && (hit == false))
     {
         value = read(iter.s(), iter.t());
 
@@ -486,11 +499,25 @@ RTTPicker::checkForPickResult(Pick& pick)
         if ( id > 0 )
         {
             pick._callback->onHit( id );
-            return;
+            hit = true;
         }
     }
 
-    pick._callback->onMiss();
+    // A pick expires if (a) it registers a hit, or (b) is registers a miss
+    // for 2 frames in a row. Why 2? Because the RTT picker itself delays 
+    // pick results by one frame, and the osgEarth draping/clamping systems
+    // also delay drawing by one frame. So we need 2 frames to positively
+    // register a hit on draped/clamped geometry.
+    bool pickExpired =
+        hit == true ||
+        frameNumber - pick._frame >= 2u;
+
+    if ((hit == false) && (pickExpired == true))
+    {
+        pick._callback->onMiss();
+    }
+
+    return pickExpired;
 }
 
 bool

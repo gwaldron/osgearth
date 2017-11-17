@@ -311,16 +311,19 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         osg::Matrix refCamScaleMat;
         osg::Matrix refWindowMatrix = windowMatrix;
 
-        if ( cam->isRenderToTextureCamera() )
+        // If the camera is actually an RTT slave camera, it's our picker, and we need to
+        // adjust the scale to match it.
+        if (cam->isRenderToTextureCamera() &&
+            cam->getView() &&
+            cam->getView()->getCamera() &&
+            cam->getView()->getCamera() != cam)
+            //cam->getView()->findSlaveIndexForCamera(cam) < cam->getView()->getNumSlaves())
         {
-            osg::Camera* refCam = dynamic_cast<osg::Camera*>(cam->getUserData());
-            if ( refCam )
-            {
-                const osg::Viewport* refVP = refCam->getViewport();
-                refCamScale.set( vp->width() / refVP->width(), vp->height() / refVP->height(), 1.0 );
-                refCamScaleMat.makeScale( refCamScale );
-                refWindowMatrix = refVP->computeWindowMatrix();
-            }
+            osg::Camera* parentCam = cam->getView()->getCamera();
+            const osg::Viewport* refVP = parentCam->getViewport();
+            refCamScale.set( vp->width() / refVP->width(), vp->height() / refVP->height(), 1.0 );
+            refCamScaleMat.makeScale( refCamScale );
+            refWindowMatrix = refVP->computeWindowMatrix();
         }
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables

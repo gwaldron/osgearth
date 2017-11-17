@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/Utils>
 
 #include <osgDB/WriteFile>
 #include <osg/BlendFunc>
@@ -294,10 +295,6 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // is better than assigning the same pre-draw callback, because the callback can
     // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)
     c._pickCamera->setPreDrawCallback( new CallHostCameraPreDrawCallback(view->getCamera()) );
-
-    // associate the RTT camara with the view's camera.
-    // (e.g., decluttering uses this to find the "true" viewport)
-    c._pickCamera->setUserData( view->getCamera() );
 
     return c;
 }

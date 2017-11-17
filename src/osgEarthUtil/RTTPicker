@@ -143,9 +143,7 @@ namespace osgEarth { namespace Util
             unsigned               _frame;
             PickContext*           _context;
         };
-        std::list<Pick> _picks;
-        unsigned _picksSize;
-        //std::queue<Pick> _picks;
+        std::vector<Pick> _picks;
 
         // Runs the queue of picks given a frame number.
         void runPicks(unsigned frameNumber);

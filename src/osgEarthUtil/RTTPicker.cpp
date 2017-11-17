@@ -135,9 +135,6 @@ RTTPicker::RTTPicker(int cameraSize)
     
     // Cull mask for RTT cameras
     _cullMask = ~0;
-
-    // Size of the picks list (don't use list::size)
-    _picksSize = 0u;
 }
 
 RTTPicker::~RTTPicker()
@@ -317,7 +314,7 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         }
 
         // if there are picks in the queue, need to continuing rendering:
-        if ( _picksSize > 0u )
+        if ( _picks.empty() == false )
         {
             aa.requestRedraw();
         }
@@ -377,7 +374,6 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
    
     // Queue it up.
     _picks.push_back( pick );
-    _picksSize++;
     
     // Activate the pick camera if necessary:
     pick._context->_numPicks++;
@@ -394,7 +390,7 @@ RTTPicker::runPicks(unsigned frameNumber)
 {
     if (_picks.size() > 0)
     {
-        for (std::list<Pick>::iterator i = _picks.begin(); i != _picks.end(); )
+        for (std::vector<Pick>::iterator i = _picks.begin(); i != _picks.end(); )
         {
             bool pickExpired = false;
             Pick& pick = *i;
@@ -413,12 +409,13 @@ RTTPicker::runPicks(unsigned frameNumber)
 
                     // Remove the pick.
                     i = _picks.erase(i);
-                    _picksSize--;
                 }
             }
 
             if (pickExpired == false)
+            {
                 ++i;
+            }
         }
     }
 }

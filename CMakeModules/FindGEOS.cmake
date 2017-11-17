@@ -65,7 +65,7 @@ FIND_LIBRARY(GEOS_LIBRARY
 )
 
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geod_d geos_i_d geosd
+  NAMES geos_d geos_i_d geosd
   PATHS
     ${GEOS_DIR}/lib
     $ENV{GEOS_DIR}
@@ -74,7 +74,7 @@ FIND_LIBRARY(GEOS_LIBRARY_DEBUG
 )
 
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
-  NAMES geod_d geos_i_d geosd
+  NAMES geos_d geos_i_d geosd
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks

@@ -1,5 +1,19 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
 
+if(COMMAND cmake_policy)
+    # Works around warnings libraries linked against that don't
+    # have absolute paths (e.g. -lpthreads)
+    cmake_policy(SET CMP0003 NEW)
+
+    # Works around warnings about escaped quotes in ADD_DEFINITIONS
+    # statements.
+    cmake_policy(SET CMP0005 OLD)
+    
+    # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
+    cmake_policy(SET CMP0043 NEW)
+
+endif(COMMAND cmake_policy)
+
 #
 # Set up CMake to use Solution Folders in VS.
 #

@@ -163,7 +163,19 @@ HTMNode::traverse(osg::NodeVisitor& nv)
 
         const osg::BoundingSphere& bs = getBound();
 
-        if ( nv.getDistanceToViewPoint(bs.center(), true) <= (bs.radius() * _settings._rangeFactor) ) //+ _settings._maxLeafRange) )
+        float range = nv.getDistanceToViewPoint(bs.center(), true);
+        bool inRange = false;
+
+        if (_settings._maxRange.isSet() == false)
+        {
+            inRange = range < (bs.radius() * _settings._rangeFactor.get());
+        }
+        else
+        {
+            inRange = range < (bs.radius() + _settings._maxRange.get());
+        }
+
+        if ( inRange )
         {
             osg::Group::traverse( nv );
             
@@ -213,7 +225,7 @@ HTMNode::insert(osg::Node* node)
     {
         const osg::Vec3d& p = node->getBound().center();
 
-        //for(unsigned i=0; i<_children.size(); ++i)
+        // last four children are the subcells
         for (int i = _children.size() - 1; i >= _children.size()-4; --i)
         {
             HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
@@ -243,31 +255,31 @@ HTMNode::split()
     c[2] = new HTMNode(_settings, _tri._v[2], w[2], w[1], Stringify() << getName() << "2");
     c[3] = new HTMNode(_settings, w[0], w[1], w[2], Stringify() << getName() << "3");
     
-#if 0 // redistribution method:
-    // distibute the data amongst the children
-    for(osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i)
+    if (_settings._storeObjectsInLeavesOnly == true)
     {
-        osg::Node* node = i->get();        
-        const osg::Vec3d& p = node->getBound().center();
-
-        for(unsigned j=0; j<4; ++j)
+        // distibute the data amongst the children
+        for(osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i)
         {
-            if ( c[j]->contains(p) )
+            osg::Node* node = i->get();        
+            const osg::Vec3d& p = node->getBound().center();
+
+            for(unsigned j=0; j<4; ++j)
             {
-                c[j]->insert( node );
-                break;
+                if ( c[j]->contains(p) )
+                {
+                    c[j]->insert( node );
+                    break;
+                }
             }
         }
-    }
 
-    // remove the leaves from this node
-    osg::Group::removeChildren(0, getNumChildren());
-#endif
+        // remove the leaves from this node
+        osg::Group::removeChildren(0, getNumChildren());
+    }
 
     // add the new subnodes to this node.
     for(unsigned i=0; i<4; ++i)
     {
-        //c[i]->setName( Stringify() << getName() << i );
         osg::Group::addChild( c[i] );
     }
 
@@ -279,10 +291,11 @@ HTMNode::split()
 HTMGroup::HTMGroup()
 {
     _settings._maxObjectsPerCell = 128;
-    _settings._rangeFactor = 7.0f;
+    _settings._rangeFactor.init( 7.0f );
     _settings._debugGeom = true;
     _settings._minCellSize = 10000;
     _settings._maxCellSize = 500000;
+    _settings._storeObjectsInLeavesOnly = false;
 
     // hopefully prevent the OSG optimizer from altering this graph:
     setDataVariance( osg::Object::DYNAMIC );

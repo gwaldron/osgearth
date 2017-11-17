@@ -28,15 +28,20 @@
 #include <osg/Group>
 #include <osg/Polytope>
 #include <vector>
+#include <osgEarth/optional>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     struct HTMSettings
     {
         unsigned _maxObjectsPerCell;
-        float _rangeFactor;
+        optional<float> _rangeFactor;
+        optional<float> _maxRange;
         float _minCellSize;
         float _maxCellSize;
+        bool _storeObjectsInLeavesOnly;
         int _debugCount;
         int _debugFrame;
         bool _debugGeom;
@@ -67,8 +72,14 @@ namespace osgEarth { namespace Util
         double getMaximumCellSize() const { return _settings._maxCellSize; }
 
         //! Cells become visible at (cell bounding radius * range factor).
+        //! If this is set, the value in setRange is ignored.
         void setRangeFactor(float value) { _settings._rangeFactor = value; }
-        float getRangeFactor() const { return _settings._rangeFactor; }
+
+        //! Range at which objects become visible. This overrides range factor if set.
+        void setMaxRange(float value) { _settings._maxRange = value; }
+
+        //! If true, only store objects in the leaf nodes (defaults to false)
+        void setStoreObjectsInLeavesOnly(bool value) { _settings._storeObjectsInLeavesOnly = value; }
 
         //! Enable debugging geometry
         void setDebug(bool value) { _settings._debugGeom = value; }

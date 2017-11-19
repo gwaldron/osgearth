@@ -93,12 +93,12 @@ Tips for Preparing your own Data
     
     To create a tiled GeoTiff using gdal_translate, issue the following command::
     
-        gdal_translate -of GTiff -co TILED=YES myfile.tif myfile_tiled.tif
+        gdal_translate -of GTiff -co TILED=YES input.tif output.tif
         
     Take is a step further and use compression to save space. You can use internal
     JPEG compression if your data contains no transparency::
     
-        gdal_translate -of GTiff -co TILED=YES -co COMPRESS=JPG myfile.tif myfile_tiled.tif   
+        gdal_translate -of GTiff -co TILED=YES -co COMPRESS=JPG input.tif output.tif   
     
 
     **Build overviews**
@@ -125,20 +125,21 @@ Tips for Preparing your own Data
                      --out driver mbtiles --out filename myData.mbtiles
                      --out format jpg
 
-   TMS is a useful format for serving tiles from a web server::
+   If you want to serve tiles from a web server, use TMS::
 
        osgearth_conv --in driver gdal --in url myLargeData.tif
                      --out driver tms --out url myLargeData/tms.xml
                      --out format jpg
 
-   That will yield a folder (called "myLargeData") that you can deploy on the web.
+   That will yield a folder (called "myLargeData" in this case) that you can deploy on the web
+   behind any standard web server (e.g. Apache).
    
-   **Tip:** If you are tiling elevation data, you will need to add the **--elevation** option.
+   **Tip:** If you are tiling elevation data, you will need to add the ``--elevation`` option.
    
-   **Tip:** The *jpg* format does NOT support transparency. If your data was an alpha
-   channel, use *png* instead.
+   **Tip:** The ``jpg`` format does NOT support transparency. If your data was an alpha
+   channel, use ``png`` instead.
    
-   Just type *osgearth_conv* for a full list of options. The *--in* and *--out* options
+   Just type *osgearth_conv* for a full list of options. The ``--in`` and ``--out`` options
    correspond directly to properties you would normally include in an Earth file.
    
         

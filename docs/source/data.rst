@@ -13,12 +13,7 @@ Help us add useful sources of Free data to this list.
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
     
-    * `NASA EOSDIS`_ - NASA's Global Imagery Browse Services (GIBS) replaces the agency's old
-      JPL OnEarth site for global imagery products like MODIS.
-       
     * `NASA BlueMarble`_ - NASA's whole-earth imagery (including topography and bathymetry maps)
-    
-    * `NRL GIDB`_ - US Naval Research Lab's GIDB OpenGIS Web Services
     
     * `Natural Earth`_ - Free vector and raster map data at various scales
     
@@ -52,15 +47,13 @@ Help us add useful sources of Free data to this list.
 .. _GEBCO:                      http://www.gebco.net/
 .. _GLCF:                       http://glcf.umiacs.umd.edu/data/srtm/
 .. _OpenStreetMap:              http://openstreetmap.org
-.. _NASA EOSDIS:                http://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs
 .. _NASA BlueMarble:            http://visibleearth.nasa.gov/view_cat.php?categoryID=1484
 .. _Natural Earth:              http://www.naturalearthdata.com/
-.. _NRL GIDB:                   http://columbo.nrlssc.navy.mil/ogcwms/servlet/WMSServlet
 .. _SRTM30+:                    ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
 .. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx
-.. _ReadyMap.org:               http://readymap.org/index_orig.html
+.. _ReadyMap.org:               http://readymap.org
 
 ----
 

@@ -243,7 +243,7 @@ main(int argc, char** argv)
     Status inputStatus = input->open( input->MODE_READ, dbo.get() );
     if ( inputStatus.isError() )
     {
-        OE_WARN << LC << "Error initializing input" << std::endl;
+        OE_WARN << LC << "Error initializing input: " << inputStatus.message() << std::endl;
         return -1;
     }
 
@@ -284,7 +284,7 @@ main(int argc, char** argv)
     osg::ref_ptr<TileSource> output = TileSourceFactory::create(outOptions);
     if ( !output.valid() )
     {
-        OE_WARN << LC << "Failed to open output" << std::endl;
+        OE_WARN << LC << "Failed to open output." << std::endl;
         return -1;
     }
 
@@ -306,7 +306,7 @@ main(int argc, char** argv)
 
     if ( outputStatus.isError() )
     {
-        OE_WARN << LC << "Error initializing output" << std::endl;
+        OE_WARN << LC << "Error initializing output: " << outputStatus.message() << std::endl;
         return -1;
     }
 

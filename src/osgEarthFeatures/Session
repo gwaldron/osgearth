@@ -21,21 +21,27 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/ScriptEngine>
-#include <osgEarthSymbology/ResourceCache>
-#include <osgEarthSymbology/StyleSheet>
-#include <osgEarth/StateSetCache>
-#include <osgEarth/ThreadingUtils>
+
 #include <osgEarth/MapInfo>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Map>
+#include <osgEarth/URI>
 
+namespace osgEarth {
+    class StateSetCache;
+    namespace Symbology {
+        class ResourceCache;
+        class StyleSheet;
+    }
+    namespace Features {
+        class FeatureSource;
+        class ScriptEngine;
+    }
+}
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-
-    class FeatureSource;
 
     /**
      * Session is a state object that exists throughout the life of one or more related
@@ -48,15 +54,22 @@ namespace osgEarth { namespace Features
      * exists one level above this and governs any number of "related" compilations
      * (e.g., the compilation of many grid cells comprising a single feature layer).
      *
-     * Session implements the URIResolver interface to resolve relative URIs.
+     * Note: A Session holds a ref_ptr to a Map, so that it can yield MapFrame objects
+     * to be used and then discarded. Don't hold on to a Session reference indefinitely;
+     * use the Session and destroy it after compilation.
      */
-    class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT Session : public osg::Object
     {
     public:
-        /**
-         * Constructs a new Session that is tied to a map
-         */
-        Session( const Map* map, StyleSheet* styles =0L, FeatureSource* source =0L, const osgDB::Options* dbOptions =0L );
+        META_Object(osgEarthFeatures, Session);
+
+        //! New session
+        Session(const Map* map);
+
+        Session(const Map* map, StyleSheet* styles);
+        
+        Session(const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions);
+
         virtual ~Session();
 
         /**
@@ -103,80 +116,20 @@ namespace osgEarth { namespace Features
         const std::string& getName() const { return _name; }
 
     public:
-        template<typename T>
-        struct CreateFunctor {
-            virtual T* operator()() const =0;
-        };
-
-        /**
-         * Stores an object in the shared Session cache.
-         *
-         * WARNING! Don't store things like nodes in here unless you plan
-         * to clone them. This is a multi-threaded store.
-         *
-         * Returns the object written, OR the already-existing object if overwrite = false
-         * and the key was already taken.
-         */
-        template<typename T>
-        T* putObject( const std::string& key, T* object, bool overwrite =true ) {
-            Threading::ScopedMutexLock lock( _objMapMutex );
-            ObjectMap::iterator i = _objMap.find(key);
-            if ( i != _objMap.end() && !overwrite )
-                return dynamic_cast<T*>(i->second.get());
-            _objMap[key] = object;
-            return object;
-        }
-
-        /**
-         * Gets an object from the shared Session cache.
-         * (returns a ref_ptr so as not to lose its ref in a multi-threaded app)
-         */
-        template<typename T>
-        osg::ref_ptr<T> getObject( const std::string& key ) {
-            Threading::ScopedMutexLock lock( _objMapMutex );
-            ObjectMap::const_iterator i = _objMap.find(key);
-            return i != _objMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
-        }
-
-        template<typename T>
-        bool getOrCreateObject(const std::string& key, osg::ref_ptr<T>& output, const CreateFunctor<T>& create) {
-            Threading::ScopedMutexLock lock( _objMapMutex );
-            ObjectMap::const_iterator i = _objMap.find(key);
-            if ( i != _objMap.end() ) {
-                output = dynamic_cast<T*>( i->second.get() );
-                return true;
-            }
-            else {
-                T* object = create();
-                if ( object ) {
-                    _objMap[key] = object;
-                    output = object;
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
-        }
-
-        void removeObject( const std::string& key );
-
-    public:
         /**
          * The cache for optimizing stateset sharing within a session
          */
-        StateSetCache* getStateSetCache() { return _stateSetCache.get(); }
+        StateSetCache* getStateSetCache();
 
     public:
       ScriptEngine* getScriptEngine() const;
 
     private:
-        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
-        ObjectMap                    _objMap;
-        Threading::Mutex             _objMapMutex;
+        void init();
+        void initScriptEngine();
 
-        URIContext                         _uriContext;
-        osg::observer_ptr<const Map>       _map;
+        URIContext                         _uriContext;         
+        osg::ref_ptr<const Map>            _map;
         MapInfo                            _mapInfo;
         osg::ref_ptr<StyleSheet>           _styles;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
@@ -185,6 +138,10 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<StateSetCache>        _stateSetCache;
         osg::ref_ptr<ResourceCache>        _resourceCache;
         std::string                        _name;
+
+        // hidden - support for META_Object
+        Session();
+        Session(const Session& rhs, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
     };
 
 } }

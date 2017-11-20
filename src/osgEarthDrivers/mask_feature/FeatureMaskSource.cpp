@@ -20,8 +20,11 @@
 #include <osgEarth/MaskSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/FeatureCursor>
 
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>

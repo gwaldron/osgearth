@@ -29,6 +29,7 @@
 #include <osgEarth/Progress>
 
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/FeatureCursor>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

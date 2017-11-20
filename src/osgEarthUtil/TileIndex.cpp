@@ -22,10 +22,15 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+
 #include <osgEarthUtil/TileIndex>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <ogr_api.h>
+
 #include <osgEarthFeatures/OgrUtils>
+#include <osgEarthFeatures/FeatureCursor>
+
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+
+#include <ogr_api.h>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;

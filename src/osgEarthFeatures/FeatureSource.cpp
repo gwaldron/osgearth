@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
@@ -123,7 +124,10 @@ FeatureSource::open(const osgDB::Options* readOptions)
         FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
         if ( filter )
         {
-            _filters.push_back( filter );
+            if (_filters.valid() == false)
+                _filters = new FeatureFilterChain();
+
+            _filters->push_back( filter );
             filter->initialize( readOptions );
         }
     }
@@ -138,10 +142,16 @@ FeatureSource::setFeatureProfile(const FeatureProfile* fp)
     _featureProfile = fp;
 }
 
-const FeatureFilterList&
+const FeatureFilterChain*
 FeatureSource::getFilters() const
 {
-    return _filters;
+    return _filters.get();
+}
+
+FeatureCursor*
+FeatureSource::createFeatureCursor()
+{
+    return createFeatureCursor(Symbology::Query());
 }
 
 const FeatureSchema&
@@ -183,12 +193,12 @@ void
 FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) const
 {
     // apply filters before returning.
-    if ( !getFilters().empty() )
+    if (_filters.valid() && _filters->empty() == false)
     {
         FilterContext cx;
         cx.setProfile( getFeatureProfile() );
         cx.extent() = extent;
-        for(FeatureFilterList::const_iterator filter = getFilters().begin(); filter != getFilters().end(); ++filter)
+        for(FeatureFilterChain::const_iterator filter = _filters->begin(); filter != _filters->end(); ++filter)
         {
             cx = filter->get()->push( features, cx );
         }

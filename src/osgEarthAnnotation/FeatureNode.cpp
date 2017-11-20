@@ -26,6 +26,7 @@
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/FilterContext>
 
 #include <osgEarthSymbology/AltitudeSymbol>
 

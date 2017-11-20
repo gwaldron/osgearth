@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/VirtualFeatureSource>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/Filter>
 
 #define LC "[VirtualFeatureSource] "
 
@@ -105,6 +107,25 @@ namespace
 
 //------------------------------------------------------------------------
 
+FeatureSourceMapping::FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) :
+_source(fs), _predicate(fp)
+{
+    //nop
+}
+
+//------------------------------------------------------------------------
+
+VirtualFeatureSource::VirtualFeatureSource() :
+FeatureSource()
+{
+    //nop
+}
+
+VirtualFeatureSource::~VirtualFeatureSource()
+{
+    //nop
+}
+
 void
 VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
 {
@@ -124,14 +145,11 @@ VirtualFeatureSource::createFeatureCursor( const Query& query )
 Status 
 VirtualFeatureSource::initialize( const osgDB::Options* readOptions )
 {
-    //FeatureSource::initialize( dbOptions );
-
     for( FeatureSourceMappingVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
     {
         const Status& sourceStatus = i->_source->open(readOptions);
         if (sourceStatus.isError())
             return sourceStatus;
-        //i->_source->initialize( dbOptions );
     }
 
     return Status::OK();

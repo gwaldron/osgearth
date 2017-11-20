@@ -35,8 +35,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapInfo
     {
     public:
-        MapInfo();
-
         MapInfo(const Map* map);
 
         MapInfo(const MapInfo& rhs);

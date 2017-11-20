@@ -25,6 +25,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterContext>
 
 #define LC "[viewer] "
 

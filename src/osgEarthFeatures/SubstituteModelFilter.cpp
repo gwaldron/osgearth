@@ -18,10 +18,13 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
+
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/MeshFlattener>
+#include <osgEarthSymbology/StyleSheet>
+
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
@@ -35,8 +38,6 @@
 #include <osg/Geode>
 #include <osg/MatrixTransform>
 #include <osg/NodeVisitor>
-#include <osg/ShapeDrawable>
-#include <osg/AlphaFunc>
 #include <osg/Billboard>
 
 #define LC "[SubstituteModelFilter] "

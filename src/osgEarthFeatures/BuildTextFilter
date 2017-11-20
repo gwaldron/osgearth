@@ -21,10 +21,8 @@
 #define OSGEARTHFEATURES_BUILD_TEXT_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
-#include <osg/Geode>
 
 namespace osgEarth { namespace Features 
 {

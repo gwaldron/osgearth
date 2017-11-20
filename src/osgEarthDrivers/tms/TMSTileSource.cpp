@@ -104,7 +104,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         {
             if ( !_options.format().isSet() )
             {
-                return Status::Error(Status::ConfigurationError, "Cannot create new repo with required [format] property");
+                return Status::Error(Status::ConfigurationError, "Missing required \"format\" property: e.g. png, jpg");
             }
 
             TMS::TileMapReaderWriter::write( _tileMap.get(), tmsURI.full() );

@@ -25,7 +25,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/GeometryClamper>
-#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osg/Polytope>

@@ -21,10 +21,10 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
-#include <osgEarthFeatures/FeatureDisplayLayout>
-#include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/FeatureModelSource>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>

@@ -23,7 +23,6 @@ using namespace osgEarth;
 
 #define LC "[MapInfo] "
 
-
 MapInfo::MapInfo( const Map* map ) :
 _profile               ( 0L ),
 _isGeocentric          ( true ),

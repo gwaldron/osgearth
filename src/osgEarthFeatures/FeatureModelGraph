@@ -22,7 +22,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
@@ -35,6 +34,8 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class Session;
 
     /**
      * A scene graph that renders feature data.
@@ -106,7 +107,7 @@ namespace osgEarth { namespace Features
         /**
          * Session associated with this feature graph.
          */
-        Session* getSession() { return _session.get(); }
+        Session* getSession();
 
         /**
          * Mark the feature graph dirty and in need of regeneration 

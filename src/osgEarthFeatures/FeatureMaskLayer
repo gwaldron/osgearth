@@ -21,8 +21,8 @@
 #define OSGEARTH_FEATURE_MASK_LAYER_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
+
 #include <osgEarth/MaskLayer>
 #include <osgEarth/LayerListener>
 
@@ -105,7 +105,7 @@ namespace osgEarth { namespace Features
         FeatureMaskLayer(FeatureMaskLayerOptions*);
 
         /** dtor */
-        virtual ~FeatureMaskLayer() { }
+        virtual ~FeatureMaskLayer();
 
     private:
 

@@ -17,7 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureTileSource>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureCursor>
+
 #include <osgEarth/Registry>
+
 #include <osgDB/WriteFile>
 #include <osg/Notify>
 

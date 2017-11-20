@@ -122,9 +122,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
     // set up the reference system info:
     if ( context.isGeoreferenced() )
     {
-        //makeECEF   = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
-        outputSRS  = context.getOutputSRS(); //getSession()->getMapInfo().getProfile()->getSRS();
+        outputSRS  = context.getOutputSRS();
         makeECEF   = context.getOutputSRS()->isGeographic();
     }
 

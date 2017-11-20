@@ -25,6 +25,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>

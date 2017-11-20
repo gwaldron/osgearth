@@ -22,11 +22,12 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureCursor>
+//#include <osgEarthFeatures/FeatureCursor>
+
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Query>
-#include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
+
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgEarth/Cache>
@@ -42,6 +43,9 @@ namespace osgEarth { namespace Features
 {   
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class FeatureCursor;
+    class FeatureFilterChain;
 
     /**
      * Configuration options for creating a FeatureSource.
@@ -141,7 +145,7 @@ namespace osgEarth { namespace Features
          * Caller takes ownership of the returned object.
          */
         virtual FeatureCursor* createFeatureCursor(const Symbology::Query& query) =0;
-        FeatureCursor* createFeatureCursor() { return createFeatureCursor(Symbology::Query()); }
+        FeatureCursor* createFeatureCursor();
 
         /**
          * Whether this FeatureSource supports inserting and deleting features
@@ -240,7 +244,7 @@ namespace osgEarth { namespace Features
          * Accesses the list of feature filters that will transform features
          * before they are returned in a feature cursor.
          */
-        const FeatureFilterList& getFilters() const;
+        const FeatureFilterChain* getFilters() const;
 
     public: 
 
@@ -266,13 +270,6 @@ namespace osgEarth { namespace Features
          * If you override this function, please call this base implementation from within.
          */
         virtual Status initialize(const osgDB::Options* readOptions) =0;
-
-        /**
-         * Creates and returns a metadata structure describing the features in a named
-         * feature class. This method is called by the public function getFeatureProfile()
-         * in this same object to create the metadata structure.
-         */
-        //virtual const FeatureProfile* createFeatureProfile(int dummy) =0;
 
         /**
          * DTOR is protected to prevent this object from being allocated on the stack.
@@ -302,7 +299,7 @@ namespace osgEarth { namespace Features
         Threading::ReadWriteMutex          _blacklistMutex;
         std::set<FeatureID>                _blacklist;
         
-        FeatureFilterList                  _filters;
+        osg::ref_ptr<FeatureFilterChain>   _filters;
 
         Status                             _status;
 

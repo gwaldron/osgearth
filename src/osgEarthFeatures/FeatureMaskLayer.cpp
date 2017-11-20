@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureMaskLayer>
+#include <osgEarthFeatures/FeatureCursor>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -73,6 +74,11 @@ MaskLayer(optionsPtr),
 _options(optionsPtr)
 {
     //nop - init called from base class
+}
+
+FeatureMaskLayer::~FeatureMaskLayer()
+{
+    //nop
 }
 
 void

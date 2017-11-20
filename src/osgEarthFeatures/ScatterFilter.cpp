@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ScatterFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/GeoMath>
 #include <stdlib.h>
 

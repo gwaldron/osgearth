@@ -17,12 +17,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/Filter>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 //---------------------------------------------------------------------------
+
+FeatureCursor::~FeatureCursor()
+{
+    //nop
+}
 
 void
 FeatureCursor::fill( FeatureList& list )
@@ -40,6 +46,11 @@ _features( features ),
 _clone   ( false )
 {
     _iter = _features.begin();
+}
+
+FeatureListCursor::~FeatureListCursor()
+{
+    //nop
 }
 
 bool
@@ -66,10 +77,15 @@ _geom( geom )
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
                                              const FeatureProfile* fp,
-                                             const FeatureFilterList& filters) :
+                                             const FeatureFilterChain* filters) :
 _geom          ( geom ),
 _featureProfile( fp ),
-_filters       ( filters )
+_filterChain   ( filters )
+{
+    //nop
+}
+
+GeometryFeatureCursor::~GeometryFeatureCursor()
 {
     //nop
 }
@@ -96,9 +112,12 @@ GeometryFeatureCursor::nextFeature()
         FeatureList list;
         list.push_back( _lastFeature.get() );
 
-        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+        if (_filterChain.valid())
         {
-            cx = i->get()->push( list, cx );
+            for( FeatureFilterChain::const_iterator i = _filterChain->begin(); i != _filterChain->end(); ++i )
+            {
+                cx = i->get()->push( list, cx );
+            }
         }
 
         if ( list.empty() )

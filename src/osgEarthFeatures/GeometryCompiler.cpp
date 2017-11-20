@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "GeometryCompiler"
+
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/AltitudeFilter>
@@ -26,6 +27,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthFeatures/Session>
+
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
@@ -33,6 +35,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Utils>
+
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -258,7 +261,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( line->tessellation().isSet() )
         {
-            TemplateFeatureFilter<TessellateOperator> filter;
+            TessellateOperator filter;
             filter.setNumPartitions( *line->tessellation() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
@@ -266,7 +269,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
         else if ( line->tessellationSize().isSet() )
         {
-            TemplateFeatureFilter<TessellateOperator> filter;
+            TessellateOperator filter;
             filter.setMaxPartitionSize( *line->tessellationSize() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );

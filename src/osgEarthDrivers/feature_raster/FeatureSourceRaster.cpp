@@ -18,12 +18,15 @@
  */
 #include "RasterFeatureOptions"
 
-#include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageLayer>
+
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureCursor>
+
+#include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 
 #define LC "[Raster FeatureSource] "
 

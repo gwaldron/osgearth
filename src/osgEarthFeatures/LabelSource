@@ -21,7 +21,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
 #include <osgEarthSymbology/TextSymbol>
@@ -30,6 +29,8 @@ namespace osgEarth { namespace Features
 {  
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class FilterContext;
 
     /**
      * Configuration options for a label source.

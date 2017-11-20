@@ -34,7 +34,6 @@
 
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/FeatureModelLayer>
-#include <osgEarthFeatures/ConvertTypeFilter>
 
 #include <osgEarthDrivers/engine_rex/RexTerrainEngineOptions>
 #include <osgEarthDrivers/gdal/GDALOptions>

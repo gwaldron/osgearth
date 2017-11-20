@@ -17,11 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+
+FilterContext::FilterContext() :
+_isGeocentric(false),
+_shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
+{
+    //nop
+}
 
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
@@ -85,10 +93,33 @@ _outputSRS            ( rhs._outputSRS.get() )
     //nop
 }
 
+FilterContext::~FilterContext()
+{
+    //nop
+}
+
 void
 FilterContext::setProfile(const FeatureProfile* value)
 {
     _profile = value;
+}
+
+Session*
+FilterContext::getSession()
+{
+    return _session.get();
+}
+
+const Session*
+FilterContext::getSession() const
+{
+    return _session.get();
+}
+
+bool
+FilterContext::isGeoreferenced() const
+{ 
+    return _session.valid() && _profile.valid();
 }
 
 const SpatialReference*

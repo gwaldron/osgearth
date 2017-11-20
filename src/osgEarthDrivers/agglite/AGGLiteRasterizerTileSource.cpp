@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Style>
 //TODO: replace this with GeometryRasterizer
 #include <osgEarthSymbology/AGG.h>

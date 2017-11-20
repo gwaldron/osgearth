@@ -31,12 +31,14 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
-
 #include <osgEarth/TileVisitor>
+
+#include <osgEarthFeatures/FeatureCursor>
+
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
 #include <sstream>

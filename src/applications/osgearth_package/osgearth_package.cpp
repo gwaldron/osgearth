@@ -31,7 +31,11 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
+
+#include <osgEarthFeatures/FeatureCursor>
+
 #include <osgEarthUtil/TMSPackager>
+
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
 

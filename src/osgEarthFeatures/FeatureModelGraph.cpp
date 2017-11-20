@@ -20,7 +20,7 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 
 #include <osgEarth/Map>
 #include <osgEarth/Capabilities>
@@ -471,6 +471,12 @@ FeatureModelGraph::ctor()
 FeatureModelGraph::~FeatureModelGraph()
 {
     //nop
+}
+
+Session*
+FeatureModelGraph::getSession()
+{
+    return _session.get();
 }
 
 void

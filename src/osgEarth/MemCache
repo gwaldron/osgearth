@@ -51,9 +51,6 @@ namespace osgEarth
         MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : Cache( rhs, op ) { }
 
         unsigned _maxBinSize;
-        float _writes;
-        float _reads;
-        float _hits;
     };
 
 } // namespace osgEarth

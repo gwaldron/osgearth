@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ConvertTypeFilter>
-#include <list>
-#include <deque>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

@@ -82,6 +82,8 @@ namespace osgEarth { namespace Features
          */
         void operator()( Feature* feature, FilterContext& context ) const;
 
+        FilterContext push(FeatureList& input, FilterContext& context) const;
+
     protected:
         optional<Distance> _maxDistance;
         unsigned           _numPartitions;

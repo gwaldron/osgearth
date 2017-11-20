@@ -4,8 +4,11 @@
 # LEVELDB_FOUND, if false, do not try to link to libnoise
 # LEVELDB_INCLUDE_DIR, where to find the headers
 
+SET(LEVELDB_DIR "" CACHE PATH "Root folder of LevelDB distribution")
+
 FIND_PATH(LEVELDB_INCLUDE_DIR leveldb/db.h
   PATHS
+  ${LEVELDB_DIR}
   $ENV{LEVELDB_DIR}
   NO_DEFAULT_PATH
     PATH_SUFFIXES include
@@ -38,6 +41,7 @@ FIND_PATH(LEVELDB_INCLUDE_DIR leveldb/db.h
 FIND_LIBRARY(LEVELDB_LIBRARY
   NAMES libleveldb leveldb leveldb_static
   PATHS
+    ${LEVELDB_DIR}
     $ENV{LEVELDB_DIR}
     NO_DEFAULT_PATH
     PATH_SUFFIXES lib64 lib
@@ -60,6 +64,7 @@ FIND_LIBRARY(LEVELDB_LIBRARY
 FIND_LIBRARY(LEVELDB_LIBRARY_DEBUG
   NAMES libleveldbd leveldbd leveldb_staticd
   PATHS
+    ${LEVELDB_DIR}
     $ENV{LEVELDB_DIR}
     NO_DEFAULT_PATH
     PATH_SUFFIXES lib64 lib

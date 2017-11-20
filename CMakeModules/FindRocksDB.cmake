@@ -1,5 +1,7 @@
 # Locate RocksDB
 
+SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution")
+
 FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
   PATHS
   ${ROCKSDB_DIR}

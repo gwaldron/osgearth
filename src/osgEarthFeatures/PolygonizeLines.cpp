@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Utils>

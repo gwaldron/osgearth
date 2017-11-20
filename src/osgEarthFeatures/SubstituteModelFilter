@@ -27,6 +27,12 @@
 #include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/Containers>
 
+namespace osgEarth {
+    namespace Symbology {
+        class ResourceLibrary;
+    }
+}
+
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;

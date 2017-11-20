@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
 #include <osg/ClusterCullingCallback>
 
 #define LC "[TransformFilter] "

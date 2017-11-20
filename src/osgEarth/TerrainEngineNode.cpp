@@ -405,18 +405,6 @@ TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node
     }
 }
 
-void
-TerrainEngineNode::addTilePatchCallback(TilePatchCallback* cb)
-{
-    _tilePatchCallbacks.push_back( cb );
-}
-
-void
-TerrainEngineNode::removeTilePatchCallback(TilePatchCallback* cb)
-{
-    std::remove(_tilePatchCallbacks.begin(), _tilePatchCallbacks.end(), cb);
-}
-
 ComputeRangeCallback*
 TerrainEngineNode::getComputeRangeCallback() const
 {

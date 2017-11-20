@@ -13,12 +13,7 @@ Help us add useful sources of Free data to this list.
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
     
-    * `NASA EOSDIS`_ - NASA's Global Imagery Browse Services (GIBS) replaces the agency's old
-      JPL OnEarth site for global imagery products like MODIS.
-       
     * `NASA BlueMarble`_ - NASA's whole-earth imagery (including topography and bathymetry maps)
-    
-    * `NRL GIDB`_ - US Naval Research Lab's GIDB OpenGIS Web Services
     
     * `Natural Earth`_ - Free vector and raster map data at various scales
     
@@ -41,9 +36,9 @@ Help us add useful sources of Free data to this list.
 
     * `OpenStreetMap`_ - Worldwide, community-sources street and land use data (vectors and rasterized tiles)
     
-    * `DIVA-GIS`_ - Free low-resolution vector data for any country
-    
     * `Natural Earth`_ - Free vector and raster map data at various scales
+    
+    * `DIVA-GIS`_ - Free low-resolution vector data for any country
     
 
 .. _CGIAR:                      http://srtm.csi.cgiar.org/
@@ -52,15 +47,13 @@ Help us add useful sources of Free data to this list.
 .. _GEBCO:                      http://www.gebco.net/
 .. _GLCF:                       http://glcf.umiacs.umd.edu/data/srtm/
 .. _OpenStreetMap:              http://openstreetmap.org
-.. _NASA EOSDIS:                http://earthdata.nasa.gov/about-eosdis/system-description/global-imagery-browse-services-gibs
 .. _NASA BlueMarble:            http://visibleearth.nasa.gov/view_cat.php?categoryID=1484
 .. _Natural Earth:              http://www.naturalearthdata.com/
-.. _NRL GIDB:                   http://columbo.nrlssc.navy.mil/ogcwms/servlet/WMSServlet
 .. _SRTM30+:                    ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
 .. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx
-.. _ReadyMap.org:               http://readymap.org/index_orig.html
+.. _ReadyMap.org:               http://readymap.org
 
 ----
 
@@ -88,30 +81,64 @@ Tips for Preparing your own Data
     **Build internal tiles**
     
     Typically formats such as GeoTiff store their pixel data in scanlines.
-    This generally works well, but because of the tiled approach that osgEarth
-    uses to access the data, you may find that using a tiled dataset will be more
-    efficient as osgEarth doens't need to read nearly as much data from disk to
-    extract a tile.
+    However, using a tiled dataset will be more efficient for osgEarth because
+    of how it uses tiles internally.
     
     To create a tiled GeoTiff using gdal_translate, issue the following command::
     
-        gdal_translate -of GTiff -co "TILED=YES" myfile.tif myfile_tiled.tif
+        gdal_translate -of GTiff -co TILED=YES input.tif output.tif
+        
+    Take is a step further and use compression to save space. You can use internal
+    JPEG compression if your data contains no transparency::
+    
+        gdal_translate -of GTiff -co TILED=YES -co COMPRESS=JPG input.tif output.tif   
+    
 
     **Build overviews**
     
     Adding overviews (also called ''pyramids'' or ''rsets'') can sometimes increase
-    the performance of a datasource in osgEarth.  You can use the
-    `gdaladdo <http://gdal.org/gdaladdo.html>`_ utility to add overviews to a dataset.
+    the performance of a large data source in osgEarth.  You can use the
+    `gdaladdo <http://gdal.org/gdaladdo.html>`_ utility to add overviews to a dataset::
     
-    For example::
-
         gdaladdo -r average myimage.tif 2 4 8 16
 
-        
-**Building tile sets**
 
-    Another way to speed up imagery and elevation loading in osgEarth is to build **tile sets**.
-    In fact, if you want to serve your data over the network, this is the only way!
+**Building tile sets with osgearth_conv**
+
+   Pre-tiling your imagery can speed up load time dramatically, especially over the network.   
+   In fact, if you want to serve your data over the network, this is the only way!
+
+   *osgearth_conv* is a low-level conversion tool that comes with osgEarth. One useful 
+   application of the tool is tile up a large GeoTIFF (or other input) in a tiled format.   
+   Note: this approach only works with drivers that support writing (MBTiles, TMS).
+
+   To make a portable MBTiles file::
+
+       osgearth_conv --in driver gdal --in url myLargeFile.tif
+                     --out driver mbtiles --out filename myData.mbtiles
+                     --out format jpg
+
+   If you want to serve tiles from a web server, use TMS::
+
+       osgearth_conv --in driver gdal --in url myLargeData.tif
+                     --out driver tms --out url myLargeData/tms.xml
+                     --out format jpg
+
+   That will yield a folder (called "myLargeData" in this case) that you can deploy on the web
+   behind any standard web server (e.g. Apache).
+   
+   **Tip:** If you are tiling elevation data, you will need to add the ``--elevation`` option.
+   
+   **Tip:** The ``jpg`` format does NOT support transparency. If your data was an alpha
+   channel, use ``png`` instead.
+   
+   Just type *osgearth_conv* for a full list of options. The ``--in`` and ``--out`` options
+   correspond directly to properties you would normally include in an Earth file.
+   
+        
+**Building tile sets with the packager**
+
+    Another way to speed up imagery and elevation loading in osgEarth is to build tile sets.
     
     This process takes the source data and chops it up into a quad-tree hierarchy of discrete
     *tiles* that osgEarth can load very quickly. Normally, if you load a GeoTIFF (for example),
@@ -140,3 +167,13 @@ Tips for Preparing your own Data
         --keep-empties                      Writes fully transparent image tiles (normally discarded)
         --db-options                        An optional OSG options string
         --verbose                           Displays progress of the operation
+        
+**Spatial indexing for feature data**
+
+    Large vector feature datasets (e.g., shapefiles) will benefit greatly from a spatial index.
+    Using the *ogrinfo* tool (included with GDAL/OGR binary distributions) you can create a 
+    spatial index for your vector data like so::
+
+        ogrinfo -sql "CREATE SPATIAL INDEX ON myfile" myfile.shp
+
+    For shapefiles, this will generate a ".qix" file that contains the spatial index information.

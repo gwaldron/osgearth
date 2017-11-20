@@ -20,7 +20,6 @@
 #ifndef OSGEARTH_FEATURES_FEATURE_SOURCE_LAYER_H
 #define OSGEARTH_FEATURES_FEATURE_SOURCE_LAYER_H 1
 
-#include <osgEarth/WrapperLayer>
 #include <osgEarthFeatures/FeatureSource>
 
 namespace osgEarth { namespace Features

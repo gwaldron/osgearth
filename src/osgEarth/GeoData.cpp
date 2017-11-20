@@ -1259,6 +1259,16 @@ GeoExtent::clamp()
     {
         _width = osg::clampBetween(_width, 0.0, 360.0);
         _height = osg::clampBetween(_height, 0.0, 180.0);
+
+        if (south() < -90.0)
+        {
+            _height -= (-90.0)-_south;
+            _south = -90.0;
+        }
+        else if (north() > 90.0)
+        {
+            _height -= (north()-90.0);            
+        }
     }
 }
 
@@ -1838,9 +1848,6 @@ namespace
             width = osg::minimum(image->s(), image->t());
             height = osg::minimum(image->s(), image->t());
         }
-
-        // need to know this in order to choose the right interpolation algorithm
-        const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
         osg::Image *result = new osg::Image();
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);

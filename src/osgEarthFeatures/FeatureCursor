@@ -29,6 +29,8 @@ namespace osgEarth { namespace Features
 {   
     using namespace osgEarth;
 
+    //class FeatureFilterChain;
+
     /**
      * A cursor that lets you iterate over a collection of features returned 
      * from a feature query performed on a FeatureStore.
@@ -40,9 +42,9 @@ namespace osgEarth { namespace Features
         virtual Feature* nextFeature() =0;
 
     public:
-        void fill( FeatureList& output );
+        virtual ~FeatureCursor();
 
-        virtual ~FeatureCursor() { }
+        void fill( FeatureList& output );
     };
 
     /**
@@ -53,13 +55,14 @@ namespace osgEarth { namespace Features
     {
     public:
         FeatureListCursor(const FeatureList& input);
-        
-        virtual ~FeatureListCursor() { }
 
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 
     protected:
+        
+        virtual ~FeatureListCursor();
+
         FeatureList           _features;
         FeatureList::iterator _iter;
         bool                  _clone;
@@ -72,14 +75,15 @@ namespace osgEarth { namespace Features
     {
     public:
         GeometryFeatureCursor( Symbology::Geometry* geom );
-        GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
-        virtual ~GeometryFeatureCursor() { }
+        GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
+
     protected:
+        virtual ~GeometryFeatureCursor();
         osg::ref_ptr<Symbology::Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        const FeatureFilterList _filters;
+        osg::ref_ptr<const FeatureFilterChain> _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
 

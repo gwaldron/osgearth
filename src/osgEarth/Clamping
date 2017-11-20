@@ -23,9 +23,10 @@
 #define OSGEARTH_CLAMPING_H
 
 #include <osgEarth/Common>
+#include <osgEarth/Containers>
+#include <osgEarth/ClampableNode>
 #include <osg/Node>
 #include <osg/Geometry>
-#include <osgEarth/ClampableNode>
 #include <osg/ObserverNodePath>
 #include <osg/Camera>
 

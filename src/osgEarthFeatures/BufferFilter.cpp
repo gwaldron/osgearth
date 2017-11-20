@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/FilterContext>
 
 #define LC "[BufferFilter] "
 

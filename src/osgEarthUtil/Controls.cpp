@@ -191,10 +191,6 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
-    
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-    _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
-#endif
 }
 
 void
@@ -423,6 +419,12 @@ Control::parentIsVisible() const
     return visible;
 }
 
+void
+Control::setOpacity(float a) {
+    osg::Vec4f c = _foreColor.get();
+    c.a() = a;
+    setForeColor(c);
+}
 
 void
 Control::setForeColor( const osg::Vec4f& value ) {

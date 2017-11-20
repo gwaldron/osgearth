@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarth/MapNode>
@@ -343,7 +344,7 @@ RectangleNode::rebuild()
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext(0L) );
+        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext() );
         if ( node )
         {
             node = AnnotationUtils::installOverlayParent( node.get(), _style );

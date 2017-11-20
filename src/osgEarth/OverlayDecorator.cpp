@@ -281,7 +281,6 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_useShaders          ( true ),
 _dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
@@ -403,8 +402,6 @@ void
 OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                                                    PerViewData&          pvd)
 {
-    static int s_frame = 1;
-
     osg::Vec3d eye = cv->getViewPoint();
 
     double eyeLen;

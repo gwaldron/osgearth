@@ -21,9 +21,8 @@
 #define OSGEARTH_CLAMPABLE_NODE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/DepthOffset>
-#include <osgEarth/OverlayNode>
 #include <osg/Group>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {

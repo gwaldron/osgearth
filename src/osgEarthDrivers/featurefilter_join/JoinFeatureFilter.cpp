@@ -19,12 +19,14 @@
 #include "JoinFeatureFilterOptions"
 
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureCursor>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Geometry>
 
 #define LC "[Intersect FeatureFilter] "

@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/Utils>
 
 #include <osgDB/WriteFile>
 #include <osg/BlendFunc>
@@ -143,9 +144,22 @@ RTTPicker::~RTTPicker()
     for (PickContexts::iterator i = _pickContexts.begin(); i != _pickContexts.end(); ++i)
     {
         PickContext& pc = *i;
-        while( pc._pickCamera->getNumParents() > 0 )
+
+        osg::ref_ptr<osg::View> view;
+        if (pc._view.lock(view))
         {
-            pc._pickCamera->getParent(0)->removeChild( pc._pickCamera.get() );
+            unsigned numSlaves = pc._view->getNumSlaves();
+            for (unsigned k = 0; k < numSlaves; ++k)
+            {
+                if (pc._view->getSlave(k)._camera.get() == pc._pickCamera.get())
+                {
+                    // Remove children of the pick camera so GL objects don't get released when
+                    // we remove the slave
+                    pc._pickCamera->removeChildren(0, pc._pickCamera->getNumChildren());
+                    pc._view->removeSlave(k);
+                    break;
+                }
+            }
         }
     }
 }
@@ -176,6 +190,21 @@ RTTPicker::setCullMask(osg::Node::NodeMask nm)
     {
         i->_pickCamera->setCullMask( _cullMask );
     }
+}
+
+namespace
+{
+    struct MyUpdateSlave : public osg::View::Slave::UpdateSlaveCallback
+    {
+        void updateSlave(osg::View& view, osg::View::Slave& slave)
+        {
+            osg::Camera* cam = slave._camera.get();
+            cam->setProjectionResizePolicy(view.getCamera()->getProjectionResizePolicy());
+            cam->setProjectionMatrix(view.getCamera()->getProjectionMatrix());
+            cam->setViewMatrix(view.getCamera()->getViewMatrix());
+            cam->inheritCullSettings(*(view.getCamera()), cam->getInheritanceMask());            
+        }
+    };
 }
 
 RTTPicker::PickContext&
@@ -255,14 +284,17 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // duplicate the view matrix and projection matrix during the update traversal
     // The "false" means the pick camera has its own separate subgraph.
     view->addSlave(c._pickCamera.get(), false);
+    osg::View::Slave& slave = view->getSlave(view->getNumSlaves()-1);
+    slave._updateSlaveCallback = new MyUpdateSlave();
+
+    // Pick camera starts out deactivated.
+    c._numPicks = 0;
+    c._pickCamera->setNodeMask(0);
+
     // Add a pre-draw callback that calls the view camera's pre-draw callback.  This
     // is better than assigning the same pre-draw callback, because the callback can
     // change over time (such as installing or uninstalling a Logarithmic Depth Buffer)
     c._pickCamera->setPreDrawCallback( new CallHostCameraPreDrawCallback(view->getCamera()) );
-
-    // associate the RTT camara with the view's camera.
-    // (e.g., decluttering uses this to find the "true" viewport)
-    c._pickCamera->setUserData( view->getCamera() );
 
     return c;
 }
@@ -279,13 +311,13 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         }
 
         // if there are picks in the queue, need to continuing rendering:
-        if ( !_picks.empty() )
+        if ( _picks.empty() == false )
         {
             aa.requestRedraw();
         }
     }
 
-    else if ( _defaultCallback.valid() && _defaultCallback->accept(ea, aa) )
+    if ( _defaultCallback.valid() && _defaultCallback->accept(ea, aa) )
     {        
         pick( aa.asView(), ea.getX(), ea.getY(), _defaultCallback.get() );
         aa.requestRedraw();
@@ -336,9 +368,16 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._v        = v;
     pick._callback = callbackToUse;
     pick._frame    = view->getFrameStamp() ? view->getFrameStamp()->getFrameNumber() : 0u;
-    
+   
     // Queue it up.
-    _picks.push( pick );
+    _picks.push_back( pick );
+    
+    // Activate the pick camera if necessary:
+    pick._context->_numPicks++;
+    if (pick._context->_numPicks == 1)
+    {
+        pick._context->_pickCamera->setNodeMask(~0);
+    }
     
     return true;
 }
@@ -346,17 +385,34 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
 void
 RTTPicker::runPicks(unsigned frameNumber)
 {
-    while( _picks.size() > 0 )
+    if (_picks.size() > 0)
     {
-        Pick& pick = _picks.front();
-        if ( frameNumber > pick._frame )
+        for (std::vector<Pick>::iterator i = _picks.begin(); i != _picks.end(); )
         {
-            checkForPickResult(pick);
-            _picks.pop();
-        }
-        else
-        {
-            break;
+            bool pickExpired = false;
+            Pick& pick = *i;
+            if (frameNumber > pick._frame)
+            {
+                pickExpired = checkForPickResult(pick, frameNumber);
+                if (pickExpired)
+                {
+                    // Decrement the pick count for this pick's camera. If it reaches zero,
+                    // disable the camera.
+                    pick._context->_numPicks--;
+                    if (pick._context->_numPicks == 0)
+                    {
+                        pick._context->_pickCamera->setNodeMask(0);
+                    }
+
+                    // Remove the pick.
+                    i = _picks.erase(i);
+                }
+            }
+
+            if (pickExpired == false)
+            {
+                ++i;
+            }
         }
     }
 }
@@ -410,8 +466,8 @@ namespace
     };
 }
 
-void
-RTTPicker::checkForPickResult(Pick& pick)
+bool
+RTTPicker::checkForPickResult(Pick& pick, unsigned frameNumber)
 {
     // decode the results
     osg::Image* image = pick._context->_image.get();
@@ -421,9 +477,10 @@ RTTPicker::checkForPickResult(Pick& pick)
     //osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
     //osgDB::writeImageFile(*image, "out.tif", o.get());
 
+    bool hit = false;
     osg::Vec4f value;
     SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);
-    while(iter.next())
+    while (iter.next() && (hit == false))
     {
         value = read(iter.s(), iter.t());
 
@@ -436,11 +493,25 @@ RTTPicker::checkForPickResult(Pick& pick)
         if ( id > 0 )
         {
             pick._callback->onHit( id );
-            return;
+            hit = true;
         }
     }
 
-    pick._callback->onMiss();
+    // A pick expires if (a) it registers a hit, or (b) is registers a miss
+    // for 2 frames in a row. Why 2? Because the RTT picker itself delays 
+    // pick results by one frame, and the osgEarth draping/clamping systems
+    // also delay drawing by one frame. So we need 2 frames to positively
+    // register a hit on draped/clamped geometry.
+    bool pickExpired =
+        hit == true ||
+        frameNumber - pick._frame >= 2u;
+
+    if ((hit == false) && (pickExpired == true))
+    {
+        pick._callback->onMiss();
+    }
+
+    return pickExpired;
 }
 
 bool

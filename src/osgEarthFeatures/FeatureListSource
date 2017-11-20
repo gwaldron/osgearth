@@ -25,7 +25,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/FeatureSource>
 
 #include <osgEarth/Profile>
@@ -33,10 +32,12 @@
 
 namespace osgEarth { namespace Features
 {   
+    class FeatureCursor;
+
     /**
      * @deprecated - use a FeatureNode instead
      */
-    class OSGEARTHFEATURES_EXPORT FeatureListSource : public osgEarth::Features::FeatureSource
+    class OSGEARTHFEATURES_EXPORT FeatureListSource : public FeatureSource
     {
     public:
         /**

@@ -24,7 +24,6 @@
 #include <osgEarth/LayerListener>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceLayer>
-#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/StyleSheet>
 #include "Export"
 

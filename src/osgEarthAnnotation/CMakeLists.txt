@@ -19,7 +19,6 @@ set(LIB_PUBLIC_HEADERS
 	BboxDrawable
     CircleNode
     Common
-    Decoration
     Draggers
     EllipseNode
     Export
@@ -28,14 +27,12 @@ set(LIB_PUBLIC_HEADERS
     GeoPositionNode
     GeoPositionNodeAutoScaler
     LocalGeometryNode
-    HighlightDecoration
     ImageOverlay
     ImageOverlayEditor
     LabelNode
     ModelNode
     PlaceNode
     RectangleNode
-    ScaleDecoration
     TrackNode
 )
 
@@ -49,7 +46,6 @@ set(LIB_COMMON_FILES
     AnnotationUtils.cpp
 	BboxDrawable.cpp
     CircleNode.cpp
-    Decoration.cpp
     Draggers.cpp
     EllipseNode.cpp
     FeatureNode.cpp
@@ -57,7 +53,6 @@ set(LIB_COMMON_FILES
     GeoPositionNode.cpp
     GeoPositionNodeAutoScaler.cpp
     LocalGeometryNode.cpp
-    HighlightDecoration.cpp
     ImageOverlay.cpp
     ImageOverlayEditor.cpp
     LabelNode.cpp

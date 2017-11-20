@@ -28,15 +28,23 @@
 #include <osg/Group>
 #include <osg/Polytope>
 #include <vector>
+#include <osgEarth/optional>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     struct HTMSettings
     {
-        unsigned _maxLeaves;
-        float _maxLeafRange;
+        unsigned _maxObjectsPerCell;
+        optional<float> _rangeFactor;
+        optional<float> _maxRange;
+        float _minCellSize;
+        float _maxCellSize;
+        bool _storeObjectsInLeavesOnly;
         int _debugCount;
         int _debugFrame;
+        bool _debugGeom;
     };
 
     /**
@@ -51,21 +59,31 @@ namespace osgEarth { namespace Util
     public:
         HTMGroup();
 
-        /**
-         * Sets the maximum number of leaf nodes that can exist at a
-         * given level in the graph before it subdivides into a more refined
-         * index. The default is 16.
-         */
-        void setMaxLeaves(unsigned value);
-        float getMaxLeaves() const { return _settings._maxLeaves; }
+        //! Sets the maximum number of objects that can live in a single cell.
+        void setMaximumObjectsPerCell(unsigned value) { _settings._maxObjectsPerCell = value; }
+        float getMaximumObjectsPerCell() const { return _settings._maxObjectsPerCell; }
 
-        /**
-         * Sets the maximum visibility range of any leaf node in this graph.
-         * @param[in ] range Maximum visibile range (meters); default is 50,000m.
-         */
-        void setMaxLeafRange(float range);
-        float getMaxLeafRange() const { return _settings._maxLeafRange; }
+        //! Minimum size (bounding radius*2) of an HTM cell.
+        void setMinimumCellSize(double value) { _settings._minCellSize = value; }
+        double getMinimumCellSize() const { return _settings._minCellSize; }
 
+        //! Maximum size (bounding radius*2) of an HTM cell that can contain objects.
+        void setMaximumCellSize(double value) { _settings._maxCellSize = value; }
+        double getMaximumCellSize() const { return _settings._maxCellSize; }
+
+        //! Cells become visible at (cell bounding radius * range factor).
+        //! If this is set, the value in setRange is ignored.
+        void setRangeFactor(float value) { _settings._rangeFactor = value; }
+
+        //! Range at which objects become visible. This overrides range factor if set.
+        void setMaxRange(float value) { _settings._maxRange = value; }
+
+        //! If true, only store objects in the leaf nodes (defaults to false)
+        void setStoreObjectsInLeavesOnly(bool value) { _settings._storeObjectsInLeavesOnly = value; }
+
+        //! Enable debugging geometry
+        void setDebug(bool value) { _settings._debugGeom = value; }
+        bool getDebug() const { return _settings._debugGeom; }
 
     public: // osg::Group
 
@@ -101,7 +119,8 @@ namespace osgEarth { namespace Util
     {
     public:
         HTMNode(HTMSettings& settings,
-                const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2);
+                const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2,
+                const std::string& id = "");
         
         bool contains(const osg::Vec3d& p) const {
             return _tri.contains(p);
@@ -149,6 +168,7 @@ namespace osgEarth { namespace Util
         Triangle _tri;
         bool     _isLeaf;
         HTMSettings& _settings;
+        osg::ref_ptr<osg::Node> _debug;
     };
 
 } } // namesapce osgEarth::Util

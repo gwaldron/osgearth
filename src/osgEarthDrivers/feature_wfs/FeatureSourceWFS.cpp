@@ -21,12 +21,15 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/URI>
+
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/BufferFilter>
-#include <osgEarthFeatures/ScaleFilter>
-#include <osgEarthUtil/WFS>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/OgrUtils>
+
+#include <osgEarthUtil/WFS>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -362,19 +365,15 @@ public:
         }
 
         //If we have any filters, process them here before the cursor is created
-        if (!getFilters().empty())
+        if (getFilters() && !getFilters()->empty() && !features.empty())
         {
-            // preprocess the features using the filter list:
-            if ( features.size() > 0 )
-            {
-                FilterContext cx;
-                cx.setProfile( getFeatureProfile() );
+            FilterContext cx;
+            cx.setProfile( getFeatureProfile() );
 
-                for( FeatureFilterList::const_iterator i = getFilters().begin(); i != getFilters().end(); ++i )
-                {
-                    FeatureFilter* filter = i->get();
-                    cx = filter->push( features, cx );
-                }
+            for( FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i )
+            {
+                FeatureFilter* filter = i->get();
+                cx = filter->push( features, cx );
             }
         }
 
@@ -389,7 +388,6 @@ public:
             }
         }
 
-        //result = new FeatureListCursor(features);
         result = dataOK ? new FeatureListCursor( features ) : 0L;
 
         if ( !result )

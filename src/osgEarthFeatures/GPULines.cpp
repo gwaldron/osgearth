@@ -18,10 +18,11 @@
  */
 #include <osgEarthFeatures/GPULines>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Shaders>
+
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Utils>
+
 #include <osg/Depth>
 #include <osg/CullFace>
 

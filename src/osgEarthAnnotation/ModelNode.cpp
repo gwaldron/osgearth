@@ -26,7 +26,6 @@
 #include <osgEarthAnnotation/GeoPositionNodeAutoScaler>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
-#include <osgEarth/AutoScale>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>

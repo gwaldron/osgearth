@@ -17,10 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ResampleFilter>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/GeoMath>
 #include <osg/io_utils>
 #include <list>
-#include <deque>
 #include <cstdlib>
 
 using namespace osgEarth;

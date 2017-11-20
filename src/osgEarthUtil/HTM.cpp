@@ -26,6 +26,7 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osg/Geometry>
 #include <osgText/Text>
+#include <osgEarth/DrapeableNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -92,11 +93,53 @@ HTMNode::Triangle::getMidpoints(osg::Vec3d* w) const
 //-----------------------------------------------------------------------
 
 HTMNode::HTMNode(HTMSettings& settings,
-                 const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2) :
+                 const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2,
+                 const std::string& id) :
 _settings(settings)
 {
+    setName(id);
+
     _isLeaf = true;
     _tri.set( v0, v1, v2 );
+
+    if (settings._debugGeom)
+    {
+        const double R = SpatialReference::get("wgs84")->getEllipsoid()->getRadiusEquator();
+
+        osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
+    
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        for (double t=0.0; t<1.0; t+=0.05)
+            verts->push_back((v0 + (v1-v0)*t) * R);
+        for (double t=0.0; t<1.0; t+=0.05)
+            verts->push_back((v1 + (v2-v1)*t) * R);
+        for (double t=0.0; t<1.0; t+=0.05)
+            verts->push_back((v2 + (v0-v2)*t) * R);
+        geom->setVertexArray(verts);
+
+        osg::Vec4Array* color = new osg::Vec4Array();
+        color->push_back(osg::Vec4(1,1,0,1));
+        color->setBinding(color->BIND_OVERALL);
+        geom->setColorArray(color);
+
+        geom->addPrimitiveSet(new osg::DrawArrays(GL_LINE_LOOP, 0, verts->size()));
+        geom->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+
+        osgText::Text* text = new osgText::Text();
+        text->setText(Stringify() << getName() << "\nS=" << geom->getBound().radius()*2.0);
+        text->setPosition((v0+v1+v2)/3 * R);
+        text->setCharacterSizeMode(text->SCREEN_COORDS);
+        text->setCharacterSize(48);
+        text->setAutoRotateToScreen(true);
+        text->setAlignment(text->CENTER_CENTER);
+        text->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
+
+        DrapeableNode* drape = new DrapeableNode();
+        drape->addChild(geom);
+        drape->addChild(text);
+        _debug = drape;
+    }
 }
 
 void
@@ -104,6 +147,7 @@ HTMNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        //OE_INFO << getName() << std::endl;
 #if 0
         if ( _isLeaf )
         {
@@ -119,14 +163,40 @@ HTMNode::traverse(osg::NodeVisitor& nv)
 
         const osg::BoundingSphere& bs = getBound();
 
-        if ( nv.getDistanceToViewPoint(bs.center(), true) <= (bs.radius() + _settings._maxLeafRange) )
+        float range = nv.getDistanceToViewPoint(bs.center(), true);
+        bool inRange = false;
+
+        if (_settings._maxRange.isSet() == false)
+        {
+            inRange = range < (bs.radius() * _settings._rangeFactor.get());
+        }
+        else
+        {
+            inRange = range < (bs.radius() + _settings._maxRange.get());
+        }
+
+        if ( inRange )
         {
             osg::Group::traverse( nv );
+            
+            if (_debug.valid() && _isLeaf)
+            {
+                _debug->accept(nv);
+            }
+        }
+        else if (_debug.valid())
+        {
+            _debug->accept(nv);
         }
     }
     else
     {
-        osg::Group::traverse( nv );
+        if (_debug.valid())
+        {
+            _debug->accept(nv);
+        }
+
+        osg::Group::traverse( nv );        
     }
 }
 
@@ -135,8 +205,11 @@ HTMNode::insert(osg::Node* node)
 {
     if ( _isLeaf )
     {
-        if ((getNumChildren() < _settings._maxLeaves) ||
-            (getBound().radius() < _settings._maxLeafRange))
+        bool roomForMoreObjects = (getNumChildren() < _settings._maxObjectsPerCell);
+        bool underMaxCellSize = getBound().radius()*2.0 < _settings._maxCellSize;
+        bool reachedMinCellSize = getBound().radius()*2.0 <= _settings._minCellSize;
+
+        if ((underMaxCellSize && roomForMoreObjects) || reachedMinCellSize)
         {
             addChild( node );
         }
@@ -152,7 +225,8 @@ HTMNode::insert(osg::Node* node)
     {
         const osg::Vec3d& p = node->getBound().center();
 
-        for(unsigned i=0; i<_children.size(); ++i)
+        // last four children are the subcells
+        for (int i = _children.size() - 1; i >= _children.size()-4; --i)
         {
             HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
             if ( child && child->contains(p) )
@@ -176,34 +250,36 @@ HTMNode::split()
 
     // split into four children, each wound CCW
     HTMNode* c[4];
-    c[0] = new HTMNode(_settings, _tri._v[0], w[0], w[2]);
-    c[1] = new HTMNode(_settings, _tri._v[1], w[1], w[0]);
-    c[2] = new HTMNode(_settings, _tri._v[2], w[2], w[1]);
-    c[3] = new HTMNode(_settings, w[0], w[1], w[2]);
+    c[0] = new HTMNode(_settings, _tri._v[0], w[0], w[2], Stringify()<< getName() << "0");
+    c[1] = new HTMNode(_settings, _tri._v[1], w[1], w[0], Stringify() << getName() << "1");
+    c[2] = new HTMNode(_settings, _tri._v[2], w[2], w[1], Stringify() << getName() << "2");
+    c[3] = new HTMNode(_settings, w[0], w[1], w[2], Stringify() << getName() << "3");
     
-    // distibute the data amongst the children
-    for(osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i)
+    if (_settings._storeObjectsInLeavesOnly == true)
     {
-        osg::Node* node = i->get();        
-        const osg::Vec3d& p = node->getBound().center();
-
-        for(unsigned j=0; j<4; ++j)
+        // distibute the data amongst the children
+        for(osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i)
         {
-            if ( c[j]->contains(p) )
+            osg::Node* node = i->get();        
+            const osg::Vec3d& p = node->getBound().center();
+
+            for(unsigned j=0; j<4; ++j)
             {
-                c[j]->insert( node );
-                break;
+                if ( c[j]->contains(p) )
+                {
+                    c[j]->insert( node );
+                    break;
+                }
             }
         }
-    }
 
-    // remove the leaves from this node
-    osg::Group::removeChildren(0, getNumChildren());
+        // remove the leaves from this node
+        osg::Group::removeChildren(0, getNumChildren());
+    }
 
     // add the new subnodes to this node.
     for(unsigned i=0; i<4; ++i)
     {
-        c[i]->setName( Stringify() << getName() << i );
         osg::Group::addChild( c[i] );
     }
 
@@ -214,27 +290,15 @@ HTMNode::split()
 
 HTMGroup::HTMGroup()
 {
-    _settings._maxLeaves = 16;
-    _settings._maxLeafRange = 50000.0f;
+    _settings._maxObjectsPerCell = 128;
+    _settings._rangeFactor.init( 7.0f );
+    _settings._debugGeom = true;
+    _settings._minCellSize = 10000;
+    _settings._maxCellSize = 500000;
+    _settings._storeObjectsInLeavesOnly = false;
 
     // hopefully prevent the OSG optimizer from altering this graph:
     setDataVariance( osg::Object::DYNAMIC );
-
-    reinitialize();
-}
-
-void
-HTMGroup::setMaxLeaves(unsigned maxLeaves)
-{
-    _settings._maxLeaves = maxLeaves;
-
-    reinitialize();
-}
-
-void
-HTMGroup::setMaxLeafRange(float range)
-{
-    _settings._maxLeafRange = range;
 
     reinitialize();
 }
@@ -257,14 +321,14 @@ HTMGroup::reinitialize()
     osg::Vec3d v5( 0,   0,  -rz);     // lat=-90  long=  0
 
     // CCW triangles.
-    osg::Group::addChild( new HTMNode(_settings, v0, v1, v2) );
-    osg::Group::addChild( new HTMNode(_settings, v0, v2, v3) );
-    osg::Group::addChild( new HTMNode(_settings, v0, v3, v4) );
-    osg::Group::addChild( new HTMNode(_settings, v0, v4, v1) );
-    osg::Group::addChild( new HTMNode(_settings, v5, v1, v4) );
-    osg::Group::addChild( new HTMNode(_settings, v5, v4, v3) );
-    osg::Group::addChild( new HTMNode(_settings, v5, v3, v2) );
-    osg::Group::addChild( new HTMNode(_settings, v5, v2, v1) );
+    osg::Group::addChild( new HTMNode(_settings, v0, v1, v2, "0") );
+    osg::Group::addChild( new HTMNode(_settings, v0, v2, v3, "1") );
+    osg::Group::addChild( new HTMNode(_settings, v0, v3, v4, "2") );
+    osg::Group::addChild( new HTMNode(_settings, v0, v4, v1, "3") );
+    osg::Group::addChild( new HTMNode(_settings, v5, v1, v4, "4") );
+    osg::Group::addChild( new HTMNode(_settings, v5, v4, v3, "5") );
+    osg::Group::addChild( new HTMNode(_settings, v5, v3, v2, "6") );
+    osg::Group::addChild( new HTMNode(_settings, v5, v2, v1, "7") );
 }
 
 bool

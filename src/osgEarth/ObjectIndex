@@ -214,7 +214,7 @@ namespace osgEarth
     protected:
         virtual ~ObjectIndex() { }
         
-        typedef std::map<ObjectID, osg::ref_ptr<osg::Referenced> > IndexMap;
+        typedef std::map<ObjectID, osg::observer_ptr<osg::Referenced> > IndexMap;
 
         IndexMap                 _index;
         int                      _attribLocation;

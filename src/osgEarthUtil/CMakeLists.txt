@@ -23,7 +23,6 @@ SET(HEADERS_ROOT
     Ephemeris
     ExampleResources
     Export
-    FeatureQueryTool
     FlatteningLayer
     Fog
     Formatter
@@ -41,7 +40,6 @@ SET(HEADERS_ROOT
     MGRSGraticule
     MouseCoordsTool
     MultiElevationLayer
-    ObjectLocator
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -113,7 +111,6 @@ SET(SOURCES_ROOT
     EarthManipulator.cpp
     Ephemeris.cpp
     ExampleResources.cpp
-    FeatureQueryTool.cpp
     FlatteningLayer.cpp
     Fog.cpp
     FractalElevationLayer.cpp
@@ -129,7 +126,6 @@ SET(SOURCES_ROOT
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     MultiElevationLayer.cpp
-    ObjectLocator.cpp
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp

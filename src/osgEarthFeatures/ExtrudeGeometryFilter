@@ -21,7 +21,6 @@
 #define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
@@ -29,13 +28,19 @@
 #include <vector>
 #include <list>
 
+namespace osgEarth {
+    namespace Symbology {
+        class ResourceLibrary;
+    }
+}
+
 namespace osgEarth { namespace Features 
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
     
     class FeatureSourceIndex;
-
+    class FeatureIndexBuilder;
 
     /**
      * Extrudes footprint geometry into 3D geometry

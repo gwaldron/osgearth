@@ -19,7 +19,7 @@
 #ifndef OSGEARTHFEATURES_FEATURE_CURSOR_OGR
 #define OSGEARTHFEATURES_FEATURE_CURSOR_OGR 1
 
-#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Query>
@@ -47,12 +47,12 @@ public:
      *      The the query from which this cursor was created.
      */
     FeatureCursorOGR(
-        OGRLayerH                dsHandle,
-        OGRLayerH                layerHandle,
-        const FeatureSource*     source,
-        const FeatureProfile*    profile,
-        const Symbology::Query&  query,
-        const FeatureFilterList& filters );
+        OGRLayerH                 dsHandle,
+        OGRLayerH                 layerHandle,
+        const FeatureSource*      source,
+        const FeatureProfile*     profile,
+        const Symbology::Query&   query,
+        const FeatureFilterChain* filters );
 
 public: // FeatureCursor
 
@@ -74,7 +74,7 @@ private:
     osg::ref_ptr<const FeatureProfile>  _profile;
     std::queue< osg::ref_ptr<Feature> > _queue;
     osg::ref_ptr<Feature>               _lastFeatureReturned;
-    const FeatureFilterList&            _filters;
+    osg::ref_ptr<const FeatureFilterChain> _filters;
     bool                                _resultSetEndReached;
 
 private:

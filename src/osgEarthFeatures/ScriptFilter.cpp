@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ScriptFilter>
+#include <osgEarthFeatures/FilterContext>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

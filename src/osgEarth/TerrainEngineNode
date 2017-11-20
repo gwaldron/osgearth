@@ -28,7 +28,6 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/TilePatchCallback>
 #include <osgEarth/Progress>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -170,12 +169,6 @@ namespace osgEarth
 
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
-
-        /** @deprecated Adds a tile patch callback. */
-        virtual void addTilePatchCallback(TilePatchCallback*);
-
-        /** @deprecated Removes a tile patch callback. */
-        virtual void removeTilePatchCallback(TilePatchCallback*);
 
         /** Gets the ComputeRangeCallback for this TerrainEngineNode */
         ComputeRangeCallback* getComputeRangeCallback() const;
@@ -366,9 +359,6 @@ namespace osgEarth
 
         osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 
-    protected:
-
-        TilePatchCallbacks _tilePatchCallbacks;
 
     public:
 

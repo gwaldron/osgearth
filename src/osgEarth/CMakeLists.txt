@@ -38,7 +38,6 @@ ENDIF(WIN32)
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
-    AlphaEffect.frag.glsl
     DepthOffset.vert.glsl
     Draping.vert.glsl
     Draping.frag.glsl
@@ -62,8 +61,6 @@ configure_shaders(
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
-    AlphaEffect
-    AutoScale
     Bounds
     Cache
     CacheEstimator
@@ -147,7 +144,6 @@ SET(LIB_PUBLIC_HEADERS
     optional
     ObjectIndex
     OverlayDecorator
-    OverlayNode
     PagedNode
     PatchLayer
     PhongLightingEffect
@@ -157,7 +153,6 @@ SET(LIB_PUBLIC_HEADERS
     Profile
     Profiler
     Progress
-    QuadTree
     Random
     Registry
     ResourceReleaser
@@ -189,7 +184,6 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
-    TilePatchCallback
     Tessellator
     TileKey
     TileHandler
@@ -245,8 +239,6 @@ IF (OSGEARTH_EMBED_GIT_SHA)
 ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 set(TARGET_SRC
-    AlphaEffect.cpp
-    AutoScale.cpp
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp
@@ -320,7 +312,6 @@ set(TARGET_SRC
     Notify.cpp
     ObjectIndex.cpp
     OverlayDecorator.cpp
-    OverlayNode.cpp
     PagedNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
@@ -328,7 +319,6 @@ set(TARGET_SRC
     Profile.cpp
     Profiler.cpp
     Progress.cpp
-    QuadTree.cpp
     Random.cpp
     Registry.cpp
     ResourceReleaser.cpp
@@ -358,7 +348,6 @@ set(TARGET_SRC
     TextureBufferSerializer.cpp
     TileKey.cpp
     TileHandler.cpp
-    TilePatchCallback.cpp
     TileRasterizer.cpp
     TileVisitor.cpp
     TileSource.cpp

@@ -128,17 +128,6 @@ namespace
 
     typedef std::map< osg::ref_ptr<osg::Node>, std::vector<ModelInstance> > ModelInstanceMap;
 
-    // assume x is positive
-    static int nextPowerOf2(int x)
-    {
-        --x;
-        x |= x >> 1;
-        x |= x >> 2;
-        x |= x >> 4;
-        x |= x >> 8;
-        x |= x >> 16;
-        return x+1;
-    }
 }
 
 //----------------------------------------------------------------------

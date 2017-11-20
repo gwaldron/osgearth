@@ -22,12 +22,9 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/DepthOffset>
 #include <osgEarth/SceneGraphCallback>
 #include <osgDB/Callbacks>
 #include <osg/Node>
@@ -37,6 +34,8 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class Session;
 
     /**
      * A scene graph that renders feature data.
@@ -108,7 +107,7 @@ namespace osgEarth { namespace Features
         /**
          * Session associated with this feature graph.
          */
-        Session* getSession() { return _session.get(); }
+        Session* getSession();
 
         /**
          * Mark the feature graph dirty and in need of regeneration 
@@ -217,18 +216,9 @@ namespace osgEarth { namespace Features
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
         OpenThreads::ReentrantMutex      _redrawMutex;
-        DepthOffsetAdapter               _depthOffsetAdapter;
 
         OpenThreads::Atomic _cacheReads;
         OpenThreads::Atomic _cacheHits;
-
-        enum OverlayChange {
-            OVERLAY_NO_CHANGE,
-            OVERLAY_INSTALL_PLACEHOLDER,
-            OVERLAY_INSTALL_CLAMPABLE,
-            OVERLAY_INSTALL_DRAPEABLE
-        };
-        OverlayChange                    _overlayChange;
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 

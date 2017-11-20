@@ -25,14 +25,11 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
-#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
-#include <osgEarth/CachePolicy>
 #include <osg/Node>
-#include <osgDB/ReaderWriter>
-#include <list>
 
 namespace osgEarth { namespace Features
 {

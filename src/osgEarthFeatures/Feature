@@ -20,9 +20,10 @@
 #define OSGEARTHFEATURES_FEATURE_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/FilterContext>
+
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
+
 #include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
@@ -34,6 +35,7 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
     class FilterContext;
     class Session;
 
@@ -144,8 +146,6 @@ namespace osgEarth { namespace Features
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
 
-        virtual ~Feature() { }
-
         META_Object( osgEarthFeatures, Feature );
 
     public:
@@ -192,6 +192,11 @@ namespace osgEarth { namespace Features
          */
         static bool getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope );
 
+        /**
+         * Calculates the extent of this feature.
+         */
+        GeoExtent calculateExtent() const;
+
 
         const AttributeTable& getAttrs() const { return _attrs; }
 
@@ -226,11 +231,11 @@ namespace osgEarth { namespace Features
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
-        double eval(NumericExpression& expr, FilterContext const* context=0L) const;
+        double eval(NumericExpression& expr, const FilterContext* context) const;
         double eval(NumericExpression& expr, Session* session) const;
         
         /** populates the variables of an expression with attribute values and evals the expression. */
-        const std::string& eval(StringExpression& expr, FilterContext const* context=0L) const;
+        const std::string& eval(StringExpression& expr, const FilterContext* context) const;
         const std::string& eval(StringExpression& expr, Session* session) const;
 
     public:
@@ -238,7 +243,7 @@ namespace osgEarth { namespace Features
         std::string getGeoJSON() const;
 
         /** Gets a FeatureList as a GeoJSON FeatureCollection */
-        static std::string featuresToGeoJSON( FeatureList& features);
+        static std::string featuresToGeoJSON(const FeatureList& features);
 
     public:
         /**
@@ -255,8 +260,10 @@ namespace osgEarth { namespace Features
 
         Feature( FeatureID fid =0L );
 
+        virtual ~Feature();
+
         FeatureID                            _fid;
-        osg::ref_ptr<Symbology::Geometry>    _geom;
+        osg::ref_ptr<Geometry>               _geom;
         osg::ref_ptr<const SpatialReference> _srs;
         AttributeTable                       _attrs;
         optional<Style>                      _style;

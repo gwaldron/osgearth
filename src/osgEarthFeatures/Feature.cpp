@@ -17,8 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/ScriptEngine>
+
 #include <osgEarth/StringUtils>
 #include <osgEarth/JsonUtils>
 #include <algorithm>
@@ -174,6 +176,11 @@ _srs      ( rhs._srs.get() )
         _geom = rhs._geom->clone();
 
     dirty();
+}
+
+Feature::~Feature()
+{
+    //nop
 }
 
 FeatureID
@@ -542,6 +549,18 @@ bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const Sp
     return false;
 }
 
+GeoExtent
+Feature::calculateExtent() const
+{    
+    GeoExtent e(getSRS());
+    ConstGeometryIterator gi(getGeometry(), false);
+    while (gi.hasMore()) {
+        const Geometry* part = gi.next();
+        for (Geometry::const_iterator v = part->begin(); v != part->end(); ++v)
+            e.expandToInclude(*v);
+    }
+    return e;
+}
 
 std::string
 Feature::getGeoJSON() const
@@ -617,16 +636,16 @@ Feature::getGeoJSON() const
     return Json::FastWriter().write( root );
 }
 
-std::string Feature::featuresToGeoJSON( FeatureList& features)
+std::string Feature::featuresToGeoJSON( const FeatureList& features)
 {
     std::stringstream buf;
 
     buf << "{\"type\": \"FeatureCollection\", \"features\": [";
 
-    FeatureList::iterator last = features.end();
+    FeatureList::const_iterator last = features.end();
     last--;
 
-    for (FeatureList::iterator i = features.begin(); i != features.end(); i++)
+    for (FeatureList::const_iterator i = features.begin(); i != features.end(); i++)
     {
         buf << i->get()->getGeoJSON();
         if (i != last)

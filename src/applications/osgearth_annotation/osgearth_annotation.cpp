@@ -132,7 +132,16 @@ main(int argc, char** argv)
     //--------------------------------------------------------------------
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
+    // and flashes on and off using a cull callback.
     {
+        struct C : public osg::NodeCallback {
+            void operator()(osg::Node* n, osg::NodeVisitor* nv) {
+                static int i=0;
+                i++;
+                if (i % 100 < 50)
+                    traverse(n, nv);
+            }
+        };
         Geometry* geom = new Polygon();
         geom->push_back( osg::Vec3d(0,   40, 0) );
         geom->push_back( osg::Vec3d(-60, 40, 0) );
@@ -150,6 +159,8 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         
         FeatureNode* fnode = new FeatureNode(mapNode, feature, geomStyle);
+
+        fnode->addCullCallback(new C());
 
         annoGroup->addChild( fnode );
 
@@ -205,6 +216,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
+        pathStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 

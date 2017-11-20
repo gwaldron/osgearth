@@ -19,6 +19,7 @@
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarth/Registry>
 #include <osg/Math>
 #include <algorithm>
@@ -74,7 +75,7 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
                                    const FeatureSource*        source,
                                    const FeatureProfile*       profile,
                                    const Symbology::Query&     query,
-                                   const FeatureFilterList&    filters) :
+                                   const FeatureFilterChain*   filters) :
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -274,7 +275,7 @@ FeatureCursorOGR::readChunk()
         }
 
         // preprocess the features using the filter list:
-        if ( !_filters.empty() )
+        if ( _filters.valid() && !_filters->empty() )
         {
             FilterContext cx;
             cx.setProfile( _profile.get() );
@@ -287,7 +288,7 @@ FeatureCursorOGR::readChunk()
                 cx.extent() = _profile->getExtent();
             }
 
-            for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+            for( FeatureFilterChain::const_iterator i = _filters->begin(); i != _filters->end(); ++i )
             {
                 FeatureFilter* filter = i->get();
                 cx = filter->push( filterList, cx );

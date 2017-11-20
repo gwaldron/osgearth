@@ -24,6 +24,7 @@
 #include <osgEarth/Utils>
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Query>
 
 using namespace osgEarth;

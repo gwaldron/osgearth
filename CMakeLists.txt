@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.4 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11 FATAL_ERROR)
 
 if(COMMAND cmake_policy)
     # Works around warnings libraries linked against that don't
@@ -9,18 +9,9 @@ if(COMMAND cmake_policy)
     # statements.
     cmake_policy(SET CMP0005 OLD)
     
-    
-    IF(COMMAND cmake_policy)
-            IF(${CMAKE_MAJOR_VERSION} GREATER 2)
-                # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
-                cmake_policy(SET CMP0043 NEW)
-            ENDIF()
-    ENDIF()
+    # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
+    cmake_policy(SET CMP0043 NEW)
 
-    # disable autolinking to qtmain as we have our own main() functions (new in Qt 5.1)
-    if(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
-        cmake_policy(SET CMP0020 OLD)
-    endif(NOT "${CMAKE_VERSION}" VERSION_LESS 2.8.11)
 endif(COMMAND cmake_policy)
 
 #
@@ -32,7 +23,7 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 8)
+SET(OSGEARTH_MINOR_VERSION 9)
 SET(OSGEARTH_PATCH_VERSION 0)
 SET(OSGEARTH_SOVERSION     0)
 
@@ -137,54 +128,12 @@ FIND_PACKAGE(RocksDB)
 FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
 
-FIND_PACKAGE(Protobuf QUIET)
-
-# JavaScript Engines:
-SET(V8_DIR "" CACHE PATH "set to base V8 install path")
-FIND_PACKAGE(V8)
+FIND_PACKAGE(PROTOBUF QUIET)
 
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
     FIND_PACKAGE(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
-
-OPTION(USE_V8 "Use V8 instead of Duktape if V8 is found" OFF)
-
-OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
-OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
-OPTION(DESIRED_QT_VERSION "The desired Qt version to use")
-
-IF(OSGEARTH_USE_QT)
-  # To select a specific version of QT define DESIRED_QT_VERSION
-  # via cmake -DDESIRED_QT_VERSION=5
-  # QUIET option disables messages if the package cannot be found.
-  IF  (DESIRED_QT_VERSION)
-      IF  (DESIRED_QT_VERSION MATCHES 5)
-          FIND_PACKAGE(Qt5Widgets REQUIRED)
-      ELSEIF (DESIRED_QT_VERSION MATCHES 4)
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ELSE()
-      FIND_PACKAGE(Qt5Widgets QUIET)
-      IF ( NOT Qt5Widgets_FOUND )
-          FIND_PACKAGE(Qt4 REQUIRED)
-      ENDIF()
-  ENDIF()
-ENDIF(OSGEARTH_USE_QT)
-
-
-IF(Qt5Widgets_FOUND)
-  FIND_PACKAGE(Qt5Core QUIET)
-  FIND_PACKAGE(Qt5Gui QUIET)
-  FIND_PACKAGE(Qt5OpenGL QUIET)
-  IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND )
-    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
-  ENDIF ()
-ELSEIF(QT4_FOUND)
-  INCLUDE(${QT_USE_FILE})
-  SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
-  SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
-ENDIF ()
 
 # option to install shaders:
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)
@@ -201,6 +150,46 @@ IF(UNIX)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
 ENDIF(UNIX)
+
+
+OPTION(OSGEARTH_QT_BUILD "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
+OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
+set(OSGEARTH_QT_VERSION 5 CACHE STRING "Qt version to use")
+
+IF(OSGEARTH_QT_BUILD)
+  # To select a specific version of QT define DESIRED_QT_VERSION
+  # via cmake -DDESIRED_QT_VERSION=5
+  # QUIET option disables messages if the package cannot be found.
+  IF  (OSGEARTH_QT_VERSION)
+      IF  (OSGEARTH_QT_VERSION MATCHES "5")
+          FIND_PACKAGE(Qt5Widgets REQUIRED)
+      ELSEIF (OSGEARTH_QT_VERSION MATCHES "4")
+          FIND_PACKAGE(Qt4 REQUIRED)
+      ENDIF()
+  ELSE()
+      FIND_PACKAGE(Qt5Widgets QUIET)
+      IF ( NOT Qt5Widgets_FOUND )
+          FIND_PACKAGE(Qt4 REQUIRED)
+      ENDIF()
+  ENDIF()
+ENDIF(OSGEARTH_QT_BUILD)
+
+IF(Qt5Widgets_FOUND)
+  message(STATUS "Qt: Using version 5")
+  FIND_PACKAGE(Qt5Core QUIET)
+  FIND_PACKAGE(Qt5Gui QUIET)
+  FIND_PACKAGE(Qt5OpenGL QUIET)
+  FIND_PACKAGE(Qt5OpenGLExtensions QUIET)
+  IF ( Qt5Core_FOUND AND Qt5Widgets_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND AND Qt5OpenGLExtensions_FOUND )
+    SET(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS} ${Qt5OpenGLExtensions_INCLUDE_DIRS})
+  ENDIF ()
+ELSEIF(QT4_FOUND)
+  message(STATUS "Qt: Using version 4")
+  INCLUDE(${QT_USE_FILE})
+  SET(QT_INCLUDES ${QT_INCLUDES} ${QT_INCLUDE_DIR} ${QT_QTCORE_INCLUDE_DIR} ${QT_QTGUI_INCLUDE_DIR}${QT_QTOPENGL_INCLUDE_DIR} )
+  SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
+ENDIF ()
+
 
 # Common global definitions
 #ADD_DEFINITIONS(-D)
@@ -231,25 +220,6 @@ IF(WIN32)
         ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
     ENDIF(MSVC)
 ENDIF(WIN32)
-
-########################################################################################################
-##### these were settings located in SetupCommon.cmake used in Luigi builds.... find out what are useful
-########################################################################################################
-#luigi#SET(CMAKE_VERBOSE_MAKEFILE TRUE)
-#luigi#SET(CMAKE_SKIP_RPATH TRUE)
-#luigi#SET(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
-#luigi#IF(UNIX)
-#luigi#    LIST_CONTAINS(contains "g++" ${CMAKE_CXX_COMPILER_LIST})
-#luigi#    IF (contains)
-#luigi#        MESSAGE(${MY_MESSAGE_DEFAULT} "${CMAKE_CURRENT_LIST_FILE}:${CMAKE_CURRENT_LIST_LINE} setting  CMAKE_CXX_COMPILER to g++")
-#luigi#        SET(CMAKE_CXX_COMPILER "g++")
-#luigi#        SET(CMAKE_CXX_COMPILER_LOADED 2)
-#luigi#        SET(CMAKE_CXX_COMPILER_WORKS 2)
-#luigi#    ENDIF (contains)
-#luigi#    SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
-#luigi#    SET(CMAKE_CXX_FLAGS_DEBUG "-ggdb -gstabs")
-#luigi#ENDIF(UNIX)
-########################################################################################################
 
 # Common to all platforms:
 
@@ -311,11 +281,6 @@ SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
 
-#SET(INSTALL_BINDIR VIRTUALPLANETBUILDER/bin)
-#SET(INSTALL_INCDIR VIRTUALPLANETBUILDER/include)
-#SET(INSTALL_LIBDIR VIRTUALPLANETBUILDER/lib)
-#SET(INSTALL_DOCDIR VIRTUALPLANETBUILDER/doc)
-
 ################################################################################
 # User Options
 
@@ -363,13 +328,6 @@ OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
 # OE Core
 ADD_SUBDIRECTORY(src)
-
-# VPB Applications
-# OPTION(BUILD_APPLICATIONS "Enable to build OSGEARTH Applications" ON)
-# IF   (BUILD_APPLICATIONS)
-    # ADD_SUBDIRECTORY(applications)
-# ENDIF(BUILD_APPLICATIONS)
-
 
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4

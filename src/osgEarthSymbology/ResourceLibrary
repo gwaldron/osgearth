@@ -67,6 +67,7 @@ namespace osgEarth { namespace Symbology
          * Gets the name of the lib.
          */
         const std::string& getName() const { return _name; }
+        void setName(const std::string& name) { _name = name; }
 
         /**
          * Adds a resoure to the library.

@@ -33,6 +33,10 @@ namespace osgEarth { namespace Util
 {
     /**
      * Picks objects using an RTT camera and Vertex Attributes.
+     *
+     * Note. The Picker will change the View Slave configuration in OSG,
+     * so you should call Viewer::stopThreading() before adding or
+     * removing a picker, and Viewer::startThreading when you're done.
      */
     class OSGEARTHUTIL_EXPORT RTTPicker : public osgEarth::Picker
     {
@@ -121,6 +125,7 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<osg::Camera>    _pickCamera;
             osg::ref_ptr<osg::Image>     _image;
             osg::ref_ptr<osg::Texture2D> _tex;
+            int _numPicks;
         };
         // use a container that does not invalidate iters on insertion, since we hold
         // pointers to PickContext objects in the _picks member
@@ -138,13 +143,13 @@ namespace osgEarth { namespace Util
             unsigned               _frame;
             PickContext*           _context;
         };
-        std::queue<Pick> _picks;
+        std::vector<Pick> _picks;
 
         // Runs the queue of picks given a frame number.
         void runPicks(unsigned frameNumber);
 
         // Checks to see if a pick succeeded and fires appropriate callback.
-        void checkForPickResult(Pick& pick);
+        bool checkForPickResult(Pick& pick, unsigned frameNumber);
 
         // container for common RTT pick camera children (see addChild et al.)
         osg::ref_ptr<osg::Group> _group;

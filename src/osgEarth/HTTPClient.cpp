@@ -1258,7 +1258,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
         if (res == CURLE_GOT_NOTHING)
         {
-            OE_WARN << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
+            OE_INFO << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
         }
     }
 

@@ -182,6 +182,7 @@ _stateUpdateRequired  ( false )
     _imageLayerStateSet->setName("Surface");
 
     _terrain = new osg::Group();
+    addChild(_terrain.get());
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()

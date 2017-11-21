@@ -181,13 +181,12 @@ namespace
         RewritePaths(const std::string& referrer)
         {
             _rewriteAbsolutePaths = false;
-            _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
-	    // Check whether referrer is file or folder.
-	    struct stat sb;
-	    if (stat(_newReferrerAbsPath.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode))
-		_newReferrerFolder = _newReferrerAbsPath;
-	    else
-		_newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+            _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle(osgDB::getRealPath(referrer));
+
+            if (osgDB::fileType(_newReferrerAbsPath) == osgDB::DIRECTORY)
+            {
+                _newReferrerFolder = osgDB::getFilePath(osgDB::findDataFile(_newReferrerAbsPath));
+            }
         }
 
         /** Whether to make absolute paths into relative paths if possible */

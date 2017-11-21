@@ -27,6 +27,7 @@
 #include <osgDB/FileNameUtils>
 #include <stdio.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
@@ -181,7 +182,12 @@ namespace
         {
             _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
-            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+	    // Check whether referrer is file or folder.
+	    struct stat sb;
+	    if (stat(_newReferrerAbsPath.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode))
+		_newReferrerFolder = _newReferrerAbsPath;
+	    else
+		_newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
         }
 
         /** Whether to make absolute paths into relative paths if possible */

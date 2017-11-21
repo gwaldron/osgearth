@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/MVT>
 #include <osgEarthFeatures/Filter>

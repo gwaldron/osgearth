@@ -192,6 +192,7 @@ TerrainResources::releaseTextureImageUnit(int unit)
 {
     Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
     _globallyReservedUnits.erase( unit );
+    OE_INFO << LC << "Texture unit " << unit << " released\n";
 }
 
 void
@@ -204,9 +205,16 @@ TerrainResources::releaseTextureImageUnit(int unit, const Layer* layer)
     PerLayerReservedUnits::iterator i = _perLayerReservedUnits.find(layer);
     if (i != _perLayerReservedUnits.end())
     {
-        i->second.erase(unit);
-        if (i->second.empty())
+        ReservedUnits& reservedUnits = i->second;
+        reservedUnits.erase(unit);
+
+        // if there are no more units reserved for this layer, remove the record entirely
+        if (reservedUnits.empty())
+        {
             _perLayerReservedUnits.erase(i);
+        }
+
+        OE_INFO << LC << "Texture unit " << unit << " released (by layer " << layer->getName() << ")\n";
     }
 }
 

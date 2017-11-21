@@ -797,6 +797,18 @@ void TileNode::loadChildren()
 }
 
 void
+TileNode::refreshSharedSamplers(const RenderBindings& bindings)
+{    
+    for (unsigned i = 0; i < _renderModel._sharedSamplers.size(); ++i)
+    {
+        if (bindings[i].isActive() == false)
+        {
+            _renderModel._sharedSamplers[i]._texture = 0L;
+        }
+    }
+}
+
+void
 TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 {
     // Run through this tile's rendering data and re-inherit textures and matrixes

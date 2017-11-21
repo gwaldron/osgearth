@@ -73,11 +73,12 @@ namespace
     struct UpdateRenderModels : public osg::NodeVisitor
     {
         const MapFrame& _frame;
+        const RenderBindings& _bindings;
         unsigned _count;
         bool _reload;
         std::set<UID> _layersToLoad;
 
-        UpdateRenderModels(const MapFrame& frame) : _frame(frame), _count(0u), _reload(false)
+        UpdateRenderModels(const MapFrame& frame, RenderBindings& bindings) : _frame(frame), _bindings(bindings), _count(0u), _reload(false)
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
@@ -119,6 +120,10 @@ namespace
                     _count++;
                 }
             }
+
+            // For shared samplers we need to refresh the list if one of them
+            // goes inactive (as is the case when removing a shared layer)
+            tileNode.refreshSharedSamplers(_bindings);
 
             // todo. Might be better to use a Revision here though.
             if (_reload)
@@ -175,6 +180,8 @@ _stateUpdateRequired  ( false )
     // for different layer types, or something.
     _imageLayerStateSet = new osg::StateSet();
     _imageLayerStateSet->setName("Surface");
+
+    _terrain = new osg::Group();
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -438,16 +445,28 @@ RexTerrainEngineNode::setupRenderBindings()
     colorParent.samplerName() = "oe_layer_texParent";
     colorParent.matrixName()  = "oe_layer_texParentMatrix";
     if (this->parentTexturesRequired())
-        getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
+        getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Color (Parent)");
+
+    // Apply a default, empty texture to each render binding.
+    OE_DEBUG << LC << "Render Bindings:\n";
+    osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
+    osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1, 1));
+    for (unsigned i = 0; i < _renderBindings.size(); ++i)
+    {
+        SamplerBinding& b = _renderBindings[i];
+        if (b.isActive())
+        {
+            terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
+            terrainSS->setTextureAttribute(b.unit(), tex.get());
+            OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+        }
+    }
 }
 
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
-    if ( _terrain )
-    {
-        this->removeChild( _terrain );
-    }
+    _terrain->removeChildren(0, _terrain->getNumChildren());
 
     // clear the loader:
     _loader->clear();
@@ -460,10 +479,6 @@ RexTerrainEngineNode::dirtyTerrain()
     
     // scrub the geometry pool:
     _geometryPool->clear();
-
-    // New terrain
-    _terrain = new osg::Group();
-    this->addChild( _terrain );
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -543,7 +558,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     {
         if (_renderModelUpdateRequired)
         {
-            UpdateRenderModels visitor(_mapFrame);
+            UpdateRenderModels visitor(_mapFrame, _renderBindings);
             _terrain->accept(visitor);
             _renderModelUpdateRequired = false;
         }
@@ -1149,6 +1164,17 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
                         << "Shared Layer \"" << imageLayer->getName() << "\" : sampler=\"" << newBinding.samplerName() << "\", "
                         << "matrix=\"" << newBinding.matrixName() << "\", "
                         << "unit=" << newBinding.unit() << "\n";
+
+                    // Install an empty texture for this binding at the top of the graph, so that 
+                    // a texture is always defined even when the data source supplies no real data.
+                    if (newBinding.isActive())
+                    {
+                        osg::StateSet* terrainSS = _terrain->getOrCreateStateSet();
+                        osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
+                        terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
+                        terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
+                        OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
+                    }
                 }
             }
 
@@ -1168,7 +1194,7 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         {
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
-            UpdateRenderModels updateModels(_mapFrame);
+            UpdateRenderModels updateModels(_mapFrame, _renderBindings);
 
 #if 0
             // This uses the loaddata filter approach which will only request
@@ -1213,8 +1239,12 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
                 SamplerBinding& binding = _renderBindings[i];
                 if (binding.isActive() && binding.sourceUID() == layerRemoved->getUID())
                 {
+                    OE_INFO << LC << "Binding (" << binding.samplerName() << " unit " << binding.unit() << ") cleared\n";
                     binding.usage().clear();
                     binding.unit() = -1;
+
+                    // Request an update to reset the shared sampler in the scene graph
+                    _renderModelUpdateRequired = true;
                 }
             }
         }
@@ -1226,7 +1256,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         // associated with the layer we just removed. This would happen 
         // automatically during cull/update anyway, but it's more efficient
         // to do it all at once.
-        UpdateRenderModels updater(_mapFrame);
+        UpdateRenderModels updater(_mapFrame, _renderBindings);
         _terrain->accept(updater);
     }
 
@@ -1448,6 +1478,7 @@ RexTerrainEngineNode::updateState()
                 }
             }
 
+#if 0
             // Apply uniforms for sampler bindings:
             OE_DEBUG << LC << "Render Bindings:\n";
             osg::ref_ptr<osg::Texture> tex = new osg::Texture2D(ImageUtils::createEmptyImage(1,1));
@@ -1462,6 +1493,7 @@ RexTerrainEngineNode::updateState()
                     terrainStateSet->setTextureAttribute(b.unit(), tex.get());
                 }
             }
+#endif
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

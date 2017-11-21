@@ -268,9 +268,8 @@ createControlPanel( osgViewer::View* view )
     ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
     s_masterGrid = new Grid();
-    //s_masterGrid->setBackColor(0,0,0,0.5);
-    s_masterGrid->setMargin( 10 );
-    s_masterGrid->setPadding( 10 );
+    s_masterGrid->setMargin( 5 );
+    s_masterGrid->setPadding( 5 );
     s_masterGrid->setChildSpacing( 10 );
     s_masterGrid->setChildVertAlign( Control::ALIGN_CENTER );
     s_masterGrid->setAbsorbEvents( true );
@@ -463,4 +462,6 @@ updateControlPanel()
             createInactiveLayerItem(s_inactiveBox, row++, i->first, i->second);
         }
     }
+
+    s_inactiveBox->setVisible(!_inactive.empty());
 }

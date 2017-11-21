@@ -167,11 +167,6 @@ namespace osgEarth
          */
         const SpatialReference* getSRS() const { return _profile->getSRS(); }
 
-        /**
-         * Whether the terrain is in geocentric (ECEF) coordinates
-         */
-        bool isGeocentric() const { return _geocentric; }
-
 
     public: // TerrainResolver interface
 
@@ -270,7 +265,7 @@ namespace osgEarth
         virtual ~Terrain() { }
 
     private:
-        Terrain( osg::Node* graph, const Profile* profile, bool geocentric, const TerrainOptions& options );
+        Terrain( osg::Node* graph, const Profile* profile, const TerrainOptions& options );
 
         /** update traversal. */
         void update();
@@ -285,7 +280,6 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
-        bool                         _geocentric;
         const TerrainOptions&        _terrainOptions;
 
         osg::ref_ptr<osg::OperationQueue> _updateQueue;

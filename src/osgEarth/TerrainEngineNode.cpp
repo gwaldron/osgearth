@@ -201,7 +201,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
-    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
+    _terrainInterface = new Terrain( this, map->getProfile(), options );
 
     // Set up the CSN values. We support this because some manipulators look for it,
     // but osgEarth itself doesn't use it.
@@ -266,13 +266,6 @@ TerrainEngineNode::computeBound() const
     {
         return osg::CoordinateSystemNode::computeBound();
     }
-}
-
-void
-TerrainEngineNode::setVerticalScale( float value )
-{
-    _verticalScale = value;
-    onVerticalScaleChanged();
 }
 
 void

@@ -67,8 +67,7 @@ namespace osgEarth
         const MapOptions& getInitialMapOptions() const { return _initMapOptions; }
 
         /**
-         * Gets the map's master profile. This value may not be available until 
-         * after autoCalculateProfile has been called.
+         * Gets the map's master profile, which defines its SRS and tiling structure.
          */
         const Profile* getProfile() const;
 
@@ -81,7 +80,6 @@ namespace osgEarth
          * Gets the SRS of the world (scene)
          */
         const SpatialReference* getWorldSRS() const;
-
 
         /**
          * Adds a Layer to the map. 
@@ -194,7 +192,6 @@ namespace osgEarth
          */
         void setLayersFromMap( const Map* map );
 
-    public:
         /**
          * Gets the user-provided options structure stored in this map.
          */

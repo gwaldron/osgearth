@@ -83,7 +83,7 @@ ResourceLibrary::mergeConfig( const Config& conf )
 Config
 ResourceLibrary::getConfig() const
 {
-    Config conf("library");
+    Config conf("resources");
     {
         Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 
@@ -181,6 +181,7 @@ ResourceLibrary::initialize( const osgDB::Options* dbOptions )
 
             if ( _uri.isSet() )
             {
+                OE_INFO << LC << "Loading library from " << _uri->full() << std::endl;
                 osg::ref_ptr<XmlDocument> xml = XmlDocument::load( *_uri, dbOptions );
                 if ( xml.valid() )
                 {
@@ -197,6 +198,12 @@ ResourceLibrary::initialize( const osgDB::Options* dbOptions )
                         if ( !child.empty() )
                             mergeConfig( child );
                     }
+
+                    OE_INFO << LC << "Found " << _skins.size() << " textures, " << _instances.size() << " models\n";
+                }
+                else
+                {
+                    OE_WARN << LC << "Failed to load library from XML\n";
                 }
             }
             _initialized = true;

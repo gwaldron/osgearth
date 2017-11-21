@@ -26,11 +26,12 @@ osgEarth Sample
         <styles>
             <style type="text/css">
                 world {
-                   stroke:                       #ffff00;
-                   stroke-width:                 3px;
-                   stroke-tessellation-size:     1km;
-                   render-lighting:              false;
-                   altitude-clamping:            terrain-gpu;
+                   stroke:                   #ffff00;
+                   stroke-width:             3px;
+                   stroke-tessellation-size: 1km;
+                   render-lighting:          false;
+                   altitude-clamping:        terrain-gpu;
+                   render-depth-offset:      true;                   
                 }            
             </style>
         </styles>

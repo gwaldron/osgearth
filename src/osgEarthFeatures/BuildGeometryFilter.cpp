@@ -50,12 +50,6 @@
 
 #define OE_TEST OE_NULL
 
-namespace
-{
-    static bool USE_GPU_SCREEN_SPACE_LINES =
-        (::getenv("OSGEARTH_GPU_SCREEN_SPACE_LINES") != 0L);
-}
-
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -452,7 +446,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
     
-    const bool makeGPULines = USE_GPU_SCREEN_SPACE_LINES;
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
     const SpatialReference* outputSRS = 0L;
@@ -509,7 +502,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // (Note: GPU Lines have doubled-up vertices, so for that case we 
             // have to add 2 hats for every input point.)
             osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
-            if (makeGPULines)
+
+            if (_useGPULines == true)
                 hats->reserve(part->size() * 2);
             else
                 hats->reserve(part->size());
@@ -517,7 +511,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
             {
                 hats->push_back( i->z() );
-                if (makeGPULines)
+                if (_useGPULines == true)
                     hats->push_back(i->z());
             }
 
@@ -535,7 +529,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             osg::ref_ptr<osg::Geometry> osgGeom;
 
-            if (makeGPULines)
+            if (_useGPULines == true)
             {
                 // Lines tessellated on the GPU - replacement for deprecated glLineWidth
                 osgGeom = gpuLines(allPoints, isRing);
@@ -599,7 +593,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         }
     }
 
-    if (makeGPULines)
+    if (_useGPULines == true)
     {
         GPULinesOperator op(masterStroke.get());
         op.installShaders(geode);
@@ -1452,8 +1446,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             mg.setTargetMaximumNumberOfVertices(65536);
             geode->accept(mg);
 
-            if (USE_GPU_SCREEN_SPACE_LINES == false)
+            if (_useGPULines == false)
+            {
                 applyLineSymbology( geode->getOrCreateStateSet(), line );
+            }
 
             result->addChild( geode.get() );
         }

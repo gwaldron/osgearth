@@ -96,6 +96,13 @@ namespace osgEarth { namespace Features
         optional<Angle>& maxCreaseAngle() { return _maximumCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
 
+        /**
+         * Whether to use GPU-generated geometry for lines with pixel width, as a replacement
+         * for the deprecated glLineWidth arttribute
+         */
+        optional<bool>& useGPULines() { return _useGPULines; }
+        const optional<bool>& useGPULines() const { return _useGPULines; }
+
     protected:
         Style                      _style;
 
@@ -105,6 +112,7 @@ namespace osgEarth { namespace Features
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
         optional<Angle>            _maximumCreaseAngle;
+        optional<bool>             _useGPULines;
         
         void tileAndBuildPolygon(
             Geometry*               input,

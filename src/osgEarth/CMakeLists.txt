@@ -9,7 +9,7 @@ OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
 # NVTT mipmap generation 
-option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" OFF)
+option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" ON)
 mark_as_advanced(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
 if(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
     add_definitions(-DOSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)

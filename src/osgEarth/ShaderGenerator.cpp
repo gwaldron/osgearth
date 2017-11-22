@@ -26,7 +26,6 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/URI>
 #include <osgEarth/Lighting>
-#include <osgEarth/VirtualProgram>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -68,7 +67,7 @@ using namespace osgEarth;
 
 // compatibility string for GLES:
 
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+#ifdef OSG_GLES2_AVAILABLE
 #   define GLSL_PRECISION "precision mediump float;"
 #   define MEDIUMP        "mediump "
 #   define LOWP           "lowp "
@@ -704,7 +703,6 @@ ShaderGenerator::apply(osg::ClipNode& node)
 {
     static const char* s_clip_source =
         "#version " GLSL_VERSION_STR "\n"
-        GLSL_PRECISION "\n"
         "void oe_sg_set_clipvertex(inout vec4 vertexVIEW)\n"
         "{\n"
         "    gl_ClipVertex = vertexVIEW; \n"
@@ -854,8 +852,13 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     // give the VP a name if it needs one.
     if ( vp->getName().empty() )
     {
+       if (_name.length()){
         vp->setName( _name );
     }
+       else{
+          vp->setName("composite_vp");
+       }
+     }
 
     // Check whether the lighting state has changed and install a mode uniform.
     // TODO: fix this

@@ -355,7 +355,6 @@ MapNode::init()
 
 
     osg::StateSet* stateset = getOrCreateStateSet();
-    stateset->setName("MapNode");
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {

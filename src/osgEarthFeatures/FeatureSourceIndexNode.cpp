@@ -517,12 +517,16 @@ FeatureSourceIndex::update(osg::Drawable* drawable, std::map<ObjectID,ObjectID>&
     unsigned count = 0;
     if (_masterIndex->updateObjectIDs(drawable, oldToNew, this))
     {
-        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldToNew.end(); ++i)
+        std::map<ObjectID, ObjectID>::const_iterator oldtoNewEnd = oldToNew.end();
+        FIDMap::const_iterator oldBegin = oldFIDMap.begin();
+        FIDMap::const_iterator oldEnd = oldFIDMap.end();
+
+        for (std::map<ObjectID, ObjectID>::const_iterator i = oldToNew.begin(); i != oldtoNewEnd; ++i)
         {
             const ObjectID& oldoid = i->first;
             const ObjectID& newoid = i->second;
 
-            for (FIDMap::const_iterator j = oldFIDMap.begin(); j != oldFIDMap.end(); ++j)
+            for (FIDMap::const_iterator j = oldBegin; j != oldEnd; ++j)
             {
                 const RefIDPair* rip = j->second.get();
                 if (rip && rip->_oid == oldoid)

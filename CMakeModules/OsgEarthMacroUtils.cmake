@@ -3,64 +3,67 @@
 #######################################################################################################
 MACRO(DETECT_OSG_VERSION)
 
-    # Fall back to OSG_DIR if OSG_INCLUDE_DIR is not defined
-    if(OSG_DIR AND NOT OSG_INCLUDE_DIR AND EXISTS "${OSG_DIR}/include/osg/Version")
-        set(OSG_INCLUDE_DIR "${OSG_DIR}/include")
-    endif()
-
     OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 	
-    # Try to ascertain the version...
-    # (Taken from CMake's FindOpenSceneGraph.cmake)
-    if(OSG_INCLUDE_DIR)
-        if(OpenSceneGraph_DEBUG)
-            message(STATUS "[ FindOpenSceneGraph.cmake:${CMAKE_CURRENT_LIST_LINE} ] "
-                "Detected OSG_INCLUDE_DIR = ${OSG_INCLUDE_DIR}")
-        endif()
+    message("looking for OSG here....${OSG_DIR}/bin")
+    # detect if osgversion can be found
+    message("OSG_DIR = ${OSG_BASE_DIR}")
+    set(OSG_DIR ${OSG_BASE_DIR})
+    FIND_PROGRAM(OSG_VERSION_EXE NAMES
+        osgversion
+        ${OSG_DIR}/bin${libext}/osgversion
+        ${OSG_DIR}/bin${libext}/osgversiond)
+        
+        message("${OSG_VERSION_EXE} found exe")
+        
+    IF(OSG_VERSION_EXE AND NOT OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION AND NOT OPENSCENEGRAPH_PATCH_VERSION)
+        MESSAGE("OSGVERSION IS AT ${OSG_VERSION_EXE}")
+        # get parameters out of the osgversion
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} --major-number WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OPENSCENEGRAPH_MAJOR_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} --minor-number WORKING_DIRECTORY ${OSG_DIR}/bin${libext}  OUTPUT_VARIABLE OPENSCENEGRAPH_MINOR_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} --patch-number WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OPENSCENEGRAPH_PATCH_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} Matrix::value_type WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OSG_USE_FLOAT_MATRIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} Plane::value_type WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OSG_USE_FLOAT_PLANE OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} BoundingSphere::value_type WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OSG_USE_FLOAT_BOUNDINGSPHERE OUTPUT_STRIP_TRAILING_WHITESPACE)
+        EXECUTE_PROCESS(COMMAND ${OSG_VERSION_EXE} BoundingBox::value_type WORKING_DIRECTORY ${OSG_DIR}/bin${libext} OUTPUT_VARIABLE OSG_USE_FLOAT_BOUNDINGBOX OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-        set(_osg_Version_file "${OSG_INCLUDE_DIR}/osg/Version")
-        if("${OSG_INCLUDE_DIR}" MATCHES "\\.framework$" AND NOT EXISTS "${_osg_Version_file}")
-            set(_osg_Version_file "${OSG_INCLUDE_DIR}/Headers/Version")
-        endif()
+        # setup version numbers if we have osgversion
+        SET(OPENSCENEGRAPH_MAJOR_VERSION "${OPENSCENEGRAPH_MAJOR_VERSION}" CACHE STRING "OpenSceneGraph major version number")
+        SET(OPENSCENEGRAPH_MINOR_VERSION "${OPENSCENEGRAPH_MINOR_VERSION}" CACHE STRING "OpenSceneGraph minor version number")
+        SET(OPENSCENEGRAPH_PATCH_VERSION "${OPENSCENEGRAPH_PATCH_VERSION}" CACHE STRING "OpenSceneGraph patch version number")
+        SET(OPENSCENEGRAPH_SOVERSION "${OPENSCENEGRAPH_SOVERSION}" CACHE STRING "OpenSceneGraph so version number")
+		
+        # just debug info
+        MESSAGE(STATUS "Detected OpenSceneGraph v${OPENSCENEGRAPH_VERSION}.")
 
-        if(EXISTS "${_osg_Version_file}")
-          file(STRINGS "${_osg_Version_file}" _osg_Version_contents
-               REGEX "#define (OSG_VERSION_[A-Z]+|OPENSCENEGRAPH_[A-Z]+_VERSION)[ \t]+[0-9]+")
-        else()
-          set(_osg_Version_contents "unknown")
-        endif()
+        # setup float and double definitions
+        IF(OSG_USE_FLOAT_MATRIX MATCHES "float")
+            ADD_DEFINITIONS(-DOSG_USE_FLOAT_MATRIX)
+        ENDIF(OSG_USE_FLOAT_MATRIX MATCHES "float")
+        IF(OSG_USE_FLOAT_PLANE MATCHES "float")
+            ADD_DEFINITIONS(-DOSG_USE_FLOAT_PLANE)
+        ENDIF(OSG_USE_FLOAT_PLANE MATCHES "float")
+        IF(OSG_USE_FLOAT_BOUNDINGSPHERE MATCHES "double")
+            ADD_DEFINITIONS(-DOSG_USE_DOUBLE_BOUNDINGSPHERE)
+        ENDIF(OSG_USE_FLOAT_BOUNDINGSPHERE MATCHES "double")
+        IF(OSG_USE_FLOAT_BOUNDINGBOX MATCHES "double")
+            ADD_DEFINITIONS(-DOSG_USE_DOUBLE_BOUNDINGBOX)
+        ENDIF(OSG_USE_FLOAT_BOUNDINGBOX MATCHES "double")
 
-        string(REGEX MATCH ".*#define OSG_VERSION_MAJOR[ \t]+[0-9]+.*"
-            _osg_old_defines "${_osg_Version_contents}")
-        string(REGEX MATCH ".*#define OPENSCENEGRAPH_MAJOR_VERSION[ \t]+[0-9]+.*"
-            _osg_new_defines "${_osg_Version_contents}")
-        if(_osg_old_defines)
-            string(REGEX REPLACE ".*#define OSG_VERSION_MAJOR[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MAJOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OSG_VERSION_MINOR[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MINOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OSG_VERSION_PATCH[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_PATCH ${_osg_Version_contents})
-        elseif(_osg_new_defines)
-            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_MAJOR_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MAJOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_MINOR_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MINOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_PATCH_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_PATCH ${_osg_Version_contents})
-        else()
-            message(WARNING "[ FindOpenSceneGraph.cmake:${CMAKE_CURRENT_LIST_LINE} ] "
-                "Failed to parse version number, please report this as a bug")
-        endif()
-        unset(_osg_Version_contents)
-
-        set(OPENSCENEGRAPH_VERSION "${_osg_VERSION_MAJOR}.${_osg_VERSION_MINOR}.${_osg_VERSION_PATCH}"
-                                    CACHE INTERNAL "The version of OSG which was detected")
-        if(OpenSceneGraph_DEBUG)
-            message(STATUS "[ FindOpenSceneGraph.cmake:${CMAKE_CURRENT_LIST_LINE} ] "
-                "Detected version ${OPENSCENEGRAPH_VERSION}")
-        endif()
-    endif()
+    ENDIF(OSG_VERSION_EXE AND NOT OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION AND NOT OPENSCENEGRAPH_PATCH_VERSION)
+	
+    #Initialize the version numbers to being empty.  If they were set by osgversion, they will be left alone
+	SET(OPENSCENEGRAPH_MAJOR_VERSION "" CACHE STRING "OpenSceneGraph major version number")
+    SET(OPENSCENEGRAPH_MINOR_VERSION "" CACHE STRING "OpenSceneGraph minor version number")
+    SET(OPENSCENEGRAPH_PATCH_VERSION "" CACHE STRING "OpenSceneGraph patch version number")
+    SET(OPENSCENEGRAPH_SOVERSION "" CACHE STRING "OpenSceneGraph so version number")
+	
+    if (OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION STREQUAL "" AND NOT OPENSCENEGRAPH_PATCH_VERSION STREQUAL "")
+	  SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
+	else (OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION STREQUAL "" AND NOT OPENSCENEGRAPH_PATCH_VERSION STREQUAL "")
+	  MESSAGE("osgversion was found at ${OSG_VERSION_EXE} but failed to run")
+	  SET(OPENSCENEGRAPH_VERSION "3.1.4") #setting default version since the LD_LIBRARY_PATH on osgversion for linux needs to be set
+	endif (OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION STREQUAL "" AND NOT OPENSCENEGRAPH_PATCH_VERSION STREQUAL "")
 	
 	MARK_AS_ADVANCED(OPENSCENEGRAPH_VERSION)
 
@@ -74,7 +77,7 @@ MACRO(DETECT_OSG_VERSION)
 	
 	MARK_AS_ADVANCED(OSG_PLUGINS)
 	
-	#MESSAGE("OSG_PLUGINS=${OSG_PLUGINS}")
+	MESSAGE("OSG_PLUGINS=${OSG_PLUGINS}")
 
 ENDMACRO(DETECT_OSG_VERSION)
 
@@ -224,13 +227,19 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
         ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ENDIF(DYNAMIC_OSGEARTH)
 
+    #not sure if needed, but for plugins only msvc need the d suffix
+    IF(NOT MSVC)
+      IF(NOT UNIX)
+           SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES DEBUG_POSTFIX "")
+      ENDIF(NOT UNIX)
+    ENDIF(NOT MSVC)
     SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES PROJECT_LABEL "${TARGET_LABEL}")
 
     SETUP_LINK_LIBRARIES()
 
 #the installation path are differentiated for win32 that install in bib versus other architecture that install in lib${LIB_POSTFIX}/${VPB_PLUGINS}
     IF(WIN32)
-        INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib/${OSG_PLUGINS} LIBRARY DESTINATION bin/${OSG_PLUGINS} )
+        INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin${libext} ARCHIVE DESTINATION lib${libext}/${OSG_PLUGINS} LIBRARY DESTINATION bin${libext}/${OSG_PLUGINS} )
 	    
 		#Install to the OSG_DIR as well
 		IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
@@ -290,6 +299,12 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
         ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ENDIF(DYNAMIC_OSGEARTH)
 
+    #not sure if needed, but for plugins only msvc need the d suffix
+    IF(NOT MSVC)
+      IF(NOT UNIX)
+           SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES DEBUG_POSTFIX "")
+      ENDIF(NOT UNIX)
+    ENDIF(NOT MSVC)
     SET_TARGET_PROPERTIES(${TARGET_TARGETNAME} PROPERTIES PROJECT_LABEL "${TARGET_LABEL}")
 
     SETUP_LINK_LIBRARIES()
@@ -298,9 +313,9 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
     IF(WIN32)
         INSTALL(
             TARGETS ${TARGET_TARGETNAME}
-            RUNTIME DESTINATION bin
-            ARCHIVE DESTINATION lib/${OSG_PLUGINS}
-            LIBRARY DESTINATION bin/${OSG_PLUGINS} )
+            RUNTIME DESTINATION bin${libext}
+            ARCHIVE DESTINATION lib${libext}/${OSG_PLUGINS}
+            LIBRARY DESTINATION bin${libext}/${OSG_PLUGINS} )
 	    
 		#Install to the OSG_DIR as well
 		IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
@@ -425,7 +440,7 @@ MACRO(SETUP_APPLICATION APPLICATION_NAME)
 
     SETUP_EXE(${IS_COMMANDLINE_APP})
         
-    INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin  )
+    INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION bin${libext}  )
 	#Install to the OSG_DIR as well
 	IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 	  INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION ${OSG_DIR}/bin)
@@ -458,7 +473,7 @@ MACRO(SETUP_EXAMPLE EXAMPLE_NAME)
 
         SETUP_EXE(${IS_COMMANDLINE_APP})
 
-    INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION share/OpenSceneGraph/bin BUNDLE DESTINATION share/OpenSceneGraph/bin  )
+    INSTALL(TARGETS ${TARGET_TARGETNAME} RUNTIME DESTINATION share/OpenSceneGraph/bin  )
 
 ENDMACRO(SETUP_EXAMPLE)
 
@@ -487,7 +502,7 @@ macro(configure_shaders templateFile autoGenCppFile)
 	
 	# generate the build-time script that will create out cpp file with inline shaders:
 	configure_file(
-		"${CMAKE_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in"
+		"${OSGEARTH_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
 		@ONLY)
 	
@@ -500,7 +515,7 @@ macro(configure_shaders templateFile autoGenCppFile)
 		DEPENDS
 			${GLSL_FILES}
 			"${TEMPLATE_FILE}"
-			"${CMAKE_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in" )
+			"${OSGEARTH_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in" )
 	
 endmacro(configure_shaders)
 

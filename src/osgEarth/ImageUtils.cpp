@@ -861,6 +861,7 @@ osg::Image*
 ImageUtils::createEmptyImage(unsigned int s, unsigned int t)
 {
     osg::Image* empty = new osg::Image;
+   empty->setName("oe_empty_image");
     empty->allocateImage(s,t,1, GL_RGBA, GL_UNSIGNED_BYTE);
     empty->setInternalTextureFormat( GL_RGB8A_INTERNAL );
     unsigned char *data = empty->data(0,0);
@@ -1240,13 +1241,13 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
 osg::Image*
 ImageUtils::convertToRGB8(const osg::Image *image)
 {
-    return convert( image, GL_RGB, GL_UNSIGNED_BYTE );
+   return convert(image, GL_RGB, GL_UNSIGNED_BYTE);
 }
 
 osg::Image*
 ImageUtils::convertToRGBA8(const osg::Image* image)
 {
-    return convert( image, GL_RGBA, GL_UNSIGNED_BYTE );
+   return convert(image, GL_RGBA, GL_UNSIGNED_BYTE);
 }
 
 bool 
@@ -1313,7 +1314,7 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
-#ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
+   #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
     if (tex == 0L)
         return;
 
@@ -1328,13 +1329,32 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
         osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();
         if (ip)
         {
-            for (unsigned i = 0; i < tex->getNumImages(); ++i)
-            {
-                ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
-            }
+           for (unsigned i = 0; i < tex->getNumImages(); ++i)
+           {
+              //VRV_PATCH
+              if (tex->getImage(i) == 0L)
+                 continue;
+              if (tex->getImage(i)->getDataPointer() == 0L)
+                 continue;
+              if (tex->getImage(i)->getNumMipmapLevels() <= 1) {
+                 ip->generateMipMap(*tex->getImage(i), true, ip->USE_CPU);
+               //VRV_PATCH
+               //Withouth the format explicitly setup it just picked srgb8 which don't need
+               //gamma correction, but we gamma correction everything in vrv.
+               if (tex->getImage(i)->getInternalTextureFormat() == GL_RGB)
+               {
+                  tex->getImage(i)->setInternalTextureFormat(GL_RGB8);
+              }
+               else if (tex->getImage(i)->getInternalTextureFormat() == GL_RGBA)
+               {
+                  tex->getImage(i)->setInternalTextureFormat(GL_RGBA8);
+           }
+
         }
     }
-#endif
+}
+   }
+   #endif
 }
 
 

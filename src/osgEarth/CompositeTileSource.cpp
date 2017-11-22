@@ -155,7 +155,7 @@ CompositeTileSource::createImage(const TileKey&    key,
     {
         ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = layer->mayHaveDataInExtent(key.getExtent()); //getTileSource()->hasDataInExtent( key.getExtent() );
+        imageInfo.dataInExtents = layer->mayHaveDataInExtent(key.getExtent());
         imageInfo.opacity = layer->getOpacity();
 
         if (imageInfo.dataInExtents)
@@ -385,13 +385,13 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             Status status = layer->open();
             if (status.isOK())
             {
-                i->_layer = layer;
-                _imageLayers.push_back( layer );
-                OE_INFO << LC << " .. added image layer " << layer->getName() << " (" << i->_imageLayerOptions->driver()->getDriver() << ")\n";
+                i->_layer = layer.get();
+                _imageLayers.push_back( layer.get() );
+                OE_INFO << LC << "Added image layer " << layer->getName() << " (" << i->_imageLayerOptions->driver()->getDriver() << ")\n";
             }
             else
             {
-                OE_WARN << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
+                OE_DEBUG << LC << "Could not open image layer (" << layer->getName() << ") ... " << status.message() << std::endl;
             }            
         }
         else if (i->_elevationLayerOptions.isSet() && !i->_layer.valid())
@@ -405,7 +405,8 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             if (status.isOK())
             {
                 i->_layer = layer;
-                _elevationLayers.push_back( layer.get() );                
+                _elevationLayers.push_back( layer.get() );   
+                OE_INFO << LC << "Added elevation layer " << layer->getName() << " (" << i->_elevationLayerOptions->driver()->getDriver() << ")\n";             
             }
             else
             {
@@ -415,7 +416,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 
         if ( !i->_layer.valid() )
         {
-            OE_WARN << LC << "A component has no valid TerrainLayer ... removing." << std::endl;
+            OE_DEBUG << LC << "A component has no valid TerrainLayer ... removing." << std::endl;            
             i = _options._components.erase( i );
         }
         else
@@ -447,7 +448,14 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         ++i;
     }
 
-    // set the new profile that was derived from the components
+    // If there is no profile set by the user or by a component, fall back
+    // on a default profile. This will allow the Layer to continue to operate
+    // off the cache even if all components fail to initialize for some reason.
+    if (profile.valid() == false)
+    {
+        profile = Profile::create("global-geodetic");
+    }
+
     setProfile( profile.get() );
 
     _initialized = true;

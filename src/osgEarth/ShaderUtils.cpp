@@ -263,7 +263,8 @@ namespace
     {
 #if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE) //osg state convertVertexShaderSourceToOsgBuiltIns inserts these and the double declaration is causing an error in gles
 
-       
+       GLSLChunker chunker;
+
         if (!osg::State::getUseUboTransformStack())
         {
            // for geometry and tessellation shaders, replace the built-ins with 
@@ -275,7 +276,6 @@ namespace
                "uniform mat3 osg_NormalMatrix;"
            };
      
-           GLSLChunker chunker;
      
            for (GLSLChunker::Chunks::iterator chunk = chunks.begin(); chunk != chunks.end(); ++chunk)
            {
@@ -295,8 +295,6 @@ namespace
            chunker.replace(chunks, "gl_NormalMatrix", "osg_NormalMatrix");
         }
         else {
-           GLSLChunker chunker;
-     
            chunker.replace(chunks, "gl_ModelViewMatrix", "osg.ModelViewMatrix");
            chunker.replace(chunks, "gl_ProjectionMatrix", "osg.ProjectionMatrix");
            chunker.replace(chunks, "gl_ModelViewProjectionMatrix", "osg.ModelViewProjectionMatrix");

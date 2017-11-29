@@ -138,6 +138,23 @@ FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
+if(${CMAKE_VERSION} VERSION_GREATER 3.4)
+   #Bug with newer CMake versions.  Fix Protobuf variable for linker error, remove optimized token from PROTOBUF_LIBRARY
+   set(foundReleaseLib FALSE)
+   foreach( lib ${PROTOBUF_LIBRARY} )
+      if (${lib} STREQUAL "optimized")
+         message(STATUS "found token: ${lib}")
+         set(foundReleaseLib TRUE)
+      else()
+         if( foundReleaseLib )
+            message("found release lib: ${lib}")
+            set(PROTOBUF_LIBRARY_FIXED ${PROTOBUF_LIBRARY_FIXED} ${lib})
+            set(foundReleaseLib FALSE)
+         endif( foundReleaseLib )
+      endif(${lib} STREQUAL "optimized")
+   endforeach()
+   set(PROTOBUF_LIBRARY ${PROTOBUF_LIBRARY_FIXED})
+endif(${CMAKE_VERSION} VERSION_GREATER 3.4)
 
 # JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")

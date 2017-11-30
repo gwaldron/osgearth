@@ -647,7 +647,8 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     if (modelLayer)
     {
         // TODO:  Why go through all the MapNodeObserver stuff when we can just pass in the MapNode here?
-        modelLayer->getOrCreateSceneGraph(_map.get(), _map->getReadOptions(), 0L);
+        modelLayer->getOrCreateSceneGraph(_map.get(), 0L);
+
         // Install the MapNodeObserverInstaller so that MapNodeObservers will be notified of the MapNode.
         modelLayer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
     }

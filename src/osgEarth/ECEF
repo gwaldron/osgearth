@@ -29,14 +29,6 @@ namespace osgEarth
     struct OSGEARTH_EXPORT ECEF
     {
         /**
-         * Creates a "localization" matrix for double-precision geocentric
-         * coordinates. The matrix is ceneterd at the specified ECEF reference point.
-         * @deprecated - use SpatialReference::createLocalToWorld
-         */
-        static osg::Matrixd createLocalToWorld( 
-            const osg::Vec3d& ecefRefPoint );
-
-        /**
          * Transforms a point into ECEF coordinates, localizes it with
          * the provided world2local matrix, and puts the result in "output".
          */

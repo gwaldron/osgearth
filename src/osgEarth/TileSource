@@ -290,13 +290,7 @@ namespace osgEarth
         virtual const Profile* getProfile() const;
 
         /**
-         * Gets the preferred extension for this TileSource
-         * @deprecated No longer used
-         */
-        virtual std::string getExtension() const {return "png";}
-
-        /**
-         *Gets the blacklist for this TileSource
+         * Gets the blacklist for this TileSource
          */
         TileBlacklist* getBlacklist();
         const TileBlacklist* getBlacklist() const;
@@ -351,8 +345,6 @@ namespace osgEarth
          * intialization succeeded (in which case the owning layer will become enabled)
          * or failed (in which case the owning layer will become disabled.
          *
-         * This method replaces the now-deprecated initialize method below.
-         *
          * The Subclass should override this to report a correct initialization status.
          * The default implementation reports STATUS_OK (for compatibility).
          */
@@ -399,20 +391,6 @@ namespace osgEarth
 
         //! Compat - do not override
         unsigned getTileSize() const { return getPixelsPerTile(); }
-
-
-    protected: // deprecated
-
-        /**
-         * @deprecated
-         * Initializes the TileSource. This is the old initialize method; it will exists
-         * for backwards compatibility with older user-defined TileSource implementations.
-         * Consider updating to the new initialize() method above since it properly
-         * reports the results of the initialization.
-         */
-        virtual void initialize(
-            const osgDB::Options* dbOptions,
-            const Profile*        overrideProfile ) { }
 
     private:
 

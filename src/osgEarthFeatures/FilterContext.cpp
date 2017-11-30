@@ -25,7 +25,10 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 FilterContext::FilterContext() :
+_session(0L),
+_profile(0L),
 _isGeocentric(false),
+_index(0L),
 _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
 {
     //nop
@@ -50,7 +53,7 @@ _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
         }
         else
         {
-            _resourceCache = new ResourceCache(); // session->getDBOptions() );
+            _resourceCache = new ResourceCache();
         }
     }
 

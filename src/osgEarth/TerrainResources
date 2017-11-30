@@ -51,19 +51,6 @@ namespace osgEarth
         bool reserveTextureImageUnit(
             int&        out_unit,
             const char* requestor =0L );
-
-        /**
-         * Requests a texture image unit that is not in use, and marks is as reserved
-         * for the specified Layer. The unit will still be available for reservation
-         * by other layers (but not globally).
-         * You must release the reserved texture image unit by calling releaseTextureImageUnit().
-         * @param out_unit  Reserved unit is written to this variable.
-         * @param requestor Optional requestor string (for information purposes only)
-         */
-        bool reserveTextureImageUnit(
-            int& out_unit,
-            const Layer* layer,
-            const char* requestor =0L);
         
         /**
          * Requests a texture image unit that is not in use, and marks is as reserved.

@@ -69,47 +69,6 @@ TerrainResources::reserveTextureImageUnit(int&        out_unit,
 }
 
 bool
-TerrainResources::reserveTextureImageUnit(int&         out_unit,
-                                          const Layer* layer,
-                                          const char*  requestor)
-{
-    OE_DEPRECATED(reserveTextureImageUnit, reserveTextureImageUnitForLayer) << std::endl;
-
-    if (layer == 0L)
-    {
-        return reserveTextureImageUnit(out_unit, requestor);
-    }
-
-    out_unit = -1;
-    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
-    
-    Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
-    
-    // first collect a list of units that are already in use.
-    std::set<int> taken;
-    taken.insert(_globallyReservedUnits.begin(), _globallyReservedUnits.end());
-    ReservedUnits& layerUnits = _perLayerReservedUnits[layer];
-    taken.insert(layerUnits.begin(), layerUnits.end());
-
-    // now find the first unused one.
-    for( unsigned i=0; i<maxUnits; ++i )
-    {
-        if (taken.find(i) == taken.end())
-        {
-            layerUnits.insert( i );
-            out_unit = i;
-            if ( requestor )
-            {
-                OE_INFO << LC << "Texture unit " << i << " reserved by Layer "
-                    << layer->getName() << " for " << requestor << "\n";
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-bool
 TerrainResources::reserveTextureImageUnit(TextureImageUnitReservation& reservation,
                                           const char* requestor)
 {

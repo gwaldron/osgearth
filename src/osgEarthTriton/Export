@@ -24,11 +24,6 @@
 #ifndef OSGEARTH_TRITON_EXPORT_H
 #define OSGEARTH_TRITON_EXPORT_H 1
 
-// define USE_DEPRECATED_API is used to include in API which is being fazed out
-// if you can compile your apps with this turned off you are
-// well placed for compatibility with future versions.
-#define USE_DEPRECATED_API
-
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )
     #pragma warning( disable : 4251 )

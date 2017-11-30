@@ -68,7 +68,6 @@ _mergeGeometry         ( true ),
 _clustering            ( false ),
 _instancing            ( false ),
 _ignoreAlt             ( false ),
-_useVertexBufferObjects( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
@@ -92,7 +91,6 @@ _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
 _clustering            ( s_defaults.clustering().value() ),
 _instancing            ( s_defaults.instancing().value() ),
 _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
-_useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
@@ -116,7 +114,6 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.getIfSet   ( "optimize", _optimize );
     conf.getIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
@@ -141,7 +138,6 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.addIfSet   ( "optimize", _optimize );
     conf.addIfSet   ( "optimize_vertex_ordering", _optimizeVertexOrdering);
@@ -259,7 +255,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
-    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
     const RenderSymbol*    render    = style.get<RenderSymbol>();
@@ -287,7 +282,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( !point && !line && !polygon && !marker && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();
@@ -335,63 +330,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() ||
-            altitude->script().isSet() );
-
-    // marker substitution -- to be deprecated in favor of model/icon
-    if ( marker )
-    {
-        if ( trackHistory ) history.push_back( "marker" );
-
-        // use a separate filter context since we'll be munging the data
-        FilterContext markerCX = sharedCX;
-
-        if ( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM   ||
-             marker->placement() == MarkerSymbol::PLACEMENT_INTERVAL )
-        {
-            ScatterFilter scatter;
-            scatter.setDensity( *marker->density() );
-            scatter.setRandom( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM );
-            scatter.setRandomSeed( *marker->randomSeed() );
-            markerCX = scatter.push( workingSet, markerCX );
-            if ( trackHistory ) history.push_back( "scatter" );
-        }
-        else if ( marker->placement() == MarkerSymbol::PLACEMENT_CENTROID )
-        {
-            CentroidFilter centroid;
-            markerCX = centroid.push( workingSet, markerCX );  
-            if ( trackHistory ) history.push_back( "centroid" );
-        }
-
-        if ( altRequired )
-        {
-            AltitudeFilter clamp;
-            clamp.setPropertiesFromStyle( style );
-            markerCX = clamp.push( workingSet, markerCX );
-            if ( trackHistory ) history.push_back( "altitude" );
-
-            // don't set this; we changed the input data.
-            //altRequired = false;
-        }
-
-        SubstituteModelFilter sub( style );
-
-        sub.setClustering( *_options.clustering() );
-
-        sub.setUseDrawInstanced( *_options.instancing() );
-
-        if ( _options.featureName().isSet() )
-            sub.setFeatureNameExpr( *_options.featureName() );
-
-        osg::Node* node = sub.push( workingSet, markerCX );
-        if ( node )
-        {
-            if ( trackHistory ) history.push_back( "substitute" );
-            resultGroup->addChild( node );
-        }
-    }
+            altitude->script().isSet() );    
 
     // instance substitution (replaces marker)
-    else if ( model )
+    if ( model )
     {
         const InstanceSymbol* instance = (const InstanceSymbol*)model;
 

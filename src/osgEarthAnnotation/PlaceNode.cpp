@@ -141,12 +141,6 @@ PlaceNode::init()
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
 
-    // backwards compability, support for deprecated MarkerSymbol
-    if ( !instance.valid() && _style.has<MarkerSymbol>() )
-    {
-        instance = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
-    }
-
     const IconSymbol* icon = instance->asIcon();
 
     if ( !_image.valid() )

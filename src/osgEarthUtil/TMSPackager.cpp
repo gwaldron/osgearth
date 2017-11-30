@@ -397,28 +397,13 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
         setLayerName(layer->getName());
     }
 
-
-
     if (imageLayer)
     {
         int tileSize = imageLayer->getTileSize();
         _width = tileSize;
         _height = tileSize;
-
-        // Figure out the extension if we haven't already assigned one.
         if (_extension.empty())
-        {
-            // Just default to whatever the source reports as it's extension.
-            _extension = imageLayer->getTileSource()->getExtension();
-        }
-
-        if (_extension == "jpg" && _applyAlphaMask)
-        {
             _extension = "png";
-            OE_NOTICE << LC << "Extension changed to PNG since output requires an alpha channel" << std::endl;
-        }
-
-        OE_INFO << LC << "Output extension: " << _extension << std::endl;
 
     }
     else if (elevationLayer)

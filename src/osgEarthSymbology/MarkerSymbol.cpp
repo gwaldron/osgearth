@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2016 Pelican Mapping
@@ -16,6 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/IconSymbol>
 #include <osgEarthSymbology/ModelSymbol>
@@ -295,3 +297,4 @@ MarkerSymbol::parseSLD(const Config& c, Style& style)
     }
 }
 
+#endif

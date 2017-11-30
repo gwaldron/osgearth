@@ -653,7 +653,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
             ShadowCaster* caster = new ShadowCaster();
             caster->setTextureImageUnit( unit );
             caster->setLight( view->getLight() );
-            caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
+            caster->getShadowCastingGroup()->addChild( mapNode->getLayerNodeGroup() );
             caster->getShadowCastingGroup()->addChild(mapNode->getTerrainEngine());
             if ( mapNode->getNumParents() > 0 )
             {
@@ -762,7 +762,8 @@ namespace
 
         void onValueChanged(ui::Control* control, float value )
         {
-            _sky->setMinimumAmbient(osg::Vec4(value,value,value,1));
+            if (_sky->getSunLight())
+                _sky->getSunLight()->setAmbient(osg::Vec4(value,value,value,1));
         }
     };
 }

@@ -64,12 +64,6 @@ namespace osgEarth
     extern OSGEARTH_EXPORT bool isPathToArchivedFile(const std::string& path);
 
     /**
-     * @deprecated Please use isPathToArchivedFile instead
-     * Gets whether or not the given path contains a zip file within the path
-     */
-    extern OSGEARTH_EXPORT bool isZipPath(const std::string& path);
-
-    /**
      * Gets the path to the temp directory
      */
     extern OSGEARTH_EXPORT std::string getTempPath();

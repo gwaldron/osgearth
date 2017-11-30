@@ -572,7 +572,7 @@ purge( osg::ArgumentParser& args )
                 if ( input == "y" || input == "Y" )
                 {
                     std::cout << "Purging.." << std::flush;
-                    entries[k-1]._bin->purge();
+                    entries[k-1]._bin->clear();
                 }
                 else
                 {

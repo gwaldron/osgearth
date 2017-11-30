@@ -281,12 +281,6 @@ osgEarth::isPathToArchivedFile(const std::string& path)
     return false;
 }
 
-bool osgEarth::isZipPath(const std::string &path)
-{
-    OE_WARN << LC << "FileUtils::isZipPath is deprecated; use isPathToArchivedFile instead" << std::endl;
-    return (path.find(".zip") != std::string::npos);
-}
-
 std::string osgEarth::getTempPath()
 {
 #if defined(WIN32)  && !defined(__CYGWIN__)

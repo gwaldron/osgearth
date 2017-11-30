@@ -138,16 +138,10 @@ namespace osgEarth
          */
         osg::Group* getLayerNodeGroup() const;
 
-        // @deprecated - use getLayerNodeGroup
-        osg::Group* getModelLayerGroup() const { return getLayerNodeGroup(); }
-
         /**
          * Accesses the root node for a specific ModelLayer.
          */
         osg::Node* getLayerNode(Layer* layer) const;
-
-        // @deprecated - use getLayerNode
-        //osg::Node* getModelLayerNode(ModelLayer* layer) const { return getLayerNode(layer); }
         
         /**
          * Gets the overlay decorator in this mapnode. Usually you do not need to

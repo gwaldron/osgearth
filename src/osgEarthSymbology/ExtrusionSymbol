@@ -34,21 +34,6 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
     {
     public:
-        // @deprecated
-        enum HeightReference
-        {
-            /** Means that the "height" value as provided in this symbol is expressed
-                relative to the Z of the input geometry. This is the usual way to extrude
-                geometry- extrude up from the geometry's base Z height. (default.) */
-            HEIGHT_REFERENCE_Z,
-
-            /** Means the "height" value is expressed in absolute terms, i.e., relative to 
-                MSL (mean sea level, which is usually the map's ellipsoid). If your height
-                value is an absolute elevation, use this to "extrude down" to the terrain. */
-            HEIGHT_REFERENCE_MSL
-        };
-
-    public:
         META_Object(osgEarthSymbology, ExtrusionSymbol);
 
         ExtrusionSymbol(const ExtrusionSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
@@ -65,11 +50,6 @@ namespace osgEarth { namespace Symbology
         /** Simple expression to evaluate to get height */
         optional<NumericExpression>& heightExpression() { return _heightExpr; }
         const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
-
-        /** Reference frame in which height is expressed */
-        // @deprecated
-        optional<HeightReference>& heightReference() { return _heightRef; }
-        const optional<HeightReference>& heightReference() const { return _heightRef; }
 
         /** Whether the top cap of the extruded geometry should be flat (default=true) */
         optional<bool>& flatten() { return _flatten; }
@@ -97,7 +77,6 @@ namespace osgEarth { namespace Symbology
         optional<float>             _height;
         optional<bool>              _flatten;
         optional<NumericExpression> _heightExpr;
-        optional<HeightReference>   _heightRef;
         optional<std::string>       _wallStyleName;
         optional<std::string>       _roofStyleName;
         optional<float>             _wallGradientPercentage;

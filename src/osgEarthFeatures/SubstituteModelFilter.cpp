@@ -435,13 +435,6 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     osg::ref_ptr<const InstanceSymbol> symbol = _style.get<InstanceSymbol>();
 
-    // check for deprecated MarkerSymbol type.
-    if ( !symbol.valid() )
-    {
-        if ( _style.has<MarkerSymbol>() )
-            symbol = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
-    }
-
     if ( !symbol.valid() )
     {
         OE_WARN << LC << "No appropriate symbol found in stylesheet; aborting." << std::endl;

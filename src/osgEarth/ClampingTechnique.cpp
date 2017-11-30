@@ -52,10 +52,10 @@ using namespace osgEarth;
 
 namespace
 {
-    osg::Group* s_providerImpl(MapNode* mapNode)
-    {
-        return mapNode ? mapNode->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
-    }
+    //osg::Group* s_providerImpl(MapNode* mapNode)
+    //{
+    //    return mapNode ? mapNode->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
+    //}
 
 #ifdef TIME_RTT_CAMERA
     static osg::Timer_t t0, t1;
@@ -73,7 +73,7 @@ namespace
 #endif
 }
 
-ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
+//ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
 
 //---------------------------------------------------------------------------
 

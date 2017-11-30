@@ -325,28 +325,6 @@ ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
     return true;
 }
 
-MarkerResource*
-ResourceLibrary::getMarker( const std::string& name, const osgDB::Options* dbOptions ) const
-{
-    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
-    Threading::ScopedReadLock shared( _mutex );
-    ResourceMap<MarkerResource>::const_iterator i = _markers.find( name );
-    return i != _markers.end() ? i->second.get() : 0L;
-}
-
-void
-ResourceLibrary::getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions ) const
-{
-    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
-    Threading::ScopedReadLock shared( _mutex );
-
-    output.clear();
-    output.reserve( _markers.size() );
-
-    for( ResourceMap<MarkerResource>::const_iterator i = _markers.begin(); i != _markers.end(); ++i )
-        output.push_back( i->second.get() );
-}
-
 InstanceResource*
 ResourceLibrary::getInstance( const std::string& name, const osgDB::Options* dbOptions ) const
 {

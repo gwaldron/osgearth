@@ -93,12 +93,6 @@ namespace osgEarth { namespace Features
         return script ? run(script->getCode(), feature, context) : ScriptResult("", false);
     }
 
-    /** deprecated */
-    virtual ScriptResult call(const std::string& function, Feature const* feature=0L, FilterContext const* context=0L)
-    {
-        return ScriptResult("", false, "ScriptResult::call not implemented");
-    }
-
   public:
     // META_Object specialization:
     virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate

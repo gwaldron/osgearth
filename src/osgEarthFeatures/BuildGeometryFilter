@@ -98,7 +98,7 @@ namespace osgEarth { namespace Features
 
         /**
          * Whether to use GPU-generated geometry for lines with pixel width, as a replacement
-         * for the deprecated glLineWidth arttribute
+         * for the glLineWidth attribute
          */
         optional<bool>& useGPULines() { return _useGPULines; }
         const optional<bool>& useGPULines() const { return _useGPULines; }

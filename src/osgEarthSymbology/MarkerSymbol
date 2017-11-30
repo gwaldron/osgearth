@@ -20,6 +20,8 @@
 #ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
 
+#if 0
+
 #include <climits>
 
 #include <osgEarth/Common>
@@ -32,6 +34,7 @@ namespace osgEarth { namespace Symbology
     class InstanceSymbol;
 
     /**
+     * @deprecated
      * The MarkerSymbol describes replacement of geometry with "markers". A marker
      * it another object like a 3D model (node) or an image.
      */
@@ -152,5 +155,7 @@ namespace osgEarth { namespace Symbology
     };
 
 } } // namespace osgEarth::Symbology
+
+#endif
 
 #endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

@@ -531,7 +531,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             if (_useGPULines == true)
             {
-                // Lines tessellated on the GPU - replacement for deprecated glLineWidth
+                // Lines tessellated on the GPU - replacement for glLineWidth
                 osgGeom = gpuLines(allPoints, isRing);
             }
             else

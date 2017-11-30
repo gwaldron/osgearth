@@ -812,8 +812,7 @@ AnnotationUtils::getAltitudePolicy(const Style& style, AltitudePolicy& out)
                 out.draping       = alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE;
 
                 // for instance/markers, GPU clamping falls back on SCENE clamping.
-                if (out.gpuClamping &&
-                    (style.has<InstanceSymbol>() || style.has<MarkerSymbol>()))
+                if (out.gpuClamping && style.has<InstanceSymbol>())
                 {
                     out.gpuClamping   = false;
                     out.sceneClamping = true;

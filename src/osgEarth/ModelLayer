@@ -201,14 +201,6 @@ namespace osgEarth
          */
         osg::Node* getSceneGraph(const UID& mapUID) const;
 
-    public: // deprecated
-        
-        /** @deprecated */
-        osg::Node* getOrCreateSceneGraph( 
-            const Map*            map, 
-            const osgDB::Options* readOptions,
-            ProgressCallback*     progress ) { return getOrCreateSceneGraph(map, progress); }
-
     public: // properties
 
         /** whether to apply lighting to the model layer's root node */

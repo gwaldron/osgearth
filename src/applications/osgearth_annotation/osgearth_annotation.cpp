@@ -340,6 +340,7 @@ main(int argc, char** argv)
 
         Feature*     utahFeature = new Feature(utah, geoSRS);
         FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature, utahStyle);
+
         annoGroup->addChild( featureNode );
     }
 

@@ -184,8 +184,6 @@ main(int argc, char** argv)
     ui::ControlCanvas::getOrCreate(&viewer)->addControl( makeUI(app) );
     app.apply();
 
-    em->setTetherNode( app.geo );
-
     osgEarth::Viewpoint vp;
     vp.setNode( app.geo );
     vp.heading()->set( -45.0, Units::DEGREES );

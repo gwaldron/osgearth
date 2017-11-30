@@ -82,10 +82,6 @@ namespace osgEarth { namespace Features
         optional<double>& resampleMaxLength() { return _resampleMaxLength; }
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
 
-        /** @deprecated Whether to use VBOs in geometry */
-        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
-        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
-
         /** Whether to generate shader components on compiled geometry */
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
@@ -132,7 +128,6 @@ namespace osgEarth { namespace Features
         optional<ResampleFilter::ResampleMode> _resampleMode;
         optional<double>               _resampleMaxLength;
         optional<bool>                 _ignoreAlt;
-        optional<bool>                 _useVertexBufferObjects;
         optional<ShaderPolicy>         _shaderPolicy;
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;

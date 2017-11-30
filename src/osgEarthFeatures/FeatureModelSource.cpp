@@ -55,7 +55,6 @@ FeatureModelOptions::fromConfig(const Config& conf)
 
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
-    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
     conf.getObjIfSet( "fading",           _fading );
     conf.getObjIfSet( "feature_name",     _featureNameExpr );
     conf.getObjIfSet( "feature_indexing", _featureIndexing );
@@ -120,7 +119,6 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     
     conf.getObjIfSet( "styles",           _styles );
     conf.getObjIfSet( "layout",           _layout );
-    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
     conf.getObjIfSet( "fading",           _fading );
     conf.getObjIfSet( "feature_name",     _featureNameExpr );
     conf.getObjIfSet( "feature_indexing", _featureIndexing );

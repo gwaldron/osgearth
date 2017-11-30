@@ -107,19 +107,6 @@ namespace osgEarth { namespace Symbology
         SkinResource* getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions =0L ) const;
 
 
-    public: // Marker resource functions (deprecated)
-
-        /**
-         * Finds and returns a marker reosurce by name.
-         */
-        MarkerResource* getMarker( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
-
-        /**
-         * Returns a list of all marker resources in this library.
-         */
-        void getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
-
-
     public: // Instance functions
 
         /**

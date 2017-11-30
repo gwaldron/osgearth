@@ -165,11 +165,6 @@ namespace osgEarth
          */
         virtual std::string getHashedKey(const std::string& key) const =0;
 
-    public: //deprecated
-
-        /** @deprecated - use clear */
-        bool purge() { return clear(); } // backwards compatibility
-
 
     protected:
         std::string _binID;

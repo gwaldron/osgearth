@@ -67,14 +67,6 @@ ModelNode::init()
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 
     osg::ref_ptr<const ModelSymbol> sym = _style.get<ModelSymbol>();
-    
-    // backwards-compatibility: support for MarkerSymbol (deprecated)
-    if ( !sym.valid() && _style.has<MarkerSymbol>() )
-    {
-        OE_WARN << LC << "MarkerSymbol is deprecated, please remove it\n";
-        osg::ref_ptr<InstanceSymbol> temp = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
-        sym = dynamic_cast<const ModelSymbol*>( temp.get() );
-    }
 
     if ( sym.valid() )
     {

@@ -115,13 +115,7 @@ namespace osgEarth
          */
         static bool ignore(const osg::Object* object);
 
-    public: // deprecated
-
-        /**
-         * Sets the name to give any VP's we create           
-         * @deprecated Now a NO-OP. Use run(graph, name, ...) instead.
-         */
-        void setProgramName(const std::string& name) const { }
+    public:
 
         /**
          * Whether to automatically duplicate (by cloning) subgraphs with

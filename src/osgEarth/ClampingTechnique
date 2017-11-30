@@ -60,8 +60,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
     {
     public:
-        typedef osg::Group* (*TechniqueProvider)(class MapNode*);
-        static TechniqueProvider Provider;
+        //typedef osg::Group* (*TechniqueProvider)(class MapNode*);
+        //static TechniqueProvider Provider;
 
     public:
         ClampingTechnique();

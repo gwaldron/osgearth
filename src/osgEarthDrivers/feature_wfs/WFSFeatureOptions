@@ -37,10 +37,6 @@ namespace osgEarth { namespace Drivers
         /** Base URL of the WFS service (not including any WFS parameters) */
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
-        
-        /** deprecated */
-        optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
-        const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
 
         /** WFS typename parameter (see WFS spec) */
         optional<std::string>& typeName() { return _typename; }
@@ -82,7 +78,6 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
             conf.set( "url", _url ); 
-            conf.set( "geometry_profile", _geometryProfileConf );
             conf.set( "typename", _typename );
             conf.set( "outputformat", _outputFormat);
             conf.set( "maxfeatures", _maxFeatures );

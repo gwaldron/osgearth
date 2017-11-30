@@ -592,13 +592,6 @@ namespace osgEarth { namespace Util
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
         /**
-         * @deprecated Please use clearViewpoint() instead.
-         *
-         * Cancels a viewpoint transition if one is in progress
-         */
-        void cancelViewpointTransition();
-
-        /**
          * Cancels a call to setViewpoint that resulted in an ongoing transition OR
          * attachment to a node.
          */
@@ -618,45 +611,6 @@ namespace osgEarth { namespace Util
          * Whether the view is tethered to a node.
          */
         bool isTethering() const;
-
-        /**
-         * @deprecated Please use setViewpoint() instead.
-         *
-         * Locks the camera's focal point on the center of a node's bounding sphere.
-         * While tethered, you can still call navigate or call setViewpoint() to move the
-         * camera relative to the tether object. Pass NULL to deactivate the tether.
-         *
-         * @param node
-         *      Node to which to tether the viewpoint.
-         * @param duration_s
-         *      The duration that the camera should transition when tethering to the node.
-         */
-        void setTetherNode(osg::Node* node, double duration_s =0.0);
-
-        /**
-         * @deprecated Please use setViewpoint() instead.
-         *
-         * Same as setTether(node, duration) but you also specify the final
-         * heading, pitch, and range offset from the tethered node.
-         */
-        void setTetherNode(
-            osg::Node* nodeToTetherTo,
-            double     duration_seconds,
-            double     newHeading_degrees,
-            double     newPitch_degrees,
-            double     newRange_meters);
-
-        /**
-         * @deprecated - Please use getViewpoint().getNode() instead.
-         */
-        osg::Node* getTetherNode() const;
-
-        /**
-         * @deprecated Please call clearViewpoint() instead.
-         *
-         * Same as calling setTetherNode(NULL).
-         */
-        void breakTether();
 
         /**
          * Sets a callback to be invoked upon a tether or tether break

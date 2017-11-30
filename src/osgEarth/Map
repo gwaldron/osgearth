@@ -291,23 +291,6 @@ namespace osgEarth
         void calculateProfile();
 
         friend class MapInfo;
-
-
-    public: // deprecated functions (for backwards compatibility)
-        void addImageLayer(class ImageLayer* layer);
-        void insertImageLayer(class ImageLayer* layer, unsigned index);
-        void removeImageLayer(class ImageLayer* layer);
-        void moveImageLayer(class ImageLayer* layer, unsigned newIndex);
-        void addElevationLayer(class ElevationLayer* layer);
-        void removeElevationLayer(class ElevationLayer* layer);
-        void moveElevationLayer(class ElevationLayer* layer, unsigned newIndex);
-        void addModelLayer(class ModelLayer* layer);
-        void insertModelLayer(class ModelLayer* layer, unsigned index);
-        void removeModelLayer(class ModelLayer* layer);
-        void moveModelLayer(class ModelLayer* layer, unsigned newIndex);
-        void addTerrainMaskLayer(class MaskLayer* layer);
-        void removeTerrainMaskLayer(class MaskLayer* layer);
-
     };
     
 

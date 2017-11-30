@@ -145,9 +145,6 @@ namespace osgEarth
          * Accesses the root node for a specific ModelLayer.
          */
         osg::Node* getLayerNode(Layer* layer) const;
-
-        // @deprecated - use getLayerNode
-        //osg::Node* getModelLayerNode(ModelLayer* layer) const { return getLayerNode(layer); }
         
         /**
          * Gets the overlay decorator in this mapnode. Usually you do not need to
@@ -264,6 +261,7 @@ namespace osgEarth
 
         void onLayerAdded(Layer* layer, unsigned index);
         void onLayerRemoved(Layer* layer, unsigned index);
+        void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
 
     private:
 

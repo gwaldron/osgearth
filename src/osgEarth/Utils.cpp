@@ -298,7 +298,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
             // update the LOD Scale based on the auto-scale.
             const double xScale = getScale().x();
-            if (0 && xScale != 1.0 && xScale != 0.0)
+            if (xScale != 1.0 && xScale != 0.0)
             {
                 oldLodScale = cv->getLODScale();
                 resetLodScale = true;

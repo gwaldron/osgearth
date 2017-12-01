@@ -64,6 +64,8 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
     if ( !nv.validNodeMask(*this) )
         return;
 
+    bool resetLodScale = false;
+    double oldLodScale = 1.0;
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         // re-activate culling now that the first cull traversal has taken place.
@@ -295,13 +297,27 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
             _dirty = false;
 
             // update the LOD Scale based on the auto-scale.
-            cv->setLODScale( 1.0/getScale().x() );
+            const double xScale = getScale().x();
+            if (xScale != 1.0 && xScale != 0.0)
+            {
+                oldLodScale = cv->getLODScale();
+                resetLodScale = true;
+                cv->setLODScale( 1.0/xScale );
+            }
 
         } // if (cv)
     } // if is cull visitor
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);
+
+    // Reset the LOD scale if we changed it
+    if (resetLodScale)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if ( cv )
+            cv->setLODScale( oldLodScale );
+    }
 }
 
 void

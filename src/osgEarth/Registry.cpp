@@ -146,13 +146,13 @@ _devicePixelRatio(1.0f)
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
     if ( envFont )
     {
-        _defaultFont = osgText::readFontFile( std::string(envFont) );
+        _defaultFont = osgText::readRefFontFile( std::string(envFont) );
         OE_INFO << LC << "Default font set from environment: " << envFont << std::endl;
     }
     if ( !_defaultFont.valid() )
     {
 #ifdef WIN32
-        _defaultFont = osgText::readFontFile("arial.ttf");
+        _defaultFont = osgText::readRefFontFile("arial.ttf");
 #else
         _defaultFont = osgText::Font::getDefaultFont();
 #endif

@@ -171,15 +171,14 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                 std::string auxFile = base + "_" + pattern + "." + ext;
 
                 // read in the auxiliary image:
-                osg::ref_ptr<osg::Image> auxImage;
-                auxImage = osgDB::readImageFile( auxFile, _options.get() );
+                osg::ref_ptr<osg::Image> auxImage = osgDB::readRefImageFile( auxFile, _options.get() );
 
                 // if that didn't work, try alternate extensions:
                 const char* alternateExtensions[3] = {"png", "jpg", "osgb"};
                 for(int b = 0; b < 3 && !auxImage.valid(); ++b)
                 {
                     auxFile = base + "_" + pattern + "." + alternateExtensions[b];
-                    auxImage = osgDB::readImageFile( auxFile, _options.get() );
+                    auxImage = osgDB::readRefImageFile( auxFile, _options.get() );
                 }
 
                 if ( auxImage.valid() )

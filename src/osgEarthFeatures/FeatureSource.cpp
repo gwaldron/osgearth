@@ -214,7 +214,7 @@ FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) cons
 FeatureSource*
 FeatureSourceFactory::create( const FeatureSourceOptions& options )
 {
-    FeatureSource* featureSource = 0L;
+    osg::ref_ptr<FeatureSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -223,13 +223,14 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( featureSource )
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+        source = dynamic_cast<FeatureSource*>( object.release() );
+        if ( source )
         {
             if ( options.name().isSet() )
-                featureSource->setName( *options.name() );
+                source->setName( *options.name() );
             else
-                featureSource->setName( options.getDriver() );
+                source->setName( options.getDriver() );
         }
         else
         {
@@ -241,7 +242,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         OE_WARN << LC << "ILLEGAL null feature driver name" << std::endl;
     }
 
-    return featureSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

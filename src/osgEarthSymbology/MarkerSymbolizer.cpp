@@ -39,8 +39,8 @@ static osg::Node* getNode(const std::string& str)
 #else
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
     options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-    osg::Node* node = osgDB::readNodeFile(str, options.get());
-    return node;
+    ref_ptr<osg::Node> node = osgDB::readRefNodeFile(str, options.get());
+    return node.release();
 #endif
 }
 

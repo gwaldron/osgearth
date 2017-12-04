@@ -30,6 +30,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+#include <osgEarth/ReadFile>
 
 #include <osgEarth/Units>
 #include <osg/Notify>
@@ -146,13 +147,13 @@ _devicePixelRatio(1.0f)
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
     if ( envFont )
     {
-        _defaultFont = osgText::readRefFontFile( std::string(envFont) );
+        _defaultFont = readFontFile( std::string(envFont) );
         OE_INFO << LC << "Default font set from environment: " << envFont << std::endl;
     }
     if ( !_defaultFont.valid() )
     {
 #ifdef WIN32
-        _defaultFont = osgText::readRefFontFile("arial.ttf");
+        _defaultFont = readFontFile("arial.ttf");
 #else
         _defaultFont = osgText::Font::getDefaultFont();
 #endif

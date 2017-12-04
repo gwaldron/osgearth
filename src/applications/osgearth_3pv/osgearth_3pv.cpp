@@ -31,16 +31,9 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Horizon>
 #include <osgEarth/TraversalData>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthAnnotation/PlaceNode>
-
-#define LC "[viewer] "
-
-using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
-namespace ui = osgEarth::Util::Controls;
-
 
 #include <osg/Geometry>
 #include <osg/Depth>
@@ -48,10 +41,15 @@ namespace ui = osgEarth::Util::Controls;
 #include <osg/DisplaySettings>
 #include <osg/MatrixTransform>
 #include <osg/LineWidth>
-#include <osgDB/ReadFile>
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
 
+#define LC "[viewer] "
+
+using namespace osgEarth;
+using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
+namespace ui = osgEarth::Util::Controls;
 
 struct PlacerCallback : public MouseCoordsTool::Callback
 {
@@ -236,7 +234,7 @@ main( int argc, char** argv )
 
     MapNode* mapNode = MapNode::get(node.get());
 
-    osg::ref_ptr<osg::Image> icon = osgDB::readImageFile("../data/placemark32.png");
+    osg::ref_ptr<osg::Image> icon = osgEarth::readImageFile("../data/placemark32.png");
     PlaceNode* place = new PlaceNode(mapNode, GeoPoint::INVALID, icon.get(), "");
     place->getOrCreateStateSet()->setRenderBinDetails(10, "DepthSortedBin");
     place->setDynamic(true);

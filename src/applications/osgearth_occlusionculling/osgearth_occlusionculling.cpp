@@ -23,6 +23,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/ECEF>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
@@ -107,7 +108,7 @@ main(int argc, char** argv)
 
     //Create a bunch of placemarks around Mt Rainer so we can actually get some elevation
     {
-        osg::Image* pin = osgDB::readImageFile( "../data/placemark32.png" );
+        osg::ref_ptr<osg::Image> pin = osgEarth::readImageFile( "../data/placemark32.png" );
 
         double centerLat =  46.840866;
         double centerLon = -121.769846;

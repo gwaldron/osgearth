@@ -22,7 +22,10 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthAnnotation/FeatureNode>
+
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 
@@ -166,7 +169,7 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
     _controlContainer->clearControls();
 
   if (url.length() > 0)
-    _earthNode = osgDB::readNodeFile( url );
+    _earthNode = osgEarth::readNodeFile( url );
 
   //Load a blank globe if needed
   if (!_earthNode.valid())

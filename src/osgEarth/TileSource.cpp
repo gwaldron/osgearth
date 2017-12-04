@@ -22,14 +22,15 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
+
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
 #define LC "[TileSource] "
@@ -489,8 +490,7 @@ TileSourceFactory::create(const TileSourceOptions& options)
     dbopt->setPluginStringData( TILESOURCE_INTERFACE_TAG, TileSource::INTERFACE_NAME );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
-    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, dbopt.get() );
-    source = dynamic_cast<TileSource*>( object.release() );
+    source = osgEarth::readFile<TileSource>( driverExt, dbopt.get() );
     if ( !source )
     {
         OE_INFO << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;

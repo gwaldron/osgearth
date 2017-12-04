@@ -24,6 +24,7 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
@@ -212,7 +213,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     osg::ref_ptr<osgText::Font> font;
     if ( symbol && symbol->font().isSet() )
     {
-        font = osgText::readRefFontFile( *symbol->font() );
+        font = readFontFile( *symbol->font() );
     }
     if ( !font )
         font = Registry::instance()->getDefaultFont();

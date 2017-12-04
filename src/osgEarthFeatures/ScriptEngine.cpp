@@ -18,8 +18,8 @@
  */
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/Notify>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -133,8 +133,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
             rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
 
-            osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-            scriptEngine = dynamic_cast<ScriptEngine*>( object.release() );
+            scriptEngine = osgEarth::readFile<ScriptEngine>( driverExt, rwopts.get() );
             if ( scriptEngine )
             {
                 OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;

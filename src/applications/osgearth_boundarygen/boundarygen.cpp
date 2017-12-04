@@ -22,22 +22,24 @@
 
 #include "BoundaryUtil"
 
+#include <osgEarth/ReadFile>
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+
 #include <osg/Notify>
 #include <osg/LineWidth>
 #include <osg/Point>
 #include <osg/PolygonOffset>
 #include <osg/MatrixTransform>
-#include <osgDB/ReadFile>
+
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/Optimizer>
-
 
 int usage( char** argv, const std::string& msg )
 {
@@ -80,7 +82,7 @@ int main(int argc, char** argv)
     bool convexOnly = arguments.read("--convex-hull");
     bool view = arguments.read("--view");
 
-    osg::Node* modelNode = osgDB::readNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> modelNode = osgEarth::readNodeFiles( arguments );
     if (!modelNode)
         return usage( argv, "Unable to load model." );
 

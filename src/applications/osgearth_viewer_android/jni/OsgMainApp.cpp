@@ -1,11 +1,14 @@
 #include "OsgMainApp.hpp"
 
-#include <osgDB/FileUtils>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ObjectLocator>
+
 #include <osgEarthDrivers/tms/TMSOptions>
 
+#include <osgDB/FileUtils>
 #include <osgDB/WriteFile>
 
 #include "GLES2ShaderGenVisitor.h"
@@ -144,7 +147,7 @@ void OsgMainApp::initOsgWindow(int x,int y,int width,int height){
     material->setSpecular(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
 #endif
     
-    osg::Node* node = osgDB::readNodeFile("http://readymap.org/readymap/maps/public/2.earth");
+    osg::ref_ptr<osg::Node> node = osgEarth::readNodeFile("http://readymap.org/readymap/maps/public/2.earth");
     if ( !node )
     {
         OSG_ALWAYS << "Unable to load an earth file from the command line." << std::endl;

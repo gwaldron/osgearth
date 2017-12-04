@@ -23,16 +23,18 @@
 #include <osgEarth/Notify>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ReadFile>
+#include <osgEarth/Utils>
+
 #include <osgEarthUtil/AtlasBuilder>
+
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Skins>
-#include <osgEarth/Utils>
 
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
-#include <osgDB/ReadFile>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Texture2DArray>
@@ -211,7 +213,7 @@ show(osg::ArgumentParser& arguments)
             osgDB::getFileExtension(atlasFile);
     }
 
-    osg::Image* image = osgDB::readImageFile(atlasFile);
+    osg::ref_ptr<osg::Image> image = osgEarth::readImageFile(atlasFile);
     if ( !image )
         return usage("Failed to load atlas image");
 

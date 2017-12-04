@@ -22,12 +22,15 @@
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/Notify>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
+
 #include <osgEarthUtil/ExampleResources>
+
 #include <osgDB/ReaderWriter>
-#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
@@ -608,7 +611,7 @@ main(int argc, char** argv)
 
         // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::ref_ptr< osg::Node> node = osgDB::readNodeFiles( arguments );
+    osg::ref_ptr< osg::Node> node = osgEarth::readNodeFiles( arguments );
     osg::ref_ptr< MapNode > mapNode = MapNode::findMapNode( node );
 
     if (mapNode.valid())

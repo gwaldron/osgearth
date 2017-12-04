@@ -27,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ModelLayer>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
@@ -279,7 +280,7 @@ void addParks(Map* map)
     model->scale()->setLiteral( 0.2 );
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 3000.0f; // instances per sqkm
-    model->setModel(osgDB::readNodeFile(TREE_MODEL_URL));
+    model->setModel(osgEarth::readNodeFile(TREE_MODEL_URL));
     
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();

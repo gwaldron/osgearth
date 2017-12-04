@@ -21,12 +21,14 @@
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+#include <osgEarth/VirtualProgram>
+
 #include <osg/MatrixTransform>
 #include <osg/Point>
 #include <osg/LineWidth>
 #include <osg/LineStipple>
-#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -82,14 +84,14 @@ FeatureFilterRegistry::create(const Config& conf, const osgDB::Options* dbo)
 {
     std::string driver = conf.key();
 
-    osg::ref_ptr<FeatureFilter> result;
+    osg::ref_ptr<FeatureFilter> filter;
 
-    for (FeatureFilterFactoryList::iterator itr = _factories.begin(); result == 0L && itr != _factories.end(); itr++)
+    for (FeatureFilterFactoryList::iterator itr = _factories.begin(); filter == 0L && itr != _factories.end(); itr++)
     {
-        result = itr->get()->create( conf );
+        filter = itr->get()->create( conf );
     }
 
-    if ( !result.valid() )
+    if ( !filter.valid() )
     {
         // not found; try to load from plugin.
         if ( driver.empty() )
@@ -104,16 +106,15 @@ FeatureFilterRegistry::create(const Config& conf, const osgDB::Options* dbo)
         dbopt->setPluginData( FEATURE_FILTER_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string( ".osgearth_featurefilter_" ) + driver;
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, dbopt.get() );
-        result = dynamic_cast<FeatureFilter*>( object.release() );
+        filter = osgEarth::readFile<FeatureFilter>( driverExt, dbopt.get() );
     }
 
-    if ( !result.valid() )
+    if ( !filter.valid() )
     {
         OE_WARN << LC << "Failed to load FeatureFilter driver \"" << driver << "\"" << std::endl;
     }
 
-    return result.release();
+    return filter.release();
 } 
 
 const ConfigOptions&

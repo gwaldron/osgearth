@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/TextSymbolizer>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgText/Text>
 
@@ -84,7 +85,7 @@ TextSymbolizer::create(Feature*             feature,
     osg::ref_ptr<osgText::Font> font;
     if ( _symbol.valid() && _symbol->font().isSet() )
     {
-        font = osgText::readRefFontFile( *_symbol->font() );
+        font = readFontFile( *_symbol->font() );
         
 #if OSG_VERSION_LESS_THAN(3,5,8)
         // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement

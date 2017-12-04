@@ -188,7 +188,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             // See if the filename starts with server: and strip it off.  This will trick OSG into
             // passing in the filename to our plugin instead of using the CURL plugin if the filename
             // contains a URL.  So, if you want to read a URL, you can use the following format
-            // osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be
+            // osgEarth::readNodeFile("server:http://myserver/myearth.earth").  This should only be
             // necessary for the first level as the other files will have a tilekey prepended to them.
             if ((fileName.length() > 7) && (fileName.substr(0, 7) == "server:"))
                 return readNode(fileName.substr(7), readOptions);            

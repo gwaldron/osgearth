@@ -20,7 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -30,6 +29,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/ReadFile>
 
 #define LC "[shadergen] "
 
@@ -58,7 +58,7 @@ main(int argc, char** argv)
     cache->setMaxSize(INT_MAX);
 
     // load the file
-    osg::Node* node = osgDB::readNodeFile(
+    osg::ref_ptr<osg::Node> node = osgEarth::readNodeFile(
         Stringify() << argv[1] << ".osgearth_shadergen" );
 
     if ( !node )

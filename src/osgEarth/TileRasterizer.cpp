@@ -22,7 +22,6 @@
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
 #include <osg/FrameBufferObject>
-#include <osgDB/ReadFile>
 
 #define LC "[TileRasterizer] "
 

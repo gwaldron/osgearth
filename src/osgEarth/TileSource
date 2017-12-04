@@ -41,7 +41,6 @@
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgDB/Options>
-#include <osgDB/ReadFile>
 #include <string>
 
 

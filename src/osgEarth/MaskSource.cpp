@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MaskSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+
 #include <osg/Notify>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -101,8 +102,7 @@ MaskSourceFactory::create( const MaskSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MASK_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-        source = dynamic_cast<MaskSource*>( object.release() );
+        source = osgEarth::readFile<MaskSource>( driverExt, rwopts.get() );
         if ( source )
         {
             OE_INFO << "Loaded MaskSource driver \"" << options.getDriver() << "\" OK" << std::endl;

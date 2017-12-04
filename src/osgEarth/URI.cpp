@@ -20,13 +20,15 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CacheBin>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
 #include <osgEarth/FileUtils>
+
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 #include <osgDB/Archive>
+
 #include <fstream>
 #include <sstream>
 
@@ -301,7 +303,7 @@ namespace
             return HTTPClient::readObject(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            return ReadResult(osgDB::readRefObjectFile(uri, opt).get());
+            return ReadResult(osgEarth::readObjectFile(uri, opt).get());
         }
     };
 
@@ -320,7 +322,7 @@ namespace
             return HTTPClient::readNode(req, opt, p);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
-            return ReadResult(osgDB::readRefNodeFile(uri, opt));
+            return ReadResult(osgEarth::readNodeFile(uri, opt));
         }
     };
 
@@ -350,7 +352,7 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { 
-            ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
+            ReadResult r = ReadResult(osgEarth::readImageFile(uri, opt));
             if ( r.getImage() ) r.getImage()->setFileName( uri );
             return r;
         }

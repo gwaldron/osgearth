@@ -1,0 +1,154 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2016 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_READFILE_H
+#define OSGEARTH_READFILE_H 1
+
+#include <osg/Version>
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+#undef OSG_PROVIDE_READFILE
+#endif
+
+#include <osg/ArgumentParser>
+#include <osg/Image>
+#include <osg/Node>
+#include <osg/Object>
+
+#include <osgDB/Options>
+#include <osgDB/ReadFile>
+
+#include <osgText/Font>
+
+#include <string>
+#include <list>
+#include <istream>
+
+namespace osgEarth
+{
+
+    inline osg::ref_ptr<osg::Object> readObjectFile(const std::string& filename, const osgDB::Options* options)
+    {
+        return osgDB::readRefObjectFile(filename, options);
+    }
+
+    inline osg::ref_ptr<osg::Object> readObjectFile(const std::string& filename)
+    {
+        return osgDB::readRefObjectFile(filename);
+    }
+
+    template<typename T>
+    inline osg::ref_ptr<T> readFile(const std::string& filename, const osgDB::Options* options)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefFile<T>(filename, options);
+#else
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile(filename, options);
+        osg::ref_ptr<T> t = dynamic_cast<T*>(object.get());
+        return t;
+#endif
+    }
+
+    template<typename T>
+    inline osg::ref_ptr<T> readFile(const std::string& filename)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefFile<T>(filename);
+#else
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile(filename);
+        osg::ref_ptr<T> t = dynamic_cast<T*>(object.get());
+        return t;
+#endif
+    }
+    
+    inline osg::ref_ptr<osg::Image> readImageFile(const std::string& filename, const osgDB::Options* options)
+    {
+        return osgDB::readRefImageFile(filename, options);
+    }
+
+    inline osg::ref_ptr<osg::Image> readImageFile(const std::string& filename)
+    {
+        return osgDB::readRefImageFile(filename);
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename, const osgDB::Options* options)
+    {
+        return osgDB::readRefNodeFile(filename, options);
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename)
+    {
+        return osgDB::readRefNodeFile(filename);
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFiles(std::vector<std::string>& fileList, const osgDB::Options* options)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefNodeFiles(fileList, options);
+#else
+    // BAD
+    return osgDB::readNodeFiles(fileList, options);
+#endif
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFiles(std::vector<std::string>& fileList)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefNodeFiles(fileList);
+#else
+    // BAD
+    return osgDB::readNodeFiles(fileList);
+#endif
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFiles(osg::ArgumentParser& parser, const osgDB::Options* options)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefNodeFiles(parser, options);
+#else
+    // BAD
+    return osgDB::readNodeFiles(parser, options);
+#endif
+    }
+
+    inline osg::ref_ptr<osg::Node> readNodeFiles(osg::ArgumentParser& parser)
+    {
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,1)
+        return osgDB::readRefNodeFiles(parser);
+#else
+    // BAD
+    return osgDB::readNodeFiles(parser);
+#endif
+    }
+
+    inline osg::ref_ptr<osgText::Font> readFontFile(const std::string& filename, const osgDB::Options* userOptions = 0)
+    {
+        return osgText::readRefFontFile(filename, userOptions);
+    }
+
+    inline osg::ref_ptr<osgText::Font> readRefFontStream(std::istream& stream, const osgDB::Options* userOptions = 0)
+    {
+        return osgText::readRefFontStream(stream, userOptions);
+    }
+
+}
+
+#endif // OSGEARTH_READFILE_H

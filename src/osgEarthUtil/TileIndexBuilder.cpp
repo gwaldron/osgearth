@@ -26,10 +26,10 @@
 #include <osgEarth/Progress>
 #include <osgEarth/ImageLayer>
 #include <osgEarthDrivers/gdal/GDALOptions>
+
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 
-using namespace osgDB;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
@@ -57,35 +57,35 @@ void TileIndexBuilder::build(const std::string& indexFilename, const osgEarth::S
     osg::ref_ptr< osgEarth::Util::TileIndex > index = osgEarth::Util::TileIndex::create( indexFilename, srs );
 
     _indexFilename = indexFilename;
-    std::string indexDir = getFilePath( _indexFilename );    
-    
+    std::string indexDir = osgDB::getFilePath( _indexFilename );
+
     unsigned int total = _expandedFilenames.size();
 
     for (unsigned int i = 0; i < _expandedFilenames.size(); i++)
-    {   
-        std::string filename = _expandedFilenames[ i ];        
+    {
+        std::string filename = _expandedFilenames[ i ];
 
         GDALOptions opt;
         opt.url() = filename;
-        
-        osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("", opt) );        
+
+        osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("", opt) );
 
         bool ok = false;
-                
-        if ( layer.valid() )        
-        {            
+
+        if ( layer.valid() )
+        {
             osg::ref_ptr< TileSource > source = layer->getTileSource();
             if (source.valid())
             {
                 for (DataExtentList::iterator itr = source->getDataExtents().begin(); itr != source->getDataExtents().end(); ++itr)
                 {
-                    // We want the filename as it is relative to the index file                
-                    std::string relative = getPathRelative( indexDir, filename );                
-                    index->add( relative, *itr);    
+                    // We want the filename as it is relative to the index file
+                    std::string relative = osgDB::getPathRelative( indexDir, filename );
+                    index->add( relative, *itr);
                     ok = true;
-                }                
+                }
             }
-        }        
+        }
 
         if (_progress.valid())
         {
@@ -104,24 +104,24 @@ void TileIndexBuilder::build(const std::string& indexFilename, const osgEarth::S
         }
     }
 
-    osg::Timer_t end = osg::Timer::instance()->tick();    
+    osg::Timer_t end = osg::Timer::instance()->tick();
 }
 
 void TileIndexBuilder::expandFilenames()
 {
-    // Expand the filenames since they might contain directories    
+    // Expand the filenames since they might contain directories
     for (unsigned int i = 0; i < _filenames.size(); i++)
     {
         std::string filename = _filenames[i];
         if (osgDB::fileType(filename) == osgDB::DIRECTORY)
-        {            
+        {
             CollectFilesVisitor v;
             v.traverse( filename );
             for (unsigned int j = 0; j < v.filenames.size(); j++)
             {
                 _expandedFilenames.push_back( v.filenames[ j ] );
             }
-        }   
+        }
         else
         {
             _expandedFilenames.push_back( filename );

@@ -27,14 +27,18 @@
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/HTM>
+
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthAnnotation/AnnotationData>
+
 #include <osgEarthSymbology/Color>
 
 #include <osgViewer/Viewer>
@@ -169,7 +173,7 @@ void
 createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSchema& schema, TrackSims& sims )
 {
     // load an icon to use:
-    osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile( ICON_URL );
+    osg::ref_ptr<osg::Image> srcImage = osgEarth::readImageFile( ICON_URL );
     osg::ref_ptr<osg::Image> image;
     ImageUtils::resizeImage( srcImage.get(), ICON_SIZE, ICON_SIZE, image );
 

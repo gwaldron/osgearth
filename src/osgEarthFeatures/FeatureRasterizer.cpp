@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureRasterizer>
-#include <osgDB/ReadFile>
+#include <osgEarth/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -47,8 +47,7 @@ FeatureRasterizerFactory::create(const std::string& driver,
 
     //Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
     //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile(driverExt , pluginOptions.get()));
-    rasterizer = dynamic_cast<FeatureRasterizer*>(object.release());
+    rasterizer = osgEarth::readFile<FeatureRasterizer>( driverExt, pluginOptions.get()));
 
     if ( !rasterizer.valid() )
     {

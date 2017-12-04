@@ -21,9 +21,9 @@
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osg/Notify>
-#include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
 
 #define LC "[FeatureSource] "
@@ -223,8 +223,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-        source = dynamic_cast<FeatureSource*>( object.release() );
+        source = osgEarth::readFile<FeatureSource>( driverExt, rwopts.get() );
         if ( source )
         {
             if ( options.name().isSet() )

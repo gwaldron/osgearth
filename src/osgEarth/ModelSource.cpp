@@ -17,9 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+
 #include <osg/Notify>
-#include <osgDB/ReadFile>
+
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
@@ -134,8 +136,7 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-        source = dynamic_cast<ModelSource*>( object.release() );
+        source = osgEarth::readFile<ModelSource>( driverExt, rwopts.get() );
     }
     else
     {

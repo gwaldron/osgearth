@@ -21,9 +21,12 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Horizon>
 #include <osgEarth/ECEF>
+#include <osgEarth/ReadFile>
+
 #include <osg/ClusterCullingCallback>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
+
 #include <set>
 
 using namespace osgEarth;
@@ -64,7 +67,7 @@ public:
             //    label->setFontSize( *symbol->size() );
             if ( symbol->font().isSet() )
             {
-                osgText::Font* font = osgText::readFontFile(*symbol->font() );
+                osgText::Font* font = readFontFile(*symbol->font() );
                 // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
                 if ( font )
                     font->setGlyphImageMargin( 2 );
@@ -152,7 +155,7 @@ public:
                 if ( text->font().isSet() )
                 {
                     // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
-                    osgText::Font* font = osgText::readFontFile(*text->font() );
+                    osgText::Font* font = readFontFile(*text->font() );
                     // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
                     if ( font )
                         font->setGlyphImageMargin( 2 );

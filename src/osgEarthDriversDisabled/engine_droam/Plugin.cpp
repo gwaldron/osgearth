@@ -20,7 +20,10 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
+
 #include <string>
+
 #include "DRoamNode"
 
 class DRoamEnginePlugin : public osgDB::ReaderWriter
@@ -44,7 +47,7 @@ public:
         {
             std::string earthFile = osgDB::getNameLessExtension( uri );
 
-            osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(earthFile);
+            osg::ref_ptr<osg::Node> node = osgEarth::readNodeFile(earthFile);
             osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode(node.get());
             if ( mapNode )
             {

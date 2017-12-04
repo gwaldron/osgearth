@@ -23,6 +23,7 @@
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
@@ -722,17 +723,17 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             {
                 frustumPH.dumpGeometry(0,0,0,fn);
             }
-            osg::ref_ptr<osg::Node> camNode = osgDB::readRefNodeFile(fn);
+            osg::ref_ptr<osg::Node> camNode = osgEarth::readNodeFile(fn);
             camNode->setName("camera");
 
             // visible overlay BEFORE cutting:
             //uncutVisiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
-            //osg::ref_ptr<osg::Node> overlay = osgDB::readRefNodeFile(fn);
+            //osg::ref_ptr<osg::Node> overlay = osgEarth::readNodeFile(fn);
             //overlay->setName("overlay");
 
             // visible overlay Polyherdron AFTER cuting:
             visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
-            osg::ref_ptr<osg::Node> intersection = osgDB::readRefNodeFile(fn);
+            osg::ref_ptr<osg::Node> intersection = osgEarth::readNodeFile(fn);
             intersection->setName("intersection");
 
             // RTT frustum:
@@ -745,7 +746,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 rttPH.transform( inverseMVP, MVP );
                 rttPH.dumpGeometry(0,0,0,fn,osg::Vec4(1,1,0,1),osg::Vec4(1,1,0,0.25));
             }
-            osg::ref_ptr<osg::Node> rttNode = osgDB::readRefNodeFile(fn);
+            osg::ref_ptr<osg::Node> rttNode = osgEarth::readNodeFile(fn);
             rttNode->setName("rtt");
 
             // EyePoint

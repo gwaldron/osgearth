@@ -20,6 +20,7 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
+#include <osgEarth/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -195,7 +196,7 @@ namespace
         double widthInMeters = west.distanceTo(east);
 
         osgText::Text* text = new osgText::Text;
-        text->setFont(osgText::readRefFontFile("arial.ttf"));
+        text->setFont(readFontFile("arial.ttf"));
         text->setText(label);
 
         text->setCharacterSize(widthInMeters / (double)label.size());

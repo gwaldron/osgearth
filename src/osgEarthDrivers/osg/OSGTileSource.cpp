@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 
 #include <cstring>
 

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/LabelSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -76,8 +76,7 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( LABEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-        source = dynamic_cast<LabelSource*>( object.release() );
+        source = osgEarth::readFile<LabelSource>( driverExt, rwopts.get() );
         if ( source )
         {
             //source->setName( options.getName() );

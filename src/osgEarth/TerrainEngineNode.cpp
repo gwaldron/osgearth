@@ -19,13 +19,14 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TraversalData>
-#include <osgDB/ReadFile>
+
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
 #include <osgViewer/View>
@@ -428,8 +429,7 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
         driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
-    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
-    node = dynamic_cast<TerrainEngineNode*>( object.release() );
+    node = osgEarth::readFile<TerrainEngineNode>( driverExt );
     if ( !node )
     {
         OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;

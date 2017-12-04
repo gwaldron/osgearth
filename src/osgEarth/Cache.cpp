@@ -17,13 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Cache>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/UserDataContainer>
-#include <osgDB/FileNameUtils>
-#include <osgDB/FileUtils>
-#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
 
@@ -168,8 +166,7 @@ CacheFactory::create( const CacheOptions& options )
         rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();
-        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopt.get() );
-        result = dynamic_cast<Cache*>( object.release() );
+        result = osgEarth::readFile<Cache>( driverExt, rwopt.get() );
         if ( !result.valid() )
         {
             OE_WARN << LC << "Failed to load cache plugin for type \"" << options.getDriver() << "\"" << std::endl;

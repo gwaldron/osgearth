@@ -7,6 +7,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
@@ -229,7 +230,7 @@ public:
 
             // request the actual tile
             //OE_INFO << "key = " << key.str() << ", URL = " << location->value() << std::endl;
-            image = osgDB::readRefImageFile( location.full() );
+            image = osgEarth::readImageFile( location.full() );
         }
 
         if ( image &&  _geom.valid() )

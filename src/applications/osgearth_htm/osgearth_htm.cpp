@@ -21,16 +21,21 @@
 */
 
 #include <osgViewer/Viewer>
+
 #include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
-#include <iostream>
-#include <osgEarthUtil/HTM>
-#include <osgEarthAnnotation/PlaceNode>
 #include <osgEarth/Random>
+#include <osgEarth/ReadFile>
+
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/HTM>
+
+#include <osgEarthAnnotation/PlaceNode>
+
+#include <iostream>
 
 #define LC "[viewer] "
 
@@ -70,7 +75,7 @@ main(int argc, char** argv)
     if (arguments.read("--model", modelPath) == false)
         return usage(argv[0]);
 
-    osg::ref_ptr<osg::Node> model = osgDB::readNodeFile(modelPath);
+    osg::ref_ptr<osg::Node> model = osgEarth::readNodeFile(modelPath);
     if (model.valid() == false)
         return usage(argv[0], "Cannot load model file");
 

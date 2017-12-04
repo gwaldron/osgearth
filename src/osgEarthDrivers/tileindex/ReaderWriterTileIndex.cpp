@@ -31,7 +31,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
-#include <osgDB/ReadFile>
 #include <osgDB/ImageOptions>
 
 #include <sstream>

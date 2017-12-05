@@ -57,7 +57,7 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
         osg::Camera* refCam = cam->getView()->getCamera();
         if (refCam && refCam->getViewport() && cam->getViewport())
         {
-            refScale = std::max(cam->getViewport()->width() / refCam->getViewport()->width(), 1.0);
+            refScale = cam->getViewport()->width() / refCam->getViewport()->width();
         }
     }
 
@@ -68,6 +68,13 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
     else if (size>_maxScale)
         size = _maxScale;
     size *= refScale;
+
+    if (refScale != 1.0f)
+    {
+                    //OE_INFO << "refScale=" << refScale << "; size=" << size << std::endl;
+
+    }
+
     geo->getPositionAttitudeTransform()->setScale( osg::componentMultiply(_baseScale, osg::Vec3d(size,size,size)) );
     if (node->getCullingActive() == false)
         node->setCullingActive(true);

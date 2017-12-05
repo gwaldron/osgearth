@@ -122,7 +122,7 @@ ScriptEngineFactory::createWithProfile( const Script& script, const std::string&
 ScriptEngine*
 ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
 {
-    ScriptEngine* scriptEngine = 0L;
+    osg::ref_ptr<ScriptEngine> scriptEngine;
 
     if ( !options.getDriver().empty() )
     {
@@ -133,7 +133,8 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
             rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
 
-            scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+            osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+            scriptEngine = dynamic_cast<ScriptEngine*>( object.release() );
             if ( scriptEngine )
             {
                 OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
@@ -157,7 +158,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return scriptEngine;
+    return scriptEngine.release();
 }
 
 //------------------------------------------------------------------------

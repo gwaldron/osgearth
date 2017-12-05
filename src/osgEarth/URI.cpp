@@ -300,7 +300,9 @@ namespace
             }
             return HTTPClient::readObject(req, opt, p);
         }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            return ReadResult(osgDB::readRefObjectFile(uri, opt).get());
+        }
     };
 
     struct ReadNode
@@ -317,7 +319,9 @@ namespace
             }
             return HTTPClient::readNode(req, opt, p);
         }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
+            return ReadResult(osgDB::readRefNodeFile(uri, opt));
+        }
     };
 
     struct ReadImage
@@ -346,7 +350,7 @@ namespace
             return r;
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { 
-            ReadResult r = ReadResult(osgDB::readImageFile(uri, opt));
+            ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
             if ( r.getImage() ) r.getImage()->setFileName( uri );
             return r;
         }

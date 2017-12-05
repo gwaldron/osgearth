@@ -419,7 +419,7 @@ TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCal
 TerrainEngineNode*
 TerrainEngineNodeFactory::create(const TerrainOptions& options )
 {
-    TerrainEngineNode* result = 0L;
+    osg::ref_ptr<TerrainEngineNode> node;
 
     std::string driver =
         Registry::instance()->overrideTerrainEngineDriverName().getOrUse(options.getDriver());
@@ -428,12 +428,13 @@ TerrainEngineNodeFactory::create(const TerrainOptions& options )
         driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
-    result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );
-    if ( !result )
+    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
+    node = dynamic_cast<TerrainEngineNode*>( object.release() );
+    if ( !node )
     {
         OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
     }
 
-    return result;
+    return node.release();
 }
 

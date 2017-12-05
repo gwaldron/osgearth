@@ -475,7 +475,7 @@ TileSource::getBlacklist() const
 TileSource*
 TileSourceFactory::create(const TileSourceOptions& options)
 {
-    TileSource* result = 0L;
+    osg::ref_ptr<TileSource> source;
 
     std::string driver = options.getDriver();
     if ( driver.empty() )
@@ -489,15 +489,15 @@ TileSourceFactory::create(const TileSourceOptions& options)
     dbopt->setPluginStringData( TILESOURCE_INTERFACE_TAG, TileSource::INTERFACE_NAME );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
-    result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
-    if ( !result )
+    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, dbopt.get() );
+    source = dynamic_cast<TileSource*>( object.release() );
+    if ( !source )
     {
         OE_INFO << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
     }
-
     else
     {
-        OE_DEBUG << LC << "Tile source Profile = " << (result->getProfile() ? result->getProfile()->toString() : "NULL") << std::endl;
+        OE_DEBUG << LC << "Tile source Profile = " << (source->getProfile() ? source->getProfile()->toString() : "NULL") << std::endl;
 
         // apply an Override Profile if provided.
         if ( options.profile().isSet() )
@@ -505,12 +505,12 @@ TileSourceFactory::create(const TileSourceOptions& options)
             const Profile* profile = Profile::create(*options.profile());
             if ( profile )
             {
-                result->setProfile( profile );
+                source->setProfile( profile );
             }
         }
     }
 
-    return result;
+    return source.release();
 }
 
 

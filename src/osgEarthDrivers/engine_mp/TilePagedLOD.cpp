@@ -489,7 +489,7 @@ void TilePagedLOD::loadChildren()
             std::string filename = getFileName(i);    
             if (!filename.empty() && i >= getNumChildren())
             {
-                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
+                osg::ref_ptr< osg::Node > node = osgDB::readRefNodeFile(filename);
                 if (!node.valid())
                 {
                     break;

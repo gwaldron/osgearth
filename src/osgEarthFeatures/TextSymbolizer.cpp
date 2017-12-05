@@ -81,10 +81,10 @@ TextSymbolizer::create(Feature*             feature,
 
     t->setColor( _symbol.valid() && _symbol->fill().isSet() ? _symbol->fill()->color() : Color::White );
 
-    osgText::Font* font = 0L;
+    osg::ref_ptr<osgText::Font> font;
     if ( _symbol.valid() && _symbol->font().isSet() )
     {
-        font = osgText::readFontFile( *_symbol->font() );
+        font = osgText::readRefFontFile( *_symbol->font() );
         
 #if OSG_VERSION_LESS_THAN(3,5,8)
         // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement

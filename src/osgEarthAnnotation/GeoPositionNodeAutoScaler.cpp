@@ -46,25 +46,28 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     osg::Camera* cam = cs->getCurrentCamera();
     osg::Viewport* vp = 0;
-    float viewPortScale = 1.0;
+    float refScale = 1.0f;
 
-    // If this is an RTT camera see if we have a reference camera so we can scale the viewport.
-    if (cam && cam->isRenderToTextureCamera())
+    // If this is a slave camera, scale to the slave's master camera's viewport:
+    if (cam->isRenderToTextureCamera() &&
+        cam->getView() &&
+        cam->getView()->getCamera() &&
+        cam->getView()->getCamera() != cam)
     {
-        vp = cam->getViewport();
-        osg::Camera* refCam = dynamic_cast<osg::Camera*>(cam->getUserData());
-        if ( refCam && refCam->getViewport() )
+        osg::Camera* refCam = cam->getView()->getCamera();
+        if (refCam && refCam->getViewport() && cam->getViewport())
         {
-            viewPortScale = vp->width() / refCam->getViewport()->width();
+            refScale = std::max(cam->getViewport()->width() / refCam->getViewport()->width(), 1.0);
         }
     }
 
     double size = 1.0/(cs->pixelSize( node->getBound().center(), 0.5f ));
-    size *= viewPortScale;
+    //size *= viewPortScale;
     if (size < _minScale)
         size = _minScale;
     else if (size>_maxScale)
         size = _maxScale;
+    size *= refScale;
     geo->getPositionAttitudeTransform()->setScale( osg::componentMultiply(_baseScale, osg::Vec3d(size,size,size)) );
     if (node->getCullingActive() == false)
         node->setCullingActive(true);

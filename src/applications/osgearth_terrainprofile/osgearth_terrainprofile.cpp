@@ -348,8 +348,8 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
+    osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFiles( arguments );
+    if (!earthNode.valid())
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;
         return 1;
@@ -357,7 +357,7 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
 
-    osgEarth::MapNode * mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osgEarth::MapNode * mapNode = osgEarth::MapNode::findMapNode( earthNode.get() );
     if (!mapNode)
     {
         OE_NOTICE << "Could not find MapNode " << std::endl;

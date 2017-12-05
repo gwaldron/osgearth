@@ -58,10 +58,10 @@ main(int argc, char** argv)
     cache->setMaxSize(INT_MAX);
 
     // load the file
-    osg::Node* node = osgDB::readNodeFile(
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(
         Stringify() << argv[1] << ".osgearth_shadergen" );
 
-    if ( !node )
+    if (!node.valid())
         return usage(argv[0]);
 
     if ( cache )
@@ -75,7 +75,7 @@ main(int argc, char** argv)
         osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
 
-    viewer.setSceneData( node );
+    viewer.setSceneData( node.get() );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());

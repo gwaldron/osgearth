@@ -80,11 +80,11 @@ int main(int argc, char** argv)
     bool convexOnly = arguments.read("--convex-hull");
     bool view = arguments.read("--view");
 
-    osg::Node* modelNode = osgDB::readNodeFiles( arguments );
-    if (!modelNode)
+    osg::ref_ptr<osg::Node> modelNode = osgDB::readRefNodeFiles( arguments );
+    if (!modelNode.valid())
         return usage( argv, "Unable to load model." );
 
-    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode, geocentric, convexOnly);
+    osg::ref_ptr<osg::Vec3dArray> hull = BoundaryUtil::getBoundary(modelNode.get(), geocentric, convexOnly);
 
     if ( !outFile.empty() )
     {

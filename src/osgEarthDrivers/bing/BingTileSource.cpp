@@ -238,7 +238,7 @@ public:
             rasterizer.draw( _geom.get(), osg::Vec4(1,1,1,1) );
             osg::ref_ptr<osg::Image> overlay = rasterizer.finalize();
             ImageUtils::PixelVisitor<AlphaBlend> blend;
-            blend.accept( overlay.get(), image );
+            blend.accept( overlay.get(), image.get() );
         }
 
         return image.release();

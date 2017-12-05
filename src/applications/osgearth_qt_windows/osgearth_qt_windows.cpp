@@ -147,8 +147,8 @@ main(int argc, char** argv)
         return usage("Help", args);
 
     // load something
-    osg::Node* node = osgDB::readNodeFiles( args );
-    if ( !node )
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles( args );
+    if (!node.valid())
         return usage("Can't load a scene!", args);
 
 
@@ -161,7 +161,7 @@ main(int argc, char** argv)
     QApplication q(argc, argv);
 
     // fire up our controller:
-    MyMainWindow win( args, node );
+    MyMainWindow win( args, node.get() );
 
     // A button for adding new views:
     QPushButton* addButton = new AddButton( &win, "Add a view" );

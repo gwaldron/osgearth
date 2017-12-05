@@ -160,7 +160,7 @@ seed( osg::ArgumentParser& args )
 
 
     //Read in the earth file.
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
 
@@ -398,7 +398,7 @@ seed( osg::ArgumentParser& args )
 
 int list( osg::ArgumentParser& args )
 {
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
 
@@ -462,7 +462,7 @@ struct Entry
 int
 purge( osg::ArgumentParser& args )
 {
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
 

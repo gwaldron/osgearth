@@ -279,7 +279,7 @@ void addParks(Map* map)
     model->scale()->setLiteral( 0.2 );
     model->placement() = model->PLACEMENT_RANDOM;
     model->density() = 3000.0f; // instances per sqkm
-    model->setModel(osgDB::readNodeFile(TREE_MODEL_URL));
+    model->setModel(osgDB::readRefNodeFile(TREE_MODEL_URL).release());
     
     // Clamp to the terrain:
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();

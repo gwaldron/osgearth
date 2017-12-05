@@ -681,23 +681,23 @@ int main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
 
     // user model?
-    osg::Node* model = 0L;
+    osg::ref_ptr<osg::Node> model;
     std::string modelFile;
     if (arguments.read("--model", modelFile))
-        model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
+        model = osgDB::readRefNodeFile(modelFile + ".osgearth_shadergen");
 
     osg::Group* sims = new osg::Group();
     root->addChild( sims );
 
     // Simulator for tethering:
-    Simulator* sim1 = new Simulator(sims, manip, mapNode, model, "Thing 1", '8');
+    Simulator* sim1 = new Simulator(sims, manip, mapNode, model.get(), "Thing 1", '8');
     sim1->_lat0 = 55.0;
     sim1->_lon0 = 45.0;
     sim1->_lat1 = -55.0;
     sim1->_lon1 = -45.0;
     viewer.addEventHandler(sim1);
 
-    Simulator* sim2 = new Simulator(sims, manip, mapNode, model, "Thing 2", '9');
+    Simulator* sim2 = new Simulator(sims, manip, mapNode, model.get(), "Thing 2", '9');
     sim2->_name = "Thing 2";
     sim2->_lat0 = 54.0;
     sim2->_lon0 = 45.0;

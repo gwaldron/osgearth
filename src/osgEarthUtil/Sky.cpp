@@ -27,7 +27,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarth/Lighting>
-#include <osgDB/ReadFile>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

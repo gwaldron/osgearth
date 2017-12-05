@@ -7,6 +7,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Containers>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
@@ -123,7 +124,7 @@ public:
      */
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
-        osg::Image* image = 0L;
+        osg::ref_ptr<osg::Image> image;
 
         if (_debugDirect)
         {
@@ -229,7 +230,7 @@ public:
 
             // request the actual tile
             //OE_INFO << "key = " << key.str() << ", URL = " << location->value() << std::endl;
-            image = osgDB::readImageFile( location.full() );
+            image = osgEarth::readImageFile( location.full() );
         }
 
         if ( image &&  _geom.valid() )
@@ -241,7 +242,7 @@ public:
             blend.accept( overlay.get(), image );
         }
 
-        return image;
+        return image.release();
     }
 
 private:

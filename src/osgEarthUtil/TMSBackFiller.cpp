@@ -23,10 +23,10 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageMosaic>
+#include <osgEarth/ReadFile>
 
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
 #define LC "[TMSBackFiller] "
@@ -44,32 +44,32 @@ _verbose(false)
 
 
 void TMSBackFiller::process( const std::string& tms, osgDB::Options* options )
-{               
-    std::string fullPath = getFullPath( "", tms );        
+{
+    std::string fullPath = getFullPath( "", tms );
     _options = options;
 
     //Read the tilemap
     _tileMap = TileMapReaderWriter::read( fullPath, 0 );
     if (_tileMap)
-    {                        
+    {
         //The max level is where we are going to read data from, so we need to start one level up.
-        osg::ref_ptr< const Profile> profile = _tileMap->createProfile();           
+        osg::ref_ptr< const Profile> profile = _tileMap->createProfile();
 
         //If the bounds aren't valid just use the full extent of the profile.
         if (!_bounds.valid())
-        {                
+        {
             _bounds = profile->getExtent().bounds();
         }
 
 
-        int firstLevel = _maxLevel-1;            
+        int firstLevel = _maxLevel-1;
 
-        GeoExtent extent( profile->getSRS(), _bounds );           
+        GeoExtent extent( profile->getSRS(), _bounds );
 
         //Process each level in it's entirety
         for (int level = firstLevel; level >= static_cast<int>(_minLevel); level--)
         {
-            if (_verbose) OE_NOTICE << "Processing level " << level << std::endl;                
+            if (_verbose) OE_NOTICE << "Processing level " << level << std::endl;
 
             TileKey ll = profile->createTileKey(extent.xMin(), extent.yMin(), level);
             TileKey ur = profile->createTileKey(extent.xMax(), extent.yMax(), level);
@@ -81,9 +81,9 @@ void TMSBackFiller::process( const std::string& tms, osgDB::Options* options )
                     TileKey key = TileKey(level, x, y, profile.get());
                     processKey( key );
                 }
-            }                
+            }
 
-        }            
+        }
     }
     else
     {
@@ -107,13 +107,13 @@ void TMSBackFiller::processKey( const TileKey& key )
     osg::ref_ptr< osg::Image > lr = readTile( lrKey );
 
     if (ul.valid() && ur.valid() && ll.valid() && lr.valid())
-    {            
+    {
         //Merge them together
         ImageMosaic mosaic;
         mosaic.getImages().push_back( TileImage( ul.get(), ulKey ) );
         mosaic.getImages().push_back( TileImage( ur.get(), urKey ) );
         mosaic.getImages().push_back( TileImage( ll.get(), llKey ) );
-        mosaic.getImages().push_back( TileImage( lr.get(), lrKey ) );            
+        mosaic.getImages().push_back( TileImage( lr.get(), lrKey ) );
 
         osg::ref_ptr< osg::Image> merged = mosaic.createImage();
         if (merged.valid())
@@ -121,21 +121,22 @@ void TMSBackFiller::processKey( const TileKey& key )
             //Resize the image so it's the same size as one of the input files
             osg::ref_ptr<osg::Image> resized;
             ImageUtils::resizeImage( merged.get(), ul->s(), ul->t(), resized );
-            std::string outputFilename = getFilename( key );                
+            std::string outputFilename = getFilename( key );
             writeTile( key, resized.get() );
         }
-    }                
-}    
+    }
+}
 
 std::string TMSBackFiller::getFilename( const TileKey& key )
 {
-    return _tileMap->getURL( key, false );        
+    return _tileMap->getURL( key, false );
 }
 
 osg::Image* TMSBackFiller::readTile( const TileKey& key )
 {
-    std::string filename = getFilename( key );        
-    return osgDB::readImageFile( filename );        
+    std::string filename = getFilename( key );
+    osg::ref_ptr< osg::Image> image = osgEarth::readImageFile( filename );
+    return image.release();
 }
 
 void TMSBackFiller::writeTile( const TileKey& key, osg::Image* image )
@@ -143,6 +144,6 @@ void TMSBackFiller::writeTile( const TileKey& key, osg::Image* image )
     std::string filename = getFilename( key );
     if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
         osgEarth::makeDirectoryForFile( filename );
-    osgDB::writeImageFile( *image, filename, _options.get() );        
+    osgDB::writeImageFile( *image, filename, _options.get() );
 }
-     
+

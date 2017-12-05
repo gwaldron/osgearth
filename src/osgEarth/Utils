@@ -252,6 +252,7 @@ namespace osgEarth
         virtual ~AllocateAndMergeBufferObjectsVisitor() { }
         void apply(osg::Geode& geode);
     };
+    
 }
 
 #endif // OSGEARTH_UTILS_H

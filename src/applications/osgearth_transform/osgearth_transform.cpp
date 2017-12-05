@@ -26,17 +26,19 @@
  */
 
 #include <osg/PositionAttitudeTransform>
-#include <osgDB/ReadFile>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
+#include <osgEarth/GeoTransform>
+#include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarth/GeoTransform>
-#include <osgEarth/MapNode>
 
 #define LC "[osgearth_transform] "
-
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -159,7 +161,7 @@ main(int argc, char** argv)
 
     // load the model file into the local coordinate frame, which will be
     // +X=east, +Y=north, +Z=up.
-    osg::Node* model = osgDB::readNodeFile("../data/axes.osgt.(1000).scale.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> model = osgEarth::readNodeFile("../data/axes.osgt.(1000).scale.osgearth_shadergen");
     if ( !model )
         return usage(argv[0]);
 

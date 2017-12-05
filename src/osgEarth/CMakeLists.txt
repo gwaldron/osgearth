@@ -154,6 +154,7 @@ SET(LIB_PUBLIC_HEADERS
     Profiler
     Progress
     Random
+    ReadFile
     Registry
     ResourceReleaser
     Revisioning

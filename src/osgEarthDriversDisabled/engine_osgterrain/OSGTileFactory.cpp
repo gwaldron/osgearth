@@ -34,7 +34,6 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osgFX/MultiTextureControl>
-#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>

@@ -22,7 +22,6 @@
 #include <osgEarth/Progress>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Metrics>
-#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>

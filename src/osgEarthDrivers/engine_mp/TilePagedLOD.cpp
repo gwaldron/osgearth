@@ -23,6 +23,7 @@
 #include "TileNodeRegistry"
 #include "MPTerrainEngineNode"
 #include <osg/Version>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <cassert>
@@ -489,7 +490,7 @@ void TilePagedLOD::loadChildren()
             std::string filename = getFileName(i);    
             if (!filename.empty() && i >= getNumChildren())
             {
-                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(filename);                
+                osg::ref_ptr< osg::Node > node = osgEarth::readNodeFile(filename);
                 if (!node.valid())
                 {
                     break;

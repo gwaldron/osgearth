@@ -30,7 +30,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
-#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgDB/ImageOptions>
 

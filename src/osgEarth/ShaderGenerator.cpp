@@ -48,7 +48,6 @@
 #include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <osgDB/ReadFile>
 #include <osgText/Text>
 #include <osgSim/LightPointNode>
 

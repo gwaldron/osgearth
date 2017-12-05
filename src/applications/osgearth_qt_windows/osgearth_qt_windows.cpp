@@ -28,9 +28,14 @@
 
 #include <osg/Notify>
 #include <osgViewer/CompositeViewer>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthQt/ViewWidget>
+
+#include <osgEarth/ReadFile>
 #include <osgEarth/Random>
+
+#include <osgEarthUtil/EarthManipulator>
+
+#include <osgEarthQt/ViewWidget>
+
 #include <QApplication>
 #include <QDialog>
 #include <QMainWindow>
@@ -147,7 +152,7 @@ main(int argc, char** argv)
         return usage("Help", args);
 
     // load something
-    osg::Node* node = osgDB::readNodeFiles( args );
+    osg::ref_ptr<osg::Node> node = osgEarth::readNodeFiles( args );
     if ( !node )
         return usage("Can't load a scene!", args);
 

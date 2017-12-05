@@ -16,13 +16,14 @@
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
 
 #include <osgEarth/Viewpoint>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
 
 @interface ViewController () {
 
@@ -56,7 +57,7 @@ using namespace osgEarth::Util;
 
 - (void)loadOsgEarthDemoScene{
     
-    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
+    osg::ref_ptr<osg::Node> node = readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
     {
         OSG_WARN << "Unable to load an earth file from the command line." << std::endl;

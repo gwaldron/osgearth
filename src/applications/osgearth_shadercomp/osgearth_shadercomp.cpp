@@ -30,22 +30,23 @@
  */
 #include <osg/Notify>
 #include <osg/CullFace>
-#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarthUtil/EarthManipulator>
+
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/ReadFile>
+
+#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
 using namespace osgEarth::Util::Controls;
-
-
 
 int usage( const std::string& msg )
 {    
@@ -457,7 +458,7 @@ namespace TEST_8
         OE_NOTICE << "Wrote to out.osgt" << std::endl;
 
         node = 0L;
-        node = osgDB::readNodeFile("out.osgt");
+        node = osgEarth::readNodeFile("out.osgt");
         if (!node) {
             OE_WARN << "Readback failed!!" << std::endl;
             exit(0);
@@ -621,7 +622,7 @@ int main(int argc, char** argv)
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "gdal_tiff.earth" );
+        osg::ref_ptr<osg::Node> earthNode = osgEarth::readNodeFile( "gdal_tiff.earth" );
         if (!earthNode)
         {
             return usage( "Unable to load earth model." );
@@ -663,7 +664,7 @@ int main(int argc, char** argv)
     }
     else if ( test7 )
     {
-        root->addChild( TEST_7::run( osgDB::readNodeFiles(arguments) ) );
+        root->addChild( TEST_7::run( osgEarth::readNodeFiles(arguments) ) );
         if (ui) label->setText("Geometry Shader Injection Test.");
     }
     else if (test8)
@@ -673,7 +674,7 @@ int main(int argc, char** argv)
     }
     else if (test9)
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "readymap.earth" );
+        osg::ref_ptr<osg::Node> earthNode = osgEarth::readNodeFile( "readymap.earth" );
         if (!earthNode)
         {
             return usage( "Unable to load earth model." );

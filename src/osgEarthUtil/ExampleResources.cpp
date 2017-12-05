@@ -45,6 +45,7 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthDrivers/kml/KML>
 
@@ -269,7 +270,7 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
     myReadOptions->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
 
     // read in the Earth file:
-    osg::Node* node = osgDB::readNodeFiles(args, myReadOptions.get());
+    osg::ref_ptr<osg::Node> node = osgEarth::readNodeFiles(args, myReadOptions.get());
 
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )

@@ -31,9 +31,6 @@
 #include <osgEarth/Progress>
 #include <osgEarthUtil/TileIndexBuilder>
 
-
-
-using namespace osgDB;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 

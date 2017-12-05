@@ -10,7 +10,7 @@ Loading a Map from an Earth File
 The easiest way to render a Map is to load it from an *earth file*.
 Since osgEarth uses OpenSceneGraph plugins, you can do this with a single line of code::
 
-    osg::Node* globe = osgDB::readNodeFile("myglobe.earth");
+    osg::Node* globe = osgEarth::readNodeFile("myglobe.earth");
 
 You now have an ``osg::Node`` that you can add to your scene graph and display.
 Seriously, it really is that simple!
@@ -81,7 +81,7 @@ using the API, you will first need to get a reference to the ``MapNode`` to work
 Use the static ``get`` function::
 
     // Load the map
-    osg::Node* loadedModel = osgDB::readNodeFile("mymap.earth");
+    osg::Node* loadedModel = osgEarth::readNodeFile("mymap.earth");
 
     // Find the MapNode
     osgEarth::MapNode* mapNode = MapNode::get( loadedModel );

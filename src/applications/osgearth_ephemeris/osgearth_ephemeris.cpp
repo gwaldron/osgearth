@@ -21,14 +21,18 @@
 */
 
 #include <osgViewer/Viewer>
+
 #include <osgEarth/Notify>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Ephemeris>
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/Controls>
+
 #include <osgEarthAnnotation/PlaceNode>
 
 #define LC "[osgearth_ephemeris] "
@@ -77,7 +81,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    osg::ref_ptr<osg::Image> mark = osgDB::readImageFile("../data/placemark32.png");
+    osg::ref_ptr<osg::Image> mark = osgEarth::readImageFile("../data/placemark32.png");
     
     App app;
 

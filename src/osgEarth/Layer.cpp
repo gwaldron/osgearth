@@ -259,7 +259,7 @@ Layer::create(const std::string& name, const ConfigOptions& options)
     //std::string pluginExtension = std::string( ".osgearth_" ) + name;
     std::string pluginExtension = std::string( "." ) + name;
 
-    // use this instead of osgDB::readObjectFile b/c the latter prints a warning msg.
+    // use this instead of osgEarth::readObjectFile b/c the latter prints a warning msg.
     osgDB::ReaderWriter::ReadResult rr = osgDB::Registry::instance()->readObject( pluginExtension, dbopt.get() );
     if ( !rr.validObject() || rr.error() )
     {

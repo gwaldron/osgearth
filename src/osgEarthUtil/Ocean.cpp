@@ -23,7 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
-#include <osgDB/ReadFile>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -20,11 +20,16 @@
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+
 #include <osgEarthDrivers/kml/KML>
 
 using namespace osgEarth::Util;
@@ -60,7 +65,7 @@ main(int argc, char** argv)
         {
             osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
             options->setPluginData( "osgEarth::MapNode", mapNode );
-            osg::Node* kml = osgDB::readNodeFile( kmlFile, options.get() );
+            osg::ref_ptr<osg::Node> kml = osgEarth::readNodeFile( kmlFile, options.get() );
             if ( kml )
                 root->addChild( kml );
         }

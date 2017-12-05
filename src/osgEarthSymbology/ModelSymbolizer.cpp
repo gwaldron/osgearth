@@ -21,7 +21,6 @@
 #include <osgEarth/HTTPClient>
 #include <osg/Geode>
 #include <osg/Version>
-#include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 
 using namespace osgEarth::Symbology;

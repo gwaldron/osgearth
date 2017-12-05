@@ -23,13 +23,16 @@
 #include <typeinfo>
 
 #include <osg/Notify>
-#include <osgDB/ReadFile>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
+
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+
 #include <osgEarthSymbology/Color>
 
 using namespace osgEarth::Symbology;
@@ -112,7 +115,7 @@ createControls( ControlCanvas* cs )
         center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
-        osg::ref_ptr<osg::Image> image = osgDB::readImageFile("../data/osgearth.gif");
+        osg::ref_ptr<osg::Image> image = osgEarth::readImageFile("../data/osgearth.gif");
         if ( image.valid() )
         {
             s_imageControl = new ImageControl( image.get() );

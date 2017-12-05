@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MaskSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+
 #include <osg/Notify>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -92,7 +93,7 @@ MaskSourceFactory::~MaskSourceFactory()
 MaskSource*
 MaskSourceFactory::create( const MaskSourceOptions& options )
 {
-    MaskSource* source = 0L;
+    osg::ref_ptr<MaskSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -101,7 +102,7 @@ MaskSourceFactory::create( const MaskSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MASK_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        source = dynamic_cast<MaskSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+        source = osgEarth::readFile<MaskSource>( driverExt, rwopts.get() );
         if ( source )
         {
             OE_INFO << "Loaded MaskSource driver \"" << options.getDriver() << "\" OK" << std::endl;
@@ -116,7 +117,7 @@ MaskSourceFactory::create( const MaskSourceOptions& options )
         OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return source;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

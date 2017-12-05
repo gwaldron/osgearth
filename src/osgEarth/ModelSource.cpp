@@ -17,9 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
+
 #include <osg/Notify>
-#include <osgDB/ReadFile>
+
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
@@ -125,7 +127,7 @@ ModelSourceFactory::~ModelSourceFactory()
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
 {
-    ModelSource* modelSource = 0L;
+    osg::ref_ptr<ModelSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -134,14 +136,14 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+        source = osgEarth::readFile<ModelSource>( driverExt, rwopts.get() );
     }
     else
     {
         OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return modelSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

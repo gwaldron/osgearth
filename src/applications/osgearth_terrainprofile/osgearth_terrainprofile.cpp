@@ -21,22 +21,27 @@
 */
 
 #include <osg/Notify>
+#include <osg/io_utils>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+#include <osgText/Text>
+#include <osgText/Font>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/GeoMath>
+#include <osgEarth/ReadFile>
+#include <osgEarth/Registry>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/TerrainProfile>
-#include <osgEarth/GeoMath>
-#include <osgEarth/Registry>
+
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
-#include <osgText/Text>
-#include <osgText/Font>
-#include <osg/io_utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -348,7 +353,7 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> earthNode = osgEarth::readNodeFiles( arguments );
     if (!earthNode)
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;

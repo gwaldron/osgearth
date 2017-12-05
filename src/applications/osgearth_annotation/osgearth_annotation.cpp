@@ -21,6 +21,7 @@
 */
 
 #include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
@@ -348,7 +349,7 @@ main(int argc, char** argv)
     // an image overlay.
     {
         ImageOverlay* imageOverlay = 0L;
-        osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
+        osg::ref_ptr<osg::Image> image = osgEarth::readImageFile( "../data/USFLAG.TGA" );
         if ( image )
         {
             imageOverlay = new ImageOverlay(mapNode, image);

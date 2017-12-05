@@ -25,12 +25,15 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
+#include <osgEarth/ReadFile>
+#include <osgEarth/Utils>
+#include <osgEarth/VirtualProgram>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
-#include <osgEarth/Utils>
-#include <osgEarth/VirtualProgram>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -196,7 +199,7 @@ main(int argc, char** argv)
     bool moveVert = arguments.read("--vert");
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> earthNode = osgEarth::readNodeFiles( arguments );
     if (!earthNode)
         return usage( "Unable to load earth model." );
 
@@ -221,10 +224,10 @@ main(int argc, char** argv)
         {
             std::string imageFile = imageFiles[i];
             //Read the image file and play it if it's a movie
-            osg::Image* image = osgDB::readImageFile(imageFile);
+            osg::ref_ptr<osg::Image> image = osgEarth::readImageFile(imageFile);
             if (image)
             {
-                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image);
+                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image.get());
                 if (is)
                 {
                     is->play();

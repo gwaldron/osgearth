@@ -18,7 +18,9 @@
  */
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/MarkerSymbol>
-#include <osgDB/ReadFile>
+
+#include <osgEarth/ReadFile>
+
 #include <osgDB/ReaderWriter>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -26,22 +28,14 @@
 #include <osg/Geode>
 #include <osg/Version>
 
-
 using namespace osgEarth::Symbology;
 
 static osg::Node* getNode(const std::string& str)
 {
-#if OSG_VERSION_LESS_THAN(2,9,8)
-    osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::ReaderWriter::Options;
-    options->setObjectCacheHint(osgDB::ReaderWriter::Options::CACHE_ALL);
-    osg::Node* node = osgDB::readNodeFile(str, options.get());
-    return node;
-#else
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
     options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-    osg::Node* node = osgDB::readNodeFile(str, options.get());
-    return node;
-#endif
+    osg::ref_ptr<osg::Node> node = osgEarth::readNodeFile(str, options.get());
+    return node.release();
 }
 
 static double getRandomValueInRange(double value)

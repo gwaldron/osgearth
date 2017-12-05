@@ -33,15 +33,13 @@
 #include <osg/Depth>
 #include <osg/Point>
 #include <osg/VertexAttribDivisor>
-#include <osgDB/ReadFile>
 #include <osgUtil/Optimizer>
 
 #include <osgEarth/Capabilities>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderLoader>
-
-
 
 #ifndef GL_TRANSFORM_FEEDBACK_BUFFER
     #define GL_TRANSFORM_FEEDBACK_BUFFER      0x8C8E
@@ -50,7 +48,6 @@
 #ifndef TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN
     #define TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN 0x8c88
 #endif
-
 
 using namespace osgEarth;
 
@@ -378,12 +375,12 @@ osg::Node* makeSceneGraph()
     //root->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, false));
     
     // Model to instance:
-    osg::Node* instancedModel = osgDB::readNodeFile("../data/tree.ive.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> instancedModel = osgEarth::readNodeFile("../data/tree.ive.osgearth_shadergen");
     float radius = instancedModel->getBound().radius();
 
     // Reference axis.
     //std::string axis = Stringify() << "../data/axes.osgt.(" << radius << ").scale";
-    //root->addChild( osgDB::readNodeFile(axis) );
+    //root->addChild( osgEarth::readNodeFile(axis) );
 
     const int dim = 256;
     const int maxNumInstances = dim*dim;

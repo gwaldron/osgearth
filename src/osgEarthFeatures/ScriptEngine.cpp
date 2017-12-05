@@ -18,8 +18,8 @@
  */
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/Notify>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -122,7 +122,7 @@ ScriptEngineFactory::createWithProfile( const Script& script, const std::string&
 ScriptEngine*
 ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
 {
-    ScriptEngine* scriptEngine = 0L;
+    osg::ref_ptr<ScriptEngine> scriptEngine;
 
     if ( !options.getDriver().empty() )
     {
@@ -133,7 +133,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
             rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
 
-            scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+            scriptEngine = osgEarth::readFile<ScriptEngine>( driverExt, rwopts.get() );
             if ( scriptEngine )
             {
                 OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
@@ -157,7 +157,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return scriptEngine;
+    return scriptEngine.release();
 }
 
 //------------------------------------------------------------------------

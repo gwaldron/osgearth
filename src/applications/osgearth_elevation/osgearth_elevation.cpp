@@ -245,7 +245,7 @@ int main(int argc, char** argv)
     markerStyle.getOrCreate<ModelSymbol>()->autoScale() = true;
     s_marker = new ModelNode(s_mapNode, markerStyle);
     //s_marker->setMapNode( s_mapNode );
-    //s_marker->setIconImage(osgDB::readImageFile("../data/placemark32.png"));
+    //s_marker->setIconImage(osgEarth::readImageFile("../data/placemark32.png"));
     s_marker->setDynamic(true);
     s_mapNode->addChild( s_marker );
 

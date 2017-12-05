@@ -28,19 +28,24 @@
 #include <osg/PositionAttitudeTransform>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/GeoMath>
 #include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthUtil/ViewFitter>
+
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
@@ -681,10 +686,10 @@ int main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
 
     // user model?
-    osg::Node* model = 0L;
+    osg::ref_ptr<osg::Node> model;
     std::string modelFile;
     if (arguments.read("--model", modelFile))
-        model = osgDB::readNodeFile(modelFile + ".osgearth_shadergen");
+        model = osgEarth::readNodeFile(modelFile + ".osgearth_shadergen");
 
     osg::Group* sims = new osg::Group();
     root->addChild( sims );

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/LabelSource>
+#include <osgEarth/ReadFile>
 #include <osgEarth/Registry>
-#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -67,7 +67,7 @@ LabelSource::~LabelSource()
 LabelSource*
 LabelSourceFactory::create( const LabelSourceOptions& options )
 {
-    LabelSource* labelSource = 0L;
+    osg::ref_ptr<LabelSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -76,10 +76,10 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( LABEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        labelSource = dynamic_cast<LabelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( labelSource )
+        source = osgEarth::readFile<LabelSource>( driverExt, rwopts.get() );
+        if ( source )
         {
-            //modelSource->setName( options.getName() );
+            //source->setName( options.getName() );
             //OE_INFO << "Loaded LabelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
         }
         else
@@ -92,7 +92,7 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
         OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return labelSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

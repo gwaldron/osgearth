@@ -31,16 +31,21 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/LineSegmentIntersector>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+
 #include <osg/TriangleFunctor>
 #include <osgDB/WriteFile>
+
 #include <iomanip>
 
 using namespace osgEarth;
@@ -48,7 +53,7 @@ using namespace osgEarth::Util;
 
 static MapNode*       s_mapNode     = 0L;
 static osg::Group*    s_root        = 0L;
-static osg::ref_ptr< osg::Node >  marker = osgDB::readNodeFile("../data/red_flag.osg");
+static osg::ref_ptr< osg::Node >  marker = osgEarth::readNodeFile("../data/red_flag.osg");
 
 struct CollectTriangles
 {

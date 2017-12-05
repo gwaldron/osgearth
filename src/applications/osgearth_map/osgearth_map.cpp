@@ -23,15 +23,21 @@
 #include <osg/Notify>
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StateSetManipulator>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/ReadFile>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
+
 #include <osgEarthSymbology/Color>
+
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/wms/WMSOptions>
 #include <osgEarthDrivers/gdal/GDALOptions>
@@ -82,7 +88,7 @@ main(int argc, char** argv)
     MapNode* node = new MapNode( map );
 
     // put a model on the map atop Pike's Peak, Colorado, USA
-    osg::Node* model = osgDB::readNodeFile("../data/red_flag.osg.10000.scale.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> model = osgEarth::readNodeFile("../data/red_flag.osg.10000.scale.osgearth_shadergen");
     if (model)
     {
         GeoTransform* xform = new GeoTransform();

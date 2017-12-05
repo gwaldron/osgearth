@@ -21,8 +21,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/GeoData>
+#include <osgEarth/ReadFile>
 
-#include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 
 using namespace osgEarth;
@@ -218,14 +218,14 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
 VerticalDatum*
 VerticalDatumFactory::create( const std::string& init )
 {
-    VerticalDatum* result = 0L;
+    osg::ref_ptr<VerticalDatum> datum;
 
     std::string driverExt = Stringify() << ".osgearth_vdatum_" << init;
-    result = dynamic_cast<VerticalDatum*>( osgDB::readObjectFile(driverExt) );
-    if ( !result )
+    datum = osgEarth::readFile<VerticalDatum>( driverExt );
+    if ( !datum )
     {
         OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
     }
 
-    return result;
+    return datum.release();
 }

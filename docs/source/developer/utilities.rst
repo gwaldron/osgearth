@@ -55,7 +55,7 @@ across the terrain. This is an old trick that you can use to generate "noise" th
 a low resolution terrain appear more detailed::
 
     DetailTexture* detail = new DetailTexture();
-    detail->setImage( osgDB::readImageFile("mytexture.jpg") );
+    detail->setImage( osgEarth::readImageFile("mytexture.jpg") );
     detail->setIntensity( 0.5f );
     detail->setImageUnit( 4 );
     mapnode->getTerrainEngine()->addEffect( detail );

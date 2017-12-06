@@ -17,7 +17,7 @@ before_install:
 - sudo apt-get update -qq
 - sudo apt-get install -y cmake
 #- sudo apt-get install -y libopenscenegraph-dev
-- sudo apt-get install -y --force-yes openscenegraph=3.4.0
+- sudo apt-get install -y --force-yes openscenegraph=3.4.1
 - sudo apt-get install -y libgdal-dev
 - sudo apt-get install -y libgeos-dev
 - sudo apt-get install -y libsqlite3-dev

@@ -32,6 +32,7 @@
 #include <osgEarthUtil/TerrainProfile>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
+#include <osgEarth/FileUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgText/Text>
@@ -348,7 +349,7 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode.valid())
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;

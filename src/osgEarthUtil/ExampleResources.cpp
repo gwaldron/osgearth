@@ -42,6 +42,7 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/FileUtils>
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
@@ -269,7 +270,7 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
     myReadOptions->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
 
     // read in the Earth file:
-    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles(args, myReadOptions.get());
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )

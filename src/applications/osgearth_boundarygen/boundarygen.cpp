@@ -22,6 +22,8 @@
 
 #include "BoundaryUtil"
 
+#include <osgEarth/FileUtils>
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -80,7 +82,7 @@ int main(int argc, char** argv)
     bool convexOnly = arguments.read("--convex-hull");
     bool view = arguments.read("--view");
 
-    osg::ref_ptr<osg::Node> modelNode = osgDB::readRefNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> modelNode = osgDB::readNodeFiles( arguments );
     if (!modelNode.valid())
         return usage( argv, "Unable to load model." );
 

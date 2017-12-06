@@ -40,6 +40,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/FileUtils>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
@@ -663,7 +664,7 @@ int main(int argc, char** argv)
     }
     else if ( test7 )
     {
-        root->addChild( TEST_7::run( osgDB::readRefNodeFiles(arguments).release() ) );
+        root->addChild( TEST_7::run( osgDB::readNodeFiles(arguments) ) );
         if (ui) label->setText("Geometry Shader Injection Test.");
     }
     else if (test8)

@@ -31,6 +31,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthQt/ViewWidget>
 #include <osgEarth/Random>
+#include <osgEarth/FileUtils>
 #include <QApplication>
 #include <QDialog>
 #include <QMainWindow>
@@ -147,7 +148,7 @@ main(int argc, char** argv)
         return usage("Help", args);
 
     // load something
-    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles( args );
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if (!node.valid())
         return usage("Can't load a scene!", args);
 

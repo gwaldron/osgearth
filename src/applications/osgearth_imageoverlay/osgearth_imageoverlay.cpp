@@ -31,6 +31,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/FileUtils>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -196,7 +197,7 @@ main(int argc, char** argv)
     bool moveVert = arguments.read("--vert");
 
     // load the .earth file from the command line.
-    osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFiles( arguments );
+    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode.valid())
         return usage( "Unable to load earth model." );
 

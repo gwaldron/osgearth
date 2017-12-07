@@ -63,7 +63,9 @@ DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path, const osg::
     entry._path.setNodePath( path );
     entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
     entry._frame = fs ? fs->getFrameNumber() : 0;
-    _bs.expandBy( node->getBound() );
+    _bs.expandBy( osg::BoundingSphere(
+        node->getBound().center() * (*entry._matrix.get()),
+        node->getBound().radius() ));
 }
 
 void

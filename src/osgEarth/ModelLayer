@@ -252,7 +252,7 @@ namespace osgEarth
         osg::ref_ptr<CacheSettings>   _cacheSettings;
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
-        typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
+        typedef fast_map<UID, osg::ref_ptr<osg::Node> > Graphs;
         Graphs _graphs;
 
         mutable Threading::Mutex _mutex; // general-purpose mutex.

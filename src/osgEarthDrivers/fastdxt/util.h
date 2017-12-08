@@ -54,8 +54,8 @@ void   aInitialize();
 
 double aTime();
 
-void   aLog(char* format,...);
-void aError(char* format,...);
+void   aLog(const char* format,...);
+void aError(const char* format,...);
 
 void* aAlloc(size_t const n);
 void aFree(void* const p);

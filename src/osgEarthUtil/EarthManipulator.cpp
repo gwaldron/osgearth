@@ -103,6 +103,42 @@ namespace
         if( input > osg::PI ) input -= osg::PI*2.0;
         return input;
     }
+
+    // This replaces OSG's osg::computeLocalToWorld() function with one that
+    // passes your own NodeVisitor to the Transform::computeLocalToWorldMatrix()
+    // method. (We cannot subclass OSG's visitor because it's private.) This
+    // exists for users that have custom Transform subclasses that override
+    // Transform::computeLocalToWorldMatrix and need access to the NodeVisitor.
+    struct ComputeLocalToWorld : osg::NodeVisitor
+    {
+        osg::Matrix _matrix;
+        osg::NodeVisitor* _nv;
+        ComputeLocalToWorld(osg::NodeVisitor* nv) : _nv(nv) { }
+        void accumulate(const osg::NodePath& path)
+        {
+            if (path.empty()) return;
+            unsigned j = path.size();
+            for (osg::NodePath::const_reverse_iterator i = path.rbegin();
+                i != path.rend();
+                ++i, --j)
+            {
+                const osg::Camera* cam = dynamic_cast<const osg::Camera*>(*i);
+                if (cam)
+                {
+                    if( cam->getReferenceFrame() != osg::Transform::RELATIVE_RF || cam->getParents().empty())
+                        break;
+                }
+            }
+            for (; j<path.size(); ++j)
+            {
+                const_cast<osg::Node*>(path[j])->accept(*this);
+            }
+        }
+        void apply(osg::Transform& transform)
+        {
+            transform.computeLocalToWorldMatrix(_matrix, _nv);
+        }
+    };
 }
 
 
@@ -513,6 +549,7 @@ EarthManipulator::ctor_init()
     _lastTetherMode = TETHER_CENTER;
     _homeViewpointDuration = 0;
     _lastKnownVFOV = 30.0;
+    _userWillCallUpdateCamera = false;
 }
 
 EarthManipulator::EarthManipulator() :
@@ -1938,7 +1975,12 @@ EarthManipulator::updateTether()
         if ( nodePaths.empty() )
             return;
 
-        L2W = osg::computeLocalToWorld( nodePaths[0] );
+        osg::ref_ptr<osg::NodeVisitor> nv;
+        _updateCameraNodeVisitor.lock(nv);
+        ComputeLocalToWorld computeL2W(nv.get());
+        computeL2W.accumulate(nodePaths[0]);
+        L2W = computeL2W._matrix;
+
         if ( !L2W.valid() )
             return;
 
@@ -2319,14 +2361,17 @@ EarthManipulator::getInverseMatrix() const
 void
 EarthManipulator::updateCamera(osg::Camera& camera)
 {
-    // update the camera to reflect the current tether node
-    if ( isTethering() )
+    if (isTethering())
     {
         updateTether();
     }
-
-    // then update the camera as usual.
     osgGA::CameraManipulator::updateCamera(camera);
+}
+
+void
+EarthManipulator::setUpdateCameraNodeVisitor(osg::NodeVisitor* nv)
+{
+    _updateCameraNodeVisitor = nv;
 }
 
 void

@@ -752,6 +752,14 @@ namespace osgEarth { namespace Util
          */
         double getLastKnownVFOV() const { return _lastKnownVFOV; }
 
+        /**
+         * Assigns a NodeVisitor to use when OSG calls updateCamera() at the end of
+         * the update traversal. This is useful if you have a Transform subclass that
+         * overrides Transform::computeLocalToWorldMatrix and needs access to a
+         * NodeVisitor.
+         */
+        void setUpdateCameraNodeVisitor(osg::NodeVisitor* nv);
+
     public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
@@ -1065,6 +1073,10 @@ namespace osgEarth { namespace Util
         osg::Node::NodeMask  _findNodeTraversalMask;
 
         osg::ref_ptr<TetherCallback> _tetherCallback;
+
+        bool _userWillCallUpdateCamera;
+
+        osg::observer_ptr<osg::NodeVisitor> _updateCameraNodeVisitor;
 
         void collisionDetect();
 

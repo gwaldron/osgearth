@@ -35,6 +35,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/TileVisitor>
+#include <osgEarth/FileUtils>
 
 #include <osgEarthFeatures/FeatureCursor>
 

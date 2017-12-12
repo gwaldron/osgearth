@@ -436,6 +436,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT );
     }
 
+
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
@@ -477,7 +478,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // overlay geometry is rendered with no depth testing, and in the order it's found in the
     // scene graph... until further notice.
     rttStateSet->setMode(GL_DEPTH_TEST, 0);
-    rttStateSet->setBinName( "TraversalOrderBin" );
+    rttStateSet->setRenderBinDetails(1, "TraversalOrderBin", osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS );
 
     // add to the terrain stateset, i.e. the stateset that the OverlayDecorator will
     // apply to the terrain before cull-traversing it. This will activate the projective

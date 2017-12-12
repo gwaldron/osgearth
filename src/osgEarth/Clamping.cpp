@@ -21,6 +21,7 @@
 */
 #include <osgEarth/Clamping>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Registry>
 #include <osg/Drawable>
 #include <osg/NodeVisitor>
 #include <osg/Geode>
@@ -153,7 +154,9 @@ ClampingCullSet::push(ClampableNode* node, const osg::NodePath& path, const osg:
     entry._path.setNodePath( path );
     entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
     entry._frame = fs ? fs->getFrameNumber() : 0;
-    _bs.expandBy( node->getBound() );
+    _bs.expandBy( osg::BoundingSphere(
+        node->getBound().center() * (*entry._matrix.get()),
+        node->getBound().radius() ));
 
     OE_DEBUG << LC << "Pushed " << node << " on frame " << entry._frame << std::endl;
 }
@@ -163,7 +166,7 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        ProxyCullVisitor* cv = dynamic_cast<ProxyCullVisitor*>(&nv);
 
         // We will use the visitor's path to prevent doubely-applying the statesets
         // of common ancestors
@@ -171,8 +174,7 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
 
         int frame = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber() : 0u;
 
-        OE_DEBUG << LC << "CCS entries = " << _entries.size() << std::endl;
-
+        unsigned passed = 0u;
 
         for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
         {
@@ -187,7 +189,7 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
             }
 
             // After pushing the matrix, we can perform the culling bounds test.
-            if ( !cv->isCulled( entry->_node->getBound() ) )
+            if (!cv->isCulledByProxyFrustum(*entry->_node.get()))
             {
                 // Apply the statesets in the entry's node path, but skip over the ones that are
                 // shared with the current visitor's path since they are already in effect.
@@ -205,7 +207,7 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
                                 osg::StateSet* stateSet = nodePath[i]->getStateSet();
                                 if ( stateSet )
                                 {
-                                    cv->pushStateSet( stateSet );
+                                    cv->getCullVisitor()->pushStateSet( stateSet );
                                     ++numStateSets;
                                 }
                             }
@@ -214,8 +216,6 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
                 }
 
                 // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
-                // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
-                // instead of accept. (Cannot call accept b/c that calls traverse)
                 for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
                 {
                     entry->_node->getChild(i)->accept( nv );
@@ -224,8 +224,10 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
                 // pop the same number we pushed
                 for(int i=0; i<numStateSets; ++i)
                 {
-                    cv->popStateSet();
+                    cv->getCullVisitor()->popStateSet();
                 }
+
+                ++passed;
             }
 
             // pop the model view:
@@ -233,6 +235,8 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
             {
                 cv->popModelViewMatrix();
             }
+            
+            //Registry::instance()->startActivity("ClampingCullSet", Stringify() << std::hex << this << std::dec << " / " << passed << "/" << _entries.size());
         }
 
         // mark this set so it will reset for the next frame
@@ -247,5 +251,6 @@ ClampingManager::get(const osg::Camera* cam)
     // would happen if the cull set were populated and then not used. This is a
     // very unlikely scenario (because the scene graph would have to change mid-cull)
     // but nevertheless possible.
+    //Registry::instance()->startActivity("ClampingManager", Stringify() << _sets.size());
     return _sets.get(cam);
 }

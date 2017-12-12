@@ -77,7 +77,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    osg::ref_ptr<osg::Image> mark = osgDB::readImageFile("../data/placemark32.png");
+    osg::ref_ptr<osg::Image> mark = osgDB::readRefImageFile("../data/placemark32.png");
     
     App app;
 

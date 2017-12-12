@@ -102,8 +102,16 @@ namespace osgEarth
         ReadResult( osg::Object* result )
             : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
+        template<typename T>
+        ReadResult( const osg::ref_ptr<T>& result )
+            : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0), _duration_s(0.0) { }
+
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
+            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0), _duration_s(0.0) { }
+
+        template<typename T>
+        ReadResult( const osg::ref_ptr<T>& result, const Config& meta )
             : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0), _duration_s(0.0) { }
 
         /** Copy construct */

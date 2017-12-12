@@ -75,6 +75,10 @@ namespace
             // for backwards compat until we refactor ModelLayer to use Layer::getNode
             MapCallback::onLayerRemoved(layer, index);
         }
+        void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex) {
+            _node->onLayerMoved(layer, oldIndex, newIndex);
+            MapCallback::onLayerMoved(layer, oldIndex, newIndex);
+        }
 
         osg::observer_ptr<MapNode> _node;
     };
@@ -633,6 +637,30 @@ MapNode::isGeocentric() const
     return _map->isGeocentric();
 }
 
+namespace
+{
+    void rebuildLayerNodes(const Map* map, osg::Group* layerNodes)
+    {
+        layerNodes->removeChildren(0, layerNodes->getNumChildren());
+
+        LayerVector layers;
+        map->getLayers(layers);
+        for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            Layer* layer = i->get();
+            osg::Node* node = layer->getOrCreateNode();
+            if (node)
+            {
+                osg::Group* container = new osg::Group();
+                container->setName(layer->getName());
+                container->addChild(node);
+                container->setStateSet(layer->getStateSet());
+                layerNodes->addChild(container);
+            }
+        }
+    }
+}
+
 void
 MapNode::onLayerAdded(Layer* layer, unsigned index)
 {
@@ -659,15 +687,11 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     {
         // Call setMapNode on any MapNodeObservers on this initial creation.
         MapNodeReplacer replacer( this );
-        node->accept( replacer );
+        //node->accept( replacer );
 
-        // encase the layer's node in a container that will hold its state set:
-        osg::Group* nodeContainer = new osg::Group();
-        nodeContainer->setStateSet(layer->getOrCreateStateSet());
-        nodeContainer->addChild( node );
-        _layerNodes->addChild( nodeContainer );
+        rebuildLayerNodes(_map.get(), _layerNodes);
 
-        OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
+        OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
 
         // TODO: move this logic into ModelLayer.
         if (modelLayer)
@@ -692,36 +716,26 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
                 }
             }
         }
-
-        //// If this is a visible layer, we have to re-initialize the visibility
-        //// after calling getOrCreateNode.
-        //VisibleLayer* VL = dynamic_cast<VisibleLayer*>(layer);
-        //if (VL)
-        //    VL->setVisible(VL->getVisible());
     }
 }
 
 void
 MapNode::onLayerRemoved(Layer* layer, unsigned index)
 {
-    if (layer == 0L)
-        return;
-
-    osg::Node* node = layer->getOrCreateNode();
-    if (node == 0L)
-        return;
-
-    for (unsigned i = 0; i < _layerNodes->getNumChildren(); ++i)
+    if (layer && layer->getOrCreateNode())
     {
-        osg::Group* g = _layerNodes->getChild(i)->asGroup();
-        if (g && g->getNumChildren() > 0 && g->getChild(0) == node)
-        {
-            _layerNodes->removeChild(i);
-            break;
-        }
+        rebuildLayerNodes(_map.get(), _layerNodes);
     }
 }
 
+void
+MapNode::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
+{
+    if (layer && layer->getOrCreateNode())
+    {
+        rebuildLayerNodes(_map.get(), _layerNodes);
+    }
+}
 
 namespace
 {

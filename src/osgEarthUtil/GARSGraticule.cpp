@@ -195,7 +195,7 @@ namespace
         double widthInMeters = west.distanceTo(east);
 
         osgText::Text* text = new osgText::Text;
-        text->setFont(osgText::readFontFile("arial.ttf"));
+        text->setFont(osgText::readRefFontFile("arial.ttf"));
         text->setText(label);
 
         text->setCharacterSize(widthInMeters / (double)label.size());

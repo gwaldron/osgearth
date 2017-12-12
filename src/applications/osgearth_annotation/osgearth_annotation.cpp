@@ -349,10 +349,10 @@ main(int argc, char** argv)
     // an image overlay.
     {
         ImageOverlay* imageOverlay = 0L;
-        osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
-        if ( image )
+        osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile( "../data/USFLAG.TGA" );
+        if (image.valid())
         {
-            imageOverlay = new ImageOverlay(mapNode, image);
+            imageOverlay = new ImageOverlay(mapNode, image.get());
             imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
             annoGroup->addChild( imageOverlay );
 

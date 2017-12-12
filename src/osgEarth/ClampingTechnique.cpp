@@ -50,14 +50,9 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
+#ifdef TIME_RTT_CAMERA
 namespace
 {
-    //osg::Group* s_providerImpl(MapNode* mapNode)
-    //{
-    //    return mapNode ? mapNode->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
-    //}
-
-#ifdef TIME_RTT_CAMERA
     static osg::Timer_t t0, t1;
     struct RttIn : public osg::Camera::DrawCallback {
         void operator()(osg::RenderInfo& r) const {
@@ -70,10 +65,8 @@ namespace
             OE_NOTICE << "RTT = " << osg::Timer::instance()->delta_m(t0, t1) << "ms" << std::endl;
         }
     };
-#endif
 }
-
-//ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
+#endif
 
 //---------------------------------------------------------------------------
 

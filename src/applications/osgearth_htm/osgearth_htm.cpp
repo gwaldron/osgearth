@@ -70,7 +70,7 @@ main(int argc, char** argv)
     if (arguments.read("--model", modelPath) == false)
         return usage(argv[0]);
 
-    osg::ref_ptr<osg::Node> model = osgDB::readNodeFile(modelPath);
+    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile(modelPath);
     if (model.valid() == false)
         return usage(argv[0], "Cannot load model file");
 

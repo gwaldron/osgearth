@@ -35,6 +35,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Depth>
 #include <osgEarth/TerrainTileNode>
+#include <osgEarth/FileUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -140,8 +141,8 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
+    osg::ref_ptr<osg::Node> earthNode = osgDB::readNodeFiles( arguments );
+    if (!earthNode.valid())
     {
         OE_NOTICE << "Unable to load earth model" << std::endl;
         return 1;
@@ -149,7 +150,7 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
 
-    osgEarth::MapNode * mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osgEarth::MapNode * mapNode = osgEarth::MapNode::findMapNode( earthNode.get() );
     if (!mapNode)
     {
         OE_NOTICE << "Could not find MapNode " << std::endl;
@@ -214,7 +215,7 @@ main(int argc, char** argv)
     losGroup->addChild( radialRelEditor );
 
     //Load a plane model.  
-    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osgb.5,5,5.scale");
+    osg::ref_ptr< osg::Node >  plane = osgDB::readRefNodeFile("../data/cessna.osgb.5,5,5.scale");
 
     //Create 2 moving planes
     osg::Node* plane1 = createPlane(plane.get(), GeoPoint(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE), mapSRS, 5000, 20);

@@ -151,7 +151,7 @@ Cache::removeBin( CacheBin* bin )
 Cache*
 CacheFactory::create( const CacheOptions& options )
 {
-    osg::ref_ptr<Cache> result =0L;
+    osg::ref_ptr<Cache> result;
     OE_DEBUG << LC << "Initializing cache of type \"" << options.getDriver() << "\"" << std::endl;
 
     if ( options.getDriver().empty() )
@@ -168,8 +168,8 @@ CacheFactory::create( const CacheOptions& options )
         rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();
-        osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( driverExt, rwopt.get() );
-        result = dynamic_cast<Cache*>( rr.getObject() );
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopt.get() );
+        result = dynamic_cast<Cache*>( object.release() );
         if ( !result.valid() )
         {
             OE_WARN << LC << "Failed to load cache plugin for type \"" << options.getDriver() << "\"" << std::endl;

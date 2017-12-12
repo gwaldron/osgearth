@@ -280,7 +280,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             return;
 
         // access the view-specific persistent data:
-        osg::Camera* cam   = bin->getStage()->getCamera();
+        osg::Camera* cam = bin->getStage()->getCamera();
+
+        // bail out if this camera is a master camera with no GC
+        // (e.g., in a multi-screen layout)
+        if (cam == NULL || cam->getGraphicsContext() == NULL)
+            return;
+
         PerCamInfo& local = _perCam.get( cam );
 
         osg::Timer_t now = osg::Timer::instance()->tick();

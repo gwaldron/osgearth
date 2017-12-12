@@ -40,6 +40,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/FileUtils>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
@@ -457,8 +458,8 @@ namespace TEST_8
         OE_NOTICE << "Wrote to out.osgt" << std::endl;
 
         node = 0L;
-        node = osgDB::readNodeFile("out.osgt");
-        if (!node) {
+        node = osgDB::readRefNodeFile("out.osgt");
+        if (!node.valid()) {
             OE_WARN << "Readback failed!!" << std::endl;
             exit(0);
         }
@@ -621,35 +622,35 @@ int main(int argc, char** argv)
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "gdal_tiff.earth" );
-        if (!earthNode)
+        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "gdal_tiff.earth" );
+        if (!earthNode.valid())
         {
             return usage( "Unable to load earth model." );
         }
 
         if ( test1 )
         {
-            root->addChild( TEST_1::run(earthNode) );
+            root->addChild( TEST_1::run(earthNode.get()) );
             if (ui) label->setText( "Function injection test: the map appears hazy at high altitude." );
         }
         else if ( test2 )
         {
-            root->addChild( TEST_2::run(earthNode) );
+            root->addChild( TEST_2::run(earthNode.get()) );
             if (ui) label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
         }
         else if ( test3 )
         {
-            root->addChild( TEST_3::run(earthNode) );
+            root->addChild( TEST_3::run(earthNode.get()) );
             if (ui) label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
         }
         else if ( test4 )
         {
-            root->addChild( TEST_4::run(earthNode) );
+            root->addChild( TEST_4::run(earthNode.get()) );
             if (ui) label->setText("Memory management test; monitor memory for stability");
         }
         else if ( test6 )
         {
-            root->addChild( TEST_6::run(earthNode) );
+            root->addChild( TEST_6::run(earthNode.get()) );
             if (ui) label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
         }
         
@@ -673,13 +674,13 @@ int main(int argc, char** argv)
     }
     else if (test9)
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "readymap.earth" );
-        if (!earthNode)
+        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "readymap.earth" );
+        if (!earthNode.valid())
         {
             return usage( "Unable to load earth model." );
         }
         
-        root->addChild(TEST_9::run(earthNode));
+        root->addChild(TEST_9::run(earthNode.get()));
         if (ui) label->setText("DP Shader Test - see code comments");
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }

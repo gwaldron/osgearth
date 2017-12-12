@@ -258,6 +258,7 @@ namespace osgEarth
 
         void onLayerAdded(Layer* layer, unsigned index);
         void onLayerRemoved(Layer* layer, unsigned index);
+        void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
 
     private:
 

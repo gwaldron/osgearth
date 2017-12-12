@@ -123,7 +123,7 @@ public:
      */
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
-        osg::Image* image = 0L;
+        osg::ref_ptr<osg::Image> image;
 
         if (_debugDirect)
         {
@@ -229,7 +229,7 @@ public:
 
             // request the actual tile
             //OE_INFO << "key = " << key.str() << ", URL = " << location->value() << std::endl;
-            image = osgDB::readImageFile( location.full() );
+            image = osgDB::readRefImageFile( location.full() );
         }
 
         if ( image &&  _geom.valid() )
@@ -238,10 +238,10 @@ public:
             rasterizer.draw( _geom.get(), osg::Vec4(1,1,1,1) );
             osg::ref_ptr<osg::Image> overlay = rasterizer.finalize();
             ImageUtils::PixelVisitor<AlphaBlend> blend;
-            blend.accept( overlay.get(), image );
+            blend.accept( overlay.get(), image.get() );
         }
 
-        return image;
+        return image.release();
     }
 
 private:

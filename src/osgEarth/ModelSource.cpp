@@ -125,7 +125,7 @@ ModelSourceFactory::~ModelSourceFactory()
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
 {
-    ModelSource* modelSource = 0L;
+    osg::ref_ptr<ModelSource> source;
 
     if ( !options.getDriver().empty() )
     {
@@ -134,14 +134,15 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
-        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
+        source = dynamic_cast<ModelSource*>( object.release() );
     }
     else
     {
         OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
-    return modelSource;
+    return source.release();
 }
 
 //------------------------------------------------------------------------

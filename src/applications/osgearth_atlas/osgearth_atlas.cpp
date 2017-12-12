@@ -211,8 +211,8 @@ show(osg::ArgumentParser& arguments)
             osgDB::getFileExtension(atlasFile);
     }
 
-    osg::Image* image = osgDB::readImageFile(atlasFile);
-    if ( !image )
+    osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile(atlasFile);
+    if (!image.valid())
         return usage("Failed to load atlas image");
 
     if ( layer > image->r()-1 )
@@ -220,7 +220,7 @@ show(osg::ArgumentParser& arguments)
 
     // geometry for the image layer:
     std::vector<osg::ref_ptr<osg::Image> > images;
-    osgEarth::ImageUtils::flattenImage(image, images);
+    osgEarth::ImageUtils::flattenImage(image.get(), images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
 
     const osg::BoundingBox& bbox = osgEarth::Utils::getBoundingBox(geode->getDrawable(0));

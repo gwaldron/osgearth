@@ -27,19 +27,19 @@
 
 #include <osgEarth/Units>
 #include <osgEarth/MapNode>
-#include <osgEarth/ModelLayer>
 
 // include for WFS feature driver:
 #include <osgEarthDrivers/feature_wfs/WFSFeatureOptions>
 
 // include for feature geometry model renderer:
-#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthSymbology/Style>
 
 
 #define LC "[wfs example] "
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -68,6 +68,14 @@ main(int argc, char** argv)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.getCamera()->setNearFarRatio(0.00002);
 
+    // Get the bounds from the command line.
+    Bounds bounds;
+    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
+    while (arguments.read("--bounds", xmin, ymin, xmax, ymax))
+    {
+        bounds.xMin() = xmin, bounds.yMin() = ymin, bounds.xMax() = xmax, bounds.yMax() = ymax;
+    }        
+
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
@@ -79,34 +87,35 @@ main(int argc, char** argv)
 
         // Create the WFS driver:
         osgEarth::Drivers::WFSFeatureOptions wfs;
-        wfs.url()          = osgEarth::URI("http://demo.opengeo.org/geoserver/wfs"); 
-        wfs.typeName()     = "states"; 
-        wfs.outputFormat() = "json";     // JSON or GML
+        wfs.url()          = osgEarth::URI("http://demo.mapserver.org/cgi-bin/wfs"); 
+        wfs.typeName()     = "cities"; 
+        wfs.outputFormat() = "gml2";     // JSON or GML
 
-        // Configure a rendering style:
+        // Create the feature source from the options
+        osg::ref_ptr< FeatureSource > featureSource = FeatureSourceFactory::create(wfs);
+        Status s = featureSource->open();
+
+        // Set the query with the bounds if one was specified.
+        Query query;
+        if (bounds.isValid())
+        {
+            query.bounds() = bounds;
+        }
+
+        // Get the features
+        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(query);
+        FeatureList features;
+        cursor->fill(features);
+        OE_NOTICE << "Got " << features.size() << " features" << std::endl;
+
+        // Create a style
         Style style;
-        style.setName( "states" ); 
+        style.getOrCreateSymbol<TextSymbol>()->content() = StringExpression("[NAME]");
 
-        LineSymbol* line = style.getOrCreate<LineSymbol>(); 
-        line->stroke()->color() = Color::Yellow; 
-        line->stroke()->width() = 5.0f;
-        line->stroke()->widthUnits() = Units::PIXELS;
+        // Create the FeatureNode with the features and the style.
+        osg::ref_ptr< FeatureNode > featureNode = new FeatureNode(mapNode, features, style);
+        mapNode->addChild(featureNode.get());                
 
-        AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
-        alt->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        alt->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
-
-        // Configure a model layer to render the features:
-        osgEarth::Drivers::FeatureGeomModelOptions geom; 
-        geom.featureOptions() = wfs;
-        geom.styles()         = new StyleSheet(); 
-        geom.styles()->addStyle(style); 
-
-        // Make the new layer and add it to the map.
-        ModelLayerOptions layerOptions("states", geom); 
-        ModelLayer* layer = new ModelLayer(layerOptions); 
-        mapNode->getMap()->addLayer(layer);
-        
         viewer.setSceneData( node );
         return viewer.run();
     }

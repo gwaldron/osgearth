@@ -169,7 +169,7 @@ void
 createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSchema& schema, TrackSims& sims )
 {
     // load an icon to use:
-    osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile( ICON_URL );
+    osg::ref_ptr<osg::Image> srcImage = osgDB::readRefImageFile( ICON_URL );
     osg::ref_ptr<osg::Image> image;
     ImageUtils::resizeImage( srcImage.get(), ICON_SIZE, ICON_SIZE, image );
 

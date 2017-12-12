@@ -218,14 +218,15 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
 VerticalDatum*
 VerticalDatumFactory::create( const std::string& init )
 {
-    VerticalDatum* result = 0L;
+    osg::ref_ptr<VerticalDatum> datum;
 
     std::string driverExt = Stringify() << ".osgearth_vdatum_" << init;
-    result = dynamic_cast<VerticalDatum*>( osgDB::readObjectFile(driverExt) );
-    if ( !result )
+    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
+    datum = dynamic_cast<VerticalDatum*>( object.release() );
+    if ( !datum )
     {
         OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
     }
 
-    return result;
+    return datum.release();
 }

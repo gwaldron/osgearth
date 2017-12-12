@@ -41,6 +41,7 @@ usage(const char* name)
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
+    getchar();
     return 0;
 }
 

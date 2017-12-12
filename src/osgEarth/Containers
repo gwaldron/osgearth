@@ -691,38 +691,36 @@ namespace osgEarth
 
         DATA& get(KEY k)
         {
-            {
-                osgEarth::Threading::ScopedReadLock readLock(_mutex);
-                typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second;
-            }
-            {
-                osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
-                if ( i != _data.end() )
-                    return i->second;
-                else
-                    return _data[k];
-            }
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
+            if ( i != _data.end() )
+                return i->second;
+            else
+                return _data[k];
         }
 
         void remove(KEY k)
         {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
             _data.erase( k );
         }
 
         void forEach(Functor& functor)
         {
-            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
             for (typename fast_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
+        unsigned size() const
+        {
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            return _data.size();
+        }
+
     private:
-        osgEarth::fast_map<KEY,DATA>        _data;
-        osgEarth::Threading::ReadWriteMutex _mutex;
+        osgEarth::fast_map<KEY,DATA> _data;
+        mutable osgEarth::Threading::Mutex _mutex;
     };
 
     /** Template for thread safe per-object data storage */

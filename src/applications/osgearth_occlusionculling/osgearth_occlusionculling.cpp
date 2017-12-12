@@ -107,7 +107,7 @@ main(int argc, char** argv)
 
     //Create a bunch of placemarks around Mt Rainer so we can actually get some elevation
     {
-        osg::Image* pin = osgDB::readImageFile( "../data/placemark32.png" );
+        osg::ref_ptr<osg::Image> pin = osgDB::readRefImageFile( "../data/placemark32.png" );
 
         double centerLat =  46.840866;
         double centerLon = -121.769846;
@@ -122,7 +122,7 @@ main(int argc, char** argv)
         {
             double lat = minLat + height * (rand() * 1.0)/(RAND_MAX-1);
             double lon = minLon + width * (rand() * 1.0)/(RAND_MAX-1);        
-            PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat), pin, "Placemark", placeStyle);
+            PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat), pin.get(), "Placemark", placeStyle);
             //Enable occlusion culling.  This will hide placemarks that are hidden behind terrain.
             //This makes use of the OcclusionCullingCallback in CullingUtils.
             place->setOcclusionCulling( true );

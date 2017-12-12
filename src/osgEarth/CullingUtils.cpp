@@ -800,15 +800,9 @@ ProxyCullVisitor::distance(const osg::Vec3& coord,const osg::Matrix& matrix)
 void 
 ProxyCullVisitor::handle_cull_callbacks_and_traverse(osg::Node& node)
 {
-#if OSG_VERSION_GREATER_THAN(3,3,1)
     osg::Callback* callback = node.getCullCallback();
     if (callback) callback->run(&node, this);
     else traverse(node);
-#else
-    osg::NodeCallback* callback = node.getCullCallback();
-    if (callback) (*callback)(&node,this);
-    else traverse(node);
-#endif
 }
 
 void 
@@ -874,53 +868,58 @@ ProxyCullVisitor::apply(osg::Transform& node)
 void 
 ProxyCullVisitor::apply(osg::Geode& node)
 {
-    //OE_INFO << "Geode!" << std::endl;
+    ProxyCullVisitor::apply(static_cast<osg::Node&>(node));
+}
 
-    if ( isCulledByProxyFrustum(node) )
+void 
+ProxyCullVisitor::apply(osg::LOD& node)
+{
+    ProxyCullVisitor::apply(static_cast<osg::Node&>(node));
+}
+
+void
+ProxyCullVisitor::apply(osg::Drawable& drawable)
+{
+    if ( isCulledByProxyFrustum(drawable) )
         return;
 
-    _cv->pushOntoNodePath( &node );
+    _cv->pushOntoNodePath( &drawable );
 
     // push the node's state.
-    osg::StateSet* node_state = node.getStateSet();
+    osg::StateSet* node_state = drawable.getStateSet();
     if (node_state) _cv->pushStateSet(node_state);
 
-    // traverse any call callbacks and traverse any children.
-    handle_cull_callbacks_and_traverse(node);
-
     osg::RefMatrix& matrix = *_cv->getModelViewMatrix();
-    for(unsigned int i=0;i<node.getNumDrawables();++i)
+    const osg::BoundingBox& bb = Utils::getBoundingBox(&drawable);
+
+    bool culledOut = false;
+
+    if( drawable.getCullCallback() )
     {
-        osg::Drawable* drawable = node.getDrawable(i);
-        const osg::BoundingBox& bb = Utils::getBoundingBox(drawable);
+        if (drawable.getCullCallback()->run(&drawable, _cv) == true)
+            culledOut = true;
+    }
 
-        if( drawable->getCullCallback() )
-        {
-#if OSG_VERSION_GREATER_THAN(3,3,1)
-            if( drawable->getCullCallback()->run(drawable, _cv) == true )
-                continue;
-#else
-            if( drawable->getCullCallback()->cull( _cv, drawable, &_cv->getRenderInfo() ) == true )
-                continue;
-#endif
-        }
-
-        //else
-        {
-            if (node.isCullingActive() && isCulledByProxyFrustum(bb)) continue;
-        }
+    if (!culledOut)
+    {
+        if (drawable.isCullingActive() && isCulledByProxyFrustum(bb)) 
+            culledOut = true;
+    }
 
 
-        if ( _cv->getComputeNearFarMode() && bb.valid())
-        {
-            if (!_cv->updateCalculatedNearFar(matrix,*drawable,false)) continue;
-        }
+    if ( !culledOut && _cv->getComputeNearFarMode() && bb.valid())
+    {
+        if (!_cv->updateCalculatedNearFar(matrix,drawable,false))
+            culledOut = true;
+    }
 
+    if (!culledOut)
+    {
         // need to track how push/pops there are, so we can unravel the stack correctly.
         unsigned int numPopStateSetRequired = 0;
 
         // push the geoset's state on the geostate stack.
-        osg::StateSet* stateset = drawable->getStateSet();
+        osg::StateSet* stateset = drawable.getStateSet();
         if (stateset)
         {
             ++numPopStateSetRequired;
@@ -954,14 +953,13 @@ ProxyCullVisitor::apply(osg::Geode& node)
         }
         else
         {
-            _cv->addDrawableAndDepth(drawable,&matrix,depth);
+            _cv->addDrawableAndDepth(&drawable,&matrix,depth);
         }
 
         for(unsigned int i=0;i< numPopStateSetRequired; ++i)
         {
             _cv->popStateSet();
         }
-
     }
 
     // pop the node's state off the geostate stack.

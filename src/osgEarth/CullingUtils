@@ -195,6 +195,9 @@ namespace osgEarth
         // access to the underlying cull visitor.
         osgUtil::CullVisitor* getCullVisitor() { return _cv; }
 
+        bool isCulledByProxyFrustum(osg::Node& node);
+        bool isCulledByProxyFrustum(const osg::BoundingBox& bbox);
+
     public: // proxy functions:
         osg::Vec3 getEyePoint() const;
         osg::Vec3 getViewPoint() const;
@@ -202,18 +205,17 @@ namespace osgEarth
         float getDistanceFromEyePoint(const osg::Vec3& pos, bool useLODScale) const;
         float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const;
 
-    protected: // custom culling functions:
-
-        bool isCulledByProxyFrustum(osg::Node& node);
-        bool isCulledByProxyFrustum(const osg::BoundingBox& bbox);
+    protected:
         
         osgUtil::CullVisitor::value_type distance(const osg::Vec3& coord,const osg::Matrix& matrix);
 
         void handle_cull_callbacks_and_traverse(osg::Node& node);
 
         void apply(osg::Node& node);
-        void apply(osg::Transform& node);
-        void apply(osg::Geode& node);
+        void apply(osg::Transform& xform);
+        void apply(osg::Geode& geode);
+        void apply(osg::Drawable& drawable);
+        void apply(osg::LOD& lod);
     };
 
 
@@ -288,17 +290,16 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv) {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
             const osg::Camera* camera = cv->getCurrentCamera();
-            bool pushed = false;
+            osg::ref_ptr<osg::StateSet> ss;
             if (camera && camera->getViewport()) {
-                osg::ref_ptr<osg::StateSet> ss = new osg::StateSet();
+                ss = new osg::StateSet();
                 ss->addUniform(new osg::Uniform("oe_ViewportSize", osg::Vec2f(
                     camera->getViewport()->width(),
                     camera->getViewport()->height())));
                 cv->pushStateSet(ss.get());
-                pushed = true;
             }
             traverse(node, nv);
-            if (pushed)
+            if (ss.valid())
                 cv->popStateSet();
         }
     };

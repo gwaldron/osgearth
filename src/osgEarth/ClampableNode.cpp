@@ -32,6 +32,11 @@ using namespace osgEarth;
 ClampableNode::ClampableNode() :
 _mapNodeUpdateRequested(true)
 {
+    // bounding box culling doesn't work on clampable geometry
+    // since the GPU will be moving verts. So, disable the default culling
+    // for this node so we can out own culling in traverse().
+    setCullingActive(false);
+
     // for the mapnode update:
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
@@ -41,13 +46,47 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // find the cull set for this camera:
+        // Lock a reference to the map node:
         osg::ref_ptr<MapNode> mapNode;
         if (_mapNode.lock(mapNode))
         {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-            ClampingCullSet& cullSet = mapNode->getClampingManager()->get( cv->getCurrentCamera() );
-            cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
+
+            // Custom culling. Since clamped geometry can start far outside of the 
+            // view frustum, normal culling won't work. Instead, project the
+            // bounding sphere upwards (along its up vector) on to the center plane
+            // of the view frustum. Then cull it based on the new simulated location.
+            osg::RefMatrix* MV = cv->getModelViewMatrix();
+            osg::Matrix MVinverse;
+            MVinverse.invert(*MV);
+
+            // Actual bounds of geometry:
+            osg::BoundingSphere bs = getBound();
+
+            // Find any two points on the bounding sphere's up-vector
+            // and transform them into view space:
+            osg::Vec3d p0 = bs.center() * (*MV);
+            osg::Vec3d p1 =
+                mapNode->isGeocentric() ? (bs.center() * 2.0 * (*MV)) :
+                                          (bs.center() + osg::Vec3d(0, 0, bs.radius())) * (*MV);
+
+            // Center plane of the view frustum (in view space)
+            static osg::Vec3d v0(0, 0, 0);  // point on the plane
+            static osg::Vec3d n(0, 1, 0);   // normal vector to the plane
+
+            // Find the intersection of the up vector and the center plane
+            // and then transform the result back into world space for culling.
+            osg::Vec3d w = p0 - v0;
+            osg::Vec3d u = p1 - p0;
+            double t = (-n * w) / (n * u);
+            bs.center() = (p0 + u*t) * MVinverse;
+
+            if (cv->isCulled(bs) == false)
+            {
+                // Passed the cull test, so put this node in the clamping cull set.
+                ClampingCullSet& cullSet = mapNode->getClampingManager()->get( cv->getCurrentCamera() );
+                cullSet.push( this, cv->getNodePath(), nv.getFrameStamp() );
+            }
         }
     }
 

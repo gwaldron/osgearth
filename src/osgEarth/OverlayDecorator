@@ -200,6 +200,8 @@ namespace osgEarth
         virtual const osg::BoundingSphere& getBound(
             OverlayDecorator::TechRTTParams& params) const { return params._group->getBound(); }
 
+        virtual bool optimizeToVisibleBound() const { return false; }
+
         virtual void onInstall( TerrainEngineNode* engine ) { }
 
         virtual void onUninstall( TerrainEngineNode* engine ) { }

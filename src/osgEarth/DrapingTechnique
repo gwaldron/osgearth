@@ -101,6 +101,8 @@ namespace osgEarth
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const;
 
+        virtual bool optimizeToVisibleBound() const { return true; }
+
         void preCullTerrain(
             OverlayDecorator::TechRTTParams& params,
             osgUtil::CullVisitor*            cv );

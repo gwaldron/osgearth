@@ -591,55 +591,62 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // now copy the RTT matrixes over to the techniques.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
     {
+        OverlayTechnique* tech = _techniques[t].get();
         TechRTTParams& params = pvd._techParams[t];
 
         // skip empty techniques
-        if ( !_techniques[t]->hasData(params) )
+        if ( !tech->hasData(params) )
             continue;
 
         // slice it to fit the overlay geometry. (this says 'visible' but it's just everything..
         // perhaps we can truly make it visible)
         osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
-#if 0
-        osg::Polytope frustumPT;
-        frustumPH.getPolytope(frustumPT);
-        ComputeVisibleBounds cvb(frustumPT, MVP);
-        params._group->accept(cvb);
-        const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
-        OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
-#else
-        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params);
-#endif
-        if ( visibleOverlayBS.valid() )
+        // if the technique wishes it, compute the bounds of the geometry and
+        // crop the frustum to fit those bounds. This will result in a tighter
+        // fit if the geometry bounds are smaller than the visible region of terrain.
+        if (tech->optimizeToVisibleBound())
         {
-            // form an axis-aligned polytope around the bounding sphere of the
-            // overlay geometry. Use that to cut the camera frustum polytope.
-            // This will minimize the coverage area and also ensure inclusion
-            // of geometry that falls outside the camera frustum but inside
-            // the overlay area.
-            osg::Polytope visibleOverlayPT;
+#if 0
+            osg::Polytope frustumPT;
+            frustumPH.getPolytope(frustumPT);
+            ComputeVisibleBounds cvb(frustumPT, MVP);
+            params._group->accept(cvb);
+            const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
+            OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
+#else
+            const osg::BoundingSphere& visibleOverlayBS = tech->getBound(params);
+#endif
+            if ( visibleOverlayBS.valid() )
+            {
+                // form an axis-aligned polytope around the bounding sphere of the
+                // overlay geometry. Use that to cut the camera frustum polytope.
+                // This will minimize the coverage area and also ensure inclusion
+                // of geometry that falls outside the camera frustum but inside
+                // the overlay area.
+                osg::Polytope visibleOverlayPT;
 
-            osg::Vec3d tangent(0,0,1);
-            if (fabs(worldUp*tangent) > 0.9999)
-                tangent.set(0,1,0);
+                osg::Vec3d tangent(0,0,1);
+                if (fabs(worldUp*tangent) > 0.9999)
+                    tangent.set(0,1,0);
 
-            osg::Vec3d westVec  = worldUp^tangent; westVec.normalize();
-            osg::Vec3d southVec = worldUp^westVec; southVec.normalize();
-            osg::Vec3d eastVec  = -westVec;
-            osg::Vec3d northVec = -southVec;
+                osg::Vec3d westVec  = worldUp^tangent; westVec.normalize();
+                osg::Vec3d southVec = worldUp^westVec; southVec.normalize();
+                osg::Vec3d eastVec  = -westVec;
+                osg::Vec3d northVec = -southVec;
 
-            osg::Vec3d westPt  = visibleOverlayBS.center() + westVec*visibleOverlayBS.radius();
-            osg::Vec3d eastPt  = visibleOverlayBS.center() + eastVec*visibleOverlayBS.radius();
-            osg::Vec3d northPt = visibleOverlayBS.center() + northVec*visibleOverlayBS.radius();
-            osg::Vec3d southPt = visibleOverlayBS.center() + southVec*visibleOverlayBS.radius();
+                osg::Vec3d westPt  = visibleOverlayBS.center() + westVec*visibleOverlayBS.radius();
+                osg::Vec3d eastPt  = visibleOverlayBS.center() + eastVec*visibleOverlayBS.radius();
+                osg::Vec3d northPt = visibleOverlayBS.center() + northVec*visibleOverlayBS.radius();
+                osg::Vec3d southPt = visibleOverlayBS.center() + southVec*visibleOverlayBS.radius();
 
-            visibleOverlayPT.add(osg::Plane(-westVec,  westPt));
-            visibleOverlayPT.add(osg::Plane(-eastVec,  eastPt));
-            visibleOverlayPT.add(osg::Plane(-southVec, southPt));
-            visibleOverlayPT.add(osg::Plane(-northVec, northPt));
+                visibleOverlayPT.add(osg::Plane(-westVec,  westPt));
+                visibleOverlayPT.add(osg::Plane(-eastVec,  eastPt));
+                visibleOverlayPT.add(osg::Plane(-southVec, southPt));
+                visibleOverlayPT.add(osg::Plane(-northVec, northPt));
 
-            visiblePH.cut( visibleOverlayPT );
+                visiblePH.cut( visibleOverlayPT );
+            }
         }
 
         // for dumping, we want the previous fram's projection matrix
@@ -710,6 +717,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
             params._visibleFrustumPH = clampedFrustumPH; //frustumPH;
+        }
+        else
+        {
+            OE_INFO << "Frame " << cv->getFrameStamp()->getFrameNumber() << " verts = 0" << std::endl;
         }
 
         // service a "dump" of the polyhedrons for dubugging purposes

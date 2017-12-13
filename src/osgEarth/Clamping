@@ -96,8 +96,10 @@ namespace osgEarth
 
     /**
      * Culling set for tracking groups whose contents should be GPU-clamped
+     * The ClampableNode class inserts scene graphs into this objects during
+     * the CULL traversal; then the ClampingTechnique traverses those graphs.
      */
-    class OSGEARTH_EXPORT ClampingCullSet
+    class OSGEARTH_INTERNAL ClampingCullSet
     {
     public:
         struct Entry
@@ -131,9 +133,11 @@ namespace osgEarth
     };
 
     /**
-     * Houses all the active DrapingCullSets under an osgEarth TerrainEngine.
+     * Houses all the active ClampingCullSets under an osgEarth TerrainEngine.
+     * ClampableNode will use this object to gain access to a ClampingCullSet
+     * during the CULL traversal.
      */
-    class OSGEARTH_EXPORT ClampingManager
+    class OSGEARTH_INTERNAL ClampingManager
     {
     public:
         //! Gets the cull set associated with a camera.

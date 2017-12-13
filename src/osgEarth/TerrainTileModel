@@ -33,6 +33,7 @@
 
 namespace osgEarth
 {
+    //! @deprecated
     class TerrainData : public osg::Referenced
     {
     public:
@@ -56,7 +57,8 @@ namespace osgEarth
         virtual ~TerrainData() { }
     };
 
-
+    
+    //! @deprecated
     class OSGEARTH_EXPORT TerrainRaster : public TerrainData
     {
     public:

@@ -29,9 +29,8 @@ namespace osgEarth
     class MapNode;
 
     /**
-     * Node graph that can be GPU-clamped on the terrain
-     * using the overlay decorator. Just live somewhere under
-     * the MapNode in the scene graph.
+     * Node graph that will be GPU-clamped on the terrain, if supported.
+     * This group must be a descendant of a MapNode.
      */
     class OSGEARTH_EXPORT ClampableNode : public osg::Group
     {

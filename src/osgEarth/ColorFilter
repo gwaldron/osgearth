@@ -31,6 +31,9 @@ namespace osgEarth
      * You can install a chain of ColorFilters on an ImageLayer and the shaders
      * will post-process the layer's color (after texturing but before lighting)
      * using custom shader code.
+     *
+     * NOTE: ColorFilter will probably be deprecated at some point down the line.
+     * Consider using a Layer shader instead.
      */
     class /*header-only*/ ColorFilter : public osg::Referenced
     {

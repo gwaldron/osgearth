@@ -66,12 +66,6 @@ namespace osgEarth
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf );
 
-        /** construct a cache policy be reading it from an osgDB::Options */
-        //static optional<CachePolicy> get(const osgDB::Options* options);
-
-        /** Stores this cache policy in a DB Options. */
-        //void store( osgDB::Options* options ) const;
-
         /** Merges any set properties in another CP into this one, override existing values. */
         void mergeAndOverride(const CachePolicy& rhs);
         void mergeAndOverride(const optional<CachePolicy>& rhs);
@@ -79,9 +73,7 @@ namespace osgEarth
         /** Gets the oldest timestamp for which to accept a cache record */
         TimeStamp getMinAcceptTime() const;
 
-        /**
-         * Determine whether the given timestamp is considered to be expired based on this CachePolicy
-         */
+        /** Whether the given timestamp is considered to be expired based on this CachePolicy */
         bool isExpired(TimeStamp lastModified) const;
 
         /** dtor */

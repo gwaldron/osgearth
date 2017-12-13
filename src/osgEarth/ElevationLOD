@@ -74,6 +74,9 @@ namespace osgEarth
         optional<float>  _maxRange;
     };
 
+    // AltitudeLOD is a better name.
+    typedef ElevationLOD AltitudeLOD;
+
 } // namespace osgEarth
 
 #endif // OSGEARTH_ELEVATIONLOD_H

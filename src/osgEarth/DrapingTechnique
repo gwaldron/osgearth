@@ -43,7 +43,7 @@ namespace osgEarth
      * This class is similar in scope to osgSim::OverlayNode, but is optimized
      * for use with osgEarth and geocentric terrains.
      */
-    class OSGEARTH_EXPORT DrapingTechnique : public OverlayTechnique
+    class OSGEARTH_INTERNAL DrapingTechnique : public OverlayTechnique
     {
     public:
         DrapingTechnique();

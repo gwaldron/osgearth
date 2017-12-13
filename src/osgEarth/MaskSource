@@ -58,6 +58,9 @@ namespace osgEarth
 
     /**
      * MaskSource is a plugin object that generates a masking goemetry
+     *
+     * TODO: there is only one kind of mask source (FeatureMaskSource) so
+     * consider removing this and just having a single MaskLayer type. -gw
      */
     class OSGEARTH_EXPORT MaskSource : public osg::Object, public Revisioned
     {

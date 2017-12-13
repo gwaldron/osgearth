@@ -24,6 +24,7 @@
 
 namespace osgEarth
 {
+    //! @deprecated
     class OSGEARTH_EXPORT MaskNode : public osg::Group
     {
     public:

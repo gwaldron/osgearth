@@ -52,6 +52,9 @@
     #  define OSGEARTH_EXPORT
 #endif  
 
+// package-portected indicator:
+#define OSGEARTH_INTERNAL
+
 // set up define for whether member templates are supported by VisualStudio compilers.
 #ifdef _MSC_VER
 # if (_MSC_VER >= 1300)

@@ -39,33 +39,58 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
+        //! Invoked when a Map first establishes a valid profile.
         virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
 
-        // callbacks for begin/end batch update operations.
+        //! Invoked when a batch operation begins.
         virtual void onBeginUpdate() { }
+
+        //! Invoked when a batch operation ends.
         virtual void onEndUpdate() { }
 
-        virtual void onMapModelChanged( const MapModelChange& change );
+        //! Invoked whenever a layer is added, removed, or moved from a Map.
+        //! The default implementation in turn calls onLayerAdded, onLayerRemoved,
+        //! or onLayerMoved, respectively.
+        virtual void onMapModelChanged(const MapModelChange& change);
 
+        //! Invoked when a layer is added to a Map.
         virtual void onLayerAdded(Layer* layer, unsigned index);
+
+        //! Invoked when a layer is removed from a Map.
         virtual void onLayerRemoved(Layer* layer, unsigned index);
+
+        //! Invoked when a layer is re-ordered within a Map.
         virtual void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
 
+    public: // Deprecated functions
+
+        // @deprecated Use onLayerAdded
         virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerRemoved
         virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerMoved
         virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
+        // @deprecated Use onLayerAdded
         virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerRemoved
         virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerMoved
         virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
+        // @deprecated Use onLayerAdded
         virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerRemoved
         virtual void onModelLayerRemoved( ModelLayer* layer, unsigned int index ) { }
+        // @deprecated Use onLayerMoved
         virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
+        // @deprecated Use onLayerAdded
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
+        // @deprecated Use onLayerRemoved
         virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
 
+    public:
         /** dtor */
         virtual ~MapCallback() { }
 

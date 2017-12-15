@@ -700,6 +700,8 @@ void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
                     (*croppedGeometry)[j].x() -= offset;
                 }
                 osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
+                // Make sure the feature is wound correctly.
+                croppedGeometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
                 croppedFeature->setGeometry(croppedGeometry.get());
                 splitFeatures.push_back(croppedFeature);
             }

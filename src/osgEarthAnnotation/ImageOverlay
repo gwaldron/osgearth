@@ -159,7 +159,7 @@ namespace osgEarth { namespace Annotation
 
         void updateFilters();
 
-        osg::Node* createNode(osgEarth::Features::Feature* feature);
+        osg::Node* createNode(osgEarth::Features::Feature* feature, bool split);
 
 
         osg::Vec2d _lowerLeft;

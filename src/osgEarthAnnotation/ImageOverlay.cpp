@@ -256,20 +256,18 @@ ImageOverlay::init()
         f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
 
         FeatureList features;
-        /*
-        if (!mapSRS->isGeographic())
+        if (!mapSRS->isGeographic())        
         {
             f->splitAcrossDateLine(features);
         }
         else
-        */
         {
             features.push_back( f );
         }
 
         for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
         {
-            _root->addChild(createNode(itr->get()));
+            _root->addChild(createNode(itr->get(), features.size() > 1));
         }
 
         _dirty = false;
@@ -350,7 +348,7 @@ ImageOverlay::setMagFilter( osg::Texture::FilterMode filter )
     updateFilters();
 }
 
-osg::Node* ImageOverlay::createNode(Feature* feature)
+osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
 {    
     const SpatialReference* mapSRS = getMapNode()->getMapSRS();
 
@@ -411,33 +409,40 @@ osg::Node* ImageOverlay::createNode(Feature* feature)
 
     osg::Vec2Array* texcoords = new osg::Vec2Array(4);
 
-    /*
-    // This code attempts to normalize the coordinates across a split image but doesn't quite work right when the imagery is non-axis aligned
-    double width = _upperRight.x() - _lowerLeft.x();
-    double height = _upperRight.y() - _lowerLeft.y();
-   
-    for( unsigned int i = 0; i < feature->getGeometry()->size(); ++i)
+
+
+    if (split)
     {
-        osg::Vec3d v = (*feature->getGeometry())[i];
+        // If the feature has been split across the antimerdian we have to figure out new texture coordinates, we can't just just use the corners.
+        // This code is limited in that it only works with rectangular images though, so overlays that are non axis aligned and split across the antimerdian could look wrong
+        double width = _upperRight.x() - _lowerLeft.x();
+        double height = _upperRight.y() - _lowerLeft.y();
 
-        if (v.x() < _lowerLeft.x())
+        for (unsigned int i = 0; i < feature->getGeometry()->size(); ++i)
         {
-            v.x() += 360.0;
-        }
-        if (v.x() > _upperRight.x())
-        {
-            v.x() -= 360.0;
-        }
+            osg::Vec3d v = (*feature->getGeometry())[i];
 
-        float s = (v.x() - _lowerLeft.x()) / width;
-        float t = (v.y() - _lowerLeft.y()) / height;
-        (*texcoords)[i].set(s,flip ? 1.0f - t : t);
+            if (v.x() < _lowerLeft.x())
+            {
+                v.x() += 360.0;
+            }
+            if (v.x() > _upperRight.x())
+            {
+                v.x() -= 360.0;
+            }
+
+            float s = (v.x() - _lowerLeft.x()) / width;
+            float t = (v.y() - _lowerLeft.y()) / height;
+            (*texcoords)[i].set(s, flip ? 1.0f - t : t);
+        }
     }
-    */
-    (*texcoords)[0].set(0.0f, flip ? 1.0 : 0.0f);
-    (*texcoords)[1].set(1.0f, flip ? 1.0 : 0.0f);
-    (*texcoords)[2].set(1.0f, flip ? 0.0 : 1.0f);
-    (*texcoords)[3].set(0.0f, flip ? 0.0 : 1.0f);
+    else
+    {
+        (*texcoords)[0].set(0.0f, flip ? 1.0 : 0.0f);
+        (*texcoords)[1].set(1.0f, flip ? 1.0 : 0.0f);
+        (*texcoords)[2].set(1.0f, flip ? 0.0 : 1.0f);
+        (*texcoords)[3].set(0.0f, flip ? 0.0 : 1.0f);
+    }
     geometry->setTexCoordArray(0, texcoords);    
 
     //Only run the MeshSubdivider on geocentric maps

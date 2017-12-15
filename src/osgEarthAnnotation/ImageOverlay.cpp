@@ -53,15 +53,7 @@ namespace
     void clampLatitude(osg::Vec2d& l)
     {
         l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
-    }
-
-    double normalizeLongitude( double x, double minLon = -180.0, double maxLon = 180.0 )
-    {
-        double result = x;
-        while( result < minLon ) result += 360.;
-        while( result > maxLon ) result -= 360.;
-        return result;
-    }
+    }    
 
     static Distance default_geometryResolution(5.0, Units::DEGREES);
 }

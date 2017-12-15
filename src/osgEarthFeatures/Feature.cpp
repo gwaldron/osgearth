@@ -195,6 +195,16 @@ Feature::setFID(FeatureID fid)
     _fid = fid;
 }
 
+GeoExtent
+Feature::getExtent() const
+{
+    if (!getSRS() || !getGeometry())
+    {
+        return GeoExtent::INVALID;
+    }
+    return GeoExtent(getSRS(), getGeometry()->getBounds());
+}
+
 void
 Feature::setSRS( const SpatialReference* srs )
 {

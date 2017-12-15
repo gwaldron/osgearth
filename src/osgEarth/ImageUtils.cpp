@@ -1308,18 +1308,16 @@ void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
 #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-        return;
-
     // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
 
-    bool needsMipmaps = 
+    bool needsMipmaps =
         minFilter == tex->LINEAR_MIPMAP_LINEAR ||
         minFilter == tex->LINEAR_MIPMAP_NEAREST ||
         minFilter == tex->NEAREST_MIPMAP_LINEAR ||
         minFilter == tex->NEAREST_MIPMAP_NEAREST;
 
-    if (needsMipmaps && tex->getImage)
+    if (needsMipmaps && tex->getNumImages() > 0)
     {
         // See if we have a CPU mipmap generator:
         osgDB::ImageProcessor* ip = osgDB::Registry::instance()->getImageProcessor();

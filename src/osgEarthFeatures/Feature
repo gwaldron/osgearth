@@ -161,6 +161,11 @@ namespace osgEarth { namespace Features
         void setFID(FeatureID fid);
 
         /**
+         * Gets the GeoExtent of this Feature
+         */
+        GeoExtent getExtent() const;
+
+        /**
          * The geometry in this feature.
          */
         void setGeometry( Symbology::Geometry* geom );

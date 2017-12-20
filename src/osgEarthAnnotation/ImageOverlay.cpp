@@ -73,7 +73,8 @@ _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter    (osg::Texture::LINEAR),
 _texture      (0),
-_geometryResolution(default_geometryResolution)
+_geometryResolution(default_geometryResolution),
+_draped(true)
 {
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
@@ -116,6 +117,8 @@ _geometryResolution(default_geometryResolution)
     conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+
+    conf.getIfSet("draped", _draped);
 
     if (conf.hasValue("geometry_resolution"))
     {
@@ -171,6 +174,8 @@ ImageOverlay::getConfig() const
     conf.set("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.set("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
+    conf.set("draped", _draped);
+
     if (_geometryResolution != default_geometryResolution)
     {
         conf.update("geometry_resolution", _geometryResolution.asParseableString());
@@ -209,6 +214,7 @@ ImageOverlay::postCTOR()
 
     // place the geometry under a drapeable node so it will project onto the terrain    
     DrapeableNode* d = new DrapeableNode();
+    d->setDrapingEnabled(*_draped);
     addChild( d );
 
     d->addChild( _root );
@@ -296,6 +302,7 @@ ImageOverlay::getDraped() const
 void
 ImageOverlay::setDraped( bool draped )
 {
+    _draped = draped;
     static_cast< DrapeableNode *>( getChild(0))->setDrapingEnabled( draped );
 }
 
@@ -347,6 +354,8 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     osg::MatrixTransform* transform = new osg::MatrixTransform;
     
     osg::Geode* geode = new osg::Geode;
+    // Disable depth test
+    geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     transform->addChild(geode);
 
     osg::Geometry* geometry = new osg::Geometry();     

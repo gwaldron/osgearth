@@ -182,6 +182,7 @@ namespace osgEarth { namespace Annotation
         optional<float> _alpha;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
+        optional<bool> _draped;
 
         bool _updateScheduled;
 

@@ -590,5 +590,9 @@ TerrainTileModelFactory::createNormalTexture(osg::Image* image) const
     tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint( false );
     tex->setMaxAnisotropy( 1.0f );
+
+    // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
+    ImageUtils::activateMipMaps(tex);
+
     return tex;
 }

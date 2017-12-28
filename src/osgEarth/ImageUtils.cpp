@@ -1315,7 +1315,9 @@ void
 ImageUtils::activateMipMaps(osg::Texture* tex)
 {
    #ifdef OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS
-    if (tex == 0L)
+   // #TODO we should modify activateMipMaps to use the normal map mipmaping algo in nvtt
+   
+   if (tex == 0L)
         return;
 
     // Verify that this texture requests mipmaps:

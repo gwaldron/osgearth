@@ -263,15 +263,18 @@ LandCoverCoverageLayerOptions::getConfig() const
 {
     Config conf = ImageLayerOptions::getConfig();
     conf.key() = "coverage";
-    Config mappings("land_cover_mappings");
-    conf.update(mappings);
-    for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
-        i != _valueMappings.end();
-        ++i)
-    {
-        LandCoverValueMapping* mapping = i->get();
-        if (mapping)
-            mappings.add(mapping->getConfig());
+    if (conf.hasChild("land_cover_mappings") == false)
+    {   
+        Config mappings("land_cover_mappings");
+        conf.add(mappings); //.update(mappings);
+        for(LandCoverValueMappingVector::const_iterator i = _valueMappings.begin();
+            i != _valueMappings.end();
+            ++i)
+        {
+            LandCoverValueMapping* mapping = i->get();
+            if (mapping)
+                mappings.add(mapping->getConfig());
+        }
     }
     conf.set("warp", _warp);
     return conf;

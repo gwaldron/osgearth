@@ -865,7 +865,7 @@ TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
 
     // Get extent in local profile:
     GeoExtent localExtent = ex;
-    if (getProfile() && getProfile()->getSRS()->isHorizEquivalentTo(ex.getSRS()))
+    if (getProfile() && !getProfile()->getSRS()->isHorizEquivalentTo(ex.getSRS()))
     {
         localExtent = getProfile()->clampAndTransformExtent(ex);
     }

@@ -1301,7 +1301,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)
         {
             Feature* f = itr->get();
-            f->splitAcrossDateLine( splitFeatures );
+            FeatureList tmpSplit;
+            f->splitAcrossDateLine(tmpSplit);
+            splitFeatures.insert(splitFeatures.end(), tmpSplit.begin(), tmpSplit.end());
         }
     }
     else

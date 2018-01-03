@@ -94,8 +94,14 @@ TextSymbolizer::create(Feature*             feature,
     }
     if ( !font )
         font = Registry::instance()->getDefaultFont();
+
     if ( font )
+    {
         t->setFont( font );
+
+        // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
+        t->setStateSet(0L);
+    }
 
     if ( _symbol.valid() )
     {

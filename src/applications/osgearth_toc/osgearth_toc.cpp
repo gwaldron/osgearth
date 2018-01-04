@@ -351,7 +351,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     grid->setControl( gridCol, gridRow, statusLabel );
     gridCol++;
 
-    if (visibleLayer && !elevationLayer && visibleLayer->getEnabled() && visibleLayer->getVisible())
+    if (visibleLayer && !elevationLayer && visibleLayer->getEnabled())
     {
         // an opacity slider
         HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, visibleLayer->getOpacity() );
@@ -403,6 +403,11 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
 
     grid->setControl( gridCol, gridRow, addRemove );
     gridCol++;
+
+    if (layer->getStatus().isError())
+    {
+        grid->setControl(gridCol, gridRow, new LabelControl(layer->getStatus().message(), osg::Vec4(1,.2,.2,1)));
+    }
 }
 
 void

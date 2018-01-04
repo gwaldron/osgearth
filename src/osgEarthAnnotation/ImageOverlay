@@ -159,7 +159,7 @@ namespace osgEarth { namespace Annotation
 
         void updateFilters();
 
-        osg::Node* createNode(osgEarth::Features::Feature* feature);
+        osg::Node* createNode(osgEarth::Features::Feature* feature, bool split);
 
 
         osg::Vec2d _lowerLeft;
@@ -182,6 +182,7 @@ namespace osgEarth { namespace Annotation
         optional<float> _alpha;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
+        optional<bool> _draped;
 
         bool _updateScheduled;
 

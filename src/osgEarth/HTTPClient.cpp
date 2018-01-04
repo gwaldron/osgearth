@@ -1258,44 +1258,9 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
         if (res == CURLE_GOT_NOTHING)
         {
-            OE_INFO << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
+            OE_DEBUG << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
         }
     }
-
-#if 0
-    // upon success, parse the data:
-    if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
-    {
-        // check for multipart content
-        if (response._mimeType.length() > 9 &&
-            ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
-        {
-            OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
-
-            //TODO: parse out the "wcs" -- this is WCS-specific
-            if ( !decodeMultipartStream( "wcs", part.get(), response._parts ) )
-            {
-                // error decoding an invalid multipart stream.
-                // should we do anything, or just leave the response empty?
-            }
-        }
-        else
-        {
-            for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
-            {
-                part->_headers[itr->first] = itr->second;
-            }
-
-            // Write the headers to the metadata
-            response._parts.push_back( part.get() );
-        }
-    }
-    else  /*if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT) */
-    {
-        //If we were aborted by a callback, then it was cancelled by a user
-        response._cancelled = true;
-    }
-#endif
 
     response._duration_s = OE_STOP_TIMER(get_duration);
 

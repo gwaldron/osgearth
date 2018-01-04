@@ -39,6 +39,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT MetaImage
     {
     public:
+        //! Construct a new Metatiled image
         MetaImage() { }
 
         //! Sets the data elevation at location (x,y), where (0,0) is the center.

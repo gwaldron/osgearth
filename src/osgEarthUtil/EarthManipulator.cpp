@@ -762,9 +762,10 @@ EarthManipulator::established()
         else
         {
             Viewpoint vp;
-            vp.focalPoint() = GeoPoint(_srs.get(), safeNode->getBound().center(), ALTMODE_ABSOLUTE);
+            const Profile* profile = _mapNode->getMap()->getProfile();
+            vp.focalPoint() = GeoPoint(_srs.get(), profile->getExtent().getCentroid(), ALTMODE_ABSOLUTE);
             vp.heading()->set( 0.0, Units::DEGREES );
-            vp.pitch()->set( -89.0, Units::DEGREES );
+            vp.pitch()->set( -90.0, Units::DEGREES );
             vp.range()->set( safeNode->getBound().radius()*2.0, Units::METERS );
             vp.positionOffset()->set(0,0,0);
             setHomeViewpoint( vp );

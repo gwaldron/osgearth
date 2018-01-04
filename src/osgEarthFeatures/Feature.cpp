@@ -195,6 +195,16 @@ Feature::setFID(FeatureID fid)
     _fid = fid;
 }
 
+GeoExtent
+Feature::getExtent() const
+{
+    if (!getSRS() || !getGeometry())
+    {
+        return GeoExtent::INVALID;
+    }
+    return GeoExtent(getSRS(), getGeometry()->getBounds());
+}
+
 void
 Feature::setSRS( const SpatialReference* srs )
 {
@@ -681,32 +691,43 @@ void Feature::transform( const SpatialReference* srs )
 
 void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
 {
+    splitFeatures.clear();
+    
      // If the feature is geodetic, try to split it across the dateline.
     if (getSRS() && getSRS()->isGeodetic())
     {
-        // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
-        double minLon = -540;
-        for (int i = 0; i < 3; i++)
+        GeoExtent extent(getSRS(), getGeometry()->getBounds());
+        // Only split the feature if it crosses the antimerdian
+        if (extent.crossesAntimeridian())
         {
-            double offset = minLon - -180.0;
-            double maxLon = minLon + 360.0;
-            Bounds bounds(minLon, -90.0, maxLon, 90.0);
-            osg::ref_ptr< Geometry > croppedGeometry;
-            if (getGeometry()->crop(bounds, croppedGeometry))
+            // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
+            double minLon = -540;
+            for (int i = 0; i < 3; i++)
             {
-                // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
-                for (int j = 0; j < croppedGeometry->size(); j++)
+                double offset = minLon - -180.0;
+                double maxLon = minLon + 360.0;
+                Bounds bounds(minLon, -90.0, maxLon, 90.0);
+                osg::ref_ptr< Geometry > croppedGeometry;
+                if (getGeometry()->crop(bounds, croppedGeometry))
                 {
-                    (*croppedGeometry)[j].x() -= offset;
+                    // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
+                    for (int j = 0; j < croppedGeometry->size(); j++)
+                    {
+                        (*croppedGeometry)[j].x() -= offset;
+                    }
+                    osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
+                    // Make sure the feature is wound correctly.
+                    croppedGeometry->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                    croppedFeature->setGeometry(croppedGeometry.get());
+                    splitFeatures.push_back(croppedFeature);
                 }
-                osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
-                croppedFeature->setGeometry(croppedGeometry.get());
-                splitFeatures.push_back(croppedFeature);
+                minLon += 360.0;
             }
-            minLon += 360.0;
         }
     }
-    else
+
+    // If we didn't actually split the feature then just add the original
+    if (splitFeatures.empty())
     {
         splitFeatures.push_back( this );
     }   

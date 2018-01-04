@@ -8,15 +8,13 @@ Please change your API key to your own MapBox account, this key is for demo purp
 
 
     <image name="mapbox_satellite" driver="xyz">
-        <url>http://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.jpg?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng
-</url>
+        <url>http://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.jpg?access_token=YOUR_TOKEN_HERE</url>
         <profile>spherical-mercator</profile>
     </image>
 
 
     <elevation name="mapbox_terrain" driver="xyz" max_data_level="14">
-        <url>http://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng
-</url>
+        <url>http://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=YOUR_TOKEN_HERE</url>
         <profile>spherical-mercator</profile>
         <elevation_encoding>mapbox</elevation_encoding>
     </elevation>
@@ -25,7 +23,7 @@ Please change your API key to your own MapBox account, this key is for demo purp
     <model name="mapbox_streets" driver="feature_geom">
 
         <features name="mapbox_streets" driver="xyz">
-            <url>http://[abcd].tiles.mapbox.com/v4/mapbox.mapbox-streets-v7/{z}/{x}/{y}.vector.pbf?access_token=pk.eyJ1IjoiamFzb25iZXZlcmFnZSIsImEiOiJjaXV6dXViY2QwMDBxMm9wNnBpbDdreHU0In0.KcSEgP5z_w0mIWDYon29ng</url>
+            <url>http://[abcd].tiles.mapbox.com/v4/mapbox.mapbox-streets-v7/{z}/{x}/{y}.vector.pbf?access_token=YOUR_TOKEN_HERE</url>
             <!-- Change this to pick what level you want to view the mapbox data at, just keep min_level and max_level the same -->
             <min_level>15</min_level>
             <max_level>15</max_level>

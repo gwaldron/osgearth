@@ -27,7 +27,6 @@
 #include <osgDB/FileNameUtils>
 #include <stdio.h>
 #include <ctype.h>
-#include <sys/stat.h>
 
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
@@ -181,12 +180,8 @@ namespace
         RewritePaths(const std::string& referrer)
         {
             _rewriteAbsolutePaths = false;
-            _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle(osgDB::getRealPath(referrer));
-
-            if (osgDB::fileType(_newReferrerAbsPath) == osgDB::DIRECTORY)
-            {
-                _newReferrerFolder = osgDB::getFilePath(osgDB::findDataFile(_newReferrerAbsPath));
-            }
+            _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
+            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
         }
 
         /** Whether to make absolute paths into relative paths if possible */

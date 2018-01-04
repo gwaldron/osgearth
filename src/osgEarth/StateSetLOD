@@ -35,6 +35,8 @@ namespace osgEarth
      * By default, this class works like osg::LOD and uses the camera's 
      * distance to the bounding center as the value used to select active
      * statesets. You can change the metric by calling setGetValueFunction().
+     *
+     * @deprecated
      */
     class OSGEARTH_EXPORT StateSetLOD : public osg::Group
     {

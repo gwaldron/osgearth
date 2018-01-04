@@ -22,7 +22,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-//#include <osgEarthFeatures/FeatureCursor>
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Query>

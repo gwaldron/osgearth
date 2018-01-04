@@ -99,8 +99,10 @@ namespace osgEarth
         /** Ready-only access to the parameter list (as built with addParameter) */
         const Parameters& getParameters() const;        
 
+        //! Add a head name/value pair to an HTTP request
         void addHeader( const std::string& name, const std::string& value );
 
+        //! Collection of headers in this request
         const Headers& getHeaders() const;
 
         /**

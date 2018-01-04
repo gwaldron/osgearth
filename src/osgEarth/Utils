@@ -45,7 +45,9 @@ namespace osgEarth
 {    
     //------------------------------------------------------------------------
 
-
+    /**
+     * Utility for storing observables in an osg::Object
+     */
     template<typename T>
     class OptionsData : public osg::Object {
     public:
@@ -83,12 +85,9 @@ namespace osgEarth
         
 
         // Polyfill
+        // @deprecated (since we require OSG 3.4.x now)
         static const osg::BoundingBox& getBoundingBox(const osg::Drawable* d) {
-#if OSG_VERSION_GREATER_THAN(3,3,1)
             return d->getBoundingBox();
-#else
-            return d->getBound();
-#endif
         }
     };
 
@@ -96,10 +95,12 @@ namespace osgEarth
      * Removes the given event handler from the view.
      * This is the equivalent of osgViewer::View::removeEventHandler which is not available
      * in older versions of OSG
+     * @deprecated
      */
     extern OSGEARTH_EXPORT void removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler);
 
     // utility: functor for traversing a target node
+    // @deprecated
     template<typename T> struct TraverseFunctor {
         T* _target;
         TraverseFunctor(T* target) : _target(target) { }
@@ -107,6 +108,7 @@ namespace osgEarth
     };
 
     // utility: node that traverses another node via a functor
+    // @deprecated
     template<typename T>
     struct TraverseNode : public osg::Node {
         TraverseFunctor<T> _tf;
@@ -117,6 +119,7 @@ namespace osgEarth
     };
 
     // utility: cull callback that traverses another node
+    // @deprecated
     struct TraverseNodeCallback : public osg::NodeCallback {
         osg::ref_ptr<osg::Node> _node;
         TraverseNodeCallback(osg::Node* node) : _node(node) { }

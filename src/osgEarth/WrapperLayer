@@ -23,7 +23,9 @@
 
 namespace osgEarth
 {
-    /** Template to support the Wrapper Layer template */
+    /** Template to support the Wrapper Layer template
+      * @deprecated
+      */
     template<typename OPTIONS>
     class WrapperLayerOptions : public LayerOptions
     {
@@ -43,6 +45,7 @@ namespace osgEarth
     };
 
     /** Template for creating a Map Layer that holds a single serializable resource object. */
+    /** @deprecated */
     template<typename OPTIONS>
     class WrapperLayer : public Layer
     {

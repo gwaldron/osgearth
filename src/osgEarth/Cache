@@ -89,9 +89,10 @@ namespace osgEarth
           * also takes care of global (registry) override policy. */
         void integrateCachePolicy(const optional<CachePolicy>& policy);
 
-        /** Get/Set the settings in a read-options structure. */
+        /** Extracts the settings from a read-options structure. */
         static CacheSettings* get(const osgDB::Options* readOptions);
-        //static bool lock(const osgDB::Options* readOptions, osg::ref_ptr<CacheSettings>& output);
+
+        /** Stores this instance in an Options data container. Extract using get(). */
         void store(osgDB::Options* readOptions);
 
         /** for debugging */

@@ -716,11 +716,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             params._rttViewMatrix.set( rttViewMatrix );
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
-            params._visibleFrustumPH = clampedFrustumPH; //frustumPH;
-        }
-        else
-        {
-            OE_INFO << "Frame " << cv->getFrameStamp()->getFrameNumber() << " verts = 0" << std::endl;
+            params._visibleFrustumPH = clampedFrustumPH;
         }
 
         // service a "dump" of the polyhedrons for dubugging purposes

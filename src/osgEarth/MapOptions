@@ -46,6 +46,7 @@ namespace osgEarth
         };		
 
     public:
+        //! Construct from serialized config options
         MapOptions( const ConfigOptions& options =ConfigOptions() )
             : ConfigOptions          ( options ),
               _cachePolicy           ( ),

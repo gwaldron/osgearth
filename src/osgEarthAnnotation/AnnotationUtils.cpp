@@ -226,6 +226,9 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
         font->setGlyphImageMargin( 2 );
 #endif
+
+        // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
+        t->setStateSet(0L);
     }
 
     float resFactor = 2.0f;

@@ -52,8 +52,8 @@
 namespace osgEarth
 {
     /**
-    * Depth Offsetting options.
-    */
+     * Depth Offsetting options.
+     */
     class OSGEARTH_EXPORT DepthOffsetOptions
     {
     public:

@@ -89,6 +89,7 @@ namespace osgEarth
     
     /**
      * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
+     * @deprecated
      */
     struct OSGEARTH_EXPORT CullNodeByNormal : public osg::NodeCallback {
         osg::Vec3d _normal;
@@ -96,6 +97,7 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
     };
 
+    // @deprecated
     struct CullDrawableByNormal : public osg::Drawable::CullCallback {
         osg::Vec3d _normal;
         CullDrawableByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
@@ -104,6 +106,7 @@ namespace osgEarth
         }
     };
 
+    // @deprecated
     struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
         unsigned _frame;
         CullNodeByFrameNumber() : _frame(0) { }
@@ -113,10 +116,12 @@ namespace osgEarth
         }
     };
 
+    // @deprecated
     struct DisableSubgraphCulling : public osg::NodeCallback {
         void operator()(osg::Node* n, osg::NodeVisitor* v);
     };
 
+    // @deprecated
     struct StaticBound : public osg::Node::ComputeBoundingSphereCallback {
         osg::BoundingSphere _bs;
         StaticBound(const osg::BoundingSphere& bs) : _bs(bs) { }
@@ -125,6 +130,7 @@ namespace osgEarth
 
     // a cull callback that prevents objects from being included in the near/fear clip
     // plane calculates that OSG does.
+    // @deprecated
     struct OSGEARTH_EXPORT DoNotComputeNearFarCullCallback : public osg::NodeCallback
     {
         void operator()(osg::Node* node, osg::NodeVisitor* nv);

@@ -36,9 +36,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapNodeOptions : public ConfigOptions
     {
     public:
+        //! Construct from a Config serialization
         MapNodeOptions( const Config& conf =Config() );
+
+        //! Construct from a set of terrain options
         MapNodeOptions( const TerrainOptions& terrainOpts );
+
+        //! Copy construct
         MapNodeOptions( const MapNodeOptions& rhs );
+
+        //! Destruct
         virtual ~MapNodeOptions();
 
         /** 

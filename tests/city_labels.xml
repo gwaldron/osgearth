@@ -1,0 +1,25 @@
+<feature_model name="City Labels">
+    <features driver="ogr">
+        <url>../data/cities.shp</url>
+    </features>
+    <styles>
+        <selector class="default">
+            <query>
+                <expr><![CDATA[scalerank < 5]]></expr>
+            </query>
+        </selector>
+        <style type="text/css">
+            default {
+                icon:           "../data/downarrow.png";
+                icon-placement: centroid;
+                icon-declutter: true;
+                icon-align:     center-bottom;
+                text-content:   [name];
+                text-priority:  10-[scalerank];
+                text-align:     center-bottom;
+                text-halo:      #1f1f1f;
+                text-size:      6+2*(10-[scalerank]);
+            }
+        </style>
+    </styles>
+</feature_model>

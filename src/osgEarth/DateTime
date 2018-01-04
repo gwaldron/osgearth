@@ -53,7 +53,7 @@ namespace osgEarth
         /** DateTime from UTC seconds since the epoch */
         DateTime(TimeStamp utc);
 
-        /** DateTime from year, month, date, hours */
+        /** DateTime from year, month [1-12], date [1-31], hours [0-24) */
         DateTime(int year, int month, int day, double hours);
 
         /** DateTime from an ISO 8601 string */

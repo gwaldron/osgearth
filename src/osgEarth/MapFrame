@@ -111,8 +111,8 @@ namespace osgEarth
         template<typename T>
         T* getLayerByName(const std::string& name) {
             for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
-                T* obj = dynamic_cast<T*>(i->get());
-                if (obj->getName() == name) return obj;
+                if (i->get()->getName() == name)
+                    return dynamic_cast<T*>(i->get());
             }
             return 0L;
         }

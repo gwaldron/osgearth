@@ -45,38 +45,52 @@ GeoPositionNodeAutoScaler::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osgUtil::CullVisitor* cs = static_cast<osgUtil::CullVisitor*>(nv);
 
     osg::Camera* cam = cs->getCurrentCamera();
-    osg::Viewport* vp = 0;
-    float refScale = 1.0f;
 
-    // If this is a slave camera, scale to the slave's master camera's viewport:
+    // If this is an RTT camera, we need to use it's "parent"
+    // to calculate the proper scale factor.
     if (cam->isRenderToTextureCamera() &&
         cam->getView() &&
         cam->getView()->getCamera() &&
         cam->getView()->getCamera() != cam)
     {
-        osg::Camera* refCam = cam->getView()->getCamera();
-        if (refCam && refCam->getViewport() && cam->getViewport())
-        {
-            refScale = cam->getViewport()->width() / refCam->getViewport()->width();
-        }
+        cam = cam->getView()->getCamera();
     }
 
-    double size = 1.0/(cs->pixelSize( node->getBound().center(), 0.5f ));
-    //size *= viewPortScale;
-    if (size < _minScale)
-        size = _minScale;
-    else if (size>_maxScale)
-        size = _maxScale;
-    size *= refScale;
-
-    if (refScale != 1.0f)
+    if (cam->getViewport())
     {
-                    //OE_INFO << "refScale=" << refScale << "; size=" << size << std::endl;
+        // Reset the scale so we get a proper bound
+        geo->getPositionAttitudeTransform()->setScale(_baseScale);
+        const osg::BoundingSphere& bs = node->getBound();
 
+        // transform centroid to VIEW space:
+        osg::Vec3d centerView = bs.center() * cam->getViewMatrix();
+
+        // Set X coordinate to the radius so we can use the resulting CLIP
+        // distance to calculate meters per pixel:
+        centerView.x() = bs.radius();
+
+        // transform the CLIP space:
+        osg::Vec3d centerClip = centerView * cam->getProjectionMatrix();
+        
+        // caluclate meters per pixel:
+        double mpp = (centerClip.x()*0.5) * cam->getViewport()->width();
+
+        // and the resulting scale we need to auto-scale.
+        double scale = bs.radius() / mpp;
+
+        if (scale < _minScale)
+            scale = _minScale;
+        else if (scale>_maxScale)
+            scale = _maxScale;
+
+        geo->getPositionAttitudeTransform()->setScale(
+            osg::componentMultiply(_baseScale, osg::Vec3d(scale, scale, scale)));
     }
 
-    geo->getPositionAttitudeTransform()->setScale( osg::componentMultiply(_baseScale, osg::Vec3d(size,size,size)) );
     if (node->getCullingActive() == false)
+    {
         node->setCullingActive(true);
+    }
+
     traverse(node, nv);
 }

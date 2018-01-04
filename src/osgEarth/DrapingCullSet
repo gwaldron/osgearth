@@ -34,8 +34,9 @@ namespace osgEarth
     /**
      * Culling set for tracking groups whose contents should be "draped",
      * i.e. rendered to a texture and projected onto the terrain.
+     * Internal object - do not use directly. Use a DrapeableNode instead.
      */
-    class OSGEARTH_EXPORT DrapingCullSet
+    class OSGEARTH_INTERNAL DrapingCullSet
     {
     public:
         struct Entry
@@ -70,8 +71,9 @@ namespace osgEarth
 
     /**
      * Houses all the active DrapingCullSets under an osgEarth TerrainEngine.
+     * Internal node - so not use directly.
      */
-    class OSGEARTH_EXPORT DrapingManager
+    class OSGEARTH_INTERNAL DrapingManager
     {
     public:
         //! Gets the draping cull set associated with a camera.

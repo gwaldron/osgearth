@@ -569,6 +569,10 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
         setUpCamera( params );
+
+        // We do this so we can detect the RTT's camera's parent for 
+        // things like auto-scaling, picking, and so on.
+        params._rttCamera->setView(cv->getCurrentCamera()->getView());
     }
 }
        

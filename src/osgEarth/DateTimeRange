@@ -27,19 +27,32 @@
 
 namespace osgEarth
 {
+    /**
+     * Two DateTime objects representing a temporal range.
+     */
     class OSGEARTH_EXPORT DateTimeRange
     {
     public:
+        //! Start of date/time range
         optional<DateTime>& begin() { return _begin; }
+        //! Start of date/time range
         const optional<DateTime>& begin() const { return _begin; }
 
+        //! End of date/time range
         optional<DateTime>& end() { return _end; }
+        //! End of date/time range
         const optional<DateTime>& end() const { return _end; }
 
+        //! Expand the range to include a date/time
         void expandBy(const DateTime& other);
+
+        //! Expand the range to include another date/time range
         void expandBy(const DateTimeRange& other);
 
+        //! True is the given date/time falls within this range
         bool intersects(const DateTime& other) const;
+
+        //! True is the given range falls within this range
         bool intersects(const DateTimeRange& other) const;
 
     private:

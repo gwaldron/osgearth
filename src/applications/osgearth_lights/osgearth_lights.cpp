@@ -31,6 +31,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Ephemeris>
+#include <osgEarthUtil/Shadowing>
 
 #define LC "[lights] "
 
@@ -72,9 +73,10 @@ randomColor()
 }
 
 
-int
-addLights(MapNode* mapNode, int lightNum)
+osg::Group*
+addLights(osg::View* view, osg::Node* root, int lightNum)
 {
+    MapNode* mapNode = MapNode::get(root);
     const SpatialReference* mapsrs = mapNode->getMapSRS();
     const SpatialReference* geosrs = mapsrs->getGeographicSRS();
     
@@ -91,7 +93,7 @@ addLights(MapNode* mapNode, int lightNum)
 
         osg::Light* sun = new osg::Light(lightNum++);
         world.normalize();
-        sun->setDirection(-world);
+        sun->setPosition(osg::Vec4d(world, 0.0));
 
         sun->setAmbient(osg::Vec4(0.2, 0.2, 0.2, 1.0));
         sun->setDiffuse(osg::Vec4(1.0, 1.0, 0.9, 1.0));
@@ -100,8 +102,16 @@ addLights(MapNode* mapNode, int lightNum)
         sunLS->setLight(sun);
 
         lights->addChild( sunLS );
+
+        ShadowCaster* caster = osgEarth::findTopMostNodeOfType<ShadowCaster>(root);
+        if (caster)
+        {
+            OE_INFO << "Found a shadow caster!\n";
+            caster->setLight(sun);
+        }
     }
 
+#if 1
     // A red spot light. A spot light has a real position in space 
     // and points in a specific direciton. The Cutoff and Exponent
     // properties control the cone angle and sharpness, respectively
@@ -142,14 +152,13 @@ addLights(MapNode* mapNode, int lightNum)
 
         lights->addChild( pointLS );
     }
+#endif
 
     // Generate the necessary uniforms for the shaders.
     GenerateGL3LightingUniforms gen;
     lights->accept(gen);
 
-    mapNode->addChild(lights);
-
-    return lights->getNumChildren();
+    return lights;
 }
 
 
@@ -210,14 +219,9 @@ main(int argc, char** argv)
             phong->attach(node->getOrCreateStateSet());
         }
 
-        int numAdded = addLights(mapNode, sky?1:0);
+        osg::Group* lights = addLights(&viewer, node.get(), sky?1:0);
 
-        // Update the per-view light count:
-        //osg::Uniform* numLights = viewer.getCamera()->getOrCreateStateSet()->getOrCreateUniform("osg_NumLights", osg::Uniform::INT);
-        //int value;
-        //numLights->get(value);
-        //numLights->set(value + numAdded );
-        //OE_NOTICE << LC << "Total number of lights = " << value+numAdded << std::endl;
+        mapNode->addChild(lights);
         
         viewer.setSceneData(node.get()); 
         while (!viewer.done())

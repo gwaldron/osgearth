@@ -36,6 +36,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainTileNode
     {
     public:    
+        //! TileKey represented by this tile node
         virtual const TileKey& getKey() const = 0;
 
         virtual double getMinimumExpirationTime() const = 0;

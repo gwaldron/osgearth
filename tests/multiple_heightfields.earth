@@ -10,7 +10,10 @@ lo-res heightfield underlay.
 
 <map type="geocentric" version="2">
 
-    <image driver="gdal" name="world-tiff">
+    
+    <contour_map opacity="1"/>
+    
+    <image driver="gdal" name="world-tiff" enabled="false">
         <url>../data/world.tif</url>
     </image>
 
@@ -30,6 +33,4 @@ lo-res heightfield underlay.
         <lighting>false</lighting>
         <cache_policy usage="no_cache"/>
     </options>
-    
-    <contour_map opacity="0.35"/>
 </map>

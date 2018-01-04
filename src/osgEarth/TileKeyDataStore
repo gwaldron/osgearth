@@ -27,6 +27,7 @@ namespace osgEarth
     /**
      * Interface that provides access to a registry of in-memory
      * tile nodes managed by a terrain engine.
+     * @deprecated
      */
     template<typename T>
     class /*header-only*/ TileKeyDataStore

@@ -116,7 +116,9 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
         {
             _label->setText( Stringify()
                 <<  _formatter->format( mapCoords )
-                << ", " << mapCoords.z() );
+                << ", " << mapCoords.z() 
+                << "  |  "
+                << mapCoords.getSRS()->getName() );
         }
         else
         {
@@ -124,7 +126,9 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
                 << std::fixed
                 << mapCoords.x()
                 << ", " << mapCoords.y()
-                << ", " << mapCoords.z() );
+                << ", " << mapCoords.z()
+                << "  |  "
+                << mapCoords.getSRS()->getName() );
         }
     }
 }

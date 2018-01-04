@@ -12,10 +12,9 @@ See this site for SRS codes and PROJ4 initialization strings:
 http://spatialreference.org
 -->
 
-<map name="datum override example" type="geocentric" version="2">
+<map name="datum override example">
     
     <options>
-        <lighting>false</lighting>
         <profile srs="+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs"/>
     </options> 
         

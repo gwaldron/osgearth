@@ -8,12 +8,12 @@ Demonstrates the use of a file with nodata.  The white circle is a GeoTiff which
         <url>../data/world.tif</url>
         <caching_policy usage="no_cache"/>
     </image>
-	
-	<image driver="gdal" name="nodata-tiff" cache_enabled="false">
+
+    <image driver="gdal" name="nodata-tiff" cache_enabled="false">
         <url>../data/nodata.tif</url>
         <caching_policy usage="no_cache"/>
     </image>
-    
+
     <options lighting="false"/>
 
     <viewpoints>

@@ -12,6 +12,8 @@ osgEarth Sample - Raster to feature example.
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
+
+    <libraries>osgEarthSplat</libraries>
     
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
         <base_lod>12</base_lod>
@@ -21,6 +23,7 @@ osgEarth Sample - Raster to feature example.
             <image name="ESA" driver="gdal" coverage="true">
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
                 <warp>0.01</warp>
+                <profile>global-geodetic</profile>
             </image>
         </images>
         <shared_sampler> landUseTex       </shared_sampler>
@@ -76,24 +79,12 @@ osgEarth Sample - Raster to feature example.
         </styles>  
 
     </model>
-
+    
+    
+    <image name="ReadyMap 15m" driver="tms" opacity="0.8">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
   
-     <splat>        
-        <coverage>
-            <layer> CLASSMAP </layer>
-            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-        </coverage>
-        
-        <zones>
-            <zone name="default" doc="Default Climate Zone">            
-                <surface>
-                    <catalog>../data/splat/splat_catalog.xml</catalog>
-                </surface>
-            </zone>                
-        </zones>
-        
-    </splat>
-
     <viewpoints>            
         <viewpoint name="Trees 1">
           <heading>-66.2945</heading>

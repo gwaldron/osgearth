@@ -171,7 +171,6 @@ namespace
         case osg::Array::MatrixArrayType:
             return convertToBindPerVertex<osg::MatrixfArray>(static_cast<osg::MatrixfArray*>(array), numVerts);
 
-#if OSG_MIN_VERSION_REQUIRED(3,1,9)
         case osg::Array::Vec2iArrayType:
             return convertToBindPerVertex<osg::Vec2iArray>(static_cast<osg::Vec2iArray*>(array), numVerts);
 
@@ -207,7 +206,7 @@ namespace
 
         case osg::Array::MatrixdArrayType:
             return convertToBindPerVertex<osg::MatrixdArray>(static_cast<osg::MatrixdArray*>(array),  numVerts);
-#endif
+
         default:
             return array;
         }

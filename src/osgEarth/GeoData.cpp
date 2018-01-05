@@ -752,11 +752,15 @@ GeoExtent::splitAcrossAntimeridian(GeoExtent& out_west, GeoExtent& out_east) con
 {
     if ( crossesAntimeridian() )
     {
+        double width_new;
+
         out_west = *this;
-        out_west.setOriginAndSize(west(), south(), 180.0 - west(), height());
+        width_new = 180.0 - west();
+        out_west.setOriginAndSize(180.0 - width_new, south(), width_new, height());
 
         out_east = *this;
-        out_east.setOriginAndSize(-180.0, south(), width() - out_west.width(), height());
+        width_new = east() - (-180.0);
+        out_east.setOriginAndSize(-180.0, south(), width_new, height());
     }
     else if ( !_srs->isGeographic() )
     {

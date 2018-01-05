@@ -84,8 +84,6 @@ main(int argc, char** argv)
 {    
     //Run this example with the the feature_custom_filters.earth file in the tests directory for a simple example
     osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);

@@ -178,11 +178,7 @@ _maxTextureBufferSize   ( 0 )
         }
         else
         {
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
             _supportsGLSL = GL2->isGlslSupported;
-#else
-			_supportsGLSL = GL2->isGlslSupported();
-#endif
         }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
@@ -247,11 +243,7 @@ _maxTextureBufferSize   ( 0 )
 
         if ( _supportsGLSL )
         {
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
 			_GLSLversion = GL2->glslLanguageVersion;
-#else
-            _GLSLversion = GL2->getLanguageVersion();
-#endif
             OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 

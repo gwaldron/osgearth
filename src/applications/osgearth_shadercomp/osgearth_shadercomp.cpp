@@ -622,7 +622,7 @@ int main(int argc, char** argv)
 
     if ( test1 || test2 || test3 || test4 || test6 )
     {
-        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "gdal_tiff.earth" );
+        osg::ref_ptr<osg::Node> earthNode = osgDB::readRefNodeFile( "simple.earth" );
         if (!earthNode.valid())
         {
             return usage( "Unable to load earth model." );

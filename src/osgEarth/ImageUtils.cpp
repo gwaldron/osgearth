@@ -362,9 +362,7 @@ ImageUtils::flattenImage(osg::Image*                             input,
         layer->setPixelAspectRatio(input->getPixelAspectRatio());
         markAsNormalized(layer, isNormalized(input));
 
-#if OSG_MIN_VERSION_REQUIRED(3,1,0)
         layer->setRowLength(input->getRowLength());
-#endif
         layer->setOrigin(input->getOrigin());
         layer->setFileName(input->getFileName());
         layer->setWriteHint(input->getWriteHint());

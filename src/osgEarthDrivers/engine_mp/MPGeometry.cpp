@@ -165,21 +165,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // access the GL extensions interface for the current GC:
     const osg::Program::PerContextProgram* pcp = 0L;
 
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
 	osg::ref_ptr<osg::GLExtensions> ext;
-#else
-    osg::ref_ptr<osg::GL2Extensions> ext;
-#endif
     unsigned contextID;
 
     if (_supportsGLSL)
     {
         contextID = state.getContextID();
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
 		ext = osg::GLExtensions::Get(contextID, true);
-#else
-		ext = osg::GL2Extensions::Get( contextID, true );
-#endif
         pcp = state.getLastAppliedProgramObject();
     }
 
@@ -241,17 +233,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // emit a default terrain color since we're not binding a color array:
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     }
-#endif
-
-    // activate the elevation texture if there is one. Same for all layers.
-    //if ( _elevTex.valid() )
-    //{
-    //    state.setActiveTextureUnit( 2 );
-    //    state.setTexCoordPointer( 1, _tileCoords.get() ); // necessary?? since we do it above
-    //    _elevTex->apply( state );
-    //    // todo: probably need an elev texture matrix as well. -gw
-    //}
-    
+#endif    
 
     // track the active image unit.
     int activeImageUnit = -1;
@@ -618,29 +600,13 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     dispatchers.reset();
     dispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
-
-
-    //Remove?
-#if OSG_VERSION_LESS_THAN(3,1,8)
-    dispatchers.setUseGLBeginEndAdapter(false);
-#endif
-
-#if OSG_MIN_VERSION_REQUIRED(3,1,8)
-    dispatchers.activateNormalArray(_normalArray.get());
-#else
-    dispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
-#endif
-    
+    dispatchers.activateNormalArray(_normalArray.get());   
 
     if (hasVertexAttributes)
     {
         for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
         {
-#if OSG_MIN_VERSION_REQUIRED(3,1,8)
             dispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
-#else
-            dispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
-#endif             
         }
     }
 
@@ -654,25 +620,16 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
 
     // set up arrays
-#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8 )
     if( _vertexArray.valid() )
         state.setVertexPointer(_vertexArray.get());
 
     if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setNormalPointer(_normalArray.get());
-#else
-    if( _vertexData.array.valid() )
-        state.setVertexPointer(_vertexData.array.get());
-
-    if (_normalData.binding==BIND_PER_VERTEX && _normalData.array.valid())
-        state.setNormalPointer(_normalData.array.get());
-#endif
 
     if( hasVertexAttributes )
     {
         for(unsigned int index = 0; index < _vertexAttribList.size(); ++index )
         {
-#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8)
             const Array* array = _vertexAttribList[index].get();
             if (array && array->getBinding()==osg::Array::BIND_PER_VERTEX)
             {
@@ -688,14 +645,6 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
                     state.setVertexAttribPointer( index, array );
                 }
             }
-#else            
-            const osg::Array* array = _vertexAttribList[index].array.get();
-            const AttributeBinding ab = _vertexAttribList[index].binding;
-            if( ab == BIND_PER_VERTEX && array )
-            {
-                state.setVertexAttribPointer( index, array, _vertexAttribList[index].normalize );
-            }
-#endif
         }
     }
 

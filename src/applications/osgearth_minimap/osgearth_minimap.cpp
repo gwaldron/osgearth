@@ -148,7 +148,6 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
     double maxLat = osg::clampBelow(center.y() + radiusDegrees, 90.0);
 
     osgEarth::GeoExtent extent(srs, minLon, minLat, maxLon, maxLat);
-//    extent.normalize();
 
     return extent;
 }
@@ -157,8 +156,6 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     //Setup a CompositeViewer
     osgViewer::CompositeViewer viewer(arguments);

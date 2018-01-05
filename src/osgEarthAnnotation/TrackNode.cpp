@@ -27,6 +27,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Lighting>
 #include <osg/Depth>
 #include <osgText/Text>
 
@@ -68,8 +69,13 @@ _style      ( style )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
-    // tracknodes draw in screen space at their geoposition.
-    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    ScreenSpaceLayout::activate(ss);
+    
+    // Disable lighting for place nodes by default
+    ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
+
 
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 

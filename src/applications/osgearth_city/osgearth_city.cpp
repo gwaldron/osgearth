@@ -191,7 +191,7 @@ void addBuildings(Map* map)
     // the visibility range combine to determine the tile size, such that
     // tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 52.0;
+    layout.tileSize() = 500;
     layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     FeatureModelLayer* layer = new FeatureModelLayer();
@@ -243,8 +243,8 @@ void addStreets(Map* map)
     // Set up a paging layout. The tile size factor and the visibility range combine
     // to determine the tile size, such that tile radius = max range / tile size factor.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 7.5f;
-    layout.maxRange()       = 5000.0f;
+    layout.tileSize() = 500;
+    layout.maxRange() = 5000.0f;
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureModelLayerOptions streets;

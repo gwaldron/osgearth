@@ -28,6 +28,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Lighting>
 
 #include <osg/PolygonOffset>
 #include <osg/Depth>
@@ -209,9 +210,12 @@ AnnotationNode::applyRenderSymbology(const Style& style)
 
         if ( render->lighting().isSet() )
         {
-            getOrCreateStateSet()->setMode(
-                GL_LIGHTING,
+            getOrCreateStateSet()->setDefine(
+                OE_LIGHTING_DEFINE,
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+            //getOrCreateStateSet()->setMode(
+            //    GL_LIGHTING,
+            //    (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
         if ( render->depthOffset().isSet() )

@@ -31,6 +31,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Utils>
 #include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/Lighting>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -116,7 +117,12 @@ _followFixedCourse(false)
 void
 LabelNode::init( const Style& style )
 {
-    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    ScreenSpaceLayout::activate(ss);
+    
+    // Disable lighting for place nodes by default
+    ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
 
     _geode = new osg::Geode();
 

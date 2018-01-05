@@ -122,12 +122,16 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 {
                     GeoImage geoImage = imageLayer->createImage( key, progress );
            
-                    if ( geoImage.valid() )
+                    if (geoImage.valid())
                     {
-                        if ( imageLayer->isCoverage() )
-                            tex = createCoverageTexture(geoImage.getImage(), imageLayer);
-                        else
-                            tex = createImageTexture(geoImage.getImage(), imageLayer);
+                       if (imageLayer->isCoverage()) {
+                          tex = createCoverageTexture(geoImage.getImage(), imageLayer);
+                          tex->setName(key.str() + ":coverage");
+                       }
+                       else {
+                          tex = createImageTexture(geoImage.getImage(), imageLayer);
+                          tex->setName(key.str() + ":image");
+                       }
                     }
                 }
             }
@@ -362,6 +366,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         {
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createElevationTexture( hfImage );
+            texture->setName(key.str() + ":elevation");
             layerModel->setTexture( texture );
             model->elevationModel() = layerModel.get();
         }
@@ -369,10 +374,11 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         if (normalMap.valid())
         {
             TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setName( "oe_normal_map" );
+            layerModel->setName(key.str() + ":normal_map" );
 
             // Made an image, so store this as a texture with no matrix.
             osg::Texture* texture = createNormalTexture(normalMap.get());
+            texture->setName(key.str() + ":normal_map");
             layerModel->setTexture( texture );
             model->normalModel() = layerModel;
         }

@@ -90,38 +90,22 @@ ENDMACRO(DETECT_OSG_VERSION)
 #  the content of this library for linking when in debugging
 #######################################################################################################
 
-
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
         IF(${varname}_DEBUG)
-            IF(${varname})
+            IF(${varname}_RELEASE)
+                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}_RELEASE}" debug "${${varname}_DEBUG}")
+            ELSE(${varname}_RELEASE)
                 TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
-            ELSE(${varname})
-                TARGET_LINK_LIBRARIES(${TRGTNAME} debug "${${varname}_DEBUG}")
-            ENDIF(${varname})
+            ENDIF(${varname}_RELEASE)
         ELSE(${varname}_DEBUG)
-            TARGET_LINK_LIBRARIES(${TRGTNAME} "${${varname}}" )
+            TARGET_LINK_LIBRARIES(${TRGTNAME} ${${varname}} )
         ENDIF(${varname}_DEBUG)
     ENDFOREACH(varname)
 ENDMACRO(LINK_WITH_VARIABLES TRGTNAME)
 
 MACRO(LINK_INTERNAL TRGTNAME)
-    IF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
-        TARGET_LINK_LIBRARIES(${TRGTNAME} ${ARGN})
-    ELSE("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
-        FOREACH(LINKLIB ${ARGN})
-            IF(MSVC AND OSG_MSVC_VERSIONED_DLL)
-                #when using versioned names, the .dll name differ from .lib name, there is a problem with that:
-                #CMake 2.4.7, at least seem to use PREFIX instead of IMPORT_PREFIX  for computing linkage info to use into projects,
-                # so we full path name to specify linkage, this prevent automatic inferencing of dependencies, so we add explicit depemdencies
-                #to library targets used
-                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${OUTPUT_LIBDIR}/${LINKLIB}${CMAKE_RELEASE_POSTFIX}.lib" debug "${OUTPUT_LIBDIR}/${LINKLIB}${CMAKE_DEBUG_POSTFIX}.lib")
-                ADD_DEPENDENCIES(${TRGTNAME} ${LINKLIB})
-            ELSE(MSVC AND OSG_MSVC_VERSIONED_DLL)
-                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${LINKLIB}${CMAKE_RELEASE_POSTFIX}" debug "${LINKLIB}${CMAKE_DEBUG_POSTFIX}")
-            ENDIF(MSVC AND OSG_MSVC_VERSIONED_DLL)
-        ENDFOREACH(LINKLIB)
-    ENDIF("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" GREATER 2.4)
+    TARGET_LINK_LIBRARIES(${TRGTNAME} ${ARGN})
 ENDMACRO(LINK_INTERNAL TRGTNAME)
 
 MACRO(LINK_EXTERNAL TRGTNAME)

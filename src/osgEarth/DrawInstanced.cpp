@@ -74,7 +74,6 @@ namespace
             osg::Vec3d centerView = bbox.center() * ri.getState()->getModelViewMatrix();
             float rangeToBS = (float)-centerView.z() - radius;
 
-#if OSG_MIN_VERSION_REQUIRED(3,3,0)
             // check for inherit mode (3.3.0+ only)
             osg::Camera* cam = ri.getCurrentCamera();
 
@@ -90,7 +89,6 @@ namespace
                     rangeToBS = (float)(-centerRefView.z() - radius);
                 }
             }
-#endif
 
             // these should obviously be programmable
             const float maxDistance = 2000.0f;

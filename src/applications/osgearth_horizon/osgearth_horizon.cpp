@@ -45,7 +45,7 @@ int
 usage(const char* name)
 {
     OE_NOTICE 
-        << "\nUsage: " << name << " file.earth" << std::endl
+        << "\nUsage: " << name << " file.earth --activity" << std::endl
         << MapNodeHelper().usage() << std::endl;
 
     return 0;
@@ -109,6 +109,9 @@ main(int argc, char** argv)
 
     // help?
     if ( arguments.read("--help") )
+        return usage(argv[0]);
+
+    if (arguments.find("--activity") < 0)
         return usage(argv[0]);
 
     // create a viewer:

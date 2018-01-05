@@ -32,6 +32,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Lighting>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -103,7 +104,13 @@ _followFixedCourse( false )
 void
 PlaceNode::init()
 {
-    ScreenSpaceLayout::activate( this->getOrCreateStateSet() );
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    // Draw place nodes in screen space.
+    ScreenSpaceLayout::activate(ss);
+
+    // Disable lighting for place nodes by default
+    ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
 
     osgEarth::clearChildren( getPositionAttitudeTransform() );
 

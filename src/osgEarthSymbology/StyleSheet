@@ -56,6 +56,10 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new style sheet */
         StyleSheet( const Config& conf );
 
+	/** Optional name of the style sheet */
+	optional<std::string>& name() { return _name; }
+	const optional<std::string>& name() const { return _name; }
+
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }
 
@@ -103,6 +107,7 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
+        optional<std::string>        _name;
         URIContext                   _uriContext;
         osg::ref_ptr<ScriptDef>      _script;
         StyleSelectorList            _selectors;

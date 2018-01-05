@@ -178,6 +178,7 @@ Config
 StyleSheet::getConfig() const
 {
     Config conf;
+    conf.set("name", _name);
 
     for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
@@ -226,6 +227,8 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
+    conf.getIfSet("name", _name);
+
     _uriContext = URIContext( conf.referrer() );
 
     // read in any resource library references

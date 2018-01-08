@@ -307,7 +307,7 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
     if ( !tile.valid() && OE_GET_TIMER(get) >= timeout )
     {
         // this means we timed out trying to fetch the map tile.
-        OE_TEST << LC << "Timout fetching tile " << key.str() << std::endl;
+        OE_TEST << LC << "Timeout fetching tile " << key.str() << std::endl;
     }
 
     if ( tile.valid() )

@@ -67,25 +67,6 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
                 i->get()->reset( aa.asView(), _mapNode );
         }
-
-#if 1 // testing AGL, Dist to Point
-        osg::Vec3d eye, center, up;
-        aa.asView()->getCamera()->getViewMatrixAsLookAt(eye, center, up);
-        osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(eye, osg::Vec3d(0,0,0));
-        osgUtil::IntersectionVisitor iv(lsi);
-        lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
-        //iv.setUserData( new Map() );
-        _mapNode->accept(iv);
-
-        if ( !lsi->getIntersections().empty() )
-        {            
-            double agl = (eye - lsi->getFirstIntersection().getWorldIntersectPoint()).length();
-            double dtp = (eye - world).length();
-            //OE_NOTICE << "AGL = " << agl << "m; DPT = " << dtp << "m" << std::endl;
-            Registry::instance()->startActivity("AGL", Stringify() << agl << " m");
-            Registry::instance()->startActivity("Range", Stringify() << dtp << " m");
-        }
-#endif
     }
 
     return false;
@@ -97,14 +78,7 @@ MouseCoordsLabelCallback::MouseCoordsLabelCallback( LabelControl* label, Formatt
 _label    ( label ),
 _formatter( formatter )
 {
-#if 0
-    if ( !formatter )
-    {
-        LatLongFormatter* formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
-        formatter->setPrecision( 5 );
-        _formatter = formatter;
-    }
-#endif
+    //nop
 }
 
 void
@@ -139,6 +113,7 @@ MouseCoordsLabelCallback::reset( osg::View* view, MapNode* mapNode )
     if ( _label.valid() )
     {
         _label->setText( "" );
+        _label->setText(Stringify() << "No data  |  " << mapNode->getMapSRS()->getName() );
     }
 }
 

@@ -693,6 +693,10 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             // yes, so build some pagedlods to bring in the next level.
             osg::ref_ptr<osg::Group> group = new osg::Group();
 
+            char buff[300];
+            sprintf(buff, "<lod,x,y> %i/%i/%i", lod, tileX, tileY);
+            group->setName(buff);
+
             // calculate the LOD of the next level:
             if ( lod+1 != ~0 )
             {

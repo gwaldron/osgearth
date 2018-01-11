@@ -366,7 +366,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
         // sampler that will hold the instance matrices:
         osg::Image* image = new osg::Image();
-        image->setName("osgearth.drawinstanced.postex");
+        image->setName("osgearth.InstancedTBO");
 		image->allocateImage( tboSize*4, 1, 1, GL_RGBA, GL_FLOAT );
 
 		// could use PixelWriter but we know the format.
@@ -399,7 +399,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 		}
 
         osg::TextureBuffer* posTBO = new osg::TextureBuffer;
-		posTBO->setImage(image);
+        posTBO->setName("osgearth.texturebufferTBO");
+        posTBO->setImage(image);
         posTBO->setInternalFormat( GL_RGBA32F_ARB );
         posTBO->setUnRefImageDataAfterApply( true );
 

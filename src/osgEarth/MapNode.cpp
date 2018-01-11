@@ -656,6 +656,7 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
 
         // encase the layer's node in a container that will hold its state set:
         osg::Group* nodeContainer = new osg::Group();
+        nodeContainer->setName(layer->getName());
         nodeContainer->setStateSet(layer->getOrCreateStateSet());
         nodeContainer->addChild( node );
         _layerNodes->addChild( nodeContainer );

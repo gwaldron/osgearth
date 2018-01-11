@@ -247,6 +247,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     if ( !node.valid() )
     {
         node = new osg::Group();
+        node.get()->setName(key.str());
     }
 
     // notify any callbacks.
@@ -255,6 +256,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     tileRadius = std::max(tileBounds.radius(), tileRadius);
 
     osg::PagedLOD* plod = new osg::PagedLOD;
+    plod->setName(key.str());
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 

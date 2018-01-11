@@ -89,6 +89,8 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     _key = key;
 
+    setName(key.str());
+    
     // Mask generator creates geometry from masking boundaries when they exist.
     osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
         key, 
@@ -522,8 +524,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
         if (_empty == false)
         {
             TerrainCuller* culler = dynamic_cast<TerrainCuller*>(&nv);
-        
-            if (VisitorData::isSet(culler->getParent(), "osgEarth.Stealth"))
+            static std::string steathName = "osgEarth.Stealth";
+            if (VisitorData::isSet(culler->getParent(), steathName))
             {
                 accept_cull_stealth( culler );
             }

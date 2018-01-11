@@ -380,12 +380,8 @@ TerrainLayer::open()
         }
         else
         {
-            // User supplied the tile source, so attempt to get its profile:
-            setProfile(_tileSource->getProfile() );
-            if (!_profile.valid())
-            {
-                setStatus( Status::Error(getName(), "Cannot establish profile") );
-            }
+            // User supplied the tile source, so attempt to initialize it:
+            _tileSource = createAndOpenTileSource();
         }
 
         // Finally, open and activate a caching bin for this layer if it

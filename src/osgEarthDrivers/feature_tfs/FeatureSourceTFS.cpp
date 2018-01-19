@@ -81,10 +81,21 @@ public:
         // make a local copy of the read options.
         _readOptions = Registry::cloneOrCreateOptions(readOptions);
 
+	const URI tfsURI = _options.url().value();
+	if ( tfsURI.empty() )
+	{
+	    return Status::Error( Status::ConfigurationError, "Fail: driver requires a valid \"url\" property" );
+	}
+
+	// Add URI::option_string as plugin string data to be passed as custom header to CURL
+	// later in HTTPClient::doGet().
+	if (tfsURI.optionString().isSet())
+	    _readOptions->setPluginStringData("osgEarth::URI::optionString", tfsURI.optionString().get());
+
         FeatureProfile* fp = 0L;
 
         // Try to read the TFS metadata:
-        _layerValid = TFSReaderWriter::read(_options.url().get(), _readOptions.get(), _layer);
+	_layerValid = TFSReaderWriter::read(tfsURI, _readOptions.get(), _layer);
 
         if (_layerValid)
         {

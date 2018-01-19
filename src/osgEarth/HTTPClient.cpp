@@ -1136,8 +1136,14 @@ HTTPClient::doGet(const HTTPRequest&    request,
         }
     }
 
+    // Interpret osgEarth::URI::optionString as Curl custom header
+    std::string custom_header = options->getPluginStringData("osgEarth::URI::optionString");
+    if (!custom_header.empty())
+	headers = curl_slist_append(headers, custom_header.c_str());
+
     // Disable the default Pragma: no-cache that curl adds by default.
     headers = curl_slist_append(headers, "Pragma: ");
+
     curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers);
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();

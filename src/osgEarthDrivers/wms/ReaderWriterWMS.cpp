@@ -113,8 +113,14 @@ public:
                 std::string("&REQUEST=GetCapabilities") );
         }
 
+	// Add URI::option_string as plugin string data to be passed as custom header to CURL
+	// later in HTTPClient::doGet().
+	osg::ref_ptr<osgDB::Options> localDbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+	if (_options.url()->optionString().isSet())
+	    localDbOptions->setPluginStringData("osgEarth::URI::optionString", _options.url()->optionString().get());
+
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
+	osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), localDbOptions );
         if ( !capabilities.valid() )
         {
             return Status::Error( Status::ResourceUnavailable, "Unable to read WMS GetCapabilities." );
@@ -236,7 +242,7 @@ public:
         }
 
         OE_INFO << LC << "Testing for JPL/TileService at " << tsUrl.full() << std::endl;
-        _tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
+	_tileService = TileServiceReader::read(tsUrl.full(), localDbOptions);
         if (_tileService.valid())
         {
             OE_INFO << LC << "Found JPL/TileService spec" << std::endl;
@@ -272,7 +278,7 @@ public:
             OE_INFO << LC << "Profile=" << getProfile()->toString() << std::endl;
 
             // set up the cache options properly for a TileSource.
-            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );            
+	    _dbOptions = Registry::instance()->cloneOrCreateOptions( localDbOptions );
 
             return Status::OK();
         }

@@ -60,11 +60,16 @@ public:
       {
           _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
 
-          URI xyzURI = _options.url().value();
+	  const URI xyzURI = _options.url().value();
           if ( xyzURI.empty() )
           {
               return Status::Error( Status::ConfigurationError, "Fail: driver requires a valid \"url\" property" );
           }
+
+	  // Add URI::option_string as plugin string data to be passed as custom header to CURL
+	  // later in HTTPClient::doGet().
+	  if (xyzURI.optionString().isSet())
+	      _dbOptions->setPluginStringData("osgEarth::URI::optionString", xyzURI.optionString().get());
 
           // driver requires a profile.
           if ( !getProfile() )

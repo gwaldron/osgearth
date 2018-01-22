@@ -87,10 +87,12 @@ public:
 	    return Status::Error( Status::ConfigurationError, "Fail: driver requires a valid \"url\" property" );
 	}
 
-	// Add URI::option_string as plugin string data to be passed as custom header to CURL
+	// Add URI::http_header as plugin string data to be passed as custom header to CURL
 	// later in HTTPClient::doGet().
-	if (tfsURI.optionString().isSet())
-	    _readOptions->setPluginStringData("osgEarth::URI::optionString", tfsURI.optionString().get());
+	if (tfsURI.httpHeader().isSet())
+	{
+	    _readOptions->setPluginStringData("osgEarth::URI::httpHeader", tfsURI.httpHeader().get());
+	}
 
         FeatureProfile* fp = 0L;
 

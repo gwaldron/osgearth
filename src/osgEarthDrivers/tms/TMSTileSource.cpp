@@ -57,10 +57,12 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         return Status::Error( Status::ConfigurationError, "Fail: TMS driver requires a valid \"url\" property" );
     }
 
-    // Add URI::option_string as plugin string data to be passed as custom header to CURL
+    // Add URI::http_header as plugin string data to be passed as custom header to CURL
     // later in HTTPClient::doGet().
-    if (tmsURI.optionString().isSet())
-	_dbOptions->setPluginStringData("osgEarth::URI::optionString", _options.url()->optionString().get());
+    if (tmsURI.httpHeader().isSet())
+    {
+	_dbOptions->setPluginStringData("osgEarth::URI::httpHeader", _options.url()->httpHeader().get());
+    }
 
     // A repo is writable only if it's local.
     if ( tmsURI.isRemote() )

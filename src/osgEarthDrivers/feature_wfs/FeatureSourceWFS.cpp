@@ -93,10 +93,12 @@ public:
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
 
-	    // Add URI::option_string as plugin string data to be passed as custom header to CURL
+	    // Add URI::http_header as plugin string data to be passed as custom header to CURL
 	    // later in HTTPClient::doGet().
-	    if (_options.url()->optionString().isSet())
-		_readOptions->setPluginStringData("osgEarth::URI::optionString", _options.url()->optionString().get());
+	    if (_options.url()->httpHeader().isSet())
+	    {
+		_readOptions->setPluginStringData("osgEarth::URI::httpHeader", _options.url()->httpHeader().get());
+	    }
 	}
 
         // read the WFS capabilities:

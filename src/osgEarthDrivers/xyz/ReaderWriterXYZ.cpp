@@ -66,10 +66,12 @@ public:
               return Status::Error( Status::ConfigurationError, "Fail: driver requires a valid \"url\" property" );
           }
 
-	  // Add URI::option_string as plugin string data to be passed as custom header to CURL
+	  // Add URI::http_header as plugin string data to be passed as custom header to CURL
 	  // later in HTTPClient::doGet().
-	  if (xyzURI.optionString().isSet())
-	      _dbOptions->setPluginStringData("osgEarth::URI::optionString", xyzURI.optionString().get());
+	  if (xyzURI.httpHeader().isSet())
+	  {
+	      _dbOptions->setPluginStringData("osgEarth::URI::httpHeader", xyzURI.httpHeader().get());
+	  }
 
           // driver requires a profile.
           if ( !getProfile() )

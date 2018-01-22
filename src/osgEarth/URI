@@ -194,6 +194,10 @@ namespace osgEarth
         optional<std::string>& optionString() { return _optionString; }
         const optional<std::string>& optionString() const { return _optionString; }
 
+	/** Custom Http header string passer to Curl.*/
+	optional<std::string>& httpHeader() { return _httpHeader; }
+	const optional<std::string>& httpHeader() const { return _httpHeader; }
+
     public:
 
         /** Sets a cache key. By default the cache key is the full URI, but you can override that. */
@@ -259,7 +263,8 @@ namespace osgEarth
         {
             Config conf("uri", base());
             conf.addIfSet("option_string", _optionString);
-            conf.setReferrer( context().referrer() );
+	    conf.addIfSet("http_header", _httpHeader);
+	    conf.setReferrer( context().referrer() );
             conf.setIsLocation( true );
             return conf;
         }
@@ -267,7 +272,8 @@ namespace osgEarth
         void mergeConfig(const Config& conf)
         {
             conf.getIfSet("option_string", _optionString);
-        }
+	    conf.getIfSet("http_header", _httpHeader);
+	}
 
     public: // Static convenience methods
 
@@ -280,6 +286,7 @@ namespace osgEarth
         std::string _cacheKey;
         URIContext  _context;
         optional<std::string> _optionString;
+	optional<std::string> _httpHeader;
 
         void ctorCacheKey();
     };

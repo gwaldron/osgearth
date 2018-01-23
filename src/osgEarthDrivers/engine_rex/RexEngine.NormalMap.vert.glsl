@@ -23,7 +23,7 @@ void oe_normalMapVertex(inout vec4 unused)
 #endif
 
     // calculate the sampling coordinates for the normal texture
-//    oe_normalMapCoords = (oe_tile_normalTexMatrix * oe_layer_tilec).st;
+    //oe_normalMapCoords = (oe_tile_normalTexMatrix * oe_layer_tilec).st;
     
     oe_normalMapCoords = oe_layer_tilec.st
         * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
@@ -31,5 +31,5 @@ void oe_normalMapVertex(inout vec4 unused)
         + oe_tile_elevTexelCoeff.y;
 
     // send the bi-normal to the fragment shader
-    oe_normalMapBinormal = gl_NormalMatrix * vec3(0,1,0);
+    oe_normalMapBinormal = normalize(gl_NormalMatrix * vec3(0,1,0));
 }

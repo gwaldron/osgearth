@@ -193,10 +193,6 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         if ( _tileFormat.empty() )
             return Status::Error(Status::ConfigurationError, "Required format not in metadata, nor specified in the options.");
 
-        _rw = getReaderWriter( _tileFormat );
-        if ( !_rw.valid() )
-            return Status::Error(Status::ServiceUnavailable, "No plugin to load format \"" + _tileFormat + "\"");
-
         // check for compression.
         std::string compression;
         getMetaData("compression", compression);
@@ -374,11 +370,7 @@ MBTilesTileSource::createImage(const TileKey&    key,
         if ( valid )
         {
             std::istringstream inputStream(dataBuffer);
-            osgDB::ReaderWriter::ReadResult rr = _rw->readImage( inputStream, _dbOptions.get() );
-            if (rr.validImage())
-            {
-                result = rr.takeImage();
-            }
+            result = ImageUtils::readStream(inputStream, _dbOptions.get());
         }
     }
     else

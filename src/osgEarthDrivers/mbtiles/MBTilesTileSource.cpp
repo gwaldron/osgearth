@@ -361,7 +361,10 @@ MBTilesTileSource::createImage(const TileKey&    key,
             std::string value;
             if ( !_compressor->decompress(inputStream, value) )
             {
-                OE_WARN << LC << "Decompression failed" << std::endl;
+                if ( _options.filename().isSet() )
+                    OE_WARN << LC << "Decompression failed: " << _options.filename()->base() << std::endl;
+                else
+                    OE_WARN << LC << "Decompression failed" << std::endl;
                 valid = false;
             }
             else

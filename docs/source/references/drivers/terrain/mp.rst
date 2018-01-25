@@ -13,7 +13,7 @@ Example usage::
                      normalize_edges          = "false"
                      incremental_update       = "false"
                      quick_release_gl_objects = "true"
-                     min_tile_range_factor    = "6.0"
+                     min_tile_range_factor    = "7.0"
                      cluster_culling          = "true" />
 
 Properties:

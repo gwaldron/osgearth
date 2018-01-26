@@ -177,25 +177,28 @@ TerrainCuller::apply(osg::Node& node)
                 if (layer->getAcceptCallback() == 0L ||
                     layer->getAcceptCallback()->acceptKey(_currentTileNode->getKey()))
                 {
-                    // Push this tile's matrix if we haven't already done so:
-                    if (!pushedMatrix)
-                    {
-                        SurfaceNode* surface = tileNode->getSurfaceNode();
+                   if (tileNode->getSurfaceNode())
+                   {
+                      // Push this tile's matrix if we haven't already done so:
+                      if (!pushedMatrix)
+                      {
+                         SurfaceNode* surface = tileNode->getSurfaceNode();
 
-                        // push the surface matrix:
-                        osg::Matrix mvm = *getModelViewMatrix();
-                        surface->computeLocalToWorldMatrix(mvm, this);
-                        pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
-                        pushedMatrix = true;
-                    }
+                         // push the surface matrix:
+                         osg::Matrix mvm = *getModelViewMatrix();
+                         surface->computeLocalToWorldMatrix(mvm, this);
+                         pushModelViewMatrix(createOrReuseMatrix(mvm), surface->getReferenceFrame());
+                         pushedMatrix = true;
+                      }
 
-                    // Add the draw command:
-                    DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, tileNode);
-                    if (cmd)
-                    {
-                        cmd->_drawPatch = true;
-                        cmd->_drawCallback = layer->getDrawCallback();
-                    }
+                      // Add the draw command:
+                      DrawTileCommand* cmd = addDrawCommand(layer->getUID(), &renderModel, 0L, tileNode);
+                      if (cmd)
+                      {
+                         cmd->_drawPatch = true;
+                         cmd->_drawCallback = layer->getDrawCallback();
+                      }
+                   }
                 }
             }
 

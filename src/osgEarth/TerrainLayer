@@ -262,6 +262,9 @@ namespace osgEarth
          * Given a TileKey, returns a TileKey representing the best known available.
          * For example, if the input TileKey exceeds the layer's max LOD, the return
          * value will be an ancestor key at that max LOD.
+         *
+         * If a setting that effects the visible range of this layer is set (minLevel, maxLevel, minResolution or maxResolution)
+         * then any key passed in that falls outside of the valid range for the layer will return TileKey::INVALID.
          */
         virtual TileKey getBestAvailableTileKey(const TileKey& key) const;
 

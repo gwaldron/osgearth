@@ -336,8 +336,85 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    // Now tessellate the surface.
+    // By default we tessellate the surface, but if there's a masking set
+    // it might replace some or all of our surface geometry.
+    bool tessellateSurface = true;
     
+    if (maskSet)
+    {
+        // The mask generator adds to the passed-in arrays as necessary,
+        // and then returns a new primtive set containing all the new triangles.
+        osg::ref_ptr<osg::DrawElementsUInt> maskElements;
+
+        MaskGenerator::Result r = maskSet->createMaskPrimitives(
+            mapInfo,
+            verts.get(), texCoords.get(), normals.get(), neighbors.get(),
+            maskElements);
+
+        if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE && 
+            maskElements.valid() && 
+            maskElements->size() > 0)
+        {
+            // Share the same EBO as the surface geometry
+            maskElements->setElementBufferObject(primSet->getElementBufferObject());
+            geom->setMaskElements(maskElements.get());
+
+            // Build a skirt for the mask geometry?
+            if (createSkirt)
+            {
+                // calculate the skirt extrusion height
+                double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+
+                // Construct a node+edge graph out of the masking geometry:
+                osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), maskElements.get(), tileKey.str());
+
+                // Extract the boundaries (if the topology is discontinuous,
+                // there will be more than one)
+                for (unsigned i = 0; i<graph->getNumBoundaries(); ++i)
+                {
+                    TopologyGraph::IndexVector boundary;
+                    graph->createBoundary(i, boundary);
+
+                    if (boundary.size() >= 3)
+                    {
+                        unsigned skirtIndex = verts->size();
+
+                        for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
+                        {
+                            addSkirtDataForIndex((*i)->index(), height);
+                        }
+
+                        // then create the elements:
+                        int i;
+                        for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
+                            addSkirtTriangles(i, i + 2);
+
+                        addSkirtTriangles(i, skirtIndex);
+                    }
+                }
+            }
+        }
+
+        // If the boundary doesn't intersect the tile, draw the entire tile
+        // as we normally would. Need to reset the masking marker.
+        else if (r == MaskGenerator::R_BOUNDARY_DOES_NOT_INTERSECT_TILE)
+        {
+            maskSet = 0L;
+            for (osg::Vec3Array::iterator i = texCoords->begin(); i != texCoords->end(); ++i)
+                i->z() = MASK_MARKER_NORMAL;
+        }
+
+        // If the boundary contains the entire tile, draw nothing!
+        else // if (r == MaskGenerator::R_BOUNDARY_CONTAINS_ENTIRE_TILE)
+        {
+            tessellateSurface = false;
+        }
+    }
+
+    // Now tessellate the (unmasked) surface.
+    
+    if (tessellateSurface)
+    {
     // TODO: do we really need this??
     bool swapOrientation = !locator->orientationOpenGL();
 
@@ -388,56 +465,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    bool skirtCreated = false;
-                    
-    if (maskSet)
-    {
-        // The mask generator adds to the passed-in arrays as necessary,
-        // and then returns a new primtive set containing all the new triangles.
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts.get(), texCoords.get(), normals.get(), neighbors.get());
-        if (maskPrim && maskPrim->size() > 0)
-        {
-            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
-            geom->setMaskElements(maskPrim);
-
-            // Build a skirt for the mask geometry:
-            if (createSkirt)
-            {
-                // calculate the skirt extrudion height
-                double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
-
-                // Construct a node+edge graph out of the masking geometry:
-                osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), maskPrim.get(), tileKey.str());
-
-                // Extract the boundaries (could be more than one):
-                for (unsigned i = 0; i<graph->getNumBoundaries(); ++i)
-                {
-                    TopologyGraph::IndexVector boundary;
-                    graph->createBoundary(i, boundary);
-
-                    if (boundary.size() >= 3)
-                    {
-                    unsigned skirtIndex = verts->size();
-
-                    for (TopologyGraph::IndexVector::const_iterator i = boundary.begin(); i != boundary.end(); ++i)
-                    {
-                            addSkirtDataForIndex((*i)->index(), height);
-                            }
-
-                        // then create the elements:
-                        int i;
-                        for (i = skirtIndex; i < (int)verts->size() - 2; i += 2)
-                            addSkirtTriangles(i, i + 2);
-
-                        addSkirtTriangles(i, skirtIndex);
-                }
-            }
-        }
-    }
-    }
-
     // Build skirts for the tile geometry
-    if ( createSkirt && !skirtCreated )
+        if ( createSkirt )
     {
         // SKIRTS:
         // calculate the skirt extrusion height
@@ -464,6 +493,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             addSkirtTriangles( i, i+2 );
 
         addSkirtTriangles( i, skirtIndex );
+    }
     }
 
     return geom.release();

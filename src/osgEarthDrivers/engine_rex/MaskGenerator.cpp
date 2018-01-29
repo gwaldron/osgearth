@@ -234,11 +234,16 @@ MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary
     }
 }
 
-osg::DrawElementsUInt*
-MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* verts, osg::Vec3Array* texCoords, osg::Vec3Array* normals, osg::Vec3Array* neighbors)
+MaskGenerator::Result
+MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, 
+                                    osg::Vec3Array* verts, osg::Vec3Array* texCoords, 
+                                    osg::Vec3Array* normals, osg::Vec3Array* neighbors,
+                                    osg::ref_ptr<osg::DrawElementsUInt>& out_elements)
 {
     if (_maskRecords.size() <= 0)
-      return 0L;
+    {
+        return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
+    }
 
     osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
     if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
@@ -251,11 +256,9 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
     centroid.createWorldToLocal( world2local );
     local2world.invert( world2local );
 
-    std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint> > alldcs;
-
     // This array holds the NDC grid of points inside the patch polygon
     // (built later in this method)
-    osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array;
+    osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array();
 
     // Calculate the combined axis-aligned NDC bounding box for all masks:
     // (gw: didn't we already do this in setupMaskRecord?)
@@ -301,359 +304,367 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
     if (max_j < 0) max_j = 0;
     if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
 
-    if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
+    if (min_i < 0 || max_i < 0 || min_j < 0 || max_j < 0)
     {
-        // The "patch polygon" is the region that stitches the normal tile geometry to the mask boundary.
-        // The patch will be in NDC coordinates:
+        return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
+    }
 
-        // Number of verts wide (i) and height(i) of the patch polygon:
-        int num_i = max_i - min_i + 1;
-        int num_j = max_j - min_j + 1;
+    
+    // The "patch polygon" is the region that stitches the normal tile geometry to the mask boundary.
+    // The patch will be in NDC coordinates:
 
-        osg::ref_ptr<Polygon> patchPoly = new Polygon();
-        patchPoly->resize(num_i * 2 + num_j * 2 - 4);
+    // Number of verts wide (i) and height(i) of the patch polygon:
+    int num_i = max_i - min_i + 1;
+    int num_j = max_j - min_j + 1;
 
-        // top and bottom verts:
-        for (int i = 0; i < num_i; i++)
+    osg::ref_ptr<Polygon> patchPoly = new Polygon();
+    patchPoly->resize(num_i * 2 + num_j * 2 - 4);
+
+    // top and bottom verts:
+    for (int i = 0; i < num_i; i++)
+    {
         {
-            {
-                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)min_j)/(double)(_tileSize-1), 0.0);
-                (*patchPoly)[i] = ndc;
-            }
-
-            {
-                // bottom:
-                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
-                (*patchPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
-            }
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)min_j)/(double)(_tileSize-1), 0.0);
+            (*patchPoly)[i] = ndc;
         }
 
-        // left and right verts:
-        for (int j = 0; j < num_j - 2; j++)
         {
-            {
-                // right:
-                osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
-                (*patchPoly)[j + num_i] = ndc;
-            }
-
-            {
-                osg::Vec3d ndc( ((double)min_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
-                (*patchPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
-            }
-        }
-
-        // create a grid of points making up the inside of the patch polygon.
-        for (int j = 0; j < num_j; j++)
-        {
-            for (int i = 0; i < num_i; i++)
-            {
-                {
-                    osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)(j+min_j))/(double)(_tileSize-1), 0.0);
-                    coordsArray->push_back(ndc) ;
-                }						
-            }
-        }
-
-        std::set<osg::Vec3d, less_2d> boundaryVerts;
-
-        // Use delaunay triangulation for stitching:
-        for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
-        {
-            //Create local polygon representing mask
-            osg::ref_ptr<Polygon> boundaryPoly = new Polygon();
-            boundaryPoly->reserve(mr->_boundary->size());
-            for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
-            {
-                osg::Vec3d local;
-                geoLocator->convertModelToLocal(*it, local);
-                boundaryPoly->push_back(local);
-            }
-            
-            // Resample the masking polygon to closely match the resolution of the 
-            // current tile grid, which will result in a better tessellation.
-            // Ideally we would do this after cropping, but that is causing some
-            // triangulation errors. TODO -gw
-            if (!boundaryPoly->empty())
-            {
-                const double interval = 1.0 / double(_tileSize-1);
-                resample(boundaryPoly.get(), interval);
-            }
-
-            // Add mask bounds as a triangulation constraint
-            osg::ref_ptr<osgUtil::DelaunayConstraint> newdc = new osgUtil::DelaunayConstraint();
-            osg::Vec3Array* maskConstraint = new osg::Vec3Array();
-            newdc->setVertexArray(maskConstraint);
-
-            // Crop the boundar to the patch polygon (i.e. the bounding box)
-            // for case where mask crosses tile edges
-            osg::ref_ptr<Geometry> boundaryPolyCroppedToTile;
-            boundaryPoly->crop(patchPoly.get(), boundaryPolyCroppedToTile);
-
-            // See the comment for the call to resample above. -gw
-            //if (boundaryPolyCroppedToTile.valid() && !boundaryPolyCroppedToTile->empty())
-            //{
-            //    const double interval = 1.0 / double(_tileSize-1);
-            //    resample(boundaryPolyCroppedToTile.get(), interval);
-            //}
-
-            // Add the cropped boundary geometry as a Triangulation Constraint.
-            GeometryIterator i( boundaryPolyCroppedToTile.get(), false );
-            while( i.hasMore() )
-            {
-                Geometry* part = i.next();
-                if (!part)
-                    continue;
-
-                if (part->getType() == Geometry::TYPE_POLYGON)
-                {
-                    osg::ref_ptr<osg::Vec3Array> partVerts = part->createVec3Array();
-                    maskConstraint->reserve(maskConstraint->size() + partVerts->size());
-                    maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
-                    newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
-                }
-            }
-
-            // Cropping strips z-values! so we need reassign them.
-            std::vector<int> isZSet;
-            for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
-            {
-                int zSet = 0;
-
-                // Search the patch (bounding box) polygon for matching points:
-                for (Polygon::iterator mit = patchPoly->begin(); mit != patchPoly->end(); ++mit)
-                {
-                    if (EQUIVALENT_2D(mit, it))
-                    {
-                        //(*it).z() = (*mit).z(); // commented out by Jeff...why?
-                        zSet += 1;
-
-                        // Remove duplicate point from coordsArray to avoid duplicate point warnings
-                        osg::Vec3Array::iterator caIt;
-                        for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
-                        {
-                            if (EQUIVALENT_2D(caIt, it))
-                                break;
-                        }
-                        if (caIt != coordsArray->end())
-                            coordsArray->erase(caIt);
-
-                        break;
-                    }
-                }
-
-                // Search the original uncropped boundary polygon for matching points,
-                // and build a set of boundary vertices.
-                for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
-                {
-                    if (EQUIVALENT_2D(mit, it))
-                    {
-                        (*it).z() = (*mit).z();
-                        zSet += 2;
-
-                        boundaryVerts.insert( *it );
-                        break;
-                    }
-                }
-
-                isZSet.push_back(zSet);
-            }
-
-            // Any mask patch verts that are still unset are newly created verts where the patch
-            // meets the mask. (Do you mean, where the boundary crosses the tile edge? -gw) 
-            // Find the mask segment the point lies along and calculate the
-            // appropriate z value for the point.
-            int count = 0;
-            for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
-            {
-                //If the z-value was set from a mask vertex there is no need to change it.  If
-                //it was set from a vertex from the patch polygon it may need to be overriden if
-                //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
-                //if (isZSet[count] < 2)
-                if (!isZSet[count])
-                {
-                    osg::Vec3d p2 = *it;
-                    double closestZ = 0.0;
-                    double closestRatio = DBL_MAX;
-                    for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
-                    {
-                        osg::Vec3d p1 = *mit;
-                        osg::Vec3d p3 = mit == --boundaryPoly->end() ? boundaryPoly->front() : (*(mit + 1));
-
-                        //Truncated vales to compensate for accuracy issues
-                        double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
-                        double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
-                        double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
-
-                        double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
-                        double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
-                        double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
-
-                        if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
-                            (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
-                        {
-                            double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                            double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                            double zmag = p3.z() - p1.z();
-
-                            double foundZ = (l1 / lt) * zmag + p1.z();
-
-                            double mRatio = 1.0;
-                            if (EQUIVALENT(p1x, p3x))
-                            {
-                                if (EQUIVALENT(p1x, p2x))
-                                    mRatio = 0.0;
-                            }
-                            else
-                            {
-                                double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
-                                double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
-                                mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
-                            }
-
-                            if (mRatio < 0.01)
-                            {
-                                (*it).z() = foundZ;
-                                isZSet[count] = 2;
-
-                                boundaryVerts.insert( *it );
-                                break;
-                            }
-                            else if (mRatio < closestRatio)
-                            {
-                                closestRatio = mRatio;
-                                closestZ = foundZ;
-                            }
-                        }
-                    }
-
-                    if (!isZSet[count] && closestRatio < DBL_MAX)
-                    {
-                        (*it).z() = closestZ;
-                        isZSet[count] = 2;
-                        boundaryVerts.insert( *it );
-                    }
-                }
-
-                if (!isZSet[count])
-                    OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
-
-                count++;
-            }
-
-            alldcs.push_back(newdc);
-        }
-
-        // Set up a triangulator with the patch coordinates:
-        osg::ref_ptr<osgUtil::DelaunayTriangulator> trig = new osgUtil::DelaunayTriangulator();
-        trig->setInputPointArray(coordsArray.get());
-
-        // Add each boundary constraint:
-        for (int dcnum =0; dcnum < alldcs.size();dcnum++)
-        {
-            trig->addInputConstraint(alldcs[dcnum].get());
-        }
-
-        // Create array to hold vertex normals
-        osg::Vec3Array* norms = new osg::Vec3Array();
-        trig->setOutputNormalArray(norms);
-
-        // Triangulate! 
-        trig->triangulate();
-
-        // Remove any triangles interior to the boundaries.
-        // Note: an alternative here would be to flatten them all to a common height -gw
-        for (int dcnum =0; dcnum < alldcs.size(); dcnum++)
-        {
-            trig->removeInternalTriangles(alldcs[dcnum].get());
-        }
-        
-        // Now build the new geometry.
-        const osg::Vec3Array* trigPoints = trig->getInputPointArray();
-
-        // Reserve space; pre-allocating space is faster
-        verts->reserve(verts->size() + trigPoints->size());
-        texCoords->reserve(texCoords->size() + trigPoints->size());
-        normals->reserve(normals->size() + trigPoints->size());
-        if ( neighbors )
-            neighbors->reserve(neighbors->size() + trigPoints->size()); 
-
-        // Iterate through point to convert to model coords, calculate normals, and set up tex coords
-        osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
-
-        unsigned vertsOffset = verts->size();
-
-        for (osg::Vec3Array::const_iterator it = trigPoints->begin(); it != trigPoints->end(); ++it)
-        {
-            // check to see if point is a part of the original mask boundary
-            bool isBoundary = boundaryVerts.find(*it) != boundaryVerts.end();
-
-            // get local coords
-            osg::Vec3d local;
-            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), local);
-            local = local * world2local;
-
-            // calc normals
-            osg::Vec3d localPlusOne;
-            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), localPlusOne);
-            osg::Vec3d normal = (localPlusOne*world2local)-local;                
-            normal.normalize();
-            normals->push_back( normal );
-
-            // set elevation if this is a point along the mask boundary
-            if (isBoundary)
-                local += normal*it->z();
-
-            verts->push_back(local);
-
-            // use same vert for neighbor to prevent morphing
-            if ( neighbors )
-                neighbors->push_back( local );  
-
-            // set up text coords
-            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_PATCH) );
-        }
-
-        // Get triangles from triangulator and add as primitive set to the geometry
-        osg::DrawElementsUInt* tris = trig->getTriangles();
-
-        if ( tris && tris->getNumIndices() >= 3 )
-        {
-            osg::ref_ptr<osg::DrawElementsUInt> elems = new osg::DrawElementsUInt(tris->getMode());
-            elems->reserve(tris->size());
-
-            const osg::MixinVector<GLuint> ins = tris->asVector();
-
-            for (osg::MixinVector<GLuint>::const_iterator it = ins.begin(); it != ins.end(); ++it)
-            {
-                unsigned i0 = vertsOffset + *it++;
-                unsigned i1 = vertsOffset + *it++;
-                unsigned i2 = vertsOffset + *it;
-
-                const osg::Vec3d& v0 = (*verts)[i0];
-                const osg::Vec3d& v1 = (*verts)[i1];
-                const osg::Vec3d& v2 = (*verts)[i2];
-
-                // check the winding order. Triangles don't always come out in the right orientation
-                if (((v0 - v1) ^ (v2 - v1)).z() < 0)
-                {
-                    elems->push_back(i0);
-                    elems->push_back(i1);
-                    elems->push_back(i2);
-                }
-                else
-                {
-                    elems->push_back(i0);
-                    elems->push_back(i2);
-                    elems->push_back(i1);
-                }
-            }
-
-            return elems.release();
+            // bottom:
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
+            (*patchPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
         }
     }
 
-    return 0L;
+    // left and right verts:
+    for (int j = 0; j < num_j - 2; j++)
+    {
+        {
+            // right:
+            osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
+            (*patchPoly)[j + num_i] = ndc;
+        }
+
+        {
+            osg::Vec3d ndc( ((double)min_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
+            (*patchPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
+        }
+    }
+
+    // create a grid of points making up the inside of the patch polygon.
+    for (int j = 0; j < num_j; j++)
+    {
+        for (int i = 0; i < num_i; i++)
+        {
+            {
+                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)(j+min_j))/(double)(_tileSize-1), 0.0);
+                coordsArray->push_back(ndc) ;
+            }						
+        }
+    }
+
+    double patchArea = patchPoly->getSignedArea2D();
+
+    std::set<osg::Vec3d, less_2d> boundaryVerts;
+
+    osg::ref_ptr<osgUtil::DelaunayConstraint> dc = new osgUtil::DelaunayConstraint();
+    osg::Vec3Array* constraintVerts = new osg::Vec3Array();
+    dc->setVertexArray(constraintVerts);
+
+    // Use delaunay triangulation for stitching:
+    for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
+    {
+        //Create local polygon representing mask
+        osg::ref_ptr<Polygon> boundaryPoly = new Polygon();
+        boundaryPoly->reserve(mr->_boundary->size());
+        for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
+        {
+            osg::Vec3d local;
+            geoLocator->convertModelToLocal(*it, local);
+            boundaryPoly->push_back(local);
+        }
+            
+        // Resample the masking polygon to closely match the resolution of the 
+        // current tile grid, which will result in a better tessellation.
+        // Ideally we would do this after cropping, but that is causing some
+        // triangulation errors. TODO -gw
+        if (!boundaryPoly->empty())
+        {
+            const double interval = 1.0 / double(_tileSize-1);
+            resample(boundaryPoly.get(), interval);
+        }
+
+        // Crop the boundary to the patch polygon (i.e. the bounding box)
+        // for case where mask crosses tile edges
+        osg::ref_ptr<Geometry> boundaryPolyCroppedToTile;
+        boundaryPoly->crop(patchPoly.get(), boundaryPolyCroppedToTile);
+
+        // See the comment for the call to resample above. -gw
+        //if (boundaryPolyCroppedToTile.valid() && !boundaryPolyCroppedToTile->empty())
+        //{
+        //    const double interval = 1.0 / double(_tileSize-1);
+        //    resample(boundaryPolyCroppedToTile.get(), interval);
+        //}
+
+        // Add the cropped boundary geometry as a Triangulation Constraint.
+        unsigned start = constraintVerts->size();
+
+        GeometryIterator i( boundaryPolyCroppedToTile.get(), false );
+        while( i.hasMore() )
+        {
+            Geometry* part = i.next();
+            if (!part)
+                continue;
+
+            if (part->getType() == Geometry::TYPE_POLYGON)
+            {
+                osg::ref_ptr<osg::Vec3Array> partVerts = part->createVec3Array();
+                int offset = constraintVerts->size();
+                constraintVerts->reserve(constraintVerts->size() + partVerts->size());
+                constraintVerts->insert(constraintVerts->end(), partVerts->begin(), partVerts->end());
+                dc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, offset, partVerts->size()));
+            }
+        }
+
+        // Cropping strips z-values! so we need reassign them.            
+        osg::Vec3Array::iterator it_start = constraintVerts->begin() + start;
+        std::vector<int> isZSet;
+        for (osg::Vec3Array::iterator it = it_start; it != constraintVerts->end(); ++it)
+        {
+            int zSet = 0;
+
+            // Search the patch (bounding box) polygon for matching points:
+            for (Polygon::iterator mit = patchPoly->begin(); mit != patchPoly->end(); ++mit)
+            {
+                if (EQUIVALENT_2D(mit, it))
+                {
+                    //(*it).z() = (*mit).z(); // commented out by Jeff...why?
+                    zSet += 1;
+
+                    // Remove duplicate point from coordsArray to avoid duplicate point warnings
+                    osg::Vec3Array::iterator caIt;
+                    for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
+                    {
+                        if (EQUIVALENT_2D(caIt, it))
+                            break;
+                    }
+                    if (caIt != coordsArray->end())
+                        coordsArray->erase(caIt);
+
+                    break;
+                }
+            }
+
+            // Search the original uncropped boundary polygon for matching points,
+            // and build a set of boundary vertices.
+            for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
+            {
+                if (EQUIVALENT_2D(mit, it))
+                {
+                    (*it).z() = (*mit).z();
+                    zSet += 2;
+
+                    boundaryVerts.insert( *it );
+                    break;
+                }
+            }
+
+            isZSet.push_back(zSet);
+        }
+
+        // Any mask patch verts that are still unset are newly created verts where the patch
+        // meets the mask. (Do you mean, where the boundary crosses the tile edge? -gw) 
+        // Find the mask segment the point lies along and calculate the
+        // appropriate z value for the point.
+        int count = 0;
+        for (osg::Vec3Array::iterator it = it_start; it != constraintVerts->end(); ++it)
+        {
+            //If the z-value was set from a mask vertex there is no need to change it.  If
+            //it was set from a vertex from the patch polygon it may need to be overriden if
+            //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
+            //if (isZSet[count] < 2)
+            if (!isZSet[count])
+            {
+                osg::Vec3d p2 = *it;
+                double closestZ = 0.0;
+                double closestRatio = DBL_MAX;
+                for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
+                {
+                    osg::Vec3d p1 = *mit;
+                    osg::Vec3d p3 = mit == --boundaryPoly->end() ? boundaryPoly->front() : (*(mit + 1));
+
+                    //Truncated vales to compensate for accuracy issues
+                    double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
+                    double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
+                    double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
+
+                    double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
+                    double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
+                    double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
+
+                    if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
+                        (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
+                    {
+                        double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                        double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                        double zmag = p3.z() - p1.z();
+
+                        double foundZ = (l1 / lt) * zmag + p1.z();
+
+                        double mRatio = 1.0;
+                        if (EQUIVALENT(p1x, p3x))
+                        {
+                            if (EQUIVALENT(p1x, p2x))
+                                mRatio = 0.0;
+                        }
+                        else
+                        {
+                            double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
+                            double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
+                            mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
+                        }
+
+                        if (mRatio < 0.01)
+                        {
+                            (*it).z() = foundZ;
+                            isZSet[count] = 2;
+
+                            boundaryVerts.insert( *it );
+                            break;
+                        }
+                        else if (mRatio < closestRatio)
+                        {
+                            closestRatio = mRatio;
+                            closestZ = foundZ;
+                        }
+                    }
+                }
+
+                if (!isZSet[count] && closestRatio < DBL_MAX)
+                {
+                    (*it).z() = closestZ;
+                    isZSet[count] = 2;
+                    boundaryVerts.insert( *it );
+                }
+            }
+
+            if (!isZSet[count])
+                OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
+
+            count++;
+        }
+    }
+
+    // If we collected no constraints, that means the boundary geometry
+    // does not intersect the tile at all. Bail out now.
+    if (constraintVerts->empty())
+    {
+        return R_BOUNDARY_DOES_NOT_INTERSECT_TILE;
+    }
+
+    // Set up a triangulator with the patch coordinates:
+    osg::ref_ptr<osgUtil::DelaunayTriangulator> trig = new osgUtil::DelaunayTriangulator();
+    trig->setInputPointArray(coordsArray.get());
+    trig->addInputConstraint(dc.get());
+
+    // Create array to hold vertex normals
+    //osg::Vec3Array* norms = new osg::Vec3Array();
+    //trig->setOutputNormalArray(norms);
+
+    // Triangulate! 
+    trig->triangulate();
+
+    // Remove any triangles interior to the boundaries.
+    // Note: an alternative here would be to flatten them all to a common height -gw
+    trig->removeInternalTriangles(dc.get());
+        
+    // Now build the new geometry.
+    const osg::Vec3Array* trigPoints = trig->getInputPointArray();
+
+    // Reserve space; pre-allocating space is faster
+    verts->reserve(verts->size() + trigPoints->size());
+    texCoords->reserve(texCoords->size() + trigPoints->size());
+    normals->reserve(normals->size() + trigPoints->size());
+    if ( neighbors )
+        neighbors->reserve(neighbors->size() + trigPoints->size()); 
+
+    // Iterate through point to convert to model coords, calculate normals, and set up tex coords
+    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
+
+    unsigned vertsOffset = verts->size();
+
+    for (osg::Vec3Array::const_iterator it = trigPoints->begin(); it != trigPoints->end(); ++it)
+    {
+        // check to see if point is a part of the original mask boundary
+        bool isBoundary = boundaryVerts.find(*it) != boundaryVerts.end();
+
+        // get local coords
+        osg::Vec3d local;
+        locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), local);
+        local = local * world2local;
+
+        // calc normals
+        osg::Vec3d localPlusOne;
+        locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), localPlusOne);
+        osg::Vec3d normal = (localPlusOne*world2local)-local;                
+        normal.normalize();
+        normals->push_back( normal );
+
+        // set elevation if this is a point along the mask boundary
+        if (isBoundary)
+            local += normal*it->z();
+
+        verts->push_back(local);
+
+        // use same vert for neighbor to prevent morphing
+        if ( neighbors )
+            neighbors->push_back( local );  
+
+        // set up text coords
+        texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_PATCH) );
+    }
+
+    // Get triangles from triangulator and add as primitive set to the geometry
+    osg::DrawElementsUInt* tris = trig->getTriangles();
+
+    // If something went wrong, just bail out. This should never happen
+    if (tris == 0L || tris->getNumIndices() < 3)
+    {
+        OE_INFO << LC << "* Triangulation resulted in no geometry\n";
+        return R_BOUNDARY_CONTAINS_ENTIRE_TILE;
+    }
+
+    // Construct the output triangle set.
+    out_elements = new osg::DrawElementsUInt(tris->getMode());
+    out_elements->reserve(tris->size());
+
+    const osg::MixinVector<GLuint> ins = tris->asVector();
+
+    for (osg::MixinVector<GLuint>::const_iterator it = ins.begin(); it != ins.end(); ++it)
+    {
+        unsigned i0 = vertsOffset + *it++;
+        unsigned i1 = vertsOffset + *it++;
+        unsigned i2 = vertsOffset + *it;
+
+        const osg::Vec3d& v0 = (*verts)[i0];
+        const osg::Vec3d& v1 = (*verts)[i1];
+        const osg::Vec3d& v2 = (*verts)[i2];
+
+        // check the winding order. Triangles don't always come out in the right orientation
+        if (((v0 - v1) ^ (v2 - v1)).z() < 0)
+        {
+            out_elements->push_back(i0);
+            out_elements->push_back(i1);
+            out_elements->push_back(i2);
+        }
+        else
+        {
+            out_elements->push_back(i0);
+            out_elements->push_back(i2);
+            out_elements->push_back(i1);
+        }
+    }
+
+    return R_BOUNDARY_INTERSECTS_TILE;
 }
 
 void

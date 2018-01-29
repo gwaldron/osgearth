@@ -10,7 +10,7 @@
 // Vertex Markers:
 #define MASK_MARKER_DISCARD  0.0
 #define MASK_MARKER_NORMAL   1.0
-#define MASK_MARKER_SKIRT    2.0
+#define MASK_MARKER_PATCH    2.0
 #define MASK_MARKER_BOUNDARY 3.0
 
 // stage

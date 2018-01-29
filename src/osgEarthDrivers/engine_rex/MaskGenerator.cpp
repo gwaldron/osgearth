@@ -33,6 +33,120 @@ using namespace osgEarth::Symbology;
 
 #define MATCH_TOLERANCE 0.000001
 
+#define EQUIVALENT(X,Y) (osg::equivalent((double)(X), (double)(Y), MATCH_TOLERANCE))
+
+#define EQUIVALENT_2D(A, B) (EQUIVALENT(A->x(), B->x()) && EQUIVALENT(A->y(), B->y()))
+
+namespace
+{
+    void resample(Geometry* geom, double maxLen)
+    {
+        GeometryIterator i(geom);
+        while (i.hasMore())
+        {
+            Geometry* part = i.next();
+            if (part->size() < 2) continue;
+
+            std::vector<osg::Vec3d> newGeom;
+            ConstSegmentIterator csi(part, true);
+            while(csi.hasMore())
+            {
+                Segment seg = csi.next();
+                newGeom.push_back(seg.first);
+                osg::Vec3d vec3d = seg.second - seg.first;
+                osg::Vec2d vec2d(vec3d.x(), vec3d.y());
+                double len2d = vec2d.length();
+
+                if (len2d > maxLen)
+                {
+                    double numNewPoints = ::floor(len2d/maxLen);
+                    double interval = len2d/(numNewPoints+1.0);
+                    for (double d=interval; d<len2d; d+=interval)
+                    {
+                        double t = d/len2d;
+                            
+                        osg::Vec3d newPoint(
+                            seg.first.x() + vec2d.x()*t,
+                            seg.first.y() + vec2d.y()*t,
+                            seg.first.z() + vec3d.z()*t);
+
+                        if (newGeom.empty() || newPoint != newGeom.back())
+                        {
+                            newGeom.push_back(newPoint);
+                        }
+
+                    }
+                }
+            }
+
+            if (newGeom.empty() == false)
+            {
+                part->swap(newGeom);
+            }
+        }
+
+        geom->removeDuplicates();
+    }
+
+    //! Compares two 3D points ignoring the Z value.
+    struct less_2d
+    {
+        bool operator()(const osg::Vec3& lhs, const osg::Vec3& rhs)
+        {
+            if (lhs[0] < rhs[0]) return true;
+            else if (lhs[0] > rhs[0]) return false;
+            else return lhs[1] < rhs[1];
+        }
+    };
+
+    //! Removes all duplicate points in a vertex array.
+    void removeDupes(osg::Vec3Array* verts)
+    {
+        unsigned finalSize = verts->size();
+        std::set<osg::Vec3, less_2d> unique;
+        for (unsigned i = 0; i<finalSize; ++i)
+        {
+            if (unique.find( (*verts)[i] ) == unique.end())
+            {
+                unique.insert((*verts)[i]);
+            }
+            else
+            {
+                (*verts)[i] = verts->back();
+                --finalSize;
+            }
+        }
+
+        if (finalSize != verts->size())
+        {
+            verts->resize(finalSize);
+        }
+    }
+
+    //! Removes verts from the vec array that appear in the unique set.
+    void removeDupes(osg::Vec3Array* verts, const std::set<osg::Vec3, less_2d>& unique)
+    {
+        unsigned finalSize = verts->size();
+        
+        for (unsigned i = 0; i<finalSize; ++i)
+        {
+            if (unique.find( (*verts)[i] ) != unique.end())
+            {
+                (*verts)[i] = verts->back();
+                --finalSize;
+            }
+        }
+
+        if (finalSize != verts->size())
+        {
+            verts->resize(finalSize);
+            //OE_INFO << LC << "Removed " << verts->size() - finalSize << " duplicates.\n";
+        }
+    }
+}
+
+
+
 
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
 _key( key ), _tileSize(tileSize)
@@ -55,12 +169,15 @@ _key( key ), _tileSize(tileSize)
 void
 MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary)
 {
+    // Make a "locator" for this key so we can do coordinate conversion:
     osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
+
     if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
         geoLocator = geoLocator->getGeographicFromGeocentric();
 
     if ( boundary )
     {
+        // Calculate the axis-aligned bounding box of the boundary polygon:
         osg::Vec3d min, max;
         min = max = boundary->front();
 
@@ -79,20 +196,25 @@ MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary
             max.y() = it->y();
         }
 
+        // convert that bounding box to "unit" space (0..1 across the tile)
         osg::Vec3d min_ndc, max_ndc;
         geoLocator->modelToUnit(min, min_ndc);
         geoLocator->modelToUnit(max, max_ndc);
 
+        // true if boundary overlaps tile in X dimension:
         bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
                         (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
                         (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
 
+        // true if boundary overlaps tile in Y dimension:
         bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
                         (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
                         (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
 
         if (x_match && y_match)
         {
+            // yes, boundary overlaps tile, so expand the global NDC bounding
+            // box to include the new mask:
             if (_maskRecords.size() == 0)
             {
                 _ndcMin = min_ndc;
@@ -106,6 +228,7 @@ MaskGenerator::setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary
                 if (max_ndc.y() > _ndcMax.y()) _ndcMax.y() = max_ndc.y();
             }
 
+            // and add this mask to the list.
             _maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, 0L) );
         }
     }
@@ -121,19 +244,21 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
     if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
         geoLocator = geoLocator->getGeographicFromGeocentric();
 
+    // Configure up a local tangent plane at the centroid of the tile:
     GeoPoint centroid;
     _key.getExtent().getCentroid( centroid );
-
     osg::Matrix world2local, local2world;
     centroid.createWorldToLocal( world2local );
     local2world.invert( world2local );
 
-    osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
-
     std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint> > alldcs;
 
+    // This array holds the NDC grid of points inside the patch polygon
+    // (built later in this method)
     osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array;
 
+    // Calculate the combined axis-aligned NDC bounding box for all masks:
+    // (gw: didn't we already do this in setupMaskRecord?)
     double minndcx = _maskRecords[0]._ndcMin.x();
     double minndcy = _maskRecords[0]._ndcMin.y();
     double maxndcx = _maskRecords[0]._ndcMax.x();
@@ -158,6 +283,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
         }			
     }
 
+    // Figure out the indices representing the area we need to "cut out"
+    // of the tile to accommadate the mask:
     int min_i = (int)floor(minndcx * (double)(_tileSize-1));
     if (min_i < 0) min_i = 0;
     if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
@@ -176,13 +303,17 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 
     if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
     {
+        // The "patch polygon" is the region that stitches the normal tile geometry to the mask boundary.
+        // The patch will be in NDC coordinates:
+
+        // Number of verts wide (i) and height(i) of the patch polygon:
         int num_i = max_i - min_i + 1;
         int num_j = max_j - min_j + 1;
 
-        // The "patch polygon" is the region that stitches the normal tile geometry to the mask boundary.
         osg::ref_ptr<Polygon> patchPoly = new Polygon();
         patchPoly->resize(num_i * 2 + num_j * 2 - 4);
 
+        // top and bottom verts:
         for (int i = 0; i < num_i; i++)
         {
             {
@@ -191,13 +322,17 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             }
 
             {
+                // bottom:
                 osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
                 (*patchPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
             }
         }
+
+        // left and right verts:
         for (int j = 0; j < num_j - 2; j++)
         {
             {
+                // right:
                 osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
                 (*patchPoly)[j + num_i] = ndc;
             }
@@ -208,6 +343,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             }
         }
 
+        // create a grid of points making up the inside of the patch polygon.
         for (int j = 0; j < num_j; j++)
         {
             for (int i = 0; i < num_i; i++)
@@ -219,32 +355,50 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             }
         }
 
-
-        //
-        osg::ref_ptr<osg::Vec3dArray> boundaryVerts = new osg::Vec3dArray;
+        std::set<osg::Vec3d, less_2d> boundaryVerts;
 
         // Use delaunay triangulation for stitching:
         for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
         {
             //Create local polygon representing mask
-            osg::ref_ptr<Polygon> maskPoly = new Polygon();
+            osg::ref_ptr<Polygon> boundaryPoly = new Polygon();
+            boundaryPoly->reserve(mr->_boundary->size());
             for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
             {
                 osg::Vec3d local;
                 geoLocator->convertModelToLocal(*it, local);
-                maskPoly->push_back(local);
+                boundaryPoly->push_back(local);
+            }
+            
+            // Resample the masking polygon to closely match the resolution of the 
+            // current tile grid, which will result in a better tessellation.
+            // Ideally we would do this after cropping, but that is causing some
+            // triangulation errors. TODO -gw
+            if (!boundaryPoly->empty())
+            {
+                const double interval = 1.0 / double(_tileSize-1);
+                resample(boundaryPoly.get(), interval);
             }
 
             // Add mask bounds as a triangulation constraint
-            osg::ref_ptr<osgUtil::DelaunayConstraint> newdc=new osgUtil::DelaunayConstraint;
+            osg::ref_ptr<osgUtil::DelaunayConstraint> newdc = new osgUtil::DelaunayConstraint();
             osg::Vec3Array* maskConstraint = new osg::Vec3Array();
             newdc->setVertexArray(maskConstraint);
 
-            //Crop the mask to the stitching poly (for case where mask crosses tile edge)
-            osg::ref_ptr<Geometry> maskCrop;
-            maskPoly->crop(patchPoly.get(), maskCrop);
+            // Crop the boundar to the patch polygon (i.e. the bounding box)
+            // for case where mask crosses tile edges
+            osg::ref_ptr<Geometry> boundaryPolyCroppedToTile;
+            boundaryPoly->crop(patchPoly.get(), boundaryPolyCroppedToTile);
 
-            GeometryIterator i( maskCrop.get(), false );
+            // See the comment for the call to resample above. -gw
+            //if (boundaryPolyCroppedToTile.valid() && !boundaryPolyCroppedToTile->empty())
+            //{
+            //    const double interval = 1.0 / double(_tileSize-1);
+            //    resample(boundaryPolyCroppedToTile.get(), interval);
+            //}
+
+            // Add the cropped boundary geometry as a Triangulation Constraint.
+            GeometryIterator i( boundaryPolyCroppedToTile.get(), false );
             while( i.hasMore() )
             {
                 Geometry* part = i.next();
@@ -254,30 +408,31 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                 if (part->getType() == Geometry::TYPE_POLYGON)
                 {
                     osg::ref_ptr<osg::Vec3Array> partVerts = part->createVec3Array();
+                    maskConstraint->reserve(maskConstraint->size() + partVerts->size());
                     maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
                     newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
                 }
             }
 
-            // Cropping strips z-values so need reassign
+            // Cropping strips z-values! so we need reassign them.
             std::vector<int> isZSet;
             for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
             {
                 int zSet = 0;
 
-                //Look for verts that belong to the original mask patch polygon
+                // Search the patch (bounding box) polygon for matching points:
                 for (Polygon::iterator mit = patchPoly->begin(); mit != patchPoly->end(); ++mit)
                 {
-                    if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+                    if (EQUIVALENT_2D(mit, it))
                     {
-                        //(*it).z() = (*mit).z();
+                        //(*it).z() = (*mit).z(); // commented out by Jeff...why?
                         zSet += 1;
 
                         // Remove duplicate point from coordsArray to avoid duplicate point warnings
                         osg::Vec3Array::iterator caIt;
                         for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
                         {
-                            if (osg::absolute((*caIt).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*caIt).y() - (*it).y()) < MATCH_TOLERANCE)
+                            if (EQUIVALENT_2D(caIt, it))
                                 break;
                         }
                         if (caIt != coordsArray->end())
@@ -287,15 +442,16 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                     }
                 }
 
-                //Look for verts that belong to the mask polygon
-                for (Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+                // Search the original uncropped boundary polygon for matching points,
+                // and build a set of boundary vertices.
+                for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
                 {
-                    if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+                    if (EQUIVALENT_2D(mit, it))
                     {
                         (*it).z() = (*mit).z();
                         zSet += 2;
 
-                        boundaryVerts->push_back((*it));
+                        boundaryVerts.insert( *it );
                         break;
                     }
                 }
@@ -303,14 +459,15 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                 isZSet.push_back(zSet);
             }
 
-            //Any mask skirt verts that are still unset are newly created verts where the skirt
-            //meets the mask. Find the mask segment the point lies along and calculate the
-            //appropriate z value for the point.
+            // Any mask patch verts that are still unset are newly created verts where the patch
+            // meets the mask. (Do you mean, where the boundary crosses the tile edge? -gw) 
+            // Find the mask segment the point lies along and calculate the
+            // appropriate z value for the point.
             int count = 0;
             for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
             {
                 //If the z-value was set from a mask vertex there is no need to change it.  If
-                //it was set from a vertex from the stitching polygon it may need overriden if
+                //it was set from a vertex from the patch polygon it may need to be overriden if
                 //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
                 //if (isZSet[count] < 2)
                 if (!isZSet[count])
@@ -318,10 +475,10 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                     osg::Vec3d p2 = *it;
                     double closestZ = 0.0;
                     double closestRatio = DBL_MAX;
-                    for (Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+                    for (Polygon::iterator mit = boundaryPoly->begin(); mit != boundaryPoly->end(); ++mit)
                     {
                         osg::Vec3d p1 = *mit;
-                        osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+                        osg::Vec3d p3 = mit == --boundaryPoly->end() ? boundaryPoly->front() : (*(mit + 1));
 
                         //Truncated vales to compensate for accuracy issues
                         double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
@@ -342,9 +499,9 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                             double foundZ = (l1 / lt) * zmag + p1.z();
 
                             double mRatio = 1.0;
-                            if (osg::absolute(p1x - p3x) < MATCH_TOLERANCE)
+                            if (EQUIVALENT(p1x, p3x))
                             {
-                                if (osg::absolute(p1x-p2x) < MATCH_TOLERANCE)
+                                if (EQUIVALENT(p1x, p2x))
                                     mRatio = 0.0;
                             }
                             else
@@ -359,7 +516,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                                 (*it).z() = foundZ;
                                 isZSet[count] = 2;
 
-                                boundaryVerts->push_back((*it));
+                                boundaryVerts.insert( *it );
                                 break;
                             }
                             else if (mRatio < closestRatio)
@@ -374,8 +531,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
                     {
                         (*it).z() = closestZ;
                         isZSet[count] = 2;
-
-                        boundaryVerts->push_back((*it));
+                        boundaryVerts.insert( *it );
                     }
                 }
 
@@ -388,87 +544,109 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             alldcs.push_back(newdc);
         }
 
+        // Set up a triangulator with the patch coordinates:
+        osg::ref_ptr<osgUtil::DelaunayTriangulator> trig = new osgUtil::DelaunayTriangulator();
         trig->setInputPointArray(coordsArray.get());
 
+        // Add each boundary constraint:
         for (int dcnum =0; dcnum < alldcs.size();dcnum++)
         {
             trig->addInputConstraint(alldcs[dcnum].get());
         }
 
         // Create array to hold vertex normals
-        osg::Vec3Array *norms=new osg::Vec3Array;
+        osg::Vec3Array* norms = new osg::Vec3Array();
         trig->setOutputNormalArray(norms);
 
-
-        // Triangulate vertices and remove triangles that lie within the contraint loop
+        // Triangulate! 
         trig->triangulate();
-        for (int dcnum =0; dcnum < alldcs.size();dcnum++)
+
+        // Remove any triangles interior to the boundaries.
+        // Note: an alternative here would be to flatten them all to a common height -gw
+        for (int dcnum =0; dcnum < alldcs.size(); dcnum++)
         {
             trig->removeInternalTriangles(alldcs[dcnum].get());
         }
+        
+        // Now build the new geometry.
+        const osg::Vec3Array* trigPoints = trig->getInputPointArray();
 
-        verts->reserve(verts->size() + trig->getInputPointArray()->size());
-        texCoords->reserve(texCoords->size() + trig->getInputPointArray()->size());
-        normals->reserve(normals->size() + trig->getInputPointArray()->size());
+        // Reserve space; pre-allocating space is faster
+        verts->reserve(verts->size() + trigPoints->size());
+        texCoords->reserve(texCoords->size() + trigPoints->size());
+        normals->reserve(normals->size() + trigPoints->size());
         if ( neighbors )
-            neighbors->reserve(neighbors->size() + trig->getInputPointArray()->size()); 
+            neighbors->reserve(neighbors->size() + trigPoints->size()); 
 
         // Iterate through point to convert to model coords, calculate normals, and set up tex coords
         osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
 
-        //int norm_i = -1;
         unsigned vertsOffset = verts->size();
 
-        for (osg::Vec3Array::iterator it = trig->getInputPointArray()->begin(); it != trig->getInputPointArray()->end(); ++it)
+        for (osg::Vec3Array::const_iterator it = trigPoints->begin(); it != trigPoints->end(); ++it)
         {
             // check to see if point is a part of the original mask boundary
-            bool isBoundary = false;
-            for (osg::Vec3dArray::iterator bit = boundaryVerts->begin(); bit != boundaryVerts->end(); ++bit)
-            {
-                if (osg::absolute((*bit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*bit).y() - (*it).y()) < MATCH_TOLERANCE)
-                {
-                    isBoundary = true;
-                    break;
-                }
-            }
+            bool isBoundary = boundaryVerts.find(*it) != boundaryVerts.end();
 
-            // get model coords
-            osg::Vec3d model;
-            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), model);
-            model = model * world2local;
+            // get local coords
+            osg::Vec3d local;
+            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), local);
+            local = local * world2local;
 
             // calc normals
-            osg::Vec3d modelPlusOne;
-            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), modelPlusOne);
-            osg::Vec3d normal = (modelPlusOne*world2local)-model;                
+            osg::Vec3d localPlusOne;
+            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), localPlusOne);
+            osg::Vec3d normal = (localPlusOne*world2local)-local;                
             normal.normalize();
             normals->push_back( normal );
 
             // set elevation if this is a point along the mask boundary
             if (isBoundary)
-                model += normal*it->z();
+                local += normal*it->z();
 
-            verts->push_back(model);
+            verts->push_back(local);
 
             // use same vert for neighbor to prevent morphing
             if ( neighbors )
-                neighbors->push_back( model );  
+                neighbors->push_back( local );  
 
             // set up text coords
-            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_SKIRT) );
+            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_PATCH) );
         }
 
-        // Get triangles from triangulator and add as primative set to the geometry
+        // Get triangles from triangulator and add as primitive set to the geometry
         osg::DrawElementsUInt* tris = trig->getTriangles();
+
         if ( tris && tris->getNumIndices() >= 3 )
         {
             osg::ref_ptr<osg::DrawElementsUInt> elems = new osg::DrawElementsUInt(tris->getMode());
             elems->reserve(tris->size());
 
             const osg::MixinVector<GLuint> ins = tris->asVector();
+
             for (osg::MixinVector<GLuint>::const_iterator it = ins.begin(); it != ins.end(); ++it)
             {
-                elems->push_back((*it) + vertsOffset);
+                unsigned i0 = vertsOffset + *it++;
+                unsigned i1 = vertsOffset + *it++;
+                unsigned i2 = vertsOffset + *it;
+
+                const osg::Vec3d& v0 = (*verts)[i0];
+                const osg::Vec3d& v1 = (*verts)[i1];
+                const osg::Vec3d& v2 = (*verts)[i2];
+
+                // check the winding order. Triangles don't always come out in the right orientation
+                if (((v0 - v1) ^ (v2 - v1)).z() < 0)
+                {
+                    elems->push_back(i0);
+                    elems->push_back(i1);
+                    elems->push_back(i2);
+                }
+                else
+                {
+                    elems->push_back(i0);
+                    elems->push_back(i2);
+                    elems->push_back(i1);
+                }
             }
 
             return elems.release();
@@ -481,33 +659,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 void
 MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
 {
-#if 1
     min = _ndcMin;
     max = _ndcMax;
-
-#else
-    if (_maskRecords.size() > 0)
-    {
-        min.x() = _maskRecords[0]._ndcMin.x();
-        min.y() = _maskRecords[0]._ndcMin.y();
-        min.z() = _maskRecords[0]._ndcMin.z();
-
-        max.x() = _maskRecords[0]._ndcMax.x();
-        max.y() = _maskRecords[0]._ndcMax.y();
-        max.z() = _maskRecords[0]._ndcMax.z();
-
-        for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
-        {
-            if (it->_ndcMin.x() < min.x()) min.x() = it->_ndcMin.x();
-            if (it->_ndcMin.y() < min.y()) min.y() = it->_ndcMin.y();
-            if (it->_ndcMin.z() < min.z()) min.z() = it->_ndcMin.z();
-
-            if (it->_ndcMax.x() > max.x()) max.x() = it->_ndcMax.x();
-            if (it->_ndcMax.y() > max.y()) max.y() = it->_ndcMax.y();
-            if (it->_ndcMax.z() > max.z()) max.z() = it->_ndcMax.z();
-        }
-    }
-#endif
 }
 
 float
@@ -527,14 +680,14 @@ MaskGenerator::getMarker(float nx, float ny) const
 
         if (i > min_i && i < max_i && j > min_j && j < max_j)
         {
-            marker = MASK_MARKER_DISCARD; // contained by mask
+            marker = MASK_MARKER_DISCARD; // contained by boundary
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
                  (i == max_i && j >= min_j && j <= max_j) ||
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-            marker = MASK_MARKER_SKIRT; // tile vert on outer mask skirt boundary
+            marker = MASK_MARKER_PATCH;
         }
     }
 

@@ -91,7 +91,7 @@ namespace
     //! Compares two 3D points ignoring the Z value.
     struct less_2d
     {
-        bool operator()(const osg::Vec3& lhs, const osg::Vec3& rhs)
+        bool operator()(const osg::Vec3& lhs, const osg::Vec3& rhs) const
         {
             if (lhs[0] < rhs[0]) return true;
             else if (lhs[0] > rhs[0]) return false;
@@ -629,7 +629,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
     // If something went wrong, just bail out. This should never happen
     if (tris == 0L || tris->getNumIndices() < 3)
     {
-        OE_INFO << LC << "* Triangulation resulted in no geometry\n";
+        //OE_INFO << LC << "* Triangulation resulted in no geometry\n";
         return R_BOUNDARY_CONTAINS_ENTIRE_TILE;
     }
 

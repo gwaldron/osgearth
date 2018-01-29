@@ -565,11 +565,17 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 }
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,6)
+
 osg::VertexArrayState*
+#if OSG_MIN_VERSION_REQUIRED(3,5,9)
+MPGeometry::createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const
+{
+    osg::VertexArrayState* vas = osg::Geometry::createVertexArrayStateImplementation(renderInfo);
+#else
 MPGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
 {
     osg::VertexArrayState* vas = osg::Geometry::createVertexArrayState(renderInfo);
-    
+#endif
     // make sure we have array dispatchers for the multipass coords
     vas->assignTexCoordArrayDispatcher(_texCoordList.size() + 2);
 

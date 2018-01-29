@@ -592,7 +592,11 @@ SharedGeometry::empty() const
 
 
 #ifdef SUPPORTS_VAO
+#if OSG_MIN_VERSION_REQUIRED(3,5,9)
+osg::VertexArrayState* SharedGeometry::createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const
+#else
 osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& renderInfo) const
+#endif
 {
     osg::State& state = *renderInfo.getState();
 

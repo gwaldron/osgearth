@@ -336,80 +336,40 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         }
     }
 
-    // Now tessellate the surface.
-    
-    // TODO: do we really need this??
-    bool swapOrientation = !locator->orientationOpenGL();
-
-    for(unsigned j=0; j<tileSize-1; ++j)
-    {
-        for(unsigned i=0; i<tileSize-1; ++i)
-        {
-            int i00;
-            int i01;
-            if (swapOrientation)
-            {
-                i01 = j*tileSize + i;
-                i00 = i01+tileSize;
-            }
-            else
-            {
-                i00 = j*tileSize + i;
-                i01 = i00+tileSize;
-            }
-
-            int i10 = i00+1;
-            int i11 = i01+1;
-
-            // skip any triangles that have a discarded vertex:
-            bool discard = maskSet && (
-                maskSet->isMasked( (*texCoords)[i00] ) ||
-                maskSet->isMasked( (*texCoords)[i11] )
-            );
-
-            if ( !discard )
-            {
-                discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
-                if ( !discard )
-                {
-                    primSet->addElement(i01);
-                    primSet->addElement(i00);
-                    primSet->addElement(i11);
-                }
-            
-                discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
-                if ( !discard )
-                {
-                    primSet->addElement(i00);
-                    primSet->addElement(i10);
-                    primSet->addElement(i11);
-                }
-            }
-        }
-    }
-
-    bool skirtCreated = false;
+    // By default we tessellate the surface, but if there's a masking set
+    // it might replace some or all of our surface geometry.
+    bool tessellateSurface = true;
                     
     if (maskSet)
     {
         // The mask generator adds to the passed-in arrays as necessary,
         // and then returns a new primtive set containing all the new triangles.
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts.get(), texCoords.get(), normals.get(), neighbors.get());
-        if (maskPrim && maskPrim->size() > 0)
-        {
-            maskPrim->setElementBufferObject(primSet->getElementBufferObject());
-            geom->setMaskElements(maskPrim.get());
+        osg::ref_ptr<osg::DrawElementsUInt> maskElements;
 
-            // Build a skirt for the mask geometry:
+        MaskGenerator::Result r = maskSet->createMaskPrimitives(
+            mapInfo,
+            verts.get(), texCoords.get(), normals.get(), neighbors.get(),
+            maskElements);
+
+        if (r == MaskGenerator::R_BOUNDARY_INTERSECTS_TILE && 
+            maskElements.valid() && 
+            maskElements->size() > 0)
+        {
+            // Share the same EBO as the surface geometry
+            maskElements->setElementBufferObject(primSet->getElementBufferObject());
+            geom->setMaskElements(maskElements.get());
+
+            // Build a skirt for the mask geometry?
             if (createSkirt)
             {
-                // calculate the skirt extrudion height
+                // calculate the skirt extrusion height
                 double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
 
                 // Construct a node+edge graph out of the masking geometry:
-                osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), maskPrim.get(), tileKey.str());
+                osg::ref_ptr<TopologyGraph> graph = TopologyBuilder::create(verts.get(), maskElements.get(), tileKey.str());
 
-                // Extract the boundaries (could be more than one):
+                // Extract the boundaries (if the topology is discontinuous,
+                // there will be more than one)
                 for (unsigned i = 0; i<graph->getNumBoundaries(); ++i)
                 {
                     TopologyGraph::IndexVector boundary;
@@ -434,36 +394,106 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                 }
             }
         }
+
+        // If the boundary doesn't intersect the tile, draw the entire tile
+        // as we normally would. Need to reset the masking marker.
+        else if (r == MaskGenerator::R_BOUNDARY_DOES_NOT_INTERSECT_TILE)
+        {
+            maskSet = 0L;
+            for (osg::Vec3Array::iterator i = texCoords->begin(); i != texCoords->end(); ++i)
+                i->z() = MASK_MARKER_NORMAL;
+        }
+
+        // If the boundary contains the entire tile, draw nothing!
+        else // if (r == MaskGenerator::R_BOUNDARY_CONTAINS_ENTIRE_TILE)
+        {
+            tessellateSurface = false;
+        }
     }
 
-    // Build skirts for the tile geometry
-    if ( createSkirt && !skirtCreated )
+    // Now tessellate the (unmasked) surface.
+    
+    if (tessellateSurface)
     {
-        // SKIRTS:
-        // calculate the skirt extrusion height
-        double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+        // TODO: do we really need this??
+        bool swapOrientation = !locator->orientationOpenGL();
+
+        for(unsigned j=0; j<tileSize-1; ++j)
+        {
+            for(unsigned i=0; i<tileSize-1; ++i)
+            {
+                int i00;
+                int i01;
+                if (swapOrientation)
+                {
+                    i01 = j*tileSize + i;
+                    i00 = i01+tileSize;
+                }
+                else
+                {
+                    i00 = j*tileSize + i;
+                    i01 = i00+tileSize;
+                }
+
+                int i10 = i00+1;
+                int i11 = i01+1;
+
+                // skip any triangles that have a discarded vertex:
+                bool discard = maskSet && (
+                    maskSet->isMasked( (*texCoords)[i00] ) ||
+                    maskSet->isMasked( (*texCoords)[i11] )
+                );
+
+                if ( !discard )
+                {
+                    discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
+                    if ( !discard )
+                    {
+                        primSet->addElement(i01);
+                        primSet->addElement(i00);
+                        primSet->addElement(i11);
+                    }
+            
+                    discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
+                    if ( !discard )
+                    {
+                        primSet->addElement(i00);
+                        primSet->addElement(i10);
+                        primSet->addElement(i11);
+                    }
+                }
+            }
+        }
+
+        // Build skirts for the tile geometry
+        if ( createSkirt )
+        {
+            // SKIRTS:
+            // calculate the skirt extrusion height
+            double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
         
-        unsigned skirtIndex = verts->size();
+            unsigned skirtIndex = verts->size();
 
-        // first, create all the skirt verts, normals, and texcoords.
-        for(int c=0; c<(int)tileSize-1; ++c)
-            addSkirtDataForIndex( c, height ); //top
+            // first, create all the skirt verts, normals, and texcoords.
+            for(int c=0; c<(int)tileSize-1; ++c)
+                addSkirtDataForIndex( c, height ); //top
 
-        for(int r=0; r<(int)tileSize-1; ++r)
-            addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
+            for(int r=0; r<(int)tileSize-1; ++r)
+                addSkirtDataForIndex( r*tileSize+(tileSize-1), height ); //right
     
-        for(int c=tileSize-1; c>=0; --c)
-            addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
+            for(int c=tileSize-1; c>=0; --c)
+                addSkirtDataForIndex( (tileSize-1)*tileSize+c, height ); //bottom
 
-        for(int r=tileSize-1; r>=0; --r)
-            addSkirtDataForIndex( r*tileSize, height ); //left
+            for(int r=tileSize-1; r>=0; --r)
+                addSkirtDataForIndex( r*tileSize, height ); //left
     
-        // then create the elements indices:
-        int i;
-        for(i=skirtIndex; i<(int)verts->size()-2; i+=2)
-            addSkirtTriangles( i, i+2 );
+            // then create the elements indices:
+            int i;
+            for(i=skirtIndex; i<(int)verts->size()-2; i+=2)
+                addSkirtTriangles( i, i+2 );
 
-        addSkirtTriangles( i, skirtIndex );
+            addSkirtTriangles( i, skirtIndex );
+        }
     }
 
     return geom.release();

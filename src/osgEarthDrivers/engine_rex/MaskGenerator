@@ -57,6 +57,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class MaskGenerator : public osg::Referenced
     {
     public:
+        enum Result {
+            R_BOUNDARY_DOES_NOT_INTERSECT_TILE,
+            R_BOUNDARY_CONTAINS_ENTIRE_TILE,
+            R_BOUNDARY_INTERSECTS_TILE
+        };
+
+    public:
         MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map);
 
         //! True if this tile has masking data at all
@@ -84,12 +91,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void getMinMax(osg::Vec3d& min, osg::Vec3d& max);
 
         //! Generates all the masking geometry and appened it to the passed-in arrays.
-        osg::DrawElementsUInt* createMaskPrimitives(
+        Result createMaskPrimitives(
             const MapInfo&  mapInfo, 
             osg::Vec3Array* verts, 
             osg::Vec3Array* texCoords,
             osg::Vec3Array* normals,
-            osg::Vec3Array* neighbors);
+            osg::Vec3Array* neighbors,
+            osg::ref_ptr<osg::DrawElementsUInt>& out_elements);
 
     protected:
         void setupMaskRecord(const MapInfo& mapInfo, osg::Vec3dArray* boundary);

@@ -91,7 +91,7 @@ namespace
     //! Compares two 3D points ignoring the Z value.
     struct less_2d
     {
-        bool operator()(const osg::Vec3& lhs, const osg::Vec3& rhs)
+        bool operator()(const osg::Vec3& lhs, const osg::Vec3& rhs) const
         {
             if (lhs[0] < rhs[0]) return true;
             else if (lhs[0] > rhs[0]) return false;

@@ -2741,11 +2741,13 @@ ControlCanvas::init()
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
    
+#if 0
 #if defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
     // don't use shaders unless we have to.
     this->getOrCreateStateSet()->setAttributeAndModes(
         new osg::Program(), 
         osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
+#endif
 #endif
 }
 

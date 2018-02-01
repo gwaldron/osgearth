@@ -71,7 +71,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const osg::DrawElements* getMaskElements() const { return _maskElements.get(); }
 
 #ifdef SUPPORTS_VAO
+    #if OSG_MIN_VERSION_REQUIRED(3,5,9)
+        osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const;
+    #else
         osg::VertexArrayState* createVertexArrayState(osg::RenderInfo& renderInfo) const;
+    #endif
 #endif
 
         void compileGLObjects(osg::RenderInfo& renderInfo) const;

@@ -39,85 +39,133 @@ namespace osgEarth { namespace Util
     //! Stores the noded topology of a model with unique verticies and edge definitions.
     //! The verticies are stored rotated into the XY plane so that we can properly find
     //! the "bottom-most" vert and walk the boundary.
-    class OSGEARTHUTIL_EXPORT TopologyGraph
+    class OSGEARTHUTIL_EXPORT TopologyGraph : public osg::Object
     {
     public:
 
-        struct Vertex {
-            Vertex(const Vertex& rhs) : _drawable(rhs._drawable), _verts(rhs._verts), _index(rhs._index) { }
-            Vertex(osg::Drawable* drawable, osg::Vec3Array* verts, unsigned index) : _drawable(drawable), _verts(verts), _index(index) { }
-            osg::Drawable* _drawable;
-            osg::Vec3Array* _verts;
-            unsigned _index;
+        //! Represents a single vertex in the topology graph
+        struct Vertex
+        {
+            Vertex(const Vertex& rhs) : _verts(rhs._verts), _index(rhs._index), _graphID(0u) { }
+
+            Vertex(const osg::Vec3Array* verts, unsigned index) : _verts(verts), _index(index), _graphID(0u) { }
+
             const osg::Vec3& vertex() const { return (*_verts)[_index]; }
+
+            unsigned index() const { return _index; }
+
             float x() const { return (*_verts)[_index].x(); }
             float y() const { return (*_verts)[_index].y(); }
+
             bool operator < (const Vertex& rhs) const {
-                double dx = x() - rhs.x();
-                if (dx < 0.0) return true;
-                if (dx > 0.0) return false;
-                double dy = y() - rhs.y();
-                return dy < 0.0;
+                //if (_verts < rhs._verts) return true;
+                //if (_verts > rhs._verts) return false;
+                //return _index < rhs._index;
+                if (x() < rhs.x()) return true;
+                if (x() > rhs.x()) return false;
+                return y() < rhs.y();
             }
+
+            const osg::Vec3Array* _verts;   //! vertex array from which this vertex originated
+            unsigned _index;                //! index into the source vertex array
+            mutable unsigned _graphID;      //! which graph does this vertex belong to (in the event of multiple graphs)
         };
 
+        //! One or more Vertex objects
         typedef std::set<Vertex> VertexSet;
 
+        //! Iterator into a VertexSet.
         typedef VertexSet::iterator Index;
 
-        // custom comparator for Index so we can use it at a std::map key
+        //! Custom comparator for Index so we can use it at a std::map key
         struct IndexLess : public std::less<Index> {
             bool operator()(const Index& lhs, const Index& rhs) const {
                 return (*lhs) < (*rhs);
             }
         };
 
+        //! Sortable set of indices
         typedef std::set<Index, IndexLess> IndexSet;
 
-        typedef std::map<Index, IndexSet, IndexLess>  EdgeMap;
+        //! Maps a Vertex Index to a collection of Vertex indices (edges)
+        typedef std::map<Index, IndexSet, IndexLess> EdgeMap;
 
+        //! Vector of Vertex Indexes
         typedef std::vector<Index> IndexVector;
 
     public:
 
+        META_Object(osgEarthUtil, TopologyGraph);
+
+        //! CTOR
         TopologyGraph();
 
-        void createBoundary(IndexVector& output) const;
+        //! How many disconnected graphs are there in this topology?
+        unsigned getNumBoundaries() const;
+
+        //! Creates the boundary of the nth disconnected graph
+        void createBoundary(unsigned boundaryNum, IndexVector& output) const;
+
+    public:
+        void addTriangle(const osg::Vec3Array* verts, unsigned v0, unsigned v1, unsigned v2);
+
+        Index add(const osg::Vec3Array* verts, unsigned v);
+
+        void assignAndPropagate(TopologyGraph::Index& vertex, unsigned graphID);
 
     public:
         unsigned     _totalVerts;  // total number of verts encountered
-        //VertexSet    _vertsWorld;  // 
         VertexSet    _verts;       // set of unique verts in the topology (rotated into XY plane)
         EdgeMap      _edgeMap;     // maps each vert to all the verts with which it shares an edge
-        Index        _minY;        // points to the vert with the minimum Y coordinate (in XY plane)
-        osg::Matrixd _world2plane; // matrix that transforms into a localized XY plane
-        const osgEarth::SpatialReference* _srs;
+        unsigned     _maxGraphID;  // maximum graph id from builder (1=one graph)
 
         friend class TopologyBuilder;
         friend class BuildTopologyVisitor;
 
-        void dumpBoundary(const std::string& filename);
+        void dumpBoundary(const IndexVector& boundary, const std::string& filename);
+
+    protected:
+        // no copy ctor
+        TopologyGraph(const TopologyGraph& rhs, const osg::CopyOp& copy) { }
+
+        virtual ~TopologyGraph() { }
+
+        unsigned recomputeSubgraphs();
     };
 
+    typedef std::vector< osg::ref_ptr<TopologyGraph> > TopologyGraphVector;
 
     // A TriangleIndexFunctor that traverses a stream of triangles and builds a
     // topology graph from their points and edges.
     class OSGEARTHUTIL_EXPORT TopologyBuilder
     {
     public:
+        //! CTOR
         TopologyBuilder();
+
+        //! Creates a new topology graph from a single set of triangles.
+        //! @param[in ] verts Vertex array input
+        //! @param[in ] elems Elements defining triangle set
+        //! @param[in ] name  Optional name for error/warning output
+        //! @return     New TopologyGraph object
+        static TopologyGraph* create(
+            const osg::Vec3Array*    verts,
+            const osg::PrimitiveSet* elems,
+            const std::string&       name = std::string());
 
         typedef std::map<unsigned, TopologyGraph::Index> UniqueMap;
 
-        TopologyGraph*  _topology;     // topology to which to append point and edge data
-        osg::Drawable*  _drawable;     // source geometry
-        osg::Vec3Array* _verts;        // source vertex list
-        osg::Matrix     _local2world;  // transforms source verts into world coordinates
-        UniqueMap       _uniqueMap;    // prevents duplicates
+        TopologyGraph* _graph;           // topology to which to append point and edge data
+        const osg::Drawable* _drawable;  // source geometry
+        const osg::Vec3Array* _verts;    // source vertex list
+        UniqueMap _uniqueMap;            // prevents duplicates
 
+        // entry point for the TriangleIndexFunctor
         void operator()( unsigned v0, unsigned v1, unsigned v2 );
 
         TopologyGraph::Index add( unsigned v );
+
+        void assignAndPropagate(TopologyGraph::Index& vertex, unsigned graphID);
 
         friend class TopologyBuilderVisitor;
     };
@@ -136,10 +184,11 @@ namespace osgEarth { namespace Util
         // add the contents of a Geometry to the topology
         void apply( osg::Drawable& drawable );
 
+        // ???
         void apply( osg::Drawable* drawable, osg::Vec3Array* verts );
 
         std::vector<osg::Matrixd> _matrixStack;
-        TopologyGraph&            _topology;
+        TopologyGraph& _graph;
     };
 
 } }

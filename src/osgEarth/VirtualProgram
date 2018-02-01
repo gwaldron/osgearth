@@ -181,6 +181,7 @@ namespace osgEarth
         /** Called from the draw context to resize shader buffers as necessary (OSG) */
         virtual void resizeGLObjectBuffers(unsigned maxSize);
 
+        virtual void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~PolyShader() { }

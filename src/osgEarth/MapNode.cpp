@@ -803,6 +803,32 @@ MapNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
+void
+MapNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    LayerVector layers;
+    getMap()->getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        if ((*i)->getStateSet()) {
+            (*i)->getStateSet()->resizeGLObjectBuffers(maxSize);
+        }
+    }
+}
+
+void
+MapNode::releaseGLObjects(osg::State* state) const
+{
+    LayerVector layers;
+    getMap()->getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        if ((*i)->getStateSet()) {
+            (*i)->getStateSet()->releaseGLObjects(state);
+        }
+    }
+}
+
 DrapingManager*
 MapNode::getDrapingManager()
 {

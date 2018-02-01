@@ -190,6 +190,46 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     OE_DEBUG << LC << "~RexTerrainEngineNode\n";
 }
 
+void 
+RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    getStateSet()->resizeGLObjectBuffers(maxSize);
+
+    _terrain->getStateSet()->resizeGLObjectBuffers(maxSize);
+
+    _imageLayerStateSet.get()->resizeGLObjectBuffers(maxSize);
+
+    // TODO: where should this live? MapNode?
+    LayerVector layers;
+    getMap()->getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        if ((*i)->getStateSet()) {
+            (*i)->getStateSet()->resizeGLObjectBuffers(maxSize);
+        }
+    }
+}
+
+void
+RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
+{
+    getStateSet()->releaseGLObjects(state);
+
+    _terrain->getStateSet()->releaseGLObjects(state);
+
+    _imageLayerStateSet.get()->releaseGLObjects(state);
+
+    // TODO: where should this live? MapNode?
+    LayerVector layers;
+    getMap()->getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
+        if ((*i)->getStateSet()) {
+            (*i)->getStateSet()->releaseGLObjects(state);
+        }
+    }
+}
+
 void
 RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {

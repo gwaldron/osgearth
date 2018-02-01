@@ -233,6 +233,10 @@ namespace osgEarth
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+        virtual void releaseGLObjects(osg::State* state) const;
+
     protected:    
 
         virtual ~MapNode();

@@ -182,6 +182,25 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     OE_DEBUG << LC << "~RexTerrainEngineNode\n";
 }
 
+
+void RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
+{
+
+   getStateSet()->releaseGLObjects(state);
+   _terrain->getStateSet()->releaseGLObjects(state);
+   _imageLayerStateSet.get()->releaseGLObjects(state);
+
+   
+   LayerVector layers;
+   getMap()->getLayers(layers);
+   for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+   {
+      if ((*i)->getStateSet()) {
+         (*i)->getStateSet()->releaseGLObjects(state);
+      }
+   }
+}
+
 void
 RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
@@ -1152,7 +1171,9 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
             Shaders shaders;
             osg::StateSet* stateSet = imageLayer->getOrCreateStateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            vp->setName("RexEngine:ImageLayer");
             shaders.load(vp, shaders.ENGINE_FRAG);
+
         }
 
         else

@@ -945,6 +945,14 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
             i->second._program->releaseGLObjects(state);
     }
 
+    for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
+    {
+       if (i->data()._shader.valid())
+       {
+          i->data()._shader->releaseGLObjects(state);
+       }
+    }
+
     _programCache.clear();
 
     _programCacheMutex.unlock();
@@ -1949,6 +1957,23 @@ void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
     }
 }
 
+void PolyShader::releaseGLObjects(osg::State* state) const
+{
+   if (_nominalShader.valid())
+   {
+      _nominalShader->releaseGLObjects(state);
+   }
+
+   if (_geomShader.valid())
+   {
+      _geomShader->releaseGLObjects(state);
+   }
+
+   if (_tessevalShader.valid())
+   {
+      _tessevalShader->releaseGLObjects(state);
+   }
+}
 //.......................................................................
 // SERIALIZERS for VIRTUALPROGRAM
 

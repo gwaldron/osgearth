@@ -1720,6 +1720,13 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         const ActionTypeVector& atv = _settings->getBreakTetherActions();
         if ( atv.size() > 0 )
         {
+            int eventType = ea.getEventType();
+            // use custom EVENT_MOUSE_CLICK enum value if left mouse button click
+            // is detected, because it is used in Settings::bindMouseClick()'s InputSpec.
+            if ( eventType == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON )
+            {
+                eventType = EVENT_MOUSE_CLICK;
+            }
             const Action& action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
             if ( std::find(atv.begin(), atv.end(), action._type) != atv.end() )
             {

@@ -933,7 +933,7 @@ public:
 
         if ( !srcProj.empty() && getProfile() != 0L )
         {
-            OE_WARN << LC << "Overriding profile of a source that already defines its own SRS ("
+            OE_NOTICE << LC << "Overriding profile of a source that already defines its own SRS ("
                 << this->getName() << ")" << std::endl;
         }
 

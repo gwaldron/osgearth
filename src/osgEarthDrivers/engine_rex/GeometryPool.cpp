@@ -717,7 +717,7 @@ void SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
 
 void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
 {
-    Drawable::resizeGLObjectBuffers(maxSize);
+    osg::Drawable::resizeGLObjectBuffers(maxSize);
 
     osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
     if (vbo) vbo->resizeGLObjectBuffers(maxSize);
@@ -728,7 +728,7 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
 
 void SharedGeometry::releaseGLObjects(osg::State* state) const
 {
-    Drawable::releaseGLObjects(state);
+    osg::Drawable::releaseGLObjects(state);
 
     osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
     if (vbo) vbo->releaseGLObjects(state);

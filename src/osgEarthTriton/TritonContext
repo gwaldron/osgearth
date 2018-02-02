@@ -76,6 +76,8 @@ namespace osgEarth { namespace Triton
 
     public: // osg::Object
 
+        void resizeGLObjectBuffers(unsigned maxSize);
+
         /** If State is non-zero, this function releases any associated OpenGL objects for
            * the specified graphics context. Otherwise, releases OpenGL objects
            * for all graphics contexts. */

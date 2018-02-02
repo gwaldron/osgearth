@@ -806,6 +806,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
 void
 MapNode::resizeGLObjectBuffers(unsigned maxSize)
 {
+    osg::Group::resizeGLObjectBuffers(maxSize);
+
     LayerVector layers;
     getMap()->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
@@ -819,6 +821,8 @@ MapNode::resizeGLObjectBuffers(unsigned maxSize)
 void
 MapNode::releaseGLObjects(osg::State* state) const
 {
+    osg::Group::releaseGLObjects(state);
+
     LayerVector layers;
     getMap()->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)

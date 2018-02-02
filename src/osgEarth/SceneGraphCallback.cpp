@@ -133,17 +133,15 @@ PagedLODWithSceneGraphCallbacks::replaceChild(osg::Node* oldChild, osg::Node* ne
     return ok;
 }
 
-bool
-PagedLODWithSceneGraphCallbacks::removeChild(osg::Node* child)
+void
+PagedLODWithSceneGraphCallbacks::childRemoved(unsigned pos, unsigned num)
 {
-    bool ok = false;
-    if (child)
+    osg::ref_ptr<SceneGraphCallbacks> host;
+    if (_host.lock(host))
     {
-        osg::ref_ptr<osg::Node> node = child;
-        ok = osg::PagedLOD::removeChild(child);
-        osg::ref_ptr<SceneGraphCallbacks> host;
-        if (_host.lock(host))
-            host->fireRemoveNode(node.get());
+        for (unsigned i = pos; i < pos + num; ++i)
+        {
+            host->fireRemoveNode(getChild(i));
+        }
     }
-    return ok;
 }

@@ -181,8 +181,16 @@ TritonContext::update(double simTime)
 }
 
 void
+TritonContext::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Object::resizeGLObjectBuffers(maxSize);
+}
+
+void
 TritonContext::releaseGLObjects(osg::State* state) const
 {
+    osg::Object::releaseGLObjects(state);
+
     OE_INFO << LC << "Triton shutting down - releasing GL resources\n";
     if (state)
     {

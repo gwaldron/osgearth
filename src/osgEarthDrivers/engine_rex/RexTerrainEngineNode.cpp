@@ -193,6 +193,8 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 void 
 RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 {
+    TerrainEngineNode::resizeGLObjectBuffers(maxSize);
+
     getStateSet()->resizeGLObjectBuffers(maxSize);
 
     _terrain->getStateSet()->resizeGLObjectBuffers(maxSize);
@@ -213,6 +215,8 @@ RexTerrainEngineNode::resizeGLObjectBuffers(unsigned maxSize)
 void
 RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
 {
+    TerrainEngineNode::releaseGLObjects(state);
+
     getStateSet()->releaseGLObjects(state);
 
     _terrain->getStateSet()->releaseGLObjects(state);

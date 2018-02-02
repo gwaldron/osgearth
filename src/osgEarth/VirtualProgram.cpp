@@ -910,6 +910,8 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
+    osg::StateAttribute::resizeGLObjectBuffers(maxSize);
+
     _programCacheMutex.lock();
 
     for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
@@ -932,6 +934,8 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
+    osg::StateAttribute::releaseGLObjects(state);
+
     _programCacheMutex.lock();
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)

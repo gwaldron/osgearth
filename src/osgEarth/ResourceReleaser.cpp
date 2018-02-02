@@ -38,24 +38,40 @@ ResourceReleaser::ResourceReleaser()
 }
 
 void
-ResourceReleaser::push(osg::Object* node)
+ResourceReleaser::push(osg::Object* object)
 {
     Threading::ScopedMutexLock lock(_mutex);
-    _toRelease.push_back(node);
+
+    _toRelease.push_back(object);
+
+    for (unsigned i = 0; i<_count.size(); ++i)
+        _count[i]++;
 }
 
 void
-ResourceReleaser::push(const ObjectList& nodes)
+ResourceReleaser::push(const ObjectList& objects)
 {
     Threading::ScopedMutexLock lock(_mutex);
-    _toRelease.reserve(_toRelease.size() + nodes.size());
-    for (unsigned i = 0; i<nodes.size(); ++i)
-        _toRelease.push_back(nodes[i].get());
+
+    for (unsigned i = 0; i<_count.size(); ++i)
+        _count[i] += objects.size();
+
+    _toRelease.reserve(_toRelease.size() + objects.size());
+    for (unsigned i = 0; i<objects.size(); ++i)
+        _toRelease.push_back(objects[i].get());
 }
 
 void
 ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
 {
+    releaseGLObjects(ri.getState());
+}
+
+void
+ResourceReleaser::releaseGLObjects(osg::State* state) const
+{
+    osg::Drawable::releaseGLObjects(state);
+
     if (!_toRelease.empty())
     {
         Threading::ScopedMutexLock lock(_mutex);
@@ -65,10 +81,17 @@ ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
                 osg::Object* object = i->get();
-                object->releaseGLObjects(ri.getState());
+                object->releaseGLObjects(0L);
             }
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();
         }
+    }
+    
+    if (state && _count[state->getContextID()] > 0)
+    {
+        osg::Texture::flushAllDeletedTextureObjects(state->getContextID());     
+        osg::GLBufferObject::flushAllDeletedBufferObjects(state->getContextID());
+        _count[state->getContextID()] = 0;
     }
 }

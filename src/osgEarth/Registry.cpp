@@ -180,6 +180,10 @@ Registry::~Registry()
 Registry*
 Registry::instance(bool erase)
 {
+    // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
+    // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
+    osgEarth::getGDALMutex();
+
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
     if (erase)

@@ -168,9 +168,9 @@ public:
         osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srsToUse );
 
         // check for spherical mercator:
-        if ( wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalMercatorProfile()->getSRS() ) )
+        if ( wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getSphericalMercatorProfile()->getSRS() ) )
         {
-            result = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+            result = osgEarth::Registry::instance()->getSphericalMercatorProfile();
         }
         else if (wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getSRS()))
         {

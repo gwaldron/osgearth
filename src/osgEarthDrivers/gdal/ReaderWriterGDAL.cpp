@@ -67,6 +67,10 @@ float Hue_2_RGB( float v1, float v2, float vH )
 #  define GDAL_VERSION_1_6_OR_NEWER 1
 #endif
 
+#if (GDAL_VERSION_MAJOR >= 2)
+#  define GDAL_VERSION_2_0_OR_NEWER 1
+#endif
+
 #ifndef GDAL_VERSION_1_5_OR_NEWER
 #  error "**** GDAL 1.5 or newer required ****"
 #endif
@@ -74,6 +78,12 @@ float Hue_2_RGB( float v1, float v2, float vH )
 //GDAL proxy is only available after GDAL 1.6
 #if GDAL_VERSION_1_6_OR_NEWER
 #  include <gdal_proxy.h>
+#endif
+
+#ifndef GDAL_VERSION_2_0_OR_NEWER
+// RasterIO was substantially improved in 2.0
+// See https://trac.osgeo.org/gdal/wiki/rfc51_rasterio_resampling_progress
+typedef int GSpacing;
 #endif
 
 #include <cpl_string.h>
@@ -117,6 +127,28 @@ typedef struct
     int                    bHasNoData;
     double                 noDataValue;
 } BandProperty;
+
+// GDALRasterBand::RasterIO helper method
+inline bool rasterIO(GDALRasterBand *band,
+        GDALRWFlag eRWFlag,
+        int nXOff,
+        int nYOff,
+        int nXSize,
+        int nYSize,
+        void *pData,
+        int nBufXSize,
+        int nBufYSize,
+        GDALDataType eBufType,
+        GSpacing nPixelSpace,
+        GSpacing nLineSpace)
+{
+    CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
+    if ( err != CE_None )
+    {
+        OE_WARN << LC << "RasterIO failed.\n";
+    }
+    return ( err == CE_None );
+}
 
 static void
 getFiles(const osgDB::Options& options, const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
@@ -1514,13 +1546,13 @@ public:
             //Nearest interpolation just uses RasterIO to sample the imagery and should be very fast.
             if (!*_options.interpolateImagery() || _options.interpolation() == INTERP_NEAREST)
             {
-                bandRed->RasterIO(GF_Read, off_x, off_y, width, height, red, target_width, target_height, GDT_Byte, 0, 0);
-                bandGreen->RasterIO(GF_Read, off_x, off_y, width, height, green, target_width, target_height, GDT_Byte, 0, 0);
-                bandBlue->RasterIO(GF_Read, off_x, off_y, width, height, blue, target_width, target_height, GDT_Byte, 0, 0);
+                rasterIO(bandRed, GF_Read, off_x, off_y, width, height, red, target_width, target_height, GDT_Byte, 0, 0);
+                rasterIO(bandGreen, GF_Read, off_x, off_y, width, height, green, target_width, target_height, GDT_Byte, 0, 0);
+                rasterIO(bandBlue, GF_Read, off_x, off_y, width, height, blue, target_width, target_height, GDT_Byte, 0, 0);
 
                 if (bandAlpha)
                 {
-                    bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                    rasterIO(bandAlpha, GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
                 }
 
                 for (int src_row = 0, dst_row = tile_offset_top;
@@ -1635,8 +1667,7 @@ public:
                 if ( !success )
                     nodata = NO_DATA_VALUE; //getNoDataValue(); //getOptions().noDataValue().get();
 
-                CPLErr err = bandGray->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0);
-                if ( err == CE_None )
+                if (rasterIO(bandGray, GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0))
                 {
                     // copy from data to image.
                     for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
@@ -1662,9 +1693,8 @@ public:
                     // TODO: can we replace this by writing rows in reverse order? -gw
                     image->flipVertical();
                 }
-                else // err != CE_None
+                else
                 {
-                    OE_WARN << LC << "RasterIO failed.\n";
                     // TODO - handle error condition
                 }
 
@@ -1686,11 +1716,11 @@ public:
 
                 if (!*_options.interpolateImagery() || _options.interpolation() == INTERP_NEAREST)
                 {
-                    bandGray->RasterIO(GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0);
+                    rasterIO(bandGray, GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0);
 
                     if (bandAlpha)
                     {
-                        bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                        rasterIO(bandAlpha, GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
                     }
 
                     for (int src_row = 0, dst_row = tile_offset_top;
@@ -1773,7 +1803,7 @@ public:
                 memset(image->data(), 0, image->getImageSizeInBytes());
             }
 
-            bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+            rasterIO(bandPalette, GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
             ImageUtils::PixelWriter write(image.get());
 
@@ -1903,8 +1933,8 @@ public:
 
         if ( _options.interpolation() == INTERP_NEAREST )
         {
-            band->RasterIO(GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
-            if (!isValidValue( result, band))
+            rasterIO(band, GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+            if (!isValidValue( result, band ))
             {
                 return NO_DATA_VALUE;
             }
@@ -1921,10 +1951,10 @@ public:
 
             float urHeight, llHeight, ulHeight, lrHeight;
 
-            band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
             /*
             if (!isValidValue(urHeight, band)) urHeight = 0.0f;
@@ -2050,7 +2080,7 @@ public:
                 int startOffset = iBufRowMin * tileSize + iBufColMin;
                 int lineSpace = tileSize * sizeof(float);
 
-                band->RasterIO(GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
+                rasterIO(band, GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
 
                 for (int r = 0, ir = tileSize - 1; r < tileSize; ++r, --ir)
                 {
@@ -2322,7 +2352,7 @@ public:
             {
                 heights[i] = NO_DATA_VALUE;
             }
-            band->RasterIO(GF_Read, src_min_x, src_min_y, width, height, heights, target_width, target_height, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, src_min_x, src_min_y, width, height, heights, target_width, target_height, GDT_Float32, 0, 0);
 
             // Now create a GeoHeightField that we can sample from.  This heightfield only contains the portion that was actually read from the dataset
             osg::ref_ptr< osg::HeightField > readHF = new osg::HeightField();

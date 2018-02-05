@@ -1363,7 +1363,7 @@ public:
         GDALDataType eBufType,
         GSpacing nPixelSpace,
         GSpacing nLineSpace,
-        ElevationInterpolation interpolation
+        ElevationInterpolation interpolation = INTERP_NEAREST
         )
     {
 #if GDAL_VERSION_2_0_OR_NEWER
@@ -1913,8 +1913,8 @@ public:
 
         if ( _options.interpolation() == INTERP_NEAREST )
         {
-            band->RasterIO(GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
-            if (!isValidValue( result, band))
+            rasterIO(band, GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+            if (!isValidValue(result, band))
             {
                 return NO_DATA_VALUE;
             }
@@ -1931,10 +1931,10 @@ public:
 
             float urHeight, llHeight, ulHeight, lrHeight;
 
-            CPLErr err = band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
             if ((!isValidValue(urHeight, band)) || (!isValidValue(llHeight, band)) ||(!isValidValue(ulHeight, band)) || (!isValidValue(lrHeight, band)))
             {
@@ -2052,7 +2052,7 @@ public:
                 int startOffset = iBufRowMin * tileSize + iBufColMin;
                 int lineSpace = tileSize * sizeof(float);
 
-                CPLErr err = band->RasterIO(GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
+                rasterIO(band, GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
 
                 for (int r = 0, ir = tileSize - 1; r < tileSize; ++r, --ir)
                 {

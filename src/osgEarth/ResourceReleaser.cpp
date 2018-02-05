@@ -19,6 +19,9 @@
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
 #include <osg/Version>
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
+#include <osg/ContextData>
+#endif
 
 using namespace osgEarth;
 
@@ -43,18 +46,12 @@ ResourceReleaser::push(osg::Object* object)
     Threading::ScopedMutexLock lock(_mutex);
 
     _toRelease.push_back(object);
-
-    for (unsigned i = 0; i<_count.size(); ++i)
-        _count[i]++;
 }
 
 void
 ResourceReleaser::push(const ObjectList& objects)
 {
     Threading::ScopedMutexLock lock(_mutex);
-
-    for (unsigned i = 0; i<_count.size(); ++i)
-        _count[i] += objects.size();
 
     _toRelease.reserve(_toRelease.size() + objects.size());
     for (unsigned i = 0; i<objects.size(); ++i)
@@ -81,17 +78,10 @@ ResourceReleaser::releaseGLObjects(osg::State* state) const
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)
             {
                 osg::Object* object = i->get();
-                object->releaseGLObjects(0L);
+                object->releaseGLObjects(state);
             }
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();
         }
-    }
-    
-    if (state && _count[state->getContextID()] > 0)
-    {
-        osg::Texture::flushAllDeletedTextureObjects(state->getContextID());     
-        osg::GLBufferObject::flushAllDeletedBufferObjects(state->getContextID());
-        _count[state->getContextID()] = 0;
     }
 }

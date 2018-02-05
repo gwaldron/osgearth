@@ -56,7 +56,6 @@ namespace osgEarth
     private:
         mutable ObjectList _toRelease;
         mutable Threading::Mutex _mutex;
-        mutable osg::buffered_object<int> _count;
     };
 }
 

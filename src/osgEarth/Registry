@@ -29,6 +29,7 @@
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/SpatialReference>
 #include <osg/Referenced>
 #include <osg/OperationThread>
 #include <set>
@@ -68,21 +69,23 @@ namespace osgEarth
         static Registry* instance(bool erase = false);
 
 
-
         /** Gets a well-known named profile instance. */
         const Profile* getNamedProfile( const std::string& name ) const;
 
         /** Gets the global-geodetic builtin profile */
         const Profile* getGlobalGeodeticProfile() const;
 
-        /** Gets the global-meractor builtin profile (mercator/WGS84 datum) */
+        /** @deprecated Gets the global-meractor builtin profile (mercator/WGS84 datum) */
         const Profile* getGlobalMercatorProfile() const;
 
         /** Gets the spherical-mercator builtin profile (mercator/sphere) */
         const Profile* getSphericalMercatorProfile() const;
 
-        /** Gets the unified cube builtin profile */
+        /** @deprecated Gets the unified cube builtin profile */
         const Profile* getCubeProfile() const;
+
+        /** Gets a spatial reference object */
+        SpatialReference* getOrCreateSRS(const SpatialReference::Key& key);
 
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
@@ -372,6 +375,10 @@ namespace osgEarth
         unsigned _threadPoolSize;
 
         float _devicePixelRatio;
+        
+        typedef std::map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
+        mutable SRSCache _srsCache;
+        mutable Threading::Mutex _srsMutex;
     };
 }
 

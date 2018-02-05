@@ -173,6 +173,15 @@ _devicePixelRatio(1.0f)
 
 Registry::~Registry()
 {
+    OE_DEBUG << LC << "Registry shutting down...\n";
+    _srsMutex.lock();
+    _srsCache.clear();
+    _srsMutex.unlock();
+    _global_geodetic_profile = 0L;
+    _spherical_mercator_profile = 0L;
+    _cube_profile = 0L;
+    OE_DEBUG << LC << "Registry shutdown complete.\n";
+
     // pop the custom error handler
     CPLPopErrorHandler();
 }
@@ -198,7 +207,7 @@ Registry::instance(bool erase)
 void
 Registry::destruct()
 {
-    //nop
+    //NOP
 }
 
 OpenThreads::ReentrantMutex& osgEarth::getGDALMutex()
@@ -285,6 +294,30 @@ Registry::getNamedProfile( const std::string& name ) const
         return getCubeProfile();
     else
         return NULL;
+}
+
+SpatialReference*
+Registry::getOrCreateSRS(const SpatialReference::Key& key)
+{
+    Threading::ScopedMutexLock exclusiveLock(_srsMutex);
+    
+    SpatialReference* srs;
+
+    SRSCache::iterator i = _srsCache.find(key);
+    if (i != _srsCache.end())
+    {
+        srs = i->second.get();
+    }
+    else
+    {
+        srs = SpatialReference::create(key);
+        if (srs)
+        {
+            _srsCache[key] = srs;
+        }
+    }
+
+    return srs;
 }
 
 void

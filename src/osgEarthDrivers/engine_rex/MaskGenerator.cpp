@@ -547,8 +547,10 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
                 }
             }
 
-            if (!isZSet[count])
-                OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
+            if (isZSet[count] == 0)
+            {
+                OE_INFO << LC << "Z-value not set for mask constraint vertex" << std::endl;
+            }
 
             count++;
         }

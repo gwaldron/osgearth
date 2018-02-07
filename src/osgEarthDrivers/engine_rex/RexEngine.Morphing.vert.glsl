@@ -6,7 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION)
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_SHADOW_CAMERA)
 
 
 // stage
@@ -74,7 +74,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
-#ifdef OE_TERRAIN_MORPH_GEOMETRY
+#if defined(OE_TERRAIN_MORPH_GEOMETRY) && !defined(OE_IS_SHADOW_CAMERA)
         vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
         oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif

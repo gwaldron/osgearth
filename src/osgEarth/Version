@@ -31,7 +31,7 @@ extern "C" {
 #define OSGEARTH_MINOR_VERSION    9
 #define OSGEARTH_PATCH_VERSION    0
 #define OSGEARTH_SOVERSION        0
-#define OSGEARTH_RC_VERSION       3
+#define OSGEARTH_RC_VERSION       0
 #define OSGEARTH_DEVEL_VERSION    0     // 0 = release; >0 = interim devel version
 
 /* Convenience macro that can be used to decide whether a feature is present or not i.e.

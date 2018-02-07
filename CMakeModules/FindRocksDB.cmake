@@ -5,11 +5,9 @@ SET(ROCKSDB_DIR "" CACHE PATH "Root directory of RocksDB distribution")
 FIND_PATH(ROCKSDB_INCLUDE_DIR rocksdb/db.h
   PATHS
   ${ROCKSDB_DIR}
-  NO_DEFAULT_PATH
-  PATH_SUFFIXES include
 )
 
-find_library(ROCKSDB_LIBRARY NAMES ROCKSDBLIB
+find_library(ROCKSDB_LIBRARY NAMES ROCKSDBLIB rocksdb
              PATHS
                ${ROCKSDB_DIR}
                ${ROCKSDB_DIR}/bin/Release
@@ -18,7 +16,7 @@ find_library(ROCKSDB_LIBRARY NAMES ROCKSDBLIB
 	    )
 
 
-find_library(ROCKSDB_LIBRARY_DEBUG NAMES ROCKSDBLIB
+find_library(ROCKSDB_LIBRARY_DEBUG NAMES ROCKSDBLIB rocksdb
              PATHS
                ${ROCKSDB_DIR}
                ${ROCKSDB_DIR}/bin/Debug

@@ -97,6 +97,14 @@ Viewpoint::Viewpoint(const Config& conf)
     }
 }
 
+osg::ref_ptr<osg::Node>
+Viewpoint::getNode() const
+{
+    osg::ref_ptr<osg::Node> node;
+    _node.lock(node);
+    return node;
+}
+
 #define CONF_STR Stringify() << std::fixed << std::setprecision(4)
 
 Config

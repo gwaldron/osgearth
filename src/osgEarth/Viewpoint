@@ -80,8 +80,11 @@ namespace osgEarth
          * Node will not serialize into a Config.
          */
         void setNode(osg::Node* value)                    { _node = value; }
-        bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
+        osg::ref_ptr<osg::Node> getNode() const;
         bool nodeIsSet() const                            { return _node.valid(); }
+
+        //! @deprecated - use getNode() instead
+        bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
 
         /**
          * Heading (in degrees) of the camera relative to the focal point.

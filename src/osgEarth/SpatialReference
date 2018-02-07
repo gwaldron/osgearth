@@ -120,8 +120,8 @@ namespace osgEarth
 
         /**
          * Transforms a point from this SRS into "world" coordinates. This normalizes
-         * the Z coordinate (according to the vertical datum) and converts to ECEF
-         * if necessary.
+         * the Z coordinate (according to the vertical datum) and converts to geocentric
+         * coordinates if necessary.
          */
         bool transformToWorld(
             const osg::Vec3d& input,
@@ -135,7 +135,7 @@ namespace osgEarth
          * @param out_local
          *      Output coords in local (SRS) coords
          * @param worldIsGeocentric
-         *      Whether the incoming world coordinates are ECEF/geocentric coords
+         *      Whether the incoming world coordinates are geocentric coords
          * @param out_geodeticZ
          *      (optional) Outputs the geodetic (HAE) Z if applicable
          */
@@ -194,8 +194,8 @@ namespace osgEarth
         /** True if this is a projected SRS (i.e. local coordinate system) */
         virtual bool isProjected() const;
 
-        /** True if this is an ECEF system (geocentric/meters) */
-        virtual bool isECEF() const;
+        /** True if this is a planet-centered system (geocentric/meters) */
+        virtual bool isGeocentric() const;
 
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
@@ -269,7 +269,10 @@ namespace osgEarth
             which Z is expressed as height above the geodetic ellipsoid). */
         const SpatialReference* getGeodeticSRS() const;
 
-        /** Gets the ECEF reference system associated with this SRS' ellipsoid. */
+        /** Gets the geocentric reference system associated with this SRS' ellipsoid. */
+        const SpatialReference* getGeocentricSRS() const;
+
+        //! @deprecated - call getGeocentricSRS() instead
         const SpatialReference* getECEF() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
@@ -357,7 +360,7 @@ namespace osgEarth
         bool _is_user_defined;
         bool _is_ltp;
         bool _is_plate_carre;
-        bool _is_ecef;
+        bool _is_geocentric;
         unsigned _ellipsoidId;
         std::string _name;
         Key _key;
@@ -369,7 +372,7 @@ namespace osgEarth
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
         osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
-        osg::ref_ptr<SpatialReference>    _ecef_srs;
+        osg::ref_ptr<SpatialReference>    _geocentric_srs;
         osg::ref_ptr<VerticalDatum>       _vdatum;
 
         typedef std::map<std::string,void*> TransformHandleCache;

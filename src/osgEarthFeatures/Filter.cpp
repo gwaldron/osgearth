@@ -156,8 +156,8 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osg
             {
                 osg::Vec3d centroid, centroidECEF;
                 geodExtent.getCentroid( centroid.x(), centroid.y() );
-                geogSRS->transform( centroid, geogSRS->getECEF(), centroidECEF );
-                geogSRS->getECEF()->createLocalToWorld( centroidECEF, out_l2w );
+                geogSRS->transform( centroid, geogSRS->getGeocentricSRS(), centroidECEF );
+                geogSRS->getGeocentricSRS()->createLocalToWorld( centroidECEF, out_l2w );
                 out_w2l.invert( out_l2w );
             }
         }

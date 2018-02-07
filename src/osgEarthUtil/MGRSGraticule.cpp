@@ -815,7 +815,7 @@ namespace
             osg::Vec3d tileCenter;
             extent.getCentroid( tileCenter.x(), tileCenter.y() );
 
-            const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
+            const SpatialReference* ecefSRS = extent.getSRS()->getGeocentricSRS();
     
             osg::Vec3d centerECEF;
             extent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
@@ -869,7 +869,7 @@ namespace
             
                 GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
 
-                const SpatialReference* ecef = feature->getSRS()->getECEF();
+                const SpatialReference* ecef = feature->getSRS()->getGeocentricSRS();
 
                 osg::Vec3d LL;
                 findPointClosestTo(feature, osg::Vec3d(extent.xMin(), extent.yMin(), 0), LL);
@@ -960,7 +960,7 @@ namespace
             drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
             drawable->getOrCreateStateSet()->setRenderBinToInherit();
 
-            const SpatialReference* ecef = f->getSRS()->getECEF();
+            const SpatialReference* ecef = f->getSRS()->getGeocentricSRS();
             osg::Vec3d positionECEF;
             extent.getSRS()->transform( osg::Vec3d(extent.xMin(),extent.yMin(),0), ecef, positionECEF );
         
@@ -1331,7 +1331,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     MGRSFormatter mgrs(MGRSFormatter::PRECISION_100000M);
     osg::Geode* textGeode = new osg::Geode();
 
-    const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
+    const SpatialReference* ecefSRS = extent.getSRS()->getGeocentricSRS();
     osg::Vec3d centerMap, centerECEF;
     extent.getCentroid(centerMap.x(), centerMap.y());
     extent.getSRS()->transform(centerMap, ecefSRS, centerECEF);

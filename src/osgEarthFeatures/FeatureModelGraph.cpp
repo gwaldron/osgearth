@@ -1113,7 +1113,7 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
                     ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
 
                     osg::Vec3d centerECEF;
-                    ccExtent.getSRS()->transform( tileCenter, _session->getMapSRS()->getECEF(), centerECEF );
+                    ccExtent.getSRS()->transform( tileCenter, _session->getMapSRS()->getGeocentricSRS(), centerECEF );
 
                     osg::NodeCallback* ccc = ClusterCullingFactory::create2( group.get(), centerECEF );
                     if ( ccc )

@@ -200,9 +200,9 @@ You can get this by calling::
 If you're transforming a projected point to latitude/longitude, that's the output
 SRS you will want.
 
-You can also grab an ECEF SRS corresponding to any SRS, like so::
+You can also grab a geocentric (ECEF) SRS corresponding to any SRS, like so::
 
-    ecefSRS = srs->getECEF();    
+    geocentricSRS = srs->getGeocentricSRS();    
 
 ``SpatialReference`` has lots of functions for doing transformations, etc. Consult 
 the header file for information on those. But in practice it is usually best to use

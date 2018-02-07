@@ -339,7 +339,7 @@ namespace
 
                 if ( _topology->_srs )
                 {
-                    const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();
+                    const osgEarth::SpatialReference* ecef = _topology->_srs->getGeocentricSRS();
                     ecef->transform(world, _topology->_srs, plane);
                 }
                 else
@@ -615,7 +615,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     // un-rotate the results from the XY plane back to their original frame:
     if ( topology._srs )
     {
-        const osgEarth::SpatialReference* ecef = topology._srs->getECEF();
+        const osgEarth::SpatialReference* ecef = topology._srs->getGeocentricSRS();
         topology._srs->transform(_result->asVector(), ecef);
     }
     else

@@ -689,7 +689,7 @@ Map::calculateProfile()
 const SpatialReference*
 Map::getWorldSRS() const
 {
-    return getSRS() && getSRS()->isGeographic() ? getSRS()->getECEF() : getSRS();
+    return getSRS() && getSRS()->isGeographic() ? getSRS()->getGeocentricSRS() : getSRS();
 }
 
 bool

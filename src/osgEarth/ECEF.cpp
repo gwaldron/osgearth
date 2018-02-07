@@ -32,7 +32,7 @@ ECEF::transformAndLocalize(const osg::Vec3d&       input,
                            const osg::Matrixd&     world2local)
 {
     osg::Vec3d ecef;
-    inputSRS->transform( input, outputSRS->getECEF(), ecef );
+    inputSRS->transform( input, outputSRS->getGeocentricSRS(), ecef );
     output = ecef * world2local;
 }
 
@@ -44,15 +44,15 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        outputSRS,
                            const osg::Matrixd&            world2local )
 {
-    const SpatialReference* ecefSRS = outputSRS->getECEF();
+    const SpatialReference* geocentricSRS = outputSRS->getGeocentricSRS();
     output->reserve( output->size() + input.size() );
 
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
     {
-        osg::Vec3d ecef;
-        inputSRS->transform( *i, ecefSRS, ecef );
+        osg::Vec3d geoc;
+        inputSRS->transform( *i, geocentricSRS, geoc );
         //inputSRS->transformToECEF( *i, ecef );
-        output->push_back( ecef * world2local );
+        output->push_back( geoc * world2local );
     }
 }
 
@@ -65,7 +65,7 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        outputSRS,
                            const osg::Matrixd&            world2local )
 {
-    const SpatialReference* ecefSRS = outputSRS->getECEF();
+    const SpatialReference* ecefSRS = outputSRS->getGeocentricSRS();
     out_verts->reserve( out_verts->size() + input.size() );
     
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
@@ -117,7 +117,7 @@ ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
                                     osg::Matrixd&           out_rotation )
 {
     const SpatialReference* geoSRS  = inputSRS->getGeographicSRS();
-    const SpatialReference* ecefSRS = outputSRS->getECEF();
+    const SpatialReference* ecefSRS = outputSRS->getGeocentricSRS();
 
     // first transform the geographic (lat/long):
     osg::Vec3d geoPoint;

@@ -120,7 +120,7 @@ Terrain::getHeight(osg::Node*              patch,
 
     if ( getSRS()->isGeographic() )
     {
-        const SpatialReference* ecef = getSRS()->getECEF();
+        const SpatialReference* ecef = getSRS()->getGeocentricSRS();
         getSRS()->transform(start, ecef, start);
         getSRS()->transform(end,   ecef, end);
     }

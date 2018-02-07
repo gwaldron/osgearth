@@ -148,7 +148,7 @@ UTMData::buildGZDTile(const std::string& name, const GeoExtent& extent, const St
     osg::Vec3d tileCenter;
     extent.getCentroid( tileCenter.x(), tileCenter.y() );
 
-    const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
+    const SpatialReference* ecefSRS = extent.getSRS()->getGeocentricSRS();
     
     osg::Vec3d centerECEF;
     extent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );

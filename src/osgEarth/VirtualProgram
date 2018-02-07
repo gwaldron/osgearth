@@ -178,9 +178,12 @@ namespace osgEarth
         /** Generates the shaders. */
         void prepare();
 
+    public:
         /** Called from the draw context to resize shader buffers as necessary (OSG) */
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        void resizeGLObjectBuffers(unsigned maxSize);
 
+        /** Called by OSG to release GPu memory associated with the object */
+        void releaseGLObjects(osg::State* state) const;
 
     protected:
         virtual ~PolyShader() { }
@@ -198,11 +201,6 @@ namespace osgEarth
         // Same shader, but set up for injection into a different stage
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
-
-        // shader source before running thru the preprocessor. Keep this around so that
-        // someone can call VirtualProgram::getShaders and have access to code that has
-        // not been set up for ShaderFactory.
-        //std::string                  _originalSource;
 
         bool                         _dirty;
     };

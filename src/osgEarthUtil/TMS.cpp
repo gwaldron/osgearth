@@ -650,7 +650,7 @@ tileMapToXmlDocument(const TileMap* tileMap)
     {
         profileString = "global-geodetic";
     }
-    else if (profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalMercatorProfile()))
+    else if (profile->isEquivalentTo(osgEarth::Registry::instance()->getSphericalMercatorProfile()))
     {
         profileString = "global-mercator";
     }

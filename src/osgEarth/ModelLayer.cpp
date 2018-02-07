@@ -391,10 +391,6 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
               
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
-            else
-            {
-                groupSS->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-            }
 
             // save it.
             _graphs[map->getUID()] = node;

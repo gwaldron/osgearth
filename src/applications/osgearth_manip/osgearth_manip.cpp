@@ -724,6 +724,11 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
+    manip->getSettings()->bindMouseClick(
+        EarthManipulator::ACTION_GOTO,
+        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
+        osgGA::GUIEventAdapter::MODKEY_SHIFT);
+
     manip->getSettings()->setArcViewpointTransitions( true );    
 
     manip->setTetherCallback( new TetherCB() );

@@ -189,13 +189,21 @@ public:
 
                 if ( masterLine || f->get()->style()->has<LineSymbol>() )
                 {
-                    Feature* newFeature = new Feature( *f->get() );
-                    if ( !newFeature->getGeometry()->isLinear() )
+                    // Use the GeometryIterator to get all the geometries so we can clone them as rings
+                    GeometryIterator gi(f->get()->getGeometry());
+                    while (gi.hasMore())
                     {
-                        newFeature->setGeometry( newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING) );
+                        Geometry* geom = gi.next();
+                        // Create a new feature for each geometry
+                        Feature* newFeature = new Feature(*f->get());
+                        newFeature->setGeometry(geom);
+                        if (!newFeature->getGeometry()->isLinear())
+                        {
+                            newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
+                        }
+                        lines.push_back( newFeature );
+                        hasLine = true;
                     }
-                    lines.push_back( newFeature );
-                    hasLine = true;
                 }
 
                 // if there are no geometry symbols but there is a coverage symbol, default to polygons.

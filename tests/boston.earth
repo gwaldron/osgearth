@@ -74,7 +74,7 @@ to extruded buildings.
     
     
     <feature_model name="Streets" feature_source="streets-data">        
-        <layout crop_features="true" tile_size_factor="7.5">
+        <layout crop_features="true" tile_size="1000">
             <level max_range="5000"/>
         </layout>        
         <styles>
@@ -92,7 +92,7 @@ to extruded buildings.
 	
 	
 	<feature_model name="streetlamps" feature_source="streets-data">
-        <layout tile_size_factor="5" crop_features="true">
+        <layout tile_size="1000" crop_features="true">
             <level max_range="1000" style="default"/>
         </layout>
         
@@ -120,7 +120,7 @@ to extruded buildings.
             <url>../data/boston-parks.shp</url>
         </features>        
         
-        <layout tile_size_factor="3">
+        <layout tile_size="1000">
             <level max_range="2000"/>
         </layout>
         

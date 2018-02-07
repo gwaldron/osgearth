@@ -633,6 +633,9 @@ Geometry::getOrientation() const
 double
 Geometry::getLength() const
 {
+    if (empty())
+        return 0.0;
+
     double length = 0;
     for (unsigned int i = 0; i < size()-1; ++i)
     {
@@ -746,6 +749,9 @@ Ring::cloneAs( const Geometry::Type& newType ) const
 double
 Ring::getLength() const
 {
+    if (empty())
+        return 0.0;
+
     double length = Geometry::getLength();
     if ( isOpen() )
     {

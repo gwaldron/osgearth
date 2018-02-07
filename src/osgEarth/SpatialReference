@@ -395,13 +395,12 @@ namespace osgEarth
             const SpatialReference*  outputSRS,
             bool                     pointsAreGeodetic) const;
 
-        typedef std::map<Key, osg::ref_ptr<SpatialReference> > SRSCache;
-        static SRSCache& getSRSCache();
-
 
     private:
 
-        static SpatialReference* create( const Key& key, bool useCache );
+        static SpatialReference* create(const Key& key);
+
+        static SpatialReference* create(const Key& key, bool useCache);
 
         static SpatialReference* createFromWKT(
             const std::string& wkt,
@@ -419,6 +418,8 @@ namespace osgEarth
 
 
         SpatialReference* fixWKT();
+
+        friend class Registry;
     };
 }
 

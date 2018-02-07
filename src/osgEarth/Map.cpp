@@ -640,8 +640,8 @@ Map::calculateProfile()
 
             if (!profile.valid())
             {
-                OE_WARN << LC << "No profile information available; defaulting to Mercator projection\n";
-                profile = Registry::instance()->getGlobalMercatorProfile();
+                OE_WARN << LC << "No profile information available; defaulting to Spherical Mercator projection\n";
+                profile = Registry::instance()->getSphericalMercatorProfile();
             }
         }
 

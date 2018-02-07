@@ -459,6 +459,7 @@ StateSetCache::clear()
 {
     Threading::ScopedMutexLock lock( _mutex );
 
+    prune();
     _stateAttributeCache.clear();
     _stateSetCache.clear();
 }

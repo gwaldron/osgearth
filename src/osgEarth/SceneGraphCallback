@@ -105,7 +105,7 @@ namespace osgEarth
         virtual bool addChild(osg::Node* child);
         virtual bool insertChild(unsigned index, osg::Node* child);
         virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
-        virtual bool removeChild(osg::Node* child);
+        virtual void childRemoved(unsigned pos, unsigned num);
 
     private:
         osg::observer_ptr<SceneGraphCallbacks> _host;

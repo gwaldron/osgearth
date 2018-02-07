@@ -1653,12 +1653,23 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     // if tethering is active, check to see whether the incoming event
     // will break the tether.
-    if ( isTethering() )
+    if (isTethering() && ea.getEventType() != ea.FRAME)
     {
         const ActionTypeVector& atv = _settings->getBreakTetherActions();
         if ( atv.size() > 0 )
         {
-            const Action& action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+            EventType eventType = (EventType)ea.getEventType();
+            int buttonMask = ea.getButtonMask();
+            int modKeyMask = ea.getModKeyMask();
+
+            if (eventType == osgGA::GUIEventAdapter::RELEASE && isMouseClick(&ea))
+            {
+                eventType = EVENT_MOUSE_CLICK;
+                buttonMask = _mouse_down_event->getButtonMask();
+                modKeyMask = _mouse_down_event->getModKeyMask();
+            }
+
+            const Action& action = _settings->getAction( eventType, buttonMask, modKeyMask );
             if ( std::find(atv.begin(), atv.end(), action._type) != atv.end() )
             {
                 clearViewpoint();

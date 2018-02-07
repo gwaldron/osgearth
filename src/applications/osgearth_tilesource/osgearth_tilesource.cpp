@@ -56,6 +56,7 @@ public:
     // Constructor that takes the user-provided options.
     CustomTileSource() : TileSource(TileSourceOptions())
     {
+        // Create a shape that we will use to render tile images.
         _geom = new Ring();
         _geom->push_back( osg::Vec3(5, 5, 0) );
         _geom->push_back( osg::Vec3(250, 5, 0) );
@@ -68,12 +69,25 @@ public:
     {
         if ( !getProfile() )
         {
+            // Set the profile for this tile source. The profile defines the 
+            // tiling scheme native to this tile source. The terrain engine will
+            // call createImage or createHeightField with TileKeys according to
+            // the profile you set here.
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
+
+            // Create custom data extents. This is optional, but giving the terrain
+            // engine information about the extents of your dataset will improve
+            // performance in most cases. In this case, the data covers the
+            // entire profile, but we want to tell the terrain engine that this
+            // tile source only has data up to LOD 15:
+            getDataExtents().push_back(DataExtent(getProfile()->getExtent(), 0u, 15u));
         }
         return STATUS_OK;
     }
 
     // Tells the layer not to cache data from this tile source.
+    // Overriding this function is optional - by default it will inherit the 
+    // caching policy from the Layer.
     CachePolicy getCachePolicyHint(const Profile* profile) const 
     {
         return CachePolicy::NO_CACHE;
@@ -94,18 +108,26 @@ public:
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-
     osgViewer::Viewer viewer(arguments);
 
-    // Start by creating the map:
-    MapOptions mapOptions;
-    mapOptions.cachePolicy() = CachePolicy::NO_CACHE;
-    Map* map = new Map( mapOptions );
+    // Start by creating an empty map:
+    Map* map = new Map();
 
     // Create out image layer with a custom tile source.
-    ImageLayerOptions options( "custom" );
     CustomTileSource* tileSource = new CustomTileSource();
-    tileSource->open();
+
+    // Open the tile source. If you don't do this, the Map will automatically try to 
+    // open it when you add the Layer later on. But doing so here allows us to check
+    // for any errors beforehand.
+    Status status = tileSource->open();
+    if (status.isError())
+    {
+        OE_WARN << "Error opening the tile source; message = " << status.message() << std::endl;
+        return -1;
+    }
+
+    // Add a new ImageLayer to the map with our custom tile source.
+    ImageLayerOptions options( "My custom ImageLayer" );
     map->addLayer( new ImageLayer(options, tileSource) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:

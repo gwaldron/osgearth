@@ -304,7 +304,7 @@ TileNode::setDirty(bool value)
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
-    //OE_WARN << LC << "Tile " << _key.str() << " : Release GL objects\n";
+    osg::Group::releaseGLObjects(state);
 
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
@@ -313,8 +313,20 @@ TileNode::releaseGLObjects(osg::State* state) const
         _patch->releaseGLObjects(state);
 
     _renderModel.releaseGLObjects(state);
+}
 
-    osg::Group::releaseGLObjects(state);
+void
+TileNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Group::resizeGLObjectBuffers(maxSize);
+
+    if ( _surface.valid() )
+        _surface->resizeGLObjectBuffers(maxSize);
+
+    if ( _patch.valid() )
+        _patch->resizeGLObjectBuffers(maxSize);
+
+    _renderModel.resizeGLObjectBuffers(maxSize);
 }
 
 bool

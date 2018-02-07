@@ -910,6 +910,8 @@ VirtualProgram::compileGLObjects(osg::State& state) const
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
+    osg::StateAttribute::resizeGLObjectBuffers(maxSize);
+
     _programCacheMutex.lock();
 
     for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
@@ -926,23 +928,27 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
         }
     }
 
-    // Resize the buffered_object
-    //_apply.resize(maxSize);
-
-    //_vpStackMemory._item.resize(maxSize);
-
     _programCacheMutex.unlock();
 }
 
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
+    osg::StateAttribute::releaseGLObjects(state);
+
     _programCacheMutex.lock();
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        //if ( i->second->referenceCount() == 1 )
-            i->second._program->releaseGLObjects(state);
+        i->second._program->releaseGLObjects(state);
+    }
+
+    for (ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i)
+    {
+        if (i->data()._shader.valid())
+        {
+            i->data()._shader->releaseGLObjects(state);
+        }
     }
 
     _programCache.clear();
@@ -1946,6 +1952,24 @@ void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
     if (_tessevalShader.valid())
     {
         _tessevalShader->resizeGLObjectBuffers(maxSize);
+    }
+}
+
+void PolyShader::releaseGLObjects(osg::State* state) const
+{
+    if (_nominalShader.valid())
+    {
+        _nominalShader->releaseGLObjects(state);
+    }
+
+    if (_geomShader.valid())
+    {
+        _geomShader->releaseGLObjects(state);
+    }
+
+    if (_tessevalShader.valid())
+    {
+        _tessevalShader->releaseGLObjects(state);
     }
 }
 

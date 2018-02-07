@@ -49,6 +49,10 @@ namespace osgEarth
         /** Calls releaseGLObjects() on all objects in the list, then clears the list. */
         void drawImplementation(osg::RenderInfo& ri) const;
 
+    public: // osg::Node
+
+        void releaseGLObjects(osg::State* state) const;
+
     private:
         mutable ObjectList _toRelease;
         mutable Threading::Mutex _mutex;

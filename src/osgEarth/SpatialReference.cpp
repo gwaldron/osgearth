@@ -75,14 +75,6 @@ namespace
 
 //------------------------------------------------------------------------
 
-SpatialReference::SRSCache& SpatialReference::getSRSCache()
-{
-    //Make sure the registry is created before the cache
-    osgEarth::Registry::instance();
-    static SRSCache s_cache;
-    return s_cache;
-}
-
 SpatialReference*
 SpatialReference::createFromPROJ4( const std::string& proj4, const std::string& name )
 {
@@ -174,31 +166,14 @@ SpatialReference::createFromUserInput( const std::string& input, const std::stri
 SpatialReference*
 SpatialReference::create( const std::string& horiz, const std::string& vert )
 {
-    return create( Key(horiz, vert), true );
+    return Registry::instance()->getOrCreateSRS( Key(horiz, vert) );
 }
 
 SpatialReference*
-SpatialReference::create( const Key& key, bool useCache )
+SpatialReference::create(const Key& key)
 {
-    // serialized access to SRS creation.
-    static Threading::Mutex s_mutex;
-    Threading::ScopedMutexLock exclusive(s_mutex);
-
-    // first, check the SRS cache to see if it already exists:
-    if ( useCache )
-    {
-        SRSCache::iterator itr = getSRSCache().find(key);
-        if (itr != getSRSCache().end())
-        {
-            return itr->second.get();
-        }
-    }
-
     // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
-
-    //const std::string& horiz = key.first;
-    //const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
     if (key.horizLower == "spherical-mercator" || 
@@ -295,13 +270,7 @@ SpatialReference::create( const Key& key, bool useCache )
 
     srs->_key = key;
 
-    if ( useCache )
-    {
-        // cache it - each unique SRS only exists once.
-        getSRSCache()[key] = srs;
-    }
-
-    return useCache ? srs.get() : srs.release();
+    return srs.release();
 }
 
 SpatialReference*
@@ -424,7 +393,14 @@ SpatialReference::~SpatialReference()
 {
     if ( _handle )
     {
-        GDAL_SCOPED_LOCK;
+        if (_initialized)
+        {
+            OE_DEBUG << LC << "Destroying " << getName() << std::endl;
+        }
+        else
+        {
+            OE_DEBUG << LC << "Destroying [unitialized SRS]" << std::endl;
+        }
 
         for (TransformHandleCache::iterator itr = _transformHandleCache.begin(); itr != _transformHandleCache.end(); ++itr)
         {

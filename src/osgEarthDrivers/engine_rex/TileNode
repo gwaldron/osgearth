@@ -126,6 +126,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void traverse(osg::NodeVisitor& nv);
 
+        void resizeGLObjectBuffers(unsigned maxSize);
+
         void releaseGLObjects(osg::State* state) const;
 
     protected:

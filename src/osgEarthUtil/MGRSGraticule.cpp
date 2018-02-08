@@ -33,6 +33,7 @@
 #include <osgEarth/PagedNode>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Endian>
+#include <osgEarth/Lighting>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -357,6 +358,8 @@ MGRSGraticule::getOrCreateNode()
     if (_root.valid() == false)
     {
         _root = new LocalRoot();
+
+        _root->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
 
         // install the range callback for clip plane activation
         _root->addCullCallback( new RangeUniformCullCallback() );

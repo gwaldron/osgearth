@@ -53,7 +53,7 @@ namespace osgEarth { namespace QtGui
 
       _lineVerts = new osg::Vec3Array();
       _lineVerts->reserve(2);
-      _lineGeometry->setVertexArray( _lineVerts );
+      _lineGeometry->setVertexArray( _lineVerts.get() );
 
       osg::Vec4Array* colors = new osg::Vec4Array();
       colors->reserve( 2 );

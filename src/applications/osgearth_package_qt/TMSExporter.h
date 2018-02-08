@@ -51,7 +51,7 @@ namespace PackageQt
     bool getKeepEmpties() { return _keepEmpties; }
     void setKeepEmpties(bool keep) { _keepEmpties = keep; }
   
-    ExportProgressCallback* getProgressCallback() const { return _progress; }
+    ExportProgressCallback* getProgressCallback() const { return _progress.get(); }
     void setProgressCallback(ExportProgressCallback* progress) { _progress = progress; }
 
     unsigned int getConcurrency() const;
@@ -95,7 +95,7 @@ namespace PackageQt
     {
       if (_exporter)
       {
-        _exporter->exportTMS(_mapNode, _earthFilePath, _path, _bounds, _outEarth, _overwrite, _extension);        
+        _exporter->exportTMS(_mapNode.get(), _earthFilePath, _path, _bounds, _outEarth, _overwrite, _extension);        
       }
     }
 

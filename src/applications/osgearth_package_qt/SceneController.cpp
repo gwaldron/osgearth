@@ -118,7 +118,7 @@ SceneController::SceneController(osg::Group* root, osgViewer::View* view, const 
   if (_root.valid() && _view.valid())
   {
     //install a canvas for any UI controls we plan to create
-    _canvas = osgEarth::Util::Controls::ControlCanvas::getOrCreate(_view);
+    _canvas = osgEarth::Util::Controls::ControlCanvas::getOrCreate(_view.get());
 
     _controlContainer = _canvas->addControl( new osgEarth::Util::Controls::VBox() );
     _controlContainer->setBackColor( osgEarth::Util::Controls::Color(osgEarth::Util::Controls::Color::Black, 0.8) );
@@ -174,7 +174,7 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
 
   if (_earthNode.valid())
   {
-    _mapNode = osgEarth::MapNode::findMapNode( _earthNode );
+    _mapNode = osgEarth::MapNode::findMapNode( _earthNode.get() );
     if (_mapNode.valid())
     {        
       _map = _mapNode->getMap();
@@ -269,7 +269,7 @@ void SceneController::setBounds(const osgEarth::GeoPoint& p1, const osgEarth::Ge
 
     if (!_bboxNode.valid())
     {
-      _bboxNode = new osgEarth::Annotation::FeatureNode(_mapNode, feature);
+      _bboxNode = new osgEarth::Annotation::FeatureNode(_mapNode.get(), feature);
       _bboxNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       _annoRoot->addChild( _bboxNode.get() );
     }

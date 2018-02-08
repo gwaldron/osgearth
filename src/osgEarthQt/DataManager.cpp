@@ -64,17 +64,17 @@ void DataManager::initialize()
     osgEarth::ElevationLayerVector elevLayers;
     _map->getLayers(elevLayers);
     for (osgEarth::ElevationLayerVector::const_iterator it = elevLayers.begin(); it != elevLayers.end(); ++it)
-      (*it)->addCallback(_elevationCallback);
+      (*it)->addCallback(_elevationCallback.get());
 
     osgEarth::ImageLayerVector imageLayers;
     _map->getLayers(imageLayers);
     for (osgEarth::ImageLayerVector::const_iterator it = imageLayers.begin(); it != imageLayers.end(); ++it)
-      (*it)->addCallback(_imageCallback);
+      (*it)->addCallback(_imageCallback.get());
 
     osgEarth::ModelLayerVector modelLayers;
     _map->getLayers(modelLayers);
     for (osgEarth::ModelLayerVector::const_iterator it = modelLayers.begin(); it != modelLayers.end(); ++it)
-      (*it)->addCallback(_modelCallback);
+      (*it)->addCallback(_modelCallback.get());
 
     _map->addMapCallback(new DataManagerMapCallback(this));
   }
@@ -136,7 +136,7 @@ void DataManager::removeAnnotation(osgEarth::Annotation::AnnotationNode* annotat
 
   if (removed)
   {
-    emit annotationRemoved(annoToRemove);
+    emit annotationRemoved(annoToRemove.get());
     emit mapChanged();
   }
 }
@@ -258,20 +258,20 @@ void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
   {
   case MapModelChange::ADD_LAYER: 
       if (change.getElevationLayer())
-        change.getElevationLayer()->addCallback(_elevationCallback);
+        change.getElevationLayer()->addCallback(_elevationCallback.get());
       else if (change.getImageLayer())
-        change.getImageLayer()->addCallback(_imageCallback);
+        change.getImageLayer()->addCallback(_imageCallback.get());
       else if (change.getModelLayer())
-          change.getModelLayer()->addCallback(_modelCallback);
+          change.getModelLayer()->addCallback(_modelCallback.get());
       break;
 
   case MapModelChange::REMOVE_LAYER:
       if (change.getElevationLayer())
-        change.getElevationLayer()->removeCallback(_elevationCallback);
+        change.getElevationLayer()->removeCallback(_elevationCallback.get());
       else if (change.getImageLayer())
-        change.getImageLayer()->removeCallback(_imageCallback);
+        change.getImageLayer()->removeCallback(_imageCallback.get());
       else if (change.getModelLayer())
-          change.getModelLayer()->removeCallback(_modelCallback);
+          change.getModelLayer()->removeCallback(_modelCallback.get());
       break;
 
   default:

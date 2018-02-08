@@ -233,7 +233,7 @@ namespace osgEarth { namespace QtGui
 
         if (!_featureNode.valid())
         {
-          _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+          _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode.get(), feature );
           _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
           _root->addChild( _featureNode.get() );
         }

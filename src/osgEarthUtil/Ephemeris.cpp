@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Ephemeris>
+#include <osg/CoordinateSystemNode>
 #include <sstream>
 
 using namespace osgEarth;
@@ -45,166 +46,87 @@ namespace
     
     osg::Vec3d getPositionFromRADecl(double ra, double decl, double range)
     {
+        // TODO: this should use EllipsoidMoidel instead
         return osg::Vec3d(
                 range * cos(decl) * cos(ra),
                 range * cos(decl) * sin(ra),
                 range * sin(decl) );
-
-        //return osg::Vec3(0,range,0) * 
-        //    osg::Matrix::rotate( decl, 1, 0, 0 ) * 
-        //    osg::Matrix::rotate( ra, 0, 0, 1 ); // - osg::PI_2, 0, 0, 1 );
     }
 
-
-    double sgCalcEccAnom(double M, double e)
+    // https://en.wikipedia.org/wiki/Julian_day#Converting_Gregorian_calendar_date_to_Julian_Day_Number
+    double getJulianDate(int Y, int M, int D)
     {
-        double eccAnom, E0, E1, diff;
-
-        double epsilon = osg::DegreesToRadians(0.001);
-        
-        eccAnom = M + e * sin(M) * (1.0 + e * cos (M));
-        // iterate to achieve a greater precision for larger eccentricities 
-        if (e > 0.05)
-        {
-            E0 = eccAnom;
-            do
-            {
-                 E1 = E0 - (E0 - e * sin(E0) - M) / (1 - e *cos(E0));
-                 diff = fabs(E0 - E1);
-                 E0 = E1;
-            } while (diff > epsilon );
-            return E0;
-        }
-        return eccAnom;
+        return (double)( (1461 * (Y + 4800 + (M - 14) / 12)) / 4 + (367 * (M - 2 - 12 * ((M - 14) / 12))) / 12 - (3 * ((Y + 4900 + (M-14)/12)/100))/4 + D - 32075 );
     }
 
-    double getJulianDate( int year, int month, int date )
+    // http://www.stjarnhimlen.se/comp/tutorial.html#4
+    double dayNumber(int Y, int M, int D, double hoursUTC)
     {
-        if ( month <= 2 )
-        {
-            month += 12;
-            year -= 1;
-        }
+        int d = 367*Y - (7*(Y+(((M+9)/12))))/4 + ((275*M)/9) + D - 730530;
+        return (double)d + hoursUTC/24.0;
+    }
 
-        int A = int(year/100);
-        int B = 2-A+(A/4);
-        int C = int(365.25*(year+4716));
-        int D = int(30.6001*(month+1));
-        return B + C + D + date - 1524.5;
+    double rev(double a)
+    {
+        return a - floor(a/360.0)*360.0;
     }
 
     struct Sun
     {
-        // https://www.cfa.harvard.edu/~wsoon/JuanRamirez09-d/Chang09-OptimalTiltAngleforSolarCollector.pdf
-        void getLatLonRaDecl(int year, int month, int date, double hoursUTC,
-                             double& out_lat,
-                             double& out_lon,
-                             double& out_ra,
-                             double& out_decl,
-                             double& out_almanacTime) const
+        // http://www.stjarnhimlen.se/comp/tutorial.html#5
+        void getLatLon(int year, int month, int date, double hoursUTC,
+                       double& out_lat,
+                       double& out_lon) const
         {
-            double JD = getJulianDate(year, month, date);
-            double JD1 = (JD - JD2000);                         // julian time since JD2000 epoch
-            double JC = JD1/36525.0;                            // julian century
+            double d = dayNumber(year, month, date, hoursUTC);
 
-            double mu = 282.937348 + 0.00004707624*JD1 + 0.0004569*(JC*JC);
+            double w = 282.9404 + 4.70935E-5 * d;
+            const double a = 1.0;
 
-            double epsilon = 280.466457 + 0.985647358*JD1 + 0.000304*(JC*JC);
+            double e = 0.016709 - 1.151E-9 *d;
+            double M = 356.0470 + 0.9856002585 * d;
+            double oblecl = 23.4393 - 3.563E-7 * d;
+            double L = rev(w + rev(M));
 
-            // orbit eccentricity:
-            double E = 0.01670862 - 0.00004204 * JC;
+            double E = rev(M + r2d(e*sin(d2r(M))*(1.0 + e * cos(d2r(M)))));
+            double x = a*cos(d2r(E)) - e;
+            double y = a*sin(d2r(rev(E)))*sqrt(1.0 - e*e);
+            double r = sqrt(x*x + y*y);
+            double v = r2d(atan2(y, x));
+            double sunlon = rev(v + w);
 
-            // mean anomaly of the perihelion
-            double M = epsilon - mu;
+            x = r*cos(d2r(sunlon));
+            y = r*sin(d2r(sunlon));
+            double z = 0;
 
-            // perihelion anomaly:
-            double v =
-                M + 
-                360.0*E*sin(d2r(M))/osg::PI + 
-                900.0*(E*E)*sin(d2r(2*M))/4*osg::PI - 
-                180.0*(E*E*E)*sin(d2r(M))/4.0*osg::PI;
+            double xequat = x;
+            double yequat = y*cos(d2r(oblecl)) + z*sin(d2r(oblecl));
+            double zequat = y*sin(d2r(oblecl)) + z*cos(d2r(oblecl));
 
-            // longitude of the sun in ecliptic coordinates:
-            double sun_lon = d2r(v - 360.0 + mu); // lambda
-            nrad2(sun_lon);
+            double RA = rev(r2d(atan2(yequat, xequat)));
+            double DECL = r2d(atan2(zequat, sqrt(xequat*xequat + yequat*yequat)));
 
-            // angle between the ecliptic plane and the equatorial plane
-            double zeta_deg = 23.4392;
-            double zeta = d2r(zeta_deg);
+            double GMST0 = (L + 180);
+            double UT = d - floor(d);
 
-            // latitude of the sun on the ecliptic plane:
-            double omega = d2r(0.0);
+            out_lat = d2r(DECL);
+            out_lon = d2r(rev(0*180+RA-GMST0-UT*360));
 
-            // latitude of the sun with respect to the equatorial plane (solar declination):
-            double sun_lat = asin( sin(sun_lon)*sin(zeta) );
-            nrad2(sun_lat);
-
-            // finally, adjust for the time of day (rotation of the earth)
-            double time_r = hoursUTC/24.0; // 0..1
-            nrad(sun_lon); // clamp to 0..TWO_PI
-            double sun_r = sun_lon/TWO_PI; // convert to 0..1
-
-            // rotational difference between UTC and current time
-            double diff_r = sun_r - time_r;
-            double diff_lon = TWO_PI * diff_r;
-
-            // apparent sun longitude.
-            double app_sun_lon = sun_lon - diff_lon + osg::PI;
-            nrad2(app_sun_lon);
-
-            out_lat = sun_lat;
-            out_lon = app_sun_lon;
-
-            // right ascension and declination.
-            double eclong = sun_lon;
-            double oblqec = d2r(zeta_deg - 0.0000004*JD1);
-            double num = cos(oblqec) * sin(eclong);
-            double den = cos(eclong);
-            out_ra = atan(num/den);
-            if ( den < 0.0 ) out_ra += osg::PI;
-            if ( den >= 0 && num < 0 ) out_ra += TWO_PI;
-            out_decl = asin(sin(oblqec)*sin(eclong));
-
-            // almanac time is the difference between the Julian Date and JD2000 epoch
-            out_almanacTime = JD1;
+            OE_DEBUG << "RA = " << RA << ", DECL = " << DECL << ", LAT = " << r2d(out_lat) << ", LON = " << r2d(out_lon) << std::endl;
         }
 
         void getECEF(int year, int month, int date, double hoursUTC, osg::Vec3d& out_ecef)
         {
-            double lat, applon, ra, decl, almanacTime;
-            getLatLonRaDecl(year, month, date, hoursUTC, lat, applon, ra, decl, almanacTime);
-            out_ecef.set(
-                cos(lat) * cos(-applon),
-                cos(lat) * sin(-applon),
-                sin(lat) );
+            double lat, applon;
+            getLatLon(year, month, date, hoursUTC, lat, applon);
+            
+            //TODO replace with a passed-in ellipsoid model and programmable distance-from-sun
+            osg::EllipsoidModel em;           
+            double distanceToSun = 146000000.0 - em.getRadiusEquator();
+            double x, y, z;
+            em.convertLatLongHeightToXYZ(lat, applon, distanceToSun, x, y, z);
 
-            out_ecef *= 149600000;
-        }
-
-        void getLocalAzEl(int year, int month, int date, double hoursUTC, double lat, double lon, double& out_az, double out_el)
-        {
-            // UNTESTED!
-            // http://stackoverflow.com/questions/257717/position-of-the-sun-given-time-of-day-and-lat-long 
-            double sunLat, sunAppLon, ra, decl, almanacTime;
-            getLatLonRaDecl(year, month, date, hoursUTC, sunLat, sunAppLon, ra, decl, almanacTime);
-            // UTC sidereal time:
-            double gmst = 6.697375 + .0657098242 * almanacTime + hoursUTC;
-            gmst = fmod(gmst, 24.0);
-            if ( gmst < 0.0 ) gmst += 24.0;
-            // Local mean sidereal time:
-            double lmst = gmst + r2d(lon)/15.0;
-            lmst = fmod(lmst, 24.0);
-            if ( lmst < 0.0 ) lmst += 24.0;
-            lmst = d2r(lmst*15.0);
-            // Hour angle:
-            double ha = lmst - ra;
-            nrad2(ha);
-            // Az/el:
-            out_el = asin(sin(decl)*sin(lat)+cos(decl)*cos(lat)*cos(ha));
-            out_az = asin(-cos(decl)*sin(ha)/cos(out_el));
-            double elc = asin(sin(decl)/sin(lat));
-            if ( out_el >= elc ) out_az = osg::PI - out_az;
-            if ( out_el <= elc && ha > 0.0 ) out_az += TWO_PI;
+            out_ecef.set(x, y, z);
         }
     };
 
@@ -231,10 +153,7 @@ namespace
         // Test: http://www.timeanddate.com/astronomy/moon/light.html
         osg::Vec3d getEarthLonLatRange(int year, int month, int date, double hoursUTC ) const
         {
-            int di = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-            double d = (double)di;
-            double time_r = hoursUTC/24.0; // 0..1            
-            d += time_r;
+            double d = dayNumber(year, month, date, hoursUTC);
 
             double N = d2r(125.1228 - 0.0529538083 * d);  nrad(N);
             double i = d2r(5.1454);                       
@@ -286,7 +205,7 @@ namespace
 
             lonEcl = lonEcl
                 + d2r(-1.274) * sin(Mm - 2*D)    // (Evection)
-                + d2r(+0.658) * sin(2*D)         //(Variation)
+                + d2r(+0.658) * sin(2*D)         // (Variation)
                 + d2r(-0.186) * sin(Ms)          // (Yearly equation)
                 + d2r(-0.059) * sin(2*Mm - 2*D)
                 + d2r(-0.057) * sin(Mm - 2*D + Ms)
@@ -310,7 +229,7 @@ namespace
                 -0.46 * cos(2*D);
 
             // R is in "earth radii", so resolve to meters:
-            r *= 6378137.0;
+            //r *= 6378137.0;
 
             // convert to elliptic geocentric (unit)
             double xg = cos(lonEcl) * cos(latEcl);
@@ -334,27 +253,11 @@ namespace
             // finally, adjust for the time of day (rotation of the earth).
             double UT = d - floor(d);
             double GMST0 = Ls + d2r(180.0);
-            double siteLon = 0.0, siteLat = 0.0;
-            double siderealTime = GMST0 + d2r(UT*360.0) + siteLon;
-            double hourAngle = siderealTime - RA;
-            nrad2(hourAngle);
-
-            double x = cos(hourAngle) * cos(Decl);
-            double y = sin(hourAngle) * cos(Decl);
-            double z = sin(Decl);
             
-            double earthLat = atan2(z, sqrt(x*x + y*y) );
-            
-            // calculate the topographic right ascension and declination:
-            double mpar  = asin(1.0/r);
-            double gclat = siteLat - d2r(0.1924)*sin(2.0*siteLat);
-            double rho   = 0.99833 + 0.00167*cos(2.0*siteLat);
-            double g     = atan( tan(gclat) / cos(hourAngle) );
-            double topRA   = RA - (mpar * rho * cos(gclat) * sin(hourAngle) / cos(Decl));
-            double topDecl = Decl - (mpar * rho * sin(gclat) * sin(g - Decl) / sin(g));
+            double earthLat = Decl;
+            double earthLon = RA - GMST0 - d2r(UT*360);
 
-            // use that to calculate the 
-            double earthLon = topRA - GMST0 - d2r(UT*360.0);
+            //OE_DEBUG << "RA = " << RA << ", DECL = " << DECL << ", LAT = " << r2d(out_lat) << ", LON = " << r2d(out_lon) << std::endl;
 
             return osg::Vec3d(earthLon, earthLat, r);
         }
@@ -363,10 +266,12 @@ namespace
         {            
             osg::Vec3d LLA = getEarthLonLatRange(year, month, date, hoursUTC);
             
-            return osg::Vec3d(
-                    LLA.z() * cos(LLA.y()) * cos(LLA.x()),
-                    LLA.z() * cos(LLA.y()) * sin(LLA.x()),
-                    LLA.z() * sin(LLA.y()) ); 
+            osg::EllipsoidModel em;           
+            double distanceToMoon = LLA[2] * em.getRadiusEquator() - em.getRadiusEquator();
+            double x, y, z;
+            em.convertLatLongHeightToXYZ(LLA[1], LLA[0], distanceToMoon, x, y, z);
+
+            return osg::Vec3d(x, y, z);
         }
     };
 }

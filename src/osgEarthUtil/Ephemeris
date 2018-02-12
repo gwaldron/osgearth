@@ -32,18 +32,17 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
-    class OSGEARTHUTIL_EXPORT CelestialBody
+    /**
+     * Location of a celestial body relative to the Earth.
+     */
+    struct CelestialBody
     {
-    public:
-        GeoPoint _observer;
-        Angle _rightAscension;
-        Angle _declination;
-        Angle _latitude;
-        Angle _longitude;
-        Distance _altitude;
-        osg::Vec3d _geocentric;
-        Angle _topoElevation;
-        Angle _topoAzimuth;
+        Angle rightAscension;
+        Angle declination;
+        Angle latitude;
+        Angle longitude;
+        Distance altitude;
+        osg::Vec3d geocentric;
     };
 
     /**
@@ -55,9 +54,11 @@ namespace osgEarth { namespace Util
     {
     public:
 
-        virtual void getSunPosition(const DateTime& dt, CelestialBody& output) const;
+        //! Return the sun's position for a given date and time.
+        virtual CelestialBody getSunPosition(const DateTime& dt) const;
 
-        virtual void getMoonPosition(const DateTime& dt, CelestialBody& output) const;
+        //! Return the moon's position for a given date and time.
+        virtual CelestialBody getMoonPosition(const DateTime& dt) const;
 
         /**
          * Gets an ECEF position from the right ascension, declination and range

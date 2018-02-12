@@ -59,7 +59,7 @@ namespace
     struct Sun
     {
         // http://www.stjarnhimlen.se/comp/tutorial.html#5
-        void getPosition(const DateTime& dt, CelestialBody& sun) const
+        CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
 
@@ -93,21 +93,24 @@ namespace
             double RA_deg = rev(r2d(atan2(yequat, xequat)));
             double DECL_deg = r2d(atan2(zequat, sqrt(xequat*xequat + yequat*yequat)));
 
-            double siteLat_deg = sun._observer.y(); // TODO
-            double siteLon_deg = sun._observer.x(); // TODO
-
             double GMST0_deg = rev(L + 180);
             double UT = d - floor(d);
 
-            sun._rightAscension.set(RA_deg, Units::DEGREES);
-            sun._declination.set(DECL_deg, Units::DEGREES);
-            sun._latitude.set(DECL_deg, Units::DEGREES);
-            sun._longitude.set(rev(0*180+RA_deg-GMST0_deg-UT*360), Units::DEGREES);
-            sun._altitude.set(149600000.0 - WGS84.getRadiusEquator(), Units::METERS);
+            CelestialBody sun;
+
+            sun.rightAscension.set(RA_deg, Units::DEGREES);
+            sun.declination.set(DECL_deg, Units::DEGREES);
+            sun.latitude.set(DECL_deg, Units::DEGREES);
+            sun.longitude.set(rev(0*180+RA_deg-GMST0_deg-UT*360), Units::DEGREES);
+            sun.altitude.set(149600000.0, Units::KILOMETERS);
             
+#if 0
             // compute topographic measurements relative to observer position:
             if (sun._observer.isValid())
             {
+                double siteLat_deg = sun._observer.y(); // TODO
+                double siteLon_deg = sun._observer.x(); // TODO
+
                 double SIDEREAL_deg = GMST0_deg + UT * 360 + siteLon_deg;
                 double siteLon_rad = d2r(siteLon_deg);
                 double siteLat_rad = d2r(siteLat_deg);
@@ -128,20 +131,17 @@ namespace
                 sun._topoElevation.set(elev, Units::RADIANS);
                 sun._topoAzimuth.set(azim, Units::RADIANS);
             }
-
-            /*
-            double gclat = siteLat_rad - d2r(-0.1924)*sin(2.0*siteLat_rad);
-            double rho = 0.99833 + 0.00167*cos(2.0*siteLat_rad);
-            double g = atan(tan(gclat) / cos(hourAngle_rad));
-            */
+#endif
 
             WGS84.convertLatLongHeightToXYZ(
-                sun._latitude.as(Units::RADIANS),
-                sun._longitude.as(Units::RADIANS),
-                sun._altitude.as(Units::METERS),
-                sun._geocentric.x(), sun._geocentric.y(), sun._geocentric.z());
+                sun.latitude.as(Units::RADIANS),
+                sun.longitude.as(Units::RADIANS),
+                sun.altitude.as(Units::METERS),
+                sun.geocentric.x(), sun.geocentric.y(), sun.geocentric.z());
 
             //OE_DEBUG << "RA = " << RA << ", DECL = " << DECL << ", LAT = " << r2d(out_lat) << ", LON = " << r2d(out_lon) << std::endl;
+
+            return sun;
         }
     };
 
@@ -152,7 +152,7 @@ namespace
         // Test: http://www.satellite-calculations.com/Satellite/suncalc.htm
         // Test: http://www.timeanddate.com/astronomy/moon/light.html
         //osg::Vec3d getEarthLonLatRange(int year, int month, int date, double hoursUTC ) const
-        void getPosition(const DateTime& dt, CelestialBody& out) const
+        CelestialBody getPosition(const DateTime& dt) const
         {
             static const osg::EllipsoidModel WGS84;
 
@@ -182,19 +182,6 @@ namespace
                 E = E1;
                 Eerror = E<E0? E0-E : E-E0;
             }
-
-            //double E0 = E, E1 = 0.0;
-            //double epsilon = d2r(0.001);
-            //int count = 0;
-            //do {
-            //    E1 = E0 - (E0 - e*sin(E0) - M) / (1.0 - e*cos(E0) );
-            //    E = E1;
-            //    std::swap(E0, E1);
-            //    ++count;
-            //}
-            //while( fabs(E1-E0) > epsilon && count < 10 );
-            
-            //E = E - (E - e*sin(E) - M) / (1.0 - e*cos(E) );
             
             nrad(E);
             double x = a * ( cos(E) - e );
@@ -278,22 +265,22 @@ namespace
 
             // since r (distance to moon) is in "earth radius units", resolve it to meters
             r *= WGS84.getRadiusEquator();
+
+            CelestialBody moon;
             
-            out._rightAscension.set(RA, Units::RADIANS);
-            out._declination.set(Decl, Units::RADIANS);
-            out._latitude.set(earthLat, Units::RADIANS);
-            out._longitude.set(earthLon, Units::RADIANS);
-            out._altitude.set(r, Units::METERS);
+            moon.rightAscension.set(RA, Units::RADIANS);
+            moon.declination.set(Decl, Units::RADIANS);
+            moon.latitude.set(earthLat, Units::RADIANS);
+            moon.longitude.set(earthLon, Units::RADIANS);
+            moon.altitude.set(r, Units::METERS);
 
             WGS84.convertLatLongHeightToXYZ(
-                out._latitude.as(Units::RADIANS),
-                out._longitude.as(Units::RADIANS),
-                out._altitude.as(Units::METERS),
-                out._geocentric.x(), out._geocentric.y(), out._geocentric.z());
-            
-            // TODO: topographic data
-            out._topoAzimuth.set(0.0, Units::DEGREES);
-            out._topoElevation.set(0.0, Units::DEGREES);
+                moon.latitude.as(Units::RADIANS),
+                moon.longitude.as(Units::RADIANS),
+                moon.altitude.as(Units::METERS),
+                moon.geocentric.x(), moon.geocentric.y(), moon.geocentric.z());            
+
+            return moon;
         }
     };
 }
@@ -304,16 +291,16 @@ namespace
 #undef  LC
 #define LC "[Ephemeris] "
 
-void
-Ephemeris::getSunPosition(const DateTime& dt, CelestialBody& out) const
+CelestialBody
+Ephemeris::getSunPosition(const DateTime& dt) const
 {
-    Sun().getPosition(dt, out);
+    return Sun().getPosition(dt);
 }
 
-void
-Ephemeris::getMoonPosition(const DateTime& dt, CelestialBody& out) const
+CelestialBody
+Ephemeris::getMoonPosition(const DateTime& dt) const
 {
-    Moon().getPosition(dt, out);
+    return Moon().getPosition(dt);
 }
 
 osg::Vec3d

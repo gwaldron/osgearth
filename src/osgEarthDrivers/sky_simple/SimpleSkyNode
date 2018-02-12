@@ -116,7 +116,7 @@ namespace osgEarth { namespace SimpleSky
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
 
         void setAmbientBrightness(float value);
-        void setSunPosition(const osg::Vec3& pos);
+        void setSunPosition(const osg::Vec3d& pos);
         void setMoonPosition(const osg::Vec3d& pos);
     };
 

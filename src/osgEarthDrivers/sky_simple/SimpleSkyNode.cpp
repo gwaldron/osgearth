@@ -250,7 +250,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         _ellipsoidModel->getRadiusPolar(),
         _ellipsoidModel->getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
-    _sunDistance = _innerRadius * 12000.0f;
+    _sunDistance = 149600000000.0; //_innerRadius * 12000.0f;
     
     if ( Registry::capabilities().supportsGLSL() )
     {
@@ -339,13 +339,11 @@ SimpleSkyNode::onSetDateTime()
         osg::View* view = 0L;
         const DateTime& dt = getDateTime();
 
-        CelestialBody sun, moon;
-        getEphemeris()->getSunPosition(dt, sun);
-        getEphemeris()->getMoonPosition(dt, moon);
+        CelestialBody sun = getEphemeris()->getSunPosition(dt);
+        setSunPosition( sun.geocentric );
 
-        sun._geocentric.normalize();
-        setSunPosition( sun._geocentric );
-        setMoonPosition( moon._geocentric );
+        CelestialBody moon = getEphemeris()->getMoonPosition(dt);
+        setMoonPosition( moon.geocentric );
 
         // position the stars:
         double time_r = dt.hours()/24.0; // 0..1
@@ -378,9 +376,9 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
 }
 
 void
-SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
+SimpleSkyNode::setSunPosition(const osg::Vec3d& pos)
 {
-    osg::Vec3 npos = pos;
+    osg::Vec3d npos = pos;
     npos.normalize();
     _light->setPosition( osg::Vec4(npos, 0.0f) ); // directional light
 
@@ -388,23 +386,22 @@ SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
     
     if ( _lightPosUniform.valid() )
     {
-        _lightPosUniform->set( pos/pos.length() );
+        _lightPosUniform->set( osg::Vec3(npos) );
     }
 
     if ( _sunXform.valid() )
     {
-        _sunXform->setMatrix( osg::Matrix::translate( 
-            _sunDistance * pos.x(), 
-            _sunDistance * pos.y(),
-            _sunDistance * pos.z() ) );
+        _sunXform->setMatrix( osg::Matrix::translate(pos) );
     }
 }
 
 void
 SimpleSkyNode::setMoonPosition(const osg::Vec3d& pos)
 {
-    if ( _moonXform.valid() )
-        _moonXform->setMatrix( osg::Matrixd::translate(pos.x(), pos.y(), pos.z()) );
+    if (_moonXform.valid())
+    {
+        _moonXform->setMatrix(osg::Matrixd::translate(pos));
+    }
 }
 
 void
@@ -559,9 +556,12 @@ SimpleSkyNode::makeSun()
     sun->setMode( osg::Billboard::POINT_ROT_EYE );
     sun->setNormal( osg::Vec3(0, 0, 1) );
 
-    float sunRadius = _innerRadius * 100.0f;
+    //float sunRadius = _innerRadius * 100.0f;
+    //sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
-    sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
+    const double zoomFactor = 80.0; // to account for the solare glare
+    const double sunRadius = 695700000.0;
+    sun->addDrawable(s_makeDiscGeometry(sunRadius * zoomFactor));
 
     osg::StateSet* set = sun->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
@@ -596,7 +596,6 @@ SimpleSkyNode::makeSun()
     _sun = cam;
 
     // make the sun's transform:
-    // todo: move this?
     _sunXform = new osg::MatrixTransform();
     _sunXform->setMatrix( osg::Matrix::translate( 
         _sunDistance * _light->getPosition().x(),
@@ -666,11 +665,10 @@ SimpleSkyNode::makeMoon()
     _moon = cam;
 
     // make the moon's transform:
-    CelestialBody moon;
-    getEphemeris()->getMoonPosition(getDateTime(), moon);
+    CelestialBody moon = getEphemeris()->getMoonPosition(getDateTime());
 
     _moonXform = new osg::MatrixTransform();   
-    _moonXform->setMatrix( osg::Matrix::translate( moon._geocentric ) ); 
+    _moonXform->setMatrix( osg::Matrix::translate( moon.geocentric ) ); 
     _moonXform->addChild( _moon.get() );
 
     _cullContainer->addChild( _moonXform.get() );

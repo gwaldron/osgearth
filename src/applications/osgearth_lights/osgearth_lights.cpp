@@ -89,10 +89,8 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
     {
         Ephemeris e;
         DateTime dt(2016, 8, 10, 14.0);
-        CelestialBody sun;
-        e.getSunPosition(dt, sun);
-        world = sun._geocentric;            
-        //world = e.getSunPositionECEF(dt);
+        CelestialBody sun = e.getSunPosition(dt);
+        world = sun.geocentric;
 
         osg::Light* sunLight = new osg::Light(lightNum++);
         world.normalize();

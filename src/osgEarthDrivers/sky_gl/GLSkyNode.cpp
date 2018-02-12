@@ -111,13 +111,12 @@ GLSkyNode::onSetDateTime()
     if ( !getSunLight() || !_profile.valid() )
         return;
 
-    CelestialBody sun;
-    getEphemeris()->getSunPosition(getDateTime(), sun);
+    CelestialBody sun = getEphemeris()->getSunPosition(getDateTime());
 
     if ( _profile->getSRS()->isGeographic() )
     {
-        sun._geocentric.normalize();
-        _light->setPosition(osg::Vec4(sun._geocentric, 0.0)); // directional light
+        sun.geocentric.normalize();
+        _light->setPosition(osg::Vec4(sun.geocentric, 0.0)); // directional light
     }
     else
     {
@@ -139,7 +138,7 @@ GLSkyNode::onSetDateTime()
         refLatLong.createWorldToLocal(world2local);
 
         // convert the sun position:
-        osg::Vec3d sunPosLocal = sun._geocentric * world2local;
+        osg::Vec3d sunPosLocal = sun.geocentric * world2local;
         sunPosLocal.normalize();
 
         getSunLight()->setPosition( osg::Vec4(sunPosLocal, 0.0) );

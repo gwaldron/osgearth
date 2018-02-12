@@ -24,11 +24,27 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/DateTime>
+#include <osgEarth/Units>
+#include <osgEarth/GeoData>
 #include <osg/Vec3d>
 
 namespace osgEarth { namespace Util 
 {
     using namespace osgEarth;
+
+    class OSGEARTHUTIL_EXPORT CelestialBody
+    {
+    public:
+        GeoPoint _observer;
+        Angle _rightAscension;
+        Angle _declination;
+        Angle _latitude;
+        Angle _longitude;
+        Distance _altitude;
+        osg::Vec3d _geocentric;
+        Angle _topoElevation;
+        Angle _topoAzimuth;
+    };
 
     /**
      * An Ephemeris gives the positions of naturally occurring astronimical
@@ -38,16 +54,11 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT Ephemeris : public osg::Referenced
     {
     public:
-        /**
-        * Gets the moon position in ECEF coordinates at the given time
-        */
-        virtual osg::Vec3d getMoonPositionECEF(const DateTime& dt) const;
 
-        /**
-        * Gets the sun position in ECEF coordinates at the given time
-        */
-        virtual osg::Vec3d getSunPositionECEF(const DateTime& dt) const;
-        
+        virtual void getSunPosition(const DateTime& dt, CelestialBody& output) const;
+
+        virtual void getMoonPosition(const DateTime& dt, CelestialBody& output) const;
+
         /**
          * Gets an ECEF position from the right ascension, declination and range
          *

@@ -225,6 +225,15 @@ DateTime::asCompactISO8601() const
         << 'Z';
 }
 
+
+// https://en.wikipedia.org/wiki/Julian_day#Converting_Gregorian_calendar_date_to_Julian_Day_Number
+double
+DateTime::getJulianDay() const
+{
+    int d = (1461 * (year() + 4800 + (month() - 14) / 12)) / 4 + (367 * (month() - 2 - 12 * ((month() - 14) / 12))) / 12 - (3 * ((year() + 4900 + (month()-14)/12)/100))/4 + day() - 32075;
+    return (double)d + hours()/24.0;
+}
+
 //------------------------------------------------------------------------
 
 /*

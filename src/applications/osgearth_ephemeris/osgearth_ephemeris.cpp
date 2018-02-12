@@ -110,31 +110,50 @@ main(int argc, char** argv)
 
         LatLongFormatter llf;
         llf.setOptions( LatLongFormatter::Options(llf.FORMAT_DEGREES_MINUTES_SECONDS) );
-        llf.setPrecision( 4 );
+        llf.setPrecision( 8 );
 
         viewer.setSceneData( root );
+
+        CelestialBody sun, moon;
 
         while(!viewer.done())
         {
             viewer.frame();
 
+            sun._observer = GeoPoint(SpatialReference::get("wgs84"), 0.0, 0.0, 0.0);
+
+            app.sky->setDateTime(DateTime(1990, 4, 19, 0));
+            //app.sky->setDateTime(DateTime(2008, 4, 24, 10));
+
             if ( ephemeris )
             {
                 const DateTime& dt = app.sky->getDateTime();
 
-                osg::Vec3d sunECEF = ephemeris->getSunPositionECEF(dt);
-                GeoPoint sun;
-                sun.fromWorld(mapNode->getMapSRS(), sunECEF);
-                sun.alt() = 0.0;
-                app.sunPos->setPosition( sun );
-                app.sunPos->setText( "Sun\n" + llf.format(sun) );
+                ephemeris->getSunPosition(dt, sun);
+                GeoPoint sunPos;
+                sunPos.fromWorld(mapNode->getMapSRS(), sun._geocentric);
+                sunPos.alt() = 0.0;
+                app.sunPos->setPosition( sunPos );
+                app.sunPos->setText( "Sun\n" + llf.format(sunPos) );
 
-                osg::Vec3d moonECEF = ephemeris->getMoonPositionECEF(dt);
-                GeoPoint moon;
-                moon.fromWorld(mapNode->getMapSRS(), moonECEF);
-                moon.alt() = 0.0;
-                app.moonPos->setPosition( moon );
-                app.moonPos->setText( "Moon\n" + llf.format(moon) );
+                ephemeris->getMoonPosition(dt, moon);
+                GeoPoint moonPos;
+                moonPos.fromWorld(mapNode->getMapSRS(), moon._geocentric);
+                moonPos.alt() = 0.0;
+                app.moonPos->setPosition( moonPos );
+                app.moonPos->setText( "Moon\n" + llf.format(moonPos) );
+
+                if (viewer.getFrameStamp()->getFrameNumber() == 60)
+                {
+                    OE_INFO 
+                        << "Sun RA = " << sun._rightAscension.as(Units::DEGREES)
+                        << ", DECL = " << sun._declination.as(Units::DEGREES)
+                        << ", Earth Lat = " << sun._latitude.as(Units::DEGREES)
+                        << ", Earth Lon = " << sun._longitude.as(Units::DEGREES)
+                        << ", Azimuth = " << sun._topoAzimuth.as(Units::DEGREES)
+                        << ", Elev = " << sun._topoElevation.as(Units::DEGREES)
+                        << std::endl;
+                }
             }
         }
     }

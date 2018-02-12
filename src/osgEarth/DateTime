@@ -69,6 +69,9 @@ namespace osgEarth
           * order with no delimiters). */
         const std::string asCompactISO8601() const;
 
+        /** Julian day (fractional) corresponding to this DateTime */
+        double getJulianDay() const;
+
     public:
         int    year()  const;
         int    month() const;

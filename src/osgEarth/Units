@@ -51,6 +51,7 @@ namespace osgEarth
         static const Units DEGREES;
         static const Units NATO_MILS; // http://www.convertworld.com/en/angle/Mil+(NATO).html
         static const Units RADIANS;
+        static const Units DECIMAL_HOURS;
 
         // temporal
         static const Units DAYS;

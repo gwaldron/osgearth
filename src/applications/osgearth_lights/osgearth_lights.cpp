@@ -89,17 +89,20 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
     {
         Ephemeris e;
         DateTime dt(2016, 8, 10, 14.0);
-        world = e.getSunPositionECEF(dt);
+        CelestialBody sun;
+        e.getSunPosition(dt, sun);
+        world = sun._geocentric;            
+        //world = e.getSunPositionECEF(dt);
 
-        osg::Light* sun = new osg::Light(lightNum++);
+        osg::Light* sunLight = new osg::Light(lightNum++);
         world.normalize();
-        sun->setPosition(osg::Vec4d(world, 0.0));
+        sunLight->setPosition(osg::Vec4d(world, 0.0));
 
-        sun->setAmbient(osg::Vec4(0.2, 0.2, 0.2, 1.0));
-        sun->setDiffuse(osg::Vec4(1.0, 1.0, 0.9, 1.0));
+        sunLight->setAmbient(osg::Vec4(0.2, 0.2, 0.2, 1.0));
+        sunLight->setDiffuse(osg::Vec4(1.0, 1.0, 0.9, 1.0));
 
         osg::LightSource* sunLS = new osg::LightSource();
-        sunLS->setLight(sun);
+        sunLS->setLight(sunLight);
 
         lights->addChild( sunLS );
 
@@ -107,7 +110,7 @@ addLights(osg::View* view, osg::Node* root, int lightNum)
         if (caster)
         {
             OE_INFO << "Found a shadow caster!\n";
-            caster->setLight(sun);
+            caster->setLight(sunLight);
         }
     }
 

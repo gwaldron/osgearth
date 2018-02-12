@@ -791,7 +791,7 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         grid->setControl( 0, r, new ui::LabelControl("Month: ", 16) );
         ui::HSliderControl* skyMonthSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 12.0f, dt.month() ));
         skyMonthSlider->setHorizFill( true, 250 );
-        ui::LabelControl* monthLabel = grid->setControl(2, r, new ui::LabelControl(s_month[dt.month()]));
+        ui::LabelControl* monthLabel = grid->setControl(2, r, new ui::LabelControl(s_month[dt.month()-1]));
         skyMonthSlider->addEventHandler( new SkyMonthSlider(sky, monthLabel) );
     
         ++r;

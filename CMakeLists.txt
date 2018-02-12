@@ -8,10 +8,13 @@ if(COMMAND cmake_policy)
     # Works around warnings about escaped quotes in ADD_DEFINITIONS
     # statements.
     cmake_policy(SET CMP0005 OLD)
-    
+
     # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
     cmake_policy(SET CMP0043 NEW)
 
+    # Double colon in target name means IMPORTED (and not ALIAS or IMPORTED).
+    # Fixes a warning when cache_rocksdb links to target "RocksDB::rocksdb"
+    cmake_policy(SET CMP0028 NEW)
 endif(COMMAND cmake_policy)
 
 #
@@ -123,7 +126,14 @@ FIND_PACKAGE(ZLIB)
 FIND_PACKAGE(Poco)
 
 FIND_PACKAGE(LevelDB)
-FIND_PACKAGE(RocksDB)
+IF(MINGW)
+    FIND_PACKAGE(RocksDB CONFIG)
+    IF(RocksDB_FOUND)
+        MESSAGE(STATUS "Found RocksDB " ${RocksDB_VERSION})
+    ENDIF()
+ELSE(MINGW)
+    FIND_PACKAGE(RocksDB)
+ENDIF(MINGW)
 
 FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)

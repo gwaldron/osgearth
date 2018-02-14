@@ -29,6 +29,7 @@
 #include <osg/Timer>
 #include <osg/ValueObject>
 #include <osgDB/Registry>
+#include <osg/ConcurrencyViewerMacros>
 #include <string.h>
 #include <memory.h>
 
@@ -1320,7 +1321,12 @@ ImageUtils::activateMipMaps(osg::Texture* tex)
    if (tex == 0L)
         return;
 
-    // Verify that this texture requests mipmaps:
+   osg::CVMarkerSeries objectCreation("SubloadTask");
+   osg::CVSpan creationSpan(objectCreation, 4, "oe::mipmap");
+   if (tex->getImage(0)->getFileName().length()) {
+      objectCreation.write_alert(tex->getImage(0)->getFileName().c_str());
+   }
+   // Verify that this texture requests mipmaps:
     osg::Texture::FilterMode minFilter = tex->getFilter(tex->MIN_FILTER);
     if (minFilter == tex->LINEAR_MIPMAP_LINEAR ||
         minFilter == tex->LINEAR_MIPMAP_NEAREST ||

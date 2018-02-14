@@ -38,6 +38,8 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/ValueObject>
 
+#include <osg/ConcurrencyViewerMacros>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -79,11 +81,15 @@ _isRootTile(false)
     //nop
 }
 
+
 void
 TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 {
     if (!context)
         return;
+
+    osg::CVMarkerSeries series("Culling SubTasks");
+    osg::CVSpan UpdateTick(series, 4, "TileNode::create");
 
     _context = context;
 

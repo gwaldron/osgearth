@@ -22,6 +22,8 @@
 #include <osgEarth/Terrain>
 #include <osg/NodeVisitor>
 
+#include <osg/ConcurrencyViewerMacros>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -34,6 +36,7 @@ _context(context),
 _enableCancel(true)
 {
     this->setTileKey(tilenode->getKey());
+    setName(tilenode->getKey().str());
     _mapFrame.setMap(context->getMap());
     _engine = context->getEngine();
 }
@@ -93,6 +96,9 @@ LoadTileData::isCanceled()
 void
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
+   osg::CVMarkerSeries series("Main Thread");
+   osg::CVSpan UpdateTick(series, 4, "LoadTileData::apply");
+
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {

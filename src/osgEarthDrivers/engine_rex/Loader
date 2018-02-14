@@ -79,8 +79,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
             UID getUID() const { return _uid; }
 
-            /** Access the stateset that holds optional GL-compilable objects. */
-            osg::StateSet* getStateSet();
+            /** Creates a stateset that holds GL-compilable objects. */
+            virtual osg::StateSet* createStateSet() const =0; // { return 0L; }
 
             void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
             unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
@@ -111,7 +111,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
             osg::Timer_t                  _lastTick;
-            osg::ref_ptr<osg::StateSet>   _stateSet;
             mutable Threading::Mutex      _lock;
             int                           _loadCount;
 

@@ -147,3 +147,46 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
         _dataModel = 0L;
     }
 }
+
+namespace
+{
+    // Fake attribute that compiles everything in the TerrainTileModel
+    // when the ICO is active.
+    struct ModelCompilingAttribute : public osg::Texture2D
+    {
+        osg::ref_ptr<TerrainTileModel> _dataModel;
+        
+        // the ICO calls apply() directly instead of compileGLObjects
+        void apply(osg::State& state) const
+        {
+            _dataModel->compileGLObjects(state);
+        }
+
+        // no need to override release or resize since this is a temporary object
+        // that exists only to service the ICO.
+
+        META_StateAttribute(osgEarth, ModelCompilingAttribute, osg::StateAttribute::TEXTURE);
+        int compare(const StateAttribute& sa) const { return 0; }
+        ModelCompilingAttribute() { }
+        ModelCompilingAttribute(const ModelCompilingAttribute& rhs, const osg::CopyOp& copy) { }
+    };
+}
+
+osg::StateSet*
+LoadTileData::createStateSet() const
+{
+    osg::ref_ptr<osg::StateSet> out;
+    
+    if (_dataModel.valid() &&
+        _dataModel->getRevision() == _context->getMap()->getDataModelRevision())
+    {
+        // This stateset contains a "fake" attribute that the ICO will
+        // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.
+        out = new osg::StateSet();
+        ModelCompilingAttribute* mca = new ModelCompilingAttribute();
+        mca->_dataModel = _dataModel.get();
+        out->setTextureAttribute(0, mca, 1);
+    }
+
+    return out.release();
+}

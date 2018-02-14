@@ -46,6 +46,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Applies the fetched data to the tile node (scene-graph safe) */
         void apply(const osg::FrameStamp*);
 
+        //! Creates a stateset containing GL compilable objects from the model
+        osg::StateSet* createStateSet() const;
+
     public: // ProgressCallback
 
         bool isCanceled();

@@ -54,51 +54,6 @@ _requiresUpdateTraverse( false )
     //NOP
 }
 
-//const TerrainTileImageLayerModel*
-//TerrainTileModel::findSharedLayerByName(const std::string& name) const
-//{
-//    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
-//        i != _sharedLayers.end();
-//        ++i)
-//    {
-//        if ( i->get()->getName() == name )
-//        {
-//            return i->get();
-//        }
-//    }
-//    return 0L;
-//}
-//
-//const TerrainTileImageLayerModel*
-//TerrainTileModel::findSharedLayerByUID(const UID& uid) const
-//{
-//    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
-//        i != _sharedLayers.end();
-//        ++i)
-//    {
-//        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
-//        {
-//            return i->get();
-//        }
-//    }
-//    return 0L;
-//}
-//
-//const TerrainTileImageLayerModel*
-//TerrainTileModel::findColorLayerByUID(const UID& uid) const
-//{
-//    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin();
-//        i != _colorLayers.end();
-//        ++i)
-//    {
-//        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
-//        {
-//            return i->get();
-//        }
-//    }
-//    return 0L;
-//}
-
 osg::Texture* 
 TerrainTileModel::getNormalTexture() const
 {
@@ -121,4 +76,25 @@ osg::RefMatrixf*
 TerrainTileModel::getElevationTextureMatrix() const
 {
     return _elevationLayer.valid() ? _elevationLayer->getMatrix() : 0L;
+}
+
+void
+TerrainTileModel::compileGLObjects(osg::State& state) const
+{
+    for (TerrainTileColorLayerModelVector::const_iterator i = _colorLayers.begin();
+        i != _colorLayers.end();
+        ++i)
+    {
+        if (i->get()->getTexture())
+            i->get()->getTexture()->compileGLObjects(state);
+    }
+
+    // since non-core shared layers are ALSO in the colorLayers vector,
+    // there is no need to iterator over them.
+
+    if (getNormalTexture())
+        getNormalTexture()->compileGLObjects(state);
+
+    if (getElevationTexture())
+        getElevationTexture()->compileGLObjects(state);
 }

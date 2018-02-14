@@ -253,6 +253,9 @@ namespace osgEarth
         osg::Texture* getElevationTexture() const;
         osg::RefMatrixf* getElevationTextureMatrix() const;
 
+    public:
+        void compileGLObjects(class osg::State& state) const;
+
     protected:
         TileKey                                 _key;
         Revision                                _revision;

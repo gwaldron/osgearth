@@ -46,17 +46,6 @@ Loader::Request::Request()
     _lastTick = 0;
 }
 
-osg::StateSet*
-Loader::Request::getStateSet()
-{
-    if ( !_stateSet.valid() )
-    {
-        _stateSet = new osg::StateSet();
-        _stateSet->setDataVariance( osg::Object::DYNAMIC );
-    }
-    return _stateSet.get();
-}
-
 void
 Loader::Request::addToChangeSet(osg::Node* node)
 {
@@ -158,8 +147,9 @@ namespace
 
 namespace
 {
-    struct RequestResultNode : public osg::Node
+    class RequestResultNode : public osg::Node
     {
+    public:
         RequestResultNode(Loader::Request* request)
             : _request(request)
         {
@@ -169,7 +159,7 @@ namespace
             {
                 // TODO: for some reason pre-compiling is causing texture flashing issues 
                 // with things like classification maps when using --ico. Figure out why.
-                setStateSet( _request->getStateSet() );
+                setStateSet( _request->createStateSet() );
             }
         }
 

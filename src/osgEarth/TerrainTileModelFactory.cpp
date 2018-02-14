@@ -55,7 +55,6 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    //addImageLayers(model.get(), frame, requirements, key, filter, progress);
     addColorLayers(model.get(), frame, requirements, key, filter, progress);
 
     addPatchLayers(model.get(), frame, key, filter, progress);
@@ -143,6 +142,8 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
          
             if (tex)
             {
+                tex->setName(model->getKey().str());
+
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
 
                 layerModel->setImageLayer(imageLayer);
@@ -153,10 +154,14 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
                 model->colorLayers().push_back(layerModel);
 
                 if (imageLayer->isShared())
+                {
                     model->sharedLayers().push_back(layerModel);
+                }
 
                 if (imageLayer->isDynamic())
+                {
                     model->setRequiresUpdateTraverse(true);
+                }
             }
         }
 
@@ -165,89 +170,6 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
             TerrainTileColorLayerModel* colorModel = new TerrainTileColorLayerModel();
             colorModel->setLayer(layer);
             model->colorLayers().push_back(colorModel);
-        }
-    }
-
-    if (progress)
-        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_image_layers);
-}
-
-void
-TerrainTileModelFactory::addImageLayers(TerrainTileModel* model,
-                                        const MapFrame&   frame,
-                                        const TerrainEngineRequirements* reqs,
-                                        const TileKey&    key,
-                                        const CreateTileModelFilter& filter,
-                                        ProgressCallback* progress)
-{
-    OE_START_TIMER(fetch_image_layers);
-
-    int order = 0;
-
-    ImageLayerVector imageLayers;
-    frame.getLayers(imageLayers);
-
-    for(ImageLayerVector::const_iterator i = imageLayers.begin();
-        i != imageLayers.end();
-        ++i, ++order )
-    {
-        ImageLayer* layer = i->get();
-
-        if (!filter.accept(layer))
-            continue;
-
-        if (!layer->getEnabled())
-            continue;
-
-        osg::Texture* tex = 0L;
-        osg::Matrixf textureMatrix;
-
-        if (layer->isKeyInLegalRange(key) && layer->mayHaveDataInExtent(key.getExtent()))
-        {
-            if (layer->createTextureSupported())
-            {
-                tex = layer->createTexture( key, progress, textureMatrix );
-            }
-
-            else
-            {
-                GeoImage geoImage = layer->createImage( key, progress );
-
-                if ( geoImage.valid() )
-                {
-                    if ( layer->isCoverage() )
-                        tex = createCoverageTexture(geoImage.getImage(), layer);
-                    else
-                        tex = createImageTexture(geoImage.getImage(), layer);
-                }
-            }
-        }
-
-        // if this is the first LOD, and the engine requires that the first LOD
-        // be populated, make an empty texture if we didn't get one.
-        if (tex == 0L &&
-            _options.firstLOD() == key.getLOD() &&
-            reqs && reqs->fullDataAtFirstLodRequired())
-        {
-            tex = _emptyTexture.get();
-        }
-
-        if (tex)
-        {
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-
-            layerModel->setImageLayer(layer);
-
-            layerModel->setTexture(tex);
-            layerModel->setMatrix(new osg::RefMatrixf(textureMatrix));
-
-            model->colorLayers().push_back(layerModel);
-
-            if (layer->isShared())
-                model->sharedLayers().push_back(layerModel);
-
-            if (layer->isDynamic())
-                model->setRequiresUpdateTraverse(true);
         }
     }
 

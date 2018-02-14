@@ -111,20 +111,6 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
                 // Mark as complete. TODO: per-data requests will do something different.
                 tilenode->setDirty( false );
 
-#if 0 // gw - moved the notifications to TileNode.
-
-                // Notify listeners that we've added a tile. The patch must be in world space
-                // (include a transform). Only need to fire onTileAdded if there's real elevation data...right?
-                if (_dataModel->elevationModel().valid())
-                {
-                    // Notify the terrain of the new tile. The "graph" needs to be
-                    // the entire terrain graph since REX can load tiles out of order.
-                    _context->getEngine()->getTerrain()->notifyTileAdded(
-                        _dataModel->getKey(),
-                        _context->getEngine()->getTerrain()->getGraph() );
-                }
-#endif
-
                 OE_DEBUG << LC << "apply " << _dataModel->getKey().str() << "\n";
             }
             else

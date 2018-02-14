@@ -790,7 +790,8 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
 osg::Node*
 RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                                  int flags,
-                                 unsigned referenceLOD)
+                                 unsigned referenceLOD,
+                                 const TileKey& area)
 {
     if (model == 0L)
     {
@@ -801,56 +802,137 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     // Dimension of each tile in vertices
     unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
 
-    optional<bool> hasMasks(false);
-    
-    // Trivial rejection test for masking geometry. Check at the top level and
-    // if there's not mask there, there's no mask at the reference LOD either.
-    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
-        model->getKey(),
-        tileSize,
-        getEngineContext()->getMap()
-    );
-
     bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
     bool includeTilesWithoutMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
-    
-    if (maskGenerator->hasMasks() == false && includeTilesWithoutMasks == false)
-        return 0L;
 
-    // If the ref LOD is higher than the key LOD, build a list of tile keys at the 
-    // ref LOD that match up with the main tile key in the model.
+    TileKey rootkey = area.valid() ? area : model->getKey();
+    const SpatialReference* srs = rootkey.getExtent().getSRS();
+
+    // Find the axis aligned bounding box of the mask boundary for each layer
+    MaskLayerVector maskLayers;
+    _mapFrame.getLayers(maskLayers);
+
+    struct MinMax { osg::Vec3d min, max; };
+    std::vector<MinMax> boundaryMinMaxes;
+
+    for (MaskLayerVector::iterator iLayer = maskLayers.begin(); iLayer != maskLayers.end(); ++iLayer)
+    {
+       MaskLayer* layer = iLayer->get();
+       osg::Vec3dArray* boundary = layer->getOrCreateMaskBoundary(1.0, srs, (ProgressCallback*)0L);
+
+       if (!boundary)
+          continue;
+
+       // Calculate the axis-aligned bounding box of the boundary polygon:
+       MinMax minmax;
+       minmax.min = minmax.max = boundary->front();
+
+       for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
+       {
+          if (it->x() < minmax.min.x())
+             minmax.min.x() = it->x();
+
+          if (it->y() < minmax.min.y())
+             minmax.min.y() = it->y();
+
+          if (it->x() > minmax.max.x())
+             minmax.max.x() = it->x();
+
+          if (it->y() > minmax.max.y())
+             minmax.max.y() = it->y();
+       }
+
+       boundaryMinMaxes.push_back(minmax);
+    }
+
+    // Will hold keys at reference lod to check
     std::vector<TileKey> keys;
-    if (referenceLOD > model->getKey().getLOD())
-    {
-        unsigned span = 1 << (referenceLOD - model->getKey().getLOD());
-        unsigned x0 = model->getKey().getTileX() * span;
-        unsigned y0 = model->getKey().getTileY() * span;
 
-        keys.reserve(span*span);
-
-        for (unsigned x=x0; x<x0+span; ++x)
-        {
-            for (unsigned y=y0; y<y0+span; ++y)
-            {
-                keys.push_back(TileKey(referenceLOD, x, y, model->getKey().getProfile()));
-            }
-        }
-    }
-    else
+    // Recurse down through tile hierarchy checking for masks at each level.
+    // If a given tilekey doesn't have any masks then we don't have to check children.
+    std::stack<TileKey> keyStack;
+    keyStack.push(rootkey);
+    while (!keyStack.empty())
     {
-        // no reference LOD? Just use the model's key.
-        keys.push_back(model->getKey());
+       TileKey key = keyStack.top();
+       keyStack.pop();
+
+       if (key.getLOD() < referenceLOD)
+       {
+          // Make a "locator" for this key so we can do coordinate conversion:
+          osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(key, _mapFrame.getMapInfo());
+
+          if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
+             geoLocator = geoLocator->getGeographicFromGeocentric();
+
+          bool hasMasks = false;
+
+          for (std::vector<MinMax>::iterator it = boundaryMinMaxes.begin(); it != boundaryMinMaxes.end(); ++it)
+          {
+             // convert that bounding box to "unit" space (0..1 across the tile)
+             osg::Vec3d min_ndc, max_ndc;
+             geoLocator->modelToUnit(it->min, min_ndc);
+             geoLocator->modelToUnit(it->max, max_ndc);
+
+             // true if boundary overlaps tile in X dimension:
+             bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
+                (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
+                (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
+
+             if (!x_match)
+                continue;
+
+             // true if boundary overlaps tile in Y dimension:
+             bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
+                (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
+                (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+
+             if (y_match)
+             {
+                // only care if this tile has any masks so we can stop as soon as we find one
+                hasMasks = true;
+                break;
+             }
+          }
+
+          if (hasMasks == true && includeTilesWithMasks == false)
+             continue;
+
+          if (hasMasks == false && includeTilesWithoutMasks == false)
+             continue;
+
+          // In order to make this much faster what we need is a way to tell if a key is
+          // completely inside the masked region and has no skirt geometry.
+          // If there is a fast way to check this, then we can just add the (empty) output geometry
+          // with the current tilekey encoded into the user data.
+          // This will be a lower lod than the reference lod, but since there is no skirt geometry
+          // and the region is totally masked out, the user can easily compute the set of reference lod
+          // keys if they need to, and if they don't then this will save having to generate the
+          // couple thousand iterations throught the loop below.
+          // This will take care of the case when the mask coversa many reference lod tiles,
+          // and the recursive nature of this loop will make using this function on lower lod tiles much faster.
+
+          keyStack.push(key.createChildKey(0));
+          keyStack.push(key.createChildKey(1));
+          keyStack.push(key.createChildKey(2));
+          keyStack.push(key.createChildKey(3));
+       }
+       else
+       {
+          keys.push_back(key);
+       }
     }
+
+    if (keys.empty())
+       return 0L;
 
     // group to hold all the tiles
     osg::Group* group = new osg::Group();
-
-    maskGenerator = 0L;
     
     for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
         // Mask generator creates geometry from masking boundaries when they exist.
-        maskGenerator = new MaskGenerator(
+       osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
             *key,
             tileSize,
             getEngineContext()->getMap());

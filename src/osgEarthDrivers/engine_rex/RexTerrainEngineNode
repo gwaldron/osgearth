@@ -69,7 +69,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Node* createTile(
             const TerrainTileModel* model,
             int createTileFlags,
-            unsigned referenceLOD);
+            unsigned referenceLOD,
+            const TileKey& area);
         
         // when incremental update is enabled, forces regeneration of tiles
         // in the given region.

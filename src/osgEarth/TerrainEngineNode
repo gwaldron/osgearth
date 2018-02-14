@@ -308,11 +308,14 @@ namespace osgEarth
          * @param referenceLOD If non-zero, adjust the vertex dimensions of the returned tile
          *        to match this LOD. Example: ask for a tile at tileKey.lod=15, tile is 17x17.
          *        Specific a referenceLOD=16, tile will be 33x33.
+         * @param area Restrict the processed area to a subarea of the tile model.
+         *        If not valid then the entire tile model will be used.
          */
         virtual osg::Node* createTile(
             const TerrainTileModel* model,
             int createTileFlags =CREATE_TILE_DEFAULT_FLAGS,
-            unsigned referenceLOD =0u) { return 0L; }
+            unsigned referenceLOD =0u,
+            const TileKey& area =TileKey()) { return 0L; }
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;

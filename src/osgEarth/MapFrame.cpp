@@ -145,11 +145,15 @@ MapFrame::getUID() const
 }
 
 bool
-MapFrame::containsLayer(UID uid) const
+MapFrame::containsEnabledLayer(UID uid) const
 {
     for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
+    {
         if (i->get()->getUID() == uid)
-            return true;
+        {
+            return i->get()->getEnabled();
+        }
+    }
     return false;
 }
 

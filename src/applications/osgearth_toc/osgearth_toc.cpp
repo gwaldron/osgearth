@@ -177,6 +177,17 @@ main( int argc, char** argv )
 
 //------------------------------------------------------------------------
 
+struct EnableDisableHandler : public ControlEventHandler
+{
+    EnableDisableHandler( Layer* layer ) : _layer(layer) { }
+    void onClick( Control* control )
+    {
+        _layer->setEnabled( !_layer->getEnabled() );
+        updateControlPanel();
+    }
+    Layer* _layer;
+};
+
 struct ToggleLayerVisibility : public ControlEventHandler
 {
     ToggleLayerVisibility( VisibleLayer* layer ) : _layer(layer) { }
@@ -320,12 +331,12 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
 
-    // a checkbox to enable/disable the layer:
+    // a checkbox to toggle the layer's visibility:
     if (visibleLayer && layer->getEnabled() && !(imageLayer && imageLayer->isCoverage()))
     {
-        CheckBoxControl* enabled = new CheckBoxControl( visibleLayer->getVisible() );
-        enabled->addEventHandler( new ToggleLayerVisibility(visibleLayer) );
-        grid->setControl( gridCol, gridRow, enabled );
+        CheckBoxControl* visibility = new CheckBoxControl( visibleLayer->getVisible() );
+        visibility->addEventHandler( new ToggleLayerVisibility(visibleLayer) );
+        grid->setControl( gridCol, gridRow, visibility );
     }
     gridCol++;
 
@@ -400,8 +411,16 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     addRemove->setBackColor( .4,.4,.4,1 );
     addRemove->setActiveColor( .8,0,0,1 );
     addRemove->addEventHandler( new RemoveLayerHandler(layer) );
-
     grid->setControl( gridCol, gridRow, addRemove );
+    gridCol++;
+
+    // enable/disable button
+    LabelControl* enableDisable = new LabelControl(layer->getEnabled() ? "DISABLE" : "ENABLE", 14);
+    enableDisable->setHorizAlign( Control::ALIGN_CENTER );
+    enableDisable->setBackColor( .4,.4,.4,1 );
+    enableDisable->setActiveColor( .8,0,0,1 );
+    enableDisable->addEventHandler( new EnableDisableHandler(layer) );
+    grid->setControl( gridCol, gridRow, enableDisable );
     gridCol++;
 
     if (layer->getStatus().isError())

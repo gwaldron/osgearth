@@ -183,6 +183,16 @@ Layer::getEnabled() const
 }
 
 void
+Layer::setEnabled(bool value)
+{
+    if (getStatus().isOK() && value != options().enabled().value())
+    {
+        options().enabled() = value;
+        fireCallback(&LayerCallback::onEnabledChanged);
+    }
+}
+
+void
 Layer::init()
 {
     // Copy the layer options name into the Object name.
@@ -220,6 +230,12 @@ Layer::open()
     }
 
     return _status;
+}
+
+void
+Layer::close()
+{
+    setStatus(Status::OK());
 }
 
 void
@@ -327,4 +343,14 @@ Layer::getOrCreateStateSet()
         _stateSet->setName("Layer");
     }
     return _stateSet.get();
+}
+
+void
+Layer::fireCallback(LayerCallback::MethodPtr method)
+{
+    for (CallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
+    {
+        LayerCallback* cb = dynamic_cast<LayerCallback*>(i->get());
+        if (cb) (cb->*method)(this);
+    }
 }

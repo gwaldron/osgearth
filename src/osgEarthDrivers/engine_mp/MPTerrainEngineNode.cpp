@@ -805,6 +805,7 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
+            case MapModelChange::ENABLE_LAYER:
                 if (change.getImageLayer())
                     addImageLayer(change.getImageLayer());
                 else if (change.getElevationLayer())
@@ -812,6 +813,7 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                 break;
 
             case MapModelChange::REMOVE_LAYER:
+            case MapModelChange::DISABLE_LAYER:
                 if (change.getImageLayer())
                     removeImageLayer(change.getImageLayer());
                 else if (change.getElevationLayer())

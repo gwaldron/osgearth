@@ -282,8 +282,21 @@ namespace osgEarth
         };
         osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
         friend struct ElevationLayerCB;
-
         void notifyElevationLayerVisibleChanged(VisibleLayer*);
+
+        struct LayerCB : public LayerCallback {
+            LayerCB(Map*);
+            osg::observer_ptr<Map> _map;
+            void onEnabledChanged(Layer* layer);
+        };
+        osg::ref_ptr<LayerCallback> _layerCB;
+        friend struct LayerCB;
+        void notifyOnLayerEnabledChanged(Layer*);
+
+        void installLayerCallbacks(Layer*);
+        void uninstallLayerCallbacks(Layer*);
+        void openLayer(Layer*);
+        void closeLayer(Layer*);
 
 
     private:

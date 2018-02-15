@@ -112,8 +112,8 @@ namespace
                 RenderingPass& pass = model._passes[p];
 
                 // if the map doesn't contain a layer with a matching UID,
-                // it's gone so remove it from the render model.
-                if (!_frame.containsLayer(pass.sourceUID()))
+                // or if the layer is now disabled, remove it from the render model.
+                if (_frame.containsEnabledLayer(pass.sourceUID()) == false)
                 {
                     model._passes.erase(model._passes.begin()+p);
                     --p;
@@ -359,16 +359,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     map->getLayers(layers);
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
         addLayer(i->get());
-
-    //ElevationLayerVector elevationLayers;
-    //map->getLayers( elevationLayers );
-    //for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
-    //    addElevationLayer( i->get() );
-
-    //ImageLayerVector imageLayers;
-    //map->getLayers( imageLayers );
-    //for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-    //    addTileLayer( i->get() );
 
     _batchUpdateInProgress = false;
     
@@ -1108,10 +1098,12 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             switch( change.getAction() )
             {
             case MapModelChange::ADD_LAYER:
+            case MapModelChange::ENABLE_LAYER:
                 addLayer(change.getLayer());
                 break;
 
             case MapModelChange::REMOVE_LAYER:
+            case MapModelChange::DISABLE_LAYER:
                 if (change.getImageLayer())
                     removeImageLayer( change.getImageLayer() );
                 else if (change.getElevationLayer())

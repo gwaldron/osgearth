@@ -33,20 +33,20 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-Map::ElevationLayerCB::ElevationLayerCB(Map* map) :
-_map(map)
-{
-    //nop
-}
+Map::ElevationLayerCB::ElevationLayerCB(Map* map) : _map(map) { }
 
-void
-Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer)
-{
+void Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer) {
     osg::ref_ptr<Map> map;
     if ( _map.lock(map) )
-    {
         _map->notifyElevationLayerVisibleChanged(layer);
-    }
+}
+
+Map::LayerCB::LayerCB(Map* map) : _map(map) { }
+
+void Map::LayerCB::onEnabledChanged(Layer* layer) {
+    osg::ref_ptr<Map> map;
+    if (_map.lock(map))
+        map->notifyOnLayerEnabledChanged(layer);
 }
 
 //------------------------------------------------------------------------
@@ -125,6 +125,9 @@ Map::ctor()
     // visibility changes
     _elevationLayerCB = new ElevationLayerCB(this);
 
+    // create a callback that the Map will use to detect setEnabled calls
+    _layerCB = new LayerCB(this);
+
     // elevation sampling
     _elevationPool = new ElevationPool();
     _elevationPool->setMap( this );
@@ -148,18 +151,57 @@ Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
     // bump the revision safely:
     Revision newRevision;
     {
-        Threading::ScopedWriteLock lock( const_cast<Map*>(this)->_mapDataMutex );
+        Threading::ScopedWriteLock lock(_mapDataMutex);
         newRevision = ++_dataModelRevision;
     }
 
     // reinitialize the elevation pool:
     _elevationPool->clear();
 
-    // a separate block b/c we don't need the mutex
+    MapModelChange change(
+        MapModelChange::TOGGLE_ELEVATION_LAYER,
+        newRevision,
+        layer);
+
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
-        i->get()->onMapModelChanged( MapModelChange(
-            MapModelChange::TOGGLE_ELEVATION_LAYER, newRevision, layer) );
+        i->get()->onMapModelChanged(change);
+    }
+}
+
+void
+Map::notifyOnLayerEnabledChanged(Layer* layer)
+{
+    // bump the revision safely:
+    Revision newRevision;
+    {
+        Threading::ScopedWriteLock lock(_mapDataMutex);
+        newRevision = ++_dataModelRevision;
+    }
+
+    // reinitialize the elevation pool:
+    if (dynamic_cast<ElevationLayer*>(layer))
+    {
+        _elevationPool->clear();
+    }
+
+    if (layer->getEnabled())
+    {
+        openLayer(layer);
+    }
+    else
+    {
+        closeLayer(layer);
+    }
+
+    MapModelChange change(
+        layer->getEnabled() ? MapModelChange::ENABLE_LAYER : MapModelChange::DISABLE_LAYER,
+        newRevision,
+        layer);
+
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged(change);
     }
 }
 
@@ -265,37 +307,18 @@ Map::addLayer(Layer* layer)
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
+        // Set up callbacks
+        installLayerCallbacks(layer);
+
+        // Open the layer if it's enabled:
         if (layer->getEnabled())
         {
-            // Pass along the Read Options (including the cache settings, etc.) to the layer:
-            layer->setReadOptions(_readOptions.get());
-            
-            // If this is a terrain layer, tell it about the Map profile.
-            TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-            if (terrainLayer && _profile.valid())
-            {
-                terrainLayer->setTargetProfileHint( _profile.get() );
-            }            
-
-            // Attempt to open the layer. Don't check the status here.
-            layer->open();
-
-            // If this is an elevation layer, install a callback so we know when
-            // it's visibility changes:
-            ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-            if (elevationLayer)
-            {
-                elevationLayer->addCallback(_elevationLayerCB.get());
-
-                // invalidate the elevation pool
-                getElevationPool()->clear();
-            }
+            openLayer(layer);
         }
 
+        // Add the layer to our stack.
         int newRevision;
         unsigned index = -1;
-
-        // Add the layer to our stack.
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
 
@@ -322,36 +345,17 @@ Map::insertLayer(Layer* layer, unsigned index)
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
+        // Set up callbacks
+        installLayerCallbacks(layer);
+
+        // Open the layer if it's enabled:
         if (layer->getEnabled())
         {
-            // Pass along the Read Options (including the cache settings, etc.) to the layer:
-            layer->setReadOptions(_readOptions.get());
-            
-            // If this is a terrain layer, tell it about the Map profile.
-            TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
-            if (terrainLayer && _profile.valid())
-            {
-                terrainLayer->setTargetProfileHint( _profile.get() );
-            }            
-
-            // Attempt to open the layer. Don't check the status here.
-            layer->open();
-
-            // If this is an elevation layer, install a callback so we know when
-            // it's visibility changes:
-            ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-            if (elevationLayer)
-            {
-                elevationLayer->addCallback(_elevationLayerCB.get());
-
-                // invalidate the elevation pool
-                getElevationPool()->clear();
-            }
+            openLayer(layer);
         }
 
-        int newRevision;
-
         // Add the layer to our stack.
+        int newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
 
@@ -387,6 +391,8 @@ Map::removeLayer(Layer* layer)
     osg::ref_ptr<Layer> layerToRemove = layer;
     Revision newRevision;
 
+    closeLayer(layer);
+
     if ( layerToRemove.get() )
     {
         Threading::ScopedWriteLock lock( _mapDataMutex );
@@ -405,14 +411,7 @@ Map::removeLayer(Layer* layer)
         layerToRemove->removedFromMap(this);
     }
 
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layerToRemove.get());
-    if (elevationLayer)
-    {
-        elevationLayer->removeCallback(_elevationLayerCB.get());
-
-        // invalidate the pool
-        getElevationPool()->clear();
-    }
+    uninstallLayerCallbacks(layerToRemove.get());
 
     // a separate block b/c we don't need the mutex
     if ( newRevision >= 0 ) // layerToRemove.get() )
@@ -478,12 +477,69 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
     }
 }
 
+void
+Map::installLayerCallbacks(Layer* layer)
+{
+    // If this is an elevation layer, install a callback so we know when
+    // it's visibility changes:
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    if (elevationLayer)
+    {
+        elevationLayer->addCallback(_elevationLayerCB.get());
+
+        // invalidate the elevation pool
+        getElevationPool()->clear();
+    }
+
+    // Callback to detect changes in "enabled"
+    layer->addCallback(_layerCB.get());
+}
+
+void
+Map::uninstallLayerCallbacks(Layer* layer)
+{
+    // undo the things we did in prepareLayer:
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    if (elevationLayer)
+    {
+        elevationLayer->removeCallback(_elevationLayerCB.get());
+
+        // invalidate the pool
+        getElevationPool()->clear();
+    }
+
+    layer->removeCallback(_layerCB.get());
+}
+
+void
+Map::openLayer(Layer* layer)
+{
+    // Pass along the Read Options (including the cache settings, etc.) to the layer:
+    layer->setReadOptions(_readOptions.get());
+
+    // If this is a terrain layer, tell it about the Map profile.
+    TerrainLayer* terrainLayer = dynamic_cast<TerrainLayer*>(layer);
+    if (terrainLayer && _profile.valid())
+    {
+        terrainLayer->setTargetProfileHint(_profile.get());
+    }
+
+    // Attempt to open the layer. Don't check the status here.
+    layer->open();
+}
+
+void
+Map::closeLayer(Layer* layer)
+{
+    //NOP
+}
+
 Revision
 Map::getLayers(LayerVector& out_list) const
 {
     out_list.reserve( _layers.size() );
 
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock(_mapDataMutex);
     for( LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
         out_list.push_back( i->get() );
 
@@ -493,14 +549,14 @@ Map::getLayers(LayerVector& out_list) const
 unsigned
 Map::getNumLayers() const
 {
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock( _mapDataMutex );
     return _layers.size();
 }
 
 Layer*
 Map::getLayerByName(const std::string& name) const
 {
-    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock( _mapDataMutex );
     for(LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
         if ( i->get()->getName() == name )
             return i->get();
@@ -510,7 +566,7 @@ Map::getLayerByName(const std::string& name) const
 Layer*
 Map::getLayerByUID(UID layerUID) const
 {
-    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock( _mapDataMutex );
     for( LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
         if ( i->get()->getUID() == layerUID )
             return i->get();
@@ -520,7 +576,7 @@ Map::getLayerByUID(UID layerUID) const
 Layer*
 Map::getLayerAt(unsigned index) const
 {
-    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock( _mapDataMutex );
     if ( index >= 0 && index < (int)_layers.size() )
         return _layers[index].get();
     else
@@ -530,7 +586,7 @@ Map::getLayerAt(unsigned index) const
 unsigned
 Map::getIndexOfLayer(const Layer* layer) const
 {
-    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    Threading::ScopedReadLock lock( _mapDataMutex );
     unsigned index = 0;
     for (; index < _layers.size(); ++index)
     {

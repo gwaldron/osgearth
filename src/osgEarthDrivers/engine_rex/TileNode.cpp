@@ -925,9 +925,6 @@ TileNode::load(TerrainCuller* culler)
     // (because of the biggest range), and second by distance.
     float priority = lodPriority + distPriority;
 
-    // normalize the composite priority to [0..1].
-    //priority /= (float)(numLods+1); // GW: moved this to the PagerLoader.
-
     // Submit to the loader.
     _context->getLoader()->load( _loadRequest.get(), priority, *culler );
 }

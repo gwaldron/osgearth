@@ -79,6 +79,12 @@ namespace
             _node->onLayerMoved(layer, oldIndex, newIndex);
             MapCallback::onLayerMoved(layer, oldIndex, newIndex);
         }
+        void onLayerEnabled(Layer* layer) {
+            _node->onLayerAdded(layer, _node->getMap()->getIndexOfLayer(layer));
+        }
+        void onLayerDisabled(Layer* layer) {
+            _node->onLayerRemoved(layer, _node->getMap()->getIndexOfLayer(layer));
+        }
 
         osg::observer_ptr<MapNode> _node;
     };
@@ -648,14 +654,17 @@ namespace
         for (LayerVector::iterator i = layers.begin(); i != layers.end(); ++i)
         {
             Layer* layer = i->get();
-            osg::Node* node = layer->getOrCreateNode();
-            if (node)
+            if (layer->getEnabled())
             {
-                osg::Group* container = new osg::Group();
-                container->setName(layer->getName());
-                container->addChild(node);
-                container->setStateSet(layer->getStateSet());
-                layerNodes->addChild(container);
+                osg::Node* node = layer->getOrCreateNode();
+                if (node)
+                {
+                    osg::Group* container = new osg::Group();
+                    container->setName(layer->getName());
+                    container->addChild(node);
+                    container->setStateSet(layer->getStateSet());
+                    layerNodes->addChild(container);
+                }
             }
         }
     }

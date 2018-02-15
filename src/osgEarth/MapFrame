@@ -105,13 +105,24 @@ namespace osgEarth
             return output.size();
         }
 
-        /** Whether the frame contains a layer with the matching UID */
-        bool containsLayer(UID uid) const;
+        //! Whether the frame contains an enabled layer with matching UID.
+        bool containsEnabledLayer(UID uid) const;
 
+        //! Returns the first layer with a given name.
         template<typename T>
-        T* getLayerByName(const std::string& name) {
+        T* getLayerByName(const std::string& name) const {
             for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
                 if (i->get()->getName() == name)
+                    return dynamic_cast<T*>(i->get());
+            }
+            return 0L;
+        }
+
+        //! Returns the layer with the matching UID (or NULL if not found)
+        template<typename T>
+        T* getLayerByUID(const UID uid) const {
+            for (LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i) {
+                if (i->get()->getUID() == uid)
                     return dynamic_cast<T*>(i->get());
             }
             return 0L;

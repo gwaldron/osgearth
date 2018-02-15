@@ -45,6 +45,14 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
         onLayerMoved(change.getLayer(), change.getFirstIndex(), change.getSecondIndex());
         break;
 
+    case MapModelChange::ENABLE_LAYER:
+        onLayerEnabled(change.getLayer());
+        break;
+
+    case MapModelChange::DISABLE_LAYER:
+        onLayerDisabled(change.getLayer());
+        break;
+
     default: 
         break;
     }

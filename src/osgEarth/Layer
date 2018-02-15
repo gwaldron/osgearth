@@ -111,9 +111,10 @@ namespace osgEarth
     /**
      * Base callback for all Layer types
      */
-    class LayerCallback : public osg::Referenced
+    struct LayerCallback : public osg::Referenced
     {
-        //NOP
+        virtual void onEnabledChanged(class Layer* layer) { }
+        typedef void (LayerCallback::*MethodPtr)(class Layer* layer);
     };
 
 
@@ -166,6 +167,11 @@ namespace osgEarth
         virtual const Status& open();
 
         /**
+         * Close a layer
+         */
+        virtual void close();
+
+        /**
          * Gets the status of this layer.
          */
         const Status& getStatus() const { return _status; }
@@ -185,6 +191,7 @@ namespace osgEarth
          * Whether the layer is enabled (used in the map). This will return
          * false if the layer is set to disabled OR if getStatus returns an error.
          */
+        virtual void setEnabled(bool value);
         virtual bool getEnabled() const;
 
         /**
@@ -296,6 +303,8 @@ namespace osgEarth
 
         const Status& setStatus(const Status& status) { _status = status; return _status; }
         const Status& setStatus(const Status::Code& statusCode, const std::string& message) { return setStatus(Status(statusCode, message)); }
+
+        void fireCallback(LayerCallback::MethodPtr);
 
     private:
         UID _uid;

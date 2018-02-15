@@ -62,6 +62,12 @@ namespace osgEarth
         //! Invoked when a layer is re-ordered within a Map.
         virtual void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex);
 
+        //! Invoked when a layer is enabled
+        virtual void onLayerEnabled(Layer* layer) { }
+
+        //! Invoked when a layer is disabled
+        virtual void onLayerDisabled(Layer* layer) { }
+
     public: // Deprecated functions
 
         // @deprecated Use onLayerAdded

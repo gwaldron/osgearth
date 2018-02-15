@@ -6,7 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION)
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_SHADOW_CAMERA)
 
 
 // stage
@@ -19,6 +19,8 @@ out float oe_rex_morphFactor;
 
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
+//VRV_PATCH
+uniform mat4 vrvShadowCamToPrimCamMatrix;
 
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
@@ -58,7 +60,11 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 #endif
 
     vec4 wouldBePositionView = gl_ModelViewMatrix * wouldBePosition;
-    
+#ifdef OE_IS_SHADOW_CAMERA
+//VRV_PATCH
+     wouldBePositionView = vrvShadowCamToPrimCamMatrix * wouldBePositionView;
+#endif
+	
     float fDistanceToEye = length(wouldBePositionView.xyz); // or just -z.
 	float fMorphLerpK  = 1.0f - clamp( oe_tile_morph[0] - fDistanceToEye * oe_tile_morph[1], 0.0, 1.0 );
     return fMorphLerpK;
@@ -74,7 +80,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
-#ifdef OE_TERRAIN_MORPH_GEOMETRY
+#ifdef OE_TERRAIN_MORPH_GEOMETRY 
         vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
         oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif

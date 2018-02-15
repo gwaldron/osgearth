@@ -787,6 +787,9 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     return mt;
 }
 
+//GCC patch.  Cant' create template classes with local structs.  That is a c++11 thing.
+struct MinMax { osg::Vec3d min, max; };
+
 osg::Node*
 RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                                  int flags,
@@ -812,7 +815,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     MaskLayerVector maskLayers;
     _mapFrame.getLayers(maskLayers);
 
-    struct MinMax { osg::Vec3d min, max; };
+
     std::vector<MinMax> boundaryMinMaxes;
 
     for (MaskLayerVector::iterator iLayer = maskLayers.begin(); iLayer != maskLayers.end(); ++iLayer)

@@ -25,10 +25,11 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 LayerDrawable::LayerDrawable() :
-_renderType(Layer::RENDERTYPE_TILE),
+_renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
 _order(0),
 _layer(0L),
-_clearOsgState(false)
+_clearOsgState(false),
+_draw(true)
 {
     setDataVariance(DYNAMIC);
     setUseDisplayList(false);

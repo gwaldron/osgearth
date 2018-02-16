@@ -365,7 +365,7 @@ ImageLayer::init()
     TerrainLayer::init();
 
     // image layers render as a terrain texture.
-    setRenderType(RENDERTYPE_TILE);
+    setRenderType(RENDERTYPE_TERRAIN_SURFACE);
 }
 
 void

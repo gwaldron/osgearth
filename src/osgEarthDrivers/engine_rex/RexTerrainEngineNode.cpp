@@ -617,8 +617,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 lastLayer = i->get();
                 lastLayer->_order = -1;
 
-                // if this is a RENDERTYPE_TILE, we need to activate the default surface state set.
-                if (lastLayer->_renderType == Layer::RENDERTYPE_TILE)
+                // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate the default surface state set.
+                if (lastLayer->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 {
                     lastLayer->_order = order++;
 
@@ -1194,7 +1194,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
     {
         if (layer->getEnabled())
         {
-            if (layer->getRenderType() == Layer::RENDERTYPE_TILE)
+            if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 addTileLayer(layer);
             else if (dynamic_cast<ElevationLayer*>(layer))
                 addElevationLayer(dynamic_cast<ElevationLayer*>(layer));

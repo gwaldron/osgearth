@@ -131,6 +131,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform>  _shadowMapTexGenUniform;
         osg::ref_ptr<osg::Uniform>  _shadowBlurUniform;
         osg::ref_ptr<osg::Uniform>  _shadowColorUniform;
+        osg::ref_ptr<osg::Uniform>  _shadowToPrimaryMatrix;
     };
 
 } } // namespace osgEarth::Util

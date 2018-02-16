@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Draw state shared by all layers during one frame.
         osg::ref_ptr<DrawState> _drawState;
 
-        // Layers of type RENDERTYPE_PATCH
+        // Layers of type RENDERTYPE_TERRAIN_PATCH
         PatchLayerVector& patchLayers() { return _patchLayers; }
         
     private:

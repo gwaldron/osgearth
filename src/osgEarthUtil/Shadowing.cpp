@@ -52,7 +52,7 @@ _traversalMask( ~0 )
         // default slices:
         _ranges.push_back(0.0f);
         _ranges.push_back(1750.0f);
-        _ranges.push_back(5000.0f);
+        _ranges.push_back(25000.0f);
 
         reinitialize();
     }
@@ -150,12 +150,14 @@ ShadowCaster::reinitialize()
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
-    //_rttStateSet->addUniform(new osg::Uniform("oe_isShadowCamera", true), osg::StateAttribute::OVERRIDE);
-
     _rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
 
+    // shader-to-primary xform matrix (per frame)
+    _shadowToPrimaryMatrix = _rttStateSet->getOrCreateUniform(
+        "oe_shadow_shadowViewToPrimaryView", osg::Uniform::FLOAT_MAT4);
+
+
     _renderStateSet = new osg::StateSet();
-    
 
     // Establish a Virtual Program on the stateset.
     VirtualProgram* vp = VirtualProgram::getOrCreate(_renderStateSet.get());
@@ -221,8 +223,14 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             lightUp = side ^ lightVectorWorld;
             lightUp.normalize();
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, lightUp);
+
+            // set the primary-camera-to-shadow-camera transformation matrix,
+            // which lets you perform vertex shader operations from the perspective
+            // of the primary camera (morphing, etc.) so that things match up
+            // between the two cameras.
+            osg::Matrix lightViewMatInv = osg::Matrix::inverse(lightViewMat);
+            _shadowToPrimaryMatrix->set( lightViewMatInv * MV);
             
-            //int i = nv.getFrameStamp()->getFrameNumber() % (_ranges.size()-1);
             int i;
             for(i=0; i < (int) _ranges.size()-1; ++i)
             {

@@ -113,7 +113,9 @@ namespace osgEarth
      */
     class LayerCallback : public osg::Referenced
     {
+        //! Called after Layer::setEnabled changes the enabled state
         //NOP
+
     };
 
 
@@ -182,8 +184,12 @@ namespace osgEarth
         virtual Config getConfig() const;
 
         /**
-         * Whether the layer is enabled (used in the map). This will return
-         * false if the layer is set to disabled OR if getStatus returns an error.
+         * Whether the layer is used in the map.
+         */
+
+        /**
+         * Whether the layer is used in the map. 
+         * This will return false if the layer is set to disabled OR if getStatus returns an error.
          */
         virtual bool getEnabled() const;
 
@@ -203,7 +209,7 @@ namespace osgEarth
         virtual const GeoExtent& getExtent() const;
 
         /**
-         * Returns or generates a caching ID for this layer
+         * Caching ID for this layer
          */
         virtual std::string getCacheID() const;
 
@@ -235,21 +241,30 @@ namespace osgEarth
          */
         enum RenderType
         {
-            // Layer does not require its own terrain rendering pass (model layers, elevation layers)
-            RENDERTYPE_NONE, 
+            // Layer does not draw anything (directly)
+            RENDERTYPE_NONE,
 
-            // Layer requires a terrain rendering pass that draws terrain tile geometry
-            RENDERTYPE_TILE,
+            // Layer requires a terrain rendering pass that draws terrain tiles with texturing
+            RENDERTYPE_TERRAIN_SURFACE,
 
             // Layer requires a terrain rendering pass that emits terrian patches or
             // invokes a custom drawing function
-            RENDERTYPE_PATCH
+            RENDERTYPE_TERRAIN_PATCH,
+
+            // Layer that renders its own node graph or other geometry (no terrain)
+            RENDERTYPE_CUSTOM = RENDERTYPE_NONE,
+
+            // @deprecated Backwards compatibility
+            RENDERTYPE_TILE = RENDERTYPE_TERRAIN_SURFACE
         };
 
+        //! Rendering type of this layer
         RenderType getRenderType() const { return _renderType; }
 
+        //! Rendering type of this layer
         void setRenderType(RenderType value) { _renderType = value; }
 
+        //! Callback that modifies the layer's bounding box for a given tile key
         virtual void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const { }
 
         /**

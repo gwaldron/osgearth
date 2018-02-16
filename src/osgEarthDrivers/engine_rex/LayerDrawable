@@ -66,6 +66,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Reference the terrain-wide state
         osg::ref_ptr<DrawState> _drawState;
+
+        // Whether to render this layer.
+        bool _draw;
         
 
     public: // osg::Drawable

@@ -81,58 +81,62 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
     osg::ref_ptr<LayerDrawable> drawable = _terrain.layer(uid);
     if (drawable.valid())
     {
-        // Cull based on the layer extent.
-        if (drawable->_layer)
+        // Layer marked for drawing?
+        if (drawable->_draw)
         {
-            const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
-            if (le._computed && 
-                le._extent.isValid() &&
-                le._extent.intersects(tileNode->getKey().getExtent()) == false)
+            // Cull based on the layer extent.
+            if (drawable->_layer)
             {
-                // culled out!
-                //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 
-                //    << " key " << tileNode->getKey().str()
-                //    << " because it was culled by extent." << std::endl;
-                return 0L;
+                const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
+                if (le._computed && 
+                    le._extent.isValid() &&
+                    le._extent.intersects(tileNode->getKey().getExtent()) == false)
+                {
+                    // culled out!
+                    //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 
+                    //    << " key " << tileNode->getKey().str()
+                    //    << " because it was culled by extent." << std::endl;
+                    return 0L;
+                }
             }
+
+            drawable->_tiles.push_back(DrawTileCommand());
+            DrawTileCommand* tile = &drawable->_tiles.back();
+
+            // install everything we need in the Draw Command:
+            tile->_colorSamplers = pass ? &(pass->samplers()) : 0L;
+            tile->_sharedSamplers = &model->_sharedSamplers;
+            tile->_modelViewMatrix = this->getModelViewMatrix();
+            tile->_keyValue = tileNode->getTileKeyValue();
+            tile->_geom = surface->getDrawable()->_geom.get();
+            tile->_morphConstants = tileNode->getMorphConstants();
+            tile->_key = &tileNode->getKey();
+            //tile->_order = (int)orderInTile;
+            tile->_order = drawable->_order; // layer order in map tile.
+
+            osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
+            tile->_range = getDistanceToViewPoint(c, true);
+
+            const osg::Image* elevRaster = tileNode->getElevationRaster();
+            if (elevRaster)
+            {
+                float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
+
+                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+                // instead of on edge (as we do with color, etc.)
+                //
+                // This starts out as:
+                //   scale = (size-1)/size : this shrinks the sample area by one texel since we're sampling on center
+                //   bias = 0.5/size : this shifts the sample area over 1/2 texel to the center.
+                //
+                // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
+                // remove the border, and shift an extra texel over as well. Giving us this:
+                float size = (float)elevRaster->s();
+                tile->_elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
+            }
+
+            return tile;
         }
-
-        drawable->_tiles.push_back(DrawTileCommand());
-        DrawTileCommand* tile = &drawable->_tiles.back();
-
-        // install everything we need in the Draw Command:
-        tile->_colorSamplers = pass ? &(pass->samplers()) : 0L;
-        tile->_sharedSamplers = &model->_sharedSamplers;
-        tile->_modelViewMatrix = this->getModelViewMatrix();
-        tile->_keyValue = tileNode->getTileKeyValue();
-        tile->_geom = surface->getDrawable()->_geom.get();
-        tile->_morphConstants = tileNode->getMorphConstants();
-        tile->_key = &tileNode->getKey();
-        //tile->_order = (int)orderInTile;
-        tile->_order = drawable->_order; // layer order in map tile.
-
-        osg::Vec3 c = surface->getBound().center() * surface->getInverseMatrix();
-        tile->_range = getDistanceToViewPoint(c, true);
-
-        const osg::Image* elevRaster = tileNode->getElevationRaster();
-        if (elevRaster)
-        {
-            float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
-
-            // Compute an elevation texture sampling scale/bias so we sample elevation data on center
-            // instead of on edge (as we do with color, etc.)
-            //
-            // This starts out as:
-            //   scale = (size-1)/size : this shrinks the sample area by one texel since we're sampling on center
-            //   bias = 0.5/size : this shifts the sample area over 1/2 texel to the center.
-            //
-            // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
-            // remove the border, and shift an extra texel over as well. Giving us this:
-            float size = (float)elevRaster->s();
-            tile->_elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
-        }
-
-        return tile;
     }
     else if (pass)
     {

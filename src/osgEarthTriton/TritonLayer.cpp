@@ -56,7 +56,7 @@ TritonLayer::init()
     osgEarth::VisibleLayer::init();
 
     this->setName("Triton");
-    setRenderType(RENDERTYPE_NONE);
+    setRenderType(RENDERTYPE_CUSTOM);
 
     TritonOptions legacyOptions(options());
     _tritonNode = new TritonNode(legacyOptions);

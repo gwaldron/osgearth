@@ -103,7 +103,7 @@ SplatLayer::init()
     _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L); // TODO deprecate
     _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L); // TODO deprecate
 
-    setRenderType(osgEarth::Layer::RENDERTYPE_TILE);
+    setRenderType(osgEarth::Layer::RENDERTYPE_TERRAIN_SURFACE);
 
     for (std::vector<ZoneOptions>::const_iterator i = options().zones().begin();
         i != options().zones().end();

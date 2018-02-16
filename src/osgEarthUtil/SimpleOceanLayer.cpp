@@ -63,7 +63,7 @@ SimpleOceanLayer::init()
     VisibleLayer::init();
 
     this->setName("Simple Ocean");
-    setRenderType(RENDERTYPE_TILE);
+    setRenderType(RENDERTYPE_TERRAIN_SURFACE);
 
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setDataVariance(ss->DYNAMIC);

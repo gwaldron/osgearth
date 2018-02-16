@@ -20,6 +20,10 @@ out float oe_rex_morphFactor;
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
+#ifdef OE_IS_SHADOW_CAMERA
+uniform mat4 oe_shadow_shadowViewToPrimaryView;
+#endif
+
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
 
@@ -58,6 +62,12 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 #endif
 
     vec4 wouldBePositionView = gl_ModelViewMatrix * wouldBePosition;
+
+#ifdef OE_IS_SHADOW_CAMERA
+    // For a shadow camera, we have to compute the morphed position
+    // from the perspective of the primary camera so they match up:
+    wouldBePositionView = oe_shadow_shadowViewToPrimaryView * wouldBePositionView;
+#endif
     
     float fDistanceToEye = length(wouldBePositionView.xyz); // or just -z.
 	float fMorphLerpK  = 1.0f - clamp( oe_tile_morph[0] - fDistanceToEye * oe_tile_morph[1], 0.0, 1.0 );
@@ -74,7 +84,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 
-#if defined(OE_TERRAIN_MORPH_GEOMETRY) && !defined(OE_IS_SHADOW_CAMERA)
+#ifdef OE_TERRAIN_MORPH_GEOMETRY
         vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
         oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif

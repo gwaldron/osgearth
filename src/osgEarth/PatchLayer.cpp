@@ -36,7 +36,6 @@ _options(optionsPtr ? optionsPtr : &_optionsConcrete)
 void
 PatchLayer::init()
 {
-    Layer::init();
-    
-    setRenderType(RENDERTYPE_PATCH);
+    Layer::init();    
+    setRenderType(RENDERTYPE_TERRAIN_PATCH);
 }

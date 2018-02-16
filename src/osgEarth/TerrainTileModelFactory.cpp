@@ -95,7 +95,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
     {
         Layer* layer = i->get();
 
-        if (layer->getRenderType() != layer->RENDERTYPE_TILE)
+        if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
             continue;
 
         if (!layer->getEnabled())

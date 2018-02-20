@@ -25,12 +25,32 @@ in vec4 oe_layer_tilec;
 
 in float oe_layer_rangeOpacity;
 
+// Vertex Markers:
+#define VERTEX_MARKER_DISCARD  1
+#define VERTEX_MARKER_GRID     2
+#define VERTEX_MARKER_PATCH    4
+#define VERTEX_MARKER_BOUNDARY 8
+#define VERTEX_MARKER_SKIRT    16
+flat in int oe_terrain_vertexMarker;
+
 void oe_rexEngine_frag(inout vec4 color)
 {
-#if defined(OE_IS_SHADOW_CAMERA) && !defined(OE_TERRAIN_CAST_SHADOWS)
+#ifdef OE_IS_SHADOW_CAMERA
+
+  #ifndef OE_TERRAIN_CAST_SHADOWS
     discard;
     return;
-#endif
+  #endif // !OE_TERRAIN_CAST_SHADOWS
+
+    // Bail if this is a shadow camera and a skirt vertex.
+    // We dont' want skirts to cast shadows
+    if ((oe_terrain_vertexMarker & VERTEX_MARKER_SKIRT) != 0)
+    {
+        discard;
+        return;
+    }
+
+#endif // OE_IS_SHADOW_CAMERA
 
 #ifdef OE_IS_PICK_CAMERA
     color = vec4(0);

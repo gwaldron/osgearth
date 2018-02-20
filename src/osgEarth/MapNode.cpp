@@ -425,18 +425,11 @@ MapNode::init()
 
 MapNode::~MapNode()
 {
+    // Remove this node's map callback first:
     _map->removeMapCallback( _mapCallback.get() );
 
+    // Then invoke "removed" on all the layers in a batch.
     _mapCallback->invokeOnLayerRemoved(_map.get());
-    //ModelLayerVector modelLayers;
-    //_map->getLayers( modelLayers );
-    ////Remove our model callback from any of the model layers in the map
-    //for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
-    //{
-    //    this->onModelLayerRemoved( itr->get() );
-    //}
-
-    _map->clear();
 
     this->clearExtensions();
 

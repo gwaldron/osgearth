@@ -26,6 +26,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/Version>
 #include <osgEarthAnnotation/AnnotationNode>
 
 #include <osg/MatrixTransform>
@@ -112,9 +113,34 @@ namespace osgEarth { namespace QtGui
   {
     LayerManagerMapCallback(LayerManagerWidget* manager) : _manager(manager) { }
 
-    //void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
+#if OSGEARTH_VERSION_GREATER_OR_EQUAL(2,10,0)
 
-    //void onMapModelChanged( const MapModelChange& change );
+    void onLayerAdded(Layer* layer, unsigned index)
+    {
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+        if (imageLayer)
+            _manager->addImageLayerItem(imageLayer, index);
+
+        ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+        if (elevationLayer)
+            _manager->addElevationLayerItem(elevationLayer, index);
+
+        ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
+        if (modelLayer)
+            _manager->addModelLayerItem(modelLayer, index);
+    }
+
+    void onLayerRemoved(Layer* layer)
+    {
+        _manager->removeLayerItem(layer);
+    }
+
+    void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
+    {
+        _manager->moveLayerItem(layer, oldIndex, newIndex);
+    }
+
+#else
 
     void onImageLayerAdded(ImageLayer* layer, unsigned int index)
     {
@@ -163,6 +189,7 @@ namespace osgEarth { namespace QtGui
 
     //void onMaskLayerAdded( MaskLayer* mask ) { }
     //void onMaskLayerRemoved( MaskLayer* mask ) { }
+#endif
 
     LayerManagerWidget* _manager;
   };

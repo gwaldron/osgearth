@@ -677,7 +677,7 @@ MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
 float
 MaskGenerator::getMarker(float nx, float ny) const
 {
-    float marker = MASK_MARKER_NORMAL;
+    float marker = MASK_MARKER_GRID;
 
     if (_maskRecords.size() > 0)
     {

@@ -10,6 +10,15 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
     </image>  
     
     <gars_graticule name="GARS" visible="false">
+        <style type="text/css">
+                default {
+                    stroke: #ffff0059;
+                    stroke-width: 3px;
+                    text-size: 28;
+                    text-fill: #ffffff7f;
+                    text-align: left_bottom;
+                }        
+        </style>
     </gars_graticule>  
     
     <mgrs_graticule name="MGRS" visible="true">

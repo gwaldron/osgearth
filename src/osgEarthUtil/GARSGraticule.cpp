@@ -18,8 +18,10 @@
  */
 #include <osgEarthUtil/GARSGraticule>
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -189,28 +191,38 @@ namespace
         // Add the node to the attachpoint.
         _attachPoint->addChild(featureNode);
        
-        GeoPoint centroid(_extent.getSRS(), lon, lat, 1000.0);
-        GeoPoint west(_extent.getSRS(), _extent.west(), lat, 0.0);
-        GeoPoint east(_extent.getSRS(), _extent.east(), lat, 0.0);   
-        double widthInMeters = west.distanceTo(east);
+        GeoPoint centroid(_extent.getSRS(), lon, lat, 0.0f);
+        GeoPoint ll(_extent.getSRS(), _extent.west(), _extent.south(), 0.0f);
 
-        osgText::Text* text = new osgText::Text;
-        text->setFont(osgText::readRefFontFile("arial.ttf"));
-        text->setText(label);
+        const TextSymbol* textSymPrototype = style.get<TextSymbol>();
+        osg::ref_ptr<TextSymbol> textSym = textSymPrototype ? new TextSymbol(*textSymPrototype) : new TextSymbol();
 
-        text->setCharacterSize(widthInMeters / (double)label.size());
-        text->setAlignment(osgText::Text::CENTER_CENTER);
+        if (textSym->size().isSet() == false)
+            textSym->size() = 32.0f;
+
+        if (textSym->alignment().isSet() == false)
+            textSym->alignment() = textSym->ALIGN_LEFT_BASE_LINE;
+
+        TextSymbolizer symbolizer(textSym.get());                
+
+        osgText::Text* text = symbolizer.create(label);
+        text->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+        text->getOrCreateStateSet()->setRenderBinToInherit();
+
         osg::Geode* textGeode = new osg::Geode;
         textGeode->addDrawable(text);
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->addChild(textGeode);
 
+        // Position the label at the bottom left of the grid cell.
         osg::Matrixd local2World;
-        centroid.createLocalToWorld(local2World);
+        ll.createLocalToWorld(local2World);
         mt->setMatrix(local2World);
 
        _attachPoint->addChild(mt);
+
+       Registry::shaderGenerator().run(this, Registry::stateSetCache());
     }
 
     osg::BoundingSphere GridNode::getChildBound() const

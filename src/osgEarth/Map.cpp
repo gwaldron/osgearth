@@ -133,7 +133,6 @@ Map::ctor()
 Map::~Map()
 {
     OE_DEBUG << LC << "~Map" << std::endl;
-    clear();
 }
 
 ElevationPool*
@@ -558,12 +557,16 @@ Map::clear()
     // a separate block b/c we don't need the mutex
     for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
     {
+        i->get()->onBeginUpdate();
+          
         for(LayerVector::iterator layer = layersRemoved.begin();
             layer != layersRemoved.end();
             ++layer)
         {
             i->get()->onMapModelChanged(MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, layer->get()));
         }
+        
+        i->get()->onEndUpdate();
     }
 
     // Invalidate the elevation pool.

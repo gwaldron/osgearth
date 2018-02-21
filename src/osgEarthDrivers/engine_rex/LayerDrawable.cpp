@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "LayerDrawable"
+#include <osg/ConcurrencyViewerMacros>
+
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
@@ -49,6 +51,8 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
     std::string buf("oe_draw_layer::");
     buf += getName();
     ds._ext->glPushDebugGroup(GL_DEBUG_SOURCE_THIRD_PARTY, 1, -1, buf.c_str());
+    osg::CVMarkerSeries objectCreation("Main Thread");
+    osg::CVSpan creationSpan(objectCreation, 4, buf.c_str());
 
     if (_layer)
     {

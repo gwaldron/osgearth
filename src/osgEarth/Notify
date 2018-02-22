@@ -43,6 +43,11 @@ namespace osgEarth
   
     extern OSGEARTH_EXPORT std::ostream& notify(const osg::NotifySeverity severity);
 
+    /** set stream that a notify level outputs to. */
+    extern OSGEARTH_EXPORT void setNotifyStream(
+       const osg::NotifySeverity severity,
+       std::ostream* stream);
+
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
 }
 

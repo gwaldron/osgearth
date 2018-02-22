@@ -39,6 +39,7 @@ using namespace osgEarth;
 #include <fstream>
 #include <cctype>
 #include <iomanip>
+#include <vector>
 
 using namespace std;
 
@@ -134,6 +135,18 @@ struct NullStream : public std::ostream
     NullStreamBuffer* _nsb;
 };
 
+std::vector<std::ostream*> osgearth_g_OutputStreams;
+
+void
+osgEarth::setNotifyStream(const osg::NotifySeverity severity, std::ostream* stream)
+{
+   if (severity >= osgearth_g_OutputStreams.size())
+   {
+      osgearth_g_OutputStreams.resize(severity + 1);
+      osgearth_g_OutputStreams[severity] = stream;
+   }
+}
+
 std::ostream&
 osgEarth::notify(const osg::NotifySeverity severity)
 {
@@ -150,7 +163,15 @@ osgEarth::notify(const osg::NotifySeverity severity)
 
     if (severity<=osgearth_g_NotifyLevel)
     {
-        std::ostream* out = severity <= osg::WARN ? &std::cerr : &std::cout;
+        std::ostream* out = 0;
+        if (severity < osgearth_g_OutputStreams.size() && osgearth_g_OutputStreams[severity] != 0)
+        {
+           out = osgearth_g_OutputStreams[severity];
+        }
+        else
+        {
+           out = severity <= osg::WARN ? &std::cerr : &std::cout;
+        }
         (*out) << std::setprecision(8);
         return *out;
         //if (severity<=osg::WARN) return std::cerr;

@@ -172,8 +172,8 @@ osgEarth::notify(const osg::NotifySeverity severity)
         else
         {
            out = severity <= osg::WARN ? &std::cerr : &std::cout;
+           (*out) << std::setprecision(8);
         }
-        (*out) << std::setprecision(8);
         return *out;
         //if (severity<=osg::WARN) return std::cerr;
         //else return std::cout;

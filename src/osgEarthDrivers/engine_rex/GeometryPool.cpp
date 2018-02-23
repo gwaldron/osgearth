@@ -175,12 +175,12 @@ namespace
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    texCoords->back().z() += MASK_MARKER_SKIRT; \
+    texCoords->back().z() += VERTEX_MARKER_SKIRT; \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    texCoords->back().z() += MASK_MARKER_SKIRT; \
+    texCoords->back().z() += VERTEX_MARKER_SKIRT; \
     if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
 }
 
@@ -319,7 +319,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // if masked then set textCoord z-value to 0.0
-                float marker = maskSet ? maskSet->getMarker(nx, ny) : MASK_MARKER_GRID;
+                float marker = maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
@@ -403,7 +403,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         {
             maskSet = 0L;
             for (osg::Vec3Array::iterator i = texCoords->begin(); i != texCoords->end(); ++i)
-                i->z() = MASK_MARKER_GRID;
+                i->z() = VERTEX_MARKER_GRID;
         }
 
         // If the boundary contains the entire tile, draw nothing!

@@ -143,8 +143,9 @@ osgEarth::setNotifyStream(const osg::NotifySeverity severity, std::ostream* stre
    if (severity >= osgearth_g_OutputStreams.size())
    {
       osgearth_g_OutputStreams.resize(severity + 1);
-      osgearth_g_OutputStreams[severity] = stream;
    }
+
+   osgearth_g_OutputStreams[severity] = stream;
 }
 
 std::ostream&

@@ -89,7 +89,7 @@ int
         << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
         << "        [--estimate]                    ; Print out an estimation of the number of tiles, disk space and time it will take to perform this seed operation" << std::endl
         << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
-        << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
+        << "        [--max-level level]             ; Highest LOD level to seed (default=highest available)" << std::endl
         << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl

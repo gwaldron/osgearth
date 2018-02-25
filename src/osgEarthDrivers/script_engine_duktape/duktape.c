@@ -57002,7 +57002,7 @@ DUK_LOCAL void duk__create_arguments_object(duk_hthread *thr,
 		 *
 		 * Note that the specification requires that the *same* thrower
 		 * built-in object is used here!  See E5 Section 10.6 main
-		 * algoritm, step 14, and Section 13.2.3 which describes the
+		 * algorithm, step 14, and Section 13.2.3 which describes the
 		 * thrower.  See test case test-arguments-throwers.js.
 		 */
 
@@ -61950,7 +61950,7 @@ DUK_LOCAL duk_reg_t duk__lookup_active_register_binding(duk_compiler_ctx *comp_c
  * identifier name.  Returns 1 if register-bound, 0 otherwise.  Caller can
  * also check (out_reg_varbind >= 0) to check whether or not identifier is
  * register bound.  The caller must NOT use out_rc_varname at all unless
- * return code is 0 or out_reg_varbind is < 0; this is becuase out_rc_varname
+ * return code is 0 or out_reg_varbind is < 0; this is because out_rc_varname
  * is unsigned and doesn't have a "unused" / none value.
  */
 DUK_LOCAL duk_bool_t duk__lookup_lhs(duk_compiler_ctx *comp_ctx, duk_reg_t *out_reg_varbind, duk_regconst_t *out_rc_varname) {
@@ -66860,7 +66860,7 @@ DUK_LOCAL void duk__parse_func_like_raw(duk_compiler_ctx *comp_ctx, duk_bool_t i
 	 *  parsing handles this retroactively.
 	 *
 	 *  For function expressions and declarations function name must
-	 *  be an Identifer (excludes reserved words).  For setter/getter
+	 *  be an Identifier (excludes reserved words).  For setter/getter
 	 *  it is a PropertyName which allows reserved words and also
 	 *  strings and numbers (e.g. "{ get 1() { ... } }").
 	 */
@@ -66905,7 +66905,7 @@ DUK_LOCAL void duk__parse_func_like_raw(duk_compiler_ctx *comp_ctx, duk_bool_t i
 	 *  Formal argument list
 	 *
 	 *  We don't check for prohibited names or for duplicate argument
-	 *  names here, becase we don't yet know whether the function will
+	 *  names here, because we don't yet know whether the function will
 	 *  be strict.  Function body parsing handles this retroactively.
 	 */
 
@@ -67677,7 +67677,7 @@ DUK_LOCAL void duk__vm_arith_unary_op(duk_hthread *thr, duk_tval *tv_x, duk_idx_
 		v1 = DUK_TVAL_GET_FASTINT(tv_x);
 		if (opcode == DUK_EXTRAOP_UNM) {
 			/* The smallest fastint is no longer 48-bit when
-			 * negated.  Positive zero becames negative zero
+			 * negated.  Positive zero becomes negative zero
 			 * (cannot be represented) when negated.
 			 */
 			if (DUK_LIKELY(v1 != DUK_FASTINT_MIN && v1 != 0)) {
@@ -69164,7 +69164,7 @@ DUK_LOCAL void duk__executor_recheck_debugger(duk_hthread *thr, duk_activation *
  *  Other function calls are handled using duk_handle_call(), increasing
  *  C recursion depth.
  *
- *  Abrupt completions (= long control tranfers) are handled either
+ *  Abrupt completions (= long control transfers) are handled either
  *  directly by reconfiguring relevant stacks and restarting execution,
  *  or via a longjmp.  Longjmp-free handling is preferable for performance
  *  (especially Emscripten performance), and is used for: break, continue,
@@ -69847,7 +69847,7 @@ DUK_LOCAL DUK_NOINLINE void duk__js_execute_bytecode_inner(duk_hthread *entry_th
 			 * C -> num args (N)
 			 */
 
-			/* duk_new() will call the constuctor using duk_handle_call().
+			/* duk_new() will call the constructor using duk_handle_call().
 			 * A constructor call prevents a yield from inside the constructor,
 			 * even if the constructor is an Ecmascript function.
 			 */

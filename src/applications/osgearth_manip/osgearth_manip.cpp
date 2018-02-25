@@ -262,7 +262,7 @@ namespace
 
 
     /**
-     * Handler to toggle "viewpoint transtion arcing", which causes the camera to "arc"
+     * Handler to toggle "viewpoint transition arcing", which causes the camera to "arc"
      * as it travels from one viewpoint to another.
      */
     struct ToggleArcViewpointTransitionsHandler : public osgGA::GUIEventHandler

@@ -724,7 +724,7 @@ namespace
 
     /**
      * If there are masking records, calculate the vertices to bound the masked area
-     * and the internal verticies to populate it. Then build a triangulation of the
+     * and the internal vertices to populate it. Then build a triangulation of the
      * area inside the masking bounding box and add this to the surface geode.
      */
     void createMaskGeometry( Data& d )
@@ -957,7 +957,7 @@ namespace
                 for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
                 {
                     //If the z-value was set from a mask vertex there is no need to change it.  If
-                    //it was set from a vertex from the stitching polygon it may need overriden if
+                    //it was set from a vertex from the stitching polygon it may need overridden if
                     //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
                     //if (isZSet[count] < 2)
                     if (!isZSet[count])
@@ -1179,7 +1179,7 @@ namespace
             }
 
 
-            // Get triangles from triangulator and add as primative set to the geometry
+            // Get triangles from triangulator and add as primitive set to the geometry
             osg::ref_ptr<osg::DrawElementsUInt> tris = trig->getTriangles();
             if ( tris && tris->getNumIndices() >= 3 )
             {
@@ -2224,7 +2224,7 @@ TileModelCompiler::compile(TileModel*        model,
     {
         d.surfaceGeode->addDrawable( d.surface );
 
-        // tesselate the surface verts into triangles.
+        // tessellate the surface verts into triangles.
         tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
         // build the skirts.

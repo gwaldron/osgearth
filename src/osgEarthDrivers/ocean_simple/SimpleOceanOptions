@@ -60,7 +60,7 @@ namespace osgEarth { namespace SimpleOcean
         optional<Color>& baseColor() { return _baseColor; }
         const optional<Color>& baseColor() const { return _baseColor; }
 
-        /** Maximum visibile range of the ocean (at which is starts fading in) */
+        /** Maximum visible range of the ocean (at which is starts fading in) */
         optional<float>& maxRange() { return _maxRange; }
         const optional<float>& maxRange() const { return _maxRange; }
 

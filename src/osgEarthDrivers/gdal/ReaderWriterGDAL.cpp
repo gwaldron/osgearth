@@ -310,14 +310,14 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                     (proj == NULL && projectionRef != NULL) ||
                     (proj != NULL && projectionRef != NULL && EQUAL(proj, projectionRef) == FALSE))
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogenous projection. Skipping %s\n",dsFileName);
+                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous projection. Skipping %s\n",dsFileName);
                     GDALClose(hDS);
                     continue;
                 }
                 int _nBands = GDALGetRasterCount(hDS);
                 if (nBands != _nBands)
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogenous band numbers. Skipping %s\n",
+                    fprintf( stderr, "gdalbuildvrt does not support heterogeneous band numbers. Skipping %s\n",
                              dsFileName);
                     GDALClose(hDS);
                     continue;
@@ -328,7 +328,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                     if (bandProperties[j].colorInterpretation != GDALGetRasterColorInterpretation(hRasterBand) ||
                         bandProperties[j].dataType != GDALGetRasterDataType(hRasterBand))
                     {
-                        fprintf( stderr, "gdalbuildvrt does not support heterogenous band characteristics. Skipping %s\n",
+                        fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                         GDALClose(hDS);
                     }
@@ -338,7 +338,7 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                         if (colorTable == NULL ||
                             GDALGetColorEntryCount(colorTable) != GDALGetColorEntryCount(bandProperties[j].colorTable))
                         {
-                            fprintf( stderr, "gdalbuildvrt does not support heterogenous band characteristics. Skipping %s\n",
+                            fprintf( stderr, "gdalbuildvrt does not support heterogeneous band characteristics. Skipping %s\n",
                              dsFileName);
                             GDALClose(hDS);
                             break;
@@ -840,7 +840,7 @@ public:
                             {
                                 if ( vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 ) == NULL )
                                 {
-                                    OE_WARN << LC << INDENT << "Faile to create copy" << std::endl;
+                                    OE_WARN << LC << INDENT << "Failed to create copy" << std::endl;
                                 }
 
                                 //We created the temp file, now read the contents back
@@ -1745,8 +1745,8 @@ public:
         }
         else if (bandPalette)
         {
-            //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
-            //b/c interpolating pallete indexes doesn't make sense.
+            //Palette indexed imagery doesn't support interpolation currently and only uses nearest
+            //b/c interpolating palette indexes doesn't make sense.
             unsigned char *palette = new unsigned char[target_width * target_height];
 
             image = new osg::Image;

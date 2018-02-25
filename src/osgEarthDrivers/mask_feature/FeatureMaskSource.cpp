@@ -93,7 +93,7 @@ public:
                     Feature* f = cursor->nextFeature();
                     if ( f && f->getGeometry() )
                     {
-                        // Init a filter to tranform feature in desired SRS 
+                        // Init a filter to transform feature in desired SRS 
                         if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
                         {
                             FilterContext cx;

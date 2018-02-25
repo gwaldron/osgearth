@@ -275,7 +275,7 @@ namespace
 
 			// Definition: an "element" is a part between slashes. Ex: "/a/b" has two elements ("a" and "b").
 			// Algorithm:
-			// 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additionnal info on how to make it). Return.
+			// 1. If paths are neither both absolute nor both relative, then we cannot do anything (we need to make them absolute, but need additional info on how to make it). Return.
 			// 2. If both paths are absolute and root isn't the same (for Windows only, as roots are of the type "C:", "D:"), then the operation is impossible. Return.
 			// 3. Iterate over two paths elements until elements are equal
 			// 4. For each remaining element in "from", add ".." to result

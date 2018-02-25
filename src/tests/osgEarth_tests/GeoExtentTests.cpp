@@ -163,7 +163,7 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, 170, -10, -170, 5));
     }
 
-    SECTION("2 extents tht abut do not intersect") {
+    SECTION("2 extents that abut do not intersect") {
         GeoExtent e1(WGS84, 0, 0, 10, 10);
         GeoExtent e2(WGS84, 10, 0, 20, 10);
         REQUIRE(e1.intersects(e2)==false);

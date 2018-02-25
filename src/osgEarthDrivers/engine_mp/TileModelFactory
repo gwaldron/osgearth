@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const MapFrame&          frame,         // map frame from which to get data
             bool                     accumulate,    // whether to accumulate values from parent tile(s)
             osg::ref_ptr<TileModel>& out_model,     // output or NULL upon failure
-            ProgressCallback*        progress);     // progess tracking
+            ProgressCallback*        progress);     // progress tracking
 
         void setNormalMapUnit(int unit) { _normalMapUnit = unit; }
 

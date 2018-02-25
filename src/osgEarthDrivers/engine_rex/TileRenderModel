@@ -154,7 +154,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 _passes[p].releaseGLObjects(state);
         }
 
-        /** Resize GL buffers associated with thie model */
+        /** Resize GL buffers associated with this model */
         void resizeGLObjectBuffers(unsigned size)
         {
             for (unsigned s = 0; s<_sharedSamplers.size(); ++s)

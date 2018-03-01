@@ -150,11 +150,12 @@ ShadowCaster::reinitialize()
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
+    // tell the terrain engine this is a depth-only camera
     _rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
 
-    // shader-to-primary xform matrix (per frame)
+    // install a shadow-to-primary xform matrix (per frame) so verts match up
     _shadowToPrimaryMatrix = _rttStateSet->getOrCreateUniform(
-        "oe_shadow_shadowViewToPrimaryView", osg::Uniform::FLOAT_MAT4);
+        "oe_shadowToPrimaryMatrix", osg::Uniform::FLOAT_MAT4);
 
 
     _renderStateSet = new osg::StateSet();

@@ -120,6 +120,7 @@ namespace osgEarth
             TerrainResources*             _terrainResources; // for accessing image units
             osg::Vec3d                    _eyeWorld;         // eyepoint in world coords
             osgShadow::ConvexPolyhedron   _visibleFrustumPH; // polyhedron representing the frustum
+            osg::ref_ptr<osg::Uniform>    _rttToPrimaryMatrixUniform; // xform from RTT cam to primary cam
         };
 
         // One of these per view (camera). The terrain state set

@@ -63,25 +63,53 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
             // Actual bounds of geometry:
             osg::BoundingSphere bs = getBound();
 
-            // Find any two points on the bounding sphere's up-vector
-            // and transform them into view space:
-            osg::Vec3d p0 = bs.center() * (*MV);
-            osg::Vec3d p1 =
-                mapNode->isGeocentric() ? (bs.center() * 2.0 * (*MV)) :
-                                          (bs.center() + osg::Vec3d(0, 0, bs.radius())) * (*MV);
+            // First check for simple intersection at the geometry's actual position:
+            bool visible = false; //(cv->isCulled(bs) == false);
+            if (!visible)
+            {
+                // Failing that, project the geometry to the ellipsoid's surface and
+                // expand the radius to account for reasonable elevation changes.
+                // On Earth, elevations of +/- 12000m results in a variance of
+                // 12000/R = ~0.002. Obviously this differs for other planets but
+                // good enough for now
+                const double variance = 0.002;  // * R.
 
-            // Center plane of the view frustum (in view space)
-            static osg::Vec3d v0(0, 0, 0);  // point on the plane
-            static osg::Vec3d n(0, 1, 0);   // normal vector to the plane
+                const SpatialReference* mapSRS = mapNode->getMapSRS();
+                if (mapSRS->isGeographic())
+                {
+                    osg::Vec3d p0 = bs.center();
+                    p0.normalize();
 
-            // Find the intersection of the up vector and the center plane
-            // and then transform the result back into world space for culling.
-            osg::Vec3d w = p0 - v0;
-            osg::Vec3d u = p1 - p0;
-            double t = (-n * w) / (n * u);
-            bs.center() = (p0 + u*t) * MVinverse;
+                    // approximate radius under bs.center:
+                    double R = 
+                        osg::absolute(p0.z()) * mapSRS->getEllipsoid()->getRadiusPolar() +
+                        (1.0 - osg::absolute(p0.z())) * mapSRS->getEllipsoid()->getRadiusEquator();
 
-            if (cv->isCulled(bs) == false)
+                    // project to mean surface:
+                    bs.center() = p0 * R;
+
+                    // buffer the radius to account for elevation data
+                    bs.radius() = bs.radius() + R*variance;
+                }
+
+                else // projected
+                {
+                    double R = osg::maximum(
+                        mapSRS->getEllipsoid()->getRadiusPolar(),
+                        mapSRS->getEllipsoid()->getRadiusEquator());
+                    
+                    // project to mean surface:
+                    bs.center().z() = 0.0;
+
+                    // buffer the radius to account for elevation data
+                    bs.radius() = bs.radius() + R*variance;
+                }
+
+                // Test against the virtual bounding sphere
+                visible = (cv->isCulled(bs) == false);
+            }
+
+            if (visible)
             {
                 // Passed the cull test, so put this node in the clamping cull set.
                 ClampingCullSet& cullSet = mapNode->getClampingManager()->get( cv->getCurrentCamera() );

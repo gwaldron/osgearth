@@ -314,14 +314,44 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                                     osg::ref_ptr<NormalMap>& out_normalMap,
                                     ProgressCallback* progress)
 {			
-    //osg::HeightField* result = 0L;
-
     // Collect the heightfields for each of the intersecting tiles.
     GeoHeightFieldVector heightFields;
 
     //Determine the intersecting keys
     std::vector< TileKey > intersectingTiles;
-    getProfile()->getIntersectingTiles( key, intersectingTiles );
+    
+    if (key.getLOD() > 0u)
+    {
+        getProfile()->getIntersectingTiles(key, intersectingTiles);
+    }
+
+    else
+    {
+        // LOD is zero - check whether the LOD mapping went out of range, and if so,
+        // fall back until we get valid tiles. This can happen when you have two
+        // profiles with very different tile schemes, and the "equivalent LOD" 
+        // surpasses the max data LOD of the tile source.
+        unsigned numTilesThatMayHaveData = 0u;
+
+        int intersectionLOD = getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD());
+
+        while (numTilesThatMayHaveData == 0u && intersectionLOD >= 0)
+        {
+            intersectingTiles.clear();
+            getProfile()->getIntersectingTiles(key.getExtent(), intersectionLOD, intersectingTiles);
+
+            for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
+            {
+                const TileKey& layerKey = intersectingTiles[i];
+                if (mayHaveData(layerKey) == true)
+                {
+                    ++numTilesThatMayHaveData;
+                }
+            }
+
+            --intersectionLOD;
+        }
+    }
 
     // collect heightfield for each intersecting key. Note, we're hitting the
     // underlying tile source here, so there's no vetical datum shifts happening yet.
@@ -337,7 +367,6 @@ ElevationLayer::assembleHeightField(const TileKey& key,
                 osg::ref_ptr<osg::HeightField> hf;
                 osg::ref_ptr<NormalMap> normalMap;
                 createImplementation(layerKey, hf, normalMap, progress);
-                //osg::HeightField* hf = createHeightFieldImplementation( layerKey, progress );
                 if (hf.valid())
                 {
                     heightFields.push_back( GeoHeightField(hf.get(), normalMap.get(), layerKey.getExtent()) );

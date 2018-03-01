@@ -591,6 +591,80 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
     }
 }
 
+#if 1
+
+GeoExtent
+Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) const
+{
+    // initialize the output flag
+    if ( out_clamped )
+        *out_clamped = false;
+
+    // begin by transforming the input extent to this profile's SRS.
+    GeoExtent inputInMySRS = input.transform(getSRS());
+
+    if (inputInMySRS.isValid())
+    {
+        // Compute the intersection of the two:
+        GeoExtent intersection = inputInMySRS.intersectionSameSRS(getExtent());
+
+        // expose whether clamping took place:
+        if (out_clamped != 0L)
+        {
+            *out_clamped = intersection != getExtent();
+        }
+
+        return intersection;
+    }
+
+    else
+    {
+        // The extent transformation failed, probably due to an out-of-bounds condition.
+        // Go to Plan B: attempt the operation in lat/long
+        const SpatialReference* geo_srs = getSRS()->getGeographicSRS();
+
+        // get the input in lat/long:
+        GeoExtent gcs_input =
+            input.getSRS()->isGeographic()?
+            input :
+            input.transform( geo_srs );
+
+        // bail out on a bad transform:
+        if ( !gcs_input.isValid() )
+            return GeoExtent::INVALID;
+
+        // bail out if the extent's do not intersect at all:
+        if ( !gcs_input.intersects(_latlong_extent, false) )
+            return GeoExtent::INVALID;
+
+        // clamp it to the profile's extents:
+        GeoExtent clamped_gcs_input = GeoExtent(
+            gcs_input.getSRS(),
+            osg::clampBetween( gcs_input.xMin(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
+            osg::clampBetween( gcs_input.yMin(), _latlong_extent.yMin(), _latlong_extent.yMax() ),
+            osg::clampBetween( gcs_input.xMax(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
+            osg::clampBetween( gcs_input.yMax(), _latlong_extent.yMin(), _latlong_extent.yMax() ) );
+
+        if ( out_clamped )
+            *out_clamped = (clamped_gcs_input != gcs_input);
+
+        // finally, transform the clamped extent into this profile's SRS and return it.
+        GeoExtent result =
+            clamped_gcs_input.getSRS()->isEquivalentTo( this->getSRS() )?
+            clamped_gcs_input :
+            clamped_gcs_input.transform( this->getSRS() );
+
+        if (result.isValid())
+        {
+            OE_DEBUG << LC << "clamp&xform: input=" << input.toString() << ", output=" << result.toString() << std::endl;
+        }
+
+        return result;
+    }    
+}
+
+#else
+
 GeoExtent
 Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) const
 {
@@ -638,6 +712,7 @@ Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) co
 
     return result;
 }
+#endif
 
 namespace
 {

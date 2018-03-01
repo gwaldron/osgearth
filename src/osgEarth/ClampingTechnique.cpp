@@ -195,6 +195,14 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    
+    // matrix that transforms the RTT's view to the main camera's view (for morphing support)
+    params._rttToPrimaryMatrixUniform = rttStateSet->getOrCreateUniform(
+        "oe_shadowToPrimaryMatrix",
+        osg::Uniform::FLOAT_MAT4);
+
+    // We use this define to tell the terrain it's a depth-only camera
+    rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
 
     // install a VP on the stateset that cancels out any higher-up VP code.
     // This will prevent things like VPs on the main camera (e.g., log depth buffer)
@@ -311,12 +319,19 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         // update the RTT camera.
         params._rttCamera->setViewMatrix      ( params._rttViewMatrix );
         params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
-
-        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
+        
+        // set the primary-camera-to-rtt-camera transformation matrix,
+        // which lets you perform vertex shader operations from the perspective
+        // of the primary camera (morphing, etc.) so that things match up
+        // between the two cameras.
+        osg::Matrix viewMatrixInverse = osg::Matrix::inverse(params._rttViewMatrix);
+        params._rttToPrimaryMatrixUniform->set(viewMatrixInverse * (*cv->getModelViewMatrix()));
 
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );
+        
 
+        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
         // construct a matrix that transforms from camera view coords to depth texture
         // clip coords directly. This will avoid precision loss in the 32-bit shader.

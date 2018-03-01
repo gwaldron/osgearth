@@ -1158,7 +1158,7 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
 
     if ( intersects )
     {
-        return key.createAncestorKey(std::min(highestLOD, MDL));
+        return key.createAncestorKey(std::min(key.getLOD(), std::min(highestLOD, MDL)));
     }
 
     return TileKey::INVALID;

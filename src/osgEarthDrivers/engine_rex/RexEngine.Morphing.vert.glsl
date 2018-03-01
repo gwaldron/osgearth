@@ -21,7 +21,7 @@ uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
 #ifdef OE_IS_SHADOW_CAMERA
-uniform mat4 oe_shadow_shadowViewToPrimaryView;
+uniform mat4 oe_shadowToPrimaryMatrix;
 #endif
 
 // SDK functions:
@@ -67,7 +67,7 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 #ifdef OE_IS_SHADOW_CAMERA
     // For a shadow camera, we have to compute the morphed position
     // from the perspective of the primary camera so they match up:
-    wouldBePositionView = oe_shadow_shadowViewToPrimaryView * wouldBePositionView;
+    wouldBePositionView = oe_shadowToPrimaryMatrix * wouldBePositionView;
 #endif
     
     float fDistanceToEye = length(wouldBePositionView.xyz); // or just -z.

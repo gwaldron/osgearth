@@ -1,6 +1,31 @@
 Release Notes
 =============
 
+Version 2.9 (February 2018)
+---------------------------
+
+* New "REX" terrain engine that supports random access tile loading, terrain morphing, faster add/remove
+* New Map/Layer architecture to begin standardizing "everything is a layer" approach
+* Per-layer shaders, configuration from earth file (rex only)
+* Experimental screen-space GPU lines
+* Better support for GLCORE, GL 3.3+, and VAOs
+* Transition several Extension/etc. to Layers (AnnotationLayer, MGRSGraticule, FeatureModelLayer, SimpleOceanLayer)
+* Reworked the mask generate for REX to support skirts
+* Synchronous pre-loading of first-LOD terrain data
+* GeoTransform node, Annotations self-discover terrain (don't need to pass in MapNode anymore)
+* Experimental FlatteningLayer to flatten the terrain based on feature data
+* Combine multiple shaders in a single file/string with [break]
+* New ViewFitter class fits to view to a set of points
+* Refactored splatting into SplatLayer, GroundCoverLayer
+* New improved ephemeris calculator for sun position
+* New PagedNode class for easier paging
+* Support new OSG 3.5.8 text implementation
+* Support GEOS 3.6+
+* Added core LandCover/LandCoverLayer classes for classification data
+* Added Future/Promise construct for asynchronous operations
+* Re-written MGRS, UTM and GARS graticules
+* Lots of bug fixes
+
 Version 2.8 (September 2016)
 ---------------------------
 

@@ -174,7 +174,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         getMetaData( "profile", profileStr );
 
         // The data format (e.g., png, jpg, etc.). Any format passed in
-        // in the options is superceded by the one in the database metadata.
+        // in the options is superseded by the one in the database metadata.
         std::string metaDataFormat;
         getMetaData( "format", metaDataFormat );
         if ( !metaDataFormat.empty() )

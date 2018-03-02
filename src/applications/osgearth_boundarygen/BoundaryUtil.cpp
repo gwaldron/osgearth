@@ -283,8 +283,8 @@ namespace
     typedef std::set<Index, IndexLess>            IndexSet;
     typedef std::map<Index, IndexSet, IndexLess>  EdgeMap;
 
-    // Stores the noded topology of a model with unique verticies and edge definitions.
-    // The verticies are stored rotated into the XY plane so that we can properly find
+    // Stores the noded topology of a model with unique vertices and edge definitions.
+    // The vertices are stored rotated into the XY plane so that we can properly find
     // the "bottom-most" vert and walk the boundary.
     struct TopologyGraph
     {
@@ -349,7 +349,7 @@ namespace
 
                 // insert it into the unique vert list
                 std::pair<VertexSet::iterator,bool> f = _topology->_verts.insert( plane );
-                if ( f.second ) // insert succedded
+                if ( f.second ) // insert succeeded
                 {
                     // this is a new location, so check it to see if it is the new "southernmost" point:
                     if ( _topology->_minY == _topology->_verts.end() || plane.y() < _topology->_minY->y() )
@@ -543,7 +543,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
         // pull up the edge set for this vertex:
         IndexSet& edges = topology._edgeMap[vptr];
 
-        // find the edge with the minimun delta angle to the base vector
+        // find the edge with the minimum delta angle to the base vector
         double bestScore = DBL_MAX;
         Index  bestEdge  = topology._verts.end();
         

@@ -93,7 +93,7 @@ The steps to buld for use on devices are as follows:
      | Select *OSGEARTH* project in navigator view (top of tree on left)
      | Select *Add Target*
      | Select *Aggregate Target* in the *Other* section, name it lib-build (or whatever)
-     | Select new target and select *Build Phases*, *Target Dependancies*, *+*
+     | Select new target and select *Build Phases*, *Target Dependencies*, *+*
      | Select all the libs and plugins 
      | Select the new target as the current build target (combo box to right of the play/run button)
      | Build

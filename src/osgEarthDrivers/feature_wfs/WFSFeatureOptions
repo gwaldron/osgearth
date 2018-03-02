@@ -50,7 +50,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& outputFormat() { return _outputFormat; }
         const optional<std::string>& outputFormat() const { return _outputFormat; }
 
-        /** Explicity disable a "TFS" tiled feature source queries */
+        /** Explicitly disable a "TFS" tiled feature source queries */
         optional<bool>& disableTiling() { return _disableTiling; }
         const optional<bool>& disableTiling() const { return _disableTiling;}
 

@@ -301,7 +301,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<osg::StateSet>        _parentStateSet;
         osg::observer_ptr<const TileModel> _parentModel;
 
-        // convenience funciton to pull out a layer by its UID.
+        // convenience function to pull out a layer by its UID.
         bool getColorData( UID layerUID, ColorData& out ) const {
             ColorDataByUID::const_iterator i = _colorData.find( layerUID );
             if ( i != _colorData.end() ) {

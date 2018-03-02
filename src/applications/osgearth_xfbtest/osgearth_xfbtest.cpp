@@ -400,7 +400,7 @@ osg::Node* makeSceneGraph()
     // into the Transform Feedback buffer.
     osg::Geometry* genGeom = makeGeneratorGeometry( ig->getControlPoints(), dim, radius );
     genGeom->getOrCreateStateSet()->setAttribute( makeGeneratorProgram() );
-    genGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius) ); // since we don't know where ther center point is
+    genGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius) ); // since we don't know where their center point is
     osg::Geode* genGeode = new osg::Geode();
     genGeode->addDrawable( genGeom );    
     

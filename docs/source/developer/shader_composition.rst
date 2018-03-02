@@ -167,7 +167,7 @@ You can alter the vertex, but you *must* leave it in the same space.
 
 :MODEL:  Vertex is the raw, untransformed values from the geometry.
 :VIEW:   Vertex is relative to the eyepoint, which lies at the origin (0,0,0) and 
-         points down the -Z axis. In VIEW space, the orginal vertex has been
+         points down the -Z axis. In VIEW space, the original vertex has been
          transformed by ``gl_ModelViewMatrix``.
 :CLIP:   Post-projected clip space. CLIP space lies in the [-w..w] range along all
          three axis, and is the result of transforming the original vertex by

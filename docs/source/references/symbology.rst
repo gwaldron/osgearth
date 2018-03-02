@@ -30,7 +30,7 @@ Value Types
 -----------
 
 These are the basic value types. In the symbol tables on this page, each
-property includes the value type in parantheses following its description.
+property includes the value type in parentheses following its description.
 
   :float:                 Floating-point number
   :float with units:      Floating-point number with unit designator, e.g.
@@ -214,7 +214,7 @@ The *skin symbol* (SDK: ``SkinSymbol``) applies texture mapping to a geometry, w
 |                         | osgEarth determines the minimal set of appropriate skins from      |
 |                         | which to choose and chooses one at random. By setting this seed    |
 |                         | value you can ensure that the same "random" selection happens each |
-|                         | time you run the appplication.  (integer)                          |
+|                         | time you run the application.  (integer)                           |
 +-------------------------+--------------------------------------------------------------------+
 
 
@@ -272,7 +272,7 @@ Icons are used for different things, the most common being:
 |                                | randomization is repeatable each time you run the app. (integer)   |
 +--------------------------------+--------------------------------------------------------------------+
 | icon-occlusion-cull            | Whether to occlusion cull the text so they do not display          |
-|                                | when line of sight is obstructed by terrain                        | 
+|                                | when line of sight is obstructed by terrain                        |
 +--------------------------------+--------------------------------------------------------------------+
 | icon-occlusion-cull-altitude   | The viewer altitude (MSL) to start occlusion culling               |
 |                                | when line of sight is obstructed by terrain                        |
@@ -338,7 +338,7 @@ as some osgEarth-specific settings that are not specific to any other symbol typ
 +-------------------------------+--------------------------------------------------------------+
 | render-bin                    | render bin to use for sorting (string)                       |
 +-------------------------------+--------------------------------------------------------------+
-| render-depth-offset           | Enable or disable Depth Offseting. Depth offsetting is a     |
+| render-depth-offset           | Enable or disable Depth Offsetting. Depth offsetting is a    |
 |                               | GPU technique that modifies a fragment's depth value,        |
 |                               | simulating the rendering of that object closer or farther    |
 |                               | from the viewer than it actually is. It is a mechanism for   |
@@ -365,7 +365,7 @@ as some osgEarth-specific settings that are not specific to any other symbol typ
 Text
 ----
 
-The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of text labels.
+The *text symbol* (SDK: ``TextSymbol``) controls the existence and appearance of text labels.
 
 +--------------------------------+--------------------------------------------------------------------+
 | Property                       | Description                                                        |
@@ -377,7 +377,7 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 | text-font                      | Name of the font to use (system-dependent). For example, use       |
 |                                | "arialbd" on Windows for Arial Bold.                               |
 +--------------------------------+--------------------------------------------------------------------+
-| text-halo                      | Outline color of the text; Omit this propery altogether for no     |
+| text-halo                      | Outline color of the text; Omit this property altogether for no    |
 |                                | outline. (HTML Color)                                              |
 +--------------------------------+--------------------------------------------------------------------+
 | text-halo-offset               | Outline thickness (float, pixels)                                  |
@@ -422,7 +422,7 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 |                                | screen. (boolean)                                                  |
 +--------------------------------+--------------------------------------------------------------------+
 | text-occlusion-cull            | Whether to occlusion cull the text so they do not display          |
-|                                | when line of sight is obstructed by terrain                        | 
+|                                | when line of sight is obstructed by terrain                        |
 +--------------------------------+--------------------------------------------------------------------+
 | text-occlusion-cull-altitude   | The viewer altitude (MSL) to start occlusion culling               |
 |                                | when line of sight is obstructed by terrain                        |

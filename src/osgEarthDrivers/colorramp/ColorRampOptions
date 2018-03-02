@@ -67,7 +67,7 @@ namespace osgEarth { namespace Drivers
             conf.getObjIfSet("elevation", _elevationLayerOptions );
             if (!_elevationLayerOptions.isSet())
             {
-                // Try to get the settings from a heightfield specificiation instead
+                // Try to get the settings from a heightfield specification instead
                 conf.getObjIfSet("heightfield", _elevationLayerOptions );
             }
             conf.getIfSet("ramp", _ramp);

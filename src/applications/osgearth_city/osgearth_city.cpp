@@ -286,7 +286,7 @@ void addParks(Map* map)
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
 
     // Since the tree model contains alpha components, we will discard any data
-    // that's sufficiently transparent; this will prevent depth-sorting anomolies
+    // that's sufficiently transparent; this will prevent depth-sorting anomalies
     // common when rendering lots of semi-transparent objects.
     RenderSymbol* render = style.getOrCreate<RenderSymbol>();
     render->transparent() = true;

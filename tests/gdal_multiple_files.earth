@@ -1,5 +1,5 @@
 <!--
-osgEarth Sample - Multipe files in GDAL driver
+osgEarth Sample - Multiple files in GDAL driver
 
 This example displays how to use the GDAL driver to load files in a directory as a single, logical layer.
 

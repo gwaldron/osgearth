@@ -29,7 +29,7 @@ Version 2.9 (February 2018)
 Version 2.8 (September 2016)
 ---------------------------
 
-* Disabled feature tesselation tiling in BuildGeometryFilter unless max_polygon_tiling_angle is explicitly set.  Cropping code was causing issues especially around the poles.  Need to come up with a more general solution in the future.
+* Disabled feature tessellation tiling in BuildGeometryFilter unless max_polygon_tiling_angle is explicitly set.  Cropping code was causing issues especially around the poles.  Need to come up with a more general solution in the future.
 * Better support for osg::Fog in VirtualPrograms with FogEffect.  Implemented multiple fog modes.
 * Always applying min_range and max_range in MPGeometry to prevent uniform leakage.
 * Proper support for centroid clamping for MultiPolygons.

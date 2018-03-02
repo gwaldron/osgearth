@@ -34,7 +34,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     using namespace osgEarth;
 
     /**
-     * TileGroup is a group node that contians four sibling TileNodes
+     * TileGroup is a group node that contains four sibling TileNodes
      * in the quadtree structure. It has the ability to update itself
      * by checking the map revision and scheduling an incremental
      * update of its TileNode set.

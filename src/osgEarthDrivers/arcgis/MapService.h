@@ -96,7 +96,7 @@ public:
     bool init( const URI& uri, const osgDB::Options* options =0L );
 
     /**
-     * Returns true if the map service initialized succesfully.
+     * Returns true if the map service initialized successfully.
      */
     bool isValid() const;
 

@@ -197,7 +197,7 @@ main(int argc, char** argv)
         MapNode* miniMapNode = makeMiniMapNode();        
         miniMapGroup->addChild( miniMapNode );
        
-        //Get the main MapNode so we can do tranformations between it and our minimap
+        //Get the main MapNode so we can do transformations between it and our minimap
         MapNode* mainMapNode = MapNode::findMapNode( node );
                                
         //Set the scene data for the minimap

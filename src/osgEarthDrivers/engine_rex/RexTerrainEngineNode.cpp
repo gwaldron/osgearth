@@ -275,7 +275,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         OE_INFO << LC << "Range mode = pixel size; pixel tile size = " << _terrainOptions.tilePixelSize().get() << std::endl;
     }
 
-    // if the envvar for tile expiration is set, overide the options setting
+    // if the envvar for tile expiration is set, override the options setting
     const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
     if ( val )
     {
@@ -1400,7 +1400,7 @@ RexTerrainEngineNode::updateState()
 
             surfaceStateSet->setDefine("OE_TERRAIN_RENDER_IMAGERY");
 
-            // Funtions that affect only the terrain surface:
+            // Functions that affect only the terrain surface:
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
             surfaceVP->setName("Rex Surface");
 

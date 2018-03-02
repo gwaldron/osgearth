@@ -51,7 +51,7 @@ MapInspectorUI::reinit(MapNode* mapNode)
 
     if ( mapNode )
     {
-        // install annotation group as neccesary
+        // install annotation group as necessary
         if (_annos->getNumParents() == 0 || _annos->getParent(0) != mapNode)
         {
             if ( _annos->getNumParents() > 0 )

@@ -479,7 +479,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
         for (osg::Vec3Array::iterator it = it_start; it != constraintVerts->end(); ++it)
         {
             //If the z-value was set from a mask vertex there is no need to change it.  If
-            //it was set from a vertex from the patch polygon it may need to be overriden if
+            //it was set from a vertex from the patch polygon it may need to be overridden if
             //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
             //if (isZSet[count] < 2)
             if (!isZSet[count])

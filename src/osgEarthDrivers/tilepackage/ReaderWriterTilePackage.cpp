@@ -166,8 +166,8 @@ public:
         buf << _options.url()->full() << "/_alllayers/";
         buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
 
-        unsigned int colOffset = floor(numWide / _bundleSize);
-        unsigned int rowOffset = floor(numHigh / _bundleSize);
+        unsigned int colOffset = static_cast<unsigned int>(floor(key.getTileX() / _bundleSize) * _bundleSize);
+        unsigned int rowOffset = static_cast<unsigned int>(floor(key.getTileY() / _bundleSize) * _bundleSize);
 
         buf << "R" << padLeft(toHex(rowOffset), 4) << "C" << padLeft(toHex(colOffset), 4);
         buf << ".bundle";

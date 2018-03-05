@@ -30,7 +30,9 @@ using namespace osgEarth;
 void
 Shadowing::setIsShadowCamera(osg::Camera* camera)
 {
-    camera->getOrCreateStateSet()->setDefine("OE_IS_SHADOW_CAMERA");
+    osg::StateSet* ss = camera->getOrCreateStateSet();
+    ss->setDefine("OE_IS_SHADOW_CAMERA");
+    ss->setDefine("OE_IS_DEPTH_CAMERA");
 }
 
 bool

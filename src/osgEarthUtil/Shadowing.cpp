@@ -151,7 +151,7 @@ ShadowCaster::reinitialize()
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
     // tell the terrain engine this is a depth-only camera
-    _rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
+    //_rttStateSet->setDefine("OE_IS_SHADOW_CAMERA"); // done above in rtt stateset
 
     // install a shadow-to-primary xform matrix (per frame) so verts match up
     _shadowToPrimaryMatrix = _rttStateSet->getOrCreateUniform(

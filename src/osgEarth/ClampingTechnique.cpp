@@ -202,7 +202,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         osg::Uniform::FLOAT_MAT4);
 
     // We use this define to tell the terrain it's a depth-only camera
-    rttStateSet->setDefine("OE_IS_SHADOW_CAMERA");
+    rttStateSet->setDefine("OE_IS_DEPTH_CAMERA");
 
     // install a VP on the stateset that cancels out any higher-up VP code.
     // This will prevent things like VPs on the main camera (e.g., log depth buffer)

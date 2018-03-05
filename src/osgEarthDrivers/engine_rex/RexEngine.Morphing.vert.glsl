@@ -6,7 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_model
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY, OE_TERRAIN_RENDER_ELEVATION, OE_IS_DEPTH_CAMERA)
 
 
 // stage
@@ -20,7 +20,7 @@ out float oe_rex_morphFactor;
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
-#ifdef OE_IS_SHADOW_CAMERA
+#ifdef OE_IS_DEPTH_CAMERA
 uniform mat4 oe_shadowToPrimaryMatrix;
 #endif
 
@@ -64,8 +64,8 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 
     vec4 wouldBePositionView = gl_ModelViewMatrix * wouldBePosition;
 
-#ifdef OE_IS_SHADOW_CAMERA
-    // For a shadow camera, we have to compute the morphed position
+#ifdef OE_IS_DEPTH_CAMERA
+    // For a depth camera, we have to compute the morphed position
     // from the perspective of the primary camera so they match up:
     wouldBePositionView = oe_shadowToPrimaryMatrix * wouldBePositionView;
 #endif

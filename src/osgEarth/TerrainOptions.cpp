@@ -48,7 +48,7 @@ _minNormalMapLOD( 0u ),
 _gpuTessellation( false ),
 _debug( false ),
 _binNumber( 0 ),
-_castShadows(false),
+_castShadows(true),
 _rangeMode(osg::LOD::DISTANCE_FROM_EYE_POINT),
 _tilePixelSize(256)
 {

@@ -160,7 +160,7 @@ MGRSFormatter
 
 The ``MGRSFormatter`` constructs a string according to the `Military Grid Reference System`_. 
 Technically, an MGRS coordinate represents a *region* rather than an exact point, so you
-have to specifiy a *precision* qualifier to control the size of the represented region.
+have to specify a *precision* qualifier to control the size of the represented region.
 Example::
 
     MGRSFormatter mgrs( MGRFormatter::PRECISION_1000M );
@@ -204,7 +204,7 @@ mouse to a *Qt* status bar::
 
 For your convenience, ``MouseCoordsTool`` also comes with a stock callback that will
 print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass a
-``LabelControl`` to the contructor to make it even easier.
+``LabelControl`` to the constructor to make it even easier.
 
 
 NormalMap

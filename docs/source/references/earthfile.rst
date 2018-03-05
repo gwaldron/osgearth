@@ -144,7 +144,7 @@ These options control the rendering of the terrain surface.
 |                       | transparent. This is handy for seeing underground objects.         |
 +-----------------------+--------------------------------------------------------------------+
 | tile_size             | The dimensions of each terrain tile. Each terrain tile will have   |
-|                       | ``tile_size`` X ``tile_size`` verticies.                           |
+|                       | ``tile_size`` X ``tile_size`` vertices.                            |
 +-----------------------+--------------------------------------------------------------------+
 | normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
 |                       | lighting appears smoother from one tile to the next.               |

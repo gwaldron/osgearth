@@ -317,7 +317,7 @@ main(int argc, char** argv)
         // start with a picker running
         startPicker(app);
 
-        // Hightlight features as we pick'em.
+        // Highlight features as we pick'em.
         installHighlighter(app);
 
         app.mainView->getCamera()->setName( "Main view" );

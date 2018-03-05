@@ -679,7 +679,7 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    bool accumulate    = true;  // use parent data to help build tiles if neccesary
+    bool accumulate    = true;  // use parent data to help build tiles if necessary
     bool setupChildren = true;  // prepare the tile for subdivision
 
     // create the node:

@@ -106,7 +106,7 @@ These are not part of the cache policy, but instead control a particular cache i
 Precedence of Cache Policy Settings
 -----------------------------------
 Since you can set caching policies in various places, we need to establish
-precendence. Here are the rules.
+precedence. Here are the rules.
 
 - **Map settings**. This is a cache policy set in the ``Map`` object on in the 
   ``<map><options>`` block in an earth file. This sets the default cache policy for every

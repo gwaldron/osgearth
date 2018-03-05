@@ -81,7 +81,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         // Elevation "smoothing" uses the parent HF as the starting point for building
         // a new tile. This will cause lower-resolution data to propagate down the tree
         // and fill in any gaps in higher-resolution data. The result will be an elevation
-        // grid that is "smoother" but not neccessarily as accurate.
+        // grid that is "smoother" but not necessarily as accurate.
         if ( _useParentAsReferenceHF && parent_hf && parentKey.valid() )
         {
             out_hf = HeightFieldUtils::createSubSample(

@@ -7,8 +7,8 @@ Here we will cover some of the basics.
 
 OpenSceneGraph/OpenGL Coordinate Spaces
 ---------------------------------------
-Here is a brief explaination of the various coordinate systems used in OpenGL and
-OSG. For a more detailed explaination (with pictures!) we direct you to read this
+Here is a brief explanation of the various coordinate systems used in OpenGL and
+OSG. For a more detailed explanation (with pictures!) we direct you to read this
 excellent tutorial on the subject:
 
     `OpenGL Transformation`_

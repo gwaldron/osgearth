@@ -40,7 +40,7 @@ Get the Dependencies
     * AlphaPixel_ has pre-built OSG_ and 3rd-party dependencies for various architectures.
     * Pre-built `GDAL binaries`_ for various architectures.
     
-**Optional depedencies**: osgEarth will compile without them. Look and decide what you need
+**Optional dependencies**: osgEarth will compile without them. Look and decide what you need
 
     * GEOS_ 3.2.0 or later - C++ library for topological operations.
       osgEarth uses GEOS to perform various geometry operations like buffering and intersections.

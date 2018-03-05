@@ -99,7 +99,7 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
         cx._dbOptions = dbOptions;
     }
 
-    // intialize the KML options with the defaults if necessary:
+    // initialize the KML options with the defaults if necessary:
     KMLOptions blankOptions;
     if ( cx._options == 0L )
         cx._options = &blankOptions;

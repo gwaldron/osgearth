@@ -116,7 +116,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt    = createSkirt ? (_tileSize-1) * 4 * 6 : 0;
     
-    // Pre-allocate enought space for all triangles.
+    // Pre-allocate enough space for all triangles.
     osg::DrawElements* primSet = numVerts > 0xFFFF ? 
         (osg::DrawElements*)(new osg::DrawElementsUInt(GL_TRIANGLES)) :
         (osg::DrawElements*)(new osg::DrawElementsUShort(GL_TRIANGLES));

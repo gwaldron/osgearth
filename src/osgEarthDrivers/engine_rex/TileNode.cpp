@@ -566,7 +566,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
 void
 TileNode::createChildren(EngineContext* context)
 {
-    // NOTE: Ensure that _mutex is locked before calling this fucntion!
+    // NOTE: Ensure that _mutex is locked before calling this function!
     //OE_WARN << "Creating children for " << _key.str() << std::endl;
 
     // Create the four child nodes.

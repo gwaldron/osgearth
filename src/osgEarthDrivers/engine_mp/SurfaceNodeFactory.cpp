@@ -66,7 +66,7 @@ _maskSet     ( model->getKey() )
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt   = _createSkirt ? (_tileSize-1) * 4 * 6 : 0;
     
-    // Pre-allocate enought space for all triangles.
+    // Pre-allocate enough space for all triangles.
     _surfacePrimSet = newDrawElements(GL_TRIANGLES);
     _surfacePrimSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 }

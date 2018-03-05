@@ -99,7 +99,7 @@ namespace ReadWriteMutexTest
 
 // Disabled temporarily b/c it's breaking the Travis build for some reason.  Works fine on regular machines.
 /*
-TEST_CASE( "ReadWriteMutex can handle mulitple read locks from the same thread while a writer is trying to lock" ) {    
+TEST_CASE( "ReadWriteMutex can handle multiple read locks from the same thread while a writer is trying to lock" ) {    
 
     ReadWriteMutexTest::Thread1 thread1;
     ReadWriteMutexTest::Thread2 thread2;

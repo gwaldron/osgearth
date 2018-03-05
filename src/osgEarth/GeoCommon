@@ -45,7 +45,9 @@ namespace osgEarth
         INTERP_AVERAGE,
         INTERP_NEAREST,
         INTERP_BILINEAR,
-        INTERP_TRIANGULATE
+        INTERP_TRIANGULATE,
+        INTERP_CUBIC,
+        INTERP_CUBICSPLINE
     };
 
     /**

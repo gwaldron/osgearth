@@ -82,8 +82,7 @@ namespace osgEarth { namespace Drivers
         
         /**
          * Interpolation method to use when resampling source data; options are
-         * nearest, average, and bilinear.  Only effects elevation data
-         * unless interp_imagery is also set to true.
+         * nearest, average, and bilinear.
          */
         optional<ElevationInterpolation>& interpolation() { return _interpolation; }
         const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
@@ -101,16 +100,6 @@ namespace osgEarth { namespace Drivers
          */
         optional<unsigned int>& subDataSet() { return _subDataSet;}
         const optional<unsigned int>& subDataSet() const { return _subDataSet;}
-
-        /**
-         * Set to true to also sample imagery using the method specified by "interpolation"
-         * By default imagery is sampled using nearest sampling.  This takes advantage of
-         * any built in overviews or wavelet compression in the source file but can 
-         * cause artifacts on neighboring tiles.  Interpolating the imagery can look nicer
-         * but will be much slower.
-         */
-        optional<bool>& interpolateImagery() { return _interpolateImagery;}
-        const optional<bool>& interpolateImagery() const { return _interpolateImagery;}
 
         /**
          The "warp profile" is a way to tell the GDAL driver to keep the original SRS and geotransform of the source data
@@ -133,8 +122,7 @@ namespace osgEarth { namespace Drivers
 
         GDALOptions( const TileSourceOptions& options =TileSourceOptions() ) :
             TileSourceOptions( options ),
-            _interpolation( INTERP_AVERAGE ),
-            _interpolateImagery( false )
+            _interpolation(INTERP_AVERAGE)
         {
             setDriver( "gdal" );
             fromConfig( _conf );
@@ -156,12 +144,12 @@ namespace osgEarth { namespace Drivers
                 if ( _interpolation.value() == osgEarth::INTERP_NEAREST ) conf.update( "interpolation", "nearest" );
                 else if ( _interpolation.value() == osgEarth::INTERP_AVERAGE ) conf.update( "interpolation", "average" );
                 else if ( _interpolation.value() == osgEarth::INTERP_BILINEAR ) conf.update( "interpolation", "bilinear" );
+                else if (_interpolation.value() == osgEarth::INTERP_CUBIC) conf.update("interpolation", "cubic");
+                else if (_interpolation.value() == osgEarth::INTERP_CUBICSPLINE) conf.update("interpolation", "cubicspline");
             }
 
             conf.set( "max_data_level_override", _maxDataLevelOverride);
-            conf.set( "subdataset", _subDataSet);
-
-            conf.set( "interp_imagery", _interpolateImagery);
+            conf.set( "subdataset", _subDataSet);            
 
             conf.setObj( "warp_profile", _warpProfile );
 
@@ -184,10 +172,10 @@ namespace osgEarth { namespace Drivers
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
+            else if (in == "cubic") _interpolation = osgEarth::INTERP_CUBIC;
+            else if (in == "cubicspline") _interpolation = osgEarth::INTERP_CUBICSPLINE;
             conf.getIfSet( "max_data_level_override", _maxDataLevelOverride);
             conf.getIfSet( "subdataset", _subDataSet);
-
-            conf.getIfSet("interp_imagery", _interpolateImagery);
 
             conf.getObjIfSet( "warp_profile", _warpProfile );
 
@@ -199,7 +187,6 @@ namespace osgEarth { namespace Drivers
         optional<std::string>            _extensions;
         optional<std::string>            _blackExtensions;
         optional<ElevationInterpolation> _interpolation;
-        optional<bool>                   _interpolateImagery;
         optional<unsigned int>           _maxDataLevelOverride;
         optional<unsigned int>           _subDataSet;
         optional<ProfileOptions>         _warpProfile;

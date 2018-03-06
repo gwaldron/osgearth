@@ -1368,27 +1368,31 @@ public:
     {
 #if GDAL_VERSION_2_0_OR_NEWER
         GDALRasterIOExtraArg psExtraArg;
+
+        // defaults to GRIORA_NearestNeighbour
         INIT_RASTERIO_EXTRA_ARG(psExtraArg);
 
-        if (interpolation == INTERP_AVERAGE)
-        {        
+        switch(interpolation) {
+        case INTERP_AVERAGE:
             psExtraArg.eResampleAlg = GRIORA_Average;
-        }
-        else if (interpolation == INTERP_BILINEAR)
-        {         
+            break;
+        case INTERP_BILINEAR:
             psExtraArg.eResampleAlg = GRIORA_Bilinear;
-        }
-        else if (interpolation == INTERP_CUBIC)
-        {
+            break;
+        case INTERP_CUBIC:
             psExtraArg.eResampleAlg = GRIORA_Cubic;
-        }
-        else if (interpolation == INTERP_CUBICSPLINE)
-        {
+            break;
+        case INTERP_CUBICSPLINE:
             psExtraArg.eResampleAlg = GRIORA_CubicSpline;
+            break;
         }
 
         CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
 #else
+        if (interpolation != INTERP_NEAREST)
+        {
+            OE_DEBUG << LC << "RasterIO falling back to INTERP_NEAREST.\n";
+        }
         CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
 #endif
         if (err != CE_None)

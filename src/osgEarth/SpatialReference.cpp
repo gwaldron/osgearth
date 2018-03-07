@@ -1559,13 +1559,13 @@ SpatialReference::guessBounds(Bounds& bounds) const
 {
     if (isGeographic())
     {
-        bounds.set(-180.0, -90.0, 0.0, 180.0, 90.0, 0.0);
+        bounds.set(-180.0, -90.0, 180.0, 90.0);
         return true;
     }
     
     if (isMercator() || isSphericalMercator())
     {
-        bounds.set(MERC_MINX, MERC_MINY, 0.0, MERC_MAXX, MERC_MAXY, 0.0);
+        bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
         return true;
     }
 
@@ -1575,9 +1575,9 @@ SpatialReference::guessBounds(Bounds& bounds) const
     if (OSRGetUTMZone(_handle, &isNorth))
     {
         if (isNorth)
-            bounds.set(166000, 0, 0, 834000, 9330000, 0);
+            bounds.set(166000, 0, 834000, 9330000);
         else
-            bounds.set(166000, 1116915, 0.0, 834000, 10000000, 0);
+            bounds.set(166000, 1116915, 834000, 10000000);
         return true;
     }
 

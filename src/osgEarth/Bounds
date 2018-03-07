@@ -59,6 +59,8 @@ namespace osgEarth
         bool isValid() const;
         bool isEmpty() const { return !isValid(); }
         void transform( const SpatialReference* fromSRS, const SpatialReference* toSRS );
+        void set(double xmin, double ymin, double xmax, double ymax);
+        void set(double xmin, double ymin, double zmin, double xmax, double ymax, double zmax); // compat
     };
 }
 

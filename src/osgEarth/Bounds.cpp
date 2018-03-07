@@ -161,3 +161,15 @@ Bounds::transform( const SpatialReference* from, const SpatialReference* to )
 {
     from->transformExtentToMBR( to, _min.x(), _min.y(), _max.x(), _max.y() );
 }
+
+void
+Bounds::set(double xmin, double ymin, double xmax, double ymax)
+{
+    osg::BoundingBoxd::set(xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX);
+}
+
+void
+Bounds::set(double xmin, double ymin, double zmin, double xmax, double ymax, double zmax)
+{
+    osg::BoundingBoxd::set(xmin, ymin, zmin, xmax, ymax, zmax);
+}

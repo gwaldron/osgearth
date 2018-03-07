@@ -62,6 +62,9 @@ ViewWidget::init(osg::GraphicsContext* gc)
     camera->setGraphicsContext( gc );
     camera->setViewport(new osg::Viewport(0, 0, gc->getTraits()->width, gc->getTraits()->height));
     camera->setProjectionMatrixAsPerspective( 30.0f, gc->getTraits()->width/gc->getTraits()->height, 1.0f, 10000.0f );
+    
+    camera->setDrawBuffer(gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
+    camera->setReadBuffer(gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
 }
 
 

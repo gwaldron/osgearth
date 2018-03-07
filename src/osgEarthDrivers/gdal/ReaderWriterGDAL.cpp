@@ -2058,7 +2058,10 @@ public:
                 {
                     for (int c = 0; c < tileSize; ++c)
                     {
-                        hf->setHeight(c, ir, buffer[r * tileSize + c]);
+                        float h = buffer[r * tileSize + c];
+                        // Make sure to convert the height to meters
+                        h = getProfile()->getSRS()->getUnits().convertTo(Units::METERS, h);
+                        hf->setHeight(c, ir, h);
                     }
                 }
             }
@@ -2073,6 +2076,8 @@ public:
                     {
                         double geoX = xmin + (dx * (double)c);
                         float h = getInterpolatedValue(band, geoX, geoY);
+                        // Make sure to convert the height to meters
+                        h = getProfile()->getSRS()->getUnits().convertTo(Units::METERS, h);
                         hf->setHeight(c, r, h);
                     }
                 }

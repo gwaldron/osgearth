@@ -413,8 +413,6 @@ MapNode::~MapNode()
 
     _mapCallback->invokeOnLayerRemoved(_map.get());
 
-    _map->clear(false);
-
     this->clearExtensions();
 
     osg::observer_ptr<TerrainEngineNode> te = _terrainEngine;

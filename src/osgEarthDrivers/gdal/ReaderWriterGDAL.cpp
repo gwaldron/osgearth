@@ -679,7 +679,8 @@ public:
       _srcDS(NULL),
       _warpedDS(NULL),
       _options(options),
-      _maxDataLevel(30)
+      _maxDataLevel(30),
+      _linearUnits(1.0)
     {
     }
 
@@ -1218,6 +1219,10 @@ public:
             // Use the DataExtents from the subfiles of the VRT.
             getDataExtents().insert(getDataExtents().end(), dataExtents.begin(), dataExtents.end());
         }
+
+
+        // Get the linear units of the SRS for scaling elevation values
+        _linearUnits = OSRGetLinearUnits((OGRSpatialReferenceH)srs->getHandle(), 0);
 
         //Set the profile
         setProfile( profile );
@@ -2058,7 +2063,7 @@ public:
                 {
                     for (int c = 0; c < tileSize; ++c)
                     {
-                        hf->setHeight(c, ir, buffer[r * tileSize + c]);
+                        hf->setHeight(c, ir, _linearUnits * buffer[r * tileSize + c]);
                     }
                 }
             }
@@ -2072,7 +2077,7 @@ public:
                     for (int c = 0; c < tileSize; ++c)
                     {
                         double geoX = xmin + (dx * (double)c);
-                        float h = getInterpolatedValue(band, geoX, geoY);
+                        float h = getInterpolatedValue(band, geoX, geoY) * _linearUnits;
                         hf->setHeight(c, r, h);
                     }
                 }
@@ -2099,6 +2104,7 @@ private:
     GDALDataset* _warpedDS;
     double       _geotransform[6];
     double       _invtransform[6];
+    double       _linearUnits;
 
     GeoExtent _extents;
     Bounds _bounds;

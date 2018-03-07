@@ -165,6 +165,9 @@ void ViewerWidget::reconfigure( osgViewer::View* view )
         camera->setProjectionMatrixAsPerspective(
             30.0f, camera->getViewport()->width()/camera->getViewport()->height(), 1.0f, 10000.0f );
     }
+    
+    camera->setDrawBuffer(_gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
+    camera->setReadBuffer(_gc->getTraits()->doubleBuffer? GL_BACK : GL_FRONT);
 }
 
       

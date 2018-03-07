@@ -718,6 +718,19 @@ TerrainLayer::createAndOpenTileSource()
             _readOptions->setOptionString( s );
         }
 
+        // If we're setting any custom options, do so now before opening:
+        if (options().tileSize().isSet())
+           ts->setPixelsPerTile(options().tileSize().get());
+
+        if (options().noDataValue().isSet())
+           ts->setNoDataValue(options().noDataValue().get());
+
+        if (options().minValidValue().isSet())
+           ts->setMinValidValue(options().minValidValue().get());
+
+        if (options().maxValidValue().isSet())
+           ts->setMaxValidValue(options().maxValidValue().get());
+
         // report on a manual override profile:
         if ( ts->getProfile() )
         {
@@ -764,20 +777,8 @@ TerrainLayer::createAndOpenTileSource()
         // properties to and fro.
         if ( tileSourceStatus.isOK() )
         {
-            if (options().tileSize().isSet())
-                ts->setPixelsPerTile(options().tileSize().get());
-
             if (!ts->getDataExtents().empty())
                 _dataExtents = ts->getDataExtents();
-
-            if (options().noDataValue().isSet())
-                ts->setNoDataValue(options().noDataValue().get());
-
-            if (options().minValidValue().isSet())
-                ts->setMinValidValue(options().minValidValue().get());
-
-            if (options().maxValidValue().isSet())
-                ts->setMaxValidValue(options().maxValidValue().get());
         }
         else
         {

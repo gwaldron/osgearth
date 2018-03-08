@@ -1,11 +1,8 @@
 version: 1.0.{build}
 shallow_clone: true
 os: Visual Studio 2015
-deploy: off
 
 install:
-  - echo Install!
-  - dir
   - mkdir c:\temp
   - cd c:\temp
   - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/3rdParty.zip'
@@ -17,9 +14,14 @@ install:
   - cd C:\projects\osgearth
 
 build_script:
-  - echo Building osgEarth using appveyor
   - set PATH=%PATH%;c:\temp\3rdParty;c:\temp\OpenSceneGraph-dev;c:\temp\gdal
   - mkdir build
   - cd build
-  - cmake .. -G "Visual Studio 14 2015 Win64" -DWIN32_USE_MP=ON 
-  - cmake --build . --target INSTALL
+  - cmake .. -G "Visual Studio 14 2015 Win64" -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=c:\projects\osgearth\install
+  - cmake --build . --target INSTALL --config Release
+  - cd ..\install
+  - 7z a osgearth.zip *
+
+artifacts:
+  - path: install\osgearth.zip
+    name: osgearth

@@ -13,7 +13,7 @@ install:
   - ps: Start-FileDownload 'http://download.gisinternals.com/sdk/downloads/release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs.zip'    
   - 7z x 3rdParty.zip
   - 7z x OpenSceneGraph-dev.zip
-  - 7z x release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs -ogdal
+  - 7z x release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs.zip -ogdal
   - cd C:\projects\osgearth
 
 build_script:

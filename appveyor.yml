@@ -5,11 +5,13 @@ deploy: off
 
 install:
   - echo Install!
+  - dir
   - mkdir c:\temp
   - cd c:\temp
   - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/3rdParty.zip'
   - 7z x 3rdParty.zip
   - dir
+  - cd C:\projects\osgearth
 
 build_script:
   - echo Building osgEarth using appveyor

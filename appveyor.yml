@@ -1,0 +1,12 @@
+version: 1.0.{build}
+shallow_clone: true
+os: Visual Studio 2015
+deploy: off
+
+install:
+  - echo Install!
+  - cmake
+
+build_script:
+  - echo Building osgEarth
+

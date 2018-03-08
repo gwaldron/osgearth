@@ -35,6 +35,13 @@ flat in int oe_terrain_vertexMarker;
 
 void oe_rexEngine_frag(inout vec4 color)
 {
+    // is this a discard?
+    if ((oe_terrain_vertexMarker & VERTEX_MARKER_DISCARD) != 0)
+    {
+        discard;
+        return;
+    }
+
 #if defined(OE_IS_DEPTH_CAMERA)
     #if defined(OE_IS_SHADOW_CAMERA) && !defined(OE_TERRAIN_CAST_SHADOWS)
         discard;

@@ -318,7 +318,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
             if ( populateTexCoords )
             {
-                // if masked then set textCoord z-value to 0.0
+                // Use the Z coord as a type marker
                 float marker = maskSet ? maskSet->getMarker(nx, ny) : VERTEX_MARKER_GRID;
                 texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }

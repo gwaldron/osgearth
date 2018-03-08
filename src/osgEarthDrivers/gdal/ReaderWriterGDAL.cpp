@@ -1377,7 +1377,10 @@ public:
 
         if (interpolation == INTERP_AVERAGE)
         {        
-            psExtraArg.eResampleAlg = GRIORA_Average;
+            //psExtraArg.eResampleAlg = GRIORA_Average;
+            // for some reason gdal's average resampling produces artifacts occasionally for imagery at higher levels.
+            // for now we'll just use bilinear interpolation under the hood until we can understand what is going on.
+            psExtraArg.eResampleAlg = GRIORA_Bilinear;
         }
         else if (interpolation == INTERP_BILINEAR)
         {         

@@ -8,5 +8,5 @@ install:
   - cmake
 
 build_script:
-  - echo Building osgEarth
+  - echo Building osgEarth using appveyor
 

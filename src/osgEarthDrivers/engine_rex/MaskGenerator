@@ -24,11 +24,11 @@
 #include <osgEarth/TileKey>
 #include <osg/Geometry>
 
-#define VERTEX_MARKER_DISCARD   1.0f    // do not draw
-#define VERTEX_MARKER_GRID      2.0f    // regular grid vertex (not part of mask)
-#define VERTEX_MARKER_PATCH     4.0f    // not subject to morphing
-#define VERTEX_MARKER_BOUNDARY  8.0f    // not subject to elevation texture
-#define VERTEX_MARKER_SKIRT    16.0f    // it's a skirt vertex (bitmask)
+#define VERTEX_MARKER_DISCARD   1    // do not draw
+#define VERTEX_MARKER_GRID      2    // regular grid vertex (not part of mask)
+#define VERTEX_MARKER_PATCH     4    // not subject to morphing
+#define VERTEX_MARKER_BOUNDARY  8    // not subject to elevation texture
+#define VERTEX_MARKER_SKIRT    16    // it's a skirt vertex (bitmask)
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {

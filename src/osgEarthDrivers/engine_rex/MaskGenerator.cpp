@@ -693,7 +693,7 @@ MaskGenerator::getMarker(float nx, float ny) const
 
         if (i > min_i && i < max_i && j > min_j && j < max_j)
         {
-            marker = VERTEX_MARKER_DISCARD; // contained by boundary
+            marker = VERTEX_MARKER_DISCARD; // contained by patch
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
                  (i == max_i && j >= min_j && j <= max_j) ||

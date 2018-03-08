@@ -22,4 +22,4 @@ build_script:
   - mkdir build
   - cd build
   - cmake .. -G "Visual Studio 14 2015 Win64" -DWIN32_USE_MP=ON 
-  - devenv OSGEARTH.sln /Build Release /Project INSTALL
+  - cmake --build . --target INSTALL

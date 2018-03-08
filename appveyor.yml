@@ -10,14 +10,15 @@ install:
   - cd c:\temp
   - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/3rdParty.zip'
   - ps: Start-FileDownload 'https://s3.amazonaws.com/pelican-public/OpenSceneGraph-dev.zip'  
+  - ps: Start-FileDownload 'http://download.gisinternals.com/sdk/downloads/release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs.zip'    
   - 7z x 3rdParty.zip
   - 7z x OpenSceneGraph-dev.zip
+  - 7z x release-1900-x64-gdal-2-2-3-mapserver-7-0-7-libs -ogdal
   - cd C:\projects\osgearth
 
 build_script:
   - echo Building osgEarth using appveyor
-  - set PATH=%PATH%;c:\temp\3rdParty;c:\temp\OpenSceneGraph-dev
+  - set PATH=%PATH%;c:\temp\3rdParty;c:\temp\OpenSceneGraph-dev;c:\temp\gdal
   - mkdir build
   - cd build
   - cmake .. -G "Visual Studio 14 2015 Win64" -DWIN32_USE_MP=ON 
-

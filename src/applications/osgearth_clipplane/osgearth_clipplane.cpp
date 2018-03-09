@@ -21,15 +21,10 @@
 */
 
 #include <osgViewer/Viewer>
-#include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/VirtualProgram>
+#include <osgEarthUtil/HorizonClipPlane>
 #include <osgEarth/MapNode>
-#include <osgEarth/CullingUtils>
-#include <osg/ClipNode>
-#include <osg/ClipPlane>
 
 #define LC "[viewer] "
 
@@ -54,13 +49,6 @@ usage(const char* name)
     return 0;
 }
 
-// Vertex shader to activate clip planes in GLSL:
-const char* clipvs =
-    "#version " GLSL_VERSION_STR "\n"
-    "void oe_clip_vert(inout vec4 vertex_view) { \n"
-    "   gl_ClipVertex = vertex_view; \n"
-    "}\n";
-
 int
 main(int argc, char** argv)
 {
@@ -72,9 +60,6 @@ main(int argc, char** argv)
 
     // set up a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
-
-    // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
@@ -86,37 +71,27 @@ main(int argc, char** argv)
         osg::Group* root = new osg::Group();
         root->addChild( node );
         viewer.setSceneData( root );
-
-        // Install a ClipNode. The ClipNode establishes positional state so it
-        // doesn't need to parent anything. In this case it needs to be at the
-        // top of the scene graph since our clip plane calculator assumes 
-        // you're in world space.
-        osg::ClipNode* clipNode = new osg::ClipNode();
-        root->addChild( clipNode );
         
-        // By default, the clip node will activate any clip planes you add to it
-        // for its subgraph. Our clip node doesn't parent anything, but we include
-        // this to demonstrate how you would disable that:
-        clipNode->getOrCreateStateSet()->setMode(GL_CLIP_PLANE0, 0);
-        
-        // Create a ClipPlane we will use to clip to the visible horizon:
-        osg::ClipPlane* cp = new osg::ClipPlane();
-        clipNode->addClipPlane( cp );
+        // Grab the map node.
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::get(node);
 
-        // This cull callback will recalcuate the position of the clipping plane
-        // each frame based on the camera.
-        const osgEarth::SpatialReference* srs = osgEarth::MapNode::get(node)->getMapSRS();
-        clipNode->addCullCallback( new ClipToGeocentricHorizon(srs, cp) );
+        // Create a horizon clip plane and install it on the map node.
+        HorizonClipPlane* hcp = new HorizonClipPlane();
+        mapNode->addCullCallback(hcp);
 
-        // We also need a shader that will activate clipping in GLSL.
-        VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());
-        vp->setFunction("oe_clip_vert", clipvs, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
+        // Optional: set a custom clip plane number. Default is zero.
+        // If you call this, you must do so before calling installShaders.
+        hcp->setClipPlaneNumber(0u);
+
+        // Next, install the shaders somewhere. Usually this is the 
+        // same node on which you installed the callback.
+        hcp->installShaders(mapNode->getOrCreateStateSet());
 
         // Now everything is set up. The last thing to do is: anywhere in your
         // scene graph that you want to activate the clipping plane, set the 
         // corresponding mode on, like so:
         //
-        // node->getOrCreateStateSet()->setMode(GL_CLIP_PLANE0, osg::StateAttribute::ON);
+        // node->getOrCreateStateSet()->setMode(GL_CLIP_DISTANCE0, osg::StateAttribute::ON);
         //
         // If you are using symbology, you can use RenderSymbol::clipPlane(). Or in 
         // the earth file, for example:

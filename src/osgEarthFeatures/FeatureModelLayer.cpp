@@ -146,6 +146,18 @@ FeatureModelLayer::setFeatureSource(FeatureSource* source)
     }
 }
 
+void
+FeatureModelLayer::setCreateFeatureNodeFactoryCallback(CreateFeatureNodeFactoryCallback* value)
+{
+    _createFactoryCallback = value;
+}
+
+FeatureModelLayer::CreateFeatureNodeFactoryCallback*
+FeatureModelLayer::getCreateFeatureNodeFactoryCallback() const
+{
+    return _createFactoryCallback.get();
+}
+
 osg::Node*
 FeatureModelLayer::getOrCreateNode()
 {
@@ -229,7 +241,7 @@ FeatureModelLayer::create()
             _session->setFeatureSource(_featureSource.get());
 
             // the factory builds nodes for the model graph:
-            FeatureNodeFactory* nodeFactory = new GeomFeatureNodeFactory(options());
+            FeatureNodeFactory* nodeFactory = createFeatureNodeFactory();
 
             // group that will build all the feature geometry:
             FeatureModelGraph* fmg = new FeatureModelGraph(
@@ -252,4 +264,19 @@ FeatureModelLayer::create()
             setStatus(Status(Status::ConfigurationError));
         }
     }
+}
+
+FeatureNodeFactory*
+FeatureModelLayer::createFeatureNodeFactoryImplementation() const
+{
+    return new GeomFeatureNodeFactory(options());
+}
+
+FeatureNodeFactory*
+FeatureModelLayer::createFeatureNodeFactory()
+{
+    if (_createFactoryCallback.valid())
+        return _createFactoryCallback->createFeatureNodeFactory(options());
+    else
+        return createFeatureNodeFactoryImplementation();
 }

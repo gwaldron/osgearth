@@ -26,3 +26,9 @@ build_script:
 artifacts:
   - path: install\osgearth.zip
     name: osgearth
+
+notifications:
+  - provider: Slack
+    incoming_webhook:
+      secure: zkwiuuSbzeT16LPK7+7P6p87LHoC89MVonn7RXtmp0r3Zt1kcnb69NgZI/NmAyvhZh+4fZWWj+zfiv6bzIw1Hm/W8b8wEie81Ih4aLUqBZA=
+

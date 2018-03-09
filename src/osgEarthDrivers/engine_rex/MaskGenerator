@@ -24,11 +24,11 @@
 #include <osgEarth/TileKey>
 #include <osg/Geometry>
 
-#define MASK_MARKER_DISCARD   1.0f    // do not draw
-#define MASK_MARKER_GRID      2.0f    // regular grid vertex (not part of mask)
-#define MASK_MARKER_PATCH     4.0f    // not subject to morphing
-#define MASK_MARKER_BOUNDARY  8.0f    // not subject to elevation texture
-#define MASK_MARKER_SKIRT    16.0f    // it's a skirt vertex (bitmask)
+#define VERTEX_MARKER_DISCARD   1.0f    // do not draw
+#define VERTEX_MARKER_GRID      2.0f    // regular grid vertex (not part of mask)
+#define VERTEX_MARKER_PATCH     4.0f    // not subject to morphing
+#define VERTEX_MARKER_BOUNDARY  8.0f    // not subject to elevation texture
+#define VERTEX_MARKER_SKIRT    16.0f    // it's a skirt vertex (bitmask)
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -79,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
            return (VERTEX_MARKER_DISCARD & (int)texCoord.z()) != 0;
         }
 
-        //! returns once of the MASK_MARKER_* defines for the given NDC location
+        //! returns once of the VERTEX_MARKER_* defines for the given NDC location
         float getMarker(float nx, float ny) const;
 
         //! Gets the LL and UR corners of the "patch rectangle" in NDC space

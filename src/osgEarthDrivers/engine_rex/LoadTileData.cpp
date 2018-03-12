@@ -138,12 +138,14 @@ namespace
     // when the ICO is active.
     struct ModelCompilingAttribute : public osg::Texture2D
     {
-        osg::ref_ptr<TerrainTileModel> _dataModel;
+        osg::observer_ptr<TerrainTileModel> _dataModel;
         
         // the ICO calls apply() directly instead of compileGLObjects
         void apply(osg::State& state) const
         {
-            _dataModel->compileGLObjects(state);
+            osg::ref_ptr<TerrainTileModel> dataModel;
+            if (_dataModel.lock(dataModel))
+                dataModel->compileGLObjects(state);
         }
 
         // no need to override release or resize since this is a temporary object

@@ -43,7 +43,11 @@ namespace
     struct MyProgress : public ProgressCallback {
         LoadTileData* _req;
         MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() { return _req->isIdle(); }
+        bool isCanceled() {
+            if (_canceled == false && _req->isIdle())
+                _canceled = true;
+            return ProgressCallback::isCanceled();
+        }
     };
 }
 
@@ -79,13 +83,13 @@ LoadTileData::invoke()
         tilenode->getKey(),
         _filter,
         progress.get() );
-}
 
-
-bool
-LoadTileData::isCanceled()
-{
-    return isIdle();
+    // if the operation was canceled, set the request to idle and delete any existing data.
+    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    {
+        _dataModel = 0L;
+        setState(Request::IDLE);
+    }
 }
 
 
@@ -138,12 +142,14 @@ namespace
     // when the ICO is active.
     struct ModelCompilingAttribute : public osg::Texture2D
     {
-        osg::ref_ptr<TerrainTileModel> _dataModel;
-
+        osg::observer_ptr<TerrainTileModel> _dataModel;
+        
         // the ICO calls apply() directly instead of compileGLObjects
         void apply(osg::State& state) const
         {
-            _dataModel->compileGLObjects(state);
+            osg::ref_ptr<TerrainTileModel> dataModel;
+            if (_dataModel.lock(dataModel))
+                dataModel->compileGLObjects(state);
         }
 
         // no need to override release or resize since this is a temporary object

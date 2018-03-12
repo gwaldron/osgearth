@@ -29,6 +29,7 @@ SET(HEADERS_ROOT
     FractalElevationLayer
     GARSGraticule
     GeodeticGraticule
+    HorizonClipPlane
     HTM
     LatLongFormatter
     LineOfSight
@@ -116,6 +117,7 @@ SET(SOURCES_ROOT
     FractalElevationLayer.cpp
     GARSGraticule.cpp
     GeodeticGraticule.cpp
+    HorizonClipPlane.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp

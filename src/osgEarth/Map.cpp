@@ -303,6 +303,8 @@ Map::endUpdate()
 void
 Map::addLayer(Layer* layer)
 {
+    // Store in a ref_ptr for scope to ensure callbacks don't accidentally delete while adding
+    osg::ref_ptr<Layer> layerRef( layer );
     osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {

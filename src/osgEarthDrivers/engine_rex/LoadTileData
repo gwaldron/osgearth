@@ -28,7 +28,7 @@
 #include <osgEarth/Progress>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
-{    
+{
     class LoadTileData : public Loader::Request
     {
     public:
@@ -52,7 +52,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;
-        EngineContext* _context;
+        osg::observer_ptr<EngineContext> _context;
         osg::ref_ptr<TerrainTileModel> _dataModel;
         TileRenderModel _renderModel;
         CreateTileModelFilter _filter;

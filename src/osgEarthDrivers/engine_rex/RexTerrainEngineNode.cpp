@@ -947,7 +947,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                         osg::Vec3& tileCoord = (*tileCoords)[i];
 
                         // Skip verts on a masking boundary since their elevations are hard-wired.
-                        if (tileCoord.z() != VERTEX_MARKER_BOUNDARY)
+                        if ((VERTEX_MARKER_BOUNDARY & (int)tileCoord.z()) == 0) // if BOUNARY bit not set
                         {
                             osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
                             n = n * scaleBias;

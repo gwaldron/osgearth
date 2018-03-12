@@ -814,9 +814,12 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
     {
         /*if (request_bind_unbind)*/ state.bindElementBufferObject(ebo);
 
-        glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+        if (_drawElements->getNumIndices() > 0u)
+        {
+            glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), (const GLvoid *)(ebo->getOffset(_drawElements->getBufferIndex())));
+        }
 
-        if (_maskElements.valid())
+        if (_maskElements.valid() && _maskElements->getNumIndices() > 0u)
         {
             glDrawElements(primitiveType, _maskElements->getNumIndices(), _maskElements->getDataType(), (const GLvoid *)(ebo->getOffset(_maskElements->getBufferIndex())));
         }
@@ -825,9 +828,12 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
     }
     else
     {
-        glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
+        if (_drawElements->getNumIndices() > 0u)
+        {
+            glDrawElements(primitiveType, _drawElements->getNumIndices(), _drawElements->getDataType(), _drawElements->getDataPointer());
+        }
 
-        if (_maskElements.valid())
+        if (_maskElements.valid() && _maskElements->getNumIndices() > 0u)
         {
             glDrawElements(primitiveType, _maskElements->getNumIndices(), _maskElements->getDataType(), _maskElements->getDataPointer());
         }

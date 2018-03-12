@@ -34,6 +34,8 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
 
+    class FeatureNodeFactory;
+
     /**
      * Serializable options to configure a FeatureModelLayer
      */
@@ -69,24 +71,36 @@ namespace osgEarth { namespace Features
     public:
         META_Layer(osgEarth, FeatureModelLayer, FeatureModelLayerOptions);
 
-        // Create a feature layer with defaults. Use options() to set it up before adding
-        // the layer to a Map.
+        //! Create a feature layer with defaults. Use options() to set it up before adding
+        //! the layer to a Map.
         FeatureModelLayer();
 
-        // Create a layer with initial options.
+        //! Create a layer with initial options.
         FeatureModelLayer(const FeatureModelLayerOptions& options);
 
-        // Options used to initialize this layer.
+        //! Options used to initialize this layer.
         const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
 
-        // Feature source layer from which to get a feature source
+        //! Feature source layer from which to get a feature source. Use this OR setFeatureSource
         void setFeatureSourceLayer(FeatureSourceLayer* layer);
         
-        // the feature source from which to read flattening geometry
+        //! The feature source from which to read geometry. Use this OR setFeatureLayer
         void setFeatureSource(FeatureSource* fs);
 
-        // access to scene graph callbacks
+        //! Access to scene graph callbacks
         SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
+
+    public:
+        class CreateFeatureNodeFactoryCallback : public osg::Referenced {
+        public:
+            virtual FeatureNodeFactory* createFeatureNodeFactory(const FeatureModelLayerOptions&) =0;
+        };
+
+        //! Callback that will create a new FeatureNodeFactory for this layer to use
+        //! to transform feature data into OSG scene graphs
+        void setCreateFeatureNodeFactoryCallback(CreateFeatureNodeFactoryCallback* callback);
+        CreateFeatureNodeFactoryCallback* getCreateFeatureNodeFactoryCallback() const;
+
 
     public: // Layer
 
@@ -114,13 +128,19 @@ namespace osgEarth { namespace Features
 
         virtual ~FeatureModelLayer();
 
+        //! You can override this as an alternative to setting the CreateFeatureNodeFactoryCallback
+        virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
+
     private:
         osg::ref_ptr<FeatureSource> _featureSource;
         LayerListener<FeatureModelLayer, FeatureSourceLayer> _featureSourceLayerListener;
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         bool _graphDirty;
+        osg::ref_ptr<CreateFeatureNodeFactoryCallback> _createFactoryCallback;
+        
         void create();
+        FeatureNodeFactory* createFeatureNodeFactory();
 
         osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
     };

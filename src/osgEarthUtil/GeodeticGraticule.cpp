@@ -274,6 +274,9 @@ GeodeticGraticule::rebuild()
     }
 
     setVisible(getVisible());
+
+    _labelingEngine = new GeodeticLabelingEngine(_mapNode->getMapSRS());
+    _root->addChild(_labelingEngine);
 }
 
 #define RESOLUTION_UNIFORM "oe_GeodeticGraticule_resolution"

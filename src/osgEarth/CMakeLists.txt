@@ -90,6 +90,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLOD
     ElevationPool
     ElevationQuery
+    EllipsoidIntersector
     Endian
     Export
     Extension
@@ -266,6 +267,7 @@ set(TARGET_SRC
     ElevationLOD.cpp
     ElevationPool.cpp
     ElevationQuery.cpp
+    EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp

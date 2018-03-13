@@ -373,6 +373,9 @@ GARSGraticule::rebuild()
 
     _root->removeChildren(0, _root->getNumChildren());
     build30MinCells();
+
+    _labelingEngine = new GeodeticLabelingEngine(SpatialReference::create("wgs84"));
+    _root->addChild(_labelingEngine);
 }
 
 

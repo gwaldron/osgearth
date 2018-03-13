@@ -522,9 +522,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                     if (req.valid() && req->isRunning())
                         return new RequestResultNode(req.release());
                     else
-                        return ReadResult::FILE_NOT_FOUND;
+                        return ReadResult::FILE_LOADED; // fail silenty
                 }
-                return ReadResult::FILE_NOT_FOUND;
+                return ReadResult::ERROR_IN_READING_FILE;
             }
             else
             {

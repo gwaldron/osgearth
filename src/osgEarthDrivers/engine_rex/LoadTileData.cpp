@@ -74,13 +74,13 @@ LoadTileData::invoke()
     if (_mapFrame.needsSync())
         _mapFrame.sync();
 
-    // Only use a progress callback is cancelation is enabled.    
+    // Only use a progress callback is cancelation is enabled.
     osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
         _mapFrame,
-        tilenode->getKey(),           
+        tilenode->getKey(),
         _filter,
         progress.get() );
 
@@ -97,17 +97,21 @@ LoadTileData::invoke()
 void
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
+    osg::ref_ptr<EngineContext> context;
+    if (!_context.lock(context))
+        return;
+
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {
         // ensure it's in sync with the map revision (not out of date):
-        if (_dataModel->getRevision() == _context->getMap()->getDataModelRevision())
+        if (context->getMap() != NULL && _dataModel->getRevision() == context->getMap()->getDataModelRevision())
         {
             // ensure the tile node hasn't expired:
             osg::ref_ptr<TileNode> tilenode;
             if ( _tilenode.lock(tilenode) )
             {
-                const RenderBindings& bindings = _context->getRenderBindings();
+                const RenderBindings& bindings = context->getRenderBindings();
 
                 // Merge the new data into the tile.
                 tilenode->merge(_dataModel.get(), bindings);
@@ -162,9 +166,14 @@ osg::StateSet*
 LoadTileData::createStateSet() const
 {
     osg::ref_ptr<osg::StateSet> out;
-    
-    if (_dataModel.valid() &&
-        _dataModel->getRevision() == _context->getMap()->getDataModelRevision())
+
+    osg::ref_ptr<EngineContext> context;
+    if (!_context.lock(context))
+        return NULL;
+
+    osg::ref_ptr<const osgEarth::Map> map = context->getMap();
+    if (_dataModel.valid() && map.valid() &&
+        _dataModel->getRevision() == map->getDataModelRevision())
     {
         // This stateset contains a "fake" attribute that the ICO will
         // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.

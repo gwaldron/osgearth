@@ -102,11 +102,8 @@ namespace osgEarth { namespace Util
 
     private:
 
-        void setUpDefaultStyles();
         void rebuild();
         void build30MinCells();
-
-        GeodeticLabelingEngine* _labelingEngine;
 
         UID _uid;
         osg::ref_ptr<const Profile> _profile;

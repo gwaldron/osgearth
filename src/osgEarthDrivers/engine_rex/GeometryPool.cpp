@@ -600,6 +600,8 @@ SharedGeometry::SharedGeometry()
 {
     setSupportsDisplayList(false);
     _supportsVertexBufferObjects = true;
+    _ptype.resize(64u);
+    _ptype.setAllElementsTo(GL_TRIANGLES);
 }
 
 SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copyop):
@@ -627,7 +629,6 @@ SharedGeometry::empty() const
         (_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
 }
 
-
 #ifdef SUPPORTS_VAO
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)
 osg::VertexArrayState* SharedGeometry::createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const
@@ -652,6 +653,7 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
     }
     if (texUnits)
         vas->assignTexCoordArrayDispatcher(texUnits);
+
     if (state.useVertexArrayObject(_useVertexArrayObject))
     {
         vas->generateVertexArrayObject();
@@ -660,62 +662,6 @@ osg::VertexArrayState* SharedGeometry::createVertexArrayState(osg::RenderInfo& r
     return vas;
 }
 #endif
-
-void SharedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
-{
-    if (!_vertexArray)
-        return;
-
-    if (_vertexArray->getVertexBufferObject())
-    {
-        osg::State& state = *renderInfo.getState();
-        unsigned int contextID = state.getContextID();
-        osg::GLExtensions* extensions = state.get<osg::GLExtensions>();
-        if (!extensions) return;
-
-        osg::BufferObject* vbo = _vertexArray->getVertexBufferObject();
-        osg::GLBufferObject* vbo_glBufferObject = vbo->getOrCreateGLBufferObject(contextID);
-        if (vbo_glBufferObject && vbo_glBufferObject->isDirty())
-        {
-            // OSG_NOTICE<<"Compile buffer "<<glBufferObject<<std::endl;
-            vbo_glBufferObject->compileBuffer();
-            extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        }
-
-        osg::BufferObject* ebo = _drawElements->getElementBufferObject();
-        osg::GLBufferObject* ebo_glBufferObject = ebo->getOrCreateGLBufferObject(contextID);
-        if (ebo_glBufferObject && vbo_glBufferObject->isDirty())
-        {
-            // OSG_NOTICE<<"Compile buffer "<<glBufferObject<<std::endl;
-            ebo_glBufferObject->compileBuffer();
-            extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-        }
-
-#ifdef SUPPORTS_VAO
-        if (state.useVertexArrayObject(_useVertexArrayObject))
-        {
-            osg::VertexArrayState* vas = 0;
-
-            _vertexArrayStateList[contextID] = vas = createVertexArrayState(renderInfo);
-
-            osg::State::SetCurrentVertexArrayStateProxy setVASProxy(state, vas);
-
-#if OSG_MIN_VERSION_REQUIRED(3,5,6)
-            state.bindVertexArrayObject(vas);
-#else
-            vas->bindVertexArrayObject();
-#endif
-
-            if (vbo_glBufferObject) vas->bindVertexBufferObject(vbo_glBufferObject);
-            if (ebo_glBufferObject) vas->bindElementBufferObject(ebo_glBufferObject);
-        }
-#endif
-    }
-    else
-    {
-        Drawable::compileGLObjects(renderInfo);
-    }
-}
 
 void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
 {
@@ -740,7 +686,7 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
 }
 
 // called from DrawTileCommand
-void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) const
+void SharedGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::State& state = *renderInfo.getState();
     
@@ -756,10 +702,9 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
 
 #ifdef SUPPORTS_VAO
     osg::VertexArrayState* vas = state.getCurrentVertexArrayState();
+    
     if (!state.useVertexArrayObject(_useVertexArrayObject) || vas->getRequiresSetArrays())
     {
-        // OSG_NOTICE<<"   sending vertex arrays vas->getRequiresSetArrays()="<<vas->getRequiresSetArrays()<<std::endl;
-
         vas->lazyDisablingOfVertexAttributes();
 
         // set up arrays
@@ -807,6 +752,8 @@ void SharedGeometry::render(GLenum primitiveType, osg::RenderInfo& renderInfo) c
 #else
     bool request_bind_unbind = true;
 #endif
+
+    GLenum primitiveType = _ptype[state.getContextID()];
 
     osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
 

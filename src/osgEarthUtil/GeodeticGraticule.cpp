@@ -553,7 +553,11 @@ GeodeticGraticule::updateLabels()
             extents.push_back( cdata._viewExtent );
         }
 
+
         _labelingEngine->setResolution(cdata._resolution);
+
+        bool showSideLabels = cdata._resolution < 0.03;
+        _labelingEngine->setNodeMask(showSideLabels ? ~0u : 0);
 
         double resDegrees = cdata._resolution * 180.0;
         // We want half the resolution so the labels don't appear as often as the grid lines
@@ -572,7 +576,7 @@ GeodeticGraticule::updateLabels()
 
 
         // Only show the centered labels if the side labels aren't visible.
-        if (!_labelingEngine->getVisible(i->first))
+        if (!showSideLabels || !_labelingEngine->getVisible(i->first))
         {
             bool done = false;
             for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
@@ -621,10 +625,6 @@ GeodeticGraticule::updateLabels()
                     }
                 }
             }
-        }
-        else
-        {
-            OE_NOTICE << "Side labels not visible" << std::endl;
         }
     }
 }

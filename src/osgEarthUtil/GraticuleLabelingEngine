@@ -44,6 +44,8 @@ namespace osgEarth { namespace Util
         //! Construct a new labeling engine with the map's SRS
         GraticuleLabelingEngine(const SpatialReference* srs);
 
+        bool getVisible(osg::Camera* camera);
+
     public: // osg::Node
         void traverse(osg::NodeVisitor& nv);
 
@@ -52,8 +54,14 @@ namespace osgEarth { namespace Util
 
         struct CameraData
         {
+            CameraData():
+                visible(false)
+            {
+            }
+
             LabelNodeVector xLabels;
             LabelNodeVector yLabels;
+            bool visible;
         };
         
         bool cullTraverse(osgUtil::CullVisitor& nv, CameraData& data);

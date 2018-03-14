@@ -32,9 +32,20 @@ using namespace osgEarth::Util;
 //........................................................................
 
 GeodeticLabelingEngine::GeodeticLabelingEngine(const SpatialReference* srs) :
-GraticuleLabelingEngine(srs)
+GraticuleLabelingEngine(srs),
+_resolution(10.0 / 180.0)
 {
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS | LatLongFormatter::USE_PREFIXES);
+}
+
+double GeodeticLabelingEngine::getResolution() const
+{
+    return _resolution;
+}
+
+void GeodeticLabelingEngine::setResolution(double resolution)
+{
+    _resolution = resolution;
 }
 
 std::string
@@ -54,6 +65,7 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
     ul.fromWorld(wgs84, UL_world);
     lr.fromWorld(wgs84, LR_world);
 
+    double resDegrees = _resolution * 180.0;
 
     double minLon = osg::minimum(osg::minimum(ll.x(), ul.x()), lr.x());
     double maxLon = osg::maximum(osg::maximum(ll.x(), ul.x()), lr.x());
@@ -61,12 +73,18 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
     double minLat = osg::minimum(osg::minimum(ll.y(), ul.y()), lr.y());
     double maxLat = osg::maximum(osg::maximum(ll.y(), ul.y()), lr.y());
 
-    unsigned int spacing = 1;
 
+    int minLonIndex = floor(((minLon + 180.0) / resDegrees));
+    int maxLonIndex = ceil(((maxLon + 180.0) / resDegrees));
+
+    int minLatIndex = floor(((minLat + 90) / resDegrees));
+    int maxLatIndex = ceil(((maxLat + 90) / resDegrees));
+
+    // Generate horizontal labels
     unsigned int xi = 0;
-    for (int x = floor(minLon); x <= ceil(maxLon); x += spacing)
+    for (int i = minLonIndex; i <= maxLonIndex; i++)
     {
-        GeoPoint p(wgs84, x, minLat, 0, ALTMODE_ABSOLUTE);
+        GeoPoint p(wgs84, -180.0 + (double)i * resDegrees, minLat, 0, ALTMODE_ABSOLUTE);
         std::string text = getText(p, false);
         window.clampToBottom(p); // also xforms to geographic
         data.xLabels[xi]->setPosition(p);
@@ -75,11 +93,11 @@ GeodeticLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_
         xi++;
         if (xi >= data.xLabels.size()) break;
     }
-    
+
     unsigned int yi = 0;
-    for (int y = floor(minLat); y <= ceil(maxLat); y += spacing)
+    for (int i = minLatIndex; i <= maxLatIndex; i++)
     {
-        GeoPoint p(wgs84, minLon, y, 0, ALTMODE_ABSOLUTE);
+        GeoPoint p(wgs84, minLon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
         std::string text = getText(p, true);
         window.clampToLeft(p); // also xforms to geographic
         data.yLabels[yi]->setPosition(p);

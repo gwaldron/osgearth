@@ -85,6 +85,12 @@ GraticuleLabelingEngine::GraticuleLabelingEngine(const SpatialReference* srs)
     yText->declutter() = false;
 }
 
+bool GraticuleLabelingEngine::getVisible(osg::Camera* camera)
+{
+    CameraData& data = _cameraDataMap.get(camera);
+    return data.visible;
+}
+
 void
 GraticuleLabelingEngine::AcceptCameraData::operator()(GraticuleLabelingEngine::CameraData& data)
 {
@@ -106,6 +112,7 @@ GraticuleLabelingEngine::traverse(osg::NodeVisitor& nv)
             // Find the data corresponding to this camera:
             CameraData& data = _cameraDataMap.get(cv->getCurrentCamera());
             bool visible = cullTraverse(*cv, data);
+            data.visible = visible;
             if (visible)
             {
                 // traverse all the labels for this camera:

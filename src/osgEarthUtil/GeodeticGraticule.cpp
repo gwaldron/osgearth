@@ -553,11 +553,12 @@ GeodeticGraticule::updateLabels()
             extents.push_back( cdata._viewExtent );
         }
 
+        _labelingEngine->setResolution(cdata._resolution);
+
         double resDegrees = cdata._resolution * 180.0;
         // We want half the resolution so the labels don't appear as often as the grid lines
         resDegrees *= 2.0;
 
-    
         // Hide all the labels
         for (unsigned int i = 0; i < cdata._labelPool.size(); i++)
         {
@@ -570,52 +571,60 @@ GeodeticGraticule::updateLabels()
         unsigned int labelIndex = 0;
 
 
-        bool done = false;
-        for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
+        // Only show the centered labels if the side labels aren't visible.
+        if (!_labelingEngine->getVisible(i->first))
         {
-            GeoExtent extent = extents[extentIndex];
-
-            int minLonIndex = floor(((extent.xMin() + 180.0)/resDegrees));
-            int maxLonIndex = ceil(((extent.xMax() + 180.0)/resDegrees));
-
-            int minLatIndex = floor(((extent.yMin() + 90)/resDegrees));
-            int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
-
-            // Generate horizontal labels
-            for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
+            bool done = false;
+            for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
             {
-                GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
-                LabelNode* label = cdata._labelPool[labelIndex++].get();
+                GeoExtent extent = extents[extentIndex];
 
-                label->setNodeMask(~0u);
-                label->setPosition(point);
-                std::string text = getText( point, false);
-                label->setText( text );
-                if (labelIndex == cdata._labelPool.size() - 1)
+                int minLonIndex = floor(((extent.xMin() + 180.0) / resDegrees));
+                int maxLonIndex = ceil(((extent.xMax() + 180.0) / resDegrees));
+
+                int minLatIndex = floor(((extent.yMin() + 90) / resDegrees));
+                int maxLatIndex = ceil(((extent.yMax() + 90) / resDegrees));
+
+                // Generate horizontal labels
+                for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
                 {
-                    done = true;
+                    GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
+                    LabelNode* label = cdata._labelPool[labelIndex++].get();
+
+                    label->setNodeMask(~0u);
+                    label->setPosition(point);
+                    std::string text = getText(point, false);
+                    label->setText(text);
+                    if (labelIndex == cdata._labelPool.size() - 1)
+                    {
+                        done = true;
+                    }
+                }
+
+                // Generate the vertical labels
+                for (int i = minLatIndex; i <= maxLatIndex && !done; i++)
+                {
+                    GeoPoint point(srs, cdata._lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+                    // Skip drawing labels at the poles
+                    if (osg::equivalent(osg::absolute(point.y()), 90.0, 0.1))
+                    {
+                        continue;
+                    }
+                    LabelNode* label = cdata._labelPool[labelIndex++].get();
+                    label->setNodeMask(~0u);
+                    label->setPosition(point);
+                    std::string text = getText(point, true);
+                    label->setText(text);
+                    if (labelIndex == cdata._labelPool.size() - 1)
+                    {
+                        done = true;
+                    }
                 }
             }
-
-            // Generate the vertical labels
-            for (int i = minLatIndex; i <= maxLatIndex && !done; i++)
-            {
-                GeoPoint point(srs, cdata._lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
-                // Skip drawing labels at the poles
-                if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
-                {
-                    continue;
-                }
-                LabelNode* label = cdata._labelPool[labelIndex++].get();
-                label->setNodeMask(~0u);
-                label->setPosition(point);
-                std::string text = getText( point, true);
-                label->setText( text );
-                if (labelIndex == cdata._labelPool.size() - 1)
-                {
-                    done = true;
-                }
-            }
+        }
+        else
+        {
+            OE_NOTICE << "Side labels not visible" << std::endl;
         }
     }
 }

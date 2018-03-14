@@ -47,8 +47,13 @@ namespace osgEarth { namespace Util
 
         virtual bool updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world, osg::Vec3d& LR_world, ClipSpace& window, CameraData& data);
 
+        double getResolution() const;
+        void setResolution(double resolution);
+
     protected:
         std::string getText(const GeoPoint& location, bool lat);
+
+        double _resolution;
 
         osg::ref_ptr<LatLongFormatter> _formatter;
     };

@@ -522,9 +522,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                     if (req.valid() && req->isRunning())
                         return new RequestResultNode(req.release());
                     else
-                        return ReadResult::FILE_LOADED; // fail silenty
+                        return ReadResult::FILE_LOADED; // fail silenty (cancelation)
                 }
-                return ReadResult::ERROR_IN_READING_FILE;
+
+                // fail silently - this could happen if the Loader disappears from
+                // underneath, if say the terrain is destroyed
+                return ReadResult::FILE_LOADED;
             }
             else
             {

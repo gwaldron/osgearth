@@ -590,6 +590,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
         }
     }
 
+    while (args.find("--define") >= 0)
+    {
+        std::string name;
+        if (args.read("--define", name))
+        {
+            mapNode->getOrCreateStateSet()->setDefine(name);
+        }
+    }
+
     // Map inspector:
     if (args.read("--inspect"))
     {
@@ -705,6 +714,7 @@ MapNodeHelper::usage() const
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
+        << "  --define [name]               : install a shader #define\n"
         << "  --path [file]                 : load and playback an animation path\n"
         << "  --extension [name]            : loads a named extension\n";
 }

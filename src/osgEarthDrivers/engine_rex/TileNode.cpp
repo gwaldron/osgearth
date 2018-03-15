@@ -815,7 +815,16 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                     if (mySampler._texture.get() != parentSampler._texture.get() ||
                         mySampler._matrix != newMatrix)
                     {
-                        if (parentSampler._texture.valid())
+                        const TerrainLayer* terrainLayer = dynamic_cast<const TerrainLayer*>(parentPass.visibleLayer());
+                        bool keyInLegalRange = true;
+                        // If this is a terrain layer, make sure it's in the legal range so we don't inherit a parent
+                        // when we shouldn't be displaying it b/c we are a level higher than it's configured max level.
+                        if (terrainLayer)
+                        {
+                            keyInLegalRange = terrainLayer->isKeyInLegalRange(this->getKey());
+                        }
+
+                        if (parentSampler._texture.valid() && (!terrainLayer || keyInLegalRange))
                         {
                             // set the parent-color texture to the parent's color texture
                             // and scale/bias the matrix.

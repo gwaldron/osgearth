@@ -5,7 +5,7 @@
 #pragma vp_location   tess_eval
 
 // osgEarth terrain is always CCW winding
-layout(triangles, fractional_odd_spacing, ccw) in;
+layout(triangles, equal_spacing, ccw) in;
 
 // Internal helpers:
 void VP_Interpolate3();

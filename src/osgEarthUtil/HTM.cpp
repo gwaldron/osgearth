@@ -257,7 +257,7 @@ HTMNode::split()
     
     if (_settings._storeObjectsInLeavesOnly == true)
     {
-        // distibute the data amongst the children
+        // distribute the data amongst the children
         for(osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i)
         {
             osg::Node* node = i->get();        

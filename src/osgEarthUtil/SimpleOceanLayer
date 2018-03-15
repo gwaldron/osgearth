@@ -33,7 +33,7 @@ namespace osgEarth { namespace Util
     using namespace osgEarth::Symbology;
 
     /**
-     * Serializable configuation options for the SimpleOceanLayer.
+     * Serializable configuration options for the SimpleOceanLayer.
      */
     class OSGEARTHUTIL_EXPORT SimpleOceanLayerOptions : public VisibleLayerOptions
     {

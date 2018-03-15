@@ -50,7 +50,7 @@ namespace
         MyGroup(GeodeticGraticule* grat, osg::ref_ptr<MapNode>& mapNode)
             : _grat(grat), _mapNode(mapNode)
         {
-            // Require an update traversal to udpate the labels.
+            // Require an update traversal to update the labels.
             setNumChildrenRequiringUpdateTraversal(1);
         }
 

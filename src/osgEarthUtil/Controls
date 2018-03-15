@@ -574,11 +574,11 @@ namespace osgEarth { namespace Util { namespace Controls
         void setChildSpacing( float value );
         float childSpacing() const { return _spacing; }
 
-        // horiz alignment to set on children (that do not already have alignment explicity set)
+        // horiz alignment to set on children (that do not already have alignment explicitly set)
         void setChildHorizAlign( Alignment align );
         const optional<Alignment>& childHorizAlign() const { return _childhalign; }
 
-        // vert alignment to set on children (that do not already have alignment explicity set)
+        // vert alignment to set on children (that do not already have alignment explicitly set)
         void setChildVertAlign( Alignment align );
         const optional<Alignment>& childVertAlign() const { return _childvalign; }
 

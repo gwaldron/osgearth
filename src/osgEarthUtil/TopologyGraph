@@ -36,8 +36,8 @@ namespace osgEarth { namespace Util
 {
 #define TOPOLOGY_TOLERANCE 0.0
 
-    //! Stores the noded topology of a model with unique verticies and edge definitions.
-    //! The verticies are stored rotated into the XY plane so that we can properly find
+    //! Stores the noded topology of a model with unique vertices and edge definitions.
+    //! The vertices are stored rotated into the XY plane so that we can properly find
     //! the "bottom-most" vert and walk the boundary.
     class OSGEARTHUTIL_EXPORT TopologyGraph : public osg::Object
     {

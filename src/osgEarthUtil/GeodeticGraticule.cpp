@@ -536,9 +536,9 @@ GeodeticGraticule::updateLabels()
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
     
     Threading::ScopedMutexLock lock(_cameraDataMapMutex);
-    for (CameraDataMap::iterator i = _cameraDataMap.begin(); i != _cameraDataMap.end(); ++i)
+    for (CameraDataMap::iterator itr = _cameraDataMap.begin(); itr != _cameraDataMap.end(); ++itr)
     {
-        CameraData& cdata = i->second;
+        CameraData& cdata = itr->second;
 
         std::vector< GeoExtent > extents;
         if (cdata._viewExtent.crossesAntimeridian())
@@ -576,7 +576,7 @@ GeodeticGraticule::updateLabels()
 
 
         // Only show the centered labels if the side labels aren't visible.
-        if (!showSideLabels || !_labelingEngine->getVisible(i->first))
+        if (!showSideLabels || !_labelingEngine->getVisible(itr->first))
         {
             bool done = false;
             for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)

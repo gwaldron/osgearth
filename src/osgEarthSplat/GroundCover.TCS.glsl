@@ -27,7 +27,7 @@ void oe_GroundCover_configureTess()
 	if (gl_InvocationID == 0)
 	{
         float d = oe_GroundCover_density;
-
+#if 0
         VP_LoadVertex(0);
         if ( oe_GroundCover_getBiomeIndex(oe_layer_tilec) >= 0 ) {
             d = oe_GroundCover_density;
@@ -46,10 +46,11 @@ void oe_GroundCover_configureTess()
                 }
             }
         }
+#endif
 
         gl_TessLevelOuter[0] = d;
         gl_TessLevelOuter[1] = d;
         gl_TessLevelOuter[2] = d;
-        gl_TessLevelInner[0] = d;
+        gl_TessLevelInner[0] = d+1;
 	}
 }

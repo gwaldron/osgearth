@@ -81,6 +81,9 @@ namespace osgEarth { namespace Features
         //! Options used to initialize this layer.
         const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
 
+        //! Sets the options to initilize the layer
+        void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
+
         //! Feature source layer from which to get a feature source. Use this OR setFeatureSource
         void setFeatureSourceLayer(FeatureSourceLayer* layer);
         

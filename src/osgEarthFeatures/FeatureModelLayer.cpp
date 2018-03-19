@@ -105,6 +105,16 @@ FeatureModelLayer::init()
 
 }
 
+void FeatureModelLayer::setFeatureModelLayerOptions(const FeatureModelLayerOptions& options)
+{
+    *_options = options;
+    // feature source changed, so the graph needs rebuilding
+    _graphDirty = true;
+
+    // create the scene graph
+    create();
+}
+
 void
 FeatureModelLayer::setFeatureSourceLayer(FeatureSourceLayer* layer)
 {

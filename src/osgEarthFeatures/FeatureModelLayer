@@ -93,6 +93,9 @@ namespace osgEarth { namespace Features
         //! Access to scene graph callbacks
         SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
 
+        //! Forces a rebuild on this FeatureModelLayer.
+        void dirty();
+
     public:
         class CreateFeatureNodeFactoryCallback : public osg::Referenced {
         public:

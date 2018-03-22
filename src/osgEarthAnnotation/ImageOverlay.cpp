@@ -199,7 +199,8 @@ _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter    (osg::Texture::LINEAR),
 _texture      (0),
-_geometryResolution(default_geometryResolution)
+_geometryResolution(default_geometryResolution),
+_draped(true)
 {        
     postCTOR();
     ImageOverlay::setMapNode(mapNode);

@@ -807,7 +807,7 @@ TerrainLayer::createAndOpenTileSource()
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
-    else if (!tileSourceStatus.isError() && getCacheSettings()->isCacheEnabled())
+    else if (getCacheSettings()->isCacheEnabled())
     {
         OE_NOTICE << LC << "Failed to create \"" << options().driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;

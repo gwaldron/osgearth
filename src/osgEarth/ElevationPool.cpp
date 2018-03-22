@@ -36,24 +36,7 @@ _entries(0u),
 _maxEntries( 128u ),
 _tileSize( 257u )
 {
-    //nop
-    //_opQueue = Registry::instance()->getAsyncOperationQueue();
-    if (!_opQueue.valid())
-    {
-        _opQueue = new osg::OperationQueue();
-        for (unsigned i=0; i<2; ++i)
-        {
-            osg::OperationThread* thread = new osg::OperationThread();
-            thread->setOperationQueue(_opQueue.get());
-            thread->start();
-            _opThreads.push_back(thread);
-        }
-    }
-}
 
-ElevationPool::~ElevationPool()
-{
-    stopThreading();
 }
 
 void
@@ -69,15 +52,6 @@ ElevationPool::clear()
 {
     Threading::ScopedMutexLock lock(_tilesMutex);
     clearImpl();
-}
-
-void
-ElevationPool::stopThreading()
-{
-    _opQueue->releaseAllOperations();
-    
-    for (unsigned i = 0; i<_opThreads.size(); ++i)
-    _opThreads[i]->setDone(true);
 }
 
 void
@@ -101,7 +75,7 @@ ElevationPool::getElevation(const GeoPoint& point, unsigned lod)
 {
     GetElevationOp* op = new GetElevationOp(this, point, lod);
     Future<ElevationSample> result = op->_promise.getFuture();
-    _opQueue->add(op);
+    Registry::instance()->getAsyncOperationQueue()->add(op);
     return result;
 }
 

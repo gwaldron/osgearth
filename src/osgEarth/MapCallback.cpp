@@ -53,6 +53,14 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
         onLayerDisabled(change.getLayer());
         break;
 
+    case MapModelChange::BEGIN_BATCH_UPDATE:
+	onBeginUpdate();
+	break;
+
+    case MapModelChange::END_BATCH_UPDATE:
+	onEndUpdate();
+	break;
+
     default: 
         break;
     }

@@ -904,7 +904,10 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             t->setFont( _font.get() );
 
         if ( t->getStateSet() )
+        {
             t->getStateSet()->setRenderBinToInherit();
+            t->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
+        }
 
         // set up the backdrop halo:
         if ( haloColor().isSet() )
@@ -2741,11 +2744,13 @@ ControlCanvas::init()
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
    
+#if 0
 #if OSG_VERSION_LESS_THAN(3,5,8) && defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
     // don't use shaders unless we have to.
     this->getOrCreateStateSet()->setAttributeAndModes(
         new osg::Program(), 
         osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
+#endif
 #endif
 }
 
@@ -2873,10 +2878,6 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
             control->calcPos( _context, osg::Vec2f(0,0), surfaceSize );
 
             control->draw( _context );
-
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
-            osgEarth::Registry::shaderGenerator().run(control);
-#endif
         }
     }
 
@@ -2885,12 +2886,9 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
-#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-    // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later
     Registry::shaderGenerator().run( this, "osgEarth.ControlCanvas" );
-#endif
 
     _contextDirty = false;
 }

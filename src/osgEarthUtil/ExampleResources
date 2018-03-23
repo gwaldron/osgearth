@@ -39,6 +39,7 @@ namespace osg {
 }
 namespace osgViewer {
     class View;
+    class ViewerBase;
 };
 
 /**
@@ -61,18 +62,18 @@ namespace osgEarth { namespace Util
          * arguemnts and XML externals.
          */
         osg::Group* load(
-            osg::ArgumentParser& args,
-            osgViewer::View*     view,
-            Container*           userContainer = 0L) const
+            osg::ArgumentParser&   args,
+            osgViewer::ViewerBase* viewer,
+            Container*             userContainer = 0L) const
         {
-            return load(args, view, userContainer, 0L);
+            return load(args, viewer, userContainer, 0L);
         }
 
         osg::Group* load(
-            osg::ArgumentParser&  args, 
-            osgViewer::View*      view,
-            Container*            userContainer,
-            const osgDB::Options* readOptions) const;
+            osg::ArgumentParser&   args, 
+            osgViewer::ViewerBase* viewer,
+            Container*             userContainer,
+            const osgDB::Options*  readOptions) const;
 
         /**
          * Takes an existing map node and processes all the built-in example command

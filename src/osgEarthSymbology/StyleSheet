@@ -56,9 +56,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new style sheet */
         StyleSheet( const Config& conf );
 
-	/** Optional name of the style sheet */
-	optional<std::string>& name() { return _name; }
-	const optional<std::string>& name() const { return _name; }
+        /** Optional name of the style sheet */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }

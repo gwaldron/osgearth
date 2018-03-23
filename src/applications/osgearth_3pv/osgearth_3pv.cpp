@@ -224,7 +224,7 @@ main( int argc, char** argv )
     }
 
     MapNodeHelper helper;
-    osg::ref_ptr<osg::Node> node = helper.load(arguments, viewer.getView(0));
+    osg::ref_ptr<osg::Node> node = helper.load(arguments, &viewer);
     if (!node.valid())
     {
         return -1;

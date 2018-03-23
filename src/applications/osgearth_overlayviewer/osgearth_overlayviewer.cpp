@@ -222,7 +222,7 @@ main(int argc, char** argv)
         mainView->setCameraManipulator( new osgGA::AnimationPathManipulator(pathfile) );
     }
 
-    osg::Node* node = MapNodeHelper().load( arguments, mainView );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
         mainView->setSceneData( node );

@@ -54,11 +54,6 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    float vfov = -1.0f;
-    arguments.read("--vfov", vfov);
-
-    
-
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
@@ -78,13 +73,6 @@ main(int argc, char** argv)
     // set a near/far ratio that is smaller than the default. This allows us to get
     // closer to the ground without near clipping. If you need more, use --logdepth
     viewer.getCamera()->setNearFarRatio(0.0001);
-
-    if ( vfov > 0.0 )
-    {
-        double fov, ar, n, f;
-        viewer.getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
-        viewer.getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
-    }
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    

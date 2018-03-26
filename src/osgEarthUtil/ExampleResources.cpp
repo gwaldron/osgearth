@@ -475,7 +475,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                     canvas->addControl( c );
                 }
             }
-            root->addChild( kml );
+            mapNode->addChild( kml );
         }
         else
         {

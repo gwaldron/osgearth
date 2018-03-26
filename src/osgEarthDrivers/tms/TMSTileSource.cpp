@@ -119,7 +119,7 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
 
         if (!_tileMap.valid())
         {
-            return Status::Error( Status::ResourceUnavailable, Stringify() << "Failed to read tilemap from " << tmsURI.full() );
+            return Status::Error( Status::ResourceUnavailable, Stringify() << "Failed to read configuration from " << tmsURI.full() );
         }
 
         OE_INFO << LC

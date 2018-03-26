@@ -1214,18 +1214,18 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
-        osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(65536);
-        group->accept(mg);
-
-        // Because the mesh optimizers damaga line geometry.
-        if ( !_outlineSymbol.valid() )
+        // Because the mesh optimizers damages line geometry.
+        if (!_outlineSymbol.valid())
         {
+            osgUtil::Optimizer::MergeGeometryVisitor mg;
+            mg.setTargetMaximumNumberOfVertices(65536);
+            group->accept(mg);
+
             osgUtil::Optimizer o;
             o.optimize(group,
                 osgUtil::Optimizer::INDEX_MESH |
                 osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM);
         }
     }
 

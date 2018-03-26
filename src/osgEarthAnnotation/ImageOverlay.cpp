@@ -251,13 +251,41 @@ ImageOverlay::init()
         g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
         g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
         g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
-        
+
+        osgEarth::Bounds bounds = getBounds();
+
         f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
 
         FeatureList features;
         if (!mapSRS->isGeographic())        
         {
             f->splitAcrossDateLine(features);
+        }
+        // The width of the image overlay is >= 180 degrees so split it into two chunks of < 180 degrees
+        // so the MeshSubdivider will work.
+        else if (bounds.width() > 180.0)
+        {
+            Bounds boundsA(bounds.xMin(), bounds.yMin(), bounds.xMin() + 180.0, bounds.yMax());
+            Bounds boundsB(bounds.xMin() + 180.0, bounds.yMin(), bounds.xMax(), bounds.yMax());
+            
+            osg::ref_ptr< Geometry > geomA;
+            if (f->getGeometry()->crop(boundsA, geomA))
+            {
+                osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
+                // Make sure the feature is wound correctly.
+                geomA->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                croppedFeature->setGeometry(geomA.get());
+                features.push_back(croppedFeature);
+            }
+            osg::ref_ptr< Geometry > geomB;
+            if (f->getGeometry()->crop(boundsB, geomB))
+            {
+                osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
+                // Make sure the feature is wound correctly.
+                geomA->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
+                croppedFeature->setGeometry(geomB.get());
+                features.push_back(croppedFeature);
+            }
         }
         else
         {

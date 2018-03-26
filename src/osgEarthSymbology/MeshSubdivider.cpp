@@ -62,7 +62,7 @@ namespace
     void
     geodeticMidpoint( const osg::Vec2d& g0, const osg::Vec2d& g1, osg::Vec2d& out_mid )
     {
-        if ( fabs(g0.x()-g1.x()) < osg::PI )
+        if ( fabs(g0.x()-g1.x()) <= osg::PI )
             out_mid.set( 0.5*(g0.x()+g1.x()), 0.5*(g0.y()+g1.y()) );
         else if ( g1.x() > g0.x() )
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );

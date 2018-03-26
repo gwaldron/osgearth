@@ -620,7 +620,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo,
             neighbors->push_back( local );  
 
         // set up text coords
-        texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_PATCH) );
+        texCoords->push_back(osg::Vec3f(it->x(), it->y(), isBoundary ? VERTEX_MARKER_BOUNDARY : VERTEX_MARKER_PATCH));
     }
 
     // Get triangles from triangulator and add as primitive set to the geometry
@@ -677,7 +677,7 @@ MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
 float
 MaskGenerator::getMarker(float nx, float ny) const
 {
-    float marker = MASK_MARKER_GRID;
+    float marker = VERTEX_MARKER_GRID;
 
     if (_maskRecords.size() > 0)
     {
@@ -691,14 +691,14 @@ MaskGenerator::getMarker(float nx, float ny) const
 
         if (i > min_i && i < max_i && j > min_j && j < max_j)
         {
-            marker = MASK_MARKER_DISCARD; // contained by boundary
+           marker = VERTEX_MARKER_DISCARD; // contained by patch
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
                  (i == max_i && j >= min_j && j <= max_j) ||
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-            marker = MASK_MARKER_PATCH;
+           marker = VERTEX_MARKER_PATCH;
         }
     }
 

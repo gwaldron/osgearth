@@ -162,7 +162,7 @@ _tbo(tbo)
 void 
 ConvertToDrawInstanced::apply(osg::Geode& geode)
 {
-   if (geode.getStateSet() && geode.getStateSet()->getTextureAttribute(POSTEX_TBO_UNIT, osg::StateAttribute::Type::TEXTURE)) {
+   if (geode.getStateSet() && geode.getStateSet()->getTextureAttribute(POSTEX_TBO_UNIT, osg::StateAttribute::TEXTURE)) {
       int new_unit = geode.getStateSet()->getTextureAttributeList().size();
       geode.getStateSet()->getOrCreateUniform("oe_di_postex_TBO", osg::Uniform::SAMPLER_BUFFER)->set(new_unit);
       geode.getStateSet()->setTextureAttribute(new_unit, _tbo);

@@ -67,15 +67,14 @@ namespace osgEarth
                 const osg::BoundingBox& bbox,
                 bool                    optimize,
                 osg::TextureBuffer*     tbo,
-                unsigned                firstTboUnit);
+                int                     firstTboUnit);
 
             void apply(osg::Drawable&);
             void apply(osg::LOD&);
             void apply(osg::Node&);
-            void apply(osg::StateSet&);
 
         public:
-            unsigned getTextureImageUnit() const { return _tboUnit; }
+            int getTextureImageUnit() const { return _tboUnit; }
 
         protected:
             unsigned _numInstances;
@@ -83,7 +82,7 @@ namespace osgEarth
             bool _optimize;
             std::list<osg::PrimitiveSet*> _primitiveSets;
             osg::TextureBuffer* _tbo;
-            unsigned _tboUnit;
+            int _tboUnit;
         };
 
 

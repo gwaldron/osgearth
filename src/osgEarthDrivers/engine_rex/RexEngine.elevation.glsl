@@ -26,8 +26,6 @@ float oe_terrain_getElevation(in vec2 uv);
 
 void oe_rexEngine_elevation(inout vec4 vertexModel)
 {
-   oe_terrain_vertexMarker = int(oe_layer_tilec.z);
-
 #ifdef OE_TERRAIN_RENDER_ELEVATION
 
    bool ignore =

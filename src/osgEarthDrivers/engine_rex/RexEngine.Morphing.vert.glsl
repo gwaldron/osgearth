@@ -17,6 +17,8 @@ vec4 oe_layer_tilec;
 
 out float oe_rex_morphFactor;
 
+flat out int oe_terrain_vertexMarker;
+
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
@@ -81,7 +83,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     // compute the morphing factor to send down the pipe.
     // we need this even if vertex-morphing is off since we use it for 
     // other things (like image blending)
-    if (oe_layer_tilec.z == VERTEX_MARKER_GRID)
+    if ((oe_terrain_vertexMarker & VERTEX_MARKER_GRID) != 0)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 

@@ -42,7 +42,6 @@ using namespace osgEarth::DrawInstanced;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
-#define POSTEX_TBO_UNIT 5
 #define TAG_MATRIX_VECTOR "osgEarth::DrawInstanced::MatrixRefVector"
 
 //Uncomment to experiment with instance count adjustment
@@ -135,7 +134,7 @@ ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstan
                                                const osg::BoundingBox& bbox,
                                                bool                    optimize,
                                                osg::TextureBuffer*     tbo,
-                                               unsigned                defaultUnit) :
+                                               int                     defaultUnit) :
 _numInstances( numInstances ),
 _bbox(bbox),
 _optimize( optimize ),
@@ -207,19 +206,12 @@ ConvertToDrawInstanced::apply(osg::Node& node)
 {
     osg::StateSet* stateSet = node.getStateSet();
     if (stateSet)
-        apply(*stateSet);
+    {
+        int numTexAttrs = stateSet->getNumTextureAttributeLists();
+        _tboUnit = std::max(_tboUnit, numTexAttrs);
+    }
     traverse(node);
 }
-
-void
-ConvertToDrawInstanced::apply(osg::StateSet& stateSet)
-{
-    if (stateSet.getTextureAttribute(_tboUnit, osg::StateAttribute::TEXTURE) != 0L)
-    {
-        _tboUnit = stateSet.getNumTextureAttributeLists();
-    }
-}
-
 
 bool
 DrawInstanced::install(osg::StateSet* stateset)
@@ -251,8 +243,6 @@ DrawInstanced::remove(osg::StateSet* stateset)
 
     Shaders pkg;
     pkg.unload( vp, pkg.InstancingVertex );
-
-    stateset->removeUniform("oe_di_postex_TBO");
 }
 
 
@@ -406,7 +396,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all
         // geometries. (As DI's they cannot report bounds naturally.)
-        ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true, posTBO, POSTEX_TBO_UNIT);
+        ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true, posTBO, 0);
         node->accept( cdi );
         
         // Bind the TBO sampler:

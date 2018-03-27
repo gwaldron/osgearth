@@ -223,20 +223,21 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 #if OSG_VERSION_LESS_THAN(3,5,8)
         // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
         font->setGlyphImageMargin( 2 );
-#endif
-
-        // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
-        t->setStateSet(0L);
+#endif        
     }
+
+    // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
+    t->setStateSet(0L);
 
     float resFactor = 2.0f;
     int res = nextPowerOf2((int)(size*resFactor));
     t->setFontResolution(res, res);
-    float offsetFactor = 1.0f / (resFactor*256.0f);
-    t->setBackdropOffset( (float)t->getFontWidth() * offsetFactor, (float)t->getFontHeight() * offsetFactor );
-
+    
     if ( symbol && symbol->halo().isSet() )
     {
+        float offsetFactor = 1.0f / (resFactor*256.0f);
+        t->setBackdropOffset((float)t->getFontWidth() * offsetFactor, (float)t->getFontHeight() * offsetFactor);
+
         t->setBackdropColor( symbol->halo()->color() );
         if ( symbol->haloBackdropType().isSet() )
         {

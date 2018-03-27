@@ -922,7 +922,10 @@ TileNode::load(TerrainCuller* culler)
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
-    if ( _context->getOptions().highResolutionFirst() == false )
+
+    // If progressive mode is enabled, lower LODs get higher priority since
+    // we want to load them in order
+    if (_context->getOptions().progressive() == true)
         lodPriority = (float)(numLods - lod);
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);

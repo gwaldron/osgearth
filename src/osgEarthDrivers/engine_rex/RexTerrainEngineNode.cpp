@@ -283,14 +283,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         OE_INFO << LC << "Expiration threshold set by env var = " << _terrainOptions.expirationThreshold().get() << "\n";
     }
 
-    // if the envvar for hires prioritization is set, override the options setting
-    const char* hiresFirst = ::getenv("OSGEARTH_HIGH_RES_FIRST");
-    if ( hiresFirst )
-    {
-        _terrainOptions.highResolutionFirst() = true;
-        OE_INFO << LC << "High Res First option set to true by env var\n";
-    }
-
     // Check for normals debugging.
     if (::getenv("OSGEARTH_DEBUG_NORMALS"))
         getOrCreateStateSet()->setDefine("OE_DEBUG_NORMALS");

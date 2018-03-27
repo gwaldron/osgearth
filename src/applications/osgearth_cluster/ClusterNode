@@ -1,0 +1,42 @@
+#ifndef CLUSTERNODE_H
+#define CLUSTERNODE_H
+
+#include <osg/Node>
+
+#include <osgEarthAnnotation/PlaceNode>
+
+#include "kdbush.hpp"
+
+using namespace osgEarth;
+using namespace osgEarth::Annotation;
+
+using TPoint = std::pair<int, int>;
+using TIds = std::vector<std::size_t>;
+
+class ClusterNode : public osg::Node
+{
+public:
+    ClusterNode();
+
+    void addNode(PlaceNode* node);
+    void removeNode(PlaceNode* node);
+
+    unsigned int getRadius() const;
+    void setRadius(unsigned int radius);
+
+    virtual void traverse(osg::NodeVisitor& nv);
+
+protected:
+
+    typedef std::vector< osg::ref_ptr< PlaceNode > > PlaceNodeList;
+
+    void getPlaces(osg::Camera* camera, PlaceNodeList& out);
+    
+    PlaceNodeList _placeNodes;
+
+    unsigned int _radius;
+
+    osg::ref_ptr< osg::Group > _group;
+};
+
+#endif

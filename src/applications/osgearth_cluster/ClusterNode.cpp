@@ -5,8 +5,6 @@ ClusterNode::ClusterNode():
 {
     setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
-
-    _group = new osg::Group;
 }
 
 void ClusterNode::addNode(PlaceNode* node)
@@ -54,7 +52,6 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
         osg::Vec3d world;
         _placeNodes[i]->getPosition().toWorld(world);
         osg::Vec3d screen = world * mvpw;
-        //OE_NOTICE << "Screen " << screen.x() << ", " << screen.y() << std::endl;
 
         if (screen.x() >= 0 && screen.x() <= viewport->width() &&
             screen.y() >= 0 && screen.y() <= viewport->height())
@@ -106,22 +103,23 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
 
 void ClusterNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-    {
-    }
-    else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
 
         PlaceNodeList places;
         getPlaces(cv->getCurrentCamera(), places);
 
-        _group->removeChildren(0, _group->getNumChildren());
-        for (unsigned int i = 0; i < places.size(); i++)
+        for (PlaceNodeList::iterator itr = places.begin(); itr != places.end(); ++itr)
         {
-            _group->addChild(places[i].get());
+            itr->get()->accept(nv);
+        }        
+    }
+    else
+    {
+        for (PlaceNodeList::iterator itr = _placeNodes.begin(); itr != _placeNodes.end(); ++itr)
+        {
+            itr->get()->accept(nv);
         }
     }
-
-    _group->traverse(nv);
 }

@@ -35,8 +35,6 @@ protected:
     PlaceNodeList _placeNodes;
 
     unsigned int _radius;
-
-    osg::ref_ptr< osg::Group > _group;
 };
 
 #endif

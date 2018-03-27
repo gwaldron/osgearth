@@ -66,8 +66,8 @@ void makePlaces(MapNode* mapNode, unsigned int count, std::vector< osg::ref_ptr<
 
         double centerLat = 46.840866;
         double centerLon = -121.769846;
-        double height = 5;
-        double width = 5;
+        double height = 50;
+        double width = 50;
         double minLat = centerLat - (height / 2.0);
         double minLon = centerLon - (width / 2.0);        
 
@@ -106,8 +106,29 @@ struct SetRadius : public ControlEventHandler
     ClusterNode* _clusterNode;    
 };
 
+struct AddIcons : public ControlEventHandler
+{
+    AddIcons(ClusterNode* clusterNode, MapNode* mapNode) :
+        _clusterNode(clusterNode),
+        _mapNode(mapNode)
+    { }
 
-void buildControls(Container* container, ClusterNode* clusterNode)
+    void onClick(Control* button)
+    {
+        std::vector< osg::ref_ptr< PlaceNode > > placeNodes;
+        makePlaces(_mapNode, 1000, placeNodes);
+        for (unsigned int i = 0; i < placeNodes.size(); ++i)
+        {
+            _clusterNode->addNode(placeNodes[i]);
+        }
+    }
+
+    ClusterNode* _clusterNode;
+    MapNode* _mapNode;
+};
+
+
+void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapNode)
 {
     // the outer container:
     Grid* grid = container->addControl(new Grid());
@@ -130,6 +151,9 @@ void buildControls(Container* container, ClusterNode* clusterNode)
     radiusAdjust->setVertAlign(Control::ALIGN_CENTER);
     grid->setControl(1, 0, radiusAdjust);
     grid->setControl(2, 0, new LabelControl(radiusAdjust));
+
+    grid->setControl(0, 1, new ButtonControl("Add Icons", new AddIcons(clusterNode, mapNode)));
+    
 }
 
 
@@ -179,7 +203,7 @@ main(int argc, char** argv)
         }
         mapNode->addChild(clusterNode);
 
-        buildControls(container, clusterNode);
+        buildControls(container, clusterNode, mapNode);
 
         viewer.setSceneData(node);
 

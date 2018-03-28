@@ -1,10 +1,16 @@
 #include "ClusterNode"
 
-ClusterNode::ClusterNode():
-    _radius(50)
+ClusterNode::ClusterNode(MapNode* mapNode) :
+    _radius(50),
+    _mapNode(mapNode),
+    _nextLabel(0),
+    _enabled(true)
 {
     setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
+
+    _defaultImage = osgDB::readRefImageFile("../data/placemark32.png");
+    _horizon = new Horizon();
 }
 
 void ClusterNode::addNode(PlaceNode* node)
@@ -31,8 +37,31 @@ void ClusterNode::setRadius(unsigned int radius)
     _radius = radius;
 }
 
-void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
+bool ClusterNode::getEnabled() const
 {
+    return _enabled;
+}
+
+void ClusterNode::setEnabled(bool enabled)
+{
+    _enabled = enabled;
+}
+
+StyleClusterCallback* ClusterNode::getStyleCallback()
+{
+    return _styleCallback.get();
+}
+
+void
+ClusterNode::setStyleCallback(StyleClusterCallback* callback)
+{
+    _styleCallback = callback;
+}
+
+void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
+{
+    _nextLabel = 0;
+
     osg::Viewport* viewport = camera->getViewport();
     if (!viewport)
     {
@@ -51,6 +80,12 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
     {
         osg::Vec3d world;
         _placeNodes[i]->getPosition().toWorld(world);
+
+        if (!_horizon->isVisible(world))
+        {
+            continue;
+        }
+
         osg::Vec3d screen = world * mvpw;
 
         if (screen.x() >= 0 && screen.x() <= viewport->width() &&
@@ -60,6 +95,8 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
             points.push_back({ screen.x(), screen.y() });
         }
     }
+
+    if (validPlaces.size() == 0) return;
 
     kdbush::KDBush<TPoint> index(points);
     std::set< unsigned int > clustered;
@@ -79,6 +116,9 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
         TIds indices;
         index.within(screen.first, screen.second, _radius, [&indices](const auto id) { indices.push_back(id); });
 
+        // Create a new cluster.
+        Cluster cluster;
+
         unsigned int actualCount = 0;
 
         // Add all of the points to the cluster.
@@ -86,6 +126,7 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
         {
             if (clustered.find(indices[j]) == clustered.end())
             {
+                cluster.places.push_back(validPlaces[indices[j]]);
                 actualCount++;
                 clustered.insert(indices[j]);
             }
@@ -93,9 +134,13 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
 
         std::stringstream buf;
         buf << actualCount << std::endl;
-        place->setText(buf.str());
 
-        out.push_back(place);
+        PlaceNode* marker = getOrCreateLabel();
+        marker->setPosition(place->getPosition());
+        marker->setText(buf.str());
+
+        cluster.marker = marker;
+        out.push_back(cluster);
 
         clustered.insert(i);
     }
@@ -103,17 +148,39 @@ void ClusterNode::getPlaces(osg::Camera* camera, PlaceNodeList& out)
 
 void ClusterNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _enabled)
     {
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
 
-        PlaceNodeList places;
-        getPlaces(cv->getCurrentCamera(), places);
+        osg::Vec3d eye, center, up;
+        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
 
-        for (PlaceNodeList::iterator itr = places.begin(); itr != places.end(); ++itr)
+        _horizon->setEye(eye);
+
+        ClusterList clusters;
+        getClusters(cv->getCurrentCamera(), clusters);
+
+        for (ClusterList::iterator itr = clusters.begin(); itr != clusters.end(); ++itr)
         {
-            itr->get()->accept(nv);
-        }        
+            Cluster& cluster = *itr;
+            // If we have more than 1 place, traverse the representative marker
+            if (cluster.places.size() > 1)
+            {
+                if (_styleCallback)
+                {
+                    (*_styleCallback)(cluster);
+                }
+
+                itr->marker->accept(nv);
+            }
+            else
+            {
+                // Otherwise just traverse the first node
+                cluster.places[0]->accept(nv);
+            }
+
+
+        }
     }
     else
     {
@@ -122,4 +189,28 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
             itr->get()->accept(nv);
         }
     }
+}
+
+PlaceNode* ClusterNode::getOrCreateLabel()
+{
+    PlaceNode* node = 0;
+    if (_labelPool.size() <= _nextLabel)
+    {
+        // set up a style to use for placemarks:
+        Style placeStyle;
+        placeStyle.getOrCreate<TextSymbol>()->declutter() = false;
+        node = new PlaceNode(_mapNode.get(), GeoPoint(SpatialReference::create("wgs84"), 0, 0, 0), _defaultImage.get(), "", placeStyle);
+        node->setDynamic(true);
+        _labelPool.push_back(node);
+    }
+    else
+    {
+        node = _labelPool[_nextLabel];
+    }
+
+    ++_nextLabel;
+
+    return node;
+
+
 }

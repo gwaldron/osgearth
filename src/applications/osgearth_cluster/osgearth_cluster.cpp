@@ -62,12 +62,12 @@ void makePlaces(MapNode* mapNode, unsigned int count, std::vector< osg::ref_ptr<
 
     //Create a bunch of placemarks around Mt Rainer so we can actually get some elevation
     {
-        osg::ref_ptr<osg::Image> pin = osgDB::readRefImageFile("../data/placemark32.png");
+        osg::ref_ptr<osg::Image> pin = osgDB::readRefImageFile("../data/hospital.png");
 
         double centerLat = 46.840866;
         double centerLon = -121.769846;
-        double height = 50;
-        double width = 50;
+        double height = 180;
+        double width = 360;
         double minLat = centerLat - (height / 2.0);
         double minLon = centerLon - (width / 2.0);        
 
@@ -78,7 +78,6 @@ void makePlaces(MapNode* mapNode, unsigned int count, std::vector< osg::ref_ptr<
             PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat, 0.0), pin.get(), "Placemark", placeStyle);
             place->setDynamic(true);
             placeNodes.push_back(place);
-            //labelGroup->addChild(place);
         }
     }    
 }
@@ -127,6 +126,19 @@ struct AddIcons : public ControlEventHandler
     MapNode* _mapNode;
 };
 
+struct ToggleEnabled : public ControlEventHandler
+{
+    ToggleEnabled(ClusterNode* clusterNode) :
+        _clusterNode(clusterNode)
+    { }
+
+    virtual void onValueChanged(Control* control, bool value) {
+        _clusterNode->setEnabled(value);
+    }
+
+    ClusterNode* _clusterNode;
+};
+
 
 void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapNode)
 {
@@ -151,10 +163,46 @@ void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapN
     radiusAdjust->setVertAlign(Control::ALIGN_CENTER);
     grid->setControl(1, 0, radiusAdjust);
     grid->setControl(2, 0, new LabelControl(radiusAdjust));
+    
+    grid->setControl(0, 1, new LabelControl("Enabled"));
+    CheckBoxControl* checkBox = new CheckBoxControl(clusterNode->getEnabled());
+    checkBox->setHorizAlign(Control::ALIGN_LEFT);
+    checkBox->addEventHandler(new ToggleEnabled(clusterNode));
+    grid->setControl(1, 1, checkBox);
 
-    grid->setControl(0, 1, new ButtonControl("Add Icons", new AddIcons(clusterNode, mapNode)));
+    
+    grid->setControl(0, 2, new ButtonControl("Add Icons", new AddIcons(clusterNode, mapNode)));
     
 }
+
+class MyClusterStyleCallback : public StyleClusterCallback
+{
+    virtual void operator()(Cluster& cluster)
+    {
+        /*
+        if (cluster.places.size() >= 100)
+        {
+            cluster.marker->setText("100+");
+        }
+        else if (cluster.places.size() >= 50)
+        {
+            cluster.marker->setText("50+");
+        }
+        else if (cluster.places.size() >= 25)
+        {
+            cluster.marker->setText("25+");
+        }
+        else if (cluster.places.size() >= 10)
+        {
+            cluster.marker->setText("10+");
+        }
+        else
+        {
+            cluster.marker->setText("2+");
+        } 
+        */
+    }
+};
 
 
 int
@@ -195,8 +243,8 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::findMapNode(node);
         makePlaces(mapNode, 10000, placeNodes);
 
-        //osg::Group* labels = new osg::Group;
-        ClusterNode* clusterNode = new ClusterNode;
+        ClusterNode* clusterNode = new ClusterNode(mapNode);
+        clusterNode->setStyleCallback(new MyClusterStyleCallback());
         for (unsigned int i = 0; i < placeNodes.size(); i++)
         {
             clusterNode->addNode(placeNodes[i]);

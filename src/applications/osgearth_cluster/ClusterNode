@@ -13,10 +13,26 @@ using namespace osgEarth::Annotation;
 using TPoint = std::pair<int, int>;
 using TIds = std::vector<std::size_t>;
 
+typedef std::vector< osg::ref_ptr< PlaceNode > > PlaceNodeList;
+
+struct Cluster
+{
+    osg::ref_ptr< PlaceNode > marker;
+    PlaceNodeList places;
+};
+
+typedef std::vector< Cluster > ClusterList;
+
+class StyleClusterCallback : public osg::Referenced
+{
+public:
+    virtual void operator()(Cluster& cluster) {}
+};
+
 class ClusterNode : public osg::Node
 {
 public:
-    ClusterNode();
+    ClusterNode(MapNode* mapNode);
 
     void addNode(PlaceNode* node);
     void removeNode(PlaceNode* node);
@@ -24,17 +40,37 @@ public:
     unsigned int getRadius() const;
     void setRadius(unsigned int radius);
 
+    bool getEnabled() const;
+    void setEnabled(bool enabled);
+
+    StyleClusterCallback* getStyleCallback();
+    void setStyleCallback(StyleClusterCallback* callback);
+
+
+
     virtual void traverse(osg::NodeVisitor& nv);
 
 protected:
 
-    typedef std::vector< osg::ref_ptr< PlaceNode > > PlaceNodeList;
+    PlaceNode* getOrCreateLabel();
 
-    void getPlaces(osg::Camera* camera, PlaceNodeList& out);
+    void getClusters(osg::Camera* camera, ClusterList& out);
     
     PlaceNodeList _placeNodes;
 
     unsigned int _radius;
+
+    osg::ref_ptr< osg::Image > _defaultImage;
+
+    PlaceNodeList _labelPool;
+    unsigned int _nextLabel;
+    osg::observer_ptr< MapNode > _mapNode;
+
+    osg::ref_ptr< StyleClusterCallback > _styleCallback;
+
+    osg::ref_ptr< Horizon > _horizon;
+
+    bool _enabled;
 };
 
 #endif

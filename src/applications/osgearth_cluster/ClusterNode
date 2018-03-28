@@ -18,7 +18,7 @@ typedef std::vector< osg::ref_ptr< PlaceNode > > PlaceNodeList;
 struct Cluster
 {
     osg::ref_ptr< PlaceNode > marker;
-    PlaceNodeList places;
+    osg::NodeList nodes;
 };
 
 typedef std::vector< Cluster > ClusterList;
@@ -34,8 +34,8 @@ class ClusterNode : public osg::Node
 public:
     ClusterNode(MapNode* mapNode);
 
-    void addNode(PlaceNode* node);
-    void removeNode(PlaceNode* node);
+    void addNode(osg::Node* node);
+    void removeNode(osg::Node* node);
 
     unsigned int getRadius() const;
     void setRadius(unsigned int radius);
@@ -56,7 +56,8 @@ protected:
 
     void getClusters(osg::Camera* camera, ClusterList& out);
     
-    PlaceNodeList _placeNodes;
+    //PlaceNodeList _placeNodes;
+    osg::NodeList _nodes;
 
     unsigned int _radius;
 

@@ -49,7 +49,7 @@ usage(const char* name)
     return 0;
 }
 
-void makePlaces(MapNode* mapNode, unsigned int count, std::vector< osg::ref_ptr< PlaceNode > >& placeNodes)
+void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
 {    
     // set up a style to use for placemarks:
     Style placeStyle;    
@@ -60,26 +60,37 @@ void makePlaces(MapNode* mapNode, unsigned int count, std::vector< osg::ref_ptr<
 
     //--------------------------------------------------------------------
 
-    //Create a bunch of placemarks around Mt Rainer so we can actually get some elevation
     {
         osg::ref_ptr<osg::Image> pin = osgDB::readRefImageFile("../data/hospital.png");
 
-        double centerLat = 46.840866;
-        double centerLon = -121.769846;
-        double height = 180;
-        double width = 360;
-        double minLat = centerLat - (height / 2.0);
-        double minLon = centerLon - (width / 2.0);        
-
         for (unsigned int i = 0; i < count; i++)
         {
-            double lat = minLat + height * (rand() * 1.0) / (RAND_MAX - 1);
-            double lon = minLon + width * (rand() * 1.0) / (RAND_MAX - 1);
+            double lat = extent.yMin() + extent.height() * (rand() * 1.0) / (RAND_MAX - 1);
+            double lon = extent.xMin() + extent.width() * (rand() * 1.0) / (RAND_MAX - 1);
             PlaceNode* place = new PlaceNode(mapNode, GeoPoint(geoSRS, lon, lat, 0.0), pin.get(), "Placemark", placeStyle);
             place->setDynamic(true);
-            placeNodes.push_back(place);
+            nodes.push_back(place);
         }
     }    
+}
+
+void makePlanes(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
+{
+    osg::ref_ptr< osg::Node > model = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
+
+    // A lat/long SRS for specifying points.
+    const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
+
+    for (unsigned int i = 0; i < count; i++)
+    {
+        double lat = extent.yMin() + extent.height() * (rand() * 1.0) / (RAND_MAX - 1);
+        double lon = extent.xMin() + extent.width() * (rand() * 1.0) / (RAND_MAX - 1);
+
+        GeoTransform* transform = new GeoTransform();
+        transform->setPosition(GeoPoint(geoSRS, lon, lat, 1000));
+        transform->addChild(model.get());
+        nodes.push_back(transform);
+    }
 }
 
 Container*
@@ -114,11 +125,12 @@ struct AddIcons : public ControlEventHandler
 
     void onClick(Control* button)
     {
-        std::vector< osg::ref_ptr< PlaceNode > > placeNodes;
-        makePlaces(_mapNode, 1000, placeNodes);
-        for (unsigned int i = 0; i < placeNodes.size(); ++i)
+        osg::NodeList nodes;
+        GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
+        makePlaces(_mapNode, 1000, extent, nodes);
+        for (unsigned int i = 0; i < nodes.size(); ++i)
         {
-            _clusterNode->addNode(placeNodes[i]);
+            _clusterNode->addNode(nodes[i]);
         }
     }
 
@@ -180,19 +192,19 @@ class MyClusterStyleCallback : public StyleClusterCallback
     virtual void operator()(Cluster& cluster)
     {
         /*
-        if (cluster.places.size() >= 100)
+        if (cluster.nodes.size() >= 100)
         {
             cluster.marker->setText("100+");
         }
-        else if (cluster.places.size() >= 50)
+        else if (cluster.nodes.size() >= 50)
         {
             cluster.marker->setText("50+");
         }
-        else if (cluster.places.size() >= 25)
+        else if (cluster.nodes.size() >= 25)
         {
             cluster.marker->setText("25+");
         }
-        else if (cluster.places.size() >= 10)
+        else if (cluster.nodes.size() >= 10)
         {
             cluster.marker->setText("10+");
         }
@@ -238,17 +250,21 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        std::vector< osg::ref_ptr< PlaceNode > > placeNodes;
-
         MapNode* mapNode = MapNode::findMapNode(node);
-        makePlaces(mapNode, 10000, placeNodes);
+        osg::NodeList nodes;
+
+        //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
+        GeoExtent extent(SpatialReference::create("wgs84"), -160.697021484375, 18.208480196039883, -153.951416015625, 22.978623970384913);
+
+        //makePlaces(mapNode, 5000, extent, nodes);
+        makePlanes(mapNode, 10000, extent, nodes);
 
         ClusterNode* clusterNode = new ClusterNode(mapNode);
         clusterNode->setStyleCallback(new MyClusterStyleCallback());
-        for (unsigned int i = 0; i < placeNodes.size(); i++)
+        for (unsigned int i = 0; i < nodes.size(); i++)
         {
-            clusterNode->addNode(placeNodes[i]);
-        }
+            clusterNode->addNode(nodes[i]);
+        }              
         mapNode->addChild(clusterNode);
 
         buildControls(container, clusterNode, mapNode);

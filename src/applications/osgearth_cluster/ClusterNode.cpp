@@ -14,18 +14,18 @@ ClusterNode::ClusterNode(MapNode* mapNode) :
     _horizon = new Horizon();
 }
 
-void ClusterNode::addNode(PlaceNode* node)
+void ClusterNode::addNode(osg::Node* node)
 {
-    _placeNodes.push_back(node);
+    _nodes.push_back(node);
     _dirty = true;
 }
 
-void ClusterNode::removeNode(PlaceNode* node)
+void ClusterNode::removeNode(osg::Node* node)
 {
-    PlaceNodeList::iterator itr = std::find(_placeNodes.begin(), _placeNodes.end(), node);
-    if (itr != _placeNodes.end())
+    osg::NodeList::iterator itr = std::find(_nodes.begin(), _nodes.end(), node);
+    if (itr != _nodes.end())
     {
-        _placeNodes.erase(itr);
+        _nodes.erase(itr);
     }
     _dirty = true;
 }
@@ -80,12 +80,13 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
 
     std::vector<TPoint> points;
 
-    std::vector< osg::ref_ptr< PlaceNode > > validPlaces;
+    osg::NodeList validPlaces;
 
-    for (unsigned int i = 0; i < _placeNodes.size(); i++)
+    for (unsigned int i = 0; i < _nodes.size(); i++)
     {
-        osg::Vec3d world;
-        _placeNodes[i]->getPosition().toWorld(world);
+        osg::Vec3d world = _nodes[i]->getBound().center();
+        //_placeNodes[i]->getPosition().toWorld(world);
+        //world = _placeNodes[i]->getBound().center();
 
         if (!_horizon->isVisible(world))
         {
@@ -97,7 +98,7 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
         if (screen.x() >= 0 && screen.x() <= viewport->width() &&
             screen.y() >= 0 && screen.y() <= viewport->height())
         {
-            validPlaces.push_back(_placeNodes[i]);
+            validPlaces.push_back(_nodes[i]);
             points.push_back({ screen.x(), screen.y() });
         }
     }
@@ -110,13 +111,16 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
     for (unsigned int i = 0; i < validPlaces.size(); i++)
     {
         TPoint &screen = points[i];
-        PlaceNode* place = validPlaces[i].get();
+        //PlaceNode* place = validPlaces[i].get();
+        osg::Node* node = validPlaces[i].get();
 
         // If this thing is already part of a cluster then just continue.
         if (clustered.find(i) != clustered.end())
         {
             continue;
         }
+
+        osg::Vec3d world = node->getBound().center();
 
         // Get any matching indices that are part of this cluster.
         TIds indices;
@@ -134,7 +138,7 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
         {
             if (clustered.find(indices[j]) == clustered.end())
             {
-                cluster.places.push_back(validPlaces[indices[j]]);
+                cluster.nodes.push_back(validPlaces[indices[j]]);
                 actualCount++;
                 clustered.insert(indices[j]);
             }
@@ -144,7 +148,9 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
         buf << actualCount << std::endl;
 
         PlaceNode* marker = getOrCreateLabel();
-        marker->setPosition(place->getPosition());
+        GeoPoint markerPos;
+        markerPos.fromWorld(_mapNode->getMapSRS(), world);
+        marker->setPosition(markerPos);
         marker->setText(buf.str());
 
         cluster.marker = marker;
@@ -163,7 +169,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
         // If we aren't enabled just traverse all the placenodes.
         if (!_enabled)
         {
-            for (PlaceNodeList::iterator itr = _placeNodes.begin(); itr != _placeNodes.end(); ++itr)
+            for (osg::NodeList::iterator itr = _nodes.begin(); itr != _nodes.end(); ++itr)
             {
                 itr->get()->accept(nv);
             }            
@@ -186,7 +192,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
             {
                 Cluster& cluster = *itr;
                 // If we have more than 1 place, traverse the representative marker
-                if (cluster.places.size() > 1)
+                if (cluster.nodes.size() > 1)
                 {
                     if (_styleCallback)
                     {
@@ -198,7 +204,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
                 else
                 {
                     // Otherwise just traverse the first node
-                    cluster.places[0]->accept(nv);
+                    cluster.nodes[0]->accept(nv);
                 }
             }
 
@@ -209,7 +215,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
     else
     {
         // Other visitors just traverse all the placenodes.
-        for (PlaceNodeList::iterator itr = _placeNodes.begin(); itr != _placeNodes.end(); ++itr)
+        for (osg::NodeList::iterator itr = _nodes.begin(); itr != _nodes.end(); ++itr)
         {
             itr->get()->accept(nv);
         }

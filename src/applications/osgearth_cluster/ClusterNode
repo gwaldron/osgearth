@@ -70,6 +70,12 @@ protected:
 
     osg::ref_ptr< Horizon > _horizon;
 
+    osg::Matrixd _lastViewMatrix;
+
+    ClusterList _clusters;
+
+    bool _dirty;
+
     bool _enabled;
 };
 

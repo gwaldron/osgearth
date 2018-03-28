@@ -4,7 +4,8 @@ ClusterNode::ClusterNode(MapNode* mapNode) :
     _radius(50),
     _mapNode(mapNode),
     _nextLabel(0),
-    _enabled(true)
+    _enabled(true),
+    _dirty(true)
 {
     setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
@@ -16,6 +17,7 @@ ClusterNode::ClusterNode(MapNode* mapNode) :
 void ClusterNode::addNode(PlaceNode* node)
 {
     _placeNodes.push_back(node);
+    _dirty = true;
 }
 
 void ClusterNode::removeNode(PlaceNode* node)
@@ -25,6 +27,7 @@ void ClusterNode::removeNode(PlaceNode* node)
     {
         _placeNodes.erase(itr);
     }
+    _dirty = true;
 }
 
 unsigned int ClusterNode::getRadius() const
@@ -35,6 +38,7 @@ unsigned int ClusterNode::getRadius() const
 void ClusterNode::setRadius(unsigned int radius)
 {
     _radius = radius;
+    _dirty = true;
 }
 
 bool ClusterNode::getEnabled() const
@@ -45,6 +49,7 @@ bool ClusterNode::getEnabled() const
 void ClusterNode::setEnabled(bool enabled)
 {
     _enabled = enabled;
+    _dirty = true;
 }
 
 StyleClusterCallback* ClusterNode::getStyleCallback()
@@ -56,6 +61,7 @@ void
 ClusterNode::setStyleCallback(StyleClusterCallback* callback)
 {
     _styleCallback = callback;
+    _dirty = true;
 }
 
 void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
@@ -150,42 +156,59 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
 
 void ClusterNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _enabled)
+    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
         osgUtil::CullVisitor* cv = nv.asCullVisitor();
 
-        osg::Vec3d eye, center, up;
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
-
-        _horizon->setEye(eye);
-
-        ClusterList clusters;
-        getClusters(cv->getCurrentCamera(), clusters);
-
-        for (ClusterList::iterator itr = clusters.begin(); itr != clusters.end(); ++itr)
+        // If we aren't enabled just traverse all the placenodes.
+        if (!_enabled)
         {
-            Cluster& cluster = *itr;
-            // If we have more than 1 place, traverse the representative marker
-            if (cluster.places.size() > 1)
+            for (PlaceNodeList::iterator itr = _placeNodes.begin(); itr != _placeNodes.end(); ++itr)
             {
-                if (_styleCallback)
+                itr->get()->accept(nv);
+            }            
+        }
+        else
+        {
+            const osg::Matrixd &currentViewMatrix = cv->getCurrentCamera()->getViewMatrix();
+            if (_lastViewMatrix != currentViewMatrix || _dirty)
+            {
+                osg::Vec3d eye, center, up;
+                cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
+
+                _horizon->setEye(eye);
+
+                _clusters.clear();
+                getClusters(cv->getCurrentCamera(), _clusters);
+            }
+
+            for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
+            {
+                Cluster& cluster = *itr;
+                // If we have more than 1 place, traverse the representative marker
+                if (cluster.places.size() > 1)
                 {
-                    (*_styleCallback)(cluster);
+                    if (_styleCallback)
+                    {
+                        (*_styleCallback)(cluster);
+                    }
+
+                    itr->marker->accept(nv);
                 }
-
-                itr->marker->accept(nv);
-            }
-            else
-            {
-                // Otherwise just traverse the first node
-                cluster.places[0]->accept(nv);
+                else
+                {
+                    // Otherwise just traverse the first node
+                    cluster.places[0]->accept(nv);
+                }
             }
 
-
+            _dirty = false;
+            _lastViewMatrix = currentViewMatrix;
         }
     }
     else
     {
+        // Other visitors just traverse all the placenodes.
         for (PlaceNodeList::iterator itr = _placeNodes.begin(); itr != _placeNodes.end(); ++itr)
         {
             itr->get()->accept(nv);

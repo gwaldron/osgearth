@@ -246,17 +246,18 @@ public:
         buf << cluster.nodes[0]->getName() << "(" << cluster.nodes.size() << ")" << std::endl;
         cluster.marker->setText(buf.str());
 
-        // setIconImage requires a full rebuild, will fix :)
-        /*
         if (cluster.nodes[0]->getName() == "plane")
         {
             cluster.marker->setIconImage(_planeImage.get());
         }
-        else
+        else if (cluster.nodes[0]->getName() == "cow")
         {
             cluster.marker->setIconImage(_cowImage.get());
+        }    
+        else
+        {
+            OE_NOTICE << "name is " << cluster.nodes[0]->getName() << std::endl;
         }
-        */
     }
 
     osg::ref_ptr< osg::Image > _planeImage;

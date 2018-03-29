@@ -72,6 +72,7 @@ CanClusterCallback* ClusterNode::getCanClusterCallback()
 void ClusterNode::setCanClusterCallback(CanClusterCallback* callback)
 {
     _canClusterCallback = callback;
+    _dirty = true;
 }
 
 
@@ -202,19 +203,25 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
 
                 _clusters.clear();
                 getClusters(cv->getCurrentCamera(), _clusters);
+
+                // Style the clusters if need be
+                if (_styleCallback)
+                {
+                    for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
+                    {
+                        Cluster& cluster = *itr;
+                        (*_styleCallback)(cluster);
+                    }
+                }
             }
 
             for (ClusterList::iterator itr = _clusters.begin(); itr != _clusters.end(); ++itr)
             {
                 Cluster& cluster = *itr;
+                
                 // If we have more than 1 place, traverse the representative marker
                 if (cluster.nodes.size() > 1)
                 {
-                    if (_styleCallback)
-                    {
-                        (*_styleCallback)(cluster);
-                    }
-
                     itr->marker->accept(nv);
                 }
                 else

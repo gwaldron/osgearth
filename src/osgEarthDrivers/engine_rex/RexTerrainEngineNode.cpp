@@ -304,6 +304,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision( _mapFrame.getRevision() );
+    _liveTiles->setNotifyNeighbors(_terrainOptions.normalizeEdges() == true);
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
     _releaser = new ResourceReleaser();

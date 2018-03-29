@@ -146,6 +146,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const Revision& getMapRevision() const { return _maprev; }
 
         /**
+         * Whether tiles will listen for their neighbors to arrive in order to
+         * facilitate normal map edge matching.
+         */
+        void setNotifyNeighbors(bool value);
+
+        /**
          * Marks all tiles intersecting the extent as dirty. If incremental
          * update is enabled, they will automatically reload.
          *
@@ -219,6 +225,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNodeMap                       _tiles;
         OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
+        bool                              _notifyNeighbors;
 
         //typedef std::vector<TileKey> TileKeyVector;
         typedef fast_set<TileKey> TileKeySet;

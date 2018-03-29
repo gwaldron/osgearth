@@ -76,10 +76,13 @@ void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
 
 void makePlanes(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
 {
-    osg::ref_ptr< osg::Node > model = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
+    osg::ref_ptr< osg::Node > cessna = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
+    osg::ref_ptr< osg::Node > cow = osgDB::readRefNodeFile("cow.osg.100,100,100.scale");
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
+
+    bool useCow = false;
 
     for (unsigned int i = 0; i < count; i++)
     {
@@ -88,8 +91,18 @@ void makePlanes(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
 
         GeoTransform* transform = new GeoTransform();
         transform->setPosition(GeoPoint(geoSRS, lon, lat, 1000));
-        transform->addChild(model.get());
+        if (useCow)
+        {
+            transform->addChild(cow.get());
+            transform->setName("cow");
+        }        
+        else
+        {
+            transform->addChild(cessna.get());
+            transform->setName("plane");
+        }
         nodes.push_back(transform);
+        useCow = !useCow;
     }
 }
 
@@ -187,11 +200,12 @@ void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapN
     
 }
 
-class MyClusterStyleCallback : public StyleClusterCallback
+//! Displays a simplified count for the cluster instead of the exact number.
+class SimplifyCountCallback : public StyleClusterCallback
 {
+public:
     virtual void operator()(Cluster& cluster)
-    {
-        /*
+    {        
         if (cluster.nodes.size() >= 100)
         {
             cluster.marker->setText("100+");
@@ -212,7 +226,50 @@ class MyClusterStyleCallback : public StyleClusterCallback
         {
             cluster.marker->setText("2+");
         } 
+    }
+};
+
+//! Changes the name of a marker based on the name of the clustered nodes.
+class StyleByNameCallback : public StyleClusterCallback
+{
+public:
+
+    StyleByNameCallback()
+    {
+        _planeImage = osgDB::readRefImageFile("../data/airport.png");
+        _cowImage = osgDB::readRefImageFile("../data/hospital.png");
+    }
+    
+    virtual void operator()(Cluster& cluster)
+    {
+        std::stringstream buf;
+        buf << cluster.nodes[0]->getName() << "(" << cluster.nodes.size() << ")" << std::endl;
+        cluster.marker->setText(buf.str());
+
+        // setIconImage requires a full rebuild, will fix :)
+        /*
+        if (cluster.nodes[0]->getName() == "plane")
+        {
+            cluster.marker->setIconImage(_planeImage.get());
+        }
+        else
+        {
+            cluster.marker->setIconImage(_cowImage.get());
+        }
         */
+    }
+
+    osg::ref_ptr< osg::Image > _planeImage;
+    osg::ref_ptr< osg::Image > _cowImage;
+};
+
+//! Only allows nodes with the same name to be clustered together.
+class ClusterByNameCallback : public CanClusterCallback
+{
+public:
+    virtual bool operator()(osg::Node* a, osg::Node* b)
+    {
+        return (a->getName() == b->getName());
     }
 };
 
@@ -260,7 +317,8 @@ main(int argc, char** argv)
         makePlanes(mapNode, 10000, extent, nodes);
 
         ClusterNode* clusterNode = new ClusterNode(mapNode);
-        clusterNode->setStyleCallback(new MyClusterStyleCallback());
+        clusterNode->setStyleCallback(new StyleByNameCallback());
+        clusterNode->setCanClusterCallback(new ClusterByNameCallback());
         for (unsigned int i = 0; i < nodes.size(); i++)
         {
             clusterNode->addNode(nodes[i]);

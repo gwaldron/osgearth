@@ -29,6 +29,12 @@ public:
     virtual void operator()(Cluster& cluster) {}
 };
 
+class CanClusterCallback : public osg::Referenced
+{
+public:
+    virtual bool operator()(osg::Node* a, osg::Node* b) { return true; }
+};
+
 class ClusterNode : public osg::Node
 {
 public:
@@ -46,8 +52,9 @@ public:
     StyleClusterCallback* getStyleCallback();
     void setStyleCallback(StyleClusterCallback* callback);
 
-
-
+    CanClusterCallback* getCanClusterCallback();
+    void setCanClusterCallback(CanClusterCallback* callback);
+    
     virtual void traverse(osg::NodeVisitor& nv);
 
 protected:
@@ -68,6 +75,7 @@ protected:
     osg::observer_ptr< MapNode > _mapNode;
 
     osg::ref_ptr< StyleClusterCallback > _styleCallback;
+    osg::ref_ptr< CanClusterCallback > _canClusterCallback;
 
     osg::ref_ptr< Horizon > _horizon;
 

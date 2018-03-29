@@ -64,6 +64,17 @@ ClusterNode::setStyleCallback(StyleClusterCallback* callback)
     _dirty = true;
 }
 
+CanClusterCallback* ClusterNode::getCanClusterCallback()
+{
+    return _canClusterCallback;
+}
+
+void ClusterNode::setCanClusterCallback(CanClusterCallback* callback)
+{
+    _canClusterCallback = callback;
+}
+
+
 void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
 {
     _nextLabel = 0;
@@ -85,8 +96,6 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
     for (unsigned int i = 0; i < _nodes.size(); i++)
     {
         osg::Vec3d world = _nodes[i]->getBound().center();
-        //_placeNodes[i]->getPosition().toWorld(world);
-        //world = _placeNodes[i]->getBound().center();
 
         if (!_horizon->isVisible(world))
         {
@@ -138,6 +147,13 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
         {
             if (clustered.find(indices[j]) == clustered.end())
             {
+                if (_canClusterCallback.valid())
+                {
+                    bool canCluster = (*_canClusterCallback)(node, validPlaces[indices[j]]);
+                    if (!canCluster) {
+                        continue;
+                    }
+                }
                 cluster.nodes.push_back(validPlaces[indices[j]]);
                 actualCount++;
                 clustered.insert(indices[j]);

@@ -1099,18 +1099,36 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 namespace
 {
+    Config dumpStateSet(const osg::StateSet* ss)
+    {
+        Config conf("StateSet");
+        for (osg::StateSet::AttributeList::const_iterator i = ss->getAttributeList().begin(); i != ss->getAttributeList().end(); ++i)
+        {
+            osg::StateAttribute* sa = i->second.first.get();
+            Config saconf(sa->className());
+            conf.add(saconf);
+        }
+        return conf;
+    }
+
+    Config dumpRenderLeaf(osgUtil::RenderLeaf* leaf)
+    {
+        Config conf("Leaf");
+        conf.add("Name", leaf->getDrawable()->getName());
+        conf.add("Depth", leaf->_depth);
+        if (leaf->getDrawable()->getStateSet())
+            conf.add(dumpStateSet(leaf->getDrawable()->getStateSet()));
+        return conf;
+    }
+
     Config dumpStateGraph(osgUtil::StateGraph* sg)
     {
         Config conf("StateGraph");
 
         Config leaves("Leaves");
         for(osgUtil::StateGraph::LeafList::const_iterator i = sg->_leaves.begin(); i != sg->_leaves.end(); ++i)
-        {
-            Config leaf("Leaf");
-            leaf.add("Name", i->get()->getDrawable()->getName());
-            leaf.add("Depth", i->get()->_depth);
-            leaves.add( leaf );
-        }
+            leaves.add(dumpRenderLeaf(i->get()));
+
         if ( !leaves.empty() )
             conf.add(leaves);
 
@@ -1132,8 +1150,18 @@ CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
     Config conf("RenderBin");
     if ( !bin->getName().empty() )
         conf.set("Name", bin->getName());
+    if (bin->getStateSet())
+        conf.set("StateSet", dumpStateSet(bin->getStateSet()));
+
     conf.set("BinNum", bin->getBinNum());
-    
+
+    Config leaves("Leaves");
+    for (osgUtil::RenderBin::RenderLeafList::const_iterator i = bin->getRenderLeafList().begin(); i != bin->getRenderLeafList().end(); ++i)
+        leaves.add(dumpRenderLeaf(*i));
+
+    if (!leaves.empty())
+        conf.add(leaves);
+
     Config sg("StateGraphList");
     sg.add("NumChildren", bin->getStateGraphList().size());
 

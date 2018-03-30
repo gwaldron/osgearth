@@ -1,6 +1,7 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
+#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -254,7 +255,11 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
 
     tileRadius = std::max(tileBounds.radius(), tileRadius);
 
-    osg::PagedLOD* plod = new osg::PagedLOD;
+    //osg::PagedLOD* plod = new osg::PagedLOD;
+    osg::PagedLOD* plod = 
+        getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
+        new osg::PagedLOD();
+
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 

@@ -83,7 +83,7 @@ SceneGraphCallbacks::fireRemoveNode(osg::Node* node)
     osg::ref_ptr<osg::Object> sender;
     _sender.lock(sender);
     for (SceneGraphCallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        i->get()->onPostMergeNode(node, sender.get());
+        i->get()->onRemoveNode(node, sender.get());
 }
 
 //...................................................................

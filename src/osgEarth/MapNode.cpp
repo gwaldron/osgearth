@@ -95,7 +95,7 @@ namespace
     {
         MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        virtual void onPostMergeNode(osg::Node* node)
+        virtual void onPostMergeNode(osg::Node* node, osg::Object* sender)
         {
             if ( _mapNode.valid() && node )
             {
@@ -687,15 +687,18 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     osg::Node* node = layer->getOrCreateNode();
     if (node)
     {
-        // Call setMapNode on any MapNodeObservers on this initial creation.
-        MapNodeReplacer replacer( this );
-        //node->accept( replacer );
-
-        rebuildLayerNodes(_map.get(), _layerNodes);
-
         OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
 
-        // TODO: move this logic into ModelLayer.
+        // notify before adding it to the graph:
+        layer->getSceneGraphCallbacks()->firePreMergeNode(node);
+
+        // update the layer-to-node table (adds the node to the graph)
+        rebuildLayerNodes(_map.get(), _layerNodes);
+
+        // after putting it in the graph:
+        layer->getSceneGraphCallbacks()->firePostMergeNode(node);
+
+        // TODO: move this logic into ModelLayer (or Layer)?
         if (modelLayer)
         {
             ModelSource* ms = modelLayer->getModelSource();

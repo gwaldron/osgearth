@@ -28,6 +28,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/Cache>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/BoundingBox>
 #include <osg/StateSet>
 #include <osgDB/Options>
@@ -220,6 +221,11 @@ namespace osgEarth
          */
         virtual std::string getCacheID() const;
 
+        /**
+         * Access to the SceneGraphCallbacks that you can use to detect scene graph changes
+         */
+        SceneGraphCallbacks* getSceneGraphCallbacks() const;
+
     public:
 
         /** Adds a property notification callback to this layer */
@@ -326,6 +332,7 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _stateSet;
         RenderType _renderType;
         Status _status;
+        osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
 
     protected:
         typedef std::vector<osg::ref_ptr<LayerCallback> > CallbackVector;

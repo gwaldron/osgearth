@@ -28,7 +28,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
-#include <osgEarth/SceneGraphCallback>
 
 namespace osgEarth { namespace Features
 {
@@ -90,9 +89,6 @@ namespace osgEarth { namespace Features
         //! The feature source from which to read geometry. Use this OR setFeatureLayer
         void setFeatureSource(FeatureSource* fs);
 
-        //! Access to scene graph callbacks
-        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
-
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();
 
@@ -147,8 +143,6 @@ namespace osgEarth { namespace Features
         
         void create();
         FeatureNodeFactory* createFeatureNodeFactory();
-
-        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
     };
 
 } } // namespace osgEarth::Features

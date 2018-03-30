@@ -227,7 +227,7 @@ namespace
 
     struct SetupFading : public SceneGraphCallback
     {
-        void onPostMergeNode( osg::Node* node )
+        void onPostMergeNode(osg::Node* node, osg::Object* sender)
         {
             osg::Uniform* u = FadeEffect::createStartTimeUniform();
             u->set( (float)osg::Timer::instance()->time_s() );

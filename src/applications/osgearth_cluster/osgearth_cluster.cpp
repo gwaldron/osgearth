@@ -253,11 +253,7 @@ public:
         else if (cluster.nodes[0]->getName() == "cow")
         {
             cluster.marker->setIconImage(_cowImage.get());
-        }    
-        else
-        {
-            OE_NOTICE << "name is " << cluster.nodes[0]->getName() << std::endl;
-        }
+        } 
     }
 
     osg::ref_ptr< osg::Image > _planeImage;

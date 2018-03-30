@@ -135,7 +135,7 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
         // Get any matching indices that are part of this cluster.
         TIds indices;
 
-        index.range(screen.first - _radius, screen.second - _radius, screen.first + _radius, screen.second + _radius, [&indices](const auto id) { indices.push_back(id); });
+        index.range(screen.first - _radius, screen.second - _radius, screen.first + _radius, screen.second + _radius, indices);
         //index.within(screen.first, screen.second, _radius, [&indices](const auto id) { indices.push_back(id); });
 
         // Create a new cluster.

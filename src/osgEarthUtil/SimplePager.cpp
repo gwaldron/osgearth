@@ -103,9 +103,16 @@ namespace
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return pager->loadKey(
+            osg::ref_ptr<osg::Node> node = pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),
                 tracker.get());
+
+            if (node.valid() && pager->getSceneGraphCallbacks())
+            {
+                pager->getSceneGraphCallbacks()->firePreMergeNode(node.get());
+            }
+
+            return node.release();
         }
     };
 

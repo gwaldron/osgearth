@@ -41,6 +41,13 @@ ConfigOptions(co)
     fromConfig(_conf);
 }
 
+void
+LayerOptions::setDefaults()
+{    
+    _enabled.init(true);
+    _terrainPatch.init(false);
+}
+
 Config LayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
@@ -51,12 +58,14 @@ Config LayerOptions::getConfig() const
         conf.setObj("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
     conf.set("shader", _shader);
+
+    conf.set("terrain", _terrainPatch);
     return conf;
 }
 
 void LayerOptions::fromConfig(const Config& conf)
 {
-    _enabled.init(true);
+    setDefaults();
 
     conf.getIfSet("name", _name);
     conf.getIfSet("enabled", _enabled);
@@ -74,6 +83,9 @@ void LayerOptions::fromConfig(const Config& conf)
     }
     conf.getIfSet("shader_define", _shaderDefine);
     conf.getIfSet("shader", _shader);
+
+    conf.getIfSet("terrain", _terrainPatch);
+    conf.getIfSet("patch", _terrainPatch);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)

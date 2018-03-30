@@ -18,10 +18,6 @@
  */
 #include <osgEarth/MapCallback>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/Map>
 
 #define LC "[MapCallback] "

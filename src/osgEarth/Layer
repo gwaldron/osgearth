@@ -89,6 +89,13 @@ namespace osgEarth
         optional<std::string>& shader() { return _shader; }
         const optional<std::string>& shader() const { return _shader; }
 
+        /**
+         * Whether this layer should be treated as part of the terrain
+         * for the purposes of elevation queries, clamping, etc.
+         */
+        optional<bool>& terrainPatch() { return _terrainPatch; }
+        const optional<bool>& terrainPatch() const { return _terrainPatch; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
@@ -106,6 +113,7 @@ namespace osgEarth
         optional<CachePolicy> _cachePolicy;
         optional<std::string> _shaderDefine;
         optional<std::string> _shader;
+        optional<bool> _terrainPatch;
     };
 
 

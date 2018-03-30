@@ -181,7 +181,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = nv.asCullVisitor();
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // If we aren't enabled just traverse all the placenodes.
         if (!_enabled)

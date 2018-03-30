@@ -10,8 +10,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-using TPoint = std::pair<int, int>;
-using TIds = std::vector<std::size_t>;
+typedef std::pair<int, int> TPoint;
+typedef std::vector< std::size_t > TIds;
 
 typedef std::vector< osg::ref_ptr< PlaceNode > > PlaceNodeList;
 

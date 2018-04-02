@@ -101,10 +101,9 @@ namespace
             texCoords->reserve( latSegments * lonSegments );
             geom->setTexCoordArray( 0, texCoords );
 
-            normals = new osg::Vec3Array();
+            normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
             normals->reserve( latSegments * lonSegments );
             geom->setNormalArray( normals );
-            geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
         }
 
         osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
@@ -624,9 +623,8 @@ SimpleSkyNode::makeMoon()
     texture->setResizeNonPowerOfTwoHint(false);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 
-    osg::Vec4Array* colors = new osg::Vec4Array(1);    
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);    
     moonDrawable->setColorArray( colors );
-    moonDrawable->setColorBinding(osg::Geometry::BIND_OVERALL);
     (*colors)[0] = osg::Vec4(1, 1, 1, 1 );
 
     // configure the stateset
@@ -754,7 +752,7 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
         if ( p->magnitude > maxMag ) maxMag = p->magnitude;
     }
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     for( p = stars.begin(); p != stars.end(); p++ )
     {
         float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
@@ -766,7 +764,6 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
     geometry->setVertexArray( coords );
     geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
     geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
 
     osg::StateSet* sset = geometry->getOrCreateStateSet();

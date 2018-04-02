@@ -556,9 +556,8 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     osg::Vec4Array* colors = 0L;
     if ( useColor )
     {
-        colors = new osg::Vec4Array( numWallVerts );
+        colors = new osg::Vec4Array( osg::Array::BIND_PER_VERTEX, numWallVerts );
         walls->setColorArray( colors );
-        walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
 
     osg::Vec4Array* anchors = 0L;
@@ -566,10 +565,9 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     // If GPU clamping is in effect, create clamping attributes.
     if ( _gpuClamping )
     {
-        anchors = new osg::Vec4Array( numWallVerts );
+        anchors = new osg::Vec4Array( osg::Array::BIND_PER_VERTEX, numWallVerts );
+        anchors->setNormalize(false);
         walls->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
-        walls->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
-        walls->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
     }
 
     unsigned vertptr = 0;
@@ -698,9 +696,8 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     osg::Vec3Array* verts = new osg::Vec3Array();
     roof->setVertexArray( verts );
 
-    osg::Vec4Array* color = new osg::Vec4Array();
+    osg::Vec4Array* color = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     roof->setColorArray( color );
-    roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
     osg::Vec3Array* tex = 0L;
     if ( roofSkin )
@@ -766,9 +763,8 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         roof->addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, elevptr, vertptr-elevptr) );
     } 
 
-    osg::Vec3Array* normal = new osg::Vec3Array(verts->size());
+    osg::Vec3Array* normal = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
     roof->setNormalArray( normal );
-    roof->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
     normal->assign( verts->size(), osg::Vec3(0,0,1) );
 
     int v = verts->size();
@@ -815,9 +811,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
     osg::Vec3Array* verts = new osg::Vec3Array();
     outline->setVertexArray( verts );
 
-    osg::Vec4Array* color = new osg::Vec4Array();
+    osg::Vec4Array* color = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     outline->setColorArray( color );
-    outline->setColorBinding( osg::Geometry::BIND_OVERALL );
     color->push_back( outlineColor );
 
     osg::DrawElements* de = new osg::DrawElementsUInt(GL_LINES);
@@ -826,10 +821,9 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
     osg::Vec4Array* anchors = 0L;
     if ( _gpuClamping )
     {
-        anchors = new osg::Vec4Array();
+        anchors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+        anchors->setNormalize(false);
         outline->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
-        outline->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
-        outline->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
     }
 
     bool flatten =

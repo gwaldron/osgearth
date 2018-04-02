@@ -159,10 +159,9 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
         return;
 
     // add a new integer attributer to store the feautre ID per vertex.
-    ObjectIDArray* ids = new ObjectIDArray();
+    ObjectIDArray* ids = new ObjectIDArray(osg::Array::BIND_PER_VERTEX);
+    ids->setNormalize(false);
     geom->setVertexAttribArray    (_attribLocation, ids);
-    geom->setVertexAttribBinding  (_attribLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(_attribLocation, false);
     
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
     ids->setPreserveDataType(true);

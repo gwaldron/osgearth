@@ -622,10 +622,9 @@ Control::draw(const ControlContext& cx)
                 
                _geom->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
 
-                osg::Vec4Array* colors = new osg::Vec4Array(1);
+                osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
                 (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
                 _geom->setColorArray( colors );
-                _geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
                 getGeode()->addDrawable( _geom.get() );
             }
@@ -1139,10 +1138,9 @@ ImageControl::draw( const ControlContext& cx )
 
         g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
 
-        osg::Vec4Array* c = new osg::Vec4Array(1);
+        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
         (*c)[0] = osg::Vec4f(1,1,1,1);
         g->setColorArray( c );
-        g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
 
@@ -1305,10 +1303,9 @@ HSliderControl::draw( const ControlContext& cx )
             
             g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 4, 6) );
 
-            osg::Vec4Array* c = new osg::Vec4Array(1);
+            osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
             (*c)[0] = *foreColor();
             g->setColorArray( c );
-            g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
             getGeode()->addDrawable( g.get() );
         }
@@ -1417,10 +1414,9 @@ CheckBoxControl::draw( const ControlContext& cx )
             g->addPrimitiveSet( e );
         }
 
-        osg::Vec4Array* c = new osg::Vec4Array(1);
+        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
         (*c)[0] = *foreColor();
         g->setColorArray( c );
-        g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         getGeode()->addDrawable( g );
     }

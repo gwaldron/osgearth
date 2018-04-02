@@ -226,10 +226,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 // assign the primary color array. PER_VERTEX required in order to support
                 // vertex optimization later
                 unsigned count = osgGeom->getVertexArray()->getNumElements();
-                osg::Vec4Array* colors = new osg::Vec4Array;
+                osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
                 colors->assign( count, primaryColor );
                 osgGeom->setColorArray( colors );
-                osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
                 geode->addDrawable( osgGeom );
 
@@ -571,10 +570,9 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 }
 
                 // assign the primary color (PER_VERTEX required for later optimization)
-                osg::Vec4Array* colors = new osg::Vec4Array;
+                osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
                 colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
                 osgGeom->setColorArray( colors );
-                osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
                 geode->addDrawable( osgGeom );
 
@@ -673,10 +671,9 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             }
 
             // assign the primary color (PER_VERTEX required for later optimization)
-            osg::Vec4Array* colors = new osg::Vec4Array;
+            osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
             colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
             osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
             geode->addDrawable( osgGeom.get() );
 

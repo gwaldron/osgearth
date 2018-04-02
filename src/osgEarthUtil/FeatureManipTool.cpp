@@ -75,7 +75,7 @@ namespace
         osg::ref_ptr<osg::Vec4Array> _colors;
         ColorReplacer(const osg::Vec4f& color) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
         {
-            _colors = new osg::Vec4Array(1);
+            _colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
             (*_colors.get())[0] = color;
         }
 
@@ -87,7 +87,6 @@ namespace
                 if ( g )
                 {
                     g->setColorArray( _colors );
-                    g->setColorBinding( osg::Geometry::BIND_OVERALL );
                 }
             }
             traverse( geode );

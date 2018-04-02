@@ -413,11 +413,10 @@ osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
     if ( verts->getVertexBufferObject() )
         verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*colors)[0] = osg::Vec4(1,1,1,*_alpha);
 
     geometry->setColorArray( colors );
-    geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     GLushort tris[6] = { 0, 1, 2,
         0, 2, 3

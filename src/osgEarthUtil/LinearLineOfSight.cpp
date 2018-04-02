@@ -294,11 +294,10 @@ LinearLineOfSightNode::draw(bool backgroundThread)
         verts->reserve(4);
         geometry->setVertexArray( verts );
 
-        osg::Vec4Array* colors = new osg::Vec4Array();
+        osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
         colors->reserve( 4 );
 
         geometry->setColorArray( colors );
-        geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
         if (_hasLOS)
         {

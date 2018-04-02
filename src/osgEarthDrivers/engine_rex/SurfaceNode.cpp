@@ -147,7 +147,7 @@ namespace
         b->push_back(1); b->push_back(5); b->push_back(2);
         geom->addPrimitiveSet(b);
 
-        osg::Vec3Array* n = new osg::Vec3Array();
+        osg::Vec3Array* n = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
         n->reserve(6);
         n->push_back(osg::Vec3(0, 0, 1));
         n->push_back(osg::Vec3(0, 0, -1));
@@ -156,15 +156,13 @@ namespace
         n->push_back(osg::Vec3(0, 1, 0));
         n->push_back(osg::Vec3(0, -1, 0));
         geom->setNormalArray(n);
-        geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
         //MeshSubdivider ms;
         //ms.run(*geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE);
 
-        osg::Vec4Array* c = new osg::Vec4Array(1);
+        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
         (*c)[0].set(1,1,0,1);
         geom->setColorArray(c);
-        geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
         return geom;
     }

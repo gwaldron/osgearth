@@ -83,26 +83,23 @@ GPULinesOperator::operator()(osg::Vec3Array* input, bool isLoop) const
     positions->reserve(outputSize);
     geom->setVertexArray(positions);
 
-    osg::Vec3Array* previous = new osg::Vec3Array();
+    osg::Vec3Array* previous = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    previous->setNormalize(false);
     previous->reserve(outputSize);
     previous->setBinding(previous->BIND_PER_VERTEX);
     geom->setVertexAttribArray(GPULines::PreviousVertexAttrLocation, previous);
-    geom->setVertexAttribBinding(GPULines::PreviousVertexAttrLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(GPULines::PreviousVertexAttrLocation, false);
 
-    osg::Vec3Array* next = new osg::Vec3Array();
+    osg::Vec3Array* next = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     next->reserve(outputSize);
     next->setBinding(next->BIND_PER_VERTEX);
+    next->setNormalize(false);
     geom->setVertexAttribArray(GPULines::NextVertexAttrLocation, next);
-    geom->setVertexAttribBinding(GPULines::NextVertexAttrLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(GPULines::NextVertexAttrLocation, false);
 
-    osg::FloatArray* widths = new osg::FloatArray();
+    osg::FloatArray* widths = new osg::FloatArray(osg::Array::BIND_PER_VERTEX);
     widths->reserve(outputSize);
     widths->setBinding(next->BIND_PER_VERTEX);
+    widths->setNormalize(false);
     geom->setVertexAttribArray(GPULines::WidthAttrLocation, widths);
-    geom->setVertexAttribBinding(GPULines::WidthAttrLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(GPULines::WidthAttrLocation, false);
 
     float thickness = _stroke.width().get();
 

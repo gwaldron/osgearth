@@ -332,10 +332,9 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     (*tcoords)[3].set(0, 1);
     geom->setTexCoordArray(textureUnit,tcoords);
 
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
     geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     GLushort indices[] = {0,1,2,0,2,3};
     geom->addPrimitiveSet( new osg::DrawElementsUShort( GL_TRIANGLES, 6, indices ) );
@@ -389,7 +388,7 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     b->push_back(1); b->push_back(5); b->push_back(2);
     geom->addPrimitiveSet( b );
 
-    osg::Vec3Array* n = new osg::Vec3Array();
+    osg::Vec3Array* n = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     n->reserve(6);
     n->push_back( osg::Vec3( 0, 0, 1) );
     n->push_back( osg::Vec3( 0, 0,-1) );
@@ -398,15 +397,13 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     n->push_back( osg::Vec3( 0, 1, 0) );
     n->push_back( osg::Vec3( 0,-1, 0) );
     geom->setNormalArray(n);
-    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
@@ -443,7 +440,7 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     b->push_back(0); b->push_back(4); b->push_back(2);
     geom->addPrimitiveSet( b );
 
-    osg::Vec3Array* n = new osg::Vec3Array();
+    osg::Vec3Array* n = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     n->reserve(5);
     n->push_back( osg::Vec3(0,0,1) );
     n->push_back( osg::Vec3(-1,0,0) );
@@ -451,15 +448,13 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     n->push_back( osg::Vec3(0,1,0) );
     n->push_back( osg::Vec3(0,-1,0) );
     geom->setNormalArray(n);
-    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
@@ -509,10 +504,9 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
     }
 #endif
 
-    osg::Vec3Array* normals = new osg::Vec3Array();
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     normals->reserve( latSegments * lonSegments );
     geom->setNormalArray( normals );
-    geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
 
     osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
     el->reserve( latSegments * lonSegments * 6 );
@@ -562,10 +556,9 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
         }
     }
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     geom->setVertexArray( verts );
     geom->addPrimitiveSet( el );
@@ -630,10 +623,9 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
     b->push_back(2); b->push_back(3); b->push_back(0);
     geom->addPrimitiveSet( b );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
@@ -677,10 +669,9 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
     b->push_back(2); b->push_back(3); b->push_back(0);
     geom->addPrimitiveSet( b );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.
@@ -712,10 +703,9 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     b->push_back(0); b->push_back(1); b->push_back(2); b->push_back(3);
     geom->addPrimitiveSet( b );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*c)[0] = color;
     geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
     s_isNotTextUniform->set( false );

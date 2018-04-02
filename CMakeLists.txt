@@ -325,6 +325,10 @@ ENDIF(INSTALL_TO_OSG_DIR)
 # osgEarth Examples
 OPTION(BUILD_OSGEARTH_EXAMPLES "Enable to build osgEarth Examples" ON)
 
+# Applications and tests
+OPTION(BUILD_APPLICATIONS "Enable build of Applications" ON)
+OPTION(BUILD_TESTS "Enable build of Tests" ON)
+
 # OE Core
 ADD_SUBDIRECTORY(src)
 

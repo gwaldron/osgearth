@@ -788,9 +788,9 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         osg::Vec4Array* a = static_cast<osg::Vec4Array*>(roof->getTexCoordArray(1));
         if ( a )
         {
-            roof->setVertexAttribArray    ( Clamping::AnchorAttrLocation, a );
-            roof->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
-            roof->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+            a->setBinding(osg::Array::BIND_PER_VERTEX);
+            a->setNormalize(false);
+            roof->setVertexAttribArray( Clamping::AnchorAttrLocation, a );
             roof->setTexCoordArray(1, 0L);
         }
     }

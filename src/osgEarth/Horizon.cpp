@@ -439,13 +439,12 @@ HorizonNode::HorizonNode()
         verts->push_back(osg::Vec3( 0.5f, -0.5f + float(y)/r, 0.0f));
     }
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     colors->push_back(osg::Vec4(1,0,0,0.5f));
 
     osg::Geometry* geom = new osg::Geometry();
     geom->setVertexArray(verts);
     geom->setColorArray(colors);
-    geom->setColorBinding(geom->BIND_OVERALL);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
     
     geom->addPrimitiveSet(de);

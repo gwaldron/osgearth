@@ -2104,10 +2104,9 @@ namespace
             de->push_back(2); de->push_back(6);
             geom->addPrimitiveSet(de);
 
-            osg::Vec4Array* c= new osg::Vec4Array();
+            osg::Vec4Array* c= new osg::Vec4Array(osg::Array::BIND_OVERALL);
             c->push_back(osg::Vec4(0,1,1,1));
             geom->setColorArray(c);
-            geom->setColorBinding(geom->BIND_OVERALL);
 
             geode->addDrawable(geom);
 

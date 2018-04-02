@@ -50,7 +50,7 @@ osg::Geometry()
     if ( v->getVertexBufferObject() )
         v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-    osg::Vec4Array* c = new osg::Vec4Array();
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_PER_PRIMITIVE_SET);
     if ( bboxSymbol.fill().isSet() )
     {
         c->push_back( bboxSymbol.fill()->color() );
@@ -66,7 +66,6 @@ osg::Geometry()
     }
 
     setColorArray( c );
-    setColorBinding( osg::Geometry::BIND_PER_PRIMITIVE_SET );
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.

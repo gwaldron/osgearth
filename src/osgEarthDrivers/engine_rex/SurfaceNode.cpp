@@ -86,10 +86,9 @@ namespace
 #endif
             geom->addPrimitiveSet(de);
 
-            osg::Vec4Array* c= new osg::Vec4Array();
+            osg::Vec4Array* c= new osg::Vec4Array(osg::Array::BIND_OVERALL);
             c->push_back(osg::Vec4(1,0,0,1));
             geom->setColorArray(c);
-            geom->setColorBinding(geom->BIND_OVERALL);
 
             geode->addChild(geom);
 

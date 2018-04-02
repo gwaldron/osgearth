@@ -89,6 +89,7 @@ namespace
     osg::Array* convertToBindPerVertex( TYPE* src, unsigned int numVerts)
     {
         TYPE* result = new TYPE();
+        result->setBinding(osg::Array::BIND_PER_VERTEX);
         result->reserve(numVerts);
         for (unsigned int i = 0; i < numVerts; i++)
         {

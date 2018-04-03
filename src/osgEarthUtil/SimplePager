@@ -26,6 +26,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Profile>
 #include <osgEarth/Progress>
+#include <osgEarth/SceneGraphCallback>
 #include <osg/Group>
 #include <osg/PagedLOD>
 
@@ -66,6 +67,10 @@ namespace osgEarth { namespace Util {
 
         void setEnableCancelation(bool value);
         bool getEnableCancalation() const;
+
+        //! Scene graph callbacks for notification of changes. Call before calling build().
+        void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
+        SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sceneGraphCallbacks.get(); }
 
         /**
          * Gets the profile for the SimplePager.
@@ -132,6 +137,7 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< const osgEarth::Profile > _profile;
         osg::ref_ptr< osg::NodeCallback > _progressMaster;
         osg::ref_ptr< osgDB::FileLocationCallback > _fileLocationCallback;
+        osg::ref_ptr< SceneGraphCallbacks > _sceneGraphCallbacks;
         float _priorityScale;
         float _priorityOffset;
         bool _canCancel;

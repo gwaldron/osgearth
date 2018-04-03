@@ -29,7 +29,6 @@
 #include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Containers>
-#include <osgEarth/SceneGraphCallback>
 #include <osg/Node>
 #include <osg/Array>
 #include <vector>
@@ -186,9 +185,6 @@ namespace osgEarth
          */
         bool isTerrainPatch() const { return options().terrainPatch().get(); }
 
-        /** Access scene graph callbacks */
-        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
-
     public:
 
         /**
@@ -252,7 +248,6 @@ namespace osgEarth
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
-        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
         Graphs _graphs;

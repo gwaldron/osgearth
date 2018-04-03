@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterUsage>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
@@ -65,6 +66,8 @@ namespace osgEarth { namespace Features
          */
         osg::Node* push( FeatureList& input, FilterContext& context );
 
+        void setFilterUsage(FilterUsage usage) { _filterUsage = usage; }
+        FilterUsage getFilterUsage(void) const{ return _filterUsage; }
     public: // properties
 
         /**
@@ -158,6 +161,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<HeightCallback>   _heightCallback;
         optional<NumericExpression>    _heightExpr;
         bool                           _makeStencilVolume;
+        FilterUsage                    _filterUsage;
 
         Style                          _style;
         bool                           _styleDirty;

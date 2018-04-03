@@ -79,7 +79,8 @@ _mergeGeometry         ( true ),
 _wallAngleThresh_deg   ( 60.0 ),
 _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
-_gpuClamping           ( false )
+_gpuClamping(false),
+_filterUsage(FILTER_USAGE_NORMAL)
 {
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
@@ -1214,7 +1215,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         mg.setTargetMaximumNumberOfVertices(65536);
         group->accept(mg);
 
-        // Because the mesh optimizers damaga line geometry.
+      // Because the mesh optimizers damage line geometry.
         if ( !_outlineSymbol.valid() )
         {
             osgUtil::Optimizer o;

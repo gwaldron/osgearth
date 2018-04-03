@@ -204,7 +204,6 @@ void
 ModelLayer::init()
 {
     VisibleLayer::init();
-    _sgCallbacks = new SceneGraphCallbacks();
 }
 
 const Status&
@@ -353,8 +352,10 @@ ModelLayer::getOrCreateSceneGraph(const Map*        map,
 
     if ( _modelSource.valid() )
     {
-        _modelSource->setSceneGraphCallbacks(_sgCallbacks.get());
+        // Share the scene graph callbacks with the model source:
+        _modelSource->setSceneGraphCallbacks(getSceneGraphCallbacks());
 
+        // Create the scene graph:
         node = _modelSource->createNode( map, progress );
 
         if ( node )

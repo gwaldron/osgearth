@@ -53,7 +53,7 @@ namespace osgEarth { namespace Util
         /**
         *Gets the name of the style
         */
-        const std::string& getName() {return _name;}
+	const std::string& getName() const {return _name;}
 
         /**
         *Sets the name of the style
@@ -63,7 +63,7 @@ namespace osgEarth { namespace Util
         /**
         *Gets the title of the style
         */
-        const std::string& getTitle() {return _title;}
+	const std::string& getTitle() const {return _title;}
 
         /**
         *Sets the title of the style

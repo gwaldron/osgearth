@@ -1101,7 +1101,7 @@ namespace
 {
     Config dumpStateSet(const osg::StateSet* ss)
     {
-        Config conf("StateSet");
+        Config conf("StateSetAttrs");
         for (osg::StateSet::AttributeList::const_iterator i = ss->getAttributeList().begin(); i != ss->getAttributeList().end(); ++i)
         {
             osg::StateAttribute* sa = i->second.first.get();

@@ -27,7 +27,6 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/ResourceCache>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
 #include <osgEarth/Clamping>
@@ -695,14 +694,17 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
 }
 
 // Borrowed from MeshConsolidator.cpp
-template<typename FROM, typename TO>
-osg::PrimitiveSet* copy( FROM* src, unsigned offset )
+namespace
 {
-    TO* newDE = new TO( src->getMode() );
-    newDE->reserve( src->size() );
-    for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
-        newDE->push_back( (*i) + offset );
-    return newDE;
+    template<typename FROM, typename TO>
+    osg::PrimitiveSet* copy( FROM* src, unsigned offset )
+    {
+        TO* newDE = new TO( src->getMode() );
+        newDE->reserve( src->size() );
+        for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
+            newDE->push_back( (*i) + offset );
+        return newDE;
+    }
 }
 
 

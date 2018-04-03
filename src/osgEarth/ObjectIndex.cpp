@@ -183,13 +183,10 @@ namespace
             setNodeMaskOverride(~0);
         }
 
-        void apply(osg::Geode& geode)
+        void apply(osg::Drawable& drawable)
         {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                _index->tagDrawable( geode.getDrawable(i), _id );
-            }
-            traverse( geode );
+            _index->tagDrawable(&drawable, _id);
+            traverse(drawable);
         }
 
         const ObjectIndex* _index;

@@ -219,7 +219,6 @@ namespace osgEarth
 
         void apply(osg::Node& node);
         void apply(osg::Transform& xform);
-        void apply(osg::Geode& geode);
         void apply(osg::Drawable& drawable);
         void apply(osg::LOD& lod);
     };

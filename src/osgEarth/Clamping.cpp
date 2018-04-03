@@ -72,7 +72,7 @@ namespace
                         Clamping::ClampToGround) );
                 }
 
-                geom->setVertexAttribArray    (Clamping::AnchorAttrLocation, anchors);
+                geom->setVertexAttribArray(Clamping::AnchorAttrLocation, anchors);
             }
         }
 

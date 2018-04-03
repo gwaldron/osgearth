@@ -160,8 +160,8 @@ namespace
             node->accept( *this );
         }
 
-        void apply( osg::Geode& geode )
-        {            
+        void apply(osg::Drawable& drawable)
+        {
             if ( _pass == 1 )
             {
                 osg::Matrixd local2world;
@@ -171,8 +171,7 @@ namespace
                 osg::TemplatePrimitiveFunctor<ComputeMaxNormalLength> pass1;
                 pass1.set( _normalECEF, local2world, &_maxNormalLen );
 
-                for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-                    geode.getDrawable(i)->accept( pass1 );
+                drawable.accept(pass1);
             }
 
             else // if ( _pass == 2 )
@@ -181,8 +180,8 @@ namespace
 
                 osg::TemplatePrimitiveFunctor<ComputeMaxRadius2> pass2;
                 pass2.set( center, &_maxRadius2 );
-                for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-                    geode.getDrawable(i)->accept( pass2 );
+
+                drawable.accept(pass2);
             }
         }
 
@@ -261,17 +260,12 @@ namespace
             _matrixStack.push_back( osg::Matrixd::identity() );
         }
 
-        void apply( osg::Geode& geode )
+        void apply(osg::Drawable& drawable)
         {
             LineFunctor<ComputeMinDeviation> functor;
             functor.set( _matrixStack.back(), _ecefNormal, &_minDeviation );
-
-             for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-             {
-                 geode.getDrawable(i)->accept( functor );
-             }
-
-             traverse(geode);
+            drawable.accept(functor);
+            traverse(drawable);
         }
 
         void apply( osg::Transform& xform )
@@ -863,12 +857,6 @@ ProxyCullVisitor::apply(osg::Transform& node)
     _cv->popCurrentMask();
 
     _cv->popFromNodePath();
-}
-
-void 
-ProxyCullVisitor::apply(osg::Geode& node)
-{
-    ProxyCullVisitor::apply(static_cast<osg::Node&>(node));
 }
 
 void 

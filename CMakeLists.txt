@@ -363,9 +363,9 @@ set(OSGEARTHUTIL_LIBRARY "osgEarthUtil")
 set(OSGEARTHFEATURES_LIBRARY "osgEarthFeatures")
 set(OSGEARTHSYMBOLOGY_LIBRARY "osgEarthSymbology")
 set(OSGEARTH_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/osgearth/include")
-message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome)
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings)
+message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome-pprabhu")
+ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome-pprabhu ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome-pprabhu)
+ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings-pprabhu ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings-pprabhu)
 
 # VPB Applications
 # OPTION(BUILD_APPLICATIONS "Enable to build OSGEARTH Applications" ON)

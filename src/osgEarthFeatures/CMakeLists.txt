@@ -11,7 +11,7 @@ ENDIF(GEOS_FOUND)
 SET(LIB_NAME osgEarthFeatures)
 
 set(TARGET_GLSL
-    GPULinesScreenProj.glsl)
+)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -51,7 +51,6 @@ SET(LIB_PUBLIC_HEADERS
     FilterContext
     GeometryCompiler
     GeometryUtils
-    GPULines
     LabelSource
     MVT
     OgrUtils
@@ -96,7 +95,6 @@ SET(TARGET_SRC
     FilterContext.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
-    GPULines.cpp
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp

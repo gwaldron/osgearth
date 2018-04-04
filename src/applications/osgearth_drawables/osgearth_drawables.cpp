@@ -55,7 +55,7 @@ osg::Node* createLineDrawables()
     group->addChild(strip);
 
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
-    loop->setLineWidth(25);
+    loop->setLineWidth(8);
     addVerts(loop, 30, 10);
     group->addChild(loop);
 

@@ -39,7 +39,7 @@ namespace osgEarth
      * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
      * callback on your scene graph.
      */
-    class OSGEARTH_EXPORT LineDrawable : public osg::Drawable
+    class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
     {
     public:
         //! Create a new LineDrawable.
@@ -95,47 +95,15 @@ namespace osgEarth
         //! Binding location for "next" vertex attribute (default = 10)
         static int NextVertexAttrLocation;
 
-    public: // osg::Drawable pass-throughs
-
-        void drawImplementation(osg::RenderInfo& ri) const;
-
-        void compileGLObjects(osg::RenderInfo& ri) const { _geom->compileGLObjects(ri); }
-
-        void resizeGLObjectBuffers(unsigned maxSize) { _geom->resizeGLObjectBuffers(maxSize); }
-
-        void releaseGLObjects(osg::State* state) const { _geom->releaseGLObjects(state); }
-
-        osg::BoundingSphere computeBound() const { return _geom->computeBound(); }
-
-        osg::BoundingBox computeBoundingBox() const { return _geom->computeBoundingBox(); }
-
-        virtual bool supports(const osg::Drawable::AttributeFunctor& af) const { return _geom->supports(af); }
-
-        virtual void accept(Drawable::AttributeFunctor& af) { _geom->accept(af); }
-
-        virtual bool supports(const osg::Drawable::ConstAttributeFunctor& af) const { return _geom->supports(af); }
-
-        virtual void accept(osg::Drawable::ConstAttributeFunctor& af) const { _geom->accept(af); }
-
-        virtual bool supports(const osg::PrimitiveFunctor& pf) const { return _geom->supports(pf); }
-
-        virtual void accept(osg::PrimitiveFunctor& pf) const { _geom->accept(pf); }
-
-        virtual bool supports(const osg::PrimitiveIndexFunctor& pf) const { return _geom->supports(pf); }
-
-        virtual void accept(osg::PrimitiveIndexFunctor& pf) const { _geom->accept(pf); }
-
-        //TODO replace?
-        osg::Geometry* asGeometry() { return _geom.get(); }
-        const osg::Geometry* asGeometry() const { return _geom.get(); }
-
     private:
         GLenum _mode;
         bool _gpu;
-        osg::ref_ptr<osg::Geometry>   _geom;
+        //osg::ref_ptr<osg::Geometry>   _geom;
         osg::ref_ptr<osg::Vec3Array>  _current;
         osg::ref_ptr<osg::Vec3Array>  _previous;
         osg::ref_ptr<osg::Vec3Array>  _next;
+
+        osg::Geometry* geom() { return this; }
     };
     
     // Template implementations ..........................................
@@ -145,7 +113,7 @@ namespace osgEarth
     {
         T* a = new T();
         a->reserve(_current->size());
-        _geom->setVertexAttribArray(location, a);
+        geom()->setVertexAttribArray(location, a);
         return a;
     }
 

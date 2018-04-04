@@ -32,9 +32,9 @@
 #define OE_GLES_AVAILABLE
 #endif
 
-//#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE) || defined(OSG_GL2_AVAILABLE) || defined(OSG_GL3_AVAILABLE)
 #define OE_USE_GPU_LINES
-//#endif
+#endif
 
 using namespace osgEarth;
 
@@ -77,7 +77,7 @@ int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
 
 LineDrawable::LineDrawable(GLenum mode) :
-osg::Drawable(),
+osg::Geometry(),
 _mode(mode),
 _gpu(false)
 {
@@ -94,41 +94,41 @@ _gpu(false)
 
     setUseDisplayList(false);
 
-    _geom = new osg::Geometry();
+    //_geom = new osg::Geometry();
 
-    _geom->setUseVertexBufferObjects(true);
-    _geom->setUseDisplayList(false);
+    geom()->setUseVertexBufferObjects(true);
+    geom()->setUseDisplayList(false);
 
     _current = new osg::Vec3Array();
     _current->setBinding(osg::Array::BIND_PER_VERTEX);
-    _geom->setVertexArray(_current.get());
+    geom()->setVertexArray(_current.get());
 
     if (_gpu)
     {
         _previous = new osg::Vec3Array();
         _previous->setBinding(osg::Array::BIND_PER_VERTEX);
         _previous->setNormalize(false);
-        _geom->setVertexAttribArray(PreviousVertexAttrLocation, _previous.get());    
+        geom()->setVertexAttribArray(PreviousVertexAttrLocation, _previous.get());    
 
         _next = new osg::Vec3Array();
         _next->setBinding(osg::Array::BIND_PER_VERTEX);
         _next->setNormalize(false);
-        _geom->setVertexAttribArray(NextVertexAttrLocation, _next.get());
+        geom()->setVertexAttribArray(NextVertexAttrLocation, _next.get());
     }
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
-osg::Drawable(rhs, copy),
-_geom(static_cast<osg::Geometry*>(copy(rhs._geom.get()))),
+osg::Geometry(rhs, copy),
+//_geom(static_cast<osg::Geometry*>(copy(rhs._geom.get()))),
 _mode(rhs._mode),
 _gpu(rhs._gpu)
 {
-    _current = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+    _current = static_cast<osg::Vec3Array*>(geom()->getVertexArray());
 
     if (_gpu)
     {
-        _previous = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(PreviousVertexAttrLocation));
-        _next = static_cast<osg::Vec3Array*>(_geom->getVertexAttribArray(NextVertexAttrLocation));
+        _previous = static_cast<osg::Vec3Array*>(geom()->getVertexAttribArray(PreviousVertexAttrLocation));
+        _next = static_cast<osg::Vec3Array*>(geom()->getVertexAttribArray(NextVertexAttrLocation));
     }
 }
 
@@ -158,13 +158,13 @@ LineDrawable::setStippling(short factor, short pattern)
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(_geom->getColorArray());
+    osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(geom()->getColorArray());
 
-    if (_geom->getColorArray() == 0L)
+    if (geom()->getColorArray() == 0L)
     {
         colors = new osg::Vec4Array();
         colors->setBinding(osg::Array::BIND_OVERALL);
-        _geom->setColorArray(colors);
+        geom()->setColorArray(colors);
     }
 
     colors->clear();
@@ -271,34 +271,74 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
         {
             unsigned k = i*2u;
 
-            (*_current.get())[k] = vert;
-            (*_current.get())[k+1] = vert;
+            (*_current)[k] = vert;
+            (*_current)[k+1] = vert;
             _current->dirty();
 
-            if (k > 0)
+            if (_mode == GL_LINE_STRIP)
             {
-                (*_next)[k-1] = vert;
-                (*_next)[k-2] = vert;
-                _next->dirty();
-            }
-            else if (_mode == GL_LINE_LOOP)
-            {
-                (*_next)[size-1] = vert;
-                (*_next)[size-2] = vert;
-                _next->dirty();
+                if (k > 0)
+                {
+                    (*_next)[k - 1] = vert;
+                    (*_next)[k - 2] = vert;
+                    _next->dirty();
+                }
+                if (i < numVerts - 1)
+                {
+                    (*_previous)[k + 2] = vert;
+                    (*_previous)[k + 3] = vert;
+                    _previous->dirty();
+                }
             }
 
-            if (i < numVerts-1)
-            {
-                (*_previous)[k+2] = vert;
-                (*_previous)[k+3] = vert;
-                _previous->dirty();
-            }
             else if (_mode == GL_LINE_LOOP)
             {
-                (*_previous)[0] = vert;
-                (*_previous)[1] = vert;
-                _previous->dirty();
+                if (k > 0)
+                {
+                    (*_next)[k - 1] = vert;
+                    (*_next)[k - 2] = vert;
+                    _next->dirty();
+                }
+                else
+                {
+                    (*_next)[size - 1] = vert;
+                    (*_next)[size - 2] = vert;
+                    _next->dirty();
+                }
+                
+                if (i < numVerts - 1)
+                {
+                    (*_previous)[k + 2] = vert;
+                    (*_previous)[k + 3] = vert;
+                    _previous->dirty();
+                }
+                else
+                {
+                    (*_previous)[0] = vert;
+                    (*_previous)[1] = vert;
+                    _previous->dirty();
+                }
+            }
+
+            else if (_mode == GL_LINES)
+            {
+                bool first = (i & 0x01) == 0;
+                if (first)
+                {
+                    (*_previous)[k] = vert;
+                    (*_previous)[k+1] = vert;
+                    (*_previous)[k+2] = vert;
+                    (*_previous)[k+3] = vert;
+                    _previous->dirty();
+                }
+                else
+                {
+                    (*_next)[k+1] = vert;
+                    (*_next)[k] = vert;
+                    (*_next)[k-1] = vert;
+                    (*_next)[k-2] = vert;
+                    _next->dirty();
+                }
             }
         }
 
@@ -308,7 +348,7 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
             _current->dirty();
         }
 
-        _geom->dirtyBound();
+        geom()->dirtyBound();
     }
 }
 
@@ -367,8 +407,7 @@ namespace
 void
 LineDrawable::dirty()
 {
-    dirtyBound();
-    _geom->dirtyBound();
+    geom()->dirtyBound();
 
     _current->dirty();
 
@@ -379,9 +418,9 @@ LineDrawable::dirty()
     }
 
     // rebuild primitive sets.
-    if (_geom->getNumPrimitiveSets() > 0)
+    if (geom()->getNumPrimitiveSets() > 0)
     {
-        _geom->removePrimitiveSet(0, 1);
+        geom()->removePrimitiveSet(0, 1);
     }
 
     if (_gpu && _current->size() >= 4)
@@ -408,7 +447,7 @@ LineDrawable::dirty()
                 els->addElement(e+0); // PV
             }
             
-            _geom->addPrimitiveSet(els);
+            geom()->addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINE_LOOP)
@@ -434,7 +473,7 @@ LineDrawable::dirty()
             els->addElement(1);
             els->addElement(e+0); // PV
             
-            _geom->addPrimitiveSet(els);
+            geom()->addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINES)
@@ -448,76 +487,14 @@ LineDrawable::dirty()
                 els->addElement(e+2);
                 els->addElement(e+3);
                 els->addElement(e+0); // PV
-                _geom->addPrimitiveSet(els);
+                geom()->addPrimitiveSet(els);
             }
         }
-
-#if 0
-        // rebuild the previous/next lists
-        _previous->clear();
-        _next->clear();
-        for (int e = 0; e < _current->size(); e += 2)
-        {
-            osg::Vec3Array::iterator c = _current->begin() + e;
-            osg::Vec3Array::iterator p = _previous->begin() + e;
-            osg::Vec3Array::iterator n = _next->begin() + e;
-
-            if (_mode == GL_LINE_STRIP)
-            {
-                *p = *(p + 1) = (e == 0) ? *c : *(c-1);
-                //if (e == 0)
-                //    *p = *(p+1) = *c;
-                //else
-                //    *p = *(p+1) = *(c-1);
-                *n = *(n + 1) = (e == _current->size() - 2) ? *c : *(c+2);
-                //if (e == _current->size()-2)
-                //    *n = *(n+1) = *c;
-                //else
-                //    *n = *(n+1) = *(c+2);
-            }
-
-            else if (_mode = GL_LINE_LOOP)
-            {
-                if (e == 0)
-                    *p = *(p+1) = _current->back();
-                else
-                    *p = *(p+1) = *(c-1);
-
-                if (e == _current->size()-2)
-                    *n = *(n + 1) = _current->front();
-                else
-                    *n = *(n + 1) = *(c+2);
-            }
-
-            else if (_mode == GL_LINES)
-            {
-
-            }
-
-
-                    (*_previous)[e] = (*_current)[e];
-                    (*_previous)[e + 1] = (*_current)[e + 1];
-                }
-                else
-                {
-                    (*_previous())
-                }
-            }
-            else if (_mode == GL_LINE_LOOP)
-            {
-
-            }
-            else if (_mode == GL_LINES)
-            {
-
-            }
-        }
-#endif
     }
 
     else
     {
-        _geom->addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
+        geom()->addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
     }
 }
 
@@ -538,12 +515,4 @@ LineDrawable::installShader()
         //ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false));
         ss->setDefine("OE_GPU_LINES");
     }
-}
-
-void
-LineDrawable::drawImplementation(osg::RenderInfo& ri) const
-{
-    //osg::GLExtensions* gl = osg::GLExtensions::Get(ri.getContextID(), true);
-    //gl->glPatchParameteri(1, 2);
-    _geom->drawImplementation(ri);
 }

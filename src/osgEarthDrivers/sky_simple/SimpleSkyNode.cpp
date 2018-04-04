@@ -803,7 +803,6 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-    cam->setNearFarRatio(1e-9);
     cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
     cam->addChild( starGeode );
 

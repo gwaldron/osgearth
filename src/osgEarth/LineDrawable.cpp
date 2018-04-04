@@ -81,6 +81,13 @@ osg::Drawable(),
 _mode(mode),
 _gpu(false)
 {
+    if (mode != GL_LINE_STRIP &&
+        mode != GL_LINE_LOOP &&
+        mode != GL_LINES)
+    {
+        OE_WARN << LC << "Illegal mode (" << mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
+    }
+
 #ifdef OE_USE_GPU_LINES
     _gpu = true;
 #endif
@@ -149,6 +156,22 @@ LineDrawable::setStippling(short factor, short pattern)
 }
 
 void
+LineDrawable::setColor(const osg::Vec4& color)
+{
+    osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(_geom->getColorArray());
+
+    if (_geom->getColorArray() == 0L)
+    {
+        colors = new osg::Vec4Array();
+        colors->setBinding(osg::Array::BIND_OVERALL);
+        _geom->setColorArray(colors);
+    }
+
+    colors->clear();
+    colors->push_back(color);
+}
+
+void
 LineDrawable::pushVertex(const osg::Vec3& vert)
 {
     if (_gpu)
@@ -166,17 +189,67 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
         }
         else
         {
-            *(_next->end()-1) = vert;
-            *(_next->end()-2) = vert;
-        
-            _previous->push_back(_current->back());
-            _previous->push_back(_current->back());
+            if (_mode == GL_LINE_STRIP)
+            {
+                *(_next->end() - 1) = vert;
+                *(_next->end() - 2) = vert;
 
-            _current->push_back(vert);
-            _current->push_back(vert);
+                _previous->push_back(_current->back());
+                _previous->push_back(_current->back());
 
-            _next->push_back(_mode == GL_LINE_LOOP ? _current->front() : vert);
-            _next->push_back(_mode == GL_LINE_LOOP ? _current->front() : vert);
+                _next->push_back(vert);
+                _next->push_back(vert);
+
+                _current->push_back(vert);
+                _current->push_back(vert);
+            }
+
+            else if (_mode == GL_LINE_LOOP)
+            {
+                *(_next->end() - 1) = vert;
+                *(_next->end() - 2) = vert;
+
+                *(_previous->begin() + 0) = vert;
+                *(_previous->begin() + 1) = vert;
+
+                _previous->push_back(_current->back());
+                _previous->push_back(_current->back());
+
+                _next->push_back(_current->front());
+                _next->push_back(_current->front());
+
+                _current->push_back(vert);
+                _current->push_back(vert);
+
+            }
+
+            else if (_mode == GL_LINES)
+            {
+                bool first = ((_current->size() / 2) & 0x01) == 0;
+
+                if (first)
+                {
+                    _previous->push_back(vert);
+                    _previous->push_back(vert);
+
+                    _next->push_back(vert);
+                    _next->push_back(vert);
+                }
+                else
+                {
+                    _previous->push_back(_current->back());
+                    _previous->push_back(_current->back());
+
+                    *(_next->end()-2) = vert;
+                    *(_next->end()-1) = vert;
+
+                    _next->push_back(vert);
+                    _next->push_back(vert);
+                }
+
+                _current->push_back(vert);
+                _current->push_back(vert);
+            }
         }
     }
 
@@ -276,6 +349,21 @@ LineDrawable::reserve(unsigned size)
     }
 }
 
+namespace
+{
+    osg::DrawElements* makeDE(unsigned size)
+    {
+        osg::DrawElements* de =
+#ifndef OE_GLES_AVAILABLE
+            size > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt(GL_TRIANGLES) :
+#endif
+            size > 0xFF ?   (osg::DrawElements*)new osg::DrawElementsUShort(GL_TRIANGLES) :
+                            (osg::DrawElements*)new osg::DrawElementsUByte(GL_TRIANGLES);
+        de->reserveElements(size);
+        return de;
+    }
+}
+
 void
 LineDrawable::dirty()
 {
@@ -296,47 +384,135 @@ LineDrawable::dirty()
         _geom->removePrimitiveSet(0, 1);
     }
 
-    if (_gpu)
+    if (_gpu && _current->size() >= 4)
     {
-        unsigned numEls = (_current->size() + (_mode==GL_LINE_LOOP? 1 : 0)) * 6;
-
-        osg::DrawElements* els = 
-    #ifndef OE_GLES_AVAILABLE
-            numEls > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt  ( GL_TRIANGLES ) :
-    #endif
-            numEls > 0xFF   ? (osg::DrawElements*)new osg::DrawElementsUShort( GL_TRIANGLES ) :
-                              (osg::DrawElements*)new osg::DrawElementsUByte ( GL_TRIANGLES );
-    
-        els->reserveElements(numEls);
-
         // IMPORTANT!
-        // Don't change the order of these elements! Because of the way
+        // Don't change the order of the elements! Because of the way
         // GPU line stippling works, it is critical that the provoking vertex
         // be at the beginning of each line segment. In this case we are using
         // GL_TRIANGLES and thus the provoking vertex (PV) is the FINAL vert
         // in each triangle.
-        int e;
-        for (e = 0; e < _current->size()-2; e += 2)
+
+        if (_mode == GL_LINE_STRIP)
         {
-            els->addElement(e+3);
-            els->addElement(e+1);
-            els->addElement(e+0); // PV
-            els->addElement(e+2);
-            els->addElement(e+3);
-            els->addElement(e+0); // PV
+            unsigned numEls = ((_current->size()/2)-1) * 6;
+            osg::DrawElements* els = makeDE(numEls);  
+
+            for (int e = 0; e < _current->size()-2; e += 2)
+            {
+                els->addElement(e+3);
+                els->addElement(e+1);
+                els->addElement(e+0); // PV
+                els->addElement(e+2);
+                els->addElement(e+3);
+                els->addElement(e+0); // PV
+            }
+            
+            _geom->addPrimitiveSet(els);
         }
 
-        if (_mode == GL_LINE_LOOP)
+        else if (_mode == GL_LINE_LOOP)
         {
+            unsigned numEls = (_current->size()/2) * 6;
+            osg::DrawElements* els = makeDE(numEls); 
+
+            int e;
+            for (e = 0; e < _current->size()-2; e += 2)
+            {
+                els->addElement(e+3);
+                els->addElement(e+1);
+                els->addElement(e+0); // PV
+                els->addElement(e+2);
+                els->addElement(e+3);
+                els->addElement(e+0); // PV
+            }
+
             els->addElement(1);
             els->addElement(e+1);
             els->addElement(e+0); // PV
             els->addElement(0);
             els->addElement(1);
             els->addElement(e+0); // PV
+            
+            _geom->addPrimitiveSet(els);
         }
 
-        _geom->addPrimitiveSet(els);
+        else if (_mode == GL_LINES)
+        {
+            for (int e = 0; e < _current->size(); e += 4)
+            {
+                osg::DrawElements* els = makeDE(6u);
+                els->addElement(e+3);
+                els->addElement(e+1);
+                els->addElement(e+0); // PV
+                els->addElement(e+2);
+                els->addElement(e+3);
+                els->addElement(e+0); // PV
+                _geom->addPrimitiveSet(els);
+            }
+        }
+
+#if 0
+        // rebuild the previous/next lists
+        _previous->clear();
+        _next->clear();
+        for (int e = 0; e < _current->size(); e += 2)
+        {
+            osg::Vec3Array::iterator c = _current->begin() + e;
+            osg::Vec3Array::iterator p = _previous->begin() + e;
+            osg::Vec3Array::iterator n = _next->begin() + e;
+
+            if (_mode == GL_LINE_STRIP)
+            {
+                *p = *(p + 1) = (e == 0) ? *c : *(c-1);
+                //if (e == 0)
+                //    *p = *(p+1) = *c;
+                //else
+                //    *p = *(p+1) = *(c-1);
+                *n = *(n + 1) = (e == _current->size() - 2) ? *c : *(c+2);
+                //if (e == _current->size()-2)
+                //    *n = *(n+1) = *c;
+                //else
+                //    *n = *(n+1) = *(c+2);
+            }
+
+            else if (_mode = GL_LINE_LOOP)
+            {
+                if (e == 0)
+                    *p = *(p+1) = _current->back();
+                else
+                    *p = *(p+1) = *(c-1);
+
+                if (e == _current->size()-2)
+                    *n = *(n + 1) = _current->front();
+                else
+                    *n = *(n + 1) = *(c+2);
+            }
+
+            else if (_mode == GL_LINES)
+            {
+
+            }
+
+
+                    (*_previous)[e] = (*_current)[e];
+                    (*_previous)[e + 1] = (*_current)[e + 1];
+                }
+                else
+                {
+                    (*_previous())
+                }
+            }
+            else if (_mode == GL_LINE_LOOP)
+            {
+
+            }
+            else if (_mode == GL_LINES)
+            {
+
+            }
+        }
+#endif
     }
 
     else

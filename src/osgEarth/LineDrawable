@@ -64,6 +64,9 @@ namespace osgEarth
         //! Stippling parameters for the line
         void setStippling(short factor, short pattern);
 
+        //! Sets the overall color of the line
+        void setColor(const osg::Vec4& color);
+
         //! Creates a new vertex attribute array on this drawable
         template<typename T>
         T* addVertexAttribArray(int location);

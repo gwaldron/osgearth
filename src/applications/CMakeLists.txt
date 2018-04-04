@@ -95,6 +95,7 @@ IF(BUILD_OSGEARTH_EXAMPLES)
     ADD_SUBDIRECTORY(osgearth_splat)
     ADD_SUBDIRECTORY(osgearth_htm)
     ADD_SUBDIRECTORY(osgearth_scenegraphcallbacks)
+    ADD_SUBDIRECTORY(osgearth_drawables)
 
     IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_QT_BUILD)
         ADD_SUBDIRECTORY(osgearth_qt_simple)

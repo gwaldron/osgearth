@@ -617,11 +617,22 @@ SimpleSkyNode::makeMoon()
     //       Right now just need to have this file somewhere in your OSG_FILE_PATH
     stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     osg::ref_ptr<osg::Image> image = osgDB::readRefImageFile( "moon_1024x512.jpg" );
+
     osg::Texture2D * texture = new osg::Texture2D( image );
     texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
     texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
     texture->setResizeNonPowerOfTwoHint(false);
     stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
+#ifdef OSG_GL3_AVAILABLE
+    // Adjust for loss of GL_LUMINANCE in glTexture2D's format parameter.  OSG handles the texture's internal format,
+    // but the format parameter comes from the image's pixel format field.
+    if (image->getPixelFormat() == GL_LUMINANCE)
+    {
+      image->setPixelFormat(GL_RED);
+      // Swizzle the RGB all to RED in order to match previous GL_LUMINANCE behavior
+      texture->setSwizzle(osg::Vec4i(GL_RED, GL_RED, GL_RED, GL_ONE));
+    }
+#endif
 
     osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);    
     moonDrawable->setColorArray( colors );

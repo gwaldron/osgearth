@@ -24,6 +24,7 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/TerrainProfileGraph>
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Map>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
@@ -234,7 +235,10 @@ namespace osgEarth { namespace QtGui
         if (!_featureNode.valid())
         {
           _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode.get(), feature );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
           _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+          _featureNode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
           _root->addChild( _featureNode.get() );
         }
         else

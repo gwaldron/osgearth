@@ -254,7 +254,9 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     osg::StateAttribute::GLModeValue disable = 
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     rttSS->setMode(GL_LIGHTING,  disable );
+#endif
     rttSS->setMode(GL_CULL_FACE, disable );
     rttSS->setMode(GL_ALPHA_TEST, disable );
 

@@ -517,7 +517,10 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
     
     // configure the state set:
     osg::StateSet* atmosSet = drawable->getOrCreateStateSet();
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     atmosSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+#endif
+    atmosSet->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF );
     atmosSet->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON );
     atmosSet->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     atmosSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
@@ -628,7 +631,10 @@ SimpleSkyNode::makeMoon()
     (*colors)[0] = osg::Vec4(1, 1, 1, 1 );
 
     // configure the stateset
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     stateSet->setMode( GL_LIGHTING, osg::StateAttribute::ON );
+#endif
+    stateSet->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::ON );
     stateSet->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);
     stateSet->setRenderBinDetails( BIN_MOON, "RenderBin" );
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );

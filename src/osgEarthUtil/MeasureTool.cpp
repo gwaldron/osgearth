@@ -19,6 +19,7 @@
 
 #include <osgEarthUtil/MeasureTool>
 #include <osgEarth/GeoMath>
+#include <osgEarth/Lighting>
 
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
@@ -108,7 +109,10 @@ MeasureToolHandler::rebuild()
     ls->tessellation() = 150;
 
     _featureNode = new FeatureNode( getMapNode(), _feature.get() );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+    _featureNode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
     //_featureNode->setClusterCulling(false);
 
     _group->addChild (_featureNode.get() );

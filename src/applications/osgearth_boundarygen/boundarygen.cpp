@@ -23,6 +23,7 @@
 #include "BoundaryUtil"
 
 #include <osgEarth/FileUtils>
+#include <osgEarth/Lighting>
 
 #include <iostream>
 #include <iomanip>
@@ -169,7 +170,10 @@ int main(int argc, char** argv)
       osg::StateSet* ss = boundaryGeometry->getOrCreateStateSet();
       ss->setAttributeAndModes( new osg::LineWidth(1.0), 1 );
       ss->setAttributeAndModes( new osg::Point(3.5), 1 );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
       ss->setMode( GL_LIGHTING, 0 );
+#endif
+      ss->setDefine( OE_LIGHTING_DEFINE, 0 );
 
       boundaryGeometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP,0,drawHull->size()));
       boundaryGeometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS,0,drawHull->size()));

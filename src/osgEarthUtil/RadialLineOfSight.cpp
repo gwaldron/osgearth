@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/RadialLineOfSight>
+#include <osgEarth/Lighting>
 #include <osgEarth/TerrainEngineNode>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
@@ -370,7 +371,10 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+    getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate(_centerWorld));
@@ -560,7 +564,10 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+    getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
     getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;

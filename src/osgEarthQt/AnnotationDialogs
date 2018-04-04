@@ -23,6 +23,7 @@
 
 #include <osgEarthAnnotation/Draggers>
 #include <osgEarth/GeoMath>
+#include <osgEarth/Lighting>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/FeatureNode>
@@ -371,7 +372,10 @@ namespace osgEarth { namespace QtGui
         if (!_featureNode.valid())
         {
           _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
           _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+          _featureNode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
           _root->addChild( _featureNode.get() );
         }
         else

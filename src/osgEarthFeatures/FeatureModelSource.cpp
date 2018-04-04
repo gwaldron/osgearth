@@ -341,9 +341,11 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
         {
             osg::StateSet* stateset = group->getOrCreateStateSet();
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
             stateset->setMode(
                 GL_LIGHTING,
                 (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+#endif
 
             if ( Registry::capabilities().supportsGLSL() )
             {

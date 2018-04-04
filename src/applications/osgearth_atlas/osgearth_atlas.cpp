@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Notify>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
@@ -275,7 +276,10 @@ show(osg::ArgumentParser& arguments)
     root->addChild( geode );
     root->addChild( geode2 );
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     root->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+#endif
+    root->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, 0);
     root->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
 
     osgViewer::Viewer viewer;

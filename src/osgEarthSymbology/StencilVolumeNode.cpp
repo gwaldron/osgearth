@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/StencilVolumeNode>
+#include <osgEarth/Lighting>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Capabilities>
@@ -67,7 +68,10 @@ StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
     osg::StateSet* quad_ss = quad->getOrCreateStateSet();
     quad_ss->setMode( GL_CULL_FACE, OFF_PROTECTED );
     quad_ss->setMode( GL_DEPTH_TEST, OFF_PROTECTED );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     quad_ss->setMode( GL_LIGHTING, OFF_PROTECTED );
+#endif
+    quad_ss->setDefine( OE_LIGHTING_DEFINE, OFF_PROTECTED );
     osg::MatrixTransform* abs = new osg::MatrixTransform();
     abs->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
     abs->setMatrix( osg::Matrix::identity() );

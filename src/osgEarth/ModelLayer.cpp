@@ -345,9 +345,11 @@ ModelLayer::setLightingEnabledNoLock(bool value)
         {
             osg::StateSet* stateset = i->second->getOrCreateStateSet();
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
             stateset->setMode( 
                 GL_LIGHTING, value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
+#endif
 
             if ( Registry::capabilities().supportsGLSL() )
             {

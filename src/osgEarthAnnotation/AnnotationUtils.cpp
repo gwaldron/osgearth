@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarth/Lighting>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
@@ -294,7 +295,10 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     // set up the decoration.
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
+#endif
+    dstate->setDefine(OE_LIGHTING_DEFINE,osg::StateAttribute::OFF);
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);
 
     // set up the geoset.
@@ -631,7 +635,10 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
     geode->addDrawable( geom );
 
     osg::StateSet* s = geom->getOrCreateStateSet();
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     s->setMode(GL_LIGHTING,0);
+#endif
+    s->setDefine(OE_LIGHTING_DEFINE,0);
     //s->setMode(GL_BLEND,1); // redundant. AnnotationNode sets blend.
     s->setMode(GL_DEPTH_TEST,0);
     s->setMode(GL_CULL_FACE,0);

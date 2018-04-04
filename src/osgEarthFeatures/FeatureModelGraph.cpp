@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FilterContext>
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Map>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
@@ -453,7 +454,12 @@ FeatureModelGraph::ctor()
 
     // Set up lighting, only if the option is set
     if ( _options.enableLighting().isSet() )
+    {
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
+#endif
+        stateSet->setDefine( OE_LIGHTING_DEFINE, *_options.enableLighting() ? 1 : 0 );
+    }
 
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.

@@ -148,8 +148,10 @@ static const size_t NUM_CONTEXTS = 64;
             geode->addDrawable( geom );
         }
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-
+#endif
+        geode->getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF );
 
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
@@ -189,7 +191,10 @@ static const size_t NUM_CONTEXTS = 64;
         geode->addDrawable( quad );
         quad->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON );
         quad->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         quad->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+#endif
+        quad->getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF );
         quad->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
 
         camera->getOrCreateStateSet()->setAttribute(new osg::Program());

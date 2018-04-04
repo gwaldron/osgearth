@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
@@ -196,7 +197,10 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     rttTex->setUnRefImageDataAfterApply( false );
     rttTex->setResizeNonPowerOfTwoHint(false);
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     stateSet->setMode(GL_LIGHTING, 0);
+#endif
+    stateSet->setDefine(OE_LIGHTING_DEFINE, 0);
     stateSet->setMode(GL_CULL_FACE, 0);
     stateSet->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), 1);
     

@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarth/Lighting>
 #include <osgEarth/TerrainEngineNode>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
@@ -338,7 +339,10 @@ LinearLineOfSightNode::draw(bool backgroundThread)
         mt->setMatrix(osg::Matrixd::translate(_startWorld));
         mt->addChild(geode);  
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+        getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, 0 );
     }
 
 

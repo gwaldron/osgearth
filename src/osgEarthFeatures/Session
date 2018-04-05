@@ -129,7 +129,7 @@ namespace osgEarth { namespace Features
         void initScriptEngine();
 
         URIContext                         _uriContext;         
-        osg::ref_ptr<const Map>            _map;
+        osg::observer_ptr<const Map>       _map;
         MapInfo                            _mapInfo;
         osg::ref_ptr<StyleSheet>           _styles;
         osg::ref_ptr<const osgDB::Options> _dbOptions;

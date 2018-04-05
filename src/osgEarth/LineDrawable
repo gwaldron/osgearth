@@ -23,15 +23,7 @@
 #include <osg/Array>
 #include <osg/Geometry>
 #include <osg/Version>
-
-// in older versions
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
-#include <osg/Group>
-#define LINE_GROUP_BASE_CLASS osg::Group
-#else
 #include <osg/Geode>
-#define LINE_GROUP_BASE_CLASS osg::Geode
-#endif
 
 namespace osgEarth
 {
@@ -129,8 +121,12 @@ namespace osgEarth
      * LineDrawables under a LineGroup, you do not need to call installShader()
      * on each LineDrawable because the LineGroup installs the shader for the
      * entire set.
+     *
+     * Note: LineGroup inherits from Geode (for now) to maintain support for
+     * the OSG 3.4 MergeGeometryVisitor (which only works on Geodes). Once we
+     * make OSG 3.6 the minimum supported version, we can change this to Group.
      */
-    class OSGEARTH_EXPORT LineGroup : public LINE_GROUP_BASE_CLASS
+    class OSGEARTH_EXPORT LineGroup : public osg::Geode
     {
     public:
         //! Construct a new line group and install line shaders

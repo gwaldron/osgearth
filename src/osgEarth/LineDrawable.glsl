@@ -163,7 +163,12 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
 
     // we could make these unfiorms if necessary
     const int pattern = OE_GPULINES_STIPPLE_PATTERN;
+
+#ifdef OE_GPULINES_STIPPLE_FACTOR
     const int factor = OE_GPULINES_STIPPLE_FACTOR;
+#else
+    const int factor = 1;
+#endif
 
     // coordinate of the fragment, shifted to 0:
     vec2 coord = (gl_FragCoord.xy - 0.5);

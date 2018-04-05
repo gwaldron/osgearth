@@ -16,24 +16,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "LineDrawable"
-#include "Shaders"
-#include "VirtualProgram"
-#include "Utils"
+#include <osgEarth/LineDrawable>
+#include <osgEarth/Shaders>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/Utils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/StateSetCache>
 
 #include <osg/Depth>
 #include <osg/CullFace>
 #include <osg/LineStipple>
 #include <osg/LineWidth>
+#include <osgUtil/Optimizer>
 
 #define LC "[LineDrawable] "
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
-#endif
-
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE) || defined(OSG_GL2_AVAILABLE) || defined(OSG_GL3_AVAILABLE)
-#define OE_USE_GPU_LINES
 #endif
 
 using namespace osgEarth;
@@ -44,27 +44,28 @@ using namespace osgEarth;
 // https://github.com/mattdesl/webgl-lines
 
 
-LineGroup::LineGroup() :
-_gpu(false)
+LineGroup::LineGroup()
 {
-#ifdef OE_USE_GPU_LINES
-    _gpu = true;
-#endif
-
-    if (_gpu)
+    if (Registry::capabilities().supportsGLSL())
     {
-        // install the shader components for GPU lines.
-        osg::StateSet* ss = getOrCreateStateSet();
-        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-        Shaders shaders;
-        shaders.load(vp, shaders.LineDrawable);
-        vp->addBindAttribLocation("oe_GPULines_prev", LineDrawable::PreviousVertexAttrLocation);
-        vp->addBindAttribLocation("oe_GPULines_next", LineDrawable::NextVertexAttrLocation);
-        ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-        // Why don't we write to the depth buffer? -gw
-        //ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false));
-        ss->setDefine("OE_GPU_LINES");
+        LineDrawable::installShader(getOrCreateStateSet());
     }
+}
+
+void
+LineGroup::optimize()
+{
+    // Optimize state sharing so the MergeGeometryVisitor can work better.
+    // Without this step, the #defines used for width and stippling will
+    // hold up the merge.
+    osg::ref_ptr<StateSetCache> cache = new StateSetCache();
+    cache->optimize(this);
+
+    // Merge all non-dynamic drawables to reduce the total number of 
+    // OpenGL calls.
+    osgUtil::Optimizer::MergeGeometryVisitor mg;
+    mg.setTargetMaximumNumberOfVertices(65536);
+    accept(mg);
 }
 
 //...................................................................
@@ -79,96 +80,96 @@ int LineDrawable::NextVertexAttrLocation = 10;
 LineDrawable::LineDrawable(GLenum mode) :
 osg::Geometry(),
 _mode(mode),
-_gpu(false)
+_gpu(true),
+_factor(1),
+_pattern(0xFFFF),
+_color(1,1,1,1),
+_width(1.0f)
 {
     if (mode != GL_LINE_STRIP &&
         mode != GL_LINE_LOOP &&
         mode != GL_LINES)
     {
         OE_WARN << LC << "Illegal mode (" << mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
+        _mode = GL_LINE_STRIP;
     }
+    
+    // check for GLSL support:
+    _gpu = Registry::capabilities().supportsGLSL();
 
-#ifdef OE_USE_GPU_LINES
-    _gpu = true;
-#endif
-
+    setUseVertexBufferObjects(_supportsVertexBufferObjects);
     setUseDisplayList(false);
-
-    //_geom = new osg::Geometry();
-
-    geom()->setUseVertexBufferObjects(true);
-    geom()->setUseDisplayList(false);
 
     _current = new osg::Vec3Array();
     _current->setBinding(osg::Array::BIND_PER_VERTEX);
-    geom()->setVertexArray(_current.get());
+    setVertexArray(_current);
 
     if (_gpu)
     {
         _previous = new osg::Vec3Array();
         _previous->setBinding(osg::Array::BIND_PER_VERTEX);
         _previous->setNormalize(false);
-        geom()->setVertexAttribArray(PreviousVertexAttrLocation, _previous.get());    
+        setVertexAttribArray(PreviousVertexAttrLocation, _previous);  
 
         _next = new osg::Vec3Array();
         _next->setBinding(osg::Array::BIND_PER_VERTEX);
         _next->setNormalize(false);
-        geom()->setVertexAttribArray(NextVertexAttrLocation, _next.get());
+        setVertexAttribArray(NextVertexAttrLocation, _next);
     }
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
 osg::Geometry(rhs, copy),
-//_geom(static_cast<osg::Geometry*>(copy(rhs._geom.get()))),
 _mode(rhs._mode),
-_gpu(rhs._gpu)
+_gpu(rhs._gpu),
+_color(rhs._color),
+_factor(rhs._factor),
+_pattern(rhs._pattern),
+_width(rhs._width)
 {
-    _current = static_cast<osg::Vec3Array*>(geom()->getVertexArray());
+    _current = static_cast<osg::Vec3Array*>(getVertexArray());
 
     if (_gpu)
     {
-        _previous = static_cast<osg::Vec3Array*>(geom()->getVertexAttribArray(PreviousVertexAttrLocation));
-        _next = static_cast<osg::Vec3Array*>(geom()->getVertexAttribArray(NextVertexAttrLocation));
+        _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
+        _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
     }
 }
 
 void
-LineDrawable::setLineWidth(float width)
+LineDrawable::setLineWidth(float value)
 {
+    _width = value;
     if (_gpu)
-        getOrCreateStateSet()->setDefine("OE_GPULINES_WIDTH", Stringify() << width);
+        getOrCreateStateSet()->setDefine("OE_GPULINES_WIDTH", Stringify() << _width);
     else
-        getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(width));
+        getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(_width));
 }
 
 void
-LineDrawable::setStippling(short factor, short pattern)
+LineDrawable::setStipplePattern(GLushort pattern)
 {
+    _pattern = pattern;
     if (_gpu)
-    {
-        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << pattern );
-        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << factor );
-    }
+        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << _pattern);
     else
-    {
-        getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(factor, pattern));
-    }
+        getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+}
+
+void
+LineDrawable::setStippleFactor(GLint factor)
+{
+    _factor = factor;
+    if (_gpu)
+        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << _factor );
+    else
+        getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
 }
 
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>(geom()->getColorArray());
-
-    if (geom()->getColorArray() == 0L)
-    {
-        colors = new osg::Vec4Array();
-        colors->setBinding(osg::Array::BIND_OVERALL);
-        geom()->setColorArray(colors);
-    }
-
-    colors->clear();
-    colors->push_back(color);
+    _color = color;
 }
 
 void
@@ -348,7 +349,7 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
             _current->dirty();
         }
 
-        geom()->dirtyBound();
+        dirtyBound();
     }
 }
 
@@ -407,7 +408,7 @@ namespace
 void
 LineDrawable::dirty()
 {
-    geom()->dirtyBound();
+    dirtyBound();
 
     _current->dirty();
 
@@ -418,9 +419,9 @@ LineDrawable::dirty()
     }
 
     // rebuild primitive sets.
-    if (geom()->getNumPrimitiveSets() > 0)
+    if (getNumPrimitiveSets() > 0)
     {
-        geom()->removePrimitiveSet(0, 1);
+        removePrimitiveSet(0, 1);
     }
 
     if (_gpu && _current->size() >= 4)
@@ -447,7 +448,7 @@ LineDrawable::dirty()
                 els->addElement(e+0); // PV
             }
             
-            geom()->addPrimitiveSet(els);
+            addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINE_LOOP)
@@ -473,29 +474,43 @@ LineDrawable::dirty()
             els->addElement(1);
             els->addElement(e+0); // PV
             
-            geom()->addPrimitiveSet(els);
+            addPrimitiveSet(els);
         }
 
         else if (_mode == GL_LINES)
         {
+            unsigned numEls = (_current->size()/4) * 6;
+            osg::DrawElements* els = makeDE(numEls);  
+
             for (int e = 0; e < _current->size(); e += 4)
             {
-                osg::DrawElements* els = makeDE(6u);
                 els->addElement(e+3);
                 els->addElement(e+1);
                 els->addElement(e+0); // PV
                 els->addElement(e+2);
                 els->addElement(e+3);
                 els->addElement(e+0); // PV
-                geom()->addPrimitiveSet(els);
             }
+
+            addPrimitiveSet(els);
         }
     }
 
     else
     {
-        geom()->addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
+        addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
     }
+    
+    // update color array if necessary:
+    osg::Vec4Array* colors = static_cast<osg::Vec4Array*>(getColorArray());
+    if (colors == 0L)
+    {
+        colors = new osg::Vec4Array();
+        colors->setBinding(osg::Array::BIND_PER_VERTEX);
+        setColorArray(colors);
+    }
+    colors->assign(_current->size(), _color);
+    colors->dirty();
 }
 
 void
@@ -503,16 +518,19 @@ LineDrawable::installShader()
 {
     if (_gpu)
     {
-        // install the shader components for GPU lines.
-        osg::StateSet* ss = getOrCreateStateSet();
-        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-        Shaders shaders;
-        shaders.load(vp, shaders.LineDrawable);
-        vp->addBindAttribLocation("oe_GPULines_prev", LineDrawable::PreviousVertexAttrLocation);
-        vp->addBindAttribLocation("oe_GPULines_next", LineDrawable::NextVertexAttrLocation);
-        ss->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
-        // Why don't we write to the depth buffer? -gw
-        //ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false));
-        ss->setDefine("OE_GPU_LINES");
+        installShader(getOrCreateStateSet());
     }
+}
+
+void
+LineDrawable::installShader(osg::StateSet* stateSet)
+{
+    // install the shader components for GPU lines.
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+    Shaders shaders;
+    shaders.load(vp, shaders.LineDrawable);
+    vp->addBindAttribLocation("oe_GPULines_prev", LineDrawable::PreviousVertexAttrLocation);
+    vp->addBindAttribLocation("oe_GPULines_next", LineDrawable::NextVertexAttrLocation);
+    stateSet->setMode(GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
+    stateSet->setDefine("OE_GPU_LINES");
 }

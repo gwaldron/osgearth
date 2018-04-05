@@ -30,6 +30,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Clamping>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/StateSetCache>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineStipple>
@@ -441,7 +442,8 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
-    osg::Group* drawables = new LineGroup();
+    // Group to contain all the lines we create here
+    LineGroup* drawables = new LineGroup();
     
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
@@ -512,19 +514,26 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                     drawable->setLineWidth(line->stroke()->width().get());
 
                 if (line->stroke()->stipplePattern().isSet())
-                    drawable->setStippling(line->stroke()->stippleFactor().get(), line->stroke()->stipplePattern().get());
+                    drawable->setStipplePattern(line->stroke()->stipplePattern().get());
+
+                if (line->stroke()->stippleFactor().isSet())
+                    drawable->setStippleFactor(line->stroke()->stippleFactor().get());
             }
 
             // For GPU clamping, we need an attribute array with Heights above Terrain in it.
             if (doGpuClamping)
             {
-                osg::FloatArray* hats = drawable->addVertexAttribArray<osg::FloatArray>(Clamping::HeightsAttrLocation);
+                osg::FloatArray* hats = new osg::FloatArray();
                 hats->setBinding(osg::Array::BIND_PER_VERTEX);
+                drawable->setVertexAttribArray(Clamping::HeightsAttrLocation, hats);
                 for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
                 {
                     drawable->pushVertexAttrib(hats, i->z());
                 }
             }
+            
+            // assign the color:
+            drawable->setColor(primaryColor);
 
             // finalize the drawable and generate primitive sets
             drawable->dirty();
@@ -553,11 +562,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                     ms.run( *drawable->asGeometry(), threshold, *_geoInterp );
             }
 
-            // assign the primary color (PER_VERTEX required for later optimization)
-            osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
-            colors->assign( drawable->asGeometry()->getVertexArray()->getNumElements(), primaryColor );
-            drawable->asGeometry()->setColorArray( colors );
-
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
             {
@@ -572,6 +576,12 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             drawables->addChild(drawable);
         }
+    }
+
+    // Finally, optimize the finished group for rendering.
+    if (drawables)
+    {
+        drawables->optimize();
     }
 
     return drawables;
@@ -1419,20 +1429,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         OE_TEST << LC << "Building " << lines.size() << " lines." << std::endl;
         
         osg::ref_ptr<osg::Group> group = processLines(lines, context);
-        
+
         if ( group->getNumChildren() > 0 )
         {
-            osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(65536);
-            group->accept(mg);
-#if 0
-            
-            if (_useGPULines == false)
-            {
-                applyLineSymbology( geode->getOrCreateStateSet(), line );
-            }
-#endif
-
             result->addChild(group.get());
         }
     }

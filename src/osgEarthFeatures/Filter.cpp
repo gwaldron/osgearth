@@ -331,33 +331,6 @@ FeaturesToNodeFilter::createDelocalizeGroup( const osg::Matrixd &local2world ) c
     return group;
 }
 
-
-void 
-FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset, 
-                                         const LineSymbol* line)
-{
-    if ( line && line->stroke().isSet() )
-    {
-        if ( line->stroke()->width().isSet() )
-        {
-            float width = std::max( 1.0f, *line->stroke()->width() );
-            if ( width != 1.0f )
-            {
-                stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
-            }
-        }
-
-        if ( line->stroke()->stipplePattern().isSet() )
-        {
-            stateset->setAttributeAndModes(
-                new osg::LineStipple(
-                    line->stroke()->stippleFactor().value(),
-                    line->stroke()->stipplePattern().value()),
-                osg::StateAttribute::ON );
-        }
-    }
-}
-
 void 
 FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset, 
                                           const PointSymbol* point)

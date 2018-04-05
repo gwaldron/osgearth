@@ -22,7 +22,16 @@
 #include <osgEarth/Common>
 #include <osg/Array>
 #include <osg/Geometry>
+#include <osg/Version>
+
+// in older versions
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
 #include <osg/Group>
+#define LINE_GROUP_BASE_CLASS osg::Group
+#else
+#include <osg/Geode>
+#define LINE_GROUP_BASE_CLASS osg::Geode
+#endif
 
 namespace osgEarth
 {
@@ -38,6 +47,11 @@ namespace osgEarth
      * uniform set. MapNode sets it automatically so any LineDrawable under
      * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
      * callback on your scene graph.
+     *
+     * Note: Try to use the provided functions whenever possible. If you do
+     * need to access the underlying Geometry arrays, keep in mind that 
+     * the implementation uses double verts; i.e. each vertex appears twice
+     * (to support the shader code).
      */
     class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
     {
@@ -61,18 +75,17 @@ namespace osgEarth
         //! Width in pixels of the line
         void setLineWidth(float width_pixels);
 
-        //! Stippling parameters for the line
-        void setStippling(short factor, short pattern);
+        //! Stippling pattern for the line (default is 0xFFFF)
+        void setStipplePattern(GLushort pattern);
+
+        //! Stippling factor for the line (default is 1)
+        void setStippleFactor(GLint factor);
 
         //! Sets the overall color of the line
         void setColor(const osg::Vec4& color);
 
-        //! Creates a new vertex attribute array on this drawable
-        template<typename T>
-        T* addVertexAttribArray(int location);
-
-        //! Appends a vertex to an attribute array created by calling 
-        //! addVertexAttributeArray
+        //! Appends a vertex to an attribute array. Use this instead of adding
+        //! to the array directly!
         template<typename T>
         void pushVertexAttrib(T* vaa, const typename T::ElementDataType& value);
 
@@ -98,24 +111,42 @@ namespace osgEarth
     private:
         GLenum _mode;
         bool _gpu;
-        //osg::ref_ptr<osg::Geometry>   _geom;
-        osg::ref_ptr<osg::Vec3Array>  _current;
-        osg::ref_ptr<osg::Vec3Array>  _previous;
-        osg::ref_ptr<osg::Vec3Array>  _next;
+        osg::Vec4 _color;
+        GLint _factor;
+        GLushort _pattern;
+        float _width;
+        osg::Vec3Array* _current;
+        osg::Vec3Array* _previous;
+        osg::Vec3Array* _next;
 
-        osg::Geometry* geom() { return this; }
+        friend class LineGroup;
+        static void installShader(osg::StateSet*);
     };
+
+
+    /**
+     * Group for collecting multiple LineDrawables. If you put one or more
+     * LineDrawables under a LineGroup, you do not need to call installShader()
+     * on each LineDrawable because the LineGroup installs the shader for the
+     * entire set.
+     */
+    class OSGEARTH_EXPORT LineGroup : public LINE_GROUP_BASE_CLASS
+    {
+    public:
+        //! Construct a new line group and install line shaders
+        LineGroup();
+        
+        //! Optimize the LineDrawables under this group for performance.
+        //! Only call this after you finish adding drawables to your group.
+        void optimize();
+
+    protected:
+        //! destructor
+        virtual ~LineGroup() { }
+    };
+
     
     // Template implementations ..........................................
-
-    template<typename T>
-    T* LineDrawable::addVertexAttribArray(int location)
-    {
-        T* a = new T();
-        a->reserve(_current->size());
-        geom()->setVertexAttribArray(location, a);
-        return a;
-    }
 
     template<typename T>
     void LineDrawable::pushVertexAttrib(T* vaa, const typename T::ElementDataType& value)
@@ -124,28 +155,6 @@ namespace osgEarth
         if (_gpu)
             vaa->push_back(value);
     }
-
-    //....................................................................
-
-    /**
-     * Group for collecting multiple LineDrawables. If you put one or more
-     * LineDrawables under a LineGroup, you do not need to call installShader()
-     * on each LineDrawable because the LineGroup installs the shader for the
-     * entire set.
-     */
-    class OSGEARTH_EXPORT LineGroup : public osg::Group
-    {
-    public:
-        //! Construct a new line group
-        LineGroup();
-
-    protected:
-        //! destructor
-        virtual ~LineGroup() { }
-
-        bool _gpu;
-    };
-
 
 } // namespace osgEarth
 

@@ -51,22 +51,26 @@ osg::Node* createLineDrawables()
 
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
     strip->setLineWidth(2);
+    strip->setColor(osg::Vec4(1,1,1,1));
     addVerts(strip, 10, 10);
     group->addChild(strip);
 
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
     loop->setLineWidth(8);
+    loop->setColor(osg::Vec4(1,1,0,1));
     addVerts(loop, 30, 10);
     group->addChild(loop);
 
     LineDrawable* stippled = new LineDrawable(GL_LINE_STRIP);
     stippled->setLineWidth(4);
-    stippled->setStippling(1, 0xff00);
+    stippled->setStipplePattern(0xff00);
+    stippled->setColor(osg::Vec4(0,1,0,1));
     addVerts(stippled, 50, 10);
     group->addChild(stippled);
 
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
+    segments->setColor(osg::Vec4(0,1,1,1));
     addVerts(segments, 70, 10);
     group->addChild(segments);
 

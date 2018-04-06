@@ -37,7 +37,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -901,12 +900,6 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         // INHERIT.
         if ( _font.valid() )
             t->setFont( _font.get() );
-
-        if ( t->getStateSet() )
-        {
-            t->getStateSet()->setRenderBinToInherit();
-            t->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
-        }
 
         // set up the backdrop halo:
         if ( haloColor().isSet() )
@@ -2767,15 +2760,6 @@ ControlCanvas::init()
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
-   
-#if 0
-#if OSG_VERSION_LESS_THAN(3,5,8) && defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
-    // don't use shaders unless we have to.
-    this->getOrCreateStateSet()->setAttributeAndModes(
-        new osg::Program(), 
-        osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
-#endif
-#endif
 }
 
 ControlCanvas::~ControlCanvas()

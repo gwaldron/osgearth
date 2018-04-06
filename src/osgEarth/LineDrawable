@@ -48,12 +48,37 @@ namespace osgEarth
     class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
     {
     public:
+        META_Node(osgEarth, LineDrawable);
+
+        //! Create new LineDrawable in GL_LINE_STRIP mode
+        LineDrawable();
+
         //! Create a new LineDrawable.
         //! @param[in ] mode GL line mode: GL_LINE_STRIP or GL_LINE_LOOP
         LineDrawable(GLenum mode);
 
         //! Copy constructor
         LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy);
+
+        //! Width in pixels of the line
+        void setLineWidth(float width_pixels);
+        float getLineWidth() const { return _width; }
+
+        //! Stippling pattern for the line (default is 0xFFFF)
+        void setStipplePattern(GLushort pattern);
+        GLushort getStipplePattern() const { return _pattern; }
+
+        //! Stippling factor for the line (default is 1)
+        void setStippleFactor(GLint factor);
+        GLint getStippleFactor() const { return _factor; }
+
+        //! Sets the overall color of the line
+        void setColor(const osg::Vec4& color);
+        const osg::Vec4& getColor() const { return _color; }
+
+        //! GL mode (for serializer only; do not use)
+        void setMode(GLenum mode);
+        GLenum getMode() const { return _mode; }
         
         //! Append a vertex to the line
         void pushVertex(const osg::Vec3& vert);
@@ -63,18 +88,6 @@ namespace osgEarth
 
         //! Copy a vertex array into the drawable
         void setVerts(const osg::Vec3Array* verts);
-
-        //! Width in pixels of the line
-        void setLineWidth(float width_pixels);
-
-        //! Stippling pattern for the line (default is 0xFFFF)
-        void setStipplePattern(GLushort pattern);
-
-        //! Stippling factor for the line (default is 1)
-        void setStippleFactor(GLint factor);
-
-        //! Sets the overall color of the line
-        void setColor(const osg::Vec4& color);
 
         //! Appends a vertex to an attribute array. Use this instead of adding
         //! to the array directly!
@@ -111,6 +124,8 @@ namespace osgEarth
         osg::Vec3Array* _previous;
         osg::Vec3Array* _next;
 
+        void initialize();
+
         friend class LineGroup;
         static void installShader(osg::StateSet*);
     };
@@ -129,8 +144,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT LineGroup : public osg::Geode
     {
     public:
+        META_Node(osgEarth, LineGroup);
+
         //! Construct a new line group and install line shaders
         LineGroup();
+
+        //! Copy constructor
+        LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);
         
         //! Optimize the LineDrawables under this group for performance.
         //! Only call this after you finish adding drawables to your group.

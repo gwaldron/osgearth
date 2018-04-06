@@ -30,7 +30,9 @@
 #include <osg/LineWidth>
 #include <osgUtil/Optimizer>
 
-#define LC "[LineDrawable] "
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
@@ -44,12 +46,32 @@ using namespace osgEarth;
 // https://github.com/mattdesl/webgl-lines
 
 
+#define LC "[LineGroup] "
+
+namespace osgEarth { namespace Serializers { namespace LineGroup
+{
+    REGISTER_OBJECT_WRAPPER(
+        LineGroup,
+        new osgEarth::LineGroup,
+        osgEarth::LineGroup,
+        "osg::Object osg::Node osg::Group osg::Geode osgEarth::LineGroup")
+    {
+        // no properties
+    }
+} } }
+
 LineGroup::LineGroup()
 {
     if (Registry::capabilities().supportsGLSL())
     {
         LineDrawable::installShader(getOrCreateStateSet());
     }
+}
+
+LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
+osg::Geode(rhs, copy)
+{
+    //nop
 }
 
 void
@@ -73,9 +95,41 @@ LineGroup::optimize()
 #undef  LC
 #define LC "[LineDrawable] "
 
+namespace osgEarth { namespace Serializers { namespace LineDrawable
+{
+    REGISTER_OBJECT_WRAPPER(
+        LineDrawable,
+        new osgEarth::LineDrawable,
+        osgEarth::LineDrawable,
+        "osg::Object osg::Node osg::Drawable osg::Geometry osgEarth::LineDrawable")
+    {
+        ADD_UINT_SERIALIZER( Mode, GL_LINE_STRIP );
+        ADD_INT_SERIALIZER( StippleFactor, 1 );
+        ADD_USHORT_SERIALIZER( StipplePattern, 0xFFFF );
+        ADD_VEC4_SERIALIZER( Color, osg::Vec4(1,1,1,1) );
+        ADD_FLOAT_SERIALIZER( LineWidth, 1.0f );
+    }
+} } }
+
+
 // static attribute binding locations. Changable by the user.
 int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
+
+LineDrawable::LineDrawable() :
+osg::Geometry(),
+_mode(GL_LINE_STRIP),
+_gpu(true),
+_factor(1),
+_pattern(0xFFFF),
+_color(1, 1, 1, 1),
+_width(1.0f),
+_current(NULL),
+_previous(NULL),
+_next(NULL)
+{
+    _gpu = Registry::capabilities().supportsGLSL();
+}
 
 LineDrawable::LineDrawable(GLenum mode) :
 osg::Geometry(),
@@ -84,38 +138,12 @@ _gpu(true),
 _factor(1),
 _pattern(0xFFFF),
 _color(1,1,1,1),
-_width(1.0f)
+_width(1.0f),
+_current(NULL),
+_previous(NULL),
+_next(NULL)
 {
-    if (mode != GL_LINE_STRIP &&
-        mode != GL_LINE_LOOP &&
-        mode != GL_LINES)
-    {
-        OE_WARN << LC << "Illegal mode (" << mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
-        _mode = GL_LINE_STRIP;
-    }
-    
-    // check for GLSL support:
     _gpu = Registry::capabilities().supportsGLSL();
-
-    setUseVertexBufferObjects(_supportsVertexBufferObjects);
-    setUseDisplayList(false);
-
-    _current = new osg::Vec3Array();
-    _current->setBinding(osg::Array::BIND_PER_VERTEX);
-    setVertexArray(_current);
-
-    if (_gpu)
-    {
-        _previous = new osg::Vec3Array();
-        _previous->setBinding(osg::Array::BIND_PER_VERTEX);
-        _previous->setNormalize(false);
-        setVertexAttribArray(PreviousVertexAttrLocation, _previous);  
-
-        _next = new osg::Vec3Array();
-        _next->setBinding(osg::Array::BIND_PER_VERTEX);
-        _next->setNormalize(false);
-        setVertexAttribArray(NextVertexAttrLocation, _next);
-    }
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
@@ -137,44 +165,115 @@ _width(rhs._width)
 }
 
 void
+LineDrawable::initialize()
+{
+    // Already initialized?
+    if (_current)
+        return;
+
+    if (_mode != GL_LINE_STRIP &&
+        _mode != GL_LINE_LOOP &&
+        _mode != GL_LINES)
+    {
+        OE_WARN << LC << "Illegal mode (" << _mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
+        _mode = GL_LINE_STRIP;
+    }
+
+    // See if the arrays already exist:
+    _current = static_cast<osg::Vec3Array*>(getVertexArray());
+    if (_gpu)
+    {
+        _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
+        _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
+    }
+    
+    // check for GLSL support:
+    _gpu = Registry::capabilities().supportsGLSL();
+
+    setUseVertexBufferObjects(_supportsVertexBufferObjects);
+    setUseDisplayList(false);
+
+    if (!_current)
+    {
+        _current = new osg::Vec3Array();
+        _current->setBinding(osg::Array::BIND_PER_VERTEX);
+        setVertexArray(_current);
+
+        if (_gpu)
+        {
+            _previous = new osg::Vec3Array();
+            _previous->setBinding(osg::Array::BIND_PER_VERTEX);
+            _previous->setNormalize(false);
+            setVertexAttribArray(PreviousVertexAttrLocation, _previous);  
+
+            _next = new osg::Vec3Array();
+            _next->setBinding(osg::Array::BIND_PER_VERTEX);
+            _next->setNormalize(false);
+            setVertexAttribArray(NextVertexAttrLocation, _next);
+        }
+    }
+}
+
+void
+LineDrawable::setMode(GLenum mode)
+{
+    if (_mode != mode)
+        _mode = mode;
+}
+
+void
 LineDrawable::setLineWidth(float value)
 {
-    _width = value;
-    if (_gpu)
-        getOrCreateStateSet()->setDefine("OE_GPULINES_WIDTH", Stringify() << _width);
-    else
-        getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(_width));
+    if (_width != value)
+    {
+        _width = value;
+        if (_gpu)
+            getOrCreateStateSet()->setDefine("OE_GPULINES_WIDTH", Stringify() << _width);
+        else
+            getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(_width));
+    }
 }
 
 void
 LineDrawable::setStipplePattern(GLushort pattern)
 {
-    _pattern = pattern;
-    if (_gpu)
-        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << _pattern);
-    else
-        getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+    if (_pattern != pattern)
+    {
+        _pattern = pattern;
+        if (_gpu)
+            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << _pattern);
+        else
+            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+    }
 }
 
 void
 LineDrawable::setStippleFactor(GLint factor)
 {
-    _factor = factor;
-    if (_gpu)
-        getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << _factor );
-    else
-        getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+    if (_factor != factor)
+    {
+        _factor = factor;
+        if (_gpu)
+            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << _factor );
+        else
+            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+    }
 }
 
 void
 LineDrawable::setColor(const osg::Vec4& color)
 {
-    _color = color;
+    if (_color != color)
+    {
+        _color = color;
+    }
 }
 
 void
 LineDrawable::pushVertex(const osg::Vec3& vert)
 {
+    initialize();
+
     if (_gpu)
     {
         if (_current->empty())
@@ -263,6 +362,8 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 void
 LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
 {
+    initialize();
+
     unsigned size = _current->size();
     unsigned numVerts = _gpu? size/2u : size;
 
@@ -356,6 +457,8 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
 void
 LineDrawable::setVerts(const osg::Vec3Array* verts)
 {
+    initialize();
+
     _current->clear();
     if (verts && verts->size() > 0)
     {
@@ -377,6 +480,8 @@ LineDrawable::setVerts(const osg::Vec3Array* verts)
 void
 LineDrawable::reserve(unsigned size)
 {
+    initialize();
+
     if (size > _current->size())
     {
         unsigned actualSize = _gpu? size*2u : size;
@@ -408,6 +513,8 @@ namespace
 void
 LineDrawable::dirty()
 {
+    initialize();
+
     dirtyBound();
 
     _current->dirty();
@@ -516,6 +623,8 @@ LineDrawable::dirty()
 void
 LineDrawable::installShader()
 {
+    initialize();
+
     if (_gpu)
     {
         installShader(getOrCreateStateSet());

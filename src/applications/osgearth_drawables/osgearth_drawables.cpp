@@ -23,6 +23,8 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/CullingUtils>
 
@@ -83,7 +85,29 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
-    viewer.setSceneData(createLineDrawables());
+    osg::ref_ptr<osg::Node> node = createLineDrawables();
+
+    if (arguments.read("--serialize"))
+    {
+        const char* fileName = "out.osgt";
+
+        OE_NOTICE << "Writing to " << fileName << " ..." << std::endl;
+        if (!osgDB::writeNodeFile(*node.get(), fileName))
+        {
+            OE_WARN << "serialize failed!\n";
+            return -1;
+        }
+
+        OE_NOTICE << "Reading from " << fileName << " ..." << std::endl;
+        node = osgDB::readNodeFile(fileName);
+        if (!node.valid())
+        {
+            OE_WARN << "deserialize failed!\n";
+            return -1;
+        }
+    }
+
+    viewer.setSceneData(node.get());
     
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());

@@ -30,6 +30,9 @@
 #include <osgUtil/CullVisitor>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
+#include <osgDB/ObjectWrapper>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
 
 using namespace osgEarth;
 
@@ -1172,3 +1175,41 @@ CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
 
     return conf;
 }
+
+//...................................................................
+
+void
+InstallViewportSizeUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+    const osg::Camera* camera = cv->getCurrentCamera();
+    
+    osg::ref_ptr<osg::StateSet> ss;
+
+    if (camera && camera->getViewport())
+    {
+        ss = new osg::StateSet();
+        ss->addUniform(new osg::Uniform("oe_ViewportSize", osg::Vec2f(
+            camera->getViewport()->width(),
+            camera->getViewport()->height())));
+        cv->pushStateSet(ss.get());
+    }
+
+    traverse(node, nv);
+
+    if (ss.valid())
+        cv->popStateSet();
+}
+
+namespace osgEarth { namespace Serializers { namespace InstallViewportSizeUniform
+{
+    REGISTER_OBJECT_WRAPPER(
+        InstallViewportSizeUniform,
+        new osgEarth::InstallViewportSizeUniform,
+        osgEarth::InstallViewportSizeUniform,
+        "osg::Object osg::NodeCallback osgEarth::InstallViewportSizeUniform")
+    {
+        // no properties
+    }
+} } }
+

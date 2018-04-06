@@ -951,8 +951,8 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
             {
                 geode->getOrCreateStateSet()->merge(*stateSet);
             }
+            _lineGroups[stateSet] = geode;
         }
-        _lineGroups[stateSet] = geode;
     }
     else
     {
@@ -961,8 +961,8 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
         {
             geode = new osg::Geode();
             geode->setStateSet(stateSet);
+            _geodes[stateSet] = geode;
         }
-        _geodes[stateSet] = geode;
     }
 
     geode->addDrawable( drawable );
@@ -1234,7 +1234,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     // parent geometry with a delocalizer (if necessary)
     osg::Group* group = createDelocalizeGroup();
     
-    // add all the geodes
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
     {
         group->addChild( i->second.get() );

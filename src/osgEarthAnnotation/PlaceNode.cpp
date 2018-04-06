@@ -504,7 +504,7 @@ PlaceNode::getConfig() const
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace
+namespace osgEarth { namespace Serializers { namespace PlaceNode
 {
     // functions
     static bool checkConfig(const osgEarth::Annotation::PlaceNode& node)
@@ -536,4 +536,4 @@ namespace
     {
         ADD_USER_SERIALIZER(Config);
     }
-}
+} } }

@@ -109,7 +109,7 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace
+namespace osgEarth { namespace Serializers { namespace DrapeableNode
 {
     REGISTER_OBJECT_WRAPPER(
         DrapeableNode,
@@ -119,4 +119,4 @@ namespace
     {
         ADD_BOOL_SERIALIZER(DrapingEnabled, true);
     }
-}
+} } }

@@ -2119,7 +2119,7 @@ static bool writeFunctions( osgDB::OutputStream& os, const osgEarth::VirtualProg
     return true;
 }
 
-namespace
+namespace osgEarth { namespace Serializers { namespace VirtualProgram
 {
     REGISTER_OBJECT_WRAPPER(
         VirtualProgram,
@@ -2135,4 +2135,4 @@ namespace
 
         ADD_BOOL_SERIALIZER( IsAbstract, false );
     }
-}
+} } }

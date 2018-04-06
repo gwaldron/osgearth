@@ -187,7 +187,7 @@ HorizonTileCuller::set(const SpatialReference* srs,
         // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
         // may be visible even if it doesn't pass the horizon-cone test. In such
         // cases we need a more conservative ellipsoid.
-        double zMin = (double)std::min( bbox.corner(0).z(), 0.0f );
+        double zMin = static_cast<double>(std::min( bbox.corner(0).z(), static_cast<osg::BoundingBox::value_type>(0.)));
         zMin = std::max(zMin, -25000.0); // approx the lowest point on earth * 2
         _horizon->setEllipsoid( osg::EllipsoidModel(
             srs->getEllipsoid()->getRadiusEquator() + zMin, 

@@ -268,9 +268,9 @@ FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNode
+namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeClass
 {
-    using FeatureSourceIndexNode = osgEarth::Features::FeatureSourceIndexNode;
+    using namespace osgEarth::Features;
 
     bool checkFIDMap(const FeatureSourceIndexNode& node)
     {

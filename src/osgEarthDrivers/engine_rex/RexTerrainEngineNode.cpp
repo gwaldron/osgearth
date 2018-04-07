@@ -916,7 +916,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                 if (model->elevationModel().valid())
                 {
                     // Clone the vertex array since it's shared and we're going to alter it
-                    geom->setVertexArray(osg::clone(geom->getVertexArray()));
+                    geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
 
                     // Apply the elevation model to the verts, noting that the texture coordinate
                     // runs [0..1] across the tile and the normal is the up vector at each vertex.

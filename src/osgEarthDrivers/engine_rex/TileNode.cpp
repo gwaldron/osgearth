@@ -723,7 +723,7 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     if (_childrenReady)
     {
-        for (int i = 0; i < getNumChildren(); ++i)
+        for (int i = 0; i < 4; ++i)
         {
             TileNode* child = getSubTile(i);
             if (child)
@@ -909,7 +909,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
         {
             for (int i = 0; i < 4; ++i)
             {
-                TileNode* child = getSubTile(0);
+                TileNode* child = getSubTile(i);
                 if (child)
                     child->refreshInheritedData(this, bindings);
             }

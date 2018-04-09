@@ -133,7 +133,7 @@ UTMLabelingEngine::updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world
 
     //OE_NOTICE << "utmDiff=" << utmDiff << ", utmInterval=" << utmInterval << std::endl;
 
-    // Indicies into the label pool
+    // Indices into the label pool
     unsigned xi = 0, yi = 0;
 
     // Finally, calculate all label positions and update them.

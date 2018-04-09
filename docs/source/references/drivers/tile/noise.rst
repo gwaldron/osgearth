@@ -1,7 +1,7 @@
 Noise
 ==========================================
 The noise plugin procedurally generates fractal terrain based on a Perlin noise generator called `libnoise`_.
-We will explain how it works here, but you can also refer the the libnoise documentation for the meaning and
+We will explain how it works here, but you can also refer to the libnoise documentation for the meaning and
 application of the properties below.
 
 There are lots of ways to use the ``noise`` driver. After the properties list there are 

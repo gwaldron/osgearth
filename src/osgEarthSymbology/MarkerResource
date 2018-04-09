@@ -33,7 +33,7 @@ namespace osgEarth { namespace Symbology
 
     /**
      * A resource that points to a "marker", which is a model representing an object
-     * in the scene. Markers are used typically fro point-model subsitution and to
+     * in the scene. Markers are used typically for point-model substitution and to
      * manage externally referenced (or dynamically created) scene graph nodes.
      */
     class OSGEARTHSYMBOLOGY_EXPORT MarkerResource : public Resource

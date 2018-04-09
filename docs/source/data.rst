@@ -154,7 +154,7 @@ Tips for Preparing your own Data
     
         osgearth_package file.earth --tms --out output_folder
 
-    This will load each of the data sources in the the earth file 
+    This will load each of the data sources in the earth file 
     (``file.earth`` in this case) and generate a TMS repository for each under the
     folder ``output_folder``. You can also specify options:
     

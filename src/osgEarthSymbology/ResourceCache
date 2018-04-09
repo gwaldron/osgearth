@@ -69,7 +69,7 @@ namespace osgEarth { namespace Symbology
         const CacheStats getInstanceStats() const { return _instanceCache.getStats(); }
 
         /**
-         * Fetches the StateSet implemention for an entire ResourceLibrary.  This will contain a Texture2DArray with all of the skins merged into it.
+         * Fetches the StateSet implementation for an entire ResourceLibrary.  This will contain a Texture2DArray with all of the skins merged into it.
          * @param library    The library 
          * @param output     Result goes here. 
          */

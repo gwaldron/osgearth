@@ -7,7 +7,7 @@
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 //
-// The author gratefully acknowleges the support of David Turner, 
+// The author gratefully acknowledges the support of David Turner, 
 // Robert Wilhelm, and Werner Lemberg - the authors of the FreeType 
 // libray - in producing this work. See http://www.freetype.org for details.
 //
@@ -122,7 +122,7 @@ namespace agg
     //    start from the end of the buffer and decrease. It gives you an 
     //    additional degree of freedom.
     //    Method attach() can be called more than once. The execution time of it
-    //    is very little, still it allocates memory of heigh * sizeof(char*) bytes
+    //    is very little, still it allocates memory of height * sizeof(char*) bytes
     //    and has a loop while(height--) {...}, so it's unreasonable to call it
     //    every time before drawing any single pixel :-)
     //
@@ -245,7 +245,7 @@ namespace agg
     //
     //     int num_pix = span.num_pix();        // Number of pixels of the span.
     //                                          // Always greater than 0, still we
-    //                                          // shoud use "int" instead of 
+    //                                          // should use "int" instead of 
     //                                          // "unsigned" because it's more
     //                                          // convenient for clipping
     //
@@ -271,7 +271,7 @@ namespace agg
     // That's because using the scaline is in general faster. When is consists 
     // of more than one span the conditions for the processor cash system
     // are better, because switching between two different areas of memory 
-    // (that can be large ones) occures less frequently.
+    // (that can be large ones) occurs less frequently.
     //------------------------------------------------------------------------
     class scanline
     {

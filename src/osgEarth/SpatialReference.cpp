@@ -26,6 +26,7 @@
 #include <osg/Notify>
 #include <ogr_api.h>
 #include <ogr_spatialref.h>
+#include <cpl_conv.h>
 #include <algorithm>
 
 #define LC "[SpatialReference] "
@@ -1521,7 +1522,7 @@ SpatialReference::_init()
     if ( OSRExportToProj4( _handle, &proj4buf ) == OGRERR_NONE )
     {
         _proj4 = proj4buf;
-        OGRFree( proj4buf );
+        CPLFree( proj4buf );
     }
 
     // Try to extract the OGC well-known-text (WKT) string:
@@ -1529,7 +1530,7 @@ SpatialReference::_init()
     if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )
     {
         _wkt = wktbuf;
-        OGRFree( wktbuf );
+        CPLFree( wktbuf );
     }
 
     // Build a 'normalized' initialization key.

@@ -626,7 +626,7 @@ SimpleSkyNode::makeMoon()
 #ifdef OSG_GL3_AVAILABLE
     // Adjust for loss of GL_LUMINANCE in glTexture2D's format parameter.  OSG handles the texture's internal format,
     // but the format parameter comes from the image's pixel format field.
-    if (image->getPixelFormat() == GL_LUMINANCE)
+    if (image.valid() && image->getPixelFormat() == GL_LUMINANCE)
     {
       image->setPixelFormat(GL_RED);
       // Swizzle the RGB all to RED in order to match previous GL_LUMINANCE behavior

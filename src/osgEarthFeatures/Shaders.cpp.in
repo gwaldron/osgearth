@@ -4,10 +4,8 @@
 
 namespace osgEarth { namespace Features
 {
-    GPULineShaders::GPULineShaders()
+    Shaders::Shaders()
     {
-        // GPU Screen Projected Lines
-        GPULinesScreenProj = "GPULinesScreenProj.glsl";
-        _sources[GPULinesScreenProj] = "@GPULinesScreenProj.glsl@";
+        // none yet
     }
 } }

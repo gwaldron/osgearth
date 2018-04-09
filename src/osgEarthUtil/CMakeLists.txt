@@ -12,6 +12,7 @@ SET(HEADERS_ROOT
     ActivityMonitorTool
     AnnotationEvents
     AutoClipPlaneHandler
+    AutoScaleCallback
     ArcGIS
     AtlasBuilder
     ClipSpace

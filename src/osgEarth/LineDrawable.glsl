@@ -3,13 +3,13 @@
 #pragma vp_name GPU Lines Screen Projected
 #pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
 #pragma vp_location vertex_clip
-#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPU_CLAMPING)
+#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_WIDTH, OE_GPU_CLAMPING)
 
 uniform vec2 oe_ViewportSize;
 
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
-in float oe_GPULines_width;
+uniform float oe_GPULines_width;
 
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 flat out vec2 oe_GPULines_rv;
@@ -39,9 +39,16 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 prevUnit = prevClip.xy/prevClip.w * arVec;
     vec2 nextUnit = nextClip.xy/nextClip.w * arVec;
 
-    float thickness = abs(oe_GPULines_width);
+#ifdef OE_GPULINES_WIDTH
+    float thickness = OE_GPULINES_WIDTH; //abs(oe_GPULines_width);
+#else
+    float thickness = 1.0;
+#endif
+
     float len = thickness;
-    float orientation = sign(oe_GPULines_width);
+
+    // even-indexed verts are negative, odd-indexed are positive
+    float orientation = (gl_VertexID & 0x01) == 0? -1.0 : 1.0;
 
     vec2 dir = vec2(0.0);
 
@@ -156,7 +163,12 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
 
     // we could make these unfiorms if necessary
     const int pattern = OE_GPULINES_STIPPLE_PATTERN;
+
+#ifdef OE_GPULINES_STIPPLE_FACTOR
     const int factor = OE_GPULINES_STIPPLE_FACTOR;
+#else
+    const int factor = 1;
+#endif
 
     // coordinate of the fragment, shifted to 0:
     vec2 coord = (gl_FragCoord.xy - 0.5);

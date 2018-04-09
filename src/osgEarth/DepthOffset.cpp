@@ -73,18 +73,13 @@ namespace
             }
         }
 
-        void apply( osg::Geode& geode )
+        void apply(osg::Drawable& drawable)
         {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            if (drawable.asGeometry())
             {
-                osg::Drawable* d = geode.getDrawable(i);
-
-                if ( d->asGeometry() )
-                {
-                    d->accept( _segmentAnalyzer );
-                }
+                drawable.asGeometry()->accept(_segmentAnalyzer);
             }
-            traverse((osg::Node&)geode);
+            apply(static_cast<osg::Node&>(drawable));
         }
 
         LineFunctor<SegmentAnalyzer> _segmentAnalyzer;

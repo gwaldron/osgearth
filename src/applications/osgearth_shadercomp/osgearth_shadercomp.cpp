@@ -79,10 +79,9 @@ osg::Geode* makeGeom( float v )
     geom->setVertexArray( verts );
     geom->setUseDisplayList(false);
     geom->setUseVertexBufferObjects(true);
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     colors->push_back( osg::Vec4(0,0,1,1) );
     geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES,0,3));
     geode->addDrawable(geom);
     return geode;

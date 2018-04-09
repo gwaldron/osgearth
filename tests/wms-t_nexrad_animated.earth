@@ -10,6 +10,10 @@ Try running this with:
 
 <map name="WMS Radar returns" type="geocentric" version="2">   
      
+    <options>
+        <terrain driver="mp"/>
+    </options>
+    
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>

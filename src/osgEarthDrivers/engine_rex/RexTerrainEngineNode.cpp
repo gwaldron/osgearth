@@ -283,14 +283,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         OE_INFO << LC << "Expiration threshold set by env var = " << _terrainOptions.expirationThreshold().get() << "\n";
     }
 
-    // if the envvar for hires prioritization is set, override the options setting
-    const char* hiresFirst = ::getenv("OSGEARTH_HIGH_RES_FIRST");
-    if ( hiresFirst )
-    {
-        _terrainOptions.highResolutionFirst() = true;
-        OE_INFO << LC << "High Res First option set to true by env var\n";
-    }
-
     // Check for normals debugging.
     if (::getenv("OSGEARTH_DEBUG_NORMALS"))
         getOrCreateStateSet()->setDefine("OE_DEBUG_NORMALS");
@@ -312,6 +304,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision( _mapFrame.getRevision() );
+    _liveTiles->setNotifyNeighbors(_terrainOptions.normalizeEdges() == true);
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
     _releaser = new ResourceReleaser();
@@ -923,7 +916,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                 if (model->elevationModel().valid())
                 {
                     // Clone the vertex array since it's shared and we're going to alter it
-                    geom->setVertexArray(osg::clone(geom->getVertexArray()));
+                    geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
 
                     // Apply the elevation model to the verts, noting that the texture coordinate
                     // runs [0..1] across the tile and the normal is the up vector at each vertex.

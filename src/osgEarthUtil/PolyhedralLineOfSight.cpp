@@ -227,13 +227,11 @@ PolyhedralLineOfSightNode::rebuildGeometry()
     geom->setVertexArray( verts );
     verts->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     geom->setColorArray( colors );
-    geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-    osg::Vec3Array* normals = new osg::Vec3Array();
+    osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     geom->setNormalArray( normals );
-    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     double azim0   = _startAzim.as(Units::RADIANS);
     double azim1   = _endAzim.as(Units::RADIANS);

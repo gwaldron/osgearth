@@ -38,17 +38,17 @@ namespace osgEarth
     class SceneGraphCallback : public osg::Referenced
     {
     public:
-        // Called before a node is added to the live scene graph,
-        // possibly from a background pager thread
-        virtual void onPreMergeNode(osg::Node*) { }
+        //! Called before a node is added to the live scene graph, possibly from a background pager thread
+        virtual void onPreMergeNode(osg::Node* node) { }
+        virtual void onPreMergeNode(osg::Node* node, osg::Object* sender) { onPreMergeNode(node); }
 
-        // Called after a node is added to the live scene graph
-        // in the main/update thread
-        virtual void onPostMergeNode(osg::Node*) { }
+        //! Called after a node is added to the live scene graph in the main/update thread
+        virtual void onPostMergeNode(osg::Node* node) { }
+        virtual void onPostMergeNode(osg::Node* node, osg::Object* sender) { onPostMergeNode(node); }
 
-        // Called after a node is remoevd from the live scene graph
-        // in the main/update thread
-        virtual void onRemoveNode(osg::Node*) { }
+        //! Called after a node is remoevd from the live scene graph in the main/update thread
+        virtual void onRemoveNode(osg::Node* node) { }
+        virtual void onRemoveNode(osg::Node* node, osg::Object* sender) { onRemoveNode(node); }
     };
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
@@ -59,6 +59,9 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT SceneGraphCallbacks : public osg::Referenced
     {
+    public:
+        SceneGraphCallbacks(osg::Object* sender);
+
     public:
         //! Add a new callback
         virtual void add(SceneGraphCallback* cb);
@@ -78,6 +81,7 @@ namespace osgEarth
     private:
         SceneGraphCallbackVector _callbacks;
         Threading::Mutex _mutex;
+        osg::observer_ptr<osg::Object> _sender;
     };
 
     /**
@@ -109,6 +113,7 @@ namespace osgEarth
 
     private:
         osg::observer_ptr<SceneGraphCallbacks> _host;
+        osg::observer_ptr<osg::Object> _sender;
     };
 }
 

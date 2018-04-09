@@ -382,7 +382,9 @@ TileNode::cull_stealth(TerrainCuller* culler)
     {
         for(int i=0; i<4; ++i)
         {
-            getSubTile(i)->accept( *culler );
+            TileNode* child = getSubTile(i);
+            if (child)
+                child->accept( *culler );
         }
     }
 
@@ -455,7 +457,9 @@ TileNode::cull(TerrainCuller* culler)
         {
             for(int i=0; i<4; ++i)
             {
-                getSubTile(i)->accept(*culler);
+                TileNode* child = getSubTile(i);
+                if (child)
+                    child->accept(*culler);
             }
         }
 
@@ -719,10 +723,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     if (_childrenReady)
     {
-        getSubTile(0)->refreshInheritedData(this, bindings);
-        getSubTile(1)->refreshInheritedData(this, bindings);
-        getSubTile(2)->refreshInheritedData(this, bindings);
-        getSubTile(3)->refreshInheritedData(this, bindings);
+        for (int i = 0; i < 4; ++i)
+        {
+            TileNode* child = getSubTile(i);
+            if (child)
+                child->refreshInheritedData(this, bindings);
+        }
     }
 
     if (newElevationData)
@@ -901,10 +907,12 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
         if (_childrenReady)
         {
-            getSubTile(0)->refreshInheritedData(this, bindings);
-            getSubTile(1)->refreshInheritedData(this, bindings);
-            getSubTile(2)->refreshInheritedData(this, bindings);
-            getSubTile(3)->refreshInheritedData(this, bindings);
+            for (int i = 0; i < 4; ++i)
+            {
+                TileNode* child = getSubTile(i);
+                if (child)
+                    child->refreshInheritedData(this, bindings);
+            }
         }
     }
     else
@@ -922,7 +930,10 @@ TileNode::load(TerrainCuller* culler)
     
     // LOD priority is in the range [0..numLods]
     float lodPriority = (float)lod;
-    if ( _context->getOptions().highResolutionFirst() == false )
+
+    // If progressive mode is enabled, lower LODs get higher priority since
+    // we want to load them in order
+    if (_context->getOptions().progressive() == true)
         lodPriority = (float)(numLods - lod);
 
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);

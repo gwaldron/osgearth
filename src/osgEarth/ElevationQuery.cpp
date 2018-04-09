@@ -64,7 +64,7 @@ ElevationQuery::reset()
     _ivrc = new osgSim::DatabaseCacheReadCallback();
 
     // find terrain patch layers.
-    gatherPatchLayers();
+    gatherTerrainModelLayers();
 
     // clear any active envelope
     _envelope = 0L;
@@ -81,18 +81,20 @@ ElevationQuery::sync()
 }
 
 void
-ElevationQuery::gatherPatchLayers()
+ElevationQuery::gatherTerrainModelLayers()
 {
     // cache a vector of terrain patch models.
-    _patchLayers.clear();
-    ModelLayerVector modelLayers;
-    _mapf.getLayers(modelLayers);
-    for(ModelLayerVector::const_iterator i = modelLayers.begin();
-        i != modelLayers.end();
+    _terrainModelLayers.clear();
+    LayerVector layers;
+    _mapf.getLayers(layers);
+    for (LayerVector::const_iterator i = layers.begin();
+        i != layers.end();
         ++i)
     {
-        if ( i->get()->isTerrainPatch() )
-            _patchLayers.push_back( i->get() );
+        if (i->get()->options().terrainPatch() == true)
+        {
+            _terrainModelLayers.push_back(i->get());
+        }
     }
 }
 
@@ -183,17 +185,18 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     osg::Timer_t begin = osg::Timer::instance()->tick();
 
     // first try the terrain patches.
-    if ( _patchLayers.size() > 0 )
+    if ( _terrainModelLayers.size() > 0 )
     {
         osgUtil::IntersectionVisitor iv;
 
         if ( _ivrc.valid() )
             iv.setReadCallback(_ivrc.get());
 
-        for(std::vector<ModelLayer*>::iterator i = _patchLayers.begin(); i != _patchLayers.end(); ++i)
+        for(LayerVector::iterator i = _terrainModelLayers.begin(); i != _terrainModelLayers.end(); ++i)
         {
             // find the scene graph for this layer:
-            osg::Node* node = (*i)->getSceneGraph( _mapf.getUID() );
+            Layer* layer = i->get();
+            osg::Node* node = layer->getOrCreateNode();
             if ( node )
             {
                 // configure for intersection:
@@ -210,26 +213,26 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                     osg::Vec3d end  ( surface - nvector*5e5 );
 
                     // first time through, set up the intersector on demand
-                    if ( !_patchLayersLSI.valid() )
+                    if ( !_lsi.valid() )
                     {
-                        _patchLayersLSI = new osgUtil::LineSegmentIntersector(start, end);
-                        _patchLayersLSI->setIntersectionLimit( _patchLayersLSI->LIMIT_NEAREST );
+                        _lsi = new osgUtil::LineSegmentIntersector(start, end);
+                        _lsi->setIntersectionLimit( _lsi->LIMIT_NEAREST );
                     }
                     else
                     {
-                        _patchLayersLSI->reset();
-                        _patchLayersLSI->setStart( start );
-                        _patchLayersLSI->setEnd  ( end );
+                        _lsi->reset();
+                        _lsi->setStart( start );
+                        _lsi->setEnd  ( end );
                     }
 
                     // try it.
-                    iv.setIntersector( _patchLayersLSI.get() );
+                    iv.setIntersector( _lsi.get() );
                     node->accept( iv );
 
                     // check for a result!!
-                    if ( _patchLayersLSI->containsIntersections() )
+                    if ( _lsi->containsIntersections() )
                     {
-                        osg::Vec3d isect = _patchLayersLSI->getIntersections().begin()->getWorldIntersectPoint();
+                        osg::Vec3d isect = _lsi->getIntersections().begin()->getWorldIntersectPoint();
 
                         // transform back to input SRS:
                         GeoPoint output;

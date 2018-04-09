@@ -124,10 +124,10 @@ namespace osgEarth
         MapFrame _mapf;
 
         // Map model layers marked as terrain patches
-        std::vector<ModelLayer*> _patchLayers;
+        LayerVector _terrainModelLayers;
 
         // Intersector to query the patch layers
-        osg::ref_ptr<osgUtil::LineSegmentIntersector> _patchLayersLSI;
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> _lsi;
 
         // Callback to force the intersector to materialize paged model nodes
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
@@ -138,7 +138,7 @@ namespace osgEarth
     private:
         void reset();
         void sync();
-        void gatherPatchLayers();
+        void gatherTerrainModelLayers();
 
         bool getElevationImpl(
             const GeoPoint& point,

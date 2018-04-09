@@ -269,11 +269,10 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
     verts->reserve(_numSpokes * 5);
     geometry->setVertexArray( verts );
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     colors->reserve( _numSpokes * 5 );
 
     geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
     osg::Vec3d previousEnd;
     osg::Vec3d firstEnd;
@@ -415,11 +414,10 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     verts->reserve(_numSpokes * 2);
     geometry->setVertexArray( verts );
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
     colors->reserve( _numSpokes * 2 );
 
     geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
     osg::ref_ptr<osgUtil::IntersectorGroup> ivGroup = new osgUtil::IntersectorGroup();
 

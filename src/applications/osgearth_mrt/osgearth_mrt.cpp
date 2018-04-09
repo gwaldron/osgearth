@@ -105,10 +105,9 @@ createFramebufferQuad(App& app)
     t->push_back(osg::Vec2(0,h));
     g->setTexCoordArray(0, t);
 
-    osg::Vec4Array* c = new osg::Vec4Array();
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL);
     c->push_back(osg::Vec4(1,1,1,1));
     g->setColorArray(c);
-    g->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     g->addPrimitiveSet(new osg::DrawArrays(GL_QUADS, 0, 4));
 

@@ -160,9 +160,9 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
 
     // add a new integer attributer to store the feautre ID per vertex.
     ObjectIDArray* ids = new ObjectIDArray();
-    geom->setVertexAttribArray    (_attribLocation, ids);
-    geom->setVertexAttribBinding  (_attribLocation, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(_attribLocation, false);
+    ids->setBinding(osg::Array::BIND_PER_VERTEX);
+    ids->setNormalize(false);
+    geom->setVertexAttribArray(_attribLocation, ids);
     
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
     ids->setPreserveDataType(true);
@@ -183,13 +183,10 @@ namespace
             setNodeMaskOverride(~0);
         }
 
-        void apply(osg::Geode& geode)
+        void apply(osg::Drawable& drawable)
         {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                _index->tagDrawable( geode.getDrawable(i), _id );
-            }
-            traverse( geode );
+            _index->tagDrawable(&drawable, _id);
+            traverse(drawable);
         }
 
         const ObjectIndex* _index;

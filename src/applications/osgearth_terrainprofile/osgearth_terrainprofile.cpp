@@ -154,10 +154,9 @@ public:
         if ( verts->getVertexBufferObject() )
             verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-        osg::Vec4Array* colors = new osg::Vec4Array();
+        osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
         colors->push_back( _color );
         geom->setColorArray( colors );
-        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         double minElevation, maxElevation;
         _profile.getElevationRanges( minElevation, maxElevation );
@@ -217,10 +216,9 @@ public:
         if ( verts->getVertexBufferObject() )
             verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-        osg::Vec4Array* colors = new osg::Vec4Array();
+        osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
         colors->push_back( backgroundColor );
         geometry->setColorArray( colors );
-        geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         geometry->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 

@@ -76,10 +76,9 @@ namespace
         }
         geometry->setTexCoordArray(0, texcoords);
 
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
         (*colors)[0].set(1,1,1,1);
         geometry->setColorArray( colors );
-        geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         geometry->addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4));
 

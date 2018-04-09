@@ -154,6 +154,7 @@ namespace osgEarth { namespace Features
         // their texture usage
         typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
         SortedGeodeMap                 _geodes;
+        SortedGeodeMap                 _lineGroups;
         osg::ref_ptr<osg::StateSet>    _noTextureStateSet;
 
         bool                           _mergeGeometry;
@@ -210,10 +211,7 @@ namespace osgEarth { namespace Features
                                const osg::Vec4&     roofColor,
                                const SkinResource*  roofSkin);
 
-        bool buildOutlineGeometry(const Structure&  structure,
-                                  osg::Geometry*    outline,
-                                  const osg::Vec4&  outlineColor,
-                                  float             minCreaseAngleDeg);
+        osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };
 
 } } // namespace osgEarth::Features

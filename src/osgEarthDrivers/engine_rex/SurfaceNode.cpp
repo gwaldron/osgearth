@@ -86,10 +86,9 @@ namespace
 #endif
             geom->addPrimitiveSet(de);
 
-            osg::Vec4Array* c= new osg::Vec4Array();
+            osg::Vec4Array* c= new osg::Vec4Array(osg::Array::BIND_OVERALL);
             c->push_back(osg::Vec4(1,0,0,1));
             geom->setColorArray(c);
-            geom->setColorBinding(geom->BIND_OVERALL);
 
             geode->addChild(geom);
 
@@ -147,7 +146,7 @@ namespace
         b->push_back(1); b->push_back(5); b->push_back(2);
         geom->addPrimitiveSet(b);
 
-        osg::Vec3Array* n = new osg::Vec3Array();
+        osg::Vec3Array* n = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
         n->reserve(6);
         n->push_back(osg::Vec3(0, 0, 1));
         n->push_back(osg::Vec3(0, 0, -1));
@@ -156,15 +155,13 @@ namespace
         n->push_back(osg::Vec3(0, 1, 0));
         n->push_back(osg::Vec3(0, -1, 0));
         geom->setNormalArray(n);
-        geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
         //MeshSubdivider ms;
         //ms.run(*geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE);
 
-        osg::Vec4Array* c = new osg::Vec4Array(1);
+        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
         (*c)[0].set(1,1,0,1);
         geom->setColorArray(c);
-        geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
         return geom;
     }
@@ -190,7 +187,7 @@ HorizonTileCuller::set(const SpatialReference* srs,
         // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
         // may be visible even if it doesn't pass the horizon-cone test. In such
         // cases we need a more conservative ellipsoid.
-        double zMin = (double)std::min( bbox.corner(0).z(), 0.0f );
+        double zMin = static_cast<double>(std::min( bbox.corner(0).z(), static_cast<osg::BoundingBox::value_type>(0.)));
         zMin = std::max(zMin, -25000.0); // approx the lowest point on earth * 2
         _horizon->setEllipsoid( osg::EllipsoidModel(
             srs->getEllipsoid()->getRadiusEquator() + zMin, 

@@ -89,6 +89,7 @@ namespace
     osg::Array* convertToBindPerVertex( TYPE* src, unsigned int numVerts)
     {
         TYPE* result = new TYPE();
+        result->setBinding(osg::Array::BIND_PER_VERTEX);
         result->reserve(numVerts);
         for (unsigned int i = 0; i < numVerts; i++)
         {
@@ -239,9 +240,9 @@ namespace
 
         // check that everything is bound per-vertex or convert bind overall
 
-        if ( geom.getColorArray() != 0L && geom.getColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getColorArray() && geom.getColorArray()->getBinding() != osg::Array::BIND_PER_VERTEX)
         {
-            if (geom.getColorBinding() == osg::Geometry::BIND_OVERALL)
+            if (geom.getColorArray()->getBinding() == osg::Array::BIND_OVERALL)
             {
                 geom.setColorArray(makeBindPerVertex(geom.getColorArray(), vertexArray->size()));
             }
@@ -251,9 +252,9 @@ namespace
             }
         }
 
-        if ( geom.getNormalArray() != 0L && geom.getNormalBinding() != osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getNormalArray() && geom.getNormalArray()->getBinding() != osg::Array::BIND_PER_VERTEX)
         {
-            if (geom.getNormalBinding() == osg::Geometry::BIND_OVERALL)
+            if (geom.getNormalArray()->getBinding() == osg::Array::BIND_OVERALL)
             {
                 geom.setNormalArray(makeBindPerVertex(geom.getNormalArray(), vertexArray->size()));
             }
@@ -263,9 +264,9 @@ namespace
             }
         }
 
-        if ( geom.getSecondaryColorArray() != 0L && geom.getSecondaryColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getSecondaryColorArray() && geom.getSecondaryColorArray()->getBinding() != osg::Array::BIND_PER_VERTEX)
         {
-            if (geom.getSecondaryColorBinding() == osg::Geometry::BIND_OVERALL)
+            if (geom.getSecondaryColorArray()->getBinding() == osg::Array::BIND_OVERALL)
             {
                 geom.setSecondaryColorArray(makeBindPerVertex(geom.getSecondaryColorArray(), vertexArray->size()));
             }
@@ -396,7 +397,7 @@ namespace
         bool                          useVBOs,
         DrawableList&                 results )
     {
-        osg::Geometry::AttributeBinding newColorsBinding, newNormalsBinding;
+        osg::Array::Binding newColorsBinding, newNormalsBinding;
 
         osg::Vec3Array* newVerts = new osg::Vec3Array();
         newVerts->reserve( numVerts );
@@ -426,9 +427,7 @@ namespace
         {
             newColors = new osg::Vec4Array();
             newColors->reserve( numVerts );
-            newColorsBinding = osg::Geometry::BIND_PER_VERTEX;
-            //newColors->reserve( numColors==numVerts? numColors : 1 );
-            //newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
+            newColorsBinding = osg::Array::BIND_PER_VERTEX;
         }
 
         osg::Vec3Array* newNormals =0L;
@@ -436,9 +435,7 @@ namespace
         {
             newNormals = new osg::Vec3Array();
             newNormals->reserve( numVerts );
-            newNormalsBinding = osg::Geometry::BIND_PER_VERTEX;
-            //newNormals->reserve( numNormals==numVerts? numNormals : 1 );
-            //newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
+            newNormalsBinding = osg::Array::BIND_PER_VERTEX;
         }
 
         std::vector<osg::Array*> newTexCoordsArrays;
@@ -488,7 +485,7 @@ namespace
                     osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>( geom->getColorArray() );
                     if ( colors )
                     {
-                        if ( newColorsBinding == osg::Geometry::BIND_PER_VERTEX )
+                        if ( newColorsBinding == osg::Array::BIND_PER_VERTEX )
                         {
                             std::copy( colors->begin(), colors->end(), std::back_inserter(*newColors) );
                         }
@@ -504,7 +501,7 @@ namespace
                     osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>( geom->getNormalArray() );
                     if ( normals )
                     {
-                        if ( newNormalsBinding == osg::Geometry::BIND_PER_VERTEX )
+                        if ( newNormalsBinding == osg::Array::BIND_PER_VERTEX )
                         {
                             std::copy( normals->begin(), normals->end(), std::back_inserter(*newNormals) );
                         }
@@ -596,14 +593,14 @@ namespace
 
         if ( newColors )
         {
+            newColors->setBinding( newColorsBinding );
             newGeom->setColorArray( newColors );
-            newGeom->setColorBinding( newColorsBinding );
         }
 
         if ( newNormals )
         {
+            newNormals->setBinding(newNormalsBinding);
             newGeom->setNormalArray( newNormals );
-            newGeom->setNormalBinding( newNormalsBinding );
         }
 
         if ( newTexCoordsArrays.size() > 0 )

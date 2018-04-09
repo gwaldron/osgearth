@@ -58,10 +58,9 @@ StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
     (*verts)[3].set( 1, 1, 0 );
     quad->setVertexArray( verts );
     quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
     (*colors)[0] = color;
     quad->setColorArray( colors );
-    quad->setColorBinding( osg::Geometry::BIND_OVERALL );
     osg::Geode* quad_geode = new osg::Geode();
     quad_geode->addDrawable( quad );
 

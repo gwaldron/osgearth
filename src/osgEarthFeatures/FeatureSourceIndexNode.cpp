@@ -268,8 +268,10 @@ FeatureSourceIndexNode* FeatureSourceIndexNode::get(osg::Node* graph)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace
+namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeClass
 {
+    using namespace osgEarth::Features;
+
     bool checkFIDMap(const FeatureSourceIndexNode& node)
     {
         return !node.getFIDMap().empty();
@@ -314,23 +316,6 @@ namespace
         return true;
     }
 
-#if 0
-    bool checkEmbeddedFeatures(const FeatureSourceIndexNode& node)
-    {
-        return false; //todo
-    }
-
-    bool writeEmbeddedFeatures(osgDB::OutputStream& os, const FeatureSourceIndexNode& node)
-    {
-        return true;
-    }
-
-    bool readEmbeddedFeatures(osgDB::InputStream& is, FeatureSourceIndexNode& node)
-    {
-        return true;
-    }
-#endif
-
     REGISTER_OBJECT_WRAPPER(
         FeatureSourceIndexNode,
         new osgEarth::Features::FeatureSourceIndexNode,
@@ -339,7 +324,8 @@ namespace
     {
         ADD_USER_SERIALIZER(FIDMap);
     }
-}
+
+} } }
 
 //-----------------------------------------------------------------------------
 

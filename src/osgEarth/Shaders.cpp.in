@@ -34,6 +34,9 @@ namespace osgEarth
         InstancingVertex = "Instancing.vert.glsl";
         _sources[InstancingVertex] = "@Instancing.vert.glsl@";
 
+        // LineDrawable
+        LineDrawable = "LineDrawable.glsl";
+        _sources[LineDrawable] = "@LineDrawable.glsl@";        
 
         // PhongLightingEffect
         PhongLightingVertex = "PhongLighting.vert.glsl";

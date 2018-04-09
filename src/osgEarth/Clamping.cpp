@@ -61,6 +61,8 @@ namespace
             {
                 osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
                 osg::Vec4Array* anchors = new osg::Vec4Array();
+                anchors->setBinding(osg::Array::BIND_PER_VERTEX);
+                anchors->setNormalize(false);
                 anchors->reserve( verts->size() );
                 for(unsigned i=0; i<verts->size(); ++i)
                 {
@@ -70,9 +72,7 @@ namespace
                         Clamping::ClampToGround) );
                 }
 
-                geom->setVertexAttribArray    (Clamping::AnchorAttrLocation, anchors);
-                geom->setVertexAttribBinding  (Clamping::AnchorAttrLocation, geom->BIND_PER_VERTEX);
-                geom->setVertexAttribNormalize(Clamping::AnchorAttrLocation, false);
+                geom->setVertexAttribArray(Clamping::AnchorAttrLocation, anchors);
             }
         }
 
@@ -120,9 +120,9 @@ Clamping::setHeights(osg::Geometry* geom, osg::FloatArray* hats)
 {
     if ( geom )
     {
+        hats->setBinding(osg::Array::BIND_PER_VERTEX);
+        hats->setNormalize(false);
         geom->setVertexAttribArray( HeightsAttrLocation, hats );
-        geom->setVertexAttribBinding( HeightsAttrLocation, geom->BIND_PER_VERTEX );
-        geom->setVertexAttribNormalize( HeightsAttrLocation, false );
     }
 }
 

@@ -1621,7 +1621,7 @@ namespace
         osg::Image *image = new osg::Image;
         image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
 
-        ds->RasterIO(
+        CPLErr err = ds->RasterIO(
             GF_Read, 
             0, 0, 
             image->s(), image->t(), 
@@ -1633,8 +1633,11 @@ namespace
             pixelBytes,
             pixelBytes * image->s(),
             1);
+        if ( err != CE_None )
+        {
+            OE_WARN << LC << "RasterIO failed.\n";
+        }
 
-//        ds->RasterIO(GF_Read, 0, 0, image->s(), image->t(), (void*)image->data(), image->s(), image->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
         ds->FlushCache();
 
         image->flipVertical();
@@ -1724,7 +1727,7 @@ namespace
 
         if ( srcDS )
         {
-            srcDS->RasterIO(
+            CPLErr err = srcDS->RasterIO(
                 GF_Write, 
                 0, 0,
                 clonedImage->s(), clonedImage->t(),
@@ -1737,6 +1740,10 @@ namespace
                 pixelBytes,
                 pixelBytes * image->s(),
                 1);
+            if ( err != CE_None )
+            {
+                OE_WARN << LC << "RasterIO failed.\n";
+            }
 
 
 #if 0

@@ -1368,35 +1368,40 @@ public:
         GDALDataType eBufType,
         GSpacing nPixelSpace,
         GSpacing nLineSpace,
-        ElevationInterpolation interpolation
+        ElevationInterpolation interpolation = INTERP_NEAREST
         )
     {
 #if GDAL_VERSION_2_0_OR_NEWER
         GDALRasterIOExtraArg psExtraArg;
+
+        // defaults to GRIORA_NearestNeighbour
         INIT_RASTERIO_EXTRA_ARG(psExtraArg);
 
-        if (interpolation == INTERP_AVERAGE)
-        {        
-            //psExtraArg.eResampleAlg = GRIORA_Average;
-            // for some reason gdal's average resampling produces artifacts occasionally for imagery at higher levels.
-            // for now we'll just use bilinear interpolation under the hood until we can understand what is going on.
-            psExtraArg.eResampleAlg = GRIORA_Bilinear;
-        }
-        else if (interpolation == INTERP_BILINEAR)
-        {         
-            psExtraArg.eResampleAlg = GRIORA_Bilinear;
-        }
-        else if (interpolation == INTERP_CUBIC)
+        switch(interpolation)
         {
-            psExtraArg.eResampleAlg = GRIORA_Cubic;
-        }
-        else if (interpolation == INTERP_CUBICSPLINE)
-        {
-            psExtraArg.eResampleAlg = GRIORA_CubicSpline;
+            case INTERP_AVERAGE:
+                //psExtraArg.eResampleAlg = GRIORA_Average;
+                // for some reason gdal's average resampling produces artifacts occasionally for imagery at higher levels.
+                // for now we'll just use bilinear interpolation under the hood until we can understand what is going on.
+                psExtraArg.eResampleAlg = GRIORA_Bilinear;
+                break;
+            case INTERP_BILINEAR:
+                psExtraArg.eResampleAlg = GRIORA_Bilinear;
+                break;
+            case INTERP_CUBIC:
+                psExtraArg.eResampleAlg = GRIORA_Cubic;
+                break;
+            case INTERP_CUBICSPLINE:
+                psExtraArg.eResampleAlg = GRIORA_CubicSpline;
+                break;
         }
 
         CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
 #else
+        if (interpolation != INTERP_NEAREST)
+        {
+            OE_DEBUG << LC << "RasterIO falling back to INTERP_NEAREST.\n";
+        }
         CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
 #endif
         if (err != CE_None)
@@ -1921,8 +1926,8 @@ public:
 
         if ( _options.interpolation() == INTERP_NEAREST )
         {
-            band->RasterIO(GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
-            if (!isValidValue( result, band))
+            rasterIO(band, GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+            if (!isValidValue(result, band))
             {
                 return NO_DATA_VALUE;
             }
@@ -1939,10 +1944,10 @@ public:
 
             float urHeight, llHeight, ulHeight, lrHeight;
 
-            CPLErr err = band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
-            band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
+            rasterIO(band, GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
             if ((!isValidValue(urHeight, band)) || (!isValidValue(llHeight, band)) ||(!isValidValue(ulHeight, band)) || (!isValidValue(lrHeight, band)))
             {
@@ -2060,7 +2065,7 @@ public:
                 int startOffset = iBufRowMin * tileSize + iBufColMin;
                 int lineSpace = tileSize * sizeof(float);
 
-                CPLErr err = band->RasterIO(GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
+                rasterIO(band, GF_Read, iWinColMin, iWinRowMin, iNumWinCols, iNumWinRows, &buffer[startOffset], iNumBufCols, iNumBufRows, GDT_Float32, 0, lineSpace);
 
                 for (int r = 0, ir = tileSize - 1; r < tileSize; ++r, --ir)
                 {

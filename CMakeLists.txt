@@ -138,6 +138,7 @@ FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
+SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
 # JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")

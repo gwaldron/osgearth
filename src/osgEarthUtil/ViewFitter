@@ -51,7 +51,7 @@ namespace osgEarth { namespace Util
         double getBuffer() const { return _buffer_m; }
 
         //! Sets the reference VFOV when using an orthographic camera.
-        void setReferenceVFOV(float vfov_degrees);
+        void setReferenceVFOV(float vfov_degrees) {  _vfov = vfov_degrees; }
 
     protected:
         osg::ref_ptr<const osg::Camera> _camera;

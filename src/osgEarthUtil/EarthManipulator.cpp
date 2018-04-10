@@ -27,7 +27,6 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
 #include <iomanip>
-#include <osgUtil/LineSegmentIntersector>
 
 #include <osg/io_utils>
 

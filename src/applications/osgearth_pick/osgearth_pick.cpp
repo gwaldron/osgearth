@@ -278,11 +278,15 @@ usage(const char* name)
 
 int
 main(int argc, char** argv)
-{
+{    
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+#ifdef __APPLE__
+    osgEarth::Registry::instance()->objectIndex()->setObjectIDAtrribLocation(8);
+#endif
+    
     App app(arguments);
 
     app.mainView = new osgViewer::View();

@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+* Modified version of mourner's kdbush.hpp to support old C++
+* https://github.com/mourner/kdbush.hpp
+*/
+
 #include <algorithm>
 #include <cmath>
 // Both 

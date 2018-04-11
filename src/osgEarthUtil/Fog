@@ -65,7 +65,7 @@ namespace osgEarth { namespace Util
         void attach(osg::StateSet* stateSet );
 
         /**
-         * Detatches this FogEffect from the given StateSet
+         * Detaches this FogEffect from the given StateSet
          */
         void detach(osg::StateSet* stateSet );
 

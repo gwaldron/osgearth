@@ -198,7 +198,7 @@ seed( osg::ArgumentParser& args )
         }
     }
 
-    // If they requested to do an estimate then don't do the the seed, just print out the estimated values.
+    // If they requested to do an estimate then don't do the seed, just print out the estimated values.
     if (estimate)
     {        
         CacheEstimator est;

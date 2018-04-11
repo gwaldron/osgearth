@@ -86,8 +86,20 @@ namespace osgEarth
         //! Set the value of a vertex at index i
         void setVertex(unsigned i, const osg::Vec3& vert);
 
+        //! Gets the vertex at index i
+        const osg::Vec3& getVertex(unsigned i) const;
+
+        //! Sets the color of a vertex at index i
+        void setColor(unsigned i, const osg::Vec4& color);
+
         //! Copy a vertex array into the drawable
         void setVerts(const osg::Vec3Array* verts);
+        
+        //! Allocate space for vertices
+        void allocate(unsigned numVerts);
+
+        //! Number of vertices in the drawable
+        unsigned getNumVerts() const;
 
         //! Appends a vertex to an attribute array. Use this instead of adding
         //! to the array directly!
@@ -97,6 +109,15 @@ namespace osgEarth
         //! Pre-allocate space for vertices
         void reserve(unsigned size);
 
+        //! Index of the first vertex to draw (default = 0)
+        void setFirst(unsigned index);
+        unsigned getFirst() const;
+
+        //! Number of vertices to draw (default = 0, which means draw to the
+        //! end of the line
+        void setCount(unsigned count);
+        unsigned getCount() const;
+
         //! Rebuild the primitive sets for this drawable. You MUST call this
         //! after adding new data to the drawable!
         void dirty();
@@ -104,6 +125,10 @@ namespace osgEarth
         //! Install shaders to render the line drawable when GPU rendering is
         //! available. You only need to call this if you are not using a LineGroup.
         void installShader();
+
+        //! Sets a line width on a custom stateset that will apply to
+        //! all LineDrawables used with that state set.
+        static void setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags=osg::StateAttribute::ON);
 
     public:
 
@@ -113,6 +138,10 @@ namespace osgEarth
         //! Binding location for "next" vertex attribute (default = 10)
         static int NextVertexAttrLocation;
 
+    public: // osg::Geometry overrides
+
+        virtual void drawPrimitivesImplementation(osg::RenderInfo& ri) const;
+
     private:
         GLenum _mode;
         bool _gpu;
@@ -120,9 +149,12 @@ namespace osgEarth
         GLint _factor;
         GLushort _pattern;
         float _width;
+        unsigned _first;
+        unsigned _count;
         osg::Vec3Array* _current;
         osg::Vec3Array* _previous;
         osg::Vec3Array* _next;
+        osg::Vec4Array* _colors;
 
         void initialize();
 

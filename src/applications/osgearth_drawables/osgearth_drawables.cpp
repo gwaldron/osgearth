@@ -45,6 +45,18 @@ void addVerts(LineDrawable* line, double x, double y)
     line->dirty();
 }
 
+void addLotsOfVerts(LineDrawable* line)
+{
+    for (int x = 0; x < 10; ++x)
+    {
+        for (int y = 0; y < 10; ++y)
+        {
+            line->pushVertex(osg::Vec3(x, 0, y));
+        }
+    }
+    line->dirty();
+}
+
 osg::Node* createLineDrawables()
 {
     LineGroup* group = new LineGroup();
@@ -52,7 +64,7 @@ osg::Node* createLineDrawables()
     group->addCullCallback(new InstallViewportSizeUniform());
 
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
-    strip->setLineWidth(2);
+    strip->setLineWidth(3);
     strip->setColor(osg::Vec4(1,1,1,1));
     addVerts(strip, 10, 10);
     group->addChild(strip);

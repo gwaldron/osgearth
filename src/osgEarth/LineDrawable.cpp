@@ -119,11 +119,13 @@ int LineDrawable::NextVertexAttrLocation = 10;
 LineDrawable::LineDrawable() :
 osg::Geometry(),
 _mode(GL_LINE_STRIP),
-_gpu(true),
+_gpu(false),
 _factor(1),
 _pattern(0xFFFF),
 _color(1, 1, 1, 1),
 _width(1.0f),
+_first(0u),
+_count(0u),
 _current(NULL),
 _previous(NULL),
 _next(NULL)
@@ -134,11 +136,13 @@ _next(NULL)
 LineDrawable::LineDrawable(GLenum mode) :
 osg::Geometry(),
 _mode(mode),
-_gpu(true),
+_gpu(false),
 _factor(1),
 _pattern(0xFFFF),
 _color(1,1,1,1),
 _width(1.0f),
+_first(0u),
+_count(0u),
 _current(NULL),
 _previous(NULL),
 _next(NULL)
@@ -153,7 +157,9 @@ _gpu(rhs._gpu),
 _color(rhs._color),
 _factor(rhs._factor),
 _pattern(rhs._pattern),
-_width(rhs._width)
+_width(rhs._width),
+_first(rhs._first),
+_count(rhs._count)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
 
@@ -199,6 +205,10 @@ LineDrawable::initialize()
         _current->setBinding(osg::Array::BIND_PER_VERTEX);
         setVertexArray(_current);
 
+        _colors = new osg::Vec4Array();
+        _colors->setBinding(osg::Array::BIND_PER_VERTEX);
+        setColorArray(_colors);
+
         if (_gpu)
         {
             _previous = new osg::Vec3Array();
@@ -227,11 +237,18 @@ LineDrawable::setLineWidth(float value)
     if (_width != value)
     {
         _width = value;
-        if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_GPULINES_WIDTH", Stringify() << _width);
-        else
-            getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(_width));
+        setLineWidth(getOrCreateStateSet(), value);
     }
+}
+
+void
+LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags)
+{
+    bool gpu = Registry::capabilities().supportsGLSL();
+    if (gpu)
+        stateSet->setDefine("OE_GPULINES_WIDTH", Stringify() << value, overrideFlags);
+    else
+        stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
 }
 
 void
@@ -265,8 +282,70 @@ LineDrawable::setColor(const osg::Vec4& color)
 {
     if (_color != color)
     {
+        initialize();
+
         _color = color;
+        if (_colors && !_colors->empty())
+        {
+            _colors->assign(_colors->size(), _color);
+            _colors->dirty();
+        }
     }
+}
+
+void
+LineDrawable::setColor(unsigned index, const osg::Vec4& color)
+{
+    if (_gpu)
+    {
+        (*_colors)[index*2u] = color;
+        (*_colors)[index*2u+1] = color;
+    }
+    else
+    {
+        (*_colors)[index] = color;
+    }
+    _colors->dirty();
+}
+
+void
+LineDrawable::setFirst(unsigned value)
+{
+    _first = value;
+
+    if (_gpu)
+    {
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
+        u->set(osg::Vec2(_first*2u, _count > 0u? (_first+_count-1u)*2u : 0u));
+    }
+}
+
+unsigned
+LineDrawable::getFirst() const
+{
+    return _first;
+}
+
+void
+LineDrawable::setCount(unsigned value)
+{
+    _count = value;
+    
+    if (_gpu)
+    {
+        osg::StateSet* ss = getOrCreateStateSet();
+        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
+        u->set(osg::Vec2(_first*2u, _count > 0u? (_first+_count-1u)*2u : 0u));
+    }
+}
+
+unsigned
+LineDrawable::getCount() const
+{
+    return _count;
 }
 
 void
@@ -286,6 +365,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 
             _next->push_back(vert);
             _next->push_back(vert);
+
+            _colors->push_back(_color);
+            _colors->push_back(_color);
         }
         else
         {
@@ -302,6 +384,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 
                 _current->push_back(vert);
                 _current->push_back(vert);
+
+                _colors->push_back(_color);
+                _colors->push_back(_color);
             }
 
             else if (_mode == GL_LINE_LOOP)
@@ -320,6 +405,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 
                 _current->push_back(vert);
                 _current->push_back(vert);
+
+                _colors->push_back(_color);
+                _colors->push_back(_color);
 
             }
 
@@ -349,6 +437,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 
                 _current->push_back(vert);
                 _current->push_back(vert);
+
+                _colors->push_back(_color);
+                _colors->push_back(_color);
             }
         }
     }
@@ -454,6 +545,15 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
     }
 }
 
+const osg::Vec3&
+LineDrawable::getVertex(unsigned index) const
+{
+    if (_gpu)
+        return (*_current)[index * 2u];
+    else
+        return (*_current)[index];
+}
+
 void
 LineDrawable::setVerts(const osg::Vec3Array* verts)
 {
@@ -475,6 +575,27 @@ LineDrawable::setVerts(const osg::Vec3Array* verts)
             pushVertex(*i);
         }
     }
+}
+
+void
+LineDrawable::allocate(unsigned numVerts)
+{
+    initialize();
+
+    unsigned num = getNumVerts();
+    for (unsigned i = num; i < numVerts; ++i)
+    {
+        pushVertex(osg::Vec3(0,0,0));
+    }
+}
+
+unsigned
+LineDrawable::getNumVerts() const
+{
+    if (_gpu)
+        return _current ? _current->size() * 2u : 0u;
+    else
+        return _current ? _current->size() : 0u;
 }
 
 void
@@ -607,17 +728,20 @@ LineDrawable::dirty()
     {
         addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
     }
-    
-    // update color array if necessary:
-    osg::Vec4Array* colors = static_cast<osg::Vec4Array*>(getColorArray());
-    if (colors == 0L)
+}
+
+void
+LineDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
+{
+    osg::State& state = *renderInfo.getState();
+    bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();
+
+    for(unsigned primitiveSetNum=0; primitiveSetNum != _primitives.size(); ++primitiveSetNum)
     {
-        colors = new osg::Vec4Array();
-        colors->setBinding(osg::Array::BIND_PER_VERTEX);
-        setColorArray(colors);
+        const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
+
+        primitiveset->draw(state, usingVertexBufferObjects);
     }
-    colors->assign(_current->size(), _color);
-    colors->dirty();
 }
 
 void

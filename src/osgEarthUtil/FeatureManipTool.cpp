@@ -394,7 +394,7 @@ FeatureManipTool::commit()
         {
             const FeatureDrawSet::DrawableSlice& slice = *s;
             
-            // collection a set of indicies in the slice:
+            // collection a set of indices in the slice:
             std::set<unsigned> indexSet;
             _drawSet.collectPrimitiveIndexSet( slice, indexSet );
 

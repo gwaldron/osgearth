@@ -214,7 +214,7 @@ namespace osgEarth { namespace Symbology
         virtual void close();
 
         /**
-         * Removes consecutive duplicates in the geometry to prepare for tesselation.
+         * Removes consecutive duplicates in the geometry to prepare for tessellation.
          */
         virtual void removeDuplicates();
 
@@ -308,7 +308,7 @@ namespace osgEarth { namespace Symbology
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
-        // tests whether the point falls withing the ring
+        // tests whether the point falls within the ring
         virtual bool contains2D( double x, double y ) const;
 
         // gets the signed area of a part that is known to be open.
@@ -357,7 +357,7 @@ namespace osgEarth { namespace Symbology
         
         virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
-        // tests whether the point falls withing the polygon (but not its holes)
+        // tests whether the point falls within the polygon (but not its holes)
         virtual bool contains2D( double x, double y ) const;
 
         virtual void open();
@@ -421,7 +421,7 @@ namespace osgEarth { namespace Symbology
     /**
      * Iterates over a Geometry object, returning each component Geometry
      * in turn. The iterator automatically traverses MultiGeometry objects,
-     * returning their components. The interator NEVER returns an actual
+     * returning their components. The iterator NEVER returns an actual
      * MultiGeometry object.
      */
     class OSGEARTHSYMBOLOGY_EXPORT GeometryIterator

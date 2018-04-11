@@ -67,7 +67,7 @@ namespace osgEarth { namespace Util
         unsigned getTraversalMask() const { return _traversalMask; }
 
         /**
-         * Slice ranges. Each slice (the space beteen each value in the list)
+         * Slice ranges. Each slice (the space between each value in the list)
          * represents a single shadow map in the Cascading Shadow Maps 
          * implementation.
          */

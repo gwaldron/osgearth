@@ -731,7 +731,7 @@ namespace osgEarth { namespace Util
         virtual osg::Matrixd getInverseMatrix() const;
 
         /** update the camera with the current values from this manipulator. Overloaded to support tethering, this method is
-            called by Viewer or ComppositeViewer at the end of the udpate traversal. */
+            called by Viewer or ComppositeViewer at the end of the update traversal. */
         virtual void updateCamera(osg::Camera& camera);
 
         // Gets the stereo convergance mode.
@@ -764,7 +764,7 @@ namespace osgEarth { namespace Util
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
-        // returns the absoulte Euler angles composited from the composite rotation matrix.
+        // returns the absolute Euler angles composited from the composite rotation matrix.
         void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
 
     protected:

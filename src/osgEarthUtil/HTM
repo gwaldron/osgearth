@@ -136,7 +136,7 @@ namespace osgEarth { namespace Util
 
         void split();
 
-        // test whether the node's triangle lies entirely withing a frustum
+        // test whether the node's triangle lies entirely within a frustum
         bool entirelyWithin(const osg::Polytope& tope) const;
         
         // test whether the node's triangle intersects a frustum

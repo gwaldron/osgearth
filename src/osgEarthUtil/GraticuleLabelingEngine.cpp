@@ -172,7 +172,7 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     }
 
     // Intersect the corners of the view frustum with the ellipsoid.
-    // This will yeild the approximate geo-extent of the view.
+    // This will yield the approximate geo-extent of the view.
     // TODO: graduate this to the core if generally useful - could be helpful
     // for displaying the extent of the current view.
 

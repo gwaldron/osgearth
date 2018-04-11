@@ -59,7 +59,7 @@ namespace osgEarth { namespace Util
         /** Removes an object from this geocell graph. */
         bool removeObject( GeoObject* object );
 
-        /** Re-index an object withing the geocell graph based on a new position. */
+        /** Re-index an object within the geocell graph based on a new position. */
         bool reindexObject( GeoObject* object );
 
         /** The number of rows and columns into which this cell will split */

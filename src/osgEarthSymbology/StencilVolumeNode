@@ -70,7 +70,7 @@ namespace osgEarth { namespace Symbology
         // adds stenciling volume geometry (safely during the next update traversal, if necessary)
         void addVolumes( osg::Node* node, bool onNextUpdate =true );
    
-    public: // utilties
+    public: // utilities
 
         /**
          * Generates a full screen quad that you can use to colorize 

@@ -41,7 +41,7 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression>& script() { return _script; }
         const optional<StringExpression>& script() const { return _script; }
 
-        /** URI context (relative paths, etc) associated wtih this symbol */
+        /** URI context (relative paths, etc) associated with this symbol */
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const;   

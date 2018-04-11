@@ -1,16 +1,16 @@
 #include "ClusterNode"
 
-ClusterNode::ClusterNode(MapNode* mapNode) :
+ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _radius(50),
     _mapNode(mapNode),
     _nextLabel(0),
     _enabled(true),
-    _dirty(true)
+    _dirty(true),
+    _defaultImage(defaultImage)
 {
     setNumChildrenRequiringUpdateTraversal(1);
     setCullingActive(false);
 
-    _defaultImage = osgDB::readRefImageFile("../data/placemark32.png");
     _horizon = new Horizon();
 }
 

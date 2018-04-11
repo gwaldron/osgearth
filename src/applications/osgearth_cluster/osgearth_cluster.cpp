@@ -242,6 +242,7 @@ public:
     
     virtual void operator()(Cluster& cluster)
     {
+        /*
         std::stringstream buf;
         buf << cluster.nodes[0]->getName() << "(" << cluster.nodes.size() << ")" << std::endl;
         cluster.marker->setText(buf.str());
@@ -254,6 +255,7 @@ public:
         {
             cluster.marker->setIconImage(_cowImage.get());
         } 
+        */
     }
 
     osg::ref_ptr< osg::Image > _planeImage;
@@ -309,11 +311,10 @@ main(int argc, char** argv)
 
         //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
         GeoExtent extent(SpatialReference::create("wgs84"), -160.697021484375, 18.208480196039883, -153.951416015625, 22.978623970384913);
-
-        //makePlaces(mapNode, 5000, extent, nodes);
+        
         makePlanes(mapNode, 10000, extent, nodes);
 
-        ClusterNode* clusterNode = new ClusterNode(mapNode);
+        ClusterNode* clusterNode = new ClusterNode(mapNode, osgDB::readImageFile("../data/placemark32.png"));
         clusterNode->setStyleCallback(new StyleByNameCallback());
         clusterNode->setCanClusterCallback(new ClusterByNameCallback());
         for (unsigned int i = 0; i < nodes.size(); i++)

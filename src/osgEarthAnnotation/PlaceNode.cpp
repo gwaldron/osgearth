@@ -428,7 +428,6 @@ PlaceNode::setIconImage(osg::Image* image)
             if (texture)
             {                
                 texture->setImage(_image);
-                _imageGeom->dirtyDisplayList();
             }            
         }
         else

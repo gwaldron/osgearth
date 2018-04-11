@@ -38,7 +38,7 @@ public:
 class ClusterNode : public osg::Node
 {
 public:
-    ClusterNode(MapNode* mapNode);
+    ClusterNode(MapNode* mapNode, osg::Image* defaultImage = 0);
 
     void addNode(osg::Node* node);
     void removeNode(osg::Node* node);

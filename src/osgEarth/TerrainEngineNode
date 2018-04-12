@@ -302,11 +302,10 @@ namespace osgEarth
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( const Map* map, TerrainEngineNode* engine );
+            ImageLayerController( TerrainEngineNode* engine );
             void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
-            MapFrame           _mapf;
             TerrainEngineNode* _engine;
             friend class TerrainEngineNode;
         };

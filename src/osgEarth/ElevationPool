@@ -95,7 +95,7 @@ namespace osgEarth
 
     protected:
 
-        osg::observer_ptr<const osg::Referenced> _map;
+        osg::observer_ptr<const Map> _map;
 
         ElevationLayerVector _layers;
 
@@ -247,13 +247,14 @@ namespace osgEarth
         unsigned getLOD() const { return _lod; }
 
     protected:
-        ElevationEnvelope();
+        ElevationEnvelope(const Map* map);
         virtual ~ElevationEnvelope();
 
         ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
         unsigned _lod;
-        MapFrame _frame;
+        //MapFrame _frame;
+        osg::observer_ptr< const Map > _map;
         ElevationPool* _pool;
         friend class ElevationPool;
 

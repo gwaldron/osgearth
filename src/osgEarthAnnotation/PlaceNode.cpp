@@ -47,7 +47,8 @@ using namespace osgEarth::Symbology;
 PlaceNode::PlaceNode() :
 _geode            ( 0L ),
 _labelRotationRad ( 0. ),
-_followFixedCourse( false )
+_followFixedCourse( false ),
+_imageGeom(0)
 {
     //nop
 }
@@ -64,7 +65,8 @@ _text    ( text ),
 _style   ( style ),
 _geode            ( 0L ),
 _labelRotationRad ( 0. ),
-_followFixedCourse( false )
+_followFixedCourse( false ),
+_imageGeom(0)
 {
     init();
     setPosition(position);
@@ -80,7 +82,8 @@ _text    ( text ),
 _style   ( style ),
 _geode            ( 0L ),
 _labelRotationRad ( 0. ),
-_followFixedCourse( false )
+_followFixedCourse( false ),
+_imageGeom(0)
 {
     init();
     setPosition(position);
@@ -95,7 +98,8 @@ _style    ( style ),
 _dbOptions        ( dbOptions ),
 _geode            ( 0L ),
 _labelRotationRad ( 0. ),
-_followFixedCourse( false )
+_followFixedCourse( false ),
+_imageGeom(0)
 {
     init();
     setPosition(position);
@@ -237,12 +241,17 @@ PlaceNode::init()
         }
 
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
-        //decluttering doesn't respect Transforms above the drawable.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading, scale );
-        if ( imageGeom )
+        //decluttering doesn't respect Transforms above the drawable.        
+        _imageGeom = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
+        if (_imageGeom)
         {
-            _geode->addDrawable( imageGeom );
-            imageBox = osgEarth::Utils::getBoundingBox( imageGeom );
+            if (_dynamic)
+            {
+                _imageGeom->getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+            }
+
+            _geode->addDrawable(_imageGeom);
+            imageBox = osgEarth::Utils::getBoundingBox(_imageGeom);
         }    
     }
 
@@ -410,9 +419,22 @@ PlaceNode::setStyle(const Style& style)
 void
 PlaceNode::setIconImage(osg::Image* image)
 {
-    // changing the icon requires a complete rebuild.
-    _image = image;
-    init();
+    if (_image != image)
+    {
+        _image = image;
+        if (_imageGeom)
+        {            
+            osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(_imageGeom->getStateSet()->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
+            if (texture)
+            {                
+                texture->setImage(_image);
+            }            
+        }
+        else
+        {
+            init();
+        }
+    }
 }
 
 
@@ -427,7 +449,13 @@ PlaceNode::setDynamic( bool value )
         {
             _geode->getDrawable(i)->setDataVariance( 
                 value ? osg::Object::DYNAMIC : osg::Object::STATIC );
-        }
+        }        
+    }
+
+    // Set the image geometry as dynamic so that we can update the texture if we want to.
+    if (_imageGeom)
+    {
+        _imageGeom->getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
     }
 }
 

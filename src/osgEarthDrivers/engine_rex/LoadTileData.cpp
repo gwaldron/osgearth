@@ -34,7 +34,7 @@ _context(context),
 _enableCancel(true)
 {
     this->setTileKey(tilenode->getKey());
-    _mapFrame.setMap(context->getMap());
+    _map = context->getMap();
     _engine = context->getEngine();
 }
 
@@ -56,39 +56,40 @@ namespace
 void
 LoadTileData::invoke()
 {
-    if (!_mapFrame.isValid())
-        return;
-
-    // we're in a pager thread, so must lock safe pointers
-    // (don't access _context from here!)
-
-    osg::ref_ptr<TileNode> tilenode;
-    if (!_tilenode.lock(tilenode))
-        return;
-
-    osg::ref_ptr<TerrainEngineNode> engine;
-    if (!_engine.lock(engine))
-        return;
-
-    // ensure the map frame is up to date:
-    if (_mapFrame.needsSync())
-        _mapFrame.sync();
-
-    // Only use a progress callback is cancelation is enabled.
-    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
-
-    // Assemble all the components necessary to display this tile
-    _dataModel = engine->createTileModel(
-        _mapFrame,
-        tilenode->getKey(),
-        _filter,
-        progress.get() );
-
-    // if the operation was canceled, set the request to idle and delete any existing data.
-    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    osg::ref_ptr< const Map > map;
+    if (_map.lock(map))
     {
-        _dataModel = 0L;
-        setState(Request::IDLE);
+        MapFrame mapFrame(map.get());
+        if (!mapFrame.isValid())
+            return;
+
+        // we're in a pager thread, so must lock safe pointers
+        // (don't access _context from here!)
+
+        osg::ref_ptr<TileNode> tilenode;
+        if (!_tilenode.lock(tilenode))
+            return;
+
+        osg::ref_ptr<TerrainEngineNode> engine;
+        if (!_engine.lock(engine))
+            return;
+
+        // Only use a progress callback is cancelation is enabled.
+        osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
+
+        // Assemble all the components necessary to display this tile
+        _dataModel = engine->createTileModel(
+            mapFrame,
+            tilenode->getKey(),
+            _filter,
+            progress.get());
+
+        // if the operation was canceled, set the request to idle and delete any existing data.
+        if (progress && (progress->isCanceled() || progress->needsRetry()))
+        {
+            _dataModel = 0L;
+            setState(Request::IDLE);
+        }
     }
 }
 

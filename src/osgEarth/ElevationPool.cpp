@@ -329,11 +329,8 @@ ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Elevati
 ElevationEnvelope*
 ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
-    ElevationEnvelope* e = new ElevationEnvelope();
-    e->_inputSRS = srs;
-    osg::ref_ptr<const osg::Referenced> map;
-    if (_map.lock(map))
-        e->_frame.setMap(static_cast<const Map*>(map.get()));
+    ElevationEnvelope* e = new ElevationEnvelope(_map.get());
+    e->_inputSRS = srs;    
     e->_lod = lod;
     e->_pool = this;
     return e;
@@ -341,8 +338,9 @@ ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 
 //........................................................................
 
-ElevationEnvelope::ElevationEnvelope() :
-_pool(0L)
+ElevationEnvelope::ElevationEnvelope(const Map* map) :
+_pool(0L),
+_map(map)
 {
     //nop
 }
@@ -361,7 +359,9 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 
     GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
 
-    if (p.transformInPlace(_frame.getProfile()->getSRS()))
+    MapFrame frame(_map.get());
+
+    if (p.transformInPlace(frame.getProfile()->getSRS()))
     {
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
@@ -388,9 +388,9 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         // for the tile so we can add it to the query set.
         if (!foundTile)
         {
-            TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
+            TileKey key = frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            if (_pool && _pool->getTile(key, _frame, tile))
+            if (_pool && _pool->getTile(key, frame, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());

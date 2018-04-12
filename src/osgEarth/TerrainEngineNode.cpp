@@ -64,9 +64,7 @@ namespace osgEarth
 //------------------------------------------------------------------------
 
 
-TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*         map,
-                                                              TerrainEngineNode* engine) :
-_mapf  ( map ),
+TerrainEngineNode::ImageLayerController::ImageLayerController(TerrainEngineNode* engine) :
 _engine( engine )
 {    
     //nop
@@ -236,7 +234,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     // Create a layer controller. This object affects the uniforms
     // that control layer appearance properties
-    _imageLayerController = new ImageLayerController(_map.get(), this);
+    _imageLayerController = new ImageLayerController(this);
 
     // register the layer Controller it with all pre-existing image layers:
     MapFrame mapf(_map.get());

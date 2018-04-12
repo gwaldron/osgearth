@@ -56,9 +56,6 @@ namespace
 void
 LoadTileData::invoke()
 {
-    if (!_mapFrame.isValid())
-        return;
-
     // we're in a pager thread, so must lock safe pointers
     // (don't access _context from here!)
 
@@ -71,8 +68,7 @@ LoadTileData::invoke()
         return;
 
     // ensure the map frame is up to date:
-    if (_mapFrame.needsSync())
-        _mapFrame.sync();
+    _mapFrame.sync();
 
     // Only use a progress callback is cancelation is enabled.
     osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;

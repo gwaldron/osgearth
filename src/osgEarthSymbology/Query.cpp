@@ -31,7 +31,6 @@ _bounds(rhs._bounds),
 _expression(rhs._expression),
 _orderby(rhs._orderby),
 _tileKey(rhs._tileKey),
-_mapFrame(rhs._mapFrame),
 _limit(rhs._limit)
 {
     //nop
@@ -131,14 +130,3 @@ Query::combineWith( const Query& rhs ) const
 
     return merged;
 }
-
-void Query::setMap(const Map* map)
-{
-    _mapFrame.setMap(map);
-}
-
-void Query::setMap(const MapFrame& mapf)
-{
-    _mapFrame = mapf;
-}
-

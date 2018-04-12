@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/Common>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 
 #include "DuktapeEngine"
 

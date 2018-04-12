@@ -302,7 +302,6 @@ namespace osgEarth { namespace Features
 
         Status                             _status;
 
-        friend class Map;
         friend class FeatureSourceFactory;
     };
 

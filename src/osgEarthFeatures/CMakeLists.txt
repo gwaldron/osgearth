@@ -51,6 +51,7 @@ SET(LIB_PUBLIC_HEADERS
     FilterContext
     GeometryCompiler
     GeometryUtils
+    ImageToFeatureLayer
     LabelSource
     MVT
     OgrUtils
@@ -95,6 +96,7 @@ SET(TARGET_SRC
     FilterContext.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
+    ImageToFeatureLayer.cpp
     LabelSource.cpp
     MVT.cpp
     OgrUtils.cpp

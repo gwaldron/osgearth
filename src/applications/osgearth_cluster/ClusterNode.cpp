@@ -109,7 +109,7 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
             screen.y() >= 0 && screen.y() <= viewport->height())
         {
             validPlaces.push_back(_nodes[i]);
-            points.push_back({ screen.x(), screen.y() });
+            points.push_back(TPoint(screen.x(), screen.y()));
         }
     }
 

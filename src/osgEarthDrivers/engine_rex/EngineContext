@@ -30,7 +30,6 @@
 #include "TileDrawable"
 
 #include <osgEarth/TerrainTileModel>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TileRasterizer>

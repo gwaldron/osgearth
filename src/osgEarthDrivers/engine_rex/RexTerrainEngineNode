@@ -152,7 +152,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _batchUpdateInProgress;
         bool _refreshRequired;
         bool _stateUpdateRequired;
-        osg::observer_ptr< const Map > _map;
 
         LayerExtentVector _cachedLayerExtents;          // extents of each layer, in the Map's SRS. UID = vector index (for speed)
 

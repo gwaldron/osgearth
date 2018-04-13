@@ -22,7 +22,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/PatchLayer>
 #include <osgEarth/MapOptions>
-#include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 
 #include <osg/Texture2D>
 
@@ -43,7 +43,7 @@ _heightFieldCache( true, 128 )
 }
 
 TerrainTileModel*
-TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
+TerrainTileModelFactory::createTileModel(const Map*                       map,
                                          const TileKey&                   key,
                                          const CreateTileModelFilter&     filter,
                                          const TerrainEngineRequirements* requirements,
@@ -52,18 +52,18 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
-        frame.getRevision() );
+        map->getDataModelRevision() );
 
     // assemble all the components:
-    addColorLayers(model.get(), frame, requirements, key, filter, progress);
+    addColorLayers(model.get(), map, requirements, key, filter, progress);
 
-    addPatchLayers(model.get(), frame, key, filter, progress);
+    addPatchLayers(model.get(), map, key, filter, progress);
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
         unsigned border = requirements->elevationBorderRequired() ? 1u : 0u;
 
-        addElevation( model.get(), frame, key, filter, border, progress );
+        addElevation( model.get(), map, key, filter, border, progress );
     }
 
 #if 0
@@ -79,7 +79,7 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
 
 void
 TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
-                                        const MapFrame&   frame,
+                                        const Map* map,
                                         const TerrainEngineRequirements* reqs,
                                         const TileKey&    key,
                                         const CreateTileModelFilter& filter,
@@ -89,14 +89,11 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
 
     int order = 0;
 
-    for (LayerVector::const_iterator i = frame.layers().begin();
-        i != frame.layers().end();
-        ++i)
-    {
-        // check the frame periodically for cancelation
-        if (!frame.valid())
-            return;
+    LayerVector layers;
+    map->getLayers(layers);
 
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    {
         Layer* layer = i->get();
 
         if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
@@ -184,7 +181,7 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
 
 void
 TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
-                                        const MapFrame&   frame,
+                                        const Map* map,
                                         const TileKey&    key,
                                         const CreateTileModelFilter& filter,
                                         ProgressCallback* progress)
@@ -192,15 +189,12 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
     OE_START_TIMER(fetch_patch_layers);
 
     PatchLayerVector patchLayers;
-    frame.getLayers(patchLayers);
+    map->getLayers(patchLayers);
 
     for(PatchLayerVector::const_iterator i = patchLayers.begin();
         i != patchLayers.end();
         ++i )
     {
-        // check the frame periodically for cancelation
-        if (!frame.valid())
-            return;
 
         PatchLayer* layer = i->get();
 
@@ -231,7 +225,7 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
 
 void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
-                                      const MapFrame&              frame,
+                                      const Map*                   map,
                                       const TileKey&               key,
                                       const CreateTileModelFilter& filter,
                                       unsigned                     border,
@@ -243,20 +237,14 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     if (!filter.empty() && !filter.elevation().isSetTo(true))
         return;
 
-    // check the frame periodically for cancelation
-    if (!frame.valid())
-        return;
-
-    const MapInfo& mapInfo = frame.getMapInfo();
-
     const osgEarth::ElevationInterpolation& interp =
-        frame.getMapOptions().elevationInterpolation().get();
+        map->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
     osg::ref_ptr<NormalMap> normalMap;
 
-    bool hfOK = getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
+    bool hfOK = getOrCreateHeightField(map, key, SAMPLE_FIRST_VALID, interp, border, mainHF, normalMap, progress) && mainHF.valid();
 
     if (hfOK == false && key.getLOD() == _options.firstLOD().get())
     {
@@ -318,7 +306,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
 
 void
 TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
-                                      const MapFrame&   frame,
+                                      const Map* map,
                                       const TileKey&    key,
                                       ProgressCallback* progress)
 {
@@ -327,7 +315,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
     if (model->elevationModel().valid())
     {
         const osgEarth::ElevationInterpolation& interp =
-            frame.getMapOptions().elevationInterpolation().get();
+            map->getMapOptions().elevationInterpolation().get();
 
         // Can only generate the normal map if the center heightfield was built:
         osg::ref_ptr<osg::Image> image = HeightFieldUtils::convertToNormalMap(
@@ -351,7 +339,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel* model,
 }
 
 bool
-TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 frame,
+TerrainTileModelFactory::getOrCreateHeightField(const Map*                      map,
                                                 const TileKey&                  key,
                                                 ElevationSamplePolicy           samplePolicy,
                                                 ElevationInterpolation          interpolation,
@@ -363,7 +351,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     // check the quick cache.
     HFCacheKey cachekey;
     cachekey._key          = key;
-    cachekey._revision     = frame.getRevision();
+    cachekey._revision     = map->getDataModelRevision();
     cachekey._samplePolicy = samplePolicy;
 
     if (progress)
@@ -400,11 +388,15 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         out_normalMap = new NormalMap(257, 257); // ImageUtils::createEmptyImage(257, 257);
     }
 
-    bool populated = frame.populateHeightFieldAndNormalMap(
-        out_hf,
-        out_normalMap,
+    ElevationLayerVector layers;
+    map->getLayers(layers);
+
+    bool populated = layers.populateHeightFieldAndNormalMap(
+        out_hf.get(),
+        out_normalMap.get(),
         key,
-        true, // convertToHAE
+        map->getProfileNoVDatum(), // convertToHAE,
+        INTERP_BILINEAR,
         progress );
 
 #ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
@@ -431,8 +423,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
     {
         // Treat Plate Carre specially by scaling the height values. (There is no need
         // to do this with an empty heightfield)
-        const MapInfo& mapInfo = frame.getMapInfo();
-        if ( mapInfo.isPlateCarre() )
+        if (map->getSRS()->isPlateCarre())
         {
             HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
         }

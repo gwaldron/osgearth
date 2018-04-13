@@ -22,7 +22,6 @@
 
 #include <osgEarth/CacheSeed>
 #include <osgEarth/CacheEstimator>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>

@@ -151,13 +151,15 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     const Session* session = cx.getSession();
 
     // the map against which we'll be doing elevation clamping
-    MapFrame mapf = session->createMapFrame();
+    osg::ref_ptr<const Map> map = session->getMap();
+    if (!map.valid())
+        return;
 
-    const SpatialReference* mapSRS = mapf.getProfile()->getSRS();
+    const SpatialReference* mapSRS = map->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
 
     // establish an elevation query interface based on the features' SRS.
-    ElevationQuery eq( mapf );
+    ElevationQuery eq(map.get());
 
     NumericExpression scaleExpr;
     if ( _altitude->verticalScale().isSet() )

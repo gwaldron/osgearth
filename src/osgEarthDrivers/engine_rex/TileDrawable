@@ -26,7 +26,6 @@
 #include <osg/Image>
 #include <osg/Matrixf>
 #include <osgEarth/TileKey>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Map>
 
 using namespace osgEarth;
@@ -42,14 +41,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void operator()(const TileKey& key, osg::BoundingBox& bbox) const
         {
-            osg::ref_ptr< const Map > map;
+            osg::ref_ptr<const Map> map;
             if (_map.lock(map))
             {
-                MapFrame frame(map.get());
+                LayerVector layers;
+                map->getLayers(layers);
 
-                for (LayerVector::const_iterator layer = frame.layers().begin();
-                    layer != frame.layers().end();
-                    ++layer)
+                for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
                 {
                     if (layer->valid())
                     {

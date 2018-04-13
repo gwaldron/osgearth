@@ -93,6 +93,10 @@ TerrainTileModelFactory::addColorLayers(TerrainTileModel* model,
         i != frame.layers().end();
         ++i)
     {
+        // check the frame periodically for cancelation
+        if (!frame.valid())
+            return;
+
         Layer* layer = i->get();
 
         if (layer->getRenderType() != layer->RENDERTYPE_TERRAIN_SURFACE)
@@ -194,6 +198,10 @@ TerrainTileModelFactory::addPatchLayers(TerrainTileModel* model,
         i != patchLayers.end();
         ++i )
     {
+        // check the frame periodically for cancelation
+        if (!frame.valid())
+            return;
+
         PatchLayer* layer = i->get();
 
         if (!filter.accept(layer))
@@ -233,6 +241,10 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     OE_START_TIMER(fetch_elevation);
 
     if (!filter.empty() && !filter.elevation().isSetTo(true))
+        return;
+
+    // check the frame periodically for cancelation
+    if (!frame.valid())
         return;
 
     const MapInfo& mapInfo = frame.getMapInfo();

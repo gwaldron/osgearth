@@ -21,8 +21,6 @@
 #define OSGEARTHSYMBOLOGY_QUERY_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarth/Config>
-#include <osgEarth/Map>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 
@@ -62,17 +60,9 @@ namespace osgEarth { namespace Symbology
 
         /** The maximum number of features to be returned by this Query.  This is driver specific . */
         optional<int>& limit() { return _limit; }
-        const optional<int>& limit() const { return _limit; }
+        const optional<int>& limit() const { return _limit; }        
 
-        const MapFrame& getMap() const { return _mapFrame; }
-
-        void setMap(const Map* map);
-        void setMap(const MapFrame& frame);
-        
-
-        /**
-         * Merges this query with another query, and returns the result
-         */
+        /** Merges this query with another query, and returns the result */
         Query combineWith( const Query& other ) const;
 
     public: // configurable
@@ -86,7 +76,6 @@ namespace osgEarth { namespace Symbology
         optional<std::string> _orderby;
         optional<osgEarth::TileKey> _tileKey;
         optional<int> _limit;
-        MapFrame _mapFrame;
     };
 
 } } // namespace osgEarth::Symbology

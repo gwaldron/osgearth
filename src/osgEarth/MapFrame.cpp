@@ -39,8 +39,7 @@ _map                 ( rhs._map.get() ),
 _mapInfo             ( rhs._mapInfo ),
 _highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
-_layers              ( rhs._layers ),
-_pool                ( rhs._pool.get() )
+_layers              ( rhs._layers )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -55,8 +54,9 @@ _highestMinLevel( 0 )
 }
 
 bool
-MapFrame::isValid() const
+MapFrame::valid() const
 {
+    // only a momentary result since this is an observer_ptr!
     return _map.valid();
 }
 
@@ -64,7 +64,6 @@ void
 MapFrame::setMap(const Map* map)
 {
     _layers.clear();
-    _pool = 0L;
 
     _map = map;
     if ( map )
@@ -81,10 +80,15 @@ MapFrame::setMap(const Map* map)
     }
 }
 
-ElevationPool*
+osg::ref_ptr<ElevationPool>
 MapFrame::getElevationPool() const
 {
-    return static_cast<ElevationPool*>(_pool.get());
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        return osg::ref_ptr<ElevationPool>(map->getElevationPool());
+    }
+    else return 0L;
 }
 
 bool
@@ -100,7 +104,6 @@ MapFrame::sync()
         {
             refreshComputedValues();
         }
-        _pool = map->getElevationPool();
     }
     else
     {
@@ -116,9 +119,6 @@ MapFrame::sync()
 bool
 MapFrame::needsSync() const
 {
-    if ( !isValid() )
-        return false;
-
     osg::ref_ptr<const Map> map;
     return 
         _map.lock(map) &&
@@ -129,19 +129,9 @@ void
 MapFrame::release()
 {
     _layers.clear();
-    _pool = 0L;
+    _elevationLayers.clear();
     _initialized = false;
     _highestMinLevel = 0;
-}
-
-UID
-MapFrame::getUID() const
-{
-    osg::ref_ptr<const Map> map;
-    if ( _map.lock(map) )
-        return map->getUID();
-    else
-        return (UID)0;
 }
 
 bool

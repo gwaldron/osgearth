@@ -66,7 +66,7 @@ ClusterNode::setStyleCallback(StyleClusterCallback* callback)
 
 CanClusterCallback* ClusterNode::getCanClusterCallback()
 {
-    return _canClusterCallback;
+    return _canClusterCallback.get();
 }
 
 void ClusterNode::setCanClusterCallback(CanClusterCallback* callback)
@@ -150,7 +150,7 @@ void ClusterNode::getClusters(osg::Camera* camera, ClusterList& out)
             {
                 if (_canClusterCallback.valid())
                 {
-                    bool canCluster = (*_canClusterCallback)(node, validPlaces[indices[j]]);
+                    bool canCluster = (*_canClusterCallback)(node, validPlaces[indices[j]].get());
                     if (!canCluster) {
                         continue;
                     }
@@ -259,7 +259,7 @@ PlaceNode* ClusterNode::getOrCreateLabel()
     }
     else
     {
-        node = _labelPool[_nextLabel];
+        node = _labelPool[_nextLabel].get();
     }
 
     ++_nextLabel;

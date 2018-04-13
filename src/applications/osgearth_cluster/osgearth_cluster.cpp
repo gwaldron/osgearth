@@ -143,7 +143,7 @@ struct AddIcons : public ControlEventHandler
         makePlaces(_mapNode, 1000, extent, nodes);
         for (unsigned int i = 0; i < nodes.size(); ++i)
         {
-            _clusterNode->addNode(nodes[i]);
+            _clusterNode->addNode(nodes[i].get());
         }
     }
 
@@ -319,7 +319,7 @@ main(int argc, char** argv)
         clusterNode->setCanClusterCallback(new ClusterByNameCallback());
         for (unsigned int i = 0; i < nodes.size(); i++)
         {
-            clusterNode->addNode(nodes[i]);
+            clusterNode->addNode(nodes[i].get());
         }              
         mapNode->addChild(clusterNode);
 

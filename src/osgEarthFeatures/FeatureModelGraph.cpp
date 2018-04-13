@@ -22,7 +22,7 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FilterContext>
 
-#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ElevationLOD>
@@ -322,7 +322,7 @@ FeatureModelGraph::ctor()
     _usableFeatureExtent = _usableMapExtent.transform( featureProfile->getSRS() );
 
     // world-space bounds of the feature layer
-    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent, 0L );
+    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
     
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
@@ -353,16 +353,13 @@ FeatureModelGraph::ctor()
                 // So automatically compute the tileSizeFactor based on the max range
                 double width, height;
                 featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
-
-                MapFrame mapf = _session->createMapFrame();
-
-
+                
                 GeoExtent ext(featureProfile->getSRS(),
                     featureProfile->getExtent().west(),
                     featureProfile->getExtent().south(),
                     featureProfile->getExtent().west() + width,
                     featureProfile->getExtent().south() + height);
-                osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf );
+                osg::BoundingSphered bounds = getBoundInWorldCoords( ext );
 
                 float tileSizeFactor = userMaxRange / bounds.radius();
                 //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
@@ -417,8 +414,7 @@ FeatureModelGraph::ctor()
     if (featureProfile->getTiled() && _useTiledSource)
     {    
         // Get the max range of the root level
-        MapFrame mapf = _session->createMapFrame();
-        osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent(), &mapf );
+        osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent() );
         double maxRange = bounds.radius() * *_options.layout()->tileSizeFactor();
 
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
@@ -494,8 +490,7 @@ FeatureModelGraph::dirty()
 //std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
 
 osg::BoundingSphered
-FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
-                                         const MapFrame*  mapf ) const
+FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent) const
 {
     osg::Vec3d center, corner;
     GeoExtent workingExtent;
@@ -576,8 +571,7 @@ osg::Node*
 FeatureModelGraph::setupPaging()
 {
     // calculate the bounds of the full data extent:
-    MapFrame mapf = _session->createMapFrame();
-    osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
+    osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent );
 
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
@@ -660,11 +654,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             GeoExtent tileExtent = s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent );
 
             // Calculate the bounds of this new tile:
-            MapFrame mapf = _session->createMapFrame();
-            if (!mapf.isValid())
-                return 0L;
-
-            osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
+            osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent );
 
             // Apply the tile range multiplier to calculate a max camera range. The max range is
             // the geographic radius of the tile times the multiplier.
@@ -701,8 +691,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
                 // only build sub-pagedlods if we are expecting subtiles at some point:
                 if ( geometry != 0L || (int)lod < featureProfile->getFirstLevel() )
                 {
-                    MapFrame mapf = _session->createMapFrame();
-                    buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get(), readOptions);
+                    buildSubTilePagedLODs( lod, tileX, tileY, group.get(), readOptions);
                     group->addChild( geometry );
                 }
 
@@ -749,8 +738,7 @@ FeatureModelGraph::load(unsigned lod, unsigned tileX, unsigned tileY,
             // PagedLODs that will load them.
             osg::ref_ptr<osg::Group> group = new osg::Group();
 
-            MapFrame mapf = _session->createMapFrame();
-            buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get(), readOptions );
+            buildSubTilePagedLODs( lod, tileX, tileY, group.get(), readOptions );
 
             if ( geometry )
                 group->addChild( geometry );
@@ -791,7 +779,6 @@ void
 FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                                          unsigned        parentTileX,
                                          unsigned        parentTileY,
-                                         const MapFrame* mapf,
                                          osg::Group*     parent,
                                          const osgDB::Options* readOptions)
 {
@@ -822,7 +809,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
         for( unsigned v = subtileY; v <= subtileY + 1; ++v )
         {
             GeoExtent subtileFeatureExtent = s_getTileExtent( subtileLOD, u, v, _usableFeatureExtent );
-            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent, mapf );
+            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent );
       
             // Calculate the maximum camera range for the LOD.
             float maxRange;
@@ -1037,8 +1024,6 @@ FeatureModelGraph::buildTile(const FeatureLevel& level,
         if ( key )
             query.tileKey() = *key;
 
-        query.setMap(_session->createMapFrame());// _session->getMap() );
-
         // does the level have a style name set?
         if ( level.styleName().isSet() )
         {
@@ -1212,7 +1197,6 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                 {
                     // merge the selector's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // query, sort, and add each style group to th parent:
                     queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group.get(), readOptions );
@@ -1227,7 +1211,6 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 
                     // .. and merge it's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
-                    combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
                     // then create the node.
                     osg::Group* styleGroup = createStyleGroup( combinedStyle, combinedQuery, index, readOptions );
@@ -1296,7 +1279,6 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
     {
         // merge the selector's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // query, sort, and add each style group to the parent:
         queryAndSortIntoStyleGroups( combinedQuery, *selector->styleExpression(), index, parent, readOptions );
@@ -1313,7 +1295,6 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
 
         // .. and merge it's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
-        combinedQuery.setMap(_session->createMapFrame());// _session->getMap() );
 
         // then create the node.
         osg::Node* node = createStyleGroup(style, combinedQuery, index, readOptions);

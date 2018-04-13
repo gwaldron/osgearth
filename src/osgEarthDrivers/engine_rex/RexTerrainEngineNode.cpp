@@ -833,13 +833,17 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     unsigned tileSize = getEngineContext()->getOptions().tileSize().get();
 
     optional<bool> hasMasks(false);
+
+    osg::ref_ptr<const Map> map = getEngineContext()->getMap();
+    if (!map.valid())
+        return 0L;
     
     // Trivial rejection test for masking geometry. Check at the top level and
     // if there's not mask there, there's no mask at the reference LOD either.
     osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
         model->getKey(),
         tileSize,
-        getEngineContext()->getMap()
+        map.get()
     );
 
     bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
@@ -878,7 +882,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
     maskGenerator = 0L;
 
-    MapFrame mapFrame(_map.get());
+    MapFrame mapFrame(map.get());
     
     for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
@@ -886,7 +890,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
         maskGenerator = new MaskGenerator(
             *key,
             tileSize,
-            getEngineContext()->getMap());
+            map.get());
 
         if (maskGenerator->hasMasks() == true && includeTilesWithMasks == false)
             continue;
@@ -898,7 +902,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
         getEngineContext()->getGeometryPool()->getPooledGeometry(
             *key,
-            mapFrame.getMapInfo(),
+            MapInfo(map.get()),
             tileSize,
             maskGenerator.get(),
             sharedGeom);

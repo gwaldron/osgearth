@@ -57,39 +57,35 @@ void
 LoadTileData::invoke()
 {
     osg::ref_ptr< const Map > map;
-    if (_map.lock(map))
+    _map.lock(map);
+
+    MapFrame mapFrame(map.get());
+    if (!mapFrame.valid())
+        return;
+
+    osg::ref_ptr<TileNode> tilenode;
+    if (!_tilenode.lock(tilenode))
+        return;
+
+    osg::ref_ptr<TerrainEngineNode> engine;
+    if (!_engine.lock(engine))
+        return;
+
+    // Only use a progress callback is cancelation is enabled.
+    osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
+
+    // Assemble all the components necessary to display this tile
+    _dataModel = engine->createTileModel(
+        mapFrame,
+        tilenode->getKey(),
+        _filter,
+        progress.get());
+
+    // if the operation was canceled, set the request to idle and delete any existing data.
+    if (progress && (progress->isCanceled() || progress->needsRetry()))
     {
-        MapFrame mapFrame(map.get());
-        if (!mapFrame.isValid())
-            return;
-
-        // we're in a pager thread, so must lock safe pointers
-        // (don't access _context from here!)
-
-        osg::ref_ptr<TileNode> tilenode;
-        if (!_tilenode.lock(tilenode))
-            return;
-
-        osg::ref_ptr<TerrainEngineNode> engine;
-        if (!_engine.lock(engine))
-            return;
-
-        // Only use a progress callback is cancelation is enabled.
-        osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
-
-        // Assemble all the components necessary to display this tile
-        _dataModel = engine->createTileModel(
-            mapFrame,
-            tilenode->getKey(),
-            _filter,
-            progress.get());
-
-        // if the operation was canceled, set the request to idle and delete any existing data.
-        if (progress && (progress->isCanceled() || progress->needsRetry()))
-        {
-            _dataModel = 0L;
-            setState(Request::IDLE);
-        }
+        _dataModel = 0L;
+        setState(Request::IDLE);
     }
 }
 

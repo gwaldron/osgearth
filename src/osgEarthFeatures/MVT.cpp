@@ -22,6 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgDB/Registry>
 #include <list>
 #include <stdio.h>
 #include <stdlib.h>

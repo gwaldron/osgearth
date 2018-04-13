@@ -779,10 +779,11 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
     osg::StateSet* sset = geometry->getOrCreateStateSet();
 
-#if !defined(OSG_GL3_AVAILABLE)
-    // In GL3, PointSprite is no longer available, and is always on.
-    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-#endif
+    const osgEarth::Capabilities& caps = osgEarth::Registry::capabilities();
+    // In GL3 core profile, PointSprite is no longer available, and is always on.  However,
+    // in compatibility profile, PointSprite is available, required, and defaults off.
+    if (!caps.isCoreProfile())
+      sset->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
     sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
     Shaders pkg;

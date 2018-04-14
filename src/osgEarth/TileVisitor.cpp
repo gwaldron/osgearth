@@ -20,6 +20,10 @@
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
 
+#if defined( __APPLE__ )
+    #include "TargetConditionals.h"
+#endif
+
 using namespace osgEarth;
 
 TileVisitor::TileVisitor():
@@ -423,8 +427,11 @@ public:
       }
 
       virtual void operator()(ProgressCallback* progress )
-      {         
-          system(_command.c_str());     
+      {
+          #if !(TARGET_OS_IPHONE)
+              system(_command.c_str());
+          #endif
+        
 
           // Cleanup the temp files and increment the progress on the visitor.
           cleanupTempFiles();

@@ -32,6 +32,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/MaskLayer>
 #include <osgEarth/ModelLayer>
+#include <osgEarth/MapFrame>
 
 #include <osg/Node>
 #include <osg/StateSet>

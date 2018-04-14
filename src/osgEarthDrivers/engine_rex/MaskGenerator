@@ -20,8 +20,8 @@
 #define OSGEARTH_DRIVERS_REX_MASK_GENERATOR 1
 
 #include "Common"
-#include <osgEarth/MapFrame>
 #include <osgEarth/TileKey>
+#include <osgEarth/MapInfo>
 #include <osg/Geometry>
 
 #define VERTEX_MARKER_DISCARD   1    // do not draw
@@ -29,6 +29,10 @@
 #define VERTEX_MARKER_PATCH     4    // not subject to morphing
 #define VERTEX_MARKER_BOUNDARY  8    // not subject to elevation texture
 #define VERTEX_MARKER_SKIRT    16    // it's a skirt vertex (bitmask)
+
+namespace osgEarth {
+    class Map;
+}
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {

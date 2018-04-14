@@ -18,6 +18,8 @@
  */
 #include "ElevationProxyImageLayer"
 
+#include <osgEarth/Map>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 
@@ -30,7 +32,7 @@ using namespace osgEarth::SimpleOcean;
 ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
                                                    const ImageLayerOptions& inoptions ) :
 ImageLayer( inoptions ),
-_mapf     ( sourceMap )
+_map(sourceMap)
 {
     options().cachePolicy() = CachePolicy::NO_CACHE;
 }
@@ -56,22 +58,20 @@ ElevationProxyImageLayer::isCached( const TileKey& key ) const
 GeoImage
 ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress)
 {
-    if ( _mapf.needsSync() )
-    {
-        Threading::ScopedMutexLock lock(_mapfMutex);
-        if ( _mapf.needsSync() )
-        {
-            _mapf.sync();
-        }
-    }
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return GeoImage::INVALID;
 
     osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(key.getExtent(), 64, 64, 0, true );
 
-    if ( _mapf.populateHeightField(hf, key, true, 0L) )
+    ElevationLayerVector elevation;
+    map->getLayers(elevation);
+
+    if (elevation.populateHeightFieldAndNormalMap(hf.get(), NULL, key, map->getProfileNoVDatum(), INTERP_BILINEAR, progress))
     {
         // encode the heightfield as a 16-bit normalized LUNIMANCE image
         osg::Image* image = new osg::Image();
-        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT); //GL_LUMINANCE, GL_UNSIGNED_SHORT);
+        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT);
         image->setInternalTextureFormat( GL_R32F );
         const osg::FloatArray* floats = hf->getFloatArray();
         ImageUtils::PixelWriter write(image);

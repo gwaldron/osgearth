@@ -72,6 +72,15 @@ _dbOptions(dbOptions)
     init();
 }
 
+Session::Session(const Session& rhs, const osg::CopyOp& op) :
+osg::Object(rhs, op),
+_map(rhs._map.get()),
+_mapInfo(rhs._mapInfo)
+{
+    //nop
+}
+
+
 void
 Session::init()
 {
@@ -89,9 +98,6 @@ Session::~Session()
 {
     //nop
 }
-
-Session::Session(const Session& rhs, const osg::CopyOp& op) : osg::Object(rhs, op), _mapInfo(0L) { }
-
 
 const osgDB::Options*
 Session::getDBOptions() const
@@ -120,14 +126,18 @@ Session::getResourceCache()
     return _resourceCache.get();
 }
 
-MapFrame
-Session::createMapFrame() const
+osg::ref_ptr<const Map>
+Session::getMap() const
 {
     osg::ref_ptr<const Map> map;
-    if (_map.lock(map))
-        return MapFrame( map.get() );
-    else
-        return MapFrame();
+    _map.lock(map);
+    return map;
+}
+
+const SpatialReference*
+Session::getMapSRS() const
+{
+    return _mapInfo.getSRS();
 }
 
 StateSetCache*

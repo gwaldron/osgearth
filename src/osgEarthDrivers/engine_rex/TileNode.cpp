@@ -93,20 +93,17 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     if (!map.valid())
         return;
 
-    // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
-        key, 
-        context->getOptions().tileSize().get(),
-        map.get());
+    unsigned tileSize = context->getOptions().tileSize().get();
 
-    MapInfo mapInfo(map.get());
+    // Mask generator creates geometry from masking boundaries when they exist.
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
-        mapInfo,         
-        context->getOptions().tileSize().get(),
+        MapInfo(map.get()),
+        tileSize,
         masks.get(), 
         geom);
 
@@ -132,7 +129,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
         key,
-        mapInfo,
+        MapInfo(map.get()),
         context->getRenderBindings(),
         surfaceDrawable );
     

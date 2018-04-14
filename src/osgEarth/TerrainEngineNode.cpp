@@ -139,9 +139,8 @@ TerrainEngineNode::~TerrainEngineNode()
     //Remove any callbacks added to the image layers
     if (_map.valid())
     {
-        MapFrame mapf( _map.get() );        
         ImageLayerVector imageLayers;
-        mapf.getLayers(imageLayers);
+        _map->getLayers(imageLayers);
 
         for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
@@ -237,10 +236,8 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _imageLayerController = new ImageLayerController(this);
 
     // register the layer Controller it with all pre-existing image layers:
-    MapFrame mapf(_map.get());
     ImageLayerVector imageLayers;
-    mapf.getLayers(imageLayers);
-
+    _map->getLayers(imageLayers);
     for (ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i)
     {
         i->get()->addCallback(_imageLayerController.get());
@@ -301,17 +298,16 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 TerrainTileModel*
-TerrainEngineNode::createTileModel(const MapFrame&              frame,
+TerrainEngineNode::createTileModel(const Map*                   map,
                                    const TileKey&               key,
                                    const CreateTileModelFilter& filter,
-                                   ProgressCallback*            progress
-    )
+                                   ProgressCallback*            progress)
 {
     TerrainEngineRequirements* requirements = this;
 
     // Ask the factory to create a new tile model:
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
-        frame, 
+        map, 
         key, 
         filter,
         requirements,         

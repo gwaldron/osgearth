@@ -18,7 +18,6 @@
  */
 #include "LandUseTileSource"
 #include <osgEarth/ImageLayer>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/SimplexNoise>

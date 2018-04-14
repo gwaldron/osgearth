@@ -18,7 +18,6 @@
  */
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>

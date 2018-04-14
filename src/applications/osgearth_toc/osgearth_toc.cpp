@@ -20,7 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/ElevationPool>
@@ -461,9 +460,9 @@ updateControlPanel()
     s_activeBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    MapFrame mapf( s_activeMap.get() );
+    LayerVector layers;
+    s_activeMap->getLayers(layers);
 
-    const LayerVector& layers = mapf.layers();
     for (int i = layers.size()-1; i >= 0; --i)
     {
         Layer* layer = layers[i].get();

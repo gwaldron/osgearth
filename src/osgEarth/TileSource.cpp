@@ -25,7 +25,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>

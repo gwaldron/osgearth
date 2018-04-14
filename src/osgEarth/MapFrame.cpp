@@ -99,10 +99,12 @@ MapFrame::sync()
     osg::ref_ptr<const Map> map;
     if ( _map.lock(map) )
     {
-        changed = map->sync( *this );
-        if ( changed )
+        if (map->getDataModelRevision() != _mapDataModelRevision)
         {
+            _layers.clear();
+            map->getLayers(_layers);
             refreshComputedValues();
+            _mapDataModelRevision = map->getDataModelRevision();
         }
     }
     else

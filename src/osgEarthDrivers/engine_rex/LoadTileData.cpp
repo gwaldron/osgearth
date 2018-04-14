@@ -56,13 +56,6 @@ namespace
 void
 LoadTileData::invoke()
 {
-    osg::ref_ptr< const Map > map;
-    _map.lock(map);
-
-    MapFrame mapFrame(map.get());
-    if (!mapFrame.valid())
-        return;
-
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
         return;
@@ -71,12 +64,16 @@ LoadTileData::invoke()
     if (!_engine.lock(engine))
         return;
 
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
+
     // Only use a progress callback is cancelation is enabled.
     osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
-        mapFrame,
+        map.get(),
         tilenode->getKey(),
         _filter,
         progress.get());
@@ -98,11 +95,15 @@ LoadTileData::apply(const osg::FrameStamp* stamp)
     if (!_context.lock(context))
         return;
 
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
+
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {
         // ensure it's in sync with the map revision (not out of date):
-        if (context->getMap() != NULL && _dataModel->getRevision() == context->getMap()->getDataModelRevision())
+        if (map.valid() && _dataModel->getRevision() == map->getDataModelRevision())
         {
             // ensure the tile node hasn't expired:
             osg::ref_ptr<TileNode> tilenode;
@@ -168,7 +169,10 @@ LoadTileData::createStateSet() const
     if (!_context.lock(context))
         return NULL;
 
-    osg::ref_ptr<const osgEarth::Map> map = context->getMap();
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return NULL;
+
     if (_dataModel.valid() && map.valid() &&
         _dataModel->getRevision() == map->getDataModelRevision())
     {

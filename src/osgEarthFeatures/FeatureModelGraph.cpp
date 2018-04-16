@@ -321,6 +321,13 @@ FeatureModelGraph::ctor()
     // same, back into feature coords:
     _usableFeatureExtent = _usableMapExtent.transform( featureProfile->getSRS() );
 
+    // for projected data, contract the extent slightly to prevent precision errors
+    // when sampling edge vertices after cropping
+    if (_usableFeatureExtent.isValid() && _usableFeatureExtent.getSRS()->isProjected())
+    {
+        _usableFeatureExtent.expand(-0.001, -0.001);
+    }
+
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
     

@@ -163,10 +163,9 @@ int main(int argc, char** argv)
       osg::Geometry* boundaryGeometry = new osg::Geometry();
       boundaryGeometry->setVertexArray( drawHull );
 
-      osg::Vec4Array* colors = new osg::Vec4Array;
+      osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
       colors->push_back(osg::Vec4(1.0f,1.0f,0.0f,1.0f));
       boundaryGeometry->setColorArray(colors);
-      boundaryGeometry->setColorBinding(osg::Geometry::BIND_OVERALL);
       osg::StateSet* ss = boundaryGeometry->getOrCreateStateSet();
       ss->setAttributeAndModes( new osg::LineWidth(1.0), 1 );
       ss->setAttributeAndModes( new osg::Point(3.5), 1 );

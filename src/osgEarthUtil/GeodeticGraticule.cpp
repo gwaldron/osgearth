@@ -50,7 +50,7 @@ namespace
         MyGroup(GeodeticGraticule* grat, osg::ref_ptr<MapNode>& mapNode)
             : _grat(grat), _mapNode(mapNode)
         {
-            // Require an update traversal to udpate the labels.
+            // Require an update traversal to update the labels.
             setNumChildrenRequiringUpdateTraversal(1);
         }
 
@@ -274,6 +274,9 @@ GeodeticGraticule::rebuild()
     }
 
     setVisible(getVisible());
+
+    _labelingEngine = new GeodeticLabelingEngine(_mapNode->getMapSRS());
+    _root->addChild(_labelingEngine);
 }
 
 #define RESOLUTION_UNIFORM "oe_GeodeticGraticule_resolution"
@@ -533,9 +536,9 @@ GeodeticGraticule::updateLabels()
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
     
     Threading::ScopedMutexLock lock(_cameraDataMapMutex);
-    for (CameraDataMap::iterator i = _cameraDataMap.begin(); i != _cameraDataMap.end(); ++i)
+    for (CameraDataMap::iterator itr = _cameraDataMap.begin(); itr != _cameraDataMap.end(); ++itr)
     {
-        CameraData& cdata = i->second;
+        CameraData& cdata = itr->second;
 
         std::vector< GeoExtent > extents;
         if (cdata._viewExtent.crossesAntimeridian())
@@ -550,11 +553,16 @@ GeodeticGraticule::updateLabels()
             extents.push_back( cdata._viewExtent );
         }
 
+
+        _labelingEngine->setResolution(cdata._resolution);
+
+        bool showSideLabels = cdata._resolution < 0.03;
+        _labelingEngine->setNodeMask(showSideLabels ? ~0u : 0);
+
         double resDegrees = cdata._resolution * 180.0;
         // We want half the resolution so the labels don't appear as often as the grid lines
         resDegrees *= 2.0;
 
-    
         // Hide all the labels
         for (unsigned int i = 0; i < cdata._labelPool.size(); i++)
         {
@@ -567,50 +575,54 @@ GeodeticGraticule::updateLabels()
         unsigned int labelIndex = 0;
 
 
-        bool done = false;
-        for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
+        // Only show the centered labels if the side labels aren't visible.
+        if (!showSideLabels || !_labelingEngine->getVisible(itr->first))
         {
-            GeoExtent extent = extents[extentIndex];
-
-            int minLonIndex = floor(((extent.xMin() + 180.0)/resDegrees));
-            int maxLonIndex = ceil(((extent.xMax() + 180.0)/resDegrees));
-
-            int minLatIndex = floor(((extent.yMin() + 90)/resDegrees));
-            int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
-
-            // Generate horizontal labels
-            for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
+            bool done = false;
+            for (unsigned int extentIndex = 0; extentIndex < extents.size() && !done; extentIndex++)
             {
-                GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
-                LabelNode* label = cdata._labelPool[labelIndex++].get();
+                GeoExtent extent = extents[extentIndex];
 
-                label->setNodeMask(~0u);
-                label->setPosition(point);
-                std::string text = getText( point, false);
-                label->setText( text );
-                if (labelIndex == cdata._labelPool.size() - 1)
-                {
-                    done = true;
-                }
-            }
+                int minLonIndex = floor(((extent.xMin() + 180.0) / resDegrees));
+                int maxLonIndex = ceil(((extent.xMax() + 180.0) / resDegrees));
 
-            // Generate the vertical labels
-            for (int i = minLatIndex; i <= maxLatIndex && !done; i++)
-            {
-                GeoPoint point(srs, cdata._lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
-                // Skip drawing labels at the poles
-                if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
+                int minLatIndex = floor(((extent.yMin() + 90) / resDegrees));
+                int maxLatIndex = ceil(((extent.yMax() + 90) / resDegrees));
+
+                // Generate horizontal labels
+                for (int i = minLonIndex; i <= maxLonIndex && !done; i++)
                 {
-                    continue;
+                    GeoPoint point(srs, -180.0 + (double)i * resDegrees, cdata._lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
+                    LabelNode* label = cdata._labelPool[labelIndex++].get();
+
+                    label->setNodeMask(~0u);
+                    label->setPosition(point);
+                    std::string text = getText(point, false);
+                    label->setText(text);
+                    if (labelIndex == cdata._labelPool.size() - 1)
+                    {
+                        done = true;
+                    }
                 }
-                LabelNode* label = cdata._labelPool[labelIndex++].get();
-                label->setNodeMask(~0u);
-                label->setPosition(point);
-                std::string text = getText( point, true);
-                label->setText( text );
-                if (labelIndex == cdata._labelPool.size() - 1)
+
+                // Generate the vertical labels
+                for (int i = minLatIndex; i <= maxLatIndex && !done; i++)
                 {
-                    done = true;
+                    GeoPoint point(srs, cdata._lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+                    // Skip drawing labels at the poles
+                    if (osg::equivalent(osg::absolute(point.y()), 90.0, 0.1))
+                    {
+                        continue;
+                    }
+                    LabelNode* label = cdata._labelPool[labelIndex++].get();
+                    label->setNodeMask(~0u);
+                    label->setPosition(point);
+                    std::string text = getText(point, true);
+                    label->setText(text);
+                    if (labelIndex == cdata._labelPool.size() - 1)
+                    {
+                        done = true;
+                    }
                 }
             }
         }

@@ -98,9 +98,6 @@ TextSymbolizer::create(Feature*             feature,
     if ( font )
     {
         t->setFont( font );
-
-        // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
-        t->setStateSet(0L);
     }
 
     if ( _symbol.valid() )
@@ -121,6 +118,9 @@ TextSymbolizer::create(Feature*             feature,
         t->setBackdropColor( osg::Vec4(.3,.3,.3,1) );
         t->setBackdropType( osgText::Text::OUTLINE );
     }
+
+    // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
+    t->setStateSet(0L);
 
     return t;
 }

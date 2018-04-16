@@ -19,9 +19,12 @@
 #ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER
 #define OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER 1
 
-#include <osgEarth/MapFrame>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ThreadingUtils>
+
+namespace osgEarth {
+    class Map;
+}
 
 namespace osgEarth { namespace SimpleOcean
 {
@@ -56,8 +59,7 @@ namespace osgEarth { namespace SimpleOcean
         virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress);
 
     private:
-        MapFrame _mapf;
-        Threading::Mutex _mapfMutex;
+        osg::observer_ptr<const Map> _map;
     };
 
 } } // namespace osgEarth::SimpleOcean

@@ -22,6 +22,7 @@
 #include <osgEarth/Extension>
 #include <osgEarth/VisibleLayer>
 #include <osgEarthUtil/Common>
+#include <osgEarthUtil/GeodeticLabelingEngine>
 #include <osgEarthSymbology/Style>
 #include <osg/ClipPlane>
 
@@ -101,7 +102,6 @@ namespace osgEarth { namespace Util
 
     private:
 
-        void setUpDefaultStyles();
         void rebuild();
         void build30MinCells();
 

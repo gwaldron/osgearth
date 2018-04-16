@@ -118,7 +118,7 @@ TopologyGraph::createBoundary(unsigned graphNum, TopologyGraph::IndexVector& out
 
         const IndexSet& edges = ei->second;
 
-        // find the edge with the minimun delta angle to the base vector
+        // find the edge with the minimum delta angle to the base vector
         double bestScore = -DBL_MAX;
         Index  bestEdge  = _verts.end();
         

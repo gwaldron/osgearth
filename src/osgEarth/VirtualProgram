@@ -372,7 +372,7 @@ namespace osgEarth
         /** Enable logging to the console, for debugging. */
         void setShaderLogging( bool log );
 
-        /** Enable logging to a file, for deugging. */
+        /** Enable logging to a file, for debugging. */
         void setShaderLogging( bool log, const std::string& filepath );
 
         /** Gets whether the accept callbacks vary per frame */

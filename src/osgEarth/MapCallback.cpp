@@ -18,10 +18,6 @@
  */
 #include <osgEarth/MapCallback>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ModelLayer>
-#include <osgEarth/MaskLayer>
 #include <osgEarth/Map>
 
 #define LC "[MapCallback] "
@@ -52,6 +48,14 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
     case MapModelChange::DISABLE_LAYER:
         onLayerDisabled(change.getLayer());
         break;
+
+    case MapModelChange::BEGIN_BATCH_UPDATE:
+	onBeginUpdate();
+	break;
+
+    case MapModelChange::END_BATCH_UPDATE:
+	onEndUpdate();
+	break;
 
     default: 
         break;

@@ -40,7 +40,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _color                  ( Color::White ),
             _expirationThreshold    ( 300 ),
             _progressive            ( false ),
-            _highResolutionFirst    ( true ),
             _normalMaps             ( true ),
             _normalizeEdges         ( false ),
             _morphTerrain           ( true ),
@@ -86,10 +85,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& progressive() { return _progressive; }
         const optional<bool>& progressive() const { return _progressive; }
 
-        /** Whether to load higher-resolution data first. */
-        optional<bool>& highResolutionFirst() { return _highResolutionFirst; }
-        const optional<bool>& highResolutionFirst() const { return _highResolutionFirst; } 
-
         /** Whether to generate normal map textures. Default is true. */
         optional<bool>& normalMaps() { return _normalMaps; }
         const optional<bool>& normalMaps() const { return _normalMaps; }
@@ -120,11 +115,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Config conf = TerrainOptions::getConfig();
             conf.set( "skirt_ratio", _skirtRatio );
             conf.set( "color", _color );
-            conf.set( "quick_release_gl_objects", _quickRelease );
             conf.set( "expiration_range", _expirationRange );
             conf.set( "expiration_threshold", _expirationThreshold );
             conf.set( "progressive", _progressive );
-            conf.set( "high_resolution_first", _highResolutionFirst );
             conf.set( "normal_maps", _normalMaps );
             conf.set( "normalize_edges", _normalizeEdges);
             conf.set( "morph_terrain", _morphTerrain );
@@ -156,11 +149,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "color", _color );
-            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "expiration_range", _expirationRange );
             conf.getIfSet( "expiration_threshold", _expirationThreshold );
             conf.getIfSet( "progressive", _progressive );
-            conf.getIfSet( "high_resolution_first", _highResolutionFirst );
             conf.getIfSet( "normal_maps", _normalMaps );
             conf.getIfSet( "normalize_edges", _normalizeEdges);
             conf.getIfSet( "morph_terrain", _morphTerrain );
@@ -184,11 +175,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         optional<float>    _skirtRatio;
         optional<Color>    _color;
-        optional<bool>     _quickRelease;
         optional<float>    _expirationRange;
         optional<unsigned> _expirationThreshold;
         optional<bool>     _progressive;
-        optional<bool>     _highResolutionFirst;
         optional<bool>     _normalMaps;
         optional<bool>     _normalizeEdges;
         optional<bool>     _morphTerrain;

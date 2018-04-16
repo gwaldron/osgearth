@@ -117,6 +117,15 @@ main(int argc, char** argv)
     tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
     viewer.addEventHandler( tool );
 
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    viewer.getCamera()->setNearFarRatio(0.0001);
+
+
     // finalize setup and run.
     viewer.setSceneData( root );
     viewer.addEventHandler(new osgViewer::StatsHandler());

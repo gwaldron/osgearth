@@ -26,7 +26,6 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 
 TerrainCuller::TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context) :
-_frame(0L),
 _camera(0L),
 _currentTileNode(0L),
 _orphanedPassesDetected(0u),
@@ -47,11 +46,11 @@ _context(context)
 }
 
 void
-TerrainCuller::setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings)
+TerrainCuller::setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings)
 {
     unsigned frameNum = getFrameStamp() ? getFrameStamp()->getFrameNumber() : 0u;
     _layerExtents = &layerExtents;
-    _terrain.setup(frame, bindings, frameNum, _cv);
+    _terrain.setup(map, bindings, frameNum, _cv);
 }
 
 float

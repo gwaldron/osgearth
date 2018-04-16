@@ -34,7 +34,7 @@ _context(context),
 _enableCancel(true)
 {
     this->setTileKey(tilenode->getKey());
-    _mapFrame.setMap(context->getMap());
+    _map = context->getMap();
     _engine = context->getEngine();
 }
 
@@ -56,12 +56,6 @@ namespace
 void
 LoadTileData::invoke()
 {
-    if (!_mapFrame.isValid())
-        return;
-
-    // we're in a pager thread, so must lock safe pointers
-    // (don't access _context from here!)
-
     osg::ref_ptr<TileNode> tilenode;
     if (!_tilenode.lock(tilenode))
         return;
@@ -70,19 +64,19 @@ LoadTileData::invoke()
     if (!_engine.lock(engine))
         return;
 
-    // ensure the map frame is up to date:
-    if (_mapFrame.needsSync())
-        _mapFrame.sync();
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
 
-    // Only use a progress callback is cancelation is enabled.    
+    // Only use a progress callback is cancelation is enabled.
     osg::ref_ptr<ProgressCallback> progress = _enableCancel ? new MyProgress(this) : 0L;
 
     // Assemble all the components necessary to display this tile
     _dataModel = engine->createTileModel(
-        _mapFrame,
-        tilenode->getKey(),           
+        map.get(),
+        tilenode->getKey(),
         _filter,
-        progress.get() );
+        progress.get());
 
     // if the operation was canceled, set the request to idle and delete any existing data.
     if (progress && (progress->isCanceled() || progress->needsRetry()))
@@ -97,17 +91,25 @@ LoadTileData::invoke()
 void
 LoadTileData::apply(const osg::FrameStamp* stamp)
 {
+    osg::ref_ptr<EngineContext> context;
+    if (!_context.lock(context))
+        return;
+
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return;
+
     // ensure we got an actual datamodel:
     if (_dataModel.valid())
     {
         // ensure it's in sync with the map revision (not out of date):
-        if (_dataModel->getRevision() == _context->getMap()->getDataModelRevision())
+        if (map.valid() && _dataModel->getRevision() == map->getDataModelRevision())
         {
             // ensure the tile node hasn't expired:
             osg::ref_ptr<TileNode> tilenode;
             if ( _tilenode.lock(tilenode) )
             {
-                const RenderBindings& bindings = _context->getRenderBindings();
+                const RenderBindings& bindings = context->getRenderBindings();
 
                 // Merge the new data into the tile.
                 tilenode->merge(_dataModel.get(), bindings);
@@ -138,12 +140,14 @@ namespace
     // when the ICO is active.
     struct ModelCompilingAttribute : public osg::Texture2D
     {
-        osg::ref_ptr<TerrainTileModel> _dataModel;
+        osg::observer_ptr<TerrainTileModel> _dataModel;
         
         // the ICO calls apply() directly instead of compileGLObjects
         void apply(osg::State& state) const
         {
-            _dataModel->compileGLObjects(state);
+            osg::ref_ptr<TerrainTileModel> dataModel;
+            if (_dataModel.lock(dataModel))
+                dataModel->compileGLObjects(state);
         }
 
         // no need to override release or resize since this is a temporary object
@@ -160,9 +164,17 @@ osg::StateSet*
 LoadTileData::createStateSet() const
 {
     osg::ref_ptr<osg::StateSet> out;
-    
-    if (_dataModel.valid() &&
-        _dataModel->getRevision() == _context->getMap()->getDataModelRevision())
+
+    osg::ref_ptr<EngineContext> context;
+    if (!_context.lock(context))
+        return NULL;
+
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return NULL;
+
+    if (_dataModel.valid() && map.valid() &&
+        _dataModel->getRevision() == map->getDataModelRevision())
     {
         // This stateset contains a "fake" attribute that the ICO will
         // try to GL-compile, thereby GL-compiling everything in the TerrainTileModel.

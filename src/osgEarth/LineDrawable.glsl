@@ -1,35 +1,78 @@
 #version $GLSL_VERSION_STR
+#pragma vp_name GPU Lines Screen Projected Model
+#pragma vp_entryPoint oe_GPULinesProj_VS_MODEL
+#pragma vp_location vertex_model
+#pragma import_defines(OE_GPULINES_USE_LIMITS)
 
-#pragma vp_name GPU Lines Screen Projected
+#ifdef OE_GPULINES_USE_LIMITS
+uniform vec2 oe_GPULines_limits;
+flat out int oe_GPULines_draw;
+#endif
+
+void oe_GPULinesProj_VS_MODEL(inout vec4 usused)
+{
+#ifdef OE_GPULINES_USE_LIMITS
+    oe_GPULines_draw = 1;
+    int first = int(oe_GPULines_limits[0]);
+    int last = int(oe_GPULines_limits[1]);
+    if (gl_VertexID < first || (last > 0 && gl_VertexID > last))
+    {
+        oe_GPULines_draw = 0;
+    }
+#endif
+}
+
+
+
+[break]
+
+#version $GLSL_VERSION_STR
+#pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
 #pragma vp_location vertex_clip
-#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPU_CLAMPING)
+#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_WIDTH)
+#pragma import_defines(OE_GPULINES_USE_LIMITS)
+#pragma import_defines(OE_GPU_CLAMPING)
 
 uniform vec2 oe_ViewportSize;
 
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
-in float oe_GPULines_width;
+
+uniform float oe_GPULines_width;
+
+#ifdef OE_GPULINES_USE_LIMITS
+flat out int oe_GPULines_draw;
+#endif
 
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 flat out vec2 oe_GPULines_rv;
 #endif
 
 #ifdef OE_GPU_CLAMPING
-// Stage globals set in GPUClamping.vert.glsl only when OE_GPU_LINES is enabled
-vec4 oe_GPULines_prevViewClamped;
-vec4 oe_GPULines_nextViewClamped;
-#endif // OE_GPU_CLAMPING
+// see GPUClamping.vert.glsl
+void oe_clamp_clampViewSpaceVertex(inout vec4);
+#endif
 
 void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 {
+#ifdef OE_GPULINES_USE_LIMITS
+    if (oe_GPULines_draw == 0)
+        return;
+#endif
+
     vec2 arVec = vec2(
         oe_ViewportSize.x/oe_ViewportSize.y,
         1.0);
 
-#if defined(OE_GPU_CLAMPING)
-    vec4 prevClip = gl_ProjectionMatrix * oe_GPULines_prevViewClamped;
-    vec4 nextClip = gl_ProjectionMatrix * oe_GPULines_nextViewClamped;
+#ifdef OE_GPU_CLAMPING
+    vec4 prevView = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
+    oe_clamp_clampViewSpaceVertex(prevView);
+    vec4 prevClip = gl_ProjectionMatrix * prevView;
+
+    vec4 nextView = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
+    oe_clamp_clampViewSpaceVertex(nextView);
+    vec4 nextClip = gl_ProjectionMatrix * nextView;
 #else
     vec4 prevClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_prev, 1.0);
     vec4 nextClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_next, 1.0);
@@ -39,21 +82,33 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 prevUnit = prevClip.xy/prevClip.w * arVec;
     vec2 nextUnit = nextClip.xy/nextClip.w * arVec;
 
-    float thickness = abs(oe_GPULines_width);
+#ifdef OE_GPULINES_WIDTH
+    float thickness = OE_GPULINES_WIDTH; //abs(oe_GPULines_width);
+#else
+    float thickness = 1.0;
+#endif
+
     float len = thickness;
-    float orientation = sign(oe_GPULines_width);
+
+    // even-indexed verts are negative, odd-indexed are positive
+    float orientation = (gl_VertexID & 0x01) == 0? -1.0 : 1.0;
 
     vec2 dir = vec2(0.0);
 
     // We will use this to calculate stippling data:
     vec2 stippleDir;
 
+#if 0
+    dir = normalize(nextUnit - currUnit);
+    stippleDir = dir;
+#else
     // The following vertex comparisons must be done in model 
     // space because the equivalency gets mashed after projection.
 
     // starting point uses (next - current)
     if (gl_Vertex.xyz == oe_GPULines_prev)
     {
+        //dir = normalize(nextUnit - currUnit);
         dir = normalize(nextUnit - currUnit);
         stippleDir = dir;
     }
@@ -61,6 +116,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     // ending point uses (current - previous)
     else if (gl_Vertex.xyz == oe_GPULines_next)
     {
+        //dir = normalize(currUnit - prevUnit);
         dir = normalize(currUnit - prevUnit);
         stippleDir = dir;
     }
@@ -96,6 +152,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         }
         stippleDir = dirB;
     }
+#endif
 
     // calculate the extrusion vector in pixels
     // note: seems like it should be len/2, BUT we are in [-1..1] space
@@ -144,19 +201,34 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_GPULinesProj_Stippler_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines (OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_STIPPLE_FACTOR)
+#pragma import_defines(OE_GPULINES_STIPPLE_PATTERN, OE_GPULINES_STIPPLE_FACTOR)
+#pragma import_defines(OE_GPULINES_USE_LIMITS)
 
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 flat in vec2 oe_GPULines_rv;
 #endif
 
+#ifdef OE_GPULINES_USE_LIMITS
+flat in int oe_GPULines_draw;
+#endif
+
 void oe_GPULinesProj_Stippler_FS(inout vec4 color)
 {
+#ifdef OE_GPULINES_USE_LIMITS
+    if (oe_GPULines_draw == 0)
+        discard;
+#endif
+
 #ifdef OE_GPULINES_STIPPLE_PATTERN
 
     // we could make these unfiorms if necessary
     const int pattern = OE_GPULINES_STIPPLE_PATTERN;
+
+#ifdef OE_GPULINES_STIPPLE_FACTOR
     const int factor = OE_GPULINES_STIPPLE_FACTOR;
+#else
+    const int factor = 1;
+#endif
 
     // coordinate of the fragment, shifted to 0:
     vec2 coord = (gl_FragCoord.xy - 0.5);

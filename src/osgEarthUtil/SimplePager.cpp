@@ -1,6 +1,7 @@
 #include <osgEarthUtil/SimplePager> 
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
+#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -102,9 +103,16 @@ namespace
                 return ReadResult::ERROR_IN_READING_FILE;
             }
 
-            return pager->loadKey(
+            osg::ref_ptr<osg::Node> node = pager->loadKey(
                 TileKey(lod, x, y, pager->getProfile()),
                 tracker.get());
+
+            if (node.valid() && pager->getSceneGraphCallbacks())
+            {
+                pager->getSceneGraphCallbacks()->firePreMergeNode(node.get());
+            }
+
+            return node.release();
         }
     };
 
@@ -252,9 +260,13 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     // notify any callbacks.
     fire_onCreateNode(key, node.get());
 
-    tileRadius = std::max(tileBounds.radius(), tileRadius);
+    tileRadius = std::max(tileBounds.radius(), static_cast<osg::BoundingSphere::value_type>(tileRadius));
 
-    osg::PagedLOD* plod = new osg::PagedLOD;
+    //osg::PagedLOD* plod = new osg::PagedLOD;
+    osg::PagedLOD* plod = 
+        getSceneGraphCallbacks() ? new PagedLODWithSceneGraphCallbacks(getSceneGraphCallbacks()) :
+        new osg::PagedLOD();
+
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 

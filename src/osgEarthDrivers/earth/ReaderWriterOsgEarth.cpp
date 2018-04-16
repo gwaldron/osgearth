@@ -37,13 +37,8 @@ using namespace osgEarth;
 #define Q2(x) #x
 #define Q(x)  Q2(x)
 
-#if (defined(_DEBUG) || defined(QT_DEBUG)) && defined(OSGEARTH_DEBUG_POSTFIX)
-#   define LIBNAME_UTIL_POSTFIX Q(OSGEARTH_DEBUG_POSTFIX)
-#elif defined(OSGEARTH_RELEASE_POSTFIX)
-#   define LIBNAME_UTIL_POSTFIX Q(OSGEARTH_RELEASE_POSTFIX)
-#else
-#   define LIBNAME_UTIL_POSTFIX ""
-#endif
+#define LIBNAME_UTIL_POSTFIX Q(OSGEARTH_LIBRARY_POSTFIX)
+
 
 #if defined(WIN32)
 #   define LIBNAME_UTIL "osgEarthUtil"

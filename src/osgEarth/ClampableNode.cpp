@@ -152,7 +152,7 @@ ClampableNode::traverse(osg::NodeVisitor& nv)
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
-namespace
+namespace osgEarth { namespace Serializers { namespace ClampableNode
 {
     REGISTER_OBJECT_WRAPPER(
         ClampableNode,
@@ -162,4 +162,4 @@ namespace
     {
         //nop
     }
-}
+}}}

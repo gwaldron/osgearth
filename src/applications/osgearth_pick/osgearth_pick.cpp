@@ -307,7 +307,7 @@ main(int argc, char** argv)
     app.nameLabel = uiContainer->addControl( new ui::LabelControl( "---" ) );
 
     // Load up the earth file.
-    osg::Node* node = MapNodeHelper().load( arguments, app.mainView, uiContainer );
+    osg::Node* node = MapNodeHelper().load( arguments, &app.viewer, uiContainer );
     if ( node )
     {
         app.mainView->setSceneData( node );

@@ -151,30 +151,27 @@ _polygon( 0 )
 }
 
 void
-PrimitiveSetTypeCounter::apply(osg::Geode& geode)
+PrimitiveSetTypeCounter::apply(osg::Drawable& drawable)
 {
-    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    osg::Geometry* g = drawable.asGeometry();
+    if ( g )
     {
-        osg::Geometry* g = geode.getDrawable(i)->asGeometry();
-        if ( g )
+        const osg::Geometry::PrimitiveSetList& primSets = g->getPrimitiveSetList();
+        for( osg::Geometry::PrimitiveSetList::const_iterator j = primSets.begin(); j != primSets.end(); ++j )
         {
-            const osg::Geometry::PrimitiveSetList& primSets = g->getPrimitiveSetList();
-            for( osg::Geometry::PrimitiveSetList::const_iterator j = primSets.begin(); j != primSets.end(); ++j )
+            switch( j->get()->getMode() )
             {
-                switch( j->get()->getMode() )
-                {
-                case GL_POINTS:
-                    _point++;
-                    break;
-                case GL_LINES:
-                case GL_LINE_LOOP:
-                case GL_LINE_STRIP:
-                    _line++;
-                    break;
-                default:
-                    _polygon++;
-                    break;
-                }
+            case GL_POINTS:
+                _point++;
+                break;
+            case GL_LINES:
+            case GL_LINE_LOOP:
+            case GL_LINE_STRIP:
+                _line++;
+                break;
+            default:
+                _polygon++;
+                break;
             }
         }
     }

@@ -28,7 +28,10 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
-#include <osgEarth/SceneGraphCallback>
+
+namespace osgEarth {
+    class Map;
+}
 
 namespace osgEarth { namespace Features
 {
@@ -81,14 +84,17 @@ namespace osgEarth { namespace Features
         //! Options used to initialize this layer.
         const FeatureModelLayerOptions& getFeatureModelLayerOptions() const { return *_options; }
 
+        //! Sets the options to initilize the layer
+        void setFeatureModelLayerOptions(const FeatureModelLayerOptions& options);
+
         //! Feature source layer from which to get a feature source. Use this OR setFeatureSource
         void setFeatureSourceLayer(FeatureSourceLayer* layer);
         
         //! The feature source from which to read geometry. Use this OR setFeatureLayer
         void setFeatureSource(FeatureSource* fs);
 
-        //! Access to scene graph callbacks
-        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
+        //! Forces a rebuild on this FeatureModelLayer.
+        void dirty();
 
     public:
         class CreateFeatureNodeFactoryCallback : public osg::Referenced {
@@ -116,10 +122,10 @@ namespace osgEarth { namespace Features
     protected: // Layer
         
         // called by the map when this layer is added
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const Map*);
 
         // called by the map when this layer is removed
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const Map*);
 
         // post-ctor initialization
         virtual void init();
@@ -141,8 +147,6 @@ namespace osgEarth { namespace Features
         
         void create();
         FeatureNodeFactory* createFeatureNodeFactory();
-
-        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
     };
 
 } } // namespace osgEarth::Features

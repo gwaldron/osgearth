@@ -57,7 +57,7 @@ namespace
             _tope = tope;
         }
 
-        void apply(osg::Geode& node)
+        void apply(osg::Drawable& node)
         {
             const osg::BoundingSphere& bs = node.getBound();
             osg::Vec3 p = bs.center() * _matrixStack.top();

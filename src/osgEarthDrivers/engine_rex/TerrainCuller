@@ -22,8 +22,6 @@
 #include "EngineContext"
 #include "TerrainRenderData"
 
-#include <osgEarth/MapFrame>
-
 #include <osg/NodeVisitor>
 #include <osgUtil/CullVisitor>
 
@@ -47,7 +45,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TerrainCuller : public osg::NodeVisitor, public osg::CullStack
     {
     public:
-        const MapFrame* _frame;
         TerrainRenderData _terrain;
         EngineContext* _context;
         osg::Camera* _camera;
@@ -63,7 +60,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainCuller(osgUtil::CullVisitor* cullVisitor, EngineContext* context);
 
         /** Initialize the culler with a map and a set of render bindings. */
-        void setup(const MapFrame& frame, LayerExtentVector& layerExtents, const RenderBindings& bindings);
+        void setup(const Map* map, LayerExtentVector& layerExtents, const RenderBindings& bindings);
 
         /** The active camera */
         osg::Camera* getCamera() { return _camera; }

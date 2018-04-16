@@ -53,7 +53,7 @@
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/AnimationPathManipulator>
-#include <osgViewer/View>
+#include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
 #define KML_PUSHPIN_URL "../data/placemark32.png"
@@ -249,10 +249,10 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 #define LC "[MapNodeHelper] "
 
 osg::Group*
-MapNodeHelper::load(osg::ArgumentParser&  args,
-                    osgViewer::View*      view,
-                    Container*            userContainer,
-                    const osgDB::Options* readOptions) const
+MapNodeHelper::load(osg::ArgumentParser&   args,
+                    osgViewer::ViewerBase* viewer,
+                    Container*             userContainer,
+                    const osgDB::Options*  readOptions) const
 {
     // do this first before scanning for an earth file
     std::string outEarth;
@@ -295,10 +295,17 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
         }
     }
 
-    // warn about not having an earth manip
-    if ( view )
+    // collect the views
+    osgViewer::Viewer::Views views;
+    if (viewer)
     {
-        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        viewer->getViews(views);
+    }
+
+    // warn about not having an earth manip
+    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
+    {
+        EarthManipulator* manip = dynamic_cast<EarthManipulator*>((*view)->getCameraManipulator());
         if ( manip == 0L )
         {
             OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
@@ -310,10 +317,10 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
     
     root->addChild( node );
 
-    // parses common cmdline arguments.
-    if ( view )
+    // parses common cmdline arguments and apply to the first view:
+    if ( !views.empty() )
     {
-        parse( mapNode.get(), args, view, root, userContainer );
+        parse( mapNode.get(), args, views.front(), root, userContainer );
     }
 
     // Dump out an earth file if so directed.
@@ -323,11 +330,24 @@ MapNodeHelper::load(osg::ArgumentParser&  args,
         osgDB::writeNodeFile( *mapNode, outEarth );
     }
 
-    // configures the viewer with some stock goodies
-    if ( view )
+    // configures each view with some stock goodies
+    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
     {
-        configureView( view );
+        configureView( *view );
     }
+
+#ifdef OSG_GL3_AVAILABLE
+    if (viewer)
+    {
+        viewer->realize();
+        for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
+        {
+            osg::State* state = (*view)->getCamera()->getGraphicsContext()->getState();
+            state->setUseModelViewAndProjectionUniforms(true);
+            state->setUseVertexAttributeAliasing(true);
+        }        
+    }
+#endif
     
     return root;
 }
@@ -391,6 +411,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
         view->setCameraManipulator( new osgGA::AnimationPathManipulator(animpath) );
     }
 
+    // vertical field of view:
+    float vfov = -1.0f;
+    if (args.read("--vfov", vfov) && vfov > 0.0f)
+    {
+        double fov, ar, n, f;
+        view->getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
+        view->getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
+    }
+
     // Install a new Canvas for our UI controls, or use one that already exists.
     ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
@@ -446,19 +475,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
                     canvas->addControl( c );
                 }
             }
-            root->addChild( kml );
+            mapNode->addChild( kml );
         }
         else
         {
             OE_NOTICE << "Failed to load " << kmlFile << std::endl;
         }
     }
-
-    //// Configure the de-cluttering engine for labels and annotations:
-    //if ( !screenSpaceLayoutConf.empty() )
-    //{
-    //    ScreenSpaceLayout::setOptions( ScreenSpaceLayoutOptions(screenSpaceLayoutConf) );
-    //}
 
     // Configure the mouse coordinate readout:
     if ( useCoords )
@@ -590,6 +613,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
         }
     }
 
+    while (args.find("--define") >= 0)
+    {
+        std::string name;
+        if (args.read("--define", name))
+        {
+            mapNode->getOrCreateStateSet()->setDefine(name);
+        }
+    }
+
     // Map inspector:
     if (args.read("--inspect"))
     {
@@ -705,6 +737,7 @@ MapNodeHelper::usage() const
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
         << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
+        << "  --define [name]               : install a shader #define\n"
         << "  --path [file]                 : load and playback an animation path\n"
         << "  --extension [name]            : loads a named extension\n";
 }

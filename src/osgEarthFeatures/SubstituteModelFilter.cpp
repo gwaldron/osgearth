@@ -21,7 +21,6 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthFeatures/GeometryUtils>
 
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/MeshFlattener>
 #include <osgEarthSymbology/StyleSheet>
 
@@ -491,24 +490,6 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     // return proper context
     context = newContext;
-
-#if 0
-    // TODO: OBE due to shader pipeline
-    // see if we need normalized normals
-    if ( _normalScalingRequired )
-    {
-        // TODO: carefully test for this, since GL_NORMALIZE hurts performance in 
-        // FFP mode (RESCALE_NORMAL is faster for uniform scaling); and I think auto-normal-scaling
-        // is disabled entirely when using shaders. For now I believe we are dropping to FFP
-        // when not using instancing ...so just check for that
-        if ( !_useDrawInstanced )
-        {
-            group->getOrCreateStateSet()->setMode( GL_NORMALIZE, osg::StateAttribute::ON );
-        }
-    }
-#endif
-
-    //osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
 
     return group;
 }

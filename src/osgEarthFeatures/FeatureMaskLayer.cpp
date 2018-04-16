@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/FeatureMaskLayer>
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarth/Map>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

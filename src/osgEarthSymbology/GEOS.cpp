@@ -44,6 +44,9 @@ using namespace geos::operation;
 
 #define LC "[GEOS] "
 
+#define GEOS_VERSION_AT_LEAST(MAJOR, MINOR) \
+    ((GEOS_VERSION_MAJOR>MAJOR) || (GEOS_VERSION_MAJOR==MAJOR && GEOS_VERSION_MINOR>=MINOR))
+
 namespace
 {
     geom::CoordinateSequence*
@@ -216,7 +219,7 @@ GEOSContext::GEOSContext()
     geos::geom::PrecisionModel* pm = new geos::geom::PrecisionModel(geom::PrecisionModel::FLOATING);
 
     // Factory will clone the PM
-#if GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 6
+#if GEOS_VERSION_AT_LEAST(3,6)
     _factory = geos::geom::GeometryFactory::create( pm );
 #else
     _factory = new geos::geom::GeometryFactory( pm );
@@ -228,7 +231,7 @@ GEOSContext::GEOSContext()
 
 GEOSContext::~GEOSContext()
 {
-#if !(GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 6)
+#if !GEOS_VERSION_AT_LEAST(3,6)
     delete _factory;
 #endif
 }
@@ -239,7 +242,7 @@ GEOSContext::importGeometry(const Symbology::Geometry* input)
     geom::Geometry* output = 0L;
     if ( input && input->isValid() )
     {
-#if GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 6
+#if GEOS_VERSION_AT_LEAST(3,6)
         output = import( input, _factory.get() );
 #else
         output = import( input, _factory );
@@ -345,7 +348,7 @@ GEOSContext::disposeGeometry(geom::Geometry* input)
 {
     if (input)
     {
-#if GEOS_VERSION_MAJOR >= 3 && GEOS_VERSION_MINOR >= 6
+#if GEOS_VERSION_AT_LEAST(3,6)
         _factory->destroyGeometry(input);
 #else
         geom::GeometryFactory* f = const_cast<geom::GeometryFactory*>(input->getFactory());

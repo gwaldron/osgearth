@@ -23,6 +23,7 @@
 #define OSGEARTH_UTIL_UTM_LABELING_ENGINE_H 1
 
 #include <osgEarthUtil/Common>
+#include <osgEarthUtil/GraticuleLabelingEngine>
 #include <osgEarth/GeoData>
 #include <osgEarth/MapNode>
 #include <osgEarth/Containers>
@@ -37,7 +38,7 @@ namespace osgEarth { namespace Util
      * Node that plots UTM coordinats labels along the edge of the
      * viewport when you are looking straight down on a zoomed-in area.
      */
-    class UTMLabelingEngine : public osg::Group
+    class UTMLabelingEngine : public GraticuleLabelingEngine
     {
     public:
         //! Construct a new labeling engine with the map's SRS
@@ -46,31 +47,10 @@ namespace osgEarth { namespace Util
         //! Sets the maximum resolution (meters) at which to render labels
         void setMaxResolution(double value);
 
-    public: // osg::Node
-        void traverse(osg::NodeVisitor& nv);
+        virtual bool updateLabels(const osg::Vec3d& LL_world, osg::Vec3d& UL_world, osg::Vec3d& LR_world, ClipSpace& window, CameraData& data);
 
     protected:
-        typedef std::vector< osg::ref_ptr<LabelNode> > LabelNodeVector;
 
-        struct CameraData
-        {
-            LabelNodeVector xLabels;
-            LabelNodeVector yLabels;
-        };
-
-        bool cullTraverse(osgUtil::CullVisitor& nv, CameraData& data);
-        
-        typedef PerObjectFastMap<osg::Camera*, CameraData> CameraDataMap;
-        CameraDataMap _cameraDataMap;
-
-        struct AcceptCameraData : public CameraDataMap::Functor {
-            AcceptCameraData(osg::NodeVisitor& nv) : _nv(nv) { }
-            void operator()(CameraData& data);
-            osg::NodeVisitor& _nv;
-        };
-
-        osg::ref_ptr<const SpatialReference> _srs;
-        Style _xLabelStyle, _yLabelStyle;
         double _maxRes;
     };
 

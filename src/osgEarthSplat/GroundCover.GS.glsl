@@ -4,11 +4,15 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_GroundCover_geom
 #pragma vp_location   geometry
 
-#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_GROUNDCOVER_MASK_SAMPLER, OE_GROUNDCOVER_MASK_MATRIX)
+#pragma import_defines(OE_IS_SHADOW_CAMERA, OE_GROUNDCOVER_MASK_SAMPLER, OE_GROUNDCOVER_MASK_MATRIX, OE_GROUNDCOVER_SHOW_TESSELLATION)
                 
-layout(triangles)        in;        // triangles from the TileDrawable
-layout(triangle_strip)   out;       // output a triangle-strip billboard
-layout(max_vertices = 8) out;       // four verts per billboard
+layout(triangles) in;        // triangles from the TileDrawable
+
+#ifdef OE_GROUNDCOVER_SHOW_TESSELLATION
+layout(line_strip, max_vertices=4) out;
+#else
+layout(triangle_strip, max_vertices=4) out;       // four verts per billboard
+#endif
                 
 // VP helper functions:
 void VP_LoadVertex(in int);
@@ -132,7 +136,26 @@ oe_GroundCover_geom()
 {    
     vec4 center = vec4(0,0,0,1);
     vec2 tileUV = vec2(0,0);
-    
+
+#ifdef OE_GROUNDCOVER_SHOW_TESSELLATION
+    for(int i=0; i < 3; ++i)
+    {
+        VP_LoadVertex(i);      
+        gl_Position = gl_in[i].gl_Position;
+        gl_Position.z += 10.0;
+        gl_Position = gl_ModelViewMatrix * gl_Position;
+        VP_EmitViewVertex();
+    }
+    VP_LoadVertex(0);    
+    gl_Position = gl_in[0].gl_Position;
+    gl_Position.z += 10.0;
+    gl_Position = gl_ModelViewMatrix * gl_Position;
+    VP_EmitViewVertex();
+
+    EndPrimitive();
+    return;
+#endif
+        
     // gen a random point within the input triangle
     vec3 b = oe_GroundCover_getRandomBarycentricPoint(gl_in[0].gl_Position.xy);
     

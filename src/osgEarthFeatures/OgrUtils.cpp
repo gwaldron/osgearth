@@ -33,6 +33,18 @@ using namespace osgEarth::Features;
 #  define GDAL_HAS_M_TYPES
 #endif
 
+int IsFieldSet(OGRFeatureH handle, int i)
+{
+    // https://github.com/Toblerity/Fiona/issues/460
+    // GDAL 2.2 changed the behavior of OGR_F_IsFieldSet so that null fields will still be considered set.
+    // We consider unset or null fields to be the same, so we use OGR_F_IsFieldSetAndNotNull
+#if GDAL_VERSION_AT_LEAST(2,2,0)
+    return OGR_F_IsFieldSetAndNotNull(handle, i);
+#else
+    return OGR_F_IsFieldSet(handle, i);
+#endif
+}
+
 
 void
 OgrUtils::populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
@@ -341,7 +353,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
         {
         case OFTInteger:
             {     
-                if (OGR_F_IsFieldSet( handle, i ))
+                if (IsFieldSet( handle, i ))
                 {
                     int value = OGR_F_GetFieldAsInteger( handle, i );
                     feature->set( name, value );                    
@@ -354,7 +366,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
             break;
         case OFTReal:
             {
-                if (OGR_F_IsFieldSet( handle, i ))
+                if (IsFieldSet( handle, i ))
                 {
                     double value = OGR_F_GetFieldAsDouble( handle, i );
                     feature->set( name, value );
@@ -367,7 +379,7 @@ OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
             break;
         default:
             {
-                if (OGR_F_IsFieldSet( handle, i ))
+                if (IsFieldSet( handle, i ))
                 {
                     const char* value = OGR_F_GetFieldAsString(handle, i);
                     feature->set( name, std::string(value) );

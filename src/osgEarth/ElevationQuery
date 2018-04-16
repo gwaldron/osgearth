@@ -19,7 +19,6 @@
 #ifndef OSGEARTH_ELEVATION_QUERY_H
 #define OSGEARTH_ELEVATION_QUERY_H 1
 
-#include <osgEarth/MapFrame>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Containers>
 #include <osgEarth/ModelLayer>
@@ -57,25 +56,12 @@ namespace osgEarth
          * @param map
          *      Map against which to perform elevation queries.
          */
-        ElevationQuery( const Map* map );
-
-        /**
-         * Constructs a new elevation manager.
-         *
-         * @param mapFrame
-         *      Map frame against which to perform elevation queries.
-         */
-        ElevationQuery( const MapFrame& mapFrame );
+        ElevationQuery(const Map* map);
 
         /**
          * Sets a new map
          */
         void setMap(const Map* map);
-
-        /**
-         * Sets a new map frame
-         */
-        void setMapFrame(const MapFrame& frame);
 
         /**
          * Gets the elevation data at a point, given a terrain resolution.
@@ -120,14 +106,13 @@ namespace osgEarth
         virtual ~ElevationQuery() { }
 
     private:
-        // Map to query
-        MapFrame _mapf;
 
         // Map model layers marked as terrain patches
-        std::vector<ModelLayer*> _patchLayers;
+        LayerVector _terrainModelLayers;
+        ElevationLayerVector _elevationLayers;
 
         // Intersector to query the patch layers
-        osg::ref_ptr<osgUtil::LineSegmentIntersector> _patchLayersLSI;
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> _lsi;
 
         // Callback to force the intersector to materialize paged model nodes
         osg::ref_ptr<osgUtil::IntersectionVisitor::ReadCallback> _ivrc;
@@ -138,13 +123,16 @@ namespace osgEarth
     private:
         void reset();
         void sync();
-        void gatherPatchLayers();
+        void gatherTerrainModelLayers(const Map*);
 
         bool getElevationImpl(
             const GeoPoint& point,
             float&          out_elevation,
             double          desiredResolution,
             double*         out_actualResolution );
+
+        osg::observer_ptr<const Map> _map;
+        Revision _mapRevision;
     };
 
 } // namespace osgEarth

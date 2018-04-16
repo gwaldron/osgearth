@@ -95,6 +95,11 @@ FeatureProfile::setProfile( const osgEarth::Profile* profile )
 std::string
 AttributeValue::getString() const
 {
+    if (!second.set)
+    {
+        return "";
+    }
+
     switch( first ) {
         case ATTRTYPE_STRING: return second.stringValue;
         case ATTRTYPE_DOUBLE: return osgEarth::toString(second.doubleValue);
@@ -108,6 +113,11 @@ AttributeValue::getString() const
 double
 AttributeValue::getDouble( double defaultValue ) const 
 {
+    if (!second.set)
+    {
+        return defaultValue;
+    }
+
     switch( first ) {
         case ATTRTYPE_STRING: return osgEarth::as<double>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return second.doubleValue;
@@ -121,6 +131,11 @@ AttributeValue::getDouble( double defaultValue ) const
 int
 AttributeValue::getInt( int defaultValue ) const 
 {
+    if (!second.set)
+    {
+        return defaultValue;
+    }
+
     switch( first ) {
         case ATTRTYPE_STRING: return osgEarth::as<int>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return (int)second.doubleValue;
@@ -134,6 +149,11 @@ AttributeValue::getInt( int defaultValue ) const
 bool
 AttributeValue::getBool( bool defaultValue ) const 
 {
+    if (!second.set)
+    {
+        return defaultValue;
+    }
+
     switch( first ) {
         case ATTRTYPE_STRING: return osgEarth::as<bool>(second.stringValue, defaultValue);
         case ATTRTYPE_DOUBLE: return second.doubleValue != 0.0;

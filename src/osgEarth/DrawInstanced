@@ -24,7 +24,10 @@
 #include <osgEarth/Containers>
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
-#include <osg/Geode>
+
+namespace osg {
+    class TextureBuffer;
+}
 
 /**
  * Some utilities to support *DrawInstanced rendering.
@@ -62,16 +65,24 @@ namespace osgEarth
             ConvertToDrawInstanced(
                 unsigned                numInstances,
                 const osg::BoundingBox& bbox,
-                bool                    optimize );
+                bool                    optimize,
+                osg::TextureBuffer*     tbo,
+                int                     firstTboUnit);
 
-            void apply(osg::Geode&);
+            void apply(osg::Drawable&);
             void apply(osg::LOD&);
+            void apply(osg::Node&);
+
+        public:
+            int getTextureImageUnit() const { return _tboUnit; }
 
         protected:
             unsigned _numInstances;
             osg::BoundingBox _bbox;
             bool _optimize;
             std::list<osg::PrimitiveSet*> _primitiveSets;
+            osg::TextureBuffer* _tbo;
+            int _tboUnit;
         };
 
 

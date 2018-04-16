@@ -67,17 +67,12 @@ namespace
 
         void onLayerAdded(Layer* layer, unsigned index) {
             _node->onLayerAdded(layer, index);
-            // for backwards compat until we refactor ModelLayer to use Layer::getNode
-            MapCallback::onLayerAdded(layer, index);
         }
         void onLayerRemoved(Layer* layer, unsigned index) {
             _node->onLayerRemoved(layer, index);
-            // for backwards compat until we refactor ModelLayer to use Layer::getNode
-            MapCallback::onLayerRemoved(layer, index);
         }
         void onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex) {
             _node->onLayerMoved(layer, oldIndex, newIndex);
-            MapCallback::onLayerMoved(layer, oldIndex, newIndex);
         }
         void onLayerEnabled(Layer* layer) {
             _node->onLayerAdded(layer, _node->getMap()->getIndexOfLayer(layer));
@@ -95,7 +90,7 @@ namespace
     {
         MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        virtual void onPostMergeNode(osg::Node* node)
+        virtual void onPostMergeNode(osg::Node* node, osg::Object* sender)
         {
             if ( _mapNode.valid() && node )
             {
@@ -446,8 +441,6 @@ MapNode::getConfig() const
     Config mapConf("map");
     mapConf.set("version", "2");
 
-    MapFrame mapf( _map.get() );
-
     // the map and node options:
     Config optionsConf = _map->getInitialMapOptions().getConfig();
     optionsConf.merge( getMapNodeOptions().getConfig() );
@@ -455,7 +448,7 @@ MapNode::getConfig() const
 
     // the layers
     LayerVector layers;
-    mapf.getLayers(layers);
+    _map->getLayers(layers);
 
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
@@ -672,61 +665,37 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     // Communicate terrain resources to the layer:
     layer->setTerrainResources(getTerrainEngine()->getResources());
 
-    // Compatibility, until we refactor things.
-    ModelLayer* modelLayer = dynamic_cast<ModelLayer*>(layer);
-    if (modelLayer)
-    {
-        // TODO:  Why go through all the MapNodeObserver stuff when we can just pass in the MapNode here?
-        modelLayer->getOrCreateSceneGraph(_map.get(), 0L);
-
-        // Install the MapNodeObserverInstaller so that MapNodeObservers will be notified of the MapNode.
-        modelLayer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
-    }
+    // Each layer gets a callback to change the MapNode if necessary
+    layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getOrCreateNode();
     if (node)
     {
-        // Call setMapNode on any MapNodeObservers on this initial creation.
-        MapNodeReplacer replacer( this );
-        //node->accept( replacer );
-
-        rebuildLayerNodes(_map.get(), _layerNodes);
-
         OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
 
-        // TODO: move this logic into ModelLayer.
-        if (modelLayer)
-        {
-            ModelSource* ms = modelLayer->getModelSource();
-            if (ms)
-            {
-                // enfore a rendering bin if necessary:
-                if (ms->getOptions().renderOrder().isSet())
-                {
-                    osg::StateSet* mss = node->getOrCreateStateSet();
-                    mss->setRenderBinDetails(
-                        ms->getOptions().renderOrder().value(),
-                        mss->getBinName().empty() ? "DepthSortedBin" : mss->getBinName());
-                }
-                if (ms->getOptions().renderBin().isSet())
-                {
-                    osg::StateSet* mss = node->getOrCreateStateSet();
-                    mss->setRenderBinDetails(
-                        mss->getBinNumber(),
-                        ms->getOptions().renderBin().get());
-                }
-            }
-        }
+        // notify before adding it to the graph:
+        layer->getSceneGraphCallbacks()->firePreMergeNode(node);
+
+        // update the layer-to-node table (adds the node to the graph)
+        rebuildLayerNodes(_map.get(), _layerNodes);
+
+        // after putting it in the graph:
+        layer->getSceneGraphCallbacks()->firePostMergeNode(node);
     }
 }
 
 void
 MapNode::onLayerRemoved(Layer* layer, unsigned index)
 {
-    if (layer && layer->getOrCreateNode())
+    if (layer)
     {
-        rebuildLayerNodes(_map.get(), _layerNodes);
+        osg::Node* node = layer->getOrCreateNode();
+        if (node)
+        {
+            layer->getSceneGraphCallbacks()->fireRemoveNode(node);
+            rebuildLayerNodes(_map.get(), _layerNodes);
+        }
     }
 }
 
@@ -739,24 +708,16 @@ MapNode::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
     }
 }
 
-namespace
+void
+MapNode::openMapLayers()
 {
-    struct MaskNodeFinder : public osg::NodeVisitor {
-        MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-        void apply( osg::Group& group ) {
-            if ( dynamic_cast<MaskNode*>( &group ) ) {
-                _groups.push_back( &group );
-            }
-            traverse(group);
-        }
-        std::list< osg::Group* > _groups;
-    };
-}
+    LayerVector layers;
+    _map->getLayers(layers);
 
-namespace
-{
-    template<typename T> void tryOpenLayer(T* layer)
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
+        Layer* layer = i->get();
+
         if (!layer->getStatus().isError())
         {
             const Status& status = layer->open();
@@ -765,19 +726,6 @@ namespace
                 OE_WARN << LC << "Failed to open layer \"" << layer->getName() << "\" ... " << status.message() << std::endl;
             }
         }
-    }
-}
-
-void
-MapNode::openMapLayers()
-{
-    MapFrame frame(_map.get());
-
-    for (LayerVector::const_iterator i = frame.layers().begin();
-        i != frame.layers().end();
-        ++i)
-    {
-        tryOpenLayer(i->get());
     }
 }
 

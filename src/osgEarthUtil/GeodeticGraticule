@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/GeodeticLabelingEngine>
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/MapNode>
@@ -187,14 +188,13 @@ namespace osgEarth { namespace Util
         
         CameraData& getCameraData(osg::Camera*) const;
 
-        double getResolution() const;
-        void setResolution(double resolution);
-
         void initLabelPool(CameraData&);
 
         std::string getText(const GeoPoint& location, bool lat);
 
         osg::ref_ptr<MapNode> _mapNode;
+
+        GeodeticLabelingEngine* _labelingEngine;
 
         void installEffect();
         void removeEffect();

@@ -67,7 +67,7 @@ namespace osgEarth { namespace Util
         void setIsPath( bool path );
         bool getIsPath() const;
 
-        /** Sets the style of the measurment line (to something other than the default) */
+        /** Sets the style of the measurement line (to something other than the default) */
         void setLineStyle( const Style& style );
         const Style& getLineStyle() const { return _feature->style().value(); }
 

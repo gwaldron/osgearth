@@ -219,7 +219,6 @@ namespace osgEarth
 
         void apply(osg::Node& node);
         void apply(osg::Transform& xform);
-        void apply(osg::Geode& geode);
         void apply(osg::Drawable& drawable);
         void apply(osg::LOD& lod);
     };
@@ -293,21 +292,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT InstallViewportSizeUniform : public osg::NodeCallback
     {
     public:
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-            const osg::Camera* camera = cv->getCurrentCamera();
-            osg::ref_ptr<osg::StateSet> ss;
-            if (camera && camera->getViewport()) {
-                ss = new osg::StateSet();
-                ss->addUniform(new osg::Uniform("oe_ViewportSize", osg::Vec2f(
-                    camera->getViewport()->width(),
-                    camera->getViewport()->height())));
-                cv->pushStateSet(ss.get());
-            }
-            traverse(node, nv);
-            if (ss.valid())
-                cv->popStateSet();
-        }
+        META_Object(osgEarth, InstallViewportSizeUniform);
+        
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+        InstallViewportSizeUniform() { }
+
+        InstallViewportSizeUniform(const InstallViewportSizeUniform& rhs, const osg::CopyOp& copy) :
+            osg::NodeCallback(rhs, copy) { }
     };
 }
 

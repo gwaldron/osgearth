@@ -52,10 +52,10 @@ Zone::configure(const Map* map, const osgDB::Options* readOptions)
         
         GeoExtent extent(
             SpatialReference::get("wgs84"),
-            osg::clampBetween(box.xMin(), -180.0f, 180.0f),
-            osg::clampBetween(box.yMin(),  -90.0f,  90.0f),
-            osg::clampBetween(box.xMax(), -180.0f, 180.0f),
-            osg::clampBetween(box.yMax(),  -90.0f,  90.0f));
+            osg::clampBetween(static_cast<float>(box.xMin()), -180.0f, 180.0f),
+            osg::clampBetween(static_cast<float>(box.yMin()),  -90.0f,  90.0f),
+            osg::clampBetween(static_cast<float>(box.xMax()), -180.0f, 180.0f),
+            osg::clampBetween(static_cast<float>(box.yMax()),  -90.0f,  90.0f));
 
         extent.createPolytope( b.tope );
         b.zmin2 = box.zMin() > -FLT_MAX ? box.zMin()*box.zMin() : box.zMin();

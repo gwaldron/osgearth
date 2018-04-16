@@ -179,10 +179,9 @@ static const size_t NUM_CONTEXTS = 64;
         osg::Geometry * background = osg::createTexturedQuadGeometry( osg::Vec3( x,y,0 ),osg::Vec3( w,0,0 ), osg::Vec3( 0,h,0 ) );
         geode->addDrawable( background );
 
-        osg::Vec4Array* colors = new osg::Vec4Array;
+        osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
         colors->push_back( osg::Vec4( 1,1,0,0.3 ) );
         background->setColorArray( colors );
-        background->setColorBinding( osg::Geometry::BIND_OVERALL );
         background->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
         background->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
     */

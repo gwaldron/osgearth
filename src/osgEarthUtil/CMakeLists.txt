@@ -12,8 +12,10 @@ SET(HEADERS_ROOT
     ActivityMonitorTool
     AnnotationEvents
     AutoClipPlaneHandler
+    AutoScaleCallback
     ArcGIS
     AtlasBuilder
+    ClipSpace
     Common
     Controls
     ContourMap
@@ -29,6 +31,8 @@ SET(HEADERS_ROOT
     FractalElevationLayer
     GARSGraticule
     GeodeticGraticule
+    GeodeticLabelingEngine
+    GraticuleLabelingEngine
     HorizonClipPlane
     HTM
     LatLongFormatter
@@ -106,6 +110,7 @@ SET(SOURCES_ROOT
     AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
+    ClipSpace.cpp
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp
@@ -117,6 +122,8 @@ SET(SOURCES_ROOT
     FractalElevationLayer.cpp
     GARSGraticule.cpp
     GeodeticGraticule.cpp
+    GeodeticLabelingEngine.cpp
+    GraticuleLabelingEngine.cpp
     HorizonClipPlane.cpp
     HTM.cpp
     LatLongFormatter.cpp

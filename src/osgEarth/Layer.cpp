@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2016 Pelican Mapping
@@ -19,6 +20,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgUtil/CullVisitor>
 
@@ -40,6 +42,13 @@ ConfigOptions(co)
     fromConfig(_conf);
 }
 
+void
+LayerOptions::setDefaults()
+{    
+    _enabled.init(true);
+    _terrainPatch.init(false);
+}
+
 Config LayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
@@ -50,12 +59,14 @@ Config LayerOptions::getConfig() const
         conf.setObj("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
     conf.set("shader", _shader);
+
+    conf.set("terrain", _terrainPatch);
     return conf;
 }
 
 void LayerOptions::fromConfig(const Config& conf)
 {
-    _enabled.init(true);
+    setDefaults();
 
     conf.getIfSet("name", _name);
     conf.getIfSet("enabled", _enabled);
@@ -73,6 +84,9 @@ void LayerOptions::fromConfig(const Config& conf)
     }
     conf.getIfSet("shader_define", _shaderDefine);
     conf.getIfSet("shader", _shader);
+
+    conf.getIfSet("terrain", _terrainPatch);
+    conf.getIfSet("patch", _terrainPatch);
 }
 
 void LayerOptions::mergeConfig(const Config& conf)
@@ -106,12 +120,6 @@ Layer::~Layer()
 {
     OE_DEBUG << LC << "~Layer\n";
 }
-
-//void
-//Layer::setReadOptions(const osgDB::Options* options)
-//{
-//    _readOptions = Registry::cloneOrCreateOptions(options);
-//}
 
 void
 Layer::setReadOptions(const osgDB::Options* readOptions)
@@ -195,6 +203,9 @@ Layer::setEnabled(bool value)
 void
 Layer::init()
 {
+    // For detecting scene graph changes at runtime
+    _sceneGraphCallbacks = new SceneGraphCallbacks(this);
+
     // Copy the layer options name into the Object name.
     // This happens here AND in open.
     if (options().name().isSet())
@@ -303,6 +314,12 @@ Layer::getConfigOptions(const osgDB::Options* options)
     static ConfigOptions s_default;
     const void* data = options->getPluginData(LAYER_OPTIONS_TAG);
     return data ? *static_cast<const ConfigOptions*>(data) : s_default;
+}
+
+SceneGraphCallbacks*
+Layer::getSceneGraphCallbacks() const
+{
+    return _sceneGraphCallbacks.get();
 }
 
 void

@@ -65,7 +65,8 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 //---------------------------------------------------------------------------
 
 MGRSGraticuleOptions::MGRSGraticuleOptions(const ConfigOptions& conf) :
-VisibleLayerOptions(conf)
+VisibleLayerOptions(conf),
+_useDefaultStyles(true)
 {
     _sqidURI.init(URI("../data/mgrs_sqid.bin", conf.referrer()));
     _styleSheet = new StyleSheet();
@@ -1224,7 +1225,7 @@ MGRSGraticule::setUpDefaultStyles()
             line->stroke()->width() = 4.0;
             line->tessellation() = 20;
             TextSymbol* text = style.getOrCreate<TextSymbol>();
-            text->fill()->color() = Color::Gray;
+            text->fill()->color() = Color::White;
             text->halo()->color() = Color::Black;
             text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
             styles->addStyle(style);
@@ -1246,7 +1247,7 @@ MGRSGraticule::setUpDefaultStyles()
             line->stroke()->color().set(1,1,0,alpha);
             line->stroke()->width() = 3;
             TextSymbol* text = style.getOrCreate<TextSymbol>();
-            text->fill()->color() = Color::Gray;
+            text->fill()->color() = Color::White;
             text->halo()->color() = Color::Black;
             text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
             styles->addStyle(style);

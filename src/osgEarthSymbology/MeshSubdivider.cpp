@@ -62,7 +62,7 @@ namespace
     void
     geodeticMidpoint( const osg::Vec2d& g0, const osg::Vec2d& g1, osg::Vec2d& out_mid )
     {
-        if ( fabs(g0.x()-g1.x()) < osg::PI )
+        if ( fabs(g0.x()-g1.x()) <= osg::PI )
             out_mid.set( 0.5*(g0.x()+g1.x()), 0.5*(g0.y()+g1.y()) );
         else if ( g1.x() > g0.x() )
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
@@ -554,7 +554,7 @@ namespace
         // collect all the line segments in the geometry.
         LineIndexFunctor<LineData> data;
         data.setSourceVerts( static_cast<osg::Vec3Array*>(geom.getVertexArray()) );
-        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getColorArray() && geom.getColorArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceColors( static_cast<osg::Vec4Array*>(geom.getColorArray()) );
         //LineFunctor<LineData> data;
         geom.accept( data );
@@ -683,9 +683,9 @@ namespace
         osg::TriangleIndexFunctor<TriangleData> data;;
         data.setSourceVerts(dynamic_cast<osg::Vec3Array*>(geom.getVertexArray()));
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
-        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if ( geom.getColorArray() && geom.getColorArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceColors(dynamic_cast<osg::Vec4Array*>(geom.getColorArray()));
-        if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX )
+        if (geom.getNormalArray() && geom.getNormalArray()->getBinding() == osg::Array::BIND_PER_VERTEX)
             data.setSourceNormals(dynamic_cast<osg::Vec3Array*>(geom.getNormalArray()));
 
         //TODO normals

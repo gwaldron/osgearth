@@ -51,3 +51,57 @@ TEST_CASE("Feature::splitAcrossDateLine works") {
         REQUIRE_FALSE(itr->get()->getExtent().crossesAntimeridian());
     }    
 }
+
+TEST_CASE("Feature handles attributes correctly.") {
+    osg::ref_ptr< Feature > feature = new Feature(new Geometry(), osgEarth::SpatialReference::create("wgs84"));
+
+    SECTION("Missing attributes get the correct default values.") {
+        REQUIRE(feature->getDouble("foo") == 0.0);
+        REQUIRE(feature->getBool("foo") == false);
+        REQUIRE(feature->getString("foo") == "");
+        REQUIRE(feature->getInt("foo") == 0);
+    }
+
+    SECTION("Setting attributes works") {
+        feature->set("string", std::string("test"));
+        REQUIRE(feature->getString("string") == "test");
+
+        feature->set("double", 6.0);
+        REQUIRE(feature->getDouble("double") == 6.0);
+
+        feature->set("int", 8);
+        REQUIRE(feature->getInt("int") == 8);
+
+        feature->set("bool", true);
+        REQUIRE(feature->getBool("bool") == true);        
+    }
+
+    SECTION("Null attributes get the correct default values") {
+        // First we set the attribute to a value before we set it to null.
+
+        feature->set("string", std::string("test"));
+        REQUIRE(feature->isSet("string") == true);
+        
+        feature->setNull("string");
+        REQUIRE(feature->isSet("string") == false);
+        REQUIRE(feature->getString("string") == "");
+
+        feature->set("double", 6.0);
+        REQUIRE(feature->isSet("double") == true);
+        feature->setNull("double");
+        REQUIRE(feature->isSet("double") == false);
+        REQUIRE(feature->getDouble("double") == 0.0);
+
+        feature->set("int", 8);
+        REQUIRE(feature->isSet("int") == true);
+        feature->setNull("int");
+        REQUIRE(feature->isSet("int") == false);
+        REQUIRE(feature->getInt("int") == 0);
+
+        feature->set("bool", true);
+        REQUIRE(feature->isSet("bool") == true);
+        feature->setNull("bool");
+        REQUIRE(feature->isSet("bool") == false);
+        REQUIRE(feature->getBool("bool") == false);
+    }
+}

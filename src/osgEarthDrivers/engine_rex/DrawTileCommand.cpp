@@ -148,8 +148,7 @@ DrawTileCommand::draw(osg::RenderInfo& ri, DrawState& dsMaster, osg::Referenced*
     // If there's a geometry, draw it now:
     if (_geom.valid())
     {
-        GLenum ptype = _drawPatch ? GL_PATCHES : GL_TRIANGLES;
-
-        _geom->render(ptype, ri);
+        _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode(); //GL_TRIANGLES;
+        _geom->draw(ri);
     }    
 }

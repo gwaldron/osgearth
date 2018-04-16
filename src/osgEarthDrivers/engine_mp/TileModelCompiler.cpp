@@ -357,25 +357,22 @@ namespace
         d.surface->setVertexArray( d.surfaceVerts.get() );
 
         // allocate and assign normals
-        d.normals = new osg::Vec3Array();
+        d.normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
         d.normals->reserve( d.numVerticesInSurface );
         d.surface->setNormalArray( d.normals.get() );
-        d.surface->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
         // vertex attribution
         // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
-        d.surfaceAttribs = new osg::Vec4Array();
+        d.surfaceAttribs = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+        d.surfaceAttribs->setNormalize(false);
         d.surfaceAttribs->reserve( d.numVerticesInSurface );
         d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceAttribs.get() );
-        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
-        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
 
         // for each vertex, index 0 holds the interpolated elevation from the lower lod (for morphing)
-        d.surfaceAttribs2 = new osg::Vec4Array();
+        d.surfaceAttribs2 = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+        d.surfaceAttribs2->setNormalize(false);
         d.surfaceAttribs2->reserve( d.numVerticesInSurface );
         d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, d.surfaceAttribs2.get() );
-        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
-        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
         
         // temporary data structures for triangulation support
         d.elevations = new osg::FloatArray();
@@ -1063,25 +1060,22 @@ namespace
             stitch_verts->reserve(trig->getInputPointArray()->size());
             stitch_geom->setVertexArray(stitch_verts.get());
 
-            osg::ref_ptr<osg::Vec3Array> stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
+            osg::ref_ptr<osg::Vec3Array> stitch_norms = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, trig->getInputPointArray()->size());
             stitch_geom->setNormalArray( stitch_norms.get() );
-            stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
 
             // vertex attribution
             // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
-            osg::ref_ptr<osg::Vec4Array> surfaceAttribs = new osg::Vec4Array();
+            osg::ref_ptr<osg::Vec4Array> surfaceAttribs = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+            surfaceAttribs->setNormalize(false);
             surfaceAttribs->reserve( trig->getInputPointArray()->size() );
             stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, surfaceAttribs.get() );
-            stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
-            stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
 
             // for each vertex, index 0 holds the interpolated elevation from the lower lod (for morphing)
-            osg::ref_ptr<osg::Vec4Array> surfaceAttribs2 = new osg::Vec4Array();
+            osg::ref_ptr<osg::Vec4Array> surfaceAttribs2 = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+            surfaceAttribs2->setNormalize(false);
             surfaceAttribs2->reserve( trig->getInputPointArray()->size() );
             stitch_geom->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, surfaceAttribs2.get() );
-            stitch_geom->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
-            stitch_geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
 
 
             //Initialize tex coords
@@ -2110,10 +2104,9 @@ namespace
             de->push_back(2); de->push_back(6);
             geom->addPrimitiveSet(de);
 
-            osg::Vec4Array* c= new osg::Vec4Array();
+            osg::Vec4Array* c= new osg::Vec4Array(osg::Array::BIND_OVERALL);
             c->push_back(osg::Vec4(0,1,1,1));
             geom->setColorArray(c);
-            geom->setColorBinding(geom->BIND_OVERALL);
 
             geode->addDrawable(geom);
 

@@ -148,7 +148,7 @@ namespace osgEarth { namespace Util
         osg::StateAttribute::OverrideValue getLighting() const { return _lightingValue; }
 
         /**
-         * Gets the date/time for which the enviroment is configured.
+         * Gets the date/time for which the environment is configured.
          * Pass in an optional View to get the date/time specific to
          * that View.
          */

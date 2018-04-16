@@ -9,7 +9,7 @@ uniform vec2 oe_GPULines_limits;
 flat out int oe_GPULines_draw;
 #endif
 
-void oe_GPULinesProj_VS_MODEL(inout vec4 usused)
+void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
 {
 #ifdef OE_GPULINES_USE_LIMITS
     oe_GPULines_draw = 1;

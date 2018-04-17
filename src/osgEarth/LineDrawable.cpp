@@ -108,6 +108,8 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
         ADD_USHORT_SERIALIZER( StipplePattern, 0xFFFF );
         ADD_VEC4_SERIALIZER( Color, osg::Vec4(1,1,1,1) );
         ADD_FLOAT_SERIALIZER( LineWidth, 1.0f );
+        ADD_UINT_SERIALIZER( First, 0u );
+        ADD_UINT_SERIALIZER( Count, 0u );
     }
 } } }
 

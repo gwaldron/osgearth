@@ -245,11 +245,7 @@ PlaceNode::init()
         _imageGeom = AnnotationUtils::createImageGeometry(_image.get(), offset, 0, heading, scale);
         if (_imageGeom)
         {
-            if (_dynamic)
-            {
-                _imageGeom->getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-            }
-
+            _imageGeom->getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
             _geode->addDrawable(_imageGeom);
             imageBox = osgEarth::Utils::getBoundingBox(_imageGeom);
         }    

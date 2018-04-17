@@ -1,13 +1,7 @@
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
 SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
 
-SET(TARGET_H
-    ClusterNode
-    kdbush.hpp
-    )
-
 SET(TARGET_SRC
-    ClusterNode.cpp
     osgearth_cluster.cpp)
 
 #### end var setup  ###

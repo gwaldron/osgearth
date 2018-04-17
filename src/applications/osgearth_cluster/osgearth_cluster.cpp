@@ -27,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <iostream>
 
 #include <osgEarthAnnotation/PlaceNode>
@@ -74,10 +75,12 @@ void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
     }    
 }
 
-void makePlanes(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
+void makeModels(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
 {
     osg::ref_ptr< osg::Node > cessna = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
     osg::ref_ptr< osg::Node > cow = osgDB::readRefNodeFile("cow.osg.100,100,100.scale");
+    osgEarth::Registry::shaderGenerator().run(cessna);
+    osgEarth::Registry::shaderGenerator().run(cow);
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
@@ -312,7 +315,7 @@ main(int argc, char** argv)
         //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
         GeoExtent extent(SpatialReference::create("wgs84"), -160.697021484375, 18.208480196039883, -153.951416015625, 22.978623970384913);
         
-        makePlanes(mapNode, 10000, extent, nodes);
+        makeModels(mapNode, 10000, extent, nodes);
 
         ClusterNode* clusterNode = new ClusterNode(mapNode, osgDB::readImageFile("../data/placemark32.png"));
         clusterNode->setStyleCallback(new StyleByNameCallback());

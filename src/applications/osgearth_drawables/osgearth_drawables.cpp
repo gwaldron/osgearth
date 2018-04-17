@@ -57,6 +57,23 @@ void addLotsOfVerts(LineDrawable* line)
     line->dirty();
 }
 
+struct TestFirstCount : public osg::NodeCallback
+{
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
+        {
+            LineDrawable* line = (LineDrawable*)node;
+
+            unsigned total = line->getNumVerts();
+            unsigned first = line->getFirst();
+        
+            line->setFirst( (first+1) % total );
+            line->setCount( 3 );
+        }
+    }
+};
+
 osg::Node* createLineDrawables()
 {
     LineGroup* group = new LineGroup();
@@ -87,6 +104,13 @@ osg::Node* createLineDrawables()
     segments->setColor(osg::Vec4(0,1,1,1));
     addVerts(segments, 70, 10);
     group->addChild(segments);
+
+    LineDrawable* firstCount = new LineDrawable(GL_LINE_STRIP);
+    firstCount->setLineWidth(5);
+    firstCount->setColor(osg::Vec4(1,0,1,1));
+    addVerts(firstCount, 90, 10);
+    firstCount->addUpdateCallback(new TestFirstCount());
+    group->addChild(firstCount);
 
     return group;
 }

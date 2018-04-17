@@ -108,6 +108,8 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
         ADD_USHORT_SERIALIZER( StipplePattern, 0xFFFF );
         ADD_VEC4_SERIALIZER( Color, osg::Vec4(1,1,1,1) );
         ADD_FLOAT_SERIALIZER( LineWidth, 1.0f );
+        ADD_UINT_SERIALIZER( First, 0u );
+        ADD_UINT_SERIALIZER( Count, 0u );
     }
 } } }
 
@@ -330,7 +332,7 @@ LineDrawable::setFirst(unsigned value)
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_GPULINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*4u, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
+        u->set(osg::Vec2(_first*4, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
     }
 }
 
@@ -350,7 +352,7 @@ LineDrawable::setCount(unsigned value)
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_GPULINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*4u, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
+        u->set(osg::Vec2(_first*4, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
     }
 }
 
@@ -660,7 +662,7 @@ LineDrawable::getNumVerts() const
     if (_gpu)
     {
         if (_mode == GL_LINE_STRIP)
-            return _current->size() == 2 ? 1 : (_current->size()-2)/4;
+            return _current->size() == 2 ? 1 : (_current->size()+2)/4;
         else
             return _current->size()/2;
     }

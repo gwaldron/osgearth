@@ -1,7 +1,7 @@
+#version $GLSL_VERSION_STR
+
 #pragma vp_entryPoint text_frag
 #pragma vp_location   fragment_coloring
-
-$OSG_GLSL_VERSION
 
 #pragma import_defines( BACKDROP_COLOR, SHADOW, OUTLINE, SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
 

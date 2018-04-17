@@ -324,7 +324,7 @@ UTMGraticule::rebuild()
     }
     top->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
     
-    // intialize the UTM sector tables for this profile.
+    // initialize the UTM sector tables for this profile.
     _utmData.rebuild(_profile.get());
 
     // now build the lateral tiles for the GZD level.

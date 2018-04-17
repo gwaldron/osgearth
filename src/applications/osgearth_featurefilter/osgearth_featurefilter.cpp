@@ -82,7 +82,7 @@ OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(change_attribute, ChangeAttributeFilter);
 int
 main(int argc, char** argv)
 {    
-    //Run this example with the the feature_custom_filters.earth file in the tests directory for a simple example
+    //Run this example with the feature_custom_filters.earth file in the tests directory for a simple example
     osg::ArgumentParser arguments(&argc,argv);
 
     // create a viewer:

@@ -436,7 +436,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         filter.maxGranularity() = *_options.maxGranularity();
         filter.geoInterp()      = *_options.geoInterp();
-        filter.useGPULines()    = *_options.useGPUScreenSpaceLines();
+        //filter.useGPULines()    = *_options.useGPUScreenSpaceLines();
 
         if (_options.maxPolygonTilingAngle().isSet())
             filter.maxPolygonTilingAngle() = *_options.maxPolygonTilingAngle();

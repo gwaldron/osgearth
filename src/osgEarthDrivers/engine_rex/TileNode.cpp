@@ -89,20 +89,21 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
 
     _key = key;
 
-    // Mask generator creates geometry from masking boundaries when they exist.
-    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(
-        key, 
-        context->getOptions().tileSize().get(),
-        context->getMap());
+    osg::ref_ptr<const Map> map = _context->getMap();
+    if (!map.valid())
+        return;
 
-    MapInfo mapInfo(context->getMap());
+    unsigned tileSize = context->getOptions().tileSize().get();
+
+    // Mask generator creates geometry from masking boundaries when they exist.
+    osg::ref_ptr<MaskGenerator> masks = new MaskGenerator(key, tileSize, map.get());
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
     context->getGeometryPool()->getPooledGeometry(
         key,
-        mapInfo,         
-        context->getOptions().tileSize().get(),
+        MapInfo(map.get()),
+        tileSize,
         masks.get(), 
         geom);
 
@@ -128,7 +129,7 @@ TileNode::create(const TileKey& key, TileNode* parent, EngineContext* context)
     // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
         key,
-        mapInfo,
+        MapInfo(map.get()),
         context->getRenderBindings(),
         surfaceDrawable );
     
@@ -382,7 +383,9 @@ TileNode::cull_stealth(TerrainCuller* culler)
     {
         for(int i=0; i<4; ++i)
         {
-            getSubTile(i)->accept( *culler );
+            TileNode* child = getSubTile(i);
+            if (child)
+                child->accept( *culler );
         }
     }
 
@@ -455,7 +458,9 @@ TileNode::cull(TerrainCuller* culler)
         {
             for(int i=0; i<4; ++i)
             {
-                getSubTile(i)->accept(*culler);
+                TileNode* child = getSubTile(i);
+                if (child)
+                    child->accept(*culler);
             }
         }
 
@@ -719,10 +724,12 @@ TileNode::merge(const TerrainTileModel* model, const RenderBindings& bindings)
 
     if (_childrenReady)
     {
-        getSubTile(0)->refreshInheritedData(this, bindings);
-        getSubTile(1)->refreshInheritedData(this, bindings);
-        getSubTile(2)->refreshInheritedData(this, bindings);
-        getSubTile(3)->refreshInheritedData(this, bindings);
+        for (int i = 0; i < 4; ++i)
+        {
+            TileNode* child = getSubTile(i);
+            if (child)
+                child->refreshInheritedData(this, bindings);
+        }
     }
 
     if (newElevationData)
@@ -901,10 +908,12 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
         if (_childrenReady)
         {
-            getSubTile(0)->refreshInheritedData(this, bindings);
-            getSubTile(1)->refreshInheritedData(this, bindings);
-            getSubTile(2)->refreshInheritedData(this, bindings);
-            getSubTile(3)->refreshInheritedData(this, bindings);
+            for (int i = 0; i < 4; ++i)
+            {
+                TileNode* child = getSubTile(i);
+                if (child)
+                    child->refreshInheritedData(this, bindings);
+            }
         }
     }
     else

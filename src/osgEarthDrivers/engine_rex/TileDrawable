@@ -26,7 +26,7 @@
 #include <osg/Image>
 #include <osg/Matrixf>
 #include <osgEarth/TileKey>
-#include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 
 using namespace osgEarth;
 
@@ -34,26 +34,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     struct ModifyBoundingBoxCallback : public osg::Referenced
     {
-        ModifyBoundingBoxCallback(const MapFrame& frame) : _frame(frame) { }
+        ModifyBoundingBoxCallback(const Map* map) : _map(map) { }
 
         mutable Threading::Mutex _mutex;
-        mutable MapFrame _frame;
+        osg::observer_ptr< const Map > _map;
 
         void operator()(const TileKey& key, osg::BoundingBox& bbox) const
         {
-            if (_frame.needsSync())
+            osg::ref_ptr<const Map> map;
+            if (_map.lock(map))
             {
-                Threading::ScopedMutexLock lock(_mutex);
-                _frame.sync();
-            }
+                LayerVector layers;
+                map->getLayers(layers);
 
-            for (LayerVector::const_iterator layer = _frame.layers().begin();
-                layer != _frame.layers().end();
-                ++layer)
-            {
-                if (layer->valid())
+                for (LayerVector::const_iterator layer = layers.begin(); layer != layers.end(); ++layer)
                 {
-                    layer->get()->modifyTileBoundingBox(key, bbox);
+                    if (layer->valid())
+                    {
+                        layer->get()->modifyTileBoundingBox(key, bbox);
+                    }
                 }
             }
         }
@@ -145,3 +144,4 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 
 #endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_RexGEOMETRY
+

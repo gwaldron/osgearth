@@ -6,9 +6,6 @@ uniform mat4 osg_ViewMatrixInverse;
 out float visibility; 
 out vec4 osg_FrontColor; 
 
-layout(location=0) in vec4 vertex;
-layout(location=3) in vec4 color;
-
 float remap( float val, float vmin, float vmax, float r0, float r1 ) 
 { 
     float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); 
@@ -17,9 +14,9 @@ float remap( float val, float vmin, float vmax, float r0, float r1 )
 
 void main() 
 { 
-    osg_FrontColor = color; //vec4(1,1,1,1); //gl_Color; 
-    gl_PointSize = color.r * 14.0; //gl_Color.r * 14.0; 
-    gl_Position = gl_ModelViewProjectionMatrix * vertex; 
+    osg_FrontColor = gl_Color;
+    gl_PointSize = gl_Color.r * 14.0;
+    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
     vec3 eye = osg_ViewMatrixInverse[3].xyz; 
     float hae = length(eye) - 6378137.0; 
     // highness: visibility increases with altitude

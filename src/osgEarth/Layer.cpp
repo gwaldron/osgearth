@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2016 Pelican Mapping

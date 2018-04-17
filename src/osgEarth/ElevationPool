@@ -21,7 +21,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/MapFrame>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
@@ -95,7 +94,7 @@ namespace osgEarth
 
     protected:
 
-        osg::observer_ptr<const osg::Referenced> _map;
+        osg::observer_ptr<const Map> _map;
 
         ElevationLayerVector _layers;
 
@@ -180,13 +179,13 @@ namespace osgEarth
     protected:
 
         // safely popluate the tile; called when Tile._status = IN_PROGRESS
-        bool fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile);
+        bool fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, Tile* tile);
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& output);
+        bool getTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& output);
         
         // safely fetch a tile from the central repo, loading from map if necessary
-        bool tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& output);
+        bool tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& output);
 
         // safely remove the oldest item on the MRU
         void popMRU();
@@ -250,11 +249,12 @@ namespace osgEarth
         ElevationEnvelope();
         virtual ~ElevationEnvelope();
 
+        ElevationLayerVector _layers;
         ElevationPool::QuerySet _tiles;
         osg::ref_ptr<const SpatialReference> _inputSRS;
         unsigned _lod;
-        MapFrame _frame;
-        ElevationPool* _pool;
+        osg::observer_ptr<ElevationPool> _pool;
+        osg::ref_ptr<const Profile> _mapProfile;
         friend class ElevationPool;
 
     private:

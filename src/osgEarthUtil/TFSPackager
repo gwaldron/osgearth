@@ -73,7 +73,7 @@ namespace osgEarth { namespace Util {
         void setMethod( CropFilter::Method method) { _method = method;}
 
         /**
-         * The SRS to use for the output dataset.  If not set the SRS of the FeatureSource wil be used.
+         * The SRS to use for the output dataset.  If not set the SRS of the FeatureSource will be used.
          * Can be any string that will result in a valid osgEarth::SpatialReference (epsg codes, wkt, proj4).
          */
         const std::string& getDestSRS() const { return _destSRSString;}

@@ -213,7 +213,6 @@ namespace osgEarth { namespace Features
             const osg::Matrixd&            world2local,
             bool                           toECEF );
 
-        void applyLineSymbology(osg::StateSet*, const class LineSymbol*);
         void applyPointSymbology(osg::StateSet*, const class PointSymbol*);
 
         osg::Matrixd _world2local, _local2world;   // for coordinate localization

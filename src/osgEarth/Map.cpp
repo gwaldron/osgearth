@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
@@ -25,6 +24,8 @@
 #include <osgEarth/URI>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Utils>
+#include <osgEarth/MapInfo>
+#include <osgEarth/TerrainLayer>
 #include <iterator>
 
 using namespace osgEarth;
@@ -754,27 +755,42 @@ Map::getWorldSRS() const
 }
 
 bool
-Map::sync(MapFrame& frame) const
+Map::isFast(const TileKey& key, const LayerVector& layers) const
 {
-    bool result = false;
+    if (getCache() == NULL)
+        return false;
 
-    if ( frame._mapDataModelRevision != _dataModelRevision || !frame._initialized )
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        // hold the read lock while copying the layer lists.
-        Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+        Layer* layer = i->get();
+        if (!layer)
+            continue;
 
-        if (!frame._initialized)
-            frame._layers.reserve(_layers.size());
+        if (!layer->getEnabled())
+            continue;
 
-        frame._layers.clear();
+        TerrainLayer* terrainlayer = dynamic_cast<TerrainLayer*>(layer);
+        if (terrainlayer)
+        {
+            if (terrainlayer->getCacheSettings()->cachePolicy()->isCacheDisabled())
+              return false;
 
-        std::copy(_layers.begin(), _layers.end(), std::back_inserter(frame._layers));
+            //If no data is available on this tile, we'll be fast
+            if (!terrainlayer->mayHaveData(key))
+                continue;
 
-        // sync the revision numbers.
-        frame._initialized = true;
-        frame._mapDataModelRevision = _dataModelRevision;
+            // No tile source? skip it
+            osg::ref_ptr< TileSource > source = terrainlayer->getTileSource();
+            if (!source.valid())
+                continue;
 
-        result = true;
+            //If the tile is blacklisted, it should also be fast.
+            if (source->getBlacklist()->contains(key))
+                continue;
+
+            if (!terrainlayer->isCached(key))
+                return false;
+        }
     }
-    return result;
+    return true;
 }

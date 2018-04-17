@@ -45,6 +45,7 @@ set(TARGET_GLSL
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl
     Instancing.vert.glsl
+    LineDrawable.glsl
     PhongLighting.vert.glsl
     PhongLighting.frag.glsl)
 
@@ -118,6 +119,7 @@ SET(LIB_PUBLIC_HEADERS
     Layer
     LayerListener
     Lighting
+    LineDrawable
     LineFunctor
     Locators
     LocalTangentPlane
@@ -291,6 +293,7 @@ set(TARGET_SRC
     LandCoverLayer.cpp
     Layer.cpp
     Lighting.cpp
+    LineDrawable.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp

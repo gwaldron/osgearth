@@ -237,7 +237,7 @@ StencilVolumeNode::init()
 
     // First, if we need to render the children to the depth buffer, create a depth
     // buffer only pass. This is necessary if we are masking out terrain, for example. We have
-    // to populate the depth buffer before this algoritm can work.
+    // to populate the depth buffer before this algorithm can work.
     if ( _preRenderChildrenToDepthBuffer )
     {
         _depthPass = new osg::Group();

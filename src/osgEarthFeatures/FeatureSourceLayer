@@ -21,6 +21,7 @@
 #define OSGEARTH_FEATURES_FEATURE_SOURCE_LAYER_H 1
 
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/Layer>
 
 namespace osgEarth { namespace Features
 {
@@ -37,8 +38,12 @@ namespace osgEarth { namespace Features
         const optional<FeatureSourceOptions>& featureSource() const { return _featureSource; }
 
     public:
-        Config getConfig() const {
-            return _featureSource->getConfig();
+        virtual Config getConfig() const {
+            Config conf = LayerOptions::getConfig();
+            conf.key() = "feature_source";
+            if (_featureSource.isSet())
+                conf.merge(_featureSource->getConfig());
+            return conf;
         }
     private:
         optional<FeatureSourceOptions> _featureSource;
@@ -80,12 +85,12 @@ namespace osgEarth { namespace Features
          */
         virtual const Status& open();
 
-        // Serialize this layer.
-        virtual Config getConfig() const;
-
 
     protected:
         osg::ref_ptr<FeatureSource> _featureSource;
+
+        // constructor for subclasses
+        FeatureSourceLayer(FeatureSourceLayerOptions* options);
     };
 
 

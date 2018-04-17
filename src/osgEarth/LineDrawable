@@ -1,0 +1,209 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2016 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_LINEDRAWABLE_H
+#define OSGEARTH_LINEDRAWABLE_H 1
+
+#include <osgEarth/Common>
+#include <osg/Array>
+#include <osg/Geometry>
+#include <osg/Version>
+#include <osg/Geode>
+
+namespace osgEarth
+{
+    /**
+     * Drawable that renders lines using the GPU. It will fall back on rendering
+     * OpenGL lines when shader-based rendering is unavailable.
+     *
+     * Note: Put LineDrawables under a LineGroup to share the shader program.
+     * If you don't use a LineGroup, you must call installShader() on your
+     * LineDrawable.
+     *
+     * Note: If you use this class you must have the oe_ViewportSize
+     * uniform set. MapNode sets it automatically so any LineDrawable under
+     * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
+     * callback on your scene graph.
+     *
+     * Note: Try to use the provided functions whenever possible. If you do
+     * need to access the underlying Geometry arrays, keep in mind that 
+     * the implementation uses double verts; i.e. each vertex appears twice
+     * (to support the shader code).
+     */
+    class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
+    {
+    public:
+        META_Node(osgEarth, LineDrawable);
+
+        //! Create new LineDrawable in GL_LINE_STRIP mode
+        LineDrawable();
+
+        //! Create a new LineDrawable.
+        //! @param[in ] mode GL line mode: GL_LINE_STRIP or GL_LINE_LOOP
+        LineDrawable(GLenum mode);
+
+        //! Copy constructor
+        LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy);
+
+        //! Width in pixels of the line
+        void setLineWidth(float width_pixels);
+        float getLineWidth() const { return _width; }
+
+        //! Stippling pattern for the line (default is 0xFFFF)
+        void setStipplePattern(GLushort pattern);
+        GLushort getStipplePattern() const { return _pattern; }
+
+        //! Stippling factor for the line (default is 1)
+        void setStippleFactor(GLint factor);
+        GLint getStippleFactor() const { return _factor; }
+
+        //! Sets the overall color of the line
+        void setColor(const osg::Vec4& color);
+        const osg::Vec4& getColor() const { return _color; }
+
+        //! GL mode (for serializer only; do not use)
+        void setMode(GLenum mode);
+        GLenum getMode() const { return _mode; }
+        
+        //! Append a vertex to the line
+        void pushVertex(const osg::Vec3& vert);
+
+        //! Set the value of a vertex at index i
+        void setVertex(unsigned i, const osg::Vec3& vert);
+
+        //! Gets the vertex at index i
+        const osg::Vec3& getVertex(unsigned i) const;
+
+        //! Sets the color of a vertex at index i
+        void setColor(unsigned i, const osg::Vec4& color);
+
+        //! Copy a vertex array into the drawable
+        void setVerts(const osg::Vec3Array* verts);
+        
+        //! Allocate space for vertices
+        void allocate(unsigned numVerts);
+
+        //! Number of vertices in the drawable
+        unsigned getNumVerts() const;
+
+        //! Appends a vertex to an attribute array. Use this instead of adding
+        //! to the array directly!
+        template<typename T>
+        void pushVertexAttrib(T* vaa, const typename T::ElementDataType& value);
+
+        //! Pre-allocate space for vertices
+        void reserve(unsigned size);
+
+        //! Index of the first vertex to draw (default = 0)
+        void setFirst(unsigned index);
+        unsigned getFirst() const;
+
+        //! Number of vertices to draw (default = 0, which means draw to the
+        //! end of the line
+        void setCount(unsigned count);
+        unsigned getCount() const;
+
+        //! Rebuild the primitive sets for this drawable. You MUST call this
+        //! after adding new data to the drawable!
+        void dirty();
+
+        //! Install shaders to render the line drawable when GPU rendering is
+        //! available. You only need to call this if you are not using a LineGroup.
+        void installShader();
+
+        //! Sets a line width on a custom stateset that will apply to
+        //! all LineDrawables used with that state set.
+        static void setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags=osg::StateAttribute::ON);
+
+    public:
+
+        //! Binding location for "previous" vertex attribute (default = 9)
+        static int PreviousVertexAttrLocation;
+
+        //! Binding location for "next" vertex attribute (default = 10)
+        static int NextVertexAttrLocation;
+
+    public: // osg::Geometry overrides
+
+        virtual void drawPrimitivesImplementation(osg::RenderInfo& ri) const;
+
+    private:
+        GLenum _mode;
+        bool _gpu;
+        osg::Vec4 _color;
+        GLint _factor;
+        GLushort _pattern;
+        float _width;
+        unsigned _first;
+        unsigned _count;
+        osg::Vec3Array* _current;
+        osg::Vec3Array* _previous;
+        osg::Vec3Array* _next;
+        osg::Vec4Array* _colors;
+
+        void initialize();
+
+        friend class LineGroup;
+        static void installShader(osg::StateSet*);
+    };
+
+
+    /**
+     * Group for collecting multiple LineDrawables. If you put one or more
+     * LineDrawables under a LineGroup, you do not need to call installShader()
+     * on each LineDrawable because the LineGroup installs the shader for the
+     * entire set.
+     *
+     * Note: LineGroup inherits from Geode (for now) to maintain support for
+     * the OSG 3.4 MergeGeometryVisitor (which only works on Geodes). Once we
+     * make OSG 3.6 the minimum supported version, we can change this to Group.
+     */
+    class OSGEARTH_EXPORT LineGroup : public osg::Geode
+    {
+    public:
+        META_Node(osgEarth, LineGroup);
+
+        //! Construct a new line group and install line shaders
+        LineGroup();
+
+        //! Copy constructor
+        LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);
+        
+        //! Optimize the LineDrawables under this group for performance.
+        //! Only call this after you finish adding drawables to your group.
+        void optimize();
+
+    protected:
+        //! destructor
+        virtual ~LineGroup() { }
+    };
+
+    
+    // Template implementations ..........................................
+
+    template<typename T>
+    void LineDrawable::pushVertexAttrib(T* vaa, const typename T::ElementDataType& value)
+    {
+        vaa->push_back(value);
+        if (_gpu)
+            vaa->push_back(value);
+    }
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_LINEDRAWABLE_H

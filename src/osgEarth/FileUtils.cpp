@@ -24,6 +24,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
+#include <osgDB/ConvertUTF>
 #include <osg/Notify>
 #include <stack>
 #include <errno.h>
@@ -128,6 +129,27 @@
 
 
 using namespace osgEarth;
+
+namespace osgEarth
+{
+#ifdef OSG_USE_UTF8_FILENAME
+#define OSGDB_STRING_TO_FILENAME(s) osgDB::convertUTF8toUTF16(s)
+#define OSGDB_FILENAME_TO_STRING(s) osgDB::convertUTF16toUTF8(s)
+#define OSGDB_FILENAME_TEXT(x) L ## x
+#define OSGDB_WINDOWS_FUNCT(x) x ## W
+#define OSGDB_WINDOWS_FUNCT_STRING(x) #x "W"
+    typedef wchar_t filenamechar;
+    typedef std::wstring filenamestring;
+#else
+#define OSGDB_STRING_TO_FILENAME(s) s
+#define OSGDB_FILENAME_TO_STRING(s) s
+#define OSGDB_FILENAME_TEXT(x) x
+#define OSGDB_WINDOWS_FUNCT(x) x ## A
+#define OSGDB_WINDOWS_FUNCT_STRING(x) #x "A"
+    typedef char filenamechar;
+    typedef std::string filenamestring;
+#endif
+}
 
 
 std::string

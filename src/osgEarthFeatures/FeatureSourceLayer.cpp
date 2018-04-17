@@ -46,6 +46,13 @@ _optionsConcrete(inOptions)
     init();
 }
 
+FeatureSourceLayer::FeatureSourceLayer(FeatureSourceLayerOptions* optionsPtr) :
+Layer(optionsPtr? optionsPtr : &_optionsConcrete),
+_options(optionsPtr? optionsPtr : &_optionsConcrete)
+{
+    // init() will be called by base class
+}
+
 void
 FeatureSourceLayer::setFeatureSource(FeatureSource* value)
 {
@@ -83,12 +90,4 @@ FeatureSourceLayer::open()
     }
 
     return getStatus();
-}
-
-Config
-FeatureSourceLayer::getConfig() const
-{
-    Config conf = Layer::getConfig();
-    conf.key() = "feature_source";
-    return conf;
 }

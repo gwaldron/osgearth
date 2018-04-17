@@ -225,9 +225,11 @@ FeatureModelLayer::addedToMap(const Map* map)
             this,
             &FeatureModelLayer::setFeatureSourceLayer);
     }
-
-    // re-create the graph if necessary.
-    create();
+    else
+    {
+        // re-create the graph if necessary.
+        create();
+    }
 }
 
 void
@@ -269,7 +271,10 @@ FeatureModelLayer::create()
 
         else if (getStatus().isOK())
         {
-            setStatus(Status(Status::ConfigurationError));
+            if (!_featureSource.valid())
+                setStatus(Status(Status::ConfigurationError, "No feature source"));
+            else if (!_session.valid())
+                setStatus(Status(Status::ConfigurationError, "No Session"));
         }
     }
 }

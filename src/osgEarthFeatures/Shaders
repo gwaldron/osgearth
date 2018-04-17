@@ -27,12 +27,12 @@
 
 namespace osgEarth { namespace Features
 {
-    class OSGEARTHFEATURES_EXPORT GPULineShaders : public ShaderPackage
+    class OSGEARTHFEATURES_EXPORT Shaders : public ShaderPackage
 	{
     public:
-        GPULineShaders();
-
-        std::string GPULinesScreenProj;
+        Shaders();
+        
+        // add here
 	};	
 
 } } // namespace osgEarth::Features

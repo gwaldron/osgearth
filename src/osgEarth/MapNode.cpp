@@ -445,8 +445,6 @@ MapNode::getConfig() const
     Config mapConf("map");
     mapConf.set("version", "2");
 
-    MapFrame mapf( _map.get() );
-
     // the map and node options:
     Config optionsConf = _map->getInitialMapOptions().getConfig();
     optionsConf.merge( getMapNodeOptions().getConfig() );
@@ -454,7 +452,7 @@ MapNode::getConfig() const
 
     // the layers
     LayerVector layers;
-    mapf.getLayers(layers);
+    _map->getLayers(layers);
 
     for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
@@ -717,11 +715,10 @@ MapNode::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
 void
 MapNode::openMapLayers()
 {
-    MapFrame frame(_map.get());
+    LayerVector layers;
+    _map->getLayers(layers);
 
-    for (LayerVector::const_iterator i = frame.layers().begin();
-        i != frame.layers().end();
-        ++i)
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         Layer* layer = i->get();
 

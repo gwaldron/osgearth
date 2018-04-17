@@ -80,18 +80,6 @@ namespace osgEarth
             tryApply( dynamic_cast<MapNodeObserver*>(node.getCullCallback()) );
             traverse( node );
         }
-
-        void apply( osg::Geode& geode )
-        {
-            for(unsigned d=0; d<geode.getNumDrawables(); ++d )
-            {
-                osg::Drawable* drawable = geode.getDrawable(d);
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getEventCallback()) );
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getUpdateCallback()) );
-                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getCullCallback()) );
-            }
-            traverse( geode );
-        }
     };
 
 

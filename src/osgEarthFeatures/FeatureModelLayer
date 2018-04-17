@@ -29,6 +29,10 @@
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
 
+namespace osgEarth {
+    class Map;
+}
+
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
@@ -118,10 +122,10 @@ namespace osgEarth { namespace Features
     protected: // Layer
         
         // called by the map when this layer is added
-        virtual void addedToMap(const class Map*);
+        virtual void addedToMap(const Map*);
 
         // called by the map when this layer is removed
-        virtual void removedFromMap(const class Map*);
+        virtual void removedFromMap(const Map*);
 
         // post-ctor initialization
         virtual void init();

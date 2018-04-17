@@ -20,6 +20,8 @@
 
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Locators>
+#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
 #include <osgEarthSymbology/Geometry>
 
 #include <osgUtil/DelaunayTriangulator>
@@ -151,9 +153,9 @@ namespace
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const Map* map) :
 _key( key ), _tileSize(tileSize)
 {
-    MapFrame frame(map);
     MaskLayerVector maskLayers;
-    frame.getLayers(maskLayers);
+    map->getLayers(maskLayers);
+
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
         it != maskLayers.end(); 
         ++it)
@@ -161,7 +163,7 @@ _key( key ), _tileSize(tileSize)
         MaskLayer* layer = it->get();
         if ( layer->getMinLevel() <= key.getLevelOfDetail() )
         {
-            setupMaskRecord(frame.getMapInfo(), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+            setupMaskRecord(MapInfo(map), layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
         }
     }
 }

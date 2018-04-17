@@ -20,7 +20,6 @@
 #define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainTileModelFactory>
@@ -82,7 +81,7 @@ namespace osgEarth
          * @param progress Optional progress/stats tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress ) =0;
@@ -184,7 +183,7 @@ namespace osgEarth
     public: // TerrainEngine
 
         TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
+            const Map*                   map,
             const TileKey&               key,
             const CreateTileModelFilter& filter,
             ProgressCallback*            progress);
@@ -250,6 +249,8 @@ namespace osgEarth
         bool _requireParentTextures;
         bool _requireElevationBorder;
         bool _requireFullDataAtFirstLOD;
+        
+        osg::ref_ptr<const Map> _map;
 
         // called by addTileNodeCallback to notify any already-existing nodes
         // of the new callback.
@@ -302,17 +303,15 @@ namespace osgEarth
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( const Map* map, TerrainEngineNode* engine );
+            ImageLayerController( TerrainEngineNode* engine );
             void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
-            MapFrame           _mapf;
             TerrainEngineNode* _engine;
             friend class TerrainEngineNode;
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<const Map>            _map;
         bool                               _redrawRequired;
         float                              _verticalScale;
         osg::ref_ptr<Terrain>              _terrainInterface;

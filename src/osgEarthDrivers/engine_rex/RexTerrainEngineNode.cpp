@@ -73,13 +73,13 @@ namespace
      */
     struct UpdateRenderModels : public osg::NodeVisitor
     {
-        const MapFrame& _frame;
+        const Map* _map;
         const RenderBindings& _bindings;
         unsigned _count;
         bool _reload;
         std::set<UID> _layersToLoad;
 
-        UpdateRenderModels(const MapFrame& frame, RenderBindings& bindings) : _frame(frame), _bindings(bindings), _count(0u), _reload(false)
+        UpdateRenderModels(const Map* map, RenderBindings& bindings) : _map(map), _bindings(bindings), _count(0u), _reload(false)
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
@@ -114,7 +114,8 @@ namespace
 
                 // if the map doesn't contain a layer with a matching UID,
                 // or if the layer is now disabled, remove it from the render model.
-                if (_frame.containsEnabledLayer(pass.sourceUID()) == false)
+                Layer* layer = _map->getLayerByUID(pass.sourceUID());
+                if (layer == NULL || layer->getEnabled() == false)
                 {
                     model._passes.erase(model._passes.begin()+p);
                     --p;
@@ -241,6 +242,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 {
     if (!map) return;
 
+    _map = map;
+
     // Invoke the base class first:
     TerrainEngineNode::setMap(map, options);
 
@@ -248,13 +251,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     TerrainOptions myOptions = options;
     myOptions.enableMercatorFastPath() = false;
 
-    // Initialize the map frames. We need one for the update thread and one for the
-    // cull thread. Someday we can detect whether these are actually the same thread
-    // (depends on the viewer's threading mode).
-    _mapFrame.setMap(map);
-
     // A callback for overriding bounding boxes for tiles
-    _modifyBBoxCallback = new ModifyBoundingBoxCallback(_mapFrame);
+    _modifyBBoxCallback = new ModifyBoundingBoxCallback(map);
 
     // merge in the custom options:
     _terrainOptions.merge( myOptions );
@@ -304,7 +302,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
-    _liveTiles->setMapRevision( _mapFrame.getRevision() );
+    _liveTiles->setMapRevision(map->getDataModelRevision());
     _liveTiles->setNotifyNeighbors(_terrainOptions.normalizeEdges() == true);
 
     // A resource releaser that will call releaseGLObjects() on expired objects.
@@ -358,7 +356,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     
     // Establish a new engine context
     _engineContext = new EngineContext(
-        getMap(),
+        map,
         this, // engine
         _geometryPool.get(),
         _loader.get(),
@@ -376,7 +374,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _selectionInfo.initialize(
         0u, // always zero, not the terrain options firstLOD
         std::min( _terrainOptions.maxLOD().get(), maxLOD ),
-        _mapFrame.getMapInfo().getProfile(),        
+        map->getProfile(),
         _terrainOptions.minTileRangeFactor().get() );
 
     // set up the initial graph
@@ -513,7 +511,7 @@ RexTerrainEngineNode::dirtyTerrain()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector<TileKey> keys;
-    _mapFrame.getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
+    getMap()->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
     OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
@@ -588,7 +586,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     {
         if (_renderModelUpdateRequired)
         {
-            UpdateRenderModels visitor(_mapFrame, _renderBindings);
+            UpdateRenderModels visitor(getMap(), _renderBindings);
             _terrain->accept(visitor);
             _renderModelUpdateRequired = false;
         }
@@ -613,7 +611,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         TerrainCuller culler(cv, this->getEngineContext());
 
         // Prepare the culler with the set of renderable layers:
-        culler.setup(_mapFrame, _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
+        culler.setup(getMap(), _cachedLayerExtents, this->getEngineContext()->getRenderBindings());
 
         // Assemble the terrain drawables:
         _terrain->accept(culler);
@@ -838,11 +836,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
     
     // Trivial rejection test for masking geometry. Check at the top level and
     // if there's not mask there, there's no mask at the reference LOD either.
-    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(
-        model->getKey(),
-        tileSize,
-        getEngineContext()->getMap()
-    );
+    osg::ref_ptr<MaskGenerator> maskGenerator = new MaskGenerator(model->getKey(), tileSize, getMap());
 
     bool includeTilesWithMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITH_MASKS) != 0;
     bool includeTilesWithoutMasks = (flags & CREATE_TILE_INCLUDE_TILES_WITHOUT_MASKS) != 0;
@@ -880,13 +874,12 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
     maskGenerator = 0L;
     
+    MapInfo mapInfo(getMap());
+
     for (std::vector<TileKey>::const_iterator key = keys.begin(); key != keys.end(); ++key)
     {
         // Mask generator creates geometry from masking boundaries when they exist.
-        maskGenerator = new MaskGenerator(
-            *key,
-            tileSize,
-            getEngineContext()->getMap());
+        maskGenerator = new MaskGenerator(*key, tileSize, getMap());
 
         if (maskGenerator->hasMasks() == true && includeTilesWithMasks == false)
             continue;
@@ -898,7 +891,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
 
         getEngineContext()->getGeometryPool()->getPooledGeometry(
             *key,
-            _mapFrame.getMapInfo(),
+            mapInfo,
             tileSize,
             maskGenerator.get(),
             sharedGeom);
@@ -920,7 +913,7 @@ RexTerrainEngineNode::createTile(const TerrainTileModel* model,
                 if (model->elevationModel().valid())
                 {
                     // Clone the vertex array since it's shared and we're going to alter it
-                    geom->setVertexArray(osg::clone(geom->getVertexArray()));
+                    geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
 
                     // Apply the elevation model to the verts, noting that the texture coordinate
                     // runs [0..1] across the tile and the normal is the up vector at each vertex.
@@ -1021,11 +1014,16 @@ RexTerrainEngineNode::createTile( const TileKey& key )
     bool populated = false;
     while (!populated)
     {
-        populated = _mapFrame.populateHeightField(
-            out_hf,
-            sampleKey,
-            true, // convertToHAE
-            0 );
+        ElevationLayerVector elevation;
+        getMap()->getLayers(elevation);
+
+        populated = elevation.populateHeightFieldAndNormalMap(
+            out_hf.get(),               // height field
+            NULL,                       // normal map
+            sampleKey,                  // tile key
+            getMap()->getProfileNoVDatum(),  // HAE profile
+            INTERP_BILINEAR,            // elevation interp
+            NULL );                     // progress callback
 
         if (!populated)
         {
@@ -1081,12 +1079,7 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 
     else
     {
-        // update the thread-safe map model copy:
-        if ( _mapFrame.sync() )
-        {
-            _liveTiles->setMapRevision( _mapFrame.getRevision() );
-            OE_INFO << LC << "MapFrame synced to new revision: " << _mapFrame.getRevision() << std::endl;
-        }
+        _liveTiles->setMapRevision(getMap()->getDataModelRevision());
 
         // dispatch the change handler
         if ( change.getLayer() )
@@ -1133,7 +1126,8 @@ RexTerrainEngineNode::cacheLayerExtentInMapSRS(Layer* layer)
 
     // Store the layer's extent in the map's SRS:
     LayerExtent& le = _cachedLayerExtents[layer->getUID()];
-    le._extent = layer->getExtent().transform(_mapFrame.getMapInfo().getSRS());
+
+    le._extent = layer->getExtent().transform(getMap()->getSRS());
     le._computed = true;
 }
 
@@ -1229,25 +1223,8 @@ RexTerrainEngineNode::addTileLayer(Layer* tileLayer)
         {
             // Update the existing render models, and trigger a data reload.
             // Later we can limit the reload to an update of only the new data.
-            UpdateRenderModels updateModels(_mapFrame, _renderBindings);
-
-#if 0
-            // This uses the loaddata filter approach which will only request
-            // data for one layer. It mostly works but not 100%; see hires-insets
-            // as an example. Removing the world layer and re-adding it while
-            // zoomed in doesn't result in all tiles reloading. Possibly a
-            // synchronization issue.
-            ImageLayerVector imageLayers;
-            _mapFrame.getLayers(imageLayers);
-
-            if (imageLayers.size() == 1)
-                updateModels.setReloadData(true);
-            else
-                updateModels.layersToLoad().insert(tileLayer->getUID());
-#else
+            UpdateRenderModels updateModels(getMap(), _renderBindings);
             updateModels.setReloadData(true);
-#endif
-
             _terrain->accept(updateModels);
         }
     }
@@ -1291,7 +1268,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         // associated with the layer we just removed. This would happen 
         // automatically during cull/update anyway, but it's more efficient
         // to do it all at once.
-        UpdateRenderModels updater(_mapFrame, _renderBindings);
+        UpdateRenderModels updater(getMap(), _renderBindings);
         _terrain->accept(updater);
     }
 
@@ -1357,7 +1334,7 @@ RexTerrainEngineNode::updateState()
     }
     else
     {
-        osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
+        osg::StateSet* terrainStateSet = _terrain->getOrCreateStateSet();   // everything
         terrainStateSet->setName("Terrain Group");
 
         osg::StateSet* surfaceStateSet = getSurfaceStateSet();    // just the surface
@@ -1465,10 +1442,9 @@ RexTerrainEngineNode::updateState()
                 std::stringstream cf_body;
                 const char* I = "    ";
 
-                // second, install the per-layer color filter functions AND shared layer bindings.
                 bool ifStarted = false;
                 ImageLayerVector imageLayers;
-                _mapFrame.getLayers(imageLayers);
+                getMap()->getLayers(imageLayers);
 
                 for( int i=0; i<imageLayers.size(); ++i )
                 {

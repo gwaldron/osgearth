@@ -38,7 +38,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -903,12 +902,6 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if ( _font.valid() )
             t->setFont( _font.get() );
 
-        if ( t->getStateSet() )
-        {
-            t->getStateSet()->setRenderBinToInherit();
-            t->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
-        }
-
         // set up the backdrop halo:
         if ( haloColor().isSet() )
         {
@@ -1021,11 +1014,30 @@ _opacity      ( 1.0f )
     setImage( image );
 }
 
+ImageControl::ImageControl( osg::Texture* texture ) :
+_rotation     ( 0.0, Units::RADIANS ),
+_fixSizeForRot( false ),
+_opacity      ( 1.0f )
+{
+    setTexture( texture );
+}
+
 void
 ImageControl::setImage( osg::Image* image )
 {
     if ( image != _image.get() ) {
         _image = image;
+        _texture = 0L;
+        dirty();
+    }
+}
+
+void
+ImageControl::setTexture(osg::Texture* texture)
+{
+    if ( texture != _texture.get() ) {
+        _texture = texture;
+        _image = 0L;
         dirty();
     }
 }
@@ -1053,23 +1065,8 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        _renderSize.set( 0, 0 );
-
-        //First try the explicit settings
-        if (width().isSet() && height().isSet())
-        {
-            _renderSize.set(width().value(), height().value());
-        }
-        //Second try the size of the image itself
-        else if (_image.valid())
-        {
-            _renderSize.set( _image->s(), _image->t() );
-        }
-        //Lastly just use the default values for width and height
-        else
-        {
-            _renderSize.set( width().value(), height().value());
-        }
+        const osg::Vec2i imageSize = calculateImageSize();
+        _renderSize.set( imageSize.x(), imageSize.y() );
 
         //if there's a rotation angle, rotate
         float rot = _fixSizeForRot ? osg::PI_4 : _rotation.as(Units::RADIANS);
@@ -1093,96 +1090,120 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     }
 }
 
-#undef IMAGECONTROL_TEXRECT
+osg::Vec2i
+ImageControl::calculateImageSize() const
+{
+    //First try the explicit settings
+    if (width().isSet() && height().isSet())
+    {
+        return osg::Vec2i(width().value(), height().value());
+    }
+    //Second try the size of the image
+    else if (_image.valid())
+    {
+        return osg::Vec2i(_image->s(), _image->t());
+    }
+    //Next try the size of the texture itself
+    else if (_texture.valid() && _texture->getTextureWidth() > 0)
+    {
+        return osg::Vec2i(_texture->getTextureWidth(), _texture->getTextureHeight());
+    }
+    //Try the size of the texture's image
+    else if (_texture.valid() && _texture->getImage(0))
+    {
+        const osg::Image* image = _texture->getImage(0);
+        return osg::Vec2i(image->s(), image->t());
+    }
+    //Lastly just use the default values for width and height
+    return osg::Vec2i(width().value(), height().value());
+}
 
 void
 ImageControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() && parentIsVisible() && _image.valid() )
+    if ( !visible() || !parentIsVisible() )
+        return;
+
+    if ( !_texture.valid() )
     {
-        //TODO: this is not precisely correct..images get deformed slightly..
-        osg::Geometry* g = newGeometry();
+        if ( !_image.valid() )
+            return;
 
-        float rx = osg::round( _renderPos.x() );
-        float ry = osg::round( _renderPos.y() );
-        float vph = cx._vp->height();
-
-        osg::Vec3Array* verts = new osg::Vec3Array(6);
-        g->setVertexArray( verts );
-
-        if ( _rotation.as(Units::RADIANS) != 0.0f || _fixSizeForRot == true )
-        {
-            osg::Vec2f rc( rx+_renderSize.x()/2, (vph-ry)-_renderSize.y()/2 );
-            float ra = osg::PI - _rotation.as(Units::RADIANS);
-
-            rx += 0.5*_renderSize.x() - 0.5*(float)_image->s();
-            ry += 0.5*_renderSize.y() - 0.5*(float)_image->t();
-
-            rot( rx, vph-ry, rc, ra, (*verts)[0] );
-            rot( rx, vph-ry-_image->t(), rc, ra, (*verts)[1] );
-            rot( rx+_image->s(), vph-ry-_image->t(), rc, ra, (*verts)[2] );
-            (*verts)[3].set( (*verts)[2] );
-            rot( rx+_image->s(), vph-ry, rc, ra, (*verts)[4] );
-            (*verts)[5].set( (*verts)[0] );
-        }
-        else
-        {
-            (*verts)[0].set( rx, vph - ry, 0 );
-            (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
-            (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
-            (*verts)[3].set( (*verts)[2] );
-            (*verts)[4].set( rx + _renderSize.x(), vph - ry, 0 );
-            (*verts)[5].set( (*verts)[0] );
-        }
-
-        g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
-
-        osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-        (*c)[0] = osg::Vec4f(1,1,1,1);
-        g->setColorArray( c );
-
-        bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
-
-        osg::Vec2Array* t = new osg::Vec2Array(6);
-
-#ifdef IMAGECONTROL_TEXRECT
-
-        (*t)[0].set( 0, flip? 0: _image->t()-1 );
-        (*t)[1].set( 0, flip? _image->t()-1: 0 );
-        (*t)[2].set( _image->s()-1, flip? _image->t()-1: 0 );
-        (*t)[3].set( (*t)[2]);
-        (*t)[4].set( _image->s()-1, flip? 0: _image->t()-1 );
-        (*t)[5].set( (*t)[0] );
-        osg::TextureRectangle* tex = new osg::TextureRectangle( _image.get() );
-
-#else
-
-        (*t)[0].set( 0, flip? 0 : 1 );
-        (*t)[1].set( 0, flip? 1 : 0 );
-        (*t)[2].set( 1, flip? 1 : 0 );
-        (*t)[3].set( (*t)[2]);
-        (*t)[4].set( 1, flip? 0 : 1 );
-        (*t)[5].set( (*t)[0] );
-        osg::Texture2D* tex = new osg::Texture2D( _image.get() );
-#endif
-
-        g->setTexCoordArray( 0, t );
-
-        tex->setResizeNonPowerOfTwoHint(false);
-
-        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
-
-        /*osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
-        g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-         */
-        getGeode()->addDrawable( g );
-
-        _dirty = false;
+        _texture = new osg::Texture2D( _image.get() );
+        _texture->setResizeNonPowerOfTwoHint( false );
+        _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+        _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     }
+    const osg::Vec2i imageSize = calculateImageSize();
+
+    //TODO: this is not precisely correct..images get deformed slightly..
+    osg::Geometry* g = newGeometry();
+
+    float rx = osg::round( _renderPos.x() );
+    float ry = osg::round( _renderPos.y() );
+    float vph = cx._vp->height();
+
+    osg::Vec3Array* verts = new osg::Vec3Array(6);
+    g->setVertexArray( verts );
+
+    if ( _rotation.as(Units::RADIANS) != 0.0f || _fixSizeForRot == true )
+    {
+        osg::Vec2f rc( rx+_renderSize.x()/2, (vph-ry)-_renderSize.y()/2 );
+        float ra = osg::PI - _rotation.as(Units::RADIANS);
+
+        rx += 0.5*_renderSize.x() - 0.5*(float)imageSize.x();
+        ry += 0.5*_renderSize.y() - 0.5*(float)imageSize.y();
+
+        rot( rx, vph-ry, rc, ra, (*verts)[0] );
+        rot( rx, vph-ry-imageSize.y(), rc, ra, (*verts)[1] );
+        rot( rx+imageSize.x(), vph-ry-imageSize.y(), rc, ra, (*verts)[2] );
+        (*verts)[3].set( (*verts)[2] );
+        rot( rx+imageSize.x(), vph-ry, rc, ra, (*verts)[4] );
+        (*verts)[5].set( (*verts)[0] );
+    }
+    else
+    {
+        (*verts)[0].set( rx, vph - ry, 0 );
+        (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
+        (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
+        (*verts)[3].set( (*verts)[2] );
+        (*verts)[4].set( rx + _renderSize.x(), vph - ry, 0 );
+        (*verts)[5].set( (*verts)[0] );
+    }
+
+    g->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLES, 0, 6 ) );
+
+    osg::Vec4Array* c = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
+    (*c)[0] = osg::Vec4f(1,1,1,1);
+    g->setColorArray( c );
+
+    bool flip = false;
+    if ( _image.valid() )
+        flip = (_image->getOrigin()==osg::Image::TOP_LEFT);
+    else if ( _texture->getImage(0) )
+        flip = (_texture->getImage(0)->getOrigin() == osg::Image::TOP_LEFT);
+
+    osg::Vec2Array* t = new osg::Vec2Array(6);
+
+    (*t)[0].set( 0, flip? 0 : 1 );
+    (*t)[1].set( 0, flip? 1 : 0 );
+    (*t)[2].set( 1, flip? 1 : 0 );
+    (*t)[3].set( (*t)[2]);
+    (*t)[4].set( 1, flip? 0 : 1 );
+    (*t)[5].set( (*t)[0] );
+
+    g->setTexCoordArray( 0, t );
+
+    g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, _texture.get(), osg::StateAttribute::ON );
+
+    /*osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
+    g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
+     */
+    getGeode()->addDrawable( g );
+
+    _dirty = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -2743,15 +2764,6 @@ ControlCanvas::init()
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
-   
-#if 0
-#if OSG_VERSION_LESS_THAN(3,5,8) && defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
-    // don't use shaders unless we have to.
-    this->getOrCreateStateSet()->setAttributeAndModes(
-        new osg::Program(), 
-        osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
-#endif
-#endif
 }
 
 ControlCanvas::~ControlCanvas()

@@ -20,7 +20,6 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/PolygonizeLines>
-#include <osgEarthFeatures/GPULines>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
@@ -30,9 +29,10 @@
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
 #include <osgEarth/Clamping>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/StateSetCache>
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/LineWidth>
 #include <osg/LineStipple>
 #include <osg/Point>
 #include <osg/MatrixTransform>
@@ -439,10 +439,11 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 }
 
 
-osg::Geode*
+osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
-    osg::Geode* geode = new osg::Geode();
+    // Group to contain all the lines we create here
+    LineGroup* drawables = new LineGroup();
     
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
@@ -456,9 +457,13 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         makeECEF = outputSRS->isGeographic();
     }
 
-    optional<Stroke> masterStroke;
-    
-    for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
+    // Need to know if we are GPU clamping so we can add more attribs
+    bool doGpuClamping =
+        _style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+
+    // For each input feature:
+    for (FeatureList::iterator f = features.begin(); f != features.end(); ++f)
     {
         Feature* input = f->get();
 
@@ -471,21 +476,12 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         if ( !line )
             continue;
 
-        // save the first stroke to use for shader generation of GPU lines if used
-        if (!masterStroke.isSet())
-        {
-            masterStroke = line->stroke().get();
-        }
-
         // run a symbol script if present.
         if ( line->script().isSet() )
         {
             StringExpression temp( line->script().get() );
             input->eval( temp, &context );
         }
-
-        // GPU line generator (if used)
-        GPULinesOperator gpuLines(line->stroke().get());
 
         GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
@@ -496,23 +492,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             if ( part->size() < 2 )
                 continue;
 
-            // collect all the pre-transformation HAT (Z) values.
-            // (Note: GPU Lines have doubled-up vertices, so for that case we 
-            // have to add 2 hats for every input point.)
-            osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
-
-            if (_useGPULines == true)
-                hats->reserve(part->size() * 2);
-            else
-                hats->reserve(part->size());
-
-            for(Geometry::const_iterator i = part->begin(); i != part->end(); ++i )
-            {
-                hats->push_back( i->z() );
-                if (_useGPULines == true)
-                    hats->push_back(i->z());
-            }
-
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
             bool isRing = (dynamic_cast<Ring*>(part) != 0L);
@@ -520,83 +499,92 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // resolve the color:
             osg::Vec4f primaryColor = line->stroke()->color();
 
-            // generate the geometry:
+            // generate the geometry and localize to the local tangent plane
             osg::Vec3Array* allPoints = new osg::Vec3Array();
-
             transformAndLocalize( part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF );
 
-            osg::ref_ptr<osg::Geometry> osgGeom;
+            // construct a drawable for the lines
+            LineDrawable* drawable = new LineDrawable(isRing? GL_LINE_LOOP : GL_LINE_STRIP);
 
-            if (_useGPULines == true)
+            drawable->setVerts(allPoints);
+
+            if (line->stroke().isSet())
             {
-                // Lines tessellated on the GPU - replacement for glLineWidth
-                osgGeom = gpuLines(allPoints, isRing);
+                if (line->stroke()->width().isSet())
+                    drawable->setLineWidth(line->stroke()->width().get());
+
+                if (line->stroke()->stipplePattern().isSet())
+                    drawable->setStipplePattern(line->stroke()->stipplePattern().get());
+
+                if (line->stroke()->stippleFactor().isSet())
+                    drawable->setStippleFactor(line->stroke()->stippleFactor().get());
             }
-            else
+
+            // For GPU clamping, we need an attribute array with Heights above Terrain in it.
+            if (doGpuClamping)
             {
-                // normal GL lines
-                osgGeom = new osg::Geometry();
-                osgGeom->setUseVertexBufferObjects(true);
-                osgGeom->setUseDisplayList(false);
-                GLenum primMode = isRing ? GL_LINE_LOOP : GL_LINE_STRIP;
-                osgGeom->addPrimitiveSet(new osg::DrawArrays(primMode, 0, allPoints->getNumElements()));
-                osgGeom->setVertexArray(allPoints);
-            }
-
-            if (osgGeom.valid())
-            {
-                // embed the feature name if requested. Warning: blocks geometry merge optimization!
-                if ( _featureNameExpr.isSet() )
+                osg::FloatArray* hats = new osg::FloatArray();
+                hats->setBinding(osg::Array::BIND_PER_VERTEX);
+                drawable->setVertexAttribArray(Clamping::HeightsAttrLocation, hats);
+                for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
                 {
-                    const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
-                    osgGeom->setName( name );
-                }
-
-                // subdivide the mesh if necessary to conform to an ECEF globe;
-                // but if the tessellation is set to zero, or if the style specifies a
-                // tessellation size, skip this step.
-                if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
-                {
-                    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                    OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
-
-                    MeshSubdivider ms( _world2local, _local2world );
-                    //ms.setMaxElementsPerEBO( INT_MAX );
-                    if ( input->geoInterp().isSet() )
-                        ms.run( *osgGeom, threshold, *input->geoInterp() );
-                    else
-                        ms.run( *osgGeom, threshold, *_geoInterp );
-                }
-
-                // assign the primary color (PER_VERTEX required for later optimization)
-                osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
-                colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
-                osgGeom->setColorArray( colors );
-
-                geode->addDrawable( osgGeom );
-
-                // record the geometry's primitive set(s) in the index:
-                if ( context.featureIndex() )
-                    context.featureIndex()->tagDrawable( osgGeom.get(), input );
-
-                // install clamping attributes if necessary
-                if (_style.has<AltitudeSymbol>() &&
-                    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
-                {
-                    Clamping::applyDefaultClampingAttrs( osgGeom.get(), input->getDouble("__oe_verticalOffset", 0.0) );
-                    Clamping::setHeights( osgGeom.get(), hats.get() );
+                    drawable->pushVertexAttrib(hats, i->z());
                 }
             }
+            
+            // assign the color:
+            drawable->setColor(primaryColor);
+
+            // finalize the drawable and generate primitive sets
+            drawable->dirty();
+
+            // embed the feature name if requested. Warning: blocks geometry merge optimization!
+            if ( _featureNameExpr.isSet() )
+            {
+                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
+                drawable->setName( name );
+            }
+
+            // subdivide the mesh if necessary to conform to an ECEF globe;
+            // but if the tessellation is set to zero, or if the style specifies a
+            // tessellation size, skip this step.
+            // TODO: get rid of this and just make the user use tessellation?? -gw 4/3/2018
+            if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
+            {
+                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+
+                MeshSubdivider ms( _world2local, _local2world );
+                //ms.setMaxElementsPerEBO( INT_MAX );
+                if ( input->geoInterp().isSet() )
+                    ms.run( *drawable->asGeometry(), threshold, *input->geoInterp() );
+                else
+                    ms.run( *drawable->asGeometry(), threshold, *_geoInterp );
+            }
+
+            // record the geometry's primitive set(s) in the index:
+            if ( context.featureIndex() )
+            {
+                context.featureIndex()->tagDrawable( drawable, input );
+            }
+
+            // install clamping attributes if necessary
+            if (doGpuClamping)
+            {
+                Clamping::applyDefaultClampingAttrs( drawable, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
+
+            drawables->addChild(drawable);
         }
     }
 
-    if (_useGPULines == true)
+    // Finally, optimize the finished group for rendering.
+    if (drawables)
     {
-        GPULinesOperator op(masterStroke.get());
-        op.installShaders(geode);
+        drawables->optimize();
     }
 
-    return geode;
+    return drawables;
 }
 
 
@@ -1440,19 +1428,11 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         OE_TEST << LC << "Building " << lines.size() << " lines." << std::endl;
         
-        osg::ref_ptr<osg::Geode> geode = processLines(lines, context);
-        if ( geode->getNumDrawables() > 0 )
+        osg::ref_ptr<osg::Group> group = processLines(lines, context);
+
+        if ( group->getNumChildren() > 0 )
         {
-            osgUtil::Optimizer::MergeGeometryVisitor mg;
-            mg.setTargetMaximumNumberOfVertices(65536);
-            geode->accept(mg);
-
-            if (_useGPULines == false)
-            {
-                applyLineSymbology( geode->getOrCreateStateSet(), line );
-            }
-
-            result->addChild( geode.get() );
+            result->addChild(group.get());
         }
     }
 

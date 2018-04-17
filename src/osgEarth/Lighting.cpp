@@ -229,7 +229,7 @@ LightGL3::apply(osg::State& state) const
 // Serializer for LightGL3.
 // The odd namespace name is here because this macro cannot be used more than once
 // in the same namespace in the same cpp file.
-namespace osgEarth_TEMP1
+namespace osgEarth { namespace Serializers { namespace LightGL3
 {
     REGISTER_OBJECT_WRAPPER(
         LightGL3,
@@ -239,7 +239,7 @@ namespace osgEarth_TEMP1
     {
         ADD_BOOL_SERIALIZER(Enabled, true);
     }
-}
+} } }
 
 //............................................................................
 
@@ -254,11 +254,11 @@ MaterialGL3::apply(osg::State& state) const
 // Serializer for MaterialGL3.
 // The odd namespace name is here because this macro cannot be used more than once
 // in the same namespace in the same cpp file.
-namespace osgEarth_TEMP2
+namespace osgEarth { namespace Serializers { namespace MaterialGL3
 {
     REGISTER_OBJECT_WRAPPER(
         MaterialGL3,
         new osgEarth::MaterialGL3,
         osgEarth::MaterialGL3,
         "osg::Object osg::StateAttribute osg::Material osgEarth::MaterialGL3") { }
-}
+} } }

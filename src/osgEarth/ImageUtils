@@ -547,8 +547,6 @@ namespace osgEarth
 
     public: // osg::NodeVisitor
         virtual void apply(osg::Node& node);
-        virtual void apply(osg::Geode& geode);
-        virtual void apply(osg::Drawable& drawable);
         virtual void apply(osg::StateSet& stateSet);
     };
 }

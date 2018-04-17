@@ -36,7 +36,7 @@ TerrainRenderData::sortDrawCommands()
 }
 
 void
-TerrainRenderData::setup(const MapFrame& frame,
+TerrainRenderData::setup(const Map* map,
                          const RenderBindings& bindings,
                          unsigned frameNum,
                          osgUtil::CullVisitor* cv)
@@ -56,9 +56,10 @@ TerrainRenderData::setup(const MapFrame& frame,
         (cam->getClearMask() & GL_DEPTH_BUFFER_BIT) != 0u;
 
     // Make a drawable for each rendering pass (i.e. each render-able map layer).
-    for(LayerVector::const_iterator i = frame.layers().begin();
-        i != frame.layers().end();
-        ++i)
+    LayerVector layers;
+    map->getLayers(layers);
+
+    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         Layer* layer = i->get();
         if (layer->getEnabled())
@@ -80,7 +81,7 @@ TerrainRenderData::setup(const MapFrame& frame,
                 {
                     if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                     {
-                        LayerDrawable* ld = addLayerDrawable(layer, frame);
+                        LayerDrawable* ld = addLayerDrawable(layer);
 
                         // If the current camera is depth-only, leave this layer in the set
                         // but mark it as no-draw. We keep it in the set so the culler doesn't
@@ -99,7 +100,7 @@ TerrainRenderData::setup(const MapFrame& frame,
                             patchLayer->getAcceptCallback()->acceptLayer(*cv, cv->getCurrentCamera()))
                         {
                             patchLayers().push_back(dynamic_cast<PatchLayer*>(layer));
-                            addLayerDrawable(layer, frame);
+                            addLayerDrawable(layer);
                         }
                     }
                 }
@@ -108,7 +109,7 @@ TerrainRenderData::setup(const MapFrame& frame,
     }
 
     // Include a "blank" layer for missing data.
-    LayerDrawable* blank = addLayerDrawable(0L, frame);
+    LayerDrawable* blank = addLayerDrawable(0L);
     blank->getOrCreateStateSet()->setDefine("OE_TERRAIN_RENDER_IMAGERY", osg::StateAttribute::OFF);
 }
 
@@ -127,7 +128,7 @@ namespace
 }
 
 LayerDrawable*
-TerrainRenderData::addLayerDrawable(const Layer* layer, const MapFrame& frame)
+TerrainRenderData::addLayerDrawable(const Layer* layer)
 {
     UID uid = layer ? layer->getUID() : -1;
     LayerDrawable* ld = new LayerDrawable();

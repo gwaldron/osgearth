@@ -18,7 +18,6 @@
  */
 #include <osgEarth/ElevationPool>
 #include <osgEarth/TileKey>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
 #include <osgEarth/Registry>
@@ -124,7 +123,7 @@ ElevationPool::GetElevationOp::operator()(osg::Object*)
 }
 
 bool
-ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
+ElevationPool::fetchTileFromMap(const TileKey& key, const ElevationLayerVector& layers, Tile* tile)
 {
     tile->_loadTime = osg::Timer::instance()->tick();
 
@@ -140,8 +139,8 @@ ElevationPool::fetchTileFromMap(const TileKey& key, MapFrame& frame, Tile* tile)
         bool ok;
         if (_layers.empty())
         {
-            OE_TEST << LC << "Populating from FULL MAP (" << keyToUse.str() << ")\n";
-            ok = frame.populateHeightField(hf, keyToUse, false /*heightsAsHAE*/, 0L);
+            OE_TEST << LC << "Populating from envelope (" << keyToUse.str() << ")\n";
+            ok = layers.populateHeightFieldAndNormalMap(hf.get(), 0L, keyToUse, 0L, INTERP_BILINEAR, 0L);
         }
         else
         {
@@ -184,7 +183,7 @@ ElevationPool::popMRU()
 }
 
 bool
-ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& out)
+ElevationPool::tryTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<Tile>& out)
 {
     // first see whether the tile is available
     _tilesMutex.lock();
@@ -223,7 +222,7 @@ ElevationPool::tryTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<Tile>& 
         tile->_status.exchange(STATUS_IN_PROGRESS);
         _tilesMutex.unlock();
 
-        bool ok = fetchTileFromMap(key, frame, tile.get());
+        bool ok = fetchTileFromMap(key, layers, tile.get());
         tile->_status.exchange( ok ? STATUS_AVAILABLE : STATUS_FAIL );
         
         out = ok ? tile.get() : 0L;
@@ -280,24 +279,13 @@ ElevationPool::clearImpl()
 }
 
 bool
-ElevationPool::getTile(const TileKey& key, MapFrame& frame, osg::ref_ptr<ElevationPool::Tile>& output)
-{
-    // Synchronize the MapFrame to its Map; if there's an update,
-    // clear out the internal cache and MRU.
-    if ( frame.needsSync() )
-    {
-        if (frame.sync())
-        {
-            // Probably unnecessary because the Map itself will clear the pool.
-            clear();
-        }
-    }
-   
+ElevationPool::getTile(const TileKey& key, const ElevationLayerVector& layers, osg::ref_ptr<ElevationPool::Tile>& output)
+{   
     OE_START_TIMER(get);
 
     const double timeout = 30.0;
     osg::ref_ptr<Tile> tile;
-    while( tryTile(key, frame, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
+    while( tryTile(key, layers, tile) && !tile.valid() && OE_GET_TIMER(get) < timeout)
     {
         // condition: another thread is working on fetching the tile from the map,
         // so wait and try again later. Do this until we succeed or time out.
@@ -330,12 +318,26 @@ ElevationEnvelope*
 ElevationPool::createEnvelope(const SpatialReference* srs, unsigned lod)
 {
     ElevationEnvelope* e = new ElevationEnvelope();
-    e->_inputSRS = srs;
-    osg::ref_ptr<const osg::Referenced> map;
-    if (_map.lock(map))
-        e->_frame.setMap(static_cast<const Map*>(map.get()));
+    e->_inputSRS = srs; 
     e->_lod = lod;
     e->_pool = this;
+
+    // user-specified layers?
+    if (_layers.size() > 0)
+    {
+        e->_layers = _layers;
+    }
+
+    // full map layers:
+    else
+    {
+        osg::ref_ptr<const Map> map;
+        if (_map.lock(map))
+        {
+            map->getLayers(e->_layers);
+            e->_mapProfile = map->getProfile();
+        }
+    }
     return e;
 }
 
@@ -361,7 +363,7 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
 
     GeoPoint p(_inputSRS.get(), x, y, 0.0f, ALTMODE_ABSOLUTE);
 
-    if (p.transformInPlace(_frame.getProfile()->getSRS()))
+    if (p.transformInPlace(_mapProfile->getSRS()))
     {
         // find the tile containing the point:
         for(ElevationPool::QuerySet::const_iterator tile_ref = _tiles.begin();
@@ -388,9 +390,12 @@ ElevationEnvelope::sample(double x, double y, float& out_elevation, float& out_r
         // for the tile so we can add it to the query set.
         if (!foundTile)
         {
-            TileKey key = _frame.getProfile()->createTileKey(p.x(), p.y(), _lod);
+            TileKey key = _mapProfile->createTileKey(p.x(), p.y(), _lod);
             osg::ref_ptr<ElevationPool::Tile> tile;
-            if (_pool && _pool->getTile(key, _frame, tile))
+
+            osg::ref_ptr<ElevationPool> pool;
+
+            if (_pool.lock(pool) && pool->getTile(key, _layers, tile))
             {
                 // Got the new tile; put it in the query set:
                 _tiles.insert(tile.get());

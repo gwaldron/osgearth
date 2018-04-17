@@ -3,18 +3,17 @@ osgEarth Sample - Raster to feature example.
 -->
 
 <map name="readymap.org" type="geocentric">
-    
+
     <options>        
         <terrain skirt_ratio="0.01" />
     </options>
-  
+
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 
-
     <libraries>osgEarthSplat</libraries>
-    
+
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
         <base_lod>12</base_lod>
         <tile_size>256</tile_size>
@@ -29,45 +28,47 @@ osgEarth Sample - Raster to feature example.
         <shared_sampler> landUseTex       </shared_sampler>
         <shared_matrix>  landUseTexMatrix </shared_matrix>
     </image>
-  
-    <model name="trees" driver="feature_geom" enabled="true">
 
-        <features name="trees" driver="raster">
-            <layer>CLASSMAP</layer>
-            <level>12</level>
-        </features>
+    <!-- Layer that extracts features from an image layer -->
+    <image_to_feature name="classmap_features">
+        <image>CLASSMAP</image>
+        <level>12</level>
+        <attribute>value</attribute>
+    </image_to_feature>
 
-         <instancing>true</instancing>
+    <feature_model name="trees" feature_source="classmap_features">
 
-       <styles>                
+        <instancing>true</instancing>
+
+        <styles>                
             <style type="text/css">
                 forest {
                    model:               "../data/tree.ive";
                    model-placement:     random;
                    model-density:       1000;
-                   model-scale:         2.0;
+                   model-scale:         5.0;
                    altitude-clamping:   terrain;
-                                                            
+
                 }  
 
                 yellow {
                    stroke:             #ffff00;
                    stroke-width:       5px;
-                  
+
                 }
 
                 red {
                    stroke:             #ff0000;
                    stroke-width:       5px;
-                  
+
                 }  
 
             </style>
-            
+
             <selector name="default" style_expr="selectStyle()"/>
-            
+
             <script language="javascript">
-              <![CDATA[
+                <![CDATA[
                 rotator = 0;
                 function selectStyle() {
                     var value = parseFloat(feature.properties.value);
@@ -78,30 +79,30 @@ osgEarth Sample - Raster to feature example.
             </script>
         </styles>  
 
-    </model>
-    
-    
+    </feature_model>
+
+
     <image name="ReadyMap 15m" driver="tms" opacity="0.8">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-  
+
     <viewpoints>            
         <viewpoint name="Trees 1">
-          <heading>-66.2945</heading>
-          <pitch>-14.0905</pitch>
-          <range>3408.89m</range>
-          <long>-121.7544800272052</long>
-          <lat>46.7792209225515</lat>
-          <height>1445.844014885835</height>
+            <heading>-66.2945</heading>
+            <pitch>-14.0905</pitch>
+            <range>3408.89m</range>
+            <long>-121.7544800272052</long>
+            <lat>46.7792209225515</lat>
+            <height>1445.844014885835</height>
         </viewpoint>
-        
+
         <viewpoint name="Trees 2">              
-          <heading>12.2384</heading>
-          <pitch>-4.26323</pitch>
-          <range>1421.77m</range>
-          <long>-121.8282019325911</long>
-          <lat>46.65132101133439</lat>
-          <height>1128.989560711198</height>
+            <heading>12.2384</heading>
+            <pitch>-4.26323</pitch>
+            <range>1421.77m</range>
+            <long>-121.8282019325911</long>
+            <lat>46.65132101133439</lat>
+            <height>1128.989560711198</height>
         </viewpoint>
     </viewpoints>
 

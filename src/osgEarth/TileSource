@@ -49,7 +49,6 @@ namespace osgEarth
 {
     class ProgressCallback;
     class Map;
-    class MapFrame;
 
     /**
      * Configuration options for a tile source driver.
@@ -382,12 +381,6 @@ namespace osgEarth
          * later, e.g. in the event of an unrecoverable error.
          */
         void setStatus(const Status& value) { _status = value; }
-
-        /**
-         * Accesses the map frame that synchronizes with a map if one is set.
-         * Note; the map frame might be empty/invalid.
-         */
-        MapFrame& getMapFrame() const;
 
         //! Compat - do not override
         unsigned getTileSize() const { return getPixelsPerTile(); }

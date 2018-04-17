@@ -1037,7 +1037,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             // calculate acceleration coefficients
             if ( _setVPArcHeight > 0.0 )
             {
-                // if we're arcing, we need seperate coefficients for the up and down stages
+                // if we're arcing, we need separate coefficients for the up and down stages
                 double h_apex = 2.0*(h0+h1) + _setVPArcHeight;
                 double dh2_up = fabs(h_apex - h0)/100000.0;
                 _setVPAccel = log10( dh2_up );

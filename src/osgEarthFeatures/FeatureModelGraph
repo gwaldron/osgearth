@@ -180,14 +180,12 @@ namespace osgEarth { namespace Features
             const Style& style);
        
         osg::BoundingSphered getBoundInWorldCoords( 
-            const GeoExtent& extent, 
-            const MapFrame*  mapf ) const;
+            const GeoExtent& extent ) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,
-            const MapFrame* mapFrame, osg::Group* parent,
+            osg::Group* parent,
             const osgDB::Options* readOptions);
-
         
         osg::Group* readTileFromCache(
             const std::string&    cacheKey,

@@ -140,7 +140,8 @@ _supportsARBTC          ( false ),
 _supportsETC            ( false ),
 _supportsRGTC           ( false ),
 _supportsTextureBuffer  ( false ),
-_maxTextureBufferSize   ( 0 )
+_maxTextureBufferSize   ( 0 ),
+_isCoreProfile          ( true )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -191,6 +192,10 @@ _maxTextureBufferSize   ( 0 )
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "  Version = " << _version << std::endl;
+
+        // Core profile requires OSG 3.2, and the compatibility extension not being present
+        _isCoreProfile = (GL2->glVersion >= 3.2f && !osg::isGLExtensionSupported(id, "GL_ARB_compatibility"));
+        OE_INFO << LC << "  Core Profile = " << SAYBOOL(_isCoreProfile) << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );

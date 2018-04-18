@@ -318,7 +318,10 @@ void TerrainProfileWidget::drawProfileLine()
   if (!_lineNode.valid())
   {
     _lineNode = new osgEarth::Annotation::FeatureNode( _mapNode.get(), feature );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     _lineNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+    _lineNode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
     _root->addChild( _lineNode.get() );
   }
   else

@@ -22,6 +22,7 @@
 #include "TileModelCompiler"
 #include "MPGeometry"
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Locators>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -2128,7 +2129,10 @@ namespace
         geode->addDrawable(t);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+#endif
+        geode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE,0);
 
         return geode;
     }

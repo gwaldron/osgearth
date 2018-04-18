@@ -27,6 +27,7 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/Controls>
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Units>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Horizon>
@@ -152,7 +153,10 @@ makeFrustumFromCamera( osg::Camera* camera )
     osg::Geode* geode = new osg::Geode;
     geode->addDrawable( geom );
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+#endif
+    geode->getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     geode->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(2.0f), 1);
 
 

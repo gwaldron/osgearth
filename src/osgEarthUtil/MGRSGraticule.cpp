@@ -333,7 +333,10 @@ MGRSGraticule::init()
         new osg::Depth(osg::Depth::ALWAYS, 0.f, 1.f, false),
         osg::StateAttribute::ON);
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     ss->setMode( GL_LIGHTING, 0 );
+#endif
+    ss->setDefine( OE_LIGHTING_DEFINE, 0 );
     ss->setMode( GL_BLEND, 1 );
 
     // force it to render after the terrain.

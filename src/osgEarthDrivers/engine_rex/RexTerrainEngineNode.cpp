@@ -23,6 +23,7 @@
 #include "GeometryPool"
 
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Lighting>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
@@ -808,8 +809,11 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     osg::Vec4ubArray* colors = new osg::Vec4ubArray();
     colors->push_back(osg::Vec4ub(255,0,0,255));
     geometry->setColorArray(colors, osg::Array::BIND_OVERALL);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");        
+#endif
+    mt->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
+    mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
 
     return mt;
 }

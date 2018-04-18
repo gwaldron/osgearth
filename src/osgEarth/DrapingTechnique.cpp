@@ -445,7 +445,9 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     rttStateSet->setDefine(OE_LIGHTING_DEFINE, forceOff);
     //rttStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, forceOff) );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     rttStateSet->setMode( GL_LIGHTING, forceOff );
+#endif
     
     // activate blending within the RTT camera's FBO
     if ( _rttBlending )

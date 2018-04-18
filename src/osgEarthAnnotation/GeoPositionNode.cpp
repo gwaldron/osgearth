@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthSymbology/Color>
+#include <osgEarth/Lighting>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
@@ -98,8 +99,11 @@ GeoPositionNode::init()
 
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
-    
+
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+#endif
+    this->getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, 0 );
 }
 
 void

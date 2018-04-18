@@ -263,7 +263,10 @@ StencilVolumeNode::init()
     osg::StateSet* quad_ss = quad->getOrCreateStateSet();
     quad_ss->setMode( GL_CULL_FACE, OFF_AND_PROTECTED );
     quad_ss->setMode( GL_DEPTH_TEST, OFF_AND_PROTECTED );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     quad_ss->setMode( GL_LIGHTING, OFF_AND_PROTECTED );
+#endif
+    quad_ss->setDefine( OE_LIGHTING_DEFINE, OFF_AND_PROTECTED );
 
     osg::Stencil* quad_stencil = new osg::Stencil();
     quad_stencil->setFunction( osg::Stencil::NOTEQUAL, 128, (unsigned int)~0 );

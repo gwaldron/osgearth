@@ -24,6 +24,7 @@
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
+#include <osgEarth/Lighting>
 #include <osgEarthAnnotation/Draggers>
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarthUtil/RadialLineOfSight>
@@ -68,7 +69,10 @@ namespace osgEarth { namespace QtGui
       osg::Geode* lineGeode = new osg::Geode();
       lineGeode->addDrawable( _lineGeometry );
       lineGeode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
       lineGeode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+      lineGeode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
       addChild( lineGeode );
     }
 

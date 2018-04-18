@@ -184,9 +184,13 @@ void OsgMainApp::initOsgWindow(int x,int y,int width,int height){
     root->addChild( sky );
 
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     root->getOrCreateStateSet()->setMode(GL_LIGHTING,
-    		osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    
+        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+#endif
+    root->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE,
+        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+
     //for some reason we have to do this as global stateset doesn't
     //appear to be in the statesetstack
     root->getOrCreateStateSet()->setAttribute(_viewer->getLight());

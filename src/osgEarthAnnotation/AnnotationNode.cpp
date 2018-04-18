@@ -117,9 +117,18 @@ AnnotationNode::setLightingIfNotSet( bool lighting )
 {
     osg::StateSet* ss = this->getOrCreateStateSet();
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
     {
         this->getOrCreateStateSet()->setMode(GL_LIGHTING,
+            lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                       osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    }
+#endif
+    const osg::StateSet::DefinePair* lightingDefine = ss->getDefinePair(OE_LIGHTING_DEFINE);
+    if ( !lightingDefine || lightingDefine->second == osg::StateAttribute::INHERIT )
+    {
+        this->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE,
             lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
                        osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }

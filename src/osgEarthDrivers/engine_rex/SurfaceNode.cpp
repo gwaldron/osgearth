@@ -20,6 +20,7 @@
 #include "GeometryPool"
 #include "TileDrawable"
 
+#include <osgEarth/Lighting>
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
 #include <osgEarth/Horizon>
@@ -111,7 +112,10 @@ namespace
         geode->addChild(textDrawable);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+#endif
+        geode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE,0);
         geode->getOrCreateStateSet()->setRenderBinDetails(INT_MAX, "DepthSortedBin");
 
         return geode;

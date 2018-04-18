@@ -50,7 +50,10 @@ _map( map )
 
     this->addChild( _mesh->_amrGeode.get() );
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+#endif
+    this->getOrCreateStateSet()->setDefine( OE_LIGHTING_DEFINE, 0 );
 }
 
 DRoamNode::DRoamNode( const DRoamNode& rhs, const osg::CopyOp& op ) :

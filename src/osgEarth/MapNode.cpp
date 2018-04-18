@@ -310,9 +310,11 @@ MapNode::init()
     {
         _terrainEngineContainer->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         _terrainEngineContainer->getOrCreateStateSet()->setMode(
             GL_LIGHTING,
             terrainOptions.enableLighting().value() ? 1 : 0 );
+#endif
     }
 
     // a decorator for overlay models:
@@ -369,9 +371,11 @@ MapNode::init()
     {
         stateset->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         stateset->setMode(
             GL_LIGHTING,
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
+#endif
     }
 
     // Add in some global uniforms

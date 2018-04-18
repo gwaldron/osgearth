@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TileRasterizer>
+#include <osgEarth/Lighting>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
@@ -85,7 +86,10 @@ osg::Camera()
     //ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     ss->setMode(GL_BLEND, 1);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     ss->setMode(GL_LIGHTING, 0);
+#endif
+    ss->setDefine(OE_LIGHTING_DEFINE, 0);
     ss->setMode(GL_CULL_FACE, 0);
     
     this->setPreDrawCallback(new PreDrawRouter<TileRasterizer>(this));

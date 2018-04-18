@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/GeoPositionNodeAutoScaler>
 
+#include <osgEarth/Lighting>
 #include <osgEarth/MapNode>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/IntersectionPicker>
@@ -371,7 +372,10 @@ _size( 5.0 )
     geode->addDrawable( _shapeDrawable );          
 
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+    geode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
 
     getPositionAttitudeTransform()->addChild( geode );
 

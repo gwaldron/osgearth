@@ -20,6 +20,7 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarthFeatures/Feature>
+#include <osgEarth/Lighting>
 #include <osgEarth/PagedNode>
 #include <osgEarth/Registry>
 
@@ -324,7 +325,10 @@ GARSGraticule::init()
 
     osg::StateSet* ss = this->getOrCreateStateSet();
     ss->setMode( GL_DEPTH_TEST, 0 );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     ss->setMode( GL_LIGHTING, 0 );
+#endif
+    ss->setDefine( OE_LIGHTING_DEFINE, 0 );
     ss->setMode( GL_BLEND, 1 );
 
     // force it to render after the terrain.

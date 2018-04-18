@@ -141,7 +141,10 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
         geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, verts->size()));
         mt->addChild(geode);
         //mt->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+        mt->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
         mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");
 
         osg::BoundingSphere bs = mt->getBound();

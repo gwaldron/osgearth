@@ -32,6 +32,7 @@
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osg/Version>
 #include <osgEarth/Common>
+#include <osgEarth/Lighting>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
@@ -2753,7 +2754,10 @@ ControlCanvas::init()
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+#endif
+    ss->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinDetails( 0, "TraversalOrderBin" );

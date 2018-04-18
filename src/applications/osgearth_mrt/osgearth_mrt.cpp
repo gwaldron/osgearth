@@ -26,6 +26,7 @@
 #include <osg/TextureRectangle>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
+#include <osgEarth/Lighting>
 #include <osgEarth/VirtualProgram>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
@@ -181,7 +182,10 @@ createFramebufferPass(App& app)
     stateset->addUniform(new osg::Uniform("gnormal", 1));
     stateset->setTextureAttributeAndModes(2, app.gdepth, 1);
     stateset->addUniform(new osg::Uniform("gdepth", 2));
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     stateset->setMode( GL_LIGHTING, 0 );
+#endif
+    stateset->setDefine( OE_LIGHTING_DEFINE, 0 );
 
     float w = app.gcolor->getTextureWidth();
     float h = app.gcolor->getTextureHeight();

@@ -436,7 +436,10 @@ FeatureManipTool::configureGhost( osg::Node* node ) const
 
     //s->setRenderBinDetails( 10, "DepthSortedBin", osg::StateSet::USE_RENDERBIN_DETAILS );
     s->setMode( GL_BLEND,    osg::StateAttribute::ON  | osg::StateAttribute::OVERRIDE );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     s->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+#endif
+    s->setDefine( OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
     // turn off texturing:
     for( int ii = 0; ii < Registry::instance()->getCapabilities().getMaxFFPTextureUnits(); ++ii )

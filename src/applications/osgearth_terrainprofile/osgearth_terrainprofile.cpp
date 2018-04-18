@@ -25,6 +25,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/Lighting>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
@@ -56,7 +57,10 @@ osg::Camera* createHud(double width, double height)
     hud->setClearMask(GL_DEPTH_BUFFER_BIT);
     hud->setRenderOrder(osg::Camera::POST_RENDER);    
     hud->setAllowEventFocus(false);
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     hud->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+#endif
+    hud->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
     hud->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF);
     hud->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON);
 
@@ -320,7 +324,10 @@ public:
 
           _featureNode = new FeatureNode( _mapNode, feature );
           //Disable lighting
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
           _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+#endif
+          _featureNode->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
           _root->addChild( _featureNode.get() );
 
       }

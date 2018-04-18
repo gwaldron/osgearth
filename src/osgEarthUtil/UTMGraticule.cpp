@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
 
+#include <osgEarth/Lighting>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
@@ -285,7 +286,10 @@ UTMGraticule::rebuild()
 
     //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
     set->setMode( GL_LIGHTING, 0 );
+#endif
+    set->setDefine( OE_LIGHTING_DEFINE, 0 );
     set->setMode( GL_BLEND, 1 );
 
     // set up default options if the caller did not supply them

@@ -36,6 +36,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/Lighting>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -295,7 +296,10 @@ namespace TEST_5
 
         osg::Group* root = new osg::Group();
         root->getOrCreateStateSet()->setRenderBinDetails( 0, "TraversalOrderBin" );
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         root->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+#endif
+        root->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE,0);
 
         root->addChild( n1 );
         root->addChild( n2 );

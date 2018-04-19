@@ -79,8 +79,8 @@ void makeModels(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
 {
     osg::ref_ptr< osg::Node > cessna = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
     osg::ref_ptr< osg::Node > cow = osgDB::readRefNodeFile("cow.osg.100,100,100.scale");
-    osgEarth::Registry::shaderGenerator().run(cessna);
-    osgEarth::Registry::shaderGenerator().run(cow);
+    osgEarth::Registry::shaderGenerator().run(cessna.get());
+    osgEarth::Registry::shaderGenerator().run(cow.get());
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();

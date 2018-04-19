@@ -223,13 +223,12 @@ namespace osgEarth
     }
 
     template<typename T>
-    void LineDrawable::importVertexAttribArray(unsigned location, const typename T* data)
+    void LineDrawable::importVertexAttribArray(unsigned location, const T* data)
     {
         typename T* vaa = osg::cloneType(data);
         setVertexAttribArray(location, vaa);
         for (unsigned i=0; i < data->getNumElements(); ++i)
             pushVertexAttrib(vaa, (*data)[i]);
-        OE_WARN << "pushed " << numVirtualVerts(vaa) << std::endl;
     }
 
 } // namespace osgEarth

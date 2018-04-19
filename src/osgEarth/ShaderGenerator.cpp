@@ -27,6 +27,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/Lighting>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Shaders>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -781,11 +782,15 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     // Capture the active current state:
     osg::ref_ptr<osg::StateSet> current = static_cast<StateEx*>(_state.get())->capture();
 
+
+    // We ignore an existing program if the version is < 3.6.0 which is when the new osg text shaders with sdf were introduced.
+#if OSG_VERSION_LESS_THAN(3,6,0)
     // check for a real osg::Program. If it exists, bail out so that OSG
     // can use the program already in the graph
     osg::StateAttribute* program = current->getAttribute(osg::StateAttribute::PROGRAM);
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
+#endif
 
     // New state set. We never modify existing statesets.
     replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
@@ -799,6 +804,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         vp->setName( _name );
     }
 
+#if OSG_VERSION_LESS_THAN(3,6,0)
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
         "out " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
@@ -820,6 +826,11 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     vp->setFunction( VERTEX_MODEL_FUNCTION, vertSrc, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
     vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
+#else
+    Shaders shaders;
+    shaders.load(vp, "Text.vert.glsl");
+    shaders.load(vp, "Text.frag.glsl");
+#endif
 
     return replacement.valid();
 }

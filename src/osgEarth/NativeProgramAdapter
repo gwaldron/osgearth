@@ -25,6 +25,7 @@
 #include <osg/Referenced>
 #include <osg/MixinVector>
 #include <osgEarth/Notify>
+#include <osgEarth/Common>
 #include <vector>
 
 #undef  LC
@@ -97,7 +98,11 @@ namespace osgEarth
         /** Apply the uniform to this program, optionally calling glUseProgram if necessary. */
         bool apply(const osg::Uniform* uniform, bool useProgram) const
         {
-            UniformMap::const_iterator location = _uniformLocations.find( uniform->getNameID() );
+#if OSG_VERSION_GREATER_OR_EQUAL(3,7,0)
+            UniformMap::const_iterator location = _uniformLocations.find( ((osg::UniformBase*)uniform)->getNameID() );
+#else
+            UniformMap::const_iterator location = _uniformLocations.find(uniform->getNameID());
+#endif
             if ( location != _uniformLocations.end() )
             {        
                 if ( useProgram )
@@ -118,7 +123,7 @@ namespace osgEarth
                     const UniformStack& as = i->second;
                     if ( !as.uniformVec.empty() )
                     {                    
-                        const osg::Uniform* uniform = as.uniformVec.back().first;
+                        const osg::Uniform* uniform = static_cast<const osg::Uniform*>(as.uniformVec.back().first);
                         if (adapter.apply(uniform, useProgram))
                             useProgram = false;
                     }

@@ -44,5 +44,12 @@ namespace osgEarth
         
         PhongLightingFragment = "PhongLighting.frag.glsl";
         _sources[PhongLightingFragment] = "@PhongLighting.frag.glsl@";
+
+		// Text
+		TextVertex = "Text.vert.glsl";
+		_sources[TextVertex] = "@Text.vert.glsl@";
+
+		TextFragment = "Text.frag.glsl";
+		_sources[TextFragment] = "@Text.frag.glsl@";
     }
 };

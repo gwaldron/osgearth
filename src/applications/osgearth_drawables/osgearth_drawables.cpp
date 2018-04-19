@@ -57,6 +57,26 @@ void addLotsOfVerts(LineDrawable* line)
     line->dirty();
 }
 
+osg::Node* makeGeometryForImport(double x, double y)
+{
+    osg::Geometry* geom = new osg::Geometry();
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->push_back(osg::Vec3(x, 0, y));
+    verts->push_back(osg::Vec3(x + 5, 0, y));
+    verts->push_back(osg::Vec3(x + 10, 0, y));
+    verts->push_back(osg::Vec3(x + 10, 0, y + 5));
+    verts->push_back(osg::Vec3(x + 10, 0, y + 10));
+    verts->push_back(osg::Vec3(x + 5, 0, y + 10));
+    verts->push_back(osg::Vec3(x, 0, y + 10));
+    verts->push_back(osg::Vec3(x, 0, y + 5));
+    geom->setVertexArray(verts);    
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0].set(1,1,1,1);
+    geom->setColorArray(colors);
+    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINE_STRIP, 0, verts->size()));
+    return geom;
+}
+
 struct TestFirstCount : public osg::NodeCallback
 {
     void operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -111,6 +131,9 @@ osg::Node* createLineDrawables()
     addVerts(firstCount, 90, 10);
     firstCount->addUpdateCallback(new TestFirstCount());
     group->addChild(firstCount);
+
+    osg::ref_ptr<osg::Node> node = makeGeometryForImport(110, 10);
+    group->import(node.get());
 
     return group;
 }

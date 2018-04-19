@@ -23,11 +23,13 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/LineFunctor>
 
 #include <osg/Depth>
 #include <osg/CullFace>
 #include <osg/LineStipple>
 #include <osg/LineWidth>
+#include <osg/TemplatePrimitiveFunctor>
 #include <osgUtil/Optimizer>
 
 #include <osgDB/ObjectWrapper>
@@ -74,6 +76,145 @@ osg::Geode(rhs, copy)
     //nop
 }
 
+namespace
+{
+    struct ImportLinesOperator
+    {
+        osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
+        LineGroup* _group;
+        LineDrawable* _drawable;
+
+        virtual void setGeometry(osg::Geometry* geom)
+        {
+            _verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+            _colors = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
+        }
+
+        void line(unsigned i1, unsigned i2)
+        {
+            if (_verts)
+            {
+                _drawable->pushVertex((*_verts)[i1]);
+                _drawable->pushVertex((*_verts)[i2]);
+                if (_colors && _colors->size() == _verts->size())
+                {
+                    _drawable->setColor(_drawable->getNumVerts()-2, (*_colors)[_colors->size()-2]);
+                    _drawable->setColor(_drawable->getNumVerts()-1, (*_colors)[_colors->size()-1]);
+                }
+            }
+        }
+    };
+
+    typedef LineIndexFunctor<ImportLinesOperator> ImportLinesFunctorBase;
+
+    struct ImportLinesFunctor : public ImportLinesFunctorBase
+    {
+        ImportLinesFunctor(osg::Geometry* input, LineGroup* group)
+        {
+            setGeometry(input);
+            _group = group;
+            _drawable = 0L;
+        }
+
+        void emit()
+        {
+            if (_colors && _colors->getBinding() == osg::Array::BIND_OVERALL && _colors->size() > 0)
+            {
+                _drawable->setColor((*_colors)[0]);
+            }
+            _drawable->dirty();
+            _group->addChild(_drawable);
+        }
+
+        virtual void drawArrays(GLenum mode,GLint first,GLsizei count)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawArrays(mode, first, count);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLubyte* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLushort* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLuint* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+    };
+
+    
+
+    struct ImportLinesVisitor : public osg::NodeVisitor
+    {
+        LineGroup* _group;
+        bool _removePrimSets;
+
+        ImportLinesVisitor(LineGroup* group, bool removePrimSets) : _group(group), _removePrimSets(removePrimSets)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Drawable& drawable)
+        {
+            osg::Geometry* geom = drawable.asGeometry();
+            if (geom)
+            {
+                ImportLinesFunctor import(geom, _group);
+                drawable.accept(import);
+
+                if (_removePrimSets)
+                {
+                    for (int i = 0; i < geom->getNumPrimitiveSets(); ++i)
+                    {
+                        GLenum mode = geom->getPrimitiveSet(i)->getMode();
+                        if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+                        {
+                            geom->removePrimitiveSet(i--);
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+void
+LineGroup::import(osg::Node* node, bool removePrimitiveSets)
+{
+    if (node)
+    {
+        ImportLinesVisitor visitor(this, removePrimitiveSets);
+        node->accept(visitor);
+    }
+}
+
 void
 LineGroup::optimize()
 {
@@ -88,6 +229,12 @@ LineGroup::optimize()
     osgUtil::Optimizer::MergeGeometryVisitor mg;
     mg.setTargetMaximumNumberOfVertices(65536);
     accept(mg);
+}
+
+LineDrawable*
+LineGroup::getLineDrawable(unsigned i)
+{
+    return i < getNumChildren() ? dynamic_cast<LineDrawable*>(getChild(i)) : 0L;
 }
 
 //...................................................................
@@ -622,6 +769,7 @@ LineDrawable::setVerts(const osg::Vec3Array* verts)
     initialize();
 
     _current->clear();
+    _colors->clear();
     if (verts && verts->size() > 0)
     {
         if (_gpu)
@@ -637,6 +785,8 @@ LineDrawable::setVerts(const osg::Vec3Array* verts)
             pushVertex(*i);
         }
     }
+
+    dirty();
 }
 
 void
@@ -649,6 +799,8 @@ LineDrawable::allocate(unsigned numVerts)
     {
         pushVertex(osg::Vec3(0,0,0));
     }
+
+    dirty();
 }
 
 // Calculates the "virtual" number of vertices in this drawable.
@@ -691,6 +843,19 @@ LineDrawable::reserve(unsigned size)
             _previous->reserve(actualSize);
             _next->reserve(actualSize);
         }
+    }
+}
+
+void
+LineDrawable::clear()
+{
+    initialize();
+    _current->clear();
+    _colors->clear();
+    if (_gpu)
+    {
+        _previous->clear();
+        _next->clear();
     }
 }
 

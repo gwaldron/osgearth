@@ -98,6 +98,9 @@ namespace osgEarth
         //! Allocate space for vertices
         void allocate(unsigned numVerts);
 
+        //! Clears all data
+        void clear();
+
         //! Number of vertices in the drawable
         unsigned getNumVerts() const;
 
@@ -130,6 +133,9 @@ namespace osgEarth
         //! all LineDrawables used with that state set.
         static void setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags=osg::StateAttribute::ON);
 
+        //! Install the line shaders on an arbitraty state set.
+        static void installShader(osg::StateSet*);
+
     public:
 
         //! Binding location for "previous" vertex attribute (default = 9)
@@ -159,7 +165,6 @@ namespace osgEarth
         void initialize();
 
         friend class LineGroup;
-        static void installShader(osg::StateSet*);
     };
 
 
@@ -183,10 +188,19 @@ namespace osgEarth
 
         //! Copy constructor
         LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);
+
+        //! Imports any GL line drawables from a node graph, converts them
+        //! to LineDrawables, and adds them to this LineGroup.
+        //! If you set removePrimitiveSets to true, it will remove all line-based
+        //! primitive sets from the node after import.
+        void import(osg::Node* node, bool removePrimitiveSets =false);
         
         //! Optimize the LineDrawables under this group for performance.
         //! Only call this after you finish adding drawables to your group.
         void optimize();
+
+        //! Get child i as a LineDrawable
+        LineDrawable* getLineDrawable(unsigned i);
 
     protected:
         //! destructor

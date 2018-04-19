@@ -93,7 +93,11 @@ namespace osgEarth
         void setColor(unsigned i, const osg::Vec4& color);
 
         //! Copy a vertex array into the drawable
-        void setVerts(const osg::Vec3Array* verts);
+        void importVertexArray(const osg::Vec3Array* verts);
+        
+        //! Copy a vertex attribute array into the drawable
+        template<typename T>
+        void importVertexAttribArray(unsigned location, const T* data);
         
         //! Allocate space for vertices
         void allocate(unsigned numVerts);
@@ -144,10 +148,6 @@ namespace osgEarth
         //! Binding location for "next" vertex attribute (default = 10)
         static int NextVertexAttrLocation;
 
-    public: // osg::Geometry overrides
-
-        virtual void drawPrimitivesImplementation(osg::RenderInfo& ri) const;
-
     private:
         GLenum _mode;
         bool _gpu;
@@ -165,6 +165,9 @@ namespace osgEarth
         void initialize();
 
         friend class LineGroup;
+
+        unsigned actualVertsPerVirtualVert(unsigned) const;
+        unsigned numVirtualVerts(const osg::Array*) const;
     };
 
 
@@ -213,9 +216,20 @@ namespace osgEarth
     template<typename T>
     void LineDrawable::pushVertexAttrib(T* vaa, const typename T::ElementDataType& value)
     {
-        vaa->push_back(value);
-        if (_gpu)
+        unsigned nvv = numVirtualVerts(vaa);
+        unsigned num = actualVertsPerVirtualVert(nvv);
+        for (unsigned i = 0; i<num; ++i)
             vaa->push_back(value);
+    }
+
+    template<typename T>
+    void LineDrawable::importVertexAttribArray(unsigned location, const typename T* data)
+    {
+        typename T* vaa = osg::cloneType(data);
+        setVertexAttribArray(location, vaa);
+        for (unsigned i=0; i < data->getNumElements(); ++i)
+            pushVertexAttrib(vaa, (*data)[i]);
+        OE_WARN << "pushed " << numVirtualVerts(vaa) << std::endl;
     }
 
 } // namespace osgEarth

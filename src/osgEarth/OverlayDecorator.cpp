@@ -732,7 +732,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::ref_ptr<osg::Node> camNode = osgDB::readRefNodeFile(fn);
             camNode->setName("camera");
 
-            // visible overlay BEFORE cutting:
+            // visible overlay BEFORE cutting:brb
             //uncutVisiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
             //osg::ref_ptr<osg::Node> overlay = osgDB::readRefNodeFile(fn);
             //overlay->setName("overlay");

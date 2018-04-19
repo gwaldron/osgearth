@@ -51,7 +51,7 @@ flat out vec2 oe_GPULines_rv;
 
 #ifdef OE_GPU_CLAMPING
 // see GPUClamping.vert.glsl
-void oe_clamp_clampViewSpaceVertex(inout vec4);
+in vec3 oe_clamp_viewSpaceClampingVector;
 #endif
 
 void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
@@ -67,11 +67,11 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 
 #ifdef OE_GPU_CLAMPING
     vec4 prevView = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
-    oe_clamp_clampViewSpaceVertex(prevView);
+    prevView.xyz += oe_clamp_viewSpaceClampingVector;
     vec4 prevClip = gl_ProjectionMatrix * prevView;
 
     vec4 nextView = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
-    oe_clamp_clampViewSpaceVertex(nextView);
+    nextView += oe_clamp_viewSpaceClampingVector;
     vec4 nextClip = gl_ProjectionMatrix * nextView;
 #else
     vec4 prevClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_prev, 1.0);
@@ -83,7 +83,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 nextUnit = nextClip.xy/nextClip.w * arVec;
 
 #ifdef OE_GPULINES_WIDTH
-    float thickness = OE_GPULINES_WIDTH; //abs(oe_GPULines_width);
+    float thickness = OE_GPULINES_WIDTH;
 #else
     float thickness = 1.0;
 #endif

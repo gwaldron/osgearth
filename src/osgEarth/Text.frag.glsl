@@ -248,6 +248,17 @@ void text_frag(inout vec4 color)
     shadow_color.rgb = BACKDROP_COLOR.rgb;
 
     vec4 glyph_color = textColor(texCoord);
+
+    // lower the alpha_power value the greater the saturation, no need to be so aggressive with SDF than GREYSCALE
+    #if SIGNED_DISTANCE_FIELD
+        float alpha_power = 0.6;
+    #else
+        float alpha_power = 0.5;
+    #endif
+
+    // over saturate the alpha values to make sure the font and it's shadow are clear
+    shadow_color.a = pow(shadow_color.a, alpha_power);
+    glyph_color.a = pow(glyph_color.a, alpha_power);
     vec4 clr = mix(shadow_color, glyph_color, glyph_color.a);
 #else
     vec4 clr = textColor(texCoord);

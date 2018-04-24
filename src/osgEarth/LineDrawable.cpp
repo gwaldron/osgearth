@@ -649,12 +649,15 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
         {
             if (_mode == GL_LINE_STRIP)
             {
-                unsigned ri = vi == 0u ? 0u : (vi * 4u) - 2u;
+                unsigned ri = vi == 0u ? 0u : (vi * 4u) - 2u; // starting real index
+                unsigned rnum = actualVertsPerVirtualVert(vi); // number of real verts to set
 
-                for (unsigned n = ri; n < ri+4; ++n)
+                // update the main verts:
+                for (unsigned n = ri; n < ri+rnum; ++n)
                     (*_current)[n] = vert;
                 _current->dirty();
 
+                // update next/previous verts:
                 if (numVerts == 1u)
                 {
                     (*_next)[0] = vert, (*_next)[1] = vert;
@@ -664,26 +667,27 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
                 {
                     if (vi == 0u)
                     {
-                        for (unsigned n = 0; n < 4; ++n)
+                        for (unsigned n = 0; n < rnum; ++n)
                             (*_previous)[n] = vert;
                         _previous->dirty();
                     }
                     else if (vi < numVerts - 1)
                     {
-                        for (unsigned n = ri + 4; n < ri + 8; ++n)
+                        for (unsigned n = ri + rnum; n < ri + rnum + 4; ++n)
                             (*_previous)[n] = vert;
                         _previous->dirty();
                     }
 
                     if (vi == numVerts - 1)
                     {
-                        for (unsigned n = 0; n < 4; ++n)
+                        for (unsigned n = 0; n < rnum; ++n)
                             (*_next)[n] = vert;
                         _next->dirty();
                     }
                     else if (vi > 0)
                     {
-                        for (unsigned n = ri - 4; n < ri; ++n)
+                        unsigned prevNum = actualVertsPerVirtualVert(vi-1);
+                        for (unsigned n = ri - prevNum; n < ri; ++n)
                             (*_next)[n] = vert;
                         _next->dirty();
                     }

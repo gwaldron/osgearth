@@ -108,6 +108,9 @@ namespace osgEarth
         //! Number of vertices in the drawable
         unsigned getNumVerts() const;
 
+        //! Number of vertices in the drawable
+        unsigned size() const { return getNumVerts(); }
+
         //! Appends a vertex to an attribute array. Use this instead of adding
         //! to the array directly!
         template<typename T>

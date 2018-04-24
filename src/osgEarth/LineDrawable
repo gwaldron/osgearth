@@ -228,7 +228,7 @@ namespace osgEarth
     template<typename T>
     void LineDrawable::importVertexAttribArray(unsigned location, const T* data)
     {
-        typename T* vaa = osg::cloneType(data);
+        T* vaa = osg::cloneType(data);
         setVertexAttribArray(location, vaa);
         for (unsigned i=0; i < data->getNumElements(); ++i)
             pushVertexAttrib(vaa, (*data)[i]);

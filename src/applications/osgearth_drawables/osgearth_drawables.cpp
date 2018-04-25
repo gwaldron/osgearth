@@ -151,6 +151,14 @@ main(int argc, char** argv)
 
     osg::ref_ptr<osg::Node> node = createLineDrawables();
 
+    if (arguments.read("--ortho"))
+    {
+        viewer.realize();
+        double r = node->getBound().radius() * 1.1;
+        double ar = viewer.getCamera()->getViewport()->width() / viewer.getCamera()->getViewport()->height();
+        viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
+    }
+
     if (arguments.read("--serialize"))
     {
         const char* fileName = "out.osgt";

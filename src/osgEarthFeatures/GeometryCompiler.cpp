@@ -548,7 +548,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     
 
     //test: dump the tile to disk
-    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+    //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;
+    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osgt" );
 
 #ifdef PROFILING
     static double totalTime = 0.0;

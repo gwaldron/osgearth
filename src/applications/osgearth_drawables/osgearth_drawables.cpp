@@ -22,6 +22,9 @@
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osg/Geometry>
+#include <osg/LineWidth>
+#include <osg/LineStipple>
 #include <osgGA/StateSetManipulator>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
@@ -74,6 +77,8 @@ osg::Node* makeGeometryForImport(double x, double y)
     (*colors)[0].set(1,1,1,1);
     geom->setColorArray(colors);
     geom->addPrimitiveSet(new osg::DrawArrays(GL_LINE_STRIP, 0, verts->size()));
+    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(3.0f));
+    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(1, 0xfff0));
     return geom;
 }
 

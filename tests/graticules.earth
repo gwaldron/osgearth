@@ -28,7 +28,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 gzd {
                     stroke: #ff000059;
                     stroke-width: 4px;
-                    stroke-tessellation: 20;
+                    stroke-tessellation: 10;
                     text-fill: #7f7f7fff;
                     text-align: left_bottom;
                 }
@@ -70,7 +70,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 gzd {
                     stroke: #ffffff59;
                     stroke-width: 3px;
-                    stroke-tessellation: 20;
+                    stroke-tessellation: 10;
                     text-fill: #7f7f7fff;
                     text-align: left_bottom;
                 }        

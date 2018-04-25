@@ -108,7 +108,7 @@ osgEarth Sample - Annotations
             <style type="text/css">
                 stroke:          #ff00ff;
                 stroke-width:    3px;
-                stroke-tessellation: 128;
+                stroke-tessellation-size: 500m;
                 render-lighting: false;
                 altitude-clamping: terrain;
                 altitude-technique: scene;

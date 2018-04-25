@@ -35,6 +35,7 @@
 #include <osg/Uniform>
 #include <osg/ValueObject>
 #include <osg/Timer>
+#include <osgDB/WriteFile>
 
 #define LC "[ClampingTechnique] "
 

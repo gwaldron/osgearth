@@ -109,9 +109,6 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
 
     if ( _maxDistance.isSet() )
     {
-        // copmpute the slice size in feature units.
-        double latitude = feature->getGeometry()->getBounds().center().y();
-        sliceSize = SpatialReference::transformUnits( _maxDistance.value(), feature->getSRS(), latitude );
         sliceSize = _maxDistance->as(Units::METERS);
     }
 

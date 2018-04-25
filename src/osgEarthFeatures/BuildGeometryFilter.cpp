@@ -31,6 +31,7 @@
 #include <osgEarth/Clamping>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/ShaderGenerator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineStipple>
@@ -506,7 +507,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // construct a drawable for the lines
             LineDrawable* drawable = new LineDrawable(isRing? GL_LINE_LOOP : GL_LINE_STRIP);
 
-            drawable->setVerts(allPoints);
+            drawable->importVertexArray(allPoints);
 
             if (line->stroke().isSet())
             {
@@ -525,6 +526,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             {
                 osg::FloatArray* hats = new osg::FloatArray();
                 hats->setBinding(osg::Array::BIND_PER_VERTEX);
+                hats->setNormalize(false);
                 drawable->setVertexAttribArray(Clamping::HeightsAttrLocation, hats);
                 for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
                 {
@@ -535,9 +537,6 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // assign the color:
             drawable->setColor(primaryColor);
 
-            // finalize the drawable and generate primitive sets
-            drawable->dirty();
-
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
             {
@@ -545,6 +544,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 drawable->setName( name );
             }
 
+#if 0 // Removed. User should use tessellationSize.
             // subdivide the mesh if necessary to conform to an ECEF globe;
             // but if the tessellation is set to zero, or if the style specifies a
             // tessellation size, skip this step.
@@ -561,6 +561,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 else
                     ms.run( *drawable->asGeometry(), threshold, *_geoInterp );
             }
+#endif
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
@@ -573,6 +574,9 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             {
                 Clamping::applyDefaultClampingAttrs( drawable, input->getDouble("__oe_verticalOffset", 0.0) );
             }
+
+            // finalize the drawable and generate primitive sets
+            drawable->dirty();
 
             drawables->addChild(drawable);
         }

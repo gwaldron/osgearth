@@ -61,10 +61,6 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         return;
 #endif
 
-    vec2 arVec = vec2(
-        oe_ViewportSize.x/oe_ViewportSize.y,
-        1.0);
-
 #ifdef OE_GPU_CLAMPING
     vec4 prevView = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
     prevView.xyz += oe_clamp_viewSpaceClampingVector;
@@ -78,9 +74,10 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec4 nextClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_next, 1.0);
 #endif
 
-    vec2 currUnit = currClip.xy/currClip.w * arVec;
-    vec2 prevUnit = prevClip.xy/prevClip.w * arVec;
-    vec2 nextUnit = nextClip.xy/nextClip.w * arVec;
+    // transform into pixel space
+    vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_ViewportSize;
+    vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
+    vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
 #ifdef OE_GPULINES_WIDTH
     float thickness = OE_GPULINES_WIDTH;
@@ -98,10 +95,6 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     // We will use this to calculate stippling data:
     vec2 stippleDir;
 
-#if 0
-    dir = normalize(nextUnit - currUnit);
-    stippleDir = dir;
-#else
     // The following vertex comparisons must be done in model 
     // space because the equivalency gets mashed after projection.
 
@@ -109,7 +102,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     if (gl_Vertex.xyz == oe_GPULines_prev)
     {
         //dir = normalize(nextUnit - currUnit);
-        dir = normalize(nextUnit - currUnit);
+        dir = normalize(nextPixel - currPixel);
         stippleDir = dir;
     }
     
@@ -117,15 +110,15 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     else if (gl_Vertex.xyz == oe_GPULines_next)
     {
         //dir = normalize(currUnit - prevUnit);
-        dir = normalize(currUnit - prevUnit);
+        dir = normalize(currPixel - prevPixel);
         stippleDir = dir;
     }
 
     // middle? join
     else
     {
-        vec2 dirA = normalize(currUnit - prevUnit);
-        vec2 dirB = normalize(nextUnit - currUnit);
+        vec2 dirA = normalize(currPixel - prevPixel);
+        vec2 dirB = normalize(nextPixel - currPixel);
 
         // Edge case: segment that doubles back on itself:
         if (dot(dirA,dirB) < -0.99)
@@ -152,18 +145,17 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         }
         stippleDir = dirB;
     }
-#endif
 
     // calculate the extrusion vector in pixels
     // note: seems like it should be len/2, BUT we are in [-1..1] space
-    vec2 extrudePixels = vec2(-dir.y, dir.x) * len;
+    vec2 extrudePixel = vec2(-dir.y, dir.x) * (len - 0.5);
 
     // and convert to unit space:
-    vec2 extrudeUnit = extrudePixels / oe_ViewportSize;
+    vec2 extrudeUnit = extrudePixel / oe_ViewportSize;
 
     // and from that make a clip-coord offset vector
-    vec4 offset = vec4(extrudeUnit*orientation*currClip.w, 0.0, 0.0);
-    currClip += offset;
+    vec2 offset = extrudeUnit*orientation*currClip.w;
+    currClip.xy += offset;
 
 #ifdef OE_GPULINES_STIPPLE_PATTERN
     // Line creation is done. Now, calculate a rotation angle

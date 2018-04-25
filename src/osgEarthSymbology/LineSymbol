@@ -47,7 +47,8 @@ namespace osgEarth { namespace Symbology
         optional<Distance>& tessellationSize() { return _tessellationSize; }
         const optional<Distance>& tessellationSize() const { return _tessellationSize; }
 
-        /** Tessellate the line geometry such that each source segment is divided into this many parts. */
+        /** #deprecated Use tessellationSize() instead.
+         *  Tessellate the line geometry such that each source segment is divided into this many parts. */
         optional<unsigned>& tessellation() { return _tessellation; }
         const optional<unsigned>& tessellation() const { return _tessellation; }
 

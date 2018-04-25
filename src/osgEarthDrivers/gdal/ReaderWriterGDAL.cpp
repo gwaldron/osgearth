@@ -131,7 +131,12 @@ typedef struct
 static void
 getFiles(const osgDB::Options& options, const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
 {
-    if (osgDB::fileType(file) == osgDB::DIRECTORY)
+    // Special cases for gdal virtual file systems
+    if (startsWith(file, "/vsi"))
+    {
+        files.push_back(file);
+    }
+    else if (osgDB::fileType(file) == osgDB::DIRECTORY)
     {
         osgDB::DirectoryContents contents = osgDB::getDirectoryContents(file);
         for (osgDB::DirectoryContents::iterator itr = contents.begin(); itr != contents.end(); ++itr)
@@ -758,8 +763,18 @@ public:
         // source connection:
         std::string source;
 
-        if ( _options.url().isSet() )
-            source = _options.url()->full();
+        if (_options.url().isSet())
+        {
+            // Use the base instead of the full if this is a gdal virtual file system
+            if (startsWith(_options.url()->base(), "/vsi"))
+            {
+                source = _options.url()->base();
+            }
+            else
+            {
+                source = _options.url()->full();
+            }
+        }
         else if ( _options.connection().isSet() )
             source = _options.connection().value();
 

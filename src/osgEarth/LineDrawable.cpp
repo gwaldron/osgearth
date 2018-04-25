@@ -36,6 +36,8 @@
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 
+#include <stack>
+
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
 #endif
@@ -115,11 +117,16 @@ namespace
 
     struct ImportLinesFunctor : public ImportLinesFunctorBase
     {
-        ImportLinesFunctor(osg::Geometry* input, LineGroup* group)
+        osg::LineWidth* _width;
+        osg::LineStipple* _stipple;
+
+        ImportLinesFunctor(osg::Geometry* input, LineGroup* group, osg::LineWidth* width, osg::LineStipple* stipple)
         {
             setGeometry(input);
             _group = group;
             _drawable = 0L;
+            _width = width;
+            _stipple = stipple;
         }
 
         void emit()
@@ -128,7 +135,20 @@ namespace
             {
                 _drawable->setColor((*_colors)[0]);
             }
+
             _drawable->dirty();
+
+            if (_width)
+            {
+                _drawable->setLineWidth(_width->getWidth());
+            }
+
+            if (_stipple)
+            {
+                _drawable->setStipplePattern(_stipple->getPattern());
+                _drawable->setStippleFactor(_stipple->getFactor());
+            }
+
             _group->addChild(_drawable);
         }
 
@@ -179,6 +199,10 @@ namespace
     {
         LineGroup* _group;
         bool _removePrimSets;
+        typedef std::pair<osg::Node*, osg::LineWidth*> Width;
+        typedef std::pair<osg::Node*, osg::LineStipple*> Stipple;
+        std::stack<Width> _width;
+        std::stack<Stipple> _stipple;
 
         ImportLinesVisitor(LineGroup* group, bool removePrimSets) : _group(group), _removePrimSets(removePrimSets)
         {
@@ -186,12 +210,25 @@ namespace
             setNodeMaskOverride(~0);
         }
 
+        void apply(osg::Node& node)
+        {
+            pushState(node);
+            traverse(node);
+            popState(node);
+        }
+
         void apply(osg::Drawable& drawable)
         {
+            pushState(drawable);
             osg::Geometry* geom = drawable.asGeometry();
             if (geom)
             {
-                ImportLinesFunctor import(geom, _group);
+                ImportLinesFunctor import(
+                    geom,
+                    _group,
+                    _width.empty() ? 0L : _width.top().second,
+                    _stipple.empty() ? 0L : _stipple.top().second);
+
                 drawable.accept(import);
 
                 if (_removePrimSets)
@@ -206,6 +243,33 @@ namespace
                     }
                 }
             }
+            popState(drawable);
+        }
+
+        void pushState(osg::Node& node)
+        {
+            osg::StateSet* ss = node.getStateSet();
+            if (ss)
+            {
+                osg::LineWidth* width = dynamic_cast<osg::LineWidth*>(ss->getAttribute(osg::StateAttribute::LINEWIDTH));
+                if (width)
+                {
+                    _width.push(std::make_pair(&node, width));
+                }
+                osg::LineStipple* stipple = dynamic_cast<osg::LineStipple*>(ss->getAttribute(osg::StateAttribute::LINESTIPPLE));
+                if (stipple)
+                {
+                    _stipple.push(std::make_pair(&node, stipple));
+                }
+            }
+        }
+
+        void popState(osg::Node& node)
+        {
+            if (!_width.empty() && _width.top().first == &node)
+                _width.pop();
+            if (!_stipple.empty() && _stipple.top().first == &node)
+                _stipple.pop();
         }
     };
 }

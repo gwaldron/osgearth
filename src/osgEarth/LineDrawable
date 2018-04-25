@@ -40,10 +40,10 @@ namespace osgEarth
      * a MapNode is fine. Otherwise, use the osgEarth::InstallViewportSizeUniform
      * callback on your scene graph.
      *
-     * Note: Try to use the provided functions whenever possible. If you do
-     * need to access the underlying Geometry arrays, keep in mind that 
-     * the implementation uses double verts; i.e. each vertex appears twice
-     * (to support the shader code).
+     * Note: Use the provided functions whenever possible. Do not access the
+     * underlying Geometry arrays directly. The implementation uses special
+     * formatting internally and accessing the arrays directly will probably
+     * cause trouble.
      */
     class OSGEARTH_EXPORT LineDrawable : public osg::Geometry
     {
@@ -196,13 +196,21 @@ namespace osgEarth
         LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);
 
         //! Imports any GL line drawables from a node graph, converts them
-        //! to LineDrawables, and adds them to this LineGroup.
+        //! to LineDrawables, and adds them to this LineGroup. If will detect
+        //! and set any LineWidth or LineStipple attributes it finds, but will not
+        //! find any attributes that occur in the graph above the imported node.
+        //!
         //! If you set removePrimitiveSets to true, it will remove all line-based
         //! primitive sets from the node after import.
+        //!
+        //! This method is for quickly importing legacy scene graphs; if you are
+        //! writing new code, use the LineDrawable API directly instead!
         void import(osg::Node* node, bool removePrimitiveSets =false);
         
         //! Optimize the LineDrawables under this group for performance.
         //! Only call this after you finish adding drawables to your group.
+        //! It will attempt to combine drawables and state sets, but it will also
+        //! render the graph henceforth immutable.
         void optimize();
 
         //! Get child i as a LineDrawable

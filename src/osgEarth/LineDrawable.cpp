@@ -233,7 +233,7 @@ namespace
 
                 if (_removePrimSets)
                 {
-                    for (int i = 0; i < geom->getNumPrimitiveSets(); ++i)
+                    for (int i = 0; i < (int)geom->getNumPrimitiveSets(); ++i)
                     {
                         GLenum mode = geom->getPrimitiveSet(i)->getMode();
                         if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
@@ -546,12 +546,31 @@ LineDrawable::setFirst(unsigned value)
 {
     _first = value;
 
-    if (_gpu && _mode == GL_LINE_STRIP)
+    if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_GPULINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*4, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
+        if (_mode == GL_LINE_STRIP)
+        {
+            u->set(osg::Vec2(4u * _first, _count > 1u ? 4u * (_first + _count - 1u) - 2u : 0u));
+        }
+        else if (_mode == GL_LINES)
+        {
+            u->set(osg::Vec2(2u * _first, _count > 1u ? 2u * (_first + _count) - 1u : 0u));
+        }
+    }
+    else
+    {
+        if (getNumPrimitiveSets() > 0)
+        {
+            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
+            if (da)
+            {
+                da->setFirst(_first);
+                da->dirty();
+            }
+        }
     }
 }
 
@@ -565,13 +584,32 @@ void
 LineDrawable::setCount(unsigned value)
 {
     _count = value;
-    
-    if (_gpu && _mode == GL_LINE_STRIP)
+
+    if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
         ss->setDefine("OE_GPULINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*4, _count > 0u? (_first+_count-1u)*4u-1u : 0u));
+        if (_mode == GL_LINE_STRIP)
+        {
+            u->set(osg::Vec2(4u * _first, _count > 1u ? 4u * (_first + _count - 1u) - 1u : 0u));
+        }
+        else if (_mode == GL_LINES)
+        {
+            u->set(osg::Vec2(2u * _first, _count > 1u ? 2u * (_first + _count) - 1u : 0u));
+        }
+    }
+    else
+    {
+        if (getNumPrimitiveSets() > 0)
+        {
+            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
+            if (da)
+            {
+                da->setFirst(_first);
+                da->dirty();
+            }
+        }
     }
 }
 
@@ -1082,7 +1120,7 @@ LineDrawable::dirty()
         for (unsigned i = 0; i<arrays.size(); ++i)
             arrays[i]->dirty();
 
-        addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
+        addPrimitiveSet(new osg::DrawArrays(_mode, _first, _count > 0u? _count : _current->size()));
     }
 }
 

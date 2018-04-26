@@ -39,8 +39,6 @@ uniform vec2 oe_ViewportSize;
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
 
-uniform float oe_GPULines_width;
-
 #ifdef OE_GPULINES_USE_LIMITS
 flat out int oe_GPULines_draw;
 #endif

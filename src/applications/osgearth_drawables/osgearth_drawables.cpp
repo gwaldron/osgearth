@@ -30,6 +30,7 @@
 #include <osgDB/WriteFile>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/VirtualProgram>
 
 #define LC "[drawables] "
 
@@ -158,6 +159,12 @@ main(int argc, char** argv)
         double ar = viewer.getCamera()->getViewport()->width() / viewer.getCamera()->getViewport()->height();
         viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
     }
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(viewer.getCamera()->getOrCreateStateSet());
+    const char* s =
+        "#version 330\n"
+        "void entry(inout vec4 v) { }\n";
+    vp->setFunction("entry", s, ShaderComp::LOCATION_VERTEX_VIEW);
 
     if (arguments.read("--serialize"))
     {

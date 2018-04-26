@@ -42,6 +42,7 @@ void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
 
     // clamp the point and remember it's depth:
     vec4 clampedPoint;
+    float depth;
     oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
 
     float dh = verticalOffset + oe_clamp_altitudeOffset;

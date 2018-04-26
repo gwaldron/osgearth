@@ -67,7 +67,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec4 prevClip = gl_ProjectionMatrix * prevView;
 
     vec4 nextView = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
-    nextView += oe_clamp_viewSpaceClampingVector;
+    nextView.xyz += oe_clamp_viewSpaceClampingVector;
     vec4 nextClip = gl_ProjectionMatrix * nextView;
 #else
     vec4 prevClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_prev, 1.0);

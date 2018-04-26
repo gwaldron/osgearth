@@ -106,39 +106,45 @@ osg::Node* createLineDrawables()
 
     group->addCullCallback(new InstallViewportSizeUniform());
 
+    float x = 10;
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
     strip->setLineWidth(3);
     strip->setColor(osg::Vec4(1,1,1,1));
-    addVerts(strip, 10, 10);
+    addVerts(strip, x, 10);
     group->addChild(strip);
 
+    x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
     loop->setLineWidth(8);
     loop->setColor(osg::Vec4(1,1,0,1));
-    addVerts(loop, 30, 10);
+    addVerts(loop, x, 10);
     group->addChild(loop);
 
+    x += 20;
     LineDrawable* stippled = new LineDrawable(GL_LINE_STRIP);
     stippled->setLineWidth(4);
     stippled->setStipplePattern(0xff00);
     stippled->setColor(osg::Vec4(0,1,0,1));
-    addVerts(stippled, 50, 10);
+    addVerts(stippled, x, 10);
     group->addChild(stippled);
-
+    
+    x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
     segments->setColor(osg::Vec4(0,1,1,1));
-    addVerts(segments, 70, 10);
+    addVerts(segments, x, 10);
     group->addChild(segments);
 
+    x += 20;
     LineDrawable* firstCount = new LineDrawable(GL_LINE_STRIP);
     firstCount->setLineWidth(5);
     firstCount->setColor(osg::Vec4(1,0,1,1));
-    addVerts(firstCount, 90, 10);
+    addVerts(firstCount, x, 10);
     firstCount->addUpdateCallback(new TestFirstCount());
     group->addChild(firstCount);
-
-    osg::ref_ptr<osg::Node> node = makeGeometryForImport(110, 10);
+    
+    x += 20;
+    osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, 10);
     group->import(node.get());
 
     return group;
@@ -160,11 +166,11 @@ main(int argc, char** argv)
         viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
     }
 
-    VirtualProgram* vp = VirtualProgram::getOrCreate(viewer.getCamera()->getOrCreateStateSet());
-    const char* s =
-        "#version 330\n"
-        "void entry(inout vec4 v) { }\n";
-    vp->setFunction("entry", s, ShaderComp::LOCATION_VERTEX_VIEW);
+    if (arguments.read("--antialias"))
+    {
+        node->getOrCreateStateSet()->setDefine("OE_LINES_ANTIALIAS");
+        node->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+    }
 
     if (arguments.read("--serialize"))
     {

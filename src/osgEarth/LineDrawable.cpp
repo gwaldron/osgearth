@@ -467,7 +467,7 @@ LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFla
 {
     bool gpu = Registry::capabilities().supportsGLSL();
     if (gpu)
-        stateSet->setDefine("OE_GPULINES_WIDTH", Stringify() << value, overrideFlags);
+        stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
     else
         stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
 }
@@ -479,7 +479,7 @@ LineDrawable::setStipplePattern(GLushort pattern)
     {
         _pattern = pattern;
         if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << _pattern);
+            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
         else
             getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
@@ -492,7 +492,7 @@ LineDrawable::setStippleFactor(GLint factor)
     {
         _factor = factor;
         if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << _factor );
+            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
         else
             getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
@@ -549,7 +549,7 @@ LineDrawable::setFirst(unsigned value)
     if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        ss->setDefine("OE_LINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
         if (_mode == GL_LINE_STRIP)
         {
@@ -588,7 +588,7 @@ LineDrawable::setCount(unsigned value)
     if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        ss->setDefine("OE_LINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
         if (_mode == GL_LINE_STRIP)
         {

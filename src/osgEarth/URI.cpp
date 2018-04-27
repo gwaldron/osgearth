@@ -98,11 +98,45 @@ URIStream::operator std::istream& ()
 
 //------------------------------------------------------------------------
 
+URIContext::URIContext()
+{
+}
+
+URIContext::URIContext(const std::string& referrer) :
+    _referrer(referrer)
+{
+}
+
+URIContext::URIContext(const URIContext& rhs) :
+    _referrer(rhs._referrer),
+    _headers(rhs._headers)
+{
+}
+
 std::string
 URIContext::getOSGPath( const std::string& target ) const
 {
     return osgEarth::getFullPath( _referrer, target );
 }
+
+void
+URIContext::addHeader(const std::string& name, const std::string& value)
+{
+    _headers[name] = value;
+}
+
+const Headers&
+URIContext::getHeaders() const
+{
+    return _headers;
+}
+
+Headers&
+URIContext::getHeaders()
+{
+    return _headers;
+}
+
 
 URIContext
 URIContext::add( const URIContext& sub ) const
@@ -240,12 +274,12 @@ namespace
                 osgDB::ReaderWriter::ReadResult result = osgDB::Registry::instance()->openArchiveImplementation(
                     archiveName, osgDB::ReaderWriter::READ, 4096, opt );
 
-                if (!result.validArchive()) 
+                if (!result.validArchive())
                     return ReadResult(); // error
 
                 osgDB::Archive* archive = result.getArchive();
 
-                osg::ref_ptr<osgDB::ReaderWriter::Options> options = opt ? opt->cloneOptions() : 
+                osg::ref_ptr<osgDB::ReaderWriter::Options> options = opt ? opt->cloneOptions() :
                     Registry::instance()->cloneOrCreateOptions();
 
                 options->setDatabasePath(archiveName);
@@ -291,9 +325,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readObject(key, 0L); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        ReadResult fromHTTP( const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
-            HTTPRequest req(uri);            
+            HTTPRequest req(uri.full());
+            req.getHeaders() = uri.context().getHeaders();
             if (lastModified > 0)
             {
                 req.setLastModified(lastModified);
@@ -310,9 +345,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key ) { return bin->readObject(key, 0L); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
-            HTTPRequest req(uri);            
+            HTTPRequest req(uri.full());
+            req.getHeaders() = uri.context().getHeaders();
             if (lastModified > 0)
             {
                 req.setLastModified(lastModified);
@@ -326,30 +362,32 @@ namespace
 
     struct ReadImage
     {
-        bool callbackRequestsCaching( URIReadCallback* cb ) const { 
-            return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); 
+        bool callbackRequestsCaching( URIReadCallback* cb ) const {
+            return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0);
         }
-        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+        ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             ReadResult r = cb->readImage(uri, opt);
             if ( r.getImage() ) r.getImage()->setFileName(uri);
             return r;
-        }                
-        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+        }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) {
             ReadResult r = bin->readImage(key, 0L);
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified ) { 
-            HTTPRequest req(uri);            
+        ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified ) {
+            HTTPRequest req(uri.full());
+            req.getHeaders() = uri.context().getHeaders();
+
             if (lastModified > 0)
             {
                 req.setLastModified(lastModified);
             }
             ReadResult r = HTTPClient::readImage(req, opt, p);
-            if ( r.getImage() ) r.getImage()->setFileName( uri );
+            if ( r.getImage() ) r.getImage()->setFileName( uri.full() );
             return r;
         }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { 
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
             ReadResult r = ReadResult(osgDB::readRefImageFile(uri, opt));
             if ( r.getImage() ) r.getImage()->setFileName( uri );
             return r;
@@ -361,9 +399,10 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readString(key, 0L); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
-            HTTPRequest req(uri);            
+            HTTPRequest req(uri.full());
+            req.getHeaders() = uri.context().getHeaders();
             if (lastModified > 0)
             {
                 req.setLastModified(lastModified);
@@ -382,7 +421,7 @@ namespace
         const URI&            inputURI,
         const osgDB::Options* dbOptions,
         ProgressCallback*     progress)
-    {        
+    {
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
         ReadResult result;
@@ -467,25 +506,25 @@ namespace
                         cp = cacheSettings->cachePolicy();
                         if (cp->isCacheEnabled() && callbackCachingOK)
                         {
-                            bin = cacheSettings->getCacheBin(); 
+                            bin = cacheSettings->getCacheBin();
                         }
                     }
 
                     bool expired = false;
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
-                    {                                                
-                        result = reader.fromCache( bin.get(), uri.cacheKey() );                        
+                    {
+                        result = reader.fromCache( bin.get(), uri.cacheKey() );
                         if ( result.succeeded() )
-                        {                                        
+                        {
                             expired = cp->isExpired(result.lastModifiedTime());
                             result.setIsFromCache(true);
                         }
                     }
 
-                    // If it's not cached, or it is cached but is expired then try to hit the server.                    
+                    // If it's not cached, or it is cached but is expired then try to hit the server.
                     if ( result.empty() || expired )
-                    {                        
+                    {
                         // Need to do this to support nested PLODs and Proxynodes.
                         osg::ref_ptr<osgDB::Options> remoteOptions =
                             Registry::instance()->cloneOrCreateOptions( localOptions.get() );
@@ -496,7 +535,7 @@ namespace
 
                         // try to use the callback if it's set. Callback ignores the caching policy.
                         if ( cb )
-                        {                
+                        {
                             result = reader.fromCallback( cb, uri.full(), remoteOptions.get() );
 
                             if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
@@ -507,13 +546,13 @@ namespace
                         }
 
                         if ( !gotResultFromCallback )
-                        {                            
+                        {
                             // still no data, go to the source:
                             if ( (result.empty() || expired) && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
-                            {                                
-                                ReadResult remoteResult = reader.fromHTTP( uri.full(), remoteOptions.get(), progress, result.lastModifiedTime() );
+                            {
+                                ReadResult remoteResult = reader.fromHTTP( uri, remoteOptions.get(), progress, result.lastModifiedTime() );
                                 if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
-                                {                                    
+                                {
                                     OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
                                     // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
                                     if (bin)
@@ -522,7 +561,7 @@ namespace
                                 else
                                 {
                                     OE_DEBUG << LC << "Got remote result for " << uri.full() << std::endl;
-                                    result = remoteResult;                                    
+                                    result = remoteResult;
                                 }
                             }
 
@@ -622,8 +661,8 @@ URIAliasMap::resolve(const std::string& input, const URIContext& context) const
 
 
 URIAliasMapReadCallback::URIAliasMapReadCallback(const URIAliasMap& aliasMap,
-                                                 const URIContext&  context ) : 
-_aliasMap( aliasMap ), 
+                                                 const URIContext&  context ) :
+_aliasMap( aliasMap ),
 _context ( context )
 {
     //nop
@@ -636,14 +675,14 @@ URIAliasMapReadCallback::openArchive(const std::string& filename, osgDB::ReaderW
     else return osgDB::Registry::instance()->openArchive(_aliasMap.resolve(filename,_context), status, indexBlockSizeHint, useObjectCache);
 }
 
-osgDB::ReaderWriter::ReadResult 
+osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readObject(const std::string& filename, const osgDB::Options* options)
 {
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readObject(_aliasMap.resolve(filename,_context),options);
     else return osgDB::Registry::instance()->readObjectImplementation(_aliasMap.resolve(filename,_context),options);
 }
 
-osgDB::ReaderWriter::ReadResult 
+osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readImage(const std::string& filename, const osgDB::Options* options)
 {
     OE_INFO << LC << "Map: " << filename << " to " << _aliasMap.resolve(filename,_context) << std::endl;
@@ -651,21 +690,21 @@ URIAliasMapReadCallback::readImage(const std::string& filename, const osgDB::Opt
     else return osgDB::Registry::instance()->readImageImplementation(_aliasMap.resolve(filename,_context),options);
 }
 
-osgDB::ReaderWriter::ReadResult 
+osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readHeightField(const std::string& filename, const osgDB::Options* options)
 {
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readHeightField(_aliasMap.resolve(filename,_context),options);
     else return osgDB::Registry::instance()->readHeightFieldImplementation(_aliasMap.resolve(filename,_context),options);
 }
 
-osgDB::ReaderWriter::ReadResult 
+osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readNode(const std::string& filename, const osgDB::Options* options)
 {
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readNode(_aliasMap.resolve(filename,_context),options);
     else return osgDB::Registry::instance()->readNodeImplementation(_aliasMap.resolve(filename,_context),options);
 }
 
-osgDB::ReaderWriter::ReadResult 
+osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readShader(const std::string& filename, const osgDB::Options* options)
 {
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readShader(_aliasMap.resolve(filename,_context),options);

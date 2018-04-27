@@ -45,7 +45,7 @@ namespace osgEarth { namespace Drivers
     public:
         CesiumIonOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
             TileSourceOptions( opt ),
-            _server("http://api.cesium.com/"),
+            _server("https://api.cesium.com/"),
             _format("png")
         {
             setDriver( "cesiumion" );

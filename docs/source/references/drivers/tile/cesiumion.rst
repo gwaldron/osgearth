@@ -1,5 +1,5 @@
 Cesium Ion
-===
+==========
 The Cesium Ion plugin reads imagery tiles from the `Cesium Ion <https://cesium.com>`_ service.
 By providing your own access_token you'll gain access to your layers.
 

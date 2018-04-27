@@ -1,0 +1,16 @@
+
+<!-- 
+Cesium Ion Driver
+
+Access image layers from the Cesium Ion service, available at https://cesium.com
+-->
+
+<map name="Cesium Ion" type="geocentric" version="2">
+ 
+    <image name="cesiumion bluemarble" driver="cesiumion">
+        <asset_id>3845</asset_id>
+        <!-- This is the default cesium ion key.  Change this to your access token to access your assets -->
+        <token>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0NDViM2NkNi0xYTE2LTRlZTUtODBlNy05M2Q4ODg4M2NmMTQiLCJpZCI6MjU5LCJpYXQiOjE1MTgxOTc4MDh9.sld5jPORDf_lWavMEsugh6vHPnjR6j3qd1aBkQTswNM</token>
+    </image>
+
+</map>

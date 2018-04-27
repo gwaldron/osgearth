@@ -240,6 +240,12 @@ HTTPRequest::getHeaders() const
     return _headers;
 }
 
+Headers&
+HTTPRequest::getHeaders()
+{
+    return _headers;
+}
+
 void HTTPRequest::setLastModified( const DateTime &lastModified)
 {
     addHeader("If-Modified-Since", lastModified.asRFC1123());

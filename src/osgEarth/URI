@@ -24,6 +24,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
+#include <osgEarth/HTTPClient>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -53,13 +54,13 @@ namespace osgEarth
     {
     public:
         /** Creates an empty context. */
-        URIContext() { }
+        URIContext();
 
         /** Creates a context that specifies a referring object. */
-        URIContext( const std::string& referrer ) : _referrer(referrer) { }
+        URIContext(const std::string& referrer);
 
         /** Copy constructor. */
-        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
+        URIContext(const URIContext& rhs);
 
         /** dtor */
         virtual ~URIContext() { }
@@ -88,9 +89,20 @@ namespace osgEarth
         /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
         std::string getOSGPath( const std::string& target ) const;
 
+        //! Add a header name/value pair to use when requesting a remote URL
+        void addHeader(const std::string& name, const std::string& value);
+
+        //! Headers in this URIContext
+        const Headers& getHeaders() const;
+
+        //! Headers in this URIContext
+        Headers& getHeaders();
+
+
     private:
         friend class URI;
         std::string _referrer;
+        Headers _headers;
     };
 
 //--------------------------------------------------------------------

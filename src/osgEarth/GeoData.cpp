@@ -1403,6 +1403,22 @@ GeoExtent::createScaleBias(const GeoExtent& rhs, osg::Matrix& output) const
 
 /***************************************************************************/
 
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel, const std::string &description) :
+GeoExtent(extent)
+{
+    _minLevel = minLevel;
+    _maxLevel = maxLevel;
+    _description = description;
+}
+
+DataExtent::DataExtent(const GeoExtent& extent, const std::string &description) :
+GeoExtent(extent),
+_minLevel( 0 ),
+_maxLevel( 0 )
+{
+    _description = description;
+}
+
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
 GeoExtent(extent)
 {
@@ -1415,6 +1431,14 @@ GeoExtent(extent),
 _maxLevel( 25 )
 {
     _minLevel = minLevel;
+}
+
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description) :
+GeoExtent(extent),
+_maxLevel( 0 )
+{
+    _minLevel = minLevel;
+    _description = description;
 }
 
 DataExtent::DataExtent(const GeoExtent& extent ) :

@@ -498,9 +498,15 @@ HTTPClient::~HTTPClient()
 }
 
 void
-HTTPClient::setProxySettings( const ProxySettings& proxySettings )
+HTTPClient::setProxySettings( const optional<ProxySettings> & proxySettings )
 {
     s_proxySettings = proxySettings;
+}
+
+const optional<ProxySettings> & 
+HTTPClient::getProxySettings()
+{
+    return s_proxySettings;
 }
 
 const std::string& HTTPClient::getUserAgent()
@@ -1481,9 +1487,13 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
                 if ( s_HTTP_DEBUG )
                 {
                     if (response.isCancelled())
+                    {
                         OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
                     else
+                    {
                         OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    }
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1560,9 +1570,13 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
                 if ( s_HTTP_DEBUG )
                 {
                     if (response.isCancelled())
+                    {
                         OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
                     else
+                    {
                         OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    }
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1635,9 +1649,13 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
                 if ( s_HTTP_DEBUG )
                 {
                     if (response.isCancelled())
+                    {
                         OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
                     else
+                    {
                         OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    }
                 }
                 callback->setNeedsRetry( true );
             }
@@ -1691,9 +1709,13 @@ HTTPClient::doReadString(const HTTPRequest&    request,
                 if ( s_HTTP_DEBUG )
                 {
                     if (response.isCancelled())
+                    {
                         OE_NOTICE << LC << "Request was cancelled" << std::endl;
+                    }
                     else
+                    {
                         OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                    }
                 }
                 callback->setNeedsRetry( true );
             }

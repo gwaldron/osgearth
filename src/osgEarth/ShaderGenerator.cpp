@@ -832,7 +832,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     shaders.load(vp, "Text.frag.glsl");
 
 #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
-    ss->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
+    const_cast<osg::StateSet*>(ss)->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
 #endif
 
 #endif

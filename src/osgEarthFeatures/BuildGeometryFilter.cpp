@@ -279,7 +279,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                                              bool           twosided,
                                              FilterContext& context)
 {
-    osg::Group* group = new osg::Group;    
+    osg::Group* group = new osg::Group;
 
     // establish some referencing
     bool                    makeECEF   = false;
@@ -295,7 +295,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
     // We need to create a different geode for each texture that is used so they can share statesets.
     typedef std::map< std::string, osg::ref_ptr< osg::Geode > > TextureToGeodeMap;
-    TextureToGeodeMap geodes;    
+    TextureToGeodeMap geodes;
 
     // iterate over all features.
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
@@ -315,7 +315,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         if (line->imageURI().isSet() && context.getSession() && context.getSession()->getResourceCache())
         {
             StringExpression temp( *line->imageURI() );
-            imageURI = input->eval( temp, context.getSession());            
+            imageURI = input->eval( temp, context.getSession());
         }
 
         // Try to find the existing geode, otherwise create one.
@@ -409,7 +409,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
                 Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
                 Clamping::setHeights( geom, copyHeights._newHeights.get() );
                 //OE_WARN << "heights = " << hats->size() << ", new hats = " << copyHeights._newHeights->size() << ", verts=" << geom->getVertexArray()->getNumElements() << std::endl;
-            }            
+            }
         }
         polygonizer.installShaders( geode.get() );
     }
@@ -445,7 +445,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     // Group to contain all the lines we create here
     LineGroup* drawables = new LineGroup();
-    
+
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
     const SpatialReference* outputSRS = 0L;
@@ -496,18 +496,18 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
             bool isRing = (dynamic_cast<Ring*>(part) != 0L);
-            
+
             // resolve the color:
             osg::Vec4f primaryColor = line->stroke()->color();
 
             // generate the geometry and localize to the local tangent plane
-            osg::Vec3Array* allPoints = new osg::Vec3Array();
-            transformAndLocalize( part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF );
+            osg::ref_ptr< osg::Vec3Array > allPoints = new osg::Vec3Array();
+            transformAndLocalize( part->asVector(), featureSRS, allPoints.get(), outputSRS, _world2local, makeECEF );
 
             // construct a drawable for the lines
             LineDrawable* drawable = new LineDrawable(isRing? GL_LINE_LOOP : GL_LINE_STRIP);
 
-            drawable->importVertexArray(allPoints);
+            drawable->importVertexArray(allPoints.get());
 
             if (line->stroke().isSet())
             {
@@ -533,7 +533,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                     drawable->pushVertexAttrib(hats, i->z());
                 }
             }
-            
+
             // assign the color:
             drawable->setColor(primaryColor);
 
@@ -1222,7 +1222,7 @@ namespace
             // calc orientation of triangle.
             osg::Vec3 normal = (v2 - v1) ^ (v3 - v1);
             normal.normalize();
-            
+
             (*_normals)[i1] += normal;
             (*_normals)[i2] += normal;
             (*_normals)[i3] += normal;
@@ -1249,12 +1249,12 @@ namespace
         {
             osg::Geometry* geom = drawable.asGeometry();
             if (geom)
-            {                
+            {
                 osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
 
                 osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
                 normals->setBinding(normals->BIND_PER_VERTEX);
-                
+
                 osg::TriangleIndexFunctor<GenerateNormalFunctor> f;
                 f.set(verts, normals);
                 geom->accept(f);
@@ -1431,7 +1431,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( lines.size() > 0 )
     {
         OE_TEST << LC << "Building " << lines.size() << " lines." << std::endl;
-        
+
         osg::ref_ptr<osg::Group> group = processLines(lines, context);
 
         if ( group->getNumChildren() > 0 )

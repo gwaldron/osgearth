@@ -76,7 +76,7 @@ public:
           URI endpoint(buf.str());
           OE_DEBUG << "Getting endpoint " << endpoint.full() << std::endl;
 
-          ReadResult r = URI(endpoint).readString(_dbOptions);
+          ReadResult r = URI(endpoint).readString(_dbOptions.get());
           if (r.failed())
               return Status::Error(Status::ConfigurationError, "Failed to get metadata from asset endpoint");
 

@@ -61,6 +61,15 @@ namespace osgEarth { namespace Util
         optional<std::string>& resolutions() { return _resolutions; }
         const optional<std::string>& resolutions() const { return _resolutions; }
 
+        optional<bool>& gridLinesVisible() { return _gridLinesVisible; }
+        const optional<bool>& gridLinesVisible() const { return _gridLinesVisible; }
+
+        optional<bool>& gridLabelsVisible() { return _gridLabelsVisible; }
+        const optional<bool>& gridLabelsVisible() const { return _gridLabelsVisible; }
+
+        optional<bool>& edgeLabelsVisible() { return _edgeLabelsVisible; }
+        const optional<bool>& edgeLabelsVisible() const { return _edgeLabelsVisible; }
+
     public:
         GeodeticGraticuleOptions(const ConfigOptions& opt =ConfigOptions()) : VisibleLayerOptions( opt )
         {
@@ -68,6 +77,9 @@ namespace osgEarth { namespace Util
             _color.init(Color(Color::Yellow, 0.5f));
             _labelColor.init(Color::White);
             _gridLines.init(10);
+            _gridLinesVisible.init(true);
+            _gridLabelsVisible.init(true);
+            _edgeLabelsVisible.init(true);
             fromConfig( _conf );
         }
 
@@ -80,6 +92,9 @@ namespace osgEarth { namespace Util
             conf.addIfSet("label_color", _labelColor );
             conf.addIfSet("grid_lines", _gridLines);
             conf.addIfSet("resolutions", _resolutions);
+            conf.addIfSet("grid_lines_visible", _gridLinesVisible);
+            conf.addIfSet("grid_labels_visible", _gridLabelsVisible);
+            conf.addIfSet("edge_labels_visible", _edgeLabelsVisible);
             return conf;
         }
 
@@ -95,6 +110,9 @@ namespace osgEarth { namespace Util
             conf.getIfSet("label_color", _labelColor);
             conf.getIfSet("grid_lines", _gridLines);
             conf.getIfSet("resolutions", _resolutions);
+            conf.getIfSet("grid_lines_visible", _gridLinesVisible);
+            conf.getIfSet("grid_labels_visible", _gridLabelsVisible);
+            conf.getIfSet("edge_labels_visible", _edgeLabelsVisible);
         }
 
         optional<float>       _lineWidth;
@@ -102,6 +120,9 @@ namespace osgEarth { namespace Util
         optional<Color>       _labelColor;
         optional<int>         _gridLines;
         optional<std::string> _resolutions;
+        optional<bool>        _gridLinesVisible;
+        optional<bool>        _gridLabelsVisible;
+        optional<bool>        _edgeLabelsVisible;
     };
 
 
@@ -122,12 +143,30 @@ namespace osgEarth { namespace Util
         //! Rebuild the graticule after changing options.
         void dirty();
 
+        //! Get whether to show the grid lines
+        bool getGridLinesVisible() const;
+
+        //! Set whether to show the grid lines
+        void setGridLinesVisible(bool gridLinesVisible);
+
+        //! Get whether to show the grid labels
+        bool getGridLabelsVisible() const;
+
+        //! Set whether to show the grid labels
+        void setGridLabelsVisible(bool gridLabelsVisible);
+
+        //! Get whether to show the edge labels
+        bool getEdgeLabelsVisible() const;
+
+        //! Set whether to show the edge labels
+        void setEdgeLabelsVisible(bool edgeLabelsVisible);
+
     public: // Layer
 
         virtual void addedToMap(const Map* map);
 
         virtual void removedFromMap(const Map* map);
-        
+
         virtual osg::Node* getOrCreateNode();
 
         virtual void init();
@@ -139,13 +178,13 @@ namespace osgEarth { namespace Util
     protected:
 
         /** dtor */
-        virtual ~GeodeticGraticule() { }      
+        virtual ~GeodeticGraticule() { }
 
     private:
 
-        void setUpDefaultStyles();
-
         void rebuild();
+
+        void updateGridLineVisibility();
 
         UID _uid;
 
@@ -160,11 +199,11 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::NodeCallback > _callback;
         osg::ref_ptr<LatLongFormatter> _formatter;
         float _defaultResolution;
-        
+
         osg::Vec2f _centerOffset;
 
         bool _visible;
-        
+
 
         std::vector< double > _resolutions;
 
@@ -176,7 +215,7 @@ namespace osgEarth { namespace Util
             osg::ref_ptr<osg::StateSet> _labelStateset;
             std::vector< osg::ref_ptr<LabelNode> > _labelPool;
             float _resolution;
-            osg::Matrixd _lastViewMatrix;     
+            osg::Matrixd _lastViewMatrix;
             GeoExtent _viewExtent;
             double _lon;
             double _lat;
@@ -185,7 +224,7 @@ namespace osgEarth { namespace Util
         typedef std::map<osg::Camera*, CameraData> CameraDataMap;
         mutable CameraDataMap _cameraDataMap;
         mutable Threading::Mutex _cameraDataMapMutex;
-        
+
         CameraData& getCameraData(osg::Camera*) const;
 
         void initLabelPool(CameraData&);
@@ -202,11 +241,11 @@ namespace osgEarth { namespace Util
         GeoExtent getViewExtent(osgUtil::CullVisitor*) const;
 
     public:
-        
+
         void updateLabels();
         void cull(osgUtil::CullVisitor*);
         osg::StateSet* getStateSet(osgUtil::CullVisitor* cv);
-    };  
+    };
 } } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_GEODETIC_GRATICULE_H

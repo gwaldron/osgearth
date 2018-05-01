@@ -60,6 +60,10 @@ using namespace osgEarth::Annotation;
 
 REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
+
 //#define DEBUG_MODE
 
 //---------------------------------------------------------------------------
@@ -328,13 +332,16 @@ MGRSGraticule::init()
 
     osg::StateSet* ss = this->getOrCreateStateSet();
 
-    // make the shared depth attr:
+    // disable the depth buffer
     ss->setAttributeAndModes(
         new osg::Depth(osg::Depth::ALWAYS, 0.f, 1.f, false),
         osg::StateAttribute::ON);
+    
+    // activate horizon clipping
+    ss->setMode(GL_CLIP_DISTANCE0, 1);
 
-    ss->setMode( GL_LIGHTING, 0 );
-    ss->setMode( GL_BLEND, 1 );
+    // blending on to support transculency
+    ss->setMode(GL_BLEND, 1);
 
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
@@ -356,7 +363,7 @@ MGRSGraticule::removedFromMap(const Map* map)
 osg::Node*
 MGRSGraticule::getOrCreateNode()
 {
-    if (_root.valid() == false)
+    if (_root.valid() == false && getEnabled() == true)
     {
         _root = new LocalRoot();
 
@@ -1031,19 +1038,6 @@ MGRSGraticule::rebuild()
 
     // rebuild the graph:
     osg::Group* top = _root.get();
-
-    // Horizon clipping plane.
-    osg::ClipPlane* cp = _clipPlane.get();
-    if ( cp == 0L )
-    {
-        osg::ClipNode* clipNode = new osg::ClipNode();
-        osgEarth::Registry::shaderGenerator().run( clipNode );
-        cp = new osg::ClipPlane( 0 );
-        clipNode->addClipPlane( cp );
-        _root->addChild(clipNode);
-        top = clipNode;
-    }
-    top->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
 
 #if 0
     // Uncomment to write out a SQID data file

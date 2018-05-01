@@ -38,6 +38,7 @@ ENDIF(WIN32)
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
+    ClipPlane.glsl
     DepthOffset.vert.glsl
     Draping.vert.glsl
     Draping.frag.glsl
@@ -109,6 +110,7 @@ SET(LIB_PUBLIC_HEADERS
     GLSLChunker
     HeightFieldUtils
     Horizon
+    HorizonClipPlane
     HTTPClient
     ImageLayer
     ImageMosaic
@@ -284,6 +286,7 @@ set(TARGET_SRC
     GLSLChunker.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
+    HorizonClipPlane.cpp
     HTTPClient.cpp
     ImageLayer.cpp
     ImageMosaic.cpp

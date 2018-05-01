@@ -119,26 +119,28 @@ Horizon::setMinHAE(double value)
     _minVCmag = 1.0 + (_scale*_minHAE).length();
 }
 
-void
+bool
 Horizon::setEye(const osg::Vec3d& eye)
 {
-    if ( eye != _eye )
-    {
-        _eye = eye;
-        _eyeUnit = eye;
-        _eyeUnit.normalize();
+    if (eye == _eye)
+        return false;
 
-        _VC     = osg::componentMultiply( -_eye, _scale );  // viewer->center (scaled)
-        _VCmag  = std::max( _VC.length(), _minVCmag );      // clamped to the min HAE
-        _VCmag2 = _VCmag*_VCmag;
-        _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
+    _eye = eye;
+    _eyeUnit = eye;
+    _eyeUnit.normalize();
 
-        double VPmag = _VCmag - 1.0/_VCmag; // viewer->horizon plane dist (scaled)
-        double VHmag = sqrtf( _VHmag2 );
+    _VC     = osg::componentMultiply( -_eye, _scale );  // viewer->center (scaled)
+    _VCmag  = std::max( _VC.length(), _minVCmag );      // clamped to the min HAE
+    _VCmag2 = _VCmag*_VCmag;
+    _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
 
-        _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
-        _coneTan = tan(acos(_coneCos));
-    }
+    double VPmag = _VCmag - 1.0/_VCmag; // viewer->horizon plane dist (scaled)
+    double VHmag = sqrtf( _VHmag2 );
+
+    _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
+    _coneTan = tan(acos(_coneCos));
+
+    return true;
 }
 
 bool
@@ -356,26 +358,6 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
         const osg::BoundingSphere& bs = node->getBound();
         double radius = _centerOnly ? 0.0 : bs.radius();
         return horizon->isVisible( bs.center()*local2world, radius );
-    }
-
-    // If we are cloning the horizon from a prototype...
-    else if ( _horizonProto.valid() )
-    {
-        // make a local copy to support multi-threaded cull
-        local2world  = osg::computeLocalToWorld(np);
-        osg::Vec3d eye = osg::Vec3d(nv->getViewPoint()) * local2world;
-
-        // pop the last node in the path (which is the node this callback is on)
-        // to prevent double-transforming the bounding sphere's center point
-        np.pop_back();
-        local2world = osg::computeLocalToWorld(np);
-
-        osg::ref_ptr<Horizon> horizonCopy = osg::clone(_horizonProto.get(), osg::CopyOp::DEEP_COPY_ALL);
-        horizonCopy->setEye( eye );
-
-        const osg::BoundingSphere& bs = node->getBound();
-        double radius = _centerOnly ? 0.0 : bs.radius();
-        return horizonCopy->isVisible( bs.center()*local2world, radius );
     }
 
     // If the user forgot to install a horizon at all...

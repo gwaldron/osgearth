@@ -30,10 +30,6 @@
 #include <osg/ValueObject>
 #include <osg/MatrixTransform>
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
-#    define OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-#endif
-
 namespace osgEarth
 {
     /**
@@ -79,8 +75,9 @@ namespace osgEarth
 
         /**
          * Sets the eye position to use when testing for occlusion.
+         * Returns true if the value changed; false if it was the same
          */
-        void setEye(const osg::Vec3d& eyeECEF);
+        bool setEye(const osg::Vec3d& eyeECEF);
         
         /**
          * Whether a point is visible over the horizon.

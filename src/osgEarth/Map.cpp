@@ -734,7 +734,7 @@ Map::calculateProfile()
 
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapInfoEstablished( MapInfo(this) );
+            //i->get()->onMapInfoEstablished( MapInfo(this) );
         }
     }
 

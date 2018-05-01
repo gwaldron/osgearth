@@ -6,6 +6,10 @@ namespace osgEarth
 {
     Shaders::Shaders()
     {
+        // Clip Plane
+        ClipPlane = "ClipPlane.glsl";
+        _sources[ClipPlane] = "@ClipPlane.glsl@";
+
         // Depth Offset
         DepthOffsetVertex = "DepthOffset.vert.glsl";
        _sources[DepthOffsetVertex] = "@DepthOffset.vert.glsl@";

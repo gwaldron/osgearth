@@ -41,6 +41,10 @@
 
 #define LC "[SubstituteModelFilter] "
 
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -351,8 +355,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // activate horizon culling if we are in geocentric space
         if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
         {
-            //TODO: re-evaluate this; use Horizon?
-            HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+            // should this use clipping, or a horizon cull callback?
+
+            //HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+
+            attachPoint->getOrCreateStateSet()->setMode(GL_CLIP_DISTANCE0, 1);
         }
     }
 

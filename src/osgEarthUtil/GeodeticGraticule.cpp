@@ -221,7 +221,7 @@ GeodeticGraticule::removedFromMap(const Map* map)
 osg::Node*
 GeodeticGraticule::getOrCreateNode()
 {
-    if (_root.valid() == false)
+    if (_root.valid() == false && getEnabled() == true)
     {
         _root = new MyGroup(this, _mapNode);
         rebuild();

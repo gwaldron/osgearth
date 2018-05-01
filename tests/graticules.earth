@@ -14,6 +14,7 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
                 default {
                     stroke: #ffff0059;
                     stroke-width: 3px;
+                    stroke-tessellation: 10;
                     text-size: 28;
                     text-fill: #ffffff7f;
                     text-align: left_bottom;

@@ -147,6 +147,8 @@ void TileMap::setExtents( double minX, double minY, double maxX, double maxY)
 #define ATTR_ORDER "order"
 #define ATTR_UNITSPERPIXEL "units-per-pixel"
 
+#define ATTR_DESCRIPTION "description"
+
 bool intersects(const double &minXa, const double &minYa, const double &maxXa, const double &maxYa,
                 const double &minXb, const double &minYb, const double &maxXb, const double &maxYb)
 {
@@ -592,12 +594,24 @@ TileMapReaderWriter::read( const Config& conf )
 
             unsigned int maxLevel = conf.value<unsigned>(ATTR_MAX_LEVEL, 0);
 
+            std::string description = conf.value<std::string>(ATTR_DESCRIPTION, std::string());
+
             //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
 
             if ( maxLevel > 0 )
-                tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+            {
+                if(description.empty())
+                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+                else
+                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel, description));
+            }
             else
-                tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0) );
+            {
+                if(description.empty())
+                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0) );
+                else
+                    tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, description) );
+            }
         }
     }
 
@@ -686,6 +700,8 @@ tileMapToXmlDocument(const TileMap* tileMap)
                 e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(*itr->minLevel());
             if ( itr->maxLevel().isSet() )
                 e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = toString<unsigned int>(*itr->maxLevel());
+            if ( itr->description().isSet() )
+                e_data_extent->getAttrs()[ATTR_DESCRIPTION] = *itr->description();
             e_data_extents->getChildren().push_back( e_data_extent );
         }
         doc->getChildren().push_back( e_data_extents.get() );

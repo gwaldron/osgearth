@@ -22,11 +22,15 @@
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osg/Geometry>
+#include <osg/LineWidth>
+#include <osg/LineStipple>
 #include <osgGA/StateSetManipulator>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/VirtualProgram>
 
 #define LC "[drawables] "
 
@@ -57,36 +61,91 @@ void addLotsOfVerts(LineDrawable* line)
     line->dirty();
 }
 
+osg::Node* makeGeometryForImport(double x, double y)
+{
+    osg::Geometry* geom = new osg::Geometry();
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->push_back(osg::Vec3(x, 0, y));
+    verts->push_back(osg::Vec3(x + 5, 0, y));
+    verts->push_back(osg::Vec3(x + 10, 0, y));
+    verts->push_back(osg::Vec3(x + 10, 0, y + 5));
+    verts->push_back(osg::Vec3(x + 10, 0, y + 10));
+    verts->push_back(osg::Vec3(x + 5, 0, y + 10));
+    verts->push_back(osg::Vec3(x, 0, y + 10));
+    verts->push_back(osg::Vec3(x, 0, y + 5));
+    geom->setVertexArray(verts);    
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0].set(1,1,1,1);
+    geom->setColorArray(colors);
+    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINE_STRIP, 0, verts->size()));
+    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(3.0f));
+    geom->getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(1, 0xfff0));
+    return geom;
+}
+
+struct TestFirstCount : public osg::NodeCallback
+{
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        if (nv->getFrameStamp()->getFrameNumber() % 20 == 0)
+        {
+            LineDrawable* line = (LineDrawable*)node;
+
+            unsigned total = line->getNumVerts();
+            unsigned first = line->getFirst();
+        
+            line->setFirst( (first+1) % total );
+            line->setCount( 3 );
+        }
+    }
+};
+
 osg::Node* createLineDrawables()
 {
     LineGroup* group = new LineGroup();
 
     group->addCullCallback(new InstallViewportSizeUniform());
 
+    float x = 10;
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
     strip->setLineWidth(3);
     strip->setColor(osg::Vec4(1,1,1,1));
-    addVerts(strip, 10, 10);
+    addVerts(strip, x, 10);
     group->addChild(strip);
 
+    x += 20;
     LineDrawable* loop = new LineDrawable(GL_LINE_LOOP);
     loop->setLineWidth(8);
     loop->setColor(osg::Vec4(1,1,0,1));
-    addVerts(loop, 30, 10);
+    addVerts(loop, x, 10);
     group->addChild(loop);
 
+    x += 20;
     LineDrawable* stippled = new LineDrawable(GL_LINE_STRIP);
     stippled->setLineWidth(4);
     stippled->setStipplePattern(0xff00);
     stippled->setColor(osg::Vec4(0,1,0,1));
-    addVerts(stippled, 50, 10);
+    addVerts(stippled, x, 10);
     group->addChild(stippled);
-
+    
+    x += 20;
     LineDrawable* segments = new LineDrawable(GL_LINES);
     segments->setLineWidth(3);
     segments->setColor(osg::Vec4(0,1,1,1));
-    addVerts(segments, 70, 10);
+    addVerts(segments, x, 10);
     group->addChild(segments);
+
+    x += 20;
+    LineDrawable* firstCount = new LineDrawable(GL_LINE_STRIP);
+    firstCount->setLineWidth(5);
+    firstCount->setColor(osg::Vec4(1,0,1,1));
+    addVerts(firstCount, x, 10);
+    firstCount->addUpdateCallback(new TestFirstCount());
+    group->addChild(firstCount);
+    
+    x += 20;
+    osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, 10);
+    group->import(node.get());
 
     return group;
 }
@@ -98,6 +157,20 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     osg::ref_ptr<osg::Node> node = createLineDrawables();
+
+    if (arguments.read("--ortho"))
+    {
+        viewer.realize();
+        double r = node->getBound().radius() * 1.1;
+        double ar = viewer.getCamera()->getViewport()->width() / viewer.getCamera()->getViewport()->height();
+        viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
+    }
+
+    if (arguments.read("--antialias"))
+    {
+        node->getOrCreateStateSet()->setDefine("OE_LINES_ANTIALIAS");
+        node->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+    }
 
     if (arguments.read("--serialize"))
     {

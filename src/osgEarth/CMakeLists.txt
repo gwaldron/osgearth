@@ -47,7 +47,10 @@ set(TARGET_GLSL
     Instancing.vert.glsl
     LineDrawable.glsl
     PhongLighting.vert.glsl
-    PhongLighting.frag.glsl)
+    PhongLighting.frag.glsl
+    Text.vert.glsl
+    Text.frag.glsl
+    )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

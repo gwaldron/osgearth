@@ -23,4 +23,12 @@ using namespace osgEarth_kml;
 void 
 KML_LabelStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
+    if (!node)
+      return;
+    TextSymbol* text = style.getOrCreate<TextSymbol>();
+    std::string color = getValue(node, "color");
+    if (!color.empty())
+    {
+      text->fill()->color() = Color(Stringify() << "#" << color, Color::ABGR);
+    } 
 }

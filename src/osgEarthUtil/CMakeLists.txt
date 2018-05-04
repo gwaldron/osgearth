@@ -20,6 +20,7 @@ SET(HEADERS_ROOT
     Controls
     ContourMap
     ClampCallback
+    ClusterNode
     DataScanner
     EarthManipulator
     Ephemeris
@@ -111,6 +112,7 @@ SET(SOURCES_ROOT
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     ClipSpace.cpp
+    ClusterNode.cpp
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp

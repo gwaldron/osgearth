@@ -27,11 +27,12 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <iostream>
 
 #include <osgEarthAnnotation/PlaceNode>
 
-#include "ClusterNode"
+#include <osgEarthUtil/ClusterNode>
 
 #define LC "[viewer] "
 
@@ -74,10 +75,12 @@ void makePlaces(MapNode* mapNode, unsigned int count, const GeoExtent& extent, o
     }    
 }
 
-void makePlanes(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
+void makeModels(MapNode* mapNode, unsigned int count, const GeoExtent& extent, osg::NodeList& nodes)
 {
     osg::ref_ptr< osg::Node > cessna = osgDB::readRefNodeFile("cessna.osg.10,10,10.scale");
     osg::ref_ptr< osg::Node > cow = osgDB::readRefNodeFile("cow.osg.100,100,100.scale");
+    osgEarth::Registry::shaderGenerator().run(cessna.get());
+    osgEarth::Registry::shaderGenerator().run(cow.get());
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
@@ -201,10 +204,10 @@ void buildControls(Container* container, ClusterNode* clusterNode, MapNode* mapN
 }
 
 //! Displays a simplified count for the cluster instead of the exact number.
-class SimplifyCountCallback : public StyleClusterCallback
+class SimplifyCountCallback : public ClusterNode::StyleClusterCallback
 {
 public:
-    virtual void operator()(Cluster& cluster)
+    virtual void operator()(ClusterNode::Cluster& cluster)
     {        
         if (cluster.nodes.size() >= 100)
         {
@@ -230,7 +233,7 @@ public:
 };
 
 //! Changes the name of a marker based on the name of the clustered nodes.
-class StyleByNameCallback : public StyleClusterCallback
+class StyleByNameCallback : public ClusterNode::StyleClusterCallback
 {
 public:
 
@@ -240,9 +243,8 @@ public:
         _cowImage = osgDB::readRefImageFile("../data/hospital.png");
     }
     
-    virtual void operator()(Cluster& cluster)
-    {
-        /*
+    virtual void operator()(ClusterNode::Cluster& cluster)
+    {    
         std::stringstream buf;
         buf << cluster.nodes[0]->getName() << "(" << cluster.nodes.size() << ")" << std::endl;
         cluster.marker->setText(buf.str());
@@ -255,7 +257,6 @@ public:
         {
             cluster.marker->setIconImage(_cowImage.get());
         } 
-        */
     }
 
     osg::ref_ptr< osg::Image > _planeImage;
@@ -263,7 +264,7 @@ public:
 };
 
 //! Only allows nodes with the same name to be clustered together.
-class ClusterByNameCallback : public CanClusterCallback
+class ClusterByNameCallback : public ClusterNode::CanClusterCallback
 {
 public:
     virtual bool operator()(osg::Node* a, osg::Node* b)
@@ -312,7 +313,7 @@ main(int argc, char** argv)
         //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);
         GeoExtent extent(SpatialReference::create("wgs84"), -160.697021484375, 18.208480196039883, -153.951416015625, 22.978623970384913);
         
-        makePlanes(mapNode, 10000, extent, nodes);
+        makeModels(mapNode, 10000, extent, nodes);
 
         ClusterNode* clusterNode = new ClusterNode(mapNode, osgDB::readImageFile("../data/placemark32.png"));
         clusterNode->setStyleCallback(new StyleByNameCallback());

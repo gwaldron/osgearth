@@ -1,4 +1,11 @@
-#include "ClusterNode"
+#include <osgEarthUtil/ClusterNode>
+
+#include <osgEarthUtil/kdbush.hpp>
+
+typedef std::pair<int, int> TPoint;
+typedef std::vector< std::size_t > TIds;
+
+using namespace osgEarth::Util;
 
 ClusterNode::ClusterNode(MapNode* mapNode, osg::Image* defaultImage) :
     _radius(50),
@@ -52,24 +59,24 @@ void ClusterNode::setEnabled(bool enabled)
     _dirty = true;
 }
 
-StyleClusterCallback* ClusterNode::getStyleCallback()
+ClusterNode::StyleClusterCallback* ClusterNode::getStyleCallback()
 {
     return _styleCallback.get();
 }
 
 void
-ClusterNode::setStyleCallback(StyleClusterCallback* callback)
+ClusterNode::setStyleCallback(ClusterNode::StyleClusterCallback* callback)
 {
     _styleCallback = callback;
     _dirty = true;
 }
 
-CanClusterCallback* ClusterNode::getCanClusterCallback()
+ClusterNode::CanClusterCallback* ClusterNode::getCanClusterCallback()
 {
     return _canClusterCallback.get();
 }
 
-void ClusterNode::setCanClusterCallback(CanClusterCallback* callback)
+void ClusterNode::setCanClusterCallback(ClusterNode::CanClusterCallback* callback)
 {
     _canClusterCallback = callback;
     _dirty = true;

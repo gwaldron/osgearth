@@ -23,16 +23,20 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/LineFunctor>
 
 #include <osg/Depth>
 #include <osg/CullFace>
 #include <osg/LineStipple>
 #include <osg/LineWidth>
+#include <osg/TemplatePrimitiveFunctor>
 #include <osgUtil/Optimizer>
 
 #include <osgDB/ObjectWrapper>
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
+
+#include <stack>
 
 #if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
 #define OE_GLES_AVAILABLE
@@ -48,6 +52,9 @@ using namespace osgEarth;
 
 #define LC "[LineGroup] "
 
+// Comment this out to test the non-GLSL path
+#define USE_GPU
+
 namespace osgEarth { namespace Serializers { namespace LineGroup
 {
     REGISTER_OBJECT_WRAPPER(
@@ -62,16 +69,219 @@ namespace osgEarth { namespace Serializers { namespace LineGroup
 
 LineGroup::LineGroup()
 {
+#ifdef USE_GPU
     if (Registry::capabilities().supportsGLSL())
     {
         LineDrawable::installShader(getOrCreateStateSet());
     }
+#endif
 }
 
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
 osg::Geode(rhs, copy)
 {
     //nop
+}
+
+namespace
+{
+    struct ImportLinesOperator
+    {
+        osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
+        LineGroup* _group;
+        LineDrawable* _drawable;
+
+        virtual void setGeometry(osg::Geometry* geom)
+        {
+            _verts = dynamic_cast<osg::Vec3Array*>(geom->getVertexArray());
+            _colors = dynamic_cast<osg::Vec4Array*>(geom->getColorArray());
+        }
+
+        void line(unsigned i1, unsigned i2)
+        {
+            if (_verts)
+            {
+                _drawable->pushVertex((*_verts)[i1]);
+                _drawable->pushVertex((*_verts)[i2]);
+                if (_colors && _colors->size() == _verts->size())
+                {
+                    _drawable->setColor(_drawable->getNumVerts()-2, (*_colors)[_colors->size()-2]);
+                    _drawable->setColor(_drawable->getNumVerts()-1, (*_colors)[_colors->size()-1]);
+                }
+            }
+        }
+    };
+
+    typedef LineIndexFunctor<ImportLinesOperator> ImportLinesFunctorBase;
+
+    struct ImportLinesFunctor : public ImportLinesFunctorBase
+    {
+        osg::LineWidth* _width;
+        osg::LineStipple* _stipple;
+
+        ImportLinesFunctor(osg::Geometry* input, LineGroup* group, osg::LineWidth* width, osg::LineStipple* stipple)
+        {
+            setGeometry(input);
+            _group = group;
+            _drawable = 0L;
+            _width = width;
+            _stipple = stipple;
+        }
+
+        void emit()
+        {
+            if (_colors && _colors->getBinding() == osg::Array::BIND_OVERALL && _colors->size() > 0)
+            {
+                _drawable->setColor((*_colors)[0]);
+            }
+
+            _drawable->dirty();
+
+            if (_width)
+            {
+                _drawable->setLineWidth(_width->getWidth());
+            }
+
+            if (_stipple)
+            {
+                _drawable->setStipplePattern(_stipple->getPattern());
+                _drawable->setStippleFactor(_stipple->getFactor());
+            }
+
+            _group->addChild(_drawable);
+        }
+
+        virtual void drawArrays(GLenum mode,GLint first,GLsizei count)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawArrays(mode, first, count);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLubyte* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLushort* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLuint* indices)
+        {
+            if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+            {
+                _drawable = new LineDrawable(GL_LINES);
+                ImportLinesFunctorBase::drawElements(mode, count, indices);
+                emit();
+            }
+        }
+    };
+
+    
+
+    struct ImportLinesVisitor : public osg::NodeVisitor
+    {
+        LineGroup* _group;
+        bool _removePrimSets;
+        typedef std::pair<osg::Node*, osg::LineWidth*> Width;
+        typedef std::pair<osg::Node*, osg::LineStipple*> Stipple;
+        std::stack<Width> _width;
+        std::stack<Stipple> _stipple;
+
+        ImportLinesVisitor(LineGroup* group, bool removePrimSets) : _group(group), _removePrimSets(removePrimSets)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Node& node)
+        {
+            pushState(node);
+            traverse(node);
+            popState(node);
+        }
+
+        void apply(osg::Drawable& drawable)
+        {
+            pushState(drawable);
+            osg::Geometry* geom = drawable.asGeometry();
+            if (geom)
+            {
+                ImportLinesFunctor import(
+                    geom,
+                    _group,
+                    _width.empty() ? 0L : _width.top().second,
+                    _stipple.empty() ? 0L : _stipple.top().second);
+
+                drawable.accept(import);
+
+                if (_removePrimSets)
+                {
+                    for (int i = 0; i < (int)geom->getNumPrimitiveSets(); ++i)
+                    {
+                        GLenum mode = geom->getPrimitiveSet(i)->getMode();
+                        if (mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP)
+                        {
+                            geom->removePrimitiveSet(i--);
+                        }
+                    }
+                }
+            }
+            popState(drawable);
+        }
+
+        void pushState(osg::Node& node)
+        {
+            osg::StateSet* ss = node.getStateSet();
+            if (ss)
+            {
+                osg::LineWidth* width = dynamic_cast<osg::LineWidth*>(ss->getAttribute(osg::StateAttribute::LINEWIDTH));
+                if (width)
+                {
+                    _width.push(std::make_pair(&node, width));
+                }
+                osg::LineStipple* stipple = dynamic_cast<osg::LineStipple*>(ss->getAttribute(osg::StateAttribute::LINESTIPPLE));
+                if (stipple)
+                {
+                    _stipple.push(std::make_pair(&node, stipple));
+                }
+            }
+        }
+
+        void popState(osg::Node& node)
+        {
+            if (!_width.empty() && _width.top().first == &node)
+                _width.pop();
+            if (!_stipple.empty() && _stipple.top().first == &node)
+                _stipple.pop();
+        }
+    };
+}
+
+void
+LineGroup::import(osg::Node* node, bool removePrimitiveSets)
+{
+    if (node)
+    {
+        ImportLinesVisitor visitor(this, removePrimitiveSets);
+        node->accept(visitor);
+    }
 }
 
 void
@@ -90,10 +300,18 @@ LineGroup::optimize()
     accept(mg);
 }
 
+LineDrawable*
+LineGroup::getLineDrawable(unsigned i)
+{
+    return i < getNumChildren() ? dynamic_cast<LineDrawable*>(getChild(i)) : 0L;
+}
+
 //...................................................................
 
 #undef  LC
 #define LC "[LineDrawable] "
+
+//#define USE_GPU 1
 
 namespace osgEarth { namespace Serializers { namespace LineDrawable
 {
@@ -108,6 +326,8 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
         ADD_USHORT_SERIALIZER( StipplePattern, 0xFFFF );
         ADD_VEC4_SERIALIZER( Color, osg::Vec4(1,1,1,1) );
         ADD_FLOAT_SERIALIZER( LineWidth, 1.0f );
+        ADD_UINT_SERIALIZER( First, 0u );
+        ADD_UINT_SERIALIZER( Count, 0u );
     }
 } } }
 
@@ -130,7 +350,9 @@ _current(NULL),
 _previous(NULL),
 _next(NULL)
 {
+#ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
+#endif
 }
 
 LineDrawable::LineDrawable(GLenum mode) :
@@ -147,7 +369,9 @@ _current(NULL),
 _previous(NULL),
 _next(NULL)
 {
+#ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
+#endif
 }
 
 LineDrawable::LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy) :
@@ -192,9 +416,6 @@ LineDrawable::initialize()
         _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
         _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
     }
-    
-    // check for GLSL support:
-    _gpu = Registry::capabilities().supportsGLSL();
 
     setUseVertexBufferObjects(_supportsVertexBufferObjects);
     setUseDisplayList(false);
@@ -246,7 +467,7 @@ LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFla
 {
     bool gpu = Registry::capabilities().supportsGLSL();
     if (gpu)
-        stateSet->setDefine("OE_GPULINES_WIDTH", Stringify() << value, overrideFlags);
+        stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
     else
         stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
 }
@@ -258,7 +479,7 @@ LineDrawable::setStipplePattern(GLushort pattern)
     {
         _pattern = pattern;
         if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_PATTERN", Stringify() << _pattern);
+            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
         else
             getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
@@ -271,7 +492,7 @@ LineDrawable::setStippleFactor(GLint factor)
     {
         _factor = factor;
         if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_GPULINES_STIPPLE_FACTOR", Stringify() << _factor );
+            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
         else
             getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
@@ -294,16 +515,28 @@ LineDrawable::setColor(const osg::Vec4& color)
 }
 
 void
-LineDrawable::setColor(unsigned index, const osg::Vec4& color)
+LineDrawable::setColor(unsigned vi, const osg::Vec4& color)
 {
     if (_gpu)
     {
-        (*_colors)[index*2u] = color;
-        (*_colors)[index*2u+1] = color;
+        if (_mode == GL_LINE_STRIP)
+        {
+            if (vi == 0)
+                for (unsigned i=0; i<2; ++i)
+                    (*_colors)[i] = color;
+            else
+                for (unsigned i=vi*4-2; i<vi*4+2; ++i)
+                    (*_colors)[i] = color;
+        }
+        else
+        {
+            (*_colors)[vi*2u] = color;
+            (*_colors)[vi*2u+1] = color;
+        }
     }
     else
     {
-        (*_colors)[index] = color;
+        (*_colors)[vi] = color;
     }
     _colors->dirty();
 }
@@ -316,9 +549,28 @@ LineDrawable::setFirst(unsigned value)
     if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        ss->setDefine("OE_LINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*2u, _count > 0u? (_first+_count-1u)*2u : 0u));
+        if (_mode == GL_LINE_STRIP)
+        {
+            u->set(osg::Vec2(4u * _first, _count > 1u ? 4u * (_first + _count - 1u) - 2u : 0u));
+        }
+        else if (_mode == GL_LINES)
+        {
+            u->set(osg::Vec2(2u * _first, _count > 1u ? 2u * (_first + _count) - 1u : 0u));
+        }
+    }
+    else
+    {
+        if (getNumPrimitiveSets() > 0)
+        {
+            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
+            if (da)
+            {
+                da->setFirst(_first);
+                da->dirty();
+            }
+        }
     }
 }
 
@@ -332,13 +584,32 @@ void
 LineDrawable::setCount(unsigned value)
 {
     _count = value;
-    
+
     if (_gpu)
     {
         osg::StateSet* ss = getOrCreateStateSet();
-        ss->setDefine("OE_GPULINES_USE_LIMITS");
+        ss->setDefine("OE_LINES_USE_LIMITS");
         osg::Uniform* u = ss->getOrCreateUniform("oe_GPULines_limits", osg::Uniform::FLOAT_VEC2);
-        u->set(osg::Vec2(_first*2u, _count > 0u? (_first+_count-1u)*2u : 0u));
+        if (_mode == GL_LINE_STRIP)
+        {
+            u->set(osg::Vec2(4u * _first, _count > 1u ? 4u * (_first + _count - 1u) - 1u : 0u));
+        }
+        else if (_mode == GL_LINES)
+        {
+            u->set(osg::Vec2(2u * _first, _count > 1u ? 2u * (_first + _count) - 1u : 0u));
+        }
+    }
+    else
+    {
+        if (getNumPrimitiveSets() > 0)
+        {
+            osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(getPrimitiveSet(0));
+            if (da)
+            {
+                da->setFirst(_first);
+                da->dirty();
+            }
+        }
     }
 }
 
@@ -373,18 +644,32 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
         {
             if (_mode == GL_LINE_STRIP)
             {
+                // close out previous segment:
                 *(_next->end() - 1) = vert;
                 *(_next->end() - 2) = vert;
+                if (_next->size() >= 4)
+                {
+                    *(_next->end()-3) = vert;
+                    *(_next->end()-4) = vert;
+                }
 
+                _previous->push_back(_current->back());
+                _previous->push_back(_current->back());
                 _previous->push_back(_current->back());
                 _previous->push_back(_current->back());
 
                 _next->push_back(vert);
                 _next->push_back(vert);
+                _next->push_back(vert);
+                _next->push_back(vert);
 
                 _current->push_back(vert);
                 _current->push_back(vert);
+                _current->push_back(vert);
+                _current->push_back(vert);
 
+                _colors->push_back(_color);
+                _colors->push_back(_color);
                 _colors->push_back(_color);
                 _colors->push_back(_color);
             }
@@ -408,7 +693,6 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
 
                 _colors->push_back(_color);
                 _colors->push_back(_color);
-
             }
 
             else if (_mode == GL_LINES)
@@ -447,49 +731,83 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
     else
     {
         _current->push_back(vert);
+        _colors->push_back(_color);
     }
 }
 
 void
-LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
+LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
 {
     initialize();
 
     unsigned size = _current->size();
-    unsigned numVerts = _gpu? size/2u : size;
+    unsigned numVerts = getNumVerts();
+    
+    // "vi" = virtual index, "ri" = real index.
 
-    if (i < numVerts)
+    if (vi < numVerts)
     {
         if (_gpu)
         {
-            unsigned k = i*2u;
-
-            (*_current)[k] = vert;
-            (*_current)[k+1] = vert;
-            _current->dirty();
-
             if (_mode == GL_LINE_STRIP)
             {
-                if (k > 0)
+                unsigned ri = vi == 0u ? 0u : (vi * 4u) - 2u; // starting real index
+                unsigned rnum = actualVertsPerVirtualVert(vi); // number of real verts to set
+
+                // update the main verts:
+                for (unsigned n = ri; n < ri+rnum; ++n)
+                    (*_current)[n] = vert;
+                _current->dirty();
+
+                // update next/previous verts:
+                if (numVerts == 1u)
                 {
-                    (*_next)[k - 1] = vert;
-                    (*_next)[k - 2] = vert;
-                    _next->dirty();
+                    (*_next)[0] = vert, (*_next)[1] = vert;
+                    (*_previous)[0] = vert, (*_previous)[1] = vert;
                 }
-                if (i < numVerts - 1)
+                else 
                 {
-                    (*_previous)[k + 2] = vert;
-                    (*_previous)[k + 3] = vert;
-                    _previous->dirty();
+                    if (vi == 0u)
+                    {
+                        for (unsigned n = 0; n < rnum; ++n)
+                            (*_previous)[n] = vert;
+                        _previous->dirty();
+                    }
+                    else if (vi < numVerts - 1)
+                    {
+                        for (unsigned n = ri + rnum; n < ri + rnum + 4; ++n)
+                            (*_previous)[n] = vert;
+                        _previous->dirty();
+                    }
+
+                    if (vi == numVerts - 1)
+                    {
+                        for (unsigned n = 0; n < rnum; ++n)
+                            (*_next)[n] = vert;
+                        _next->dirty();
+                    }
+                    else if (vi > 0)
+                    {
+                        unsigned prevNum = actualVertsPerVirtualVert(vi-1);
+                        for (unsigned n = ri - prevNum; n < ri; ++n)
+                            (*_next)[n] = vert;
+                        _next->dirty();
+                    }
                 }
             }
 
             else if (_mode == GL_LINE_LOOP)
             {
-                if (k > 0)
+                unsigned ri = vi * 2u;
+
+                (*_current)[ri] = vert;
+                (*_current)[ri + 1] = vert;
+                _current->dirty();
+
+                if (vi > 0)
                 {
-                    (*_next)[k - 1] = vert;
-                    (*_next)[k - 2] = vert;
+                    (*_next)[ri - 1] = vert;
+                    (*_next)[ri - 2] = vert;
                     _next->dirty();
                 }
                 else
@@ -499,10 +817,10 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
                     _next->dirty();
                 }
                 
-                if (i < numVerts - 1)
+                if (vi < numVerts - 1)
                 {
-                    (*_previous)[k + 2] = vert;
-                    (*_previous)[k + 3] = vert;
+                    (*_previous)[ri + 2] = vert;
+                    (*_previous)[ri + 3] = vert;
                     _previous->dirty();
                 }
                 else
@@ -515,21 +833,27 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
 
             else if (_mode == GL_LINES)
             {
-                bool first = (i & 0x01) == 0;
+                unsigned ri = vi * 2u;
+
+                (*_current)[ri] = vert;
+                (*_current)[ri + 1] = vert;
+                _current->dirty();
+
+                bool first = (vi & 0x01) == 0;
                 if (first)
                 {
-                    (*_previous)[k] = vert;
-                    (*_previous)[k+1] = vert;
-                    (*_previous)[k+2] = vert;
-                    (*_previous)[k+3] = vert;
+                    (*_previous)[ri] = vert;
+                    (*_previous)[ri+1] = vert;
+                    (*_previous)[ri+2] = vert;
+                    (*_previous)[ri+3] = vert;
                     _previous->dirty();
                 }
                 else
                 {
-                    (*_next)[k+1] = vert;
-                    (*_next)[k] = vert;
-                    (*_next)[k-1] = vert;
-                    (*_next)[k-2] = vert;
+                    (*_next)[ri+1] = vert;
+                    (*_next)[ri] = vert;
+                    (*_next)[ri-1] = vert;
+                    (*_next)[ri-2] = vert;
                     _next->dirty();
                 }
             }
@@ -537,7 +861,7 @@ LineDrawable::setVertex(unsigned i, const osg::Vec3& vert)
 
         else
         {
-            (*_current)[i] = vert;
+            (*_current)[vi] = vert;
             _current->dirty();
         }
 
@@ -549,17 +873,18 @@ const osg::Vec3&
 LineDrawable::getVertex(unsigned index) const
 {
     if (_gpu)
-        return (*_current)[index * 2u];
+        return _mode == GL_LINE_STRIP ? (*_current)[index * 4u] : (*_current)[index * 2u];
     else
         return (*_current)[index];
 }
 
 void
-LineDrawable::setVerts(const osg::Vec3Array* verts)
+LineDrawable::importVertexArray(const osg::Vec3Array* verts)
 {
     initialize();
 
     _current->clear();
+    _colors->clear();
     if (verts && verts->size() > 0)
     {
         if (_gpu)
@@ -575,6 +900,8 @@ LineDrawable::setVerts(const osg::Vec3Array* verts)
             pushVertex(*i);
         }
     }
+
+    dirty();
 }
 
 void
@@ -587,15 +914,57 @@ LineDrawable::allocate(unsigned numVerts)
     {
         pushVertex(osg::Vec3(0,0,0));
     }
+
+    dirty();
 }
 
+// Calculates the "virtual" number of vertices in this drawable.
+// The actual number of vertices depends on the GL mode.
 unsigned
 LineDrawable::getNumVerts() const
 {
+    if (!_current || _current->empty())
+        return 0u;
+
     if (_gpu)
-        return _current ? _current->size() * 2u : 0u;
+    {
+        if (_mode == GL_LINE_STRIP)
+            return _current->size() == 2 ? 1 : (_current->size()+2)/4;
+        else
+            return _current->size()/2;
+    }
     else
-        return _current ? _current->size() : 0u;
+    {
+        return _current->size();
+    }
+}
+
+unsigned
+LineDrawable::actualVertsPerVirtualVert(unsigned index) const
+{
+    if (_gpu)
+        if (_mode == GL_LINE_STRIP)
+            return index == 0u? 2u : 4u;
+        else 
+            return 2u;
+    else
+        return 1u;
+}
+
+unsigned
+LineDrawable::numVirtualVerts(const osg::Array* a) const
+{
+    unsigned n = a->getNumElements();
+    if (n == 0u)
+        return 0u;
+
+    if (_gpu)
+        if (_mode == GL_LINE_STRIP)
+            return n == 2u ? 1u : (n+2u)/4u;
+        else
+            return n/2u;
+    else
+        return n;
 }
 
 void
@@ -603,16 +972,36 @@ LineDrawable::reserve(unsigned size)
 {
     initialize();
 
-    if (size > _current->size())
+    unsigned actualSize = size;
+    if (_gpu)
     {
-        unsigned actualSize = _gpu? size*2u : size;
+        actualSize = (_mode == GL_LINE_STRIP) ? (size*4u)-2u : size*2u;
+    }
 
-        _current->reserve(actualSize);
-        if (_gpu)
+    if (actualSize > _current->size())
+    {
+        ArrayList arrays;
+        getArrayList(arrays);
+        for (ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
+            i->get()->reserveArray(actualSize);
+    }
+}
+
+void
+LineDrawable::clear()
+{
+    initialize();
+
+    unsigned n = getNumVerts();
+    if (n > 0u)
+    {
+        ArrayList arrays;
+        getArrayList(arrays);
+        for (ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
         {
-            _previous->reserve(actualSize);
-            _next->reserve(actualSize);
+            i->get()->resizeArray(0);
         }
+        reserve(n);
     }
 }
 
@@ -663,10 +1052,10 @@ LineDrawable::dirty()
 
         if (_mode == GL_LINE_STRIP)
         {
-            unsigned numEls = ((_current->size()/2)-1) * 6;
+            unsigned numEls = (getNumVerts()-1)*6;
             osg::DrawElements* els = makeDE(numEls);  
 
-            for (int e = 0; e < _current->size()-2; e += 2)
+            for (int e = 0; e < _current->size() - 4; e += 4)
             {
                 els->addElement(e+3);
                 els->addElement(e+1);
@@ -681,7 +1070,7 @@ LineDrawable::dirty()
 
         else if (_mode == GL_LINE_LOOP)
         {
-            unsigned numEls = (_current->size()/2) * 6;
+            unsigned numEls = getNumVerts()*6;
             osg::DrawElements* els = makeDE(numEls); 
 
             int e;
@@ -707,7 +1096,7 @@ LineDrawable::dirty()
 
         else if (_mode == GL_LINES)
         {
-            unsigned numEls = (_current->size()/4) * 6;
+            unsigned numEls = (getNumVerts()/2)*6;
             osg::DrawElements* els = makeDE(numEls);  
 
             for (int e = 0; e < _current->size(); e += 4)
@@ -726,21 +1115,12 @@ LineDrawable::dirty()
 
     else
     {
-        addPrimitiveSet(new osg::DrawArrays(_mode, 0, _current->size()));
-    }
-}
+        ArrayList arrays;
+        getArrayList(arrays);
+        for (unsigned i = 0; i<arrays.size(); ++i)
+            arrays[i]->dirty();
 
-void
-LineDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
-{
-    osg::State& state = *renderInfo.getState();
-    bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();
-
-    for(unsigned primitiveSetNum=0; primitiveSetNum != _primitives.size(); ++primitiveSetNum)
-    {
-        const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-
-        primitiveset->draw(state, usingVertexBufferObjects);
+        addPrimitiveSet(new osg::DrawArrays(_mode, _first, _count > 0u? _count : _current->size()));
     }
 }
 

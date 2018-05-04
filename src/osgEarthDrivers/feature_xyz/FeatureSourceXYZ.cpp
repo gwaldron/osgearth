@@ -119,7 +119,7 @@ public:
 
       bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features )
       {            
-          if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")
+          if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
           {
               std::stringstream in(buffer);
               return MVT::read(in, key, features);

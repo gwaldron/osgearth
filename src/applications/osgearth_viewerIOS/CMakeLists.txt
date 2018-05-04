@@ -48,7 +48,6 @@ osgdb_osgearth_sky_simple
 osgdb_osgearth_skyview
 osgdb_template
 osgdb_osgearth_terrainshader
-osgdb_osgearth_tilecache
 osgdb_osgearth_tileindex
 osgdb_osgearth_tms
 osgdb_osgearth_vdatum_egm84

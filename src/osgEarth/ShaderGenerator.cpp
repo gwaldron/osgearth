@@ -46,6 +46,7 @@
 #include <osg/TexGen>
 #include <osg/TexMat>
 #include <osg/ClipNode>
+#include <osg/Point>
 #include <osg/PointSprite>
 #include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
@@ -1326,8 +1327,20 @@ ShaderGenerator::apply(osg::StateSet::AttributeList& attrs, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::StateAttribute* attr, GenBuffers& buf)
 {
-    // NOP for now.
-    return false;
+    bool addedSomething = false;
+
+#if defined(OSG_GLES3_AVAILABLE)
+    osg::Point* asPoint = dynamic_cast<osg::Point*>(attr);
+    if(asPoint != NULL)
+    {
+        buf._viewHead << "uniform float oe_sg_pointSize;\n";
+        buf._viewBody << INDENT << "gl_PointSize = oe_sg_pointSize;\n";
+        buf._stateSet->getOrCreateUniform( "oe_sg_pointSize", osg::Uniform::FLOAT )->set( asPoint->getSize() );
+        addedSomething = true;
+    }
+#endif
+    
+    return addedSomething;
 }
 
 void

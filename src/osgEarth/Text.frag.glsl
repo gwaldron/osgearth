@@ -3,7 +3,9 @@
 #pragma vp_entryPoint text_frag
 #pragma vp_location   fragment_coloring
 
-#pragma import_defines( BACKDROP_COLOR, SHADOW, OUTLINE, SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
+#pragma import_defines( BACKDROP_COLOR, SHADOW, OUTLINE)
+#pragma import_defines( SIGNED_DISTANCE_FIELD, TEXTURE_DIMENSION, GLYPH_DIMENSION)
+#pragma import_defines( OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED)
 
 #ifdef GL_ES
     #extension GL_OES_standard_derivatives : enable
@@ -36,7 +38,8 @@ $OSG_PRECISION_FLOAT
 #endif
 
 
-#if !defined(GL_ES) && __VERSION__>=130
+//#if !defined(GL_ES) && __VERSION__>=130
+#ifdef OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED
     #define ALPHA r
     #define SDF g
 #else
@@ -266,5 +269,5 @@ void text_frag(inout vec4 color)
 
     if (clr.a==0.0) discard;
 
-    color = clr;    
+    color = clr;
 }

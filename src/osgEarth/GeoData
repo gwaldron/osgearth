@@ -548,8 +548,11 @@ namespace osgEarth
     {
     public:
         DataExtent(const GeoExtent& extent);
+        DataExtent(const GeoExtent& extent, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel );
+        DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description);
         DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
+        DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel, const std::string &description);
 
         /** dtor */
         virtual ~DataExtent() { }
@@ -562,9 +565,13 @@ namespace osgEarth
         optional<unsigned>& maxLevel() { return _maxLevel; }
         const optional<unsigned>& maxLevel() const { return _maxLevel; }
 
+        /** description for the data extents */
+        const osgEarth::optional<std::string>& description() const { return _description; }
+
     private:
         optional<unsigned> _minLevel;
         optional<unsigned> _maxLevel;
+        optional<std::string> _description;
     };
 
     typedef std::vector< DataExtent > DataExtentList;

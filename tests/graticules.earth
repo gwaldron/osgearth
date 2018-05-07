@@ -78,12 +78,15 @@ Run this with osgearth_toc to toggle the various graticule types on and off.
             </style>
         </styles>
     </mgrs_graticule>
-    
+            
     <geodetic_graticule name="Geodetic" visible="false">
         <color>#ffff007f</color>
         <label_color>#ffffffff</label_color>
         <grid_lines>10</grid_lines>
         <resolutions>10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.3125</resolutions>
+        <grid_lines_visible>true</grid_lines_visible>
+        <grid_labels_visible>true</grid_labels_visible>
+        <edge_labels_visible>true</edge_labels_visible>
     </geodetic_graticule>
     
 </map>

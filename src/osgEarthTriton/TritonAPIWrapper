@@ -21,6 +21,8 @@
 
 #include "Common"
 #include <osg/Vec3>
+#include <osg/Matrix>
+#include <osg/GL>
 #include <stdint.h> // for uintptr_t
 
 namespace osgEarth {
@@ -69,6 +71,12 @@ namespace osgEarth { namespace Triton
 
         void SimulateSeaState(double bs, double winddir);
 
+        void SetAboveWaterVisibility(double visibility, osg::Vec3 fog_color);
+        void GetAboveWaterVisibility(double &visibility, osg::Vec3 &fog_color) const;
+
+        void SetEnvironmentMap(GLuint id, const osg::Matrixd &textureMatrix = osg::Matrixd());
+        GLuint GetEnvironmentMap() const;
+        osg::Matrixd GetEnvironmentMapMatrix() const;
     public:
         Environment(uintptr_t handle) : _handle(handle) { }
         uintptr_t _handle;

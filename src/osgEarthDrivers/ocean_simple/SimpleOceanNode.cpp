@@ -19,6 +19,7 @@
 #include "SimpleOceanNode"
 #include "ElevationProxyImageLayer"
 #include "SimpleOceanShaders"
+#include <osgEarth/Lighting>
 #include <osgEarth/Map>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/TerrainResources>
@@ -248,7 +249,7 @@ SimpleOceanNode::rebuild()
             osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
         // Material.
-        osg::Material* m = new osg::Material();
+        osg::Material* m = new osgEarth::MaterialGL3();
         m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(.5,.5,.5,1));
         m->setDiffuse(m->FRONT_AND_BACK, osg::Vec4(1,1,1,1));
         m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.2,0.2,0.2,1));

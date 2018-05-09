@@ -517,9 +517,24 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     computeLocalizers( context );
 
     osg::Group* group = createDelocalizeGroup();
+    group->setName("SubstituteModelFilter::Delocalizer");
 
     osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
-    group->addChild(attachPoint.get());
+    attachPoint->setName("SubstituteModelFilter::attachPoint");
+
+    osg::ref_ptr<osg::Group> oqn;
+    if (OcclusionQueryNodeFactory::_occlusionFactory) {
+       oqn = OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
+    }
+    if (oqn.get())
+    {
+       oqn->setName("SubstituteModelFilter::OQN");
+       group->addChild(oqn.get());
+       oqn->addChild(attachPoint.get());
+    }
+    else {
+       group->addChild(attachPoint.get());
+    }
 
     // Process the feature set, using clustering if requested
     bool ok = true;
@@ -529,6 +544,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     {
         // Extract the unclusterable things
         osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
+        unclusterables.get()->setName("Unclusterables");
 
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
         MeshFlattener::run(attachPoint);

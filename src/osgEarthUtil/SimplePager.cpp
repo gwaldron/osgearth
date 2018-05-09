@@ -2,6 +2,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Utils>
 #include <osgEarth/SceneGraphCallback>
+#include <osgEarth/CullingUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Options>
@@ -217,12 +218,29 @@ osg::Node* SimplePager::createNode(const TileKey& key, ProgressCallback* progres
     osg::BoundingSphere bounds = getBounds( key );
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setName(key.str());
     mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
+    
+    osg::ref_ptr<osg::Group> oqn;
+    if (OcclusionQueryNodeFactory::_occlusionFactory) {
+       oqn = OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
+    }
+
+
     osg::Geode* geode = new osg::Geode;
     osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), bounds.radius()) );
     sd->setColor( osg::Vec4(1,0,0,1 ) );
     geode->addDrawable( sd );
-    mt->addChild(geode);
+    if (oqn.get())
+    {
+       oqn->setName("SimplePager::OQN");
+       oqn.get()->addChild(geode);
+       mt->addChild(oqn);
+    }
+    else {
+       mt->addChild(geode);
+    }
+
     return mt;
 }
 
@@ -245,6 +263,7 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
         if ( node.valid() )
         {
             tileBounds = node->getBound();
+          
         }
         else
         {
@@ -271,7 +290,8 @@ osg::Node* SimplePager::createPagedNode(const TileKey& key, ProgressCallback* pr
     plod->setCenter( tileBounds.center() ); 
     plod->setRadius( tileRadius );
 
-    plod->addChild( node.get() );
+    
+    plod->addChild(node.get());
 
     if ( hasChildren )
     {

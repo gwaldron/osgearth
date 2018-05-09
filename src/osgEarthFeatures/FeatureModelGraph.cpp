@@ -1144,6 +1144,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
     OE_TEST << LC << "build " << workingExtent.toString() << std::endl;
 
     osg::ref_ptr<osg::Group> group = new osg::Group();
+    group->setName(workingExtent.toString());
 
     FeatureSource* source = _session->getFeatureSource();
 

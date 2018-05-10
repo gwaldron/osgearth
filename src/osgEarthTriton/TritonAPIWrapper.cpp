@@ -81,12 +81,12 @@ void Environment::SetEnvironmentMap(GLuint cubeMap, const osg::Matrixd &textureM
         textureMatrix(0, 0), textureMatrix(0, 1), textureMatrix(0, 2),
         textureMatrix(1, 0), textureMatrix(1, 1), textureMatrix(1, 2),
         textureMatrix(2, 0), textureMatrix(2, 1), textureMatrix(2, 2));
-     ::Triton::TextureHandle tex_handle = reinterpret_cast<::Triton::TextureHandle>(static_cast<size_t>(cubeMap));
+    ::Triton::TextureHandle tex_handle = (::Triton::TextureHandle)(static_cast<size_t>(cubeMap));
     HANDLE->SetEnvironmentMap(tex_handle, triton_tex_mat);
 }
 GLuint Environment::GetEnvironmentMap() const {
     ::Triton::TextureHandle tex_handle = HANDLE->GetEnvironmentMap();
-    return static_cast<GLuint>(reinterpret_cast<size_t>(tex_handle));
+    return static_cast<GLuint>((size_t)tex_handle);
 }
 osg::Matrixd Environment::GetEnvironmentMapMatrix() const {
     ::Triton::Matrix3 m = HANDLE->GetEnvironmentMapMatrix();

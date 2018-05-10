@@ -138,7 +138,6 @@ FIND_PACKAGE(SilverLining QUIET)
 FIND_PACKAGE(Triton QUIET)
 
 FIND_PACKAGE(Protobuf QUIET)
-#VRV PATCH
 if(${CMAKE_VERSION} VERSION_GREATER 3.4)
    #Bug with newer CMake versions.  Fix Protobuf variable for linker error, remove optimized token from PROTOBUF_LIBRARY
    set(foundReleaseLib FALSE)
@@ -155,7 +154,6 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.4)
       endif(${lib} STREQUAL "optimized")
    endforeach()
    set(PROTOBUF_LIBRARY ${PROTOBUF_LIBRARY_FIXED})
-   set(PROTOBUF_FOUND TRUE)
 endif(${CMAKE_VERSION} VERSION_GREATER 3.4)
 
 # JavaScript Engines:
@@ -363,9 +361,9 @@ set(OSGEARTHUTIL_LIBRARY "osgEarthUtil")
 set(OSGEARTHFEATURES_LIBRARY "osgEarthFeatures")
 set(OSGEARTHSYMBOLOGY_LIBRARY "osgEarthSymbology")
 set(OSGEARTH_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/osgearth/include")
-message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome-pprabhu")
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome-pprabhu ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome-pprabhu)
-ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings-pprabhu ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings-pprabhu)
+message(STATUS "Adding subdirectory ${CMAKE_SOURCE_DIR}/osgearth-aerodrome")
+ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-aerodrome ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-aerodrome)
+ADD_SUBDIRECTORY(${CMAKE_SOURCE_DIR}/osgearth-buildings ${CMAKE_CURRENT_SOURCE_DIR}/osgearth-buildings)
 
 # VPB Applications
 # OPTION(BUILD_APPLICATIONS "Enable to build OSGEARTH Applications" ON)

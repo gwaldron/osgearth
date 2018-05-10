@@ -186,7 +186,7 @@ namespace osgEarth
         /**
          * Clear all layers from this map.
          */
-        void clear();
+        void clear(bool invokeCallbacks = true);
 
         /**
          * Replaces the layers in this Map with layers from the specified Map

@@ -19,7 +19,6 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderLoader>
-#include <osgEarth/SceneGraphCallback>
 #include <osgDB/Registry>
 #include <osgUtil/CullVisitor>
 
@@ -108,6 +107,12 @@ Layer::~Layer()
     OE_DEBUG << LC << "~Layer\n";
 }
 
+//void
+//Layer::setReadOptions(const osgDB::Options* options)
+//{
+//    _readOptions = Registry::cloneOrCreateOptions(options);
+//}
+
 void
 Layer::setReadOptions(const osgDB::Options* readOptions)
 {
@@ -180,9 +185,6 @@ Layer::getEnabled() const
 void
 Layer::init()
 {
-    // For detecting scene graph changes at runtime
-    _sceneGraphCallbacks = new SceneGraphCallbacks(this);
-
     // Copy the layer options name into the Object name.
     // This happens here AND in open.
     if (options().name().isSet())
@@ -285,12 +287,6 @@ Layer::getConfigOptions(const osgDB::Options* options)
     static ConfigOptions s_default;
     const void* data = options->getPluginData(LAYER_OPTIONS_TAG);
     return data ? *static_cast<const ConfigOptions*>(data) : s_default;
-}
-
-SceneGraphCallbacks*
-Layer::getSceneGraphCallbacks() const
-{
-    return _sceneGraphCallbacks.get();
 }
 
 void

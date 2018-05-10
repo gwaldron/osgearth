@@ -17,8 +17,6 @@ vec4 oe_layer_tilec;
 
 out float oe_rex_morphFactor;
 
-flat out int oe_terrain_vertexMarker;
-
 uniform vec2  oe_tile_morph;
 uniform float oe_tile_size;
 
@@ -30,11 +28,11 @@ uniform mat4 oe_shadow_shadowViewToPrimaryView;
 float oe_terrain_getElevation(in vec2 uv);
 
 // Vertex Markers:
-#define VERTEX_MARKER_DISCARD  1
-#define VERTEX_MARKER_GRID     2
-#define VERTEX_MARKER_PATCH    4
-#define VERTEX_MARKER_BOUNDARY 8
-#define VERTEX_MARKER_SKIRT    16
+#define MASK_MARKER_DISCARD  0.0
+#define MASK_MARKER_NORMAL   1.0
+#define MASK_MARKER_PATCH    2.0
+#define MASK_MARKER_BOUNDARY 3.0
+
 
 // Morphs a vertex using a neighbor.
 void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
@@ -82,7 +80,7 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     // compute the morphing factor to send down the pipe.
     // we need this even if vertex-morphing is off since we use it for 
     // other things (like image blending)
-    if ((oe_terrain_vertexMarker & VERTEX_MARKER_GRID) != 0)
+    if (oe_layer_tilec.z == MASK_MARKER_NORMAL)
     {
         oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
 

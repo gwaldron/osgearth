@@ -37,7 +37,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceLayer
     FeatureTileSource
     Filter
-	FilterUsage
     FilterContext
     GeometryCompiler
     GeometryUtils
@@ -58,8 +57,6 @@ SET(LIB_PUBLIC_HEADERS
     TextSymbolizer
     TransformFilter
     VirtualFeatureSource
-	SubstituteModelFilterNode
-	ExtrudeGeometryFilterNode
 )
 
 SET(TARGET_SRC

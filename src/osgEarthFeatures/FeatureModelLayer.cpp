@@ -94,6 +94,9 @@ FeatureModelLayer::init()
     // Assign the layer's state set to the root node:
     _root->setStateSet(this->getOrCreateStateSet());
 
+    // Callbacks for paged data
+    _sgCallbacks = new SceneGraphCallbacks();
+
     // Graph needs rebuilding
     _graphDirty = true;
 
@@ -233,7 +236,7 @@ FeatureModelLayer::create()
                 _session.get(),
                 options(),
                 nodeFactory,
-                getSceneGraphCallbacks());
+                _sgCallbacks.get());
 
             _root->removeChildren(0, _root->getNumChildren());
             _root->addChild(fmg);

@@ -78,7 +78,7 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
-    //nop
+    _sgCallbacks = new SceneGraphCallbacks();
 }
 
 ModelSource::~ModelSource()
@@ -103,9 +103,7 @@ ModelSource::createNode(const Map*        map,
     }
 
     osg::Node* node = createNodeImplementation(map, progress);
-
-    //TODO: consider moving this logic up into MapNode.
-    if ( node && getSceneGraphCallbacks() )
+    if ( node )
     {
         getSceneGraphCallbacks()->firePreMergeNode(node);
         getSceneGraphCallbacks()->firePostMergeNode(node);

@@ -38,17 +38,17 @@ namespace osgEarth
     class SceneGraphCallback : public osg::Referenced
     {
     public:
-        //! Called before a node is added to the live scene graph, possibly from a background pager thread
-        virtual void onPreMergeNode(osg::Node* node) { }
-        virtual void onPreMergeNode(osg::Node* node, osg::Object* sender) { onPreMergeNode(node); }
+        // Called before a node is added to the live scene graph,
+        // possibly from a background pager thread
+        virtual void onPreMergeNode(osg::Node*) { }
 
-        //! Called after a node is added to the live scene graph in the main/update thread
-        virtual void onPostMergeNode(osg::Node* node) { }
-        virtual void onPostMergeNode(osg::Node* node, osg::Object* sender) { onPostMergeNode(node); }
+        // Called after a node is added to the live scene graph
+        // in the main/update thread
+        virtual void onPostMergeNode(osg::Node*) { }
 
-        //! Called after a node is remoevd from the live scene graph in the main/update thread
-        virtual void onRemoveNode(osg::Node* node) { }
-        virtual void onRemoveNode(osg::Node* node, osg::Object* sender) { onRemoveNode(node); }
+        // Called after a node is remoevd from the live scene graph
+        // in the main/update thread
+        virtual void onRemoveNode(osg::Node*) { }
     };
     typedef std::vector<osg::ref_ptr<SceneGraphCallback> > SceneGraphCallbackVector;
 
@@ -60,28 +60,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT SceneGraphCallbacks : public osg::Referenced
     {
     public:
-        SceneGraphCallbacks(osg::Object* sender);
-
-    public:
-        //! Add a new callback
         virtual void add(SceneGraphCallback* cb);
 
-        //! Remove an existing callback
         virtual void remove(SceneGraphCallback* cb);
 
-        //! Invoke all pre-merge callbacks on the provided node
         virtual void firePreMergeNode(osg::Node* node);
 
-        //! Invoke all post-merge callbacks on the provided node
         virtual void firePostMergeNode(osg::Node* node);
 
-        //! Invoke all remove callbacks on the provided node
         virtual void fireRemoveNode(osg::Node* node);
 
     private:
         SceneGraphCallbackVector _callbacks;
         Threading::Mutex _mutex;
-        osg::observer_ptr<osg::Object> _sender;
     };
 
     /**
@@ -113,7 +104,6 @@ namespace osgEarth
 
     private:
         osg::observer_ptr<SceneGraphCallbacks> _host;
-        osg::observer_ptr<osg::Object> _sender;
     };
 }
 

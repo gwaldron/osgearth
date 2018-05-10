@@ -277,15 +277,6 @@ namespace osgEarth
     {
         Config dumpRenderBin(osgUtil::RenderBin* bin) const;
     };
-
-    class OSGEARTH_EXPORT OcclusionQueryNodeFactory
-    {
-      public:
-        virtual osg::Group * createQueryNode(){return NULL;}
- 
-        static OcclusionQueryNodeFactory * _occlusionFactory;
-
-    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

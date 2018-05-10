@@ -20,7 +20,6 @@
 #include <osg/NodeVisitor>
 #include <osg/Geode>
 #include <osg/BufferIndexBinding>
-#include <osg/ProxyNode>
 
 #define LC "[StateSetCache] "
 
@@ -99,11 +98,9 @@ namespace
     struct ShareStateAttributes : public osg::NodeVisitor
     {
         StateSetCache* _cache;
-        bool           _traverseProxies;
 
-        ShareStateAttributes(StateSetCache* cache, bool traverseProxies = true)
-            : _cache(cache),
-            _traverseProxies(traverseProxies)
+        ShareStateAttributes(StateSetCache* cache)
+            : _cache(cache)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
             setNodeMaskOverride( ~0 );
@@ -144,25 +141,6 @@ namespace
                 }
             }
             apply((osg::Node&)geode);
-        }
-
-        void apply(osg::ProxyNode& proxyNode)
-        {
-           if (_traverseProxies)
-           {
-              if (proxyNode.getStateSet())
-              {
-                 // ref for thread-safety; another thread might replace this stateset
-                 // during optimization while we're looking at it.
-                 osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
-                 if (stateset.valid() &&
-                    stateset->getDataVariance() != osg::Object::DYNAMIC)
-                 {
-                    applyStateSet(stateset.get());
-                 }
-              }
-              traverse(proxyNode);
-           }
         }
 
         // assume: stateSet is safely referenced by caller
@@ -207,15 +185,12 @@ namespace
         StateSetCache* _cache;
         unsigned       _stateSets;
         unsigned       _shares;
-        bool           _traverseProxies;
         //std::vector<osg::StateSet*> _misses; // for debugging
 
-        ShareStateSets(StateSetCache* cache, bool traverseProxies)
+        ShareStateSets(StateSetCache* cache)
             : _cache(cache),
               _stateSets( 0 ),
-              _shares   ( 0 ),
-              _traverseProxies(traverseProxies)
-
+              _shares   ( 0 )
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
             setNodeMaskOverride( ~0 );
@@ -240,30 +215,6 @@ namespace
                 }
             }
             traverse(node);
-        }
-
-        void apply(osg::ProxyNode& proxyNode)
-        {
-           if (_traverseProxies)
-           {
-              if (proxyNode.getStateSet())
-              {
-                 osg::ref_ptr<osg::StateSet> stateset = proxyNode.getStateSet();
-
-                 if (isEligible(stateset.get()))
-                 {
-                    _stateSets++;
-                    osg::ref_ptr<osg::StateSet> shared;
-                    if (_cache->share(stateset, shared))
-                    {
-                       proxyNode.setStateSet(shared.get());
-                       _shares++;
-                    }
-                    //else _misses.push_back(in.get());
-                 }
-              }
-              traverse(proxyNode);
-           }
         }
 
         void apply(osg::Geode& geode)
@@ -323,34 +274,34 @@ StateSetCache::setMaxSize(unsigned value)
 }
 
 void
-StateSetCache::consolidateStateAttributes(osg::Node* node, bool traverseProxies)
+StateSetCache::consolidateStateAttributes(osg::Node* node)
 {
     if ( !node )
         return;
 
-    ShareStateAttributes v(this, traverseProxies);
+    ShareStateAttributes v( this );
     node->accept( v );
 }
 
 void
-StateSetCache::consolidateStateSets(osg::Node* node, bool traverseProxies)
+StateSetCache::consolidateStateSets(osg::Node* node)
 {
     if ( !node )
         return;
 
 #ifdef STATESET_SHARING_SUPPORTED
-    ShareStateSets v(this, traverseProxies);
+    ShareStateSets v( this );
     node->accept( v );
 #endif
 }
 
 void
-StateSetCache::optimize(osg::Node* node, bool traverseProxies)
+StateSetCache::optimize(osg::Node* node)
 {
     if ( node )
     {
-       consolidateStateAttributes(node, traverseProxies);
-       consolidateStateSets(node, traverseProxies);
+        consolidateStateAttributes( node );
+        consolidateStateSets( node );
     }
 }
 

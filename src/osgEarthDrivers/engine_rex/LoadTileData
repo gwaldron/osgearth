@@ -49,6 +49,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         //! Creates a stateset containing GL compilable objects from the model
         osg::StateSet* createStateSet() const;
 
+    public: // ProgressCallback
+
+        bool isCanceled();
+
     protected:
         osg::observer_ptr<TileNode> _tilenode;
         osg::observer_ptr<TerrainEngineNode> _engine;

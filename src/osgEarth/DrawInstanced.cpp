@@ -146,13 +146,10 @@ namespace
 
 ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstances,
                                                const osg::BoundingBox& bbox,
-                                               bool                    optimize,
-                                               osg::TextureBuffer *    tbo
-) :
+                                               bool                    optimize ) :
 _numInstances    ( numInstances ),
 _bbox(bbox),
-_optimize        ( optimize ),
-_tbo(tbo)
+_optimize        ( optimize )
 {
     setTraversalMode( TRAVERSE_ALL_CHILDREN );
     setNodeMaskOverride( ~0 );
@@ -160,14 +157,8 @@ _tbo(tbo)
 
 
 void 
-ConvertToDrawInstanced::apply(osg::Geode& geode)
+ConvertToDrawInstanced::apply( osg::Geode& geode )
 {
-   if (geode.getStateSet() && geode.getStateSet()->getTextureAttribute(POSTEX_TBO_UNIT, osg::StateAttribute::TEXTURE)) {
-      int new_unit = geode.getStateSet()->getTextureAttributeList().size();
-      geode.getStateSet()->getOrCreateUniform("oe_di_postex_TBO", osg::Uniform::SAMPLER_BUFFER)->set(new_unit);
-      geode.getStateSet()->setTextureAttribute(new_unit, _tbo);
-   }
-
     for( unsigned d=0; d<geode.getNumDrawables(); ++d )
     {
         osg::Geometry* geom = geode.getDrawable(d)->asGeometry();
@@ -357,6 +348,11 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 			numInstancesToStore = maxTBOInstancesSize;
 		}
 		
+        // Convert the node's primitive sets to use "draw-instanced" rendering; at the
+        // same time, assign our computed bounding box as the static bounds for all
+        // geometries. (As DI's they cannot report bounds naturally.)
+        ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true);
+        node->accept( cdi );
 		
         // Assign matrix vectors to the node, so the application can easily retrieve
         // the original position data if necessary.
@@ -421,12 +417,6 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         instanceGroup->addChild( node );
 
         parent->addChild( instanceGroup );
-
-        // Convert the node's primitive sets to use "draw-instanced" rendering; at the
-        // same time, assign our computed bounding box as the static bounds for all
-        // geometries. (As DI's they cannot report bounds naturally.)
-        ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true, posTBO);
-        node->accept(cdi);
 
         //OE_INFO << LC << "ConvertToDI: instances=" << numInstancesToStore << "\n";
     }

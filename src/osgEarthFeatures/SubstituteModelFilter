@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterUsage>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/Containers>
@@ -74,11 +75,15 @@ namespace osgEarth { namespace Features
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
+        void setFilterUsage(FilterUsage usage) { _filterUsage = usage; }
+        FilterUsage getFilterUsage(void) const{ return _filterUsage; }
+
     public:
         /** Processes a new feature list */
         virtual osg::Node* push( FeatureList& input, FilterContext& context );
 
     protected:
+        FilterUsage                   _filterUsage;
         Style                         _style;
         bool                          _cluster;
         bool                          _useDrawInstanced;

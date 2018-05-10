@@ -25,6 +25,7 @@
 #include <osgEarth/Clamping>
 #include <osgEarth/Utils>
 #include <osgEarth/Tessellator>
+#include <osgEarth/CullingUtils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -79,7 +80,8 @@ _mergeGeometry         ( true ),
 _wallAngleThresh_deg   ( 60.0 ),
 _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
-_gpuClamping           ( false )
+_gpuClamping(false),
+_filterUsage(FILTER_USAGE_NORMAL)
 {
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
@@ -1200,11 +1202,21 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     // parent geometry with a delocalizer (if necessary)
     osg::Group* group = createDelocalizeGroup();
-    
+    group->setName("ExtrudeGeometryFilter::Delocalizer");
+
+    osg::ref_ptr<osg::Group> oqn;
+    if (osgEarth::OcclusionQueryNodeFactory::_occlusionFactory) {
+       oqn = osgEarth::OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
+    }
+    if (!oqn.get()) {
+       oqn = group;
+    }
+    group->addChild(oqn);
+
     // add all the geodes
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
     {
-        group->addChild( i->second.get() );
+       oqn->addChild( i->second.get() );
     }
     _geodes.clear();
 
@@ -1214,7 +1226,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         mg.setTargetMaximumNumberOfVertices(65536);
         group->accept(mg);
 
-        // Because the mesh optimizers damaga line geometry.
+      // Because the mesh optimizers damage line geometry.
         if ( !_outlineSymbol.valid() )
         {
             osgUtil::Optimizer o;

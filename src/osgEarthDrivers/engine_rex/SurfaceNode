@@ -66,6 +66,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const RenderBindings& bindings,
             TileDrawable*         drawable);
 
+        virtual const char* className() const { return "Rex::SurfaceNode"; }
+
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;

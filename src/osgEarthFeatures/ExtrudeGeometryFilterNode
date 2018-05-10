@@ -1,0 +1,46 @@
+#pragma once
+
+#include <osg/Referenced>
+#include <osg/Matrixd>
+
+#include <osgEarth/URI>
+
+namespace osg
+{
+   class Group;
+}
+
+namespace osgEarth {
+   namespace Features
+   {
+      class ExtrudeGeometryFilterNode : public osg::Referenced
+      {
+      public:
+         struct ModelSymbol
+         {
+            URI instanceURI;
+            osg::Matrixd xform;
+         };
+
+         ExtrudeGeometryFilterNode(osg::Group* attachPoint, osg::Group* extrusionGroup, const osg::Matrixd& xform)
+            : _extrusionGroup(extrusionGroup)
+            , _attachPoint(attachPoint)
+            , _xform(xform)
+         {
+
+         }
+         osg::Group* extrusionGroup() { return _extrusionGroup; }
+         osg::Group* attachPoint() { return _attachPoint; }
+         const osg::Matrixd& xform() { return _xform; }
+
+         void clearExtrusionGroup()
+         {
+            _extrusionGroup = 0;
+         }
+      private:
+         osg::ref_ptr<osg::Group> _extrusionGroup;
+         osg::ref_ptr<osg::Group> _attachPoint;
+         osg::Matrixd _xform;
+      };
+   }
+}

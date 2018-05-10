@@ -28,7 +28,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerListener>
-#include <osgEarth/SceneGraphCallback>
 
 namespace osgEarth { namespace Features
 {
@@ -85,8 +84,6 @@ namespace osgEarth { namespace Features
         // the feature source from which to read flattening geometry
         void setFeatureSource(FeatureSource* fs);
 
-        // access to scene graph callbacks
-        SceneGraphCallbacks* getSceneGraphCallbacks() { return _sgCallbacks.get(); }
 
     public: // Layer
 
@@ -122,7 +119,6 @@ namespace osgEarth { namespace Features
         bool _graphDirty;
         void create();
 
-        osg::ref_ptr<SceneGraphCallbacks> _sgCallbacks;
     };
 
 } } // namespace osgEarth::Features

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarthFeatures/SubstituteModelFilterNode>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/GeometryUtils>
@@ -29,6 +30,7 @@
 #include <osgEarth/ScreenSpaceLayout>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/OEAssert>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -70,7 +72,8 @@ _cluster              ( false ),
 _useDrawInstanced     ( false ),
 _merge                ( true ),
 _normalScalingRequired( false ),
-_instanceCache        ( false )     // cache per object so MT not required
+_instanceCache        ( false ),     // cache per object so MT not required
+_filterUsage(FILTER_USAGE_NORMAL)
 {
     //NOP
 }
@@ -131,6 +134,29 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
+    SubstituteModelFilterNode* substituteModelFilterNode = 0;
+
+    if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
+    {
+        if (attachPoint->getUserData()==0)
+        {
+            attachPoint->setUserData(new SubstituteModelFilterNode());
+            substituteModelFilterNode = static_cast<SubstituteModelFilterNode*> (attachPoint->getUserData());
+
+            bool instancing = getUseDrawInstanced() == true && getClustering() == false;
+            bool clustering = getClustering() == true && getUseDrawInstanced() == false;
+            if (!(instancing||clustering))
+            {
+			   // prefer instancing over clustering
+               instancing = true;
+               clustering = false;
+            }
+
+            substituteModelFilterNode->setInstanced(instancing);
+            substituteModelFilterNode->setClustered(clustering);
+        }
+     }
+    
     // URI cache speeds up URI creation since it can be slow.
     osgEarth::fast_map<std::string, URI> uriCache;
 
@@ -222,7 +248,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
 		std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
-        osg::ref_ptr<osg::Node>& model = uniqueModels[key];
+        osg::ref_ptr<osg::Node> model;
+        
+        if (_filterUsage == FILTER_USAGE_NORMAL)
+        {
+            model = uniqueModels[key];
         if ( !model.valid() )
         {
             // Always clone the cached instance so we're not processing data that's
@@ -246,8 +276,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 }
             }
         }
+        }
 
-        if ( model.valid() )
+        if ((_filterUsage == FILTER_USAGE_NORMAL && model.valid()) || (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED))
         {
             GeometryIterator gi( input->getGeometry(), false );
             while( gi.hasMore() )
@@ -309,12 +340,16 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, targetSRS, rotation );
-                        mat = rotationMatrix * scaleMatrix * rotation * osg::Matrixd::translate( point ) * _world2local;
+                       mat = rotationMatrix * scaleMatrix * rotation * osg::Matrixd::translate(point);
                     }
                     else
                     {
-                        mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate( point ) * _world2local;
+                       mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate(point);
                     }
+
+                    if (_filterUsage == FILTER_USAGE_NORMAL)
+                    {
+                       mat = mat*_world2local;
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
                     xform->setMatrix( mat );
@@ -334,6 +369,16 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         const std::string& name = input->eval( _featureNameExpr, &context);
                         if ( !name.empty() )
                             xform->setName( name );
+                    }
+                }
+                    else if (_filterUsage == FILTER_USAGE_ZERO_WORK_CALLBACK_BASED)
+                    {   
+                        osg::Vec3d modelPoint = point;
+                        
+                        substituteModelFilterNode->modelSymbolList().push_back(SubstituteModelFilterNode::ModelSymbol());
+                        SubstituteModelFilterNode::ModelSymbol& symbol = substituteModelFilterNode->modelSymbolList().back();
+                        symbol.instanceURI = instanceURI;
+                        symbol.xform = mat;
                     }
                 }
             }
@@ -357,7 +402,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
     }
 
     // active DrawInstanced if required:
-    if ( _useDrawInstanced )
+    if (_filterUsage == FILTER_USAGE_NORMAL && _useDrawInstanced)
     {
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
@@ -472,18 +517,34 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     computeLocalizers( context );
 
     osg::Group* group = createDelocalizeGroup();
+    group->setName("SubstituteModelFilter::Delocalizer");
 
     osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
-    group->addChild(attachPoint.get());
+    attachPoint->setName("SubstituteModelFilter::attachPoint");
+
+    osg::ref_ptr<osg::Group> oqn;
+    if (OcclusionQueryNodeFactory::_occlusionFactory) {
+       oqn = OcclusionQueryNodeFactory::_occlusionFactory->createQueryNode();
+    }
+    if (oqn.get())
+    {
+       oqn->setName("SubstituteModelFilter::OQN");
+       group->addChild(oqn.get());
+       oqn->addChild(attachPoint.get());
+    }
+    else {
+       group->addChild(attachPoint.get());
+    }
 
     // Process the feature set, using clustering if requested
     bool ok = true;
 
     process( features, symbol, context.getSession(), attachPoint.get(), newContext );
-    if (_cluster)
+    if (_filterUsage == FILTER_USAGE_NORMAL && _cluster)
     {
         // Extract the unclusterable things
         osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
+        unclusterables.get()->setName("Unclusterables");
 
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
         MeshFlattener::run(attachPoint);

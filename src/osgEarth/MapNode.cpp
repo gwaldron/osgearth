@@ -85,7 +85,7 @@ namespace
     {
         MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        virtual void onPostMergeNode(osg::Node* node)
+        virtual void onPostMergeNode(osg::Node* node, osg::Object* sender)
         {
             if ( _mapNode.valid() && node )
             {
@@ -413,8 +413,6 @@ MapNode::~MapNode()
 
     _mapCallback->invokeOnLayerRemoved(_map.get());
 
-    _map->clear(false);
-
     this->clearExtensions();
 
     osg::observer_ptr<TerrainEngineNode> te = _terrainEngine;
@@ -643,6 +641,11 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     osg::Node* node = layer->getOrCreateNode();
     if (node)
     {
+        OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
+
+        // notify before adding it to the graph:
+        layer->getSceneGraphCallbacks()->firePreMergeNode(node);
+
         // Call setMapNode on any MapNodeObservers on this initial creation.
         MapNodeReplacer replacer( this );
         node->accept( replacer );
@@ -654,9 +657,10 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
         nodeContainer->addChild( node );
         _layerNodes->addChild( nodeContainer );
 
-        OE_INFO << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
+        // after putting it in the graph:
+        layer->getSceneGraphCallbacks()->firePostMergeNode(node);
 
-        // TODO: move this logic into ModelLayer.
+        // TODO: move this logic into ModelLayer (or Layer)?
         if (modelLayer)
         {
             ModelSource* ms = modelLayer->getModelSource();

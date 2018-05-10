@@ -718,6 +718,19 @@ TerrainLayer::createAndOpenTileSource()
             _readOptions->setOptionString( s );
         }
 
+        // If we're setting any custom options, do so now before opening:
+        if (options().tileSize().isSet())
+           ts->setPixelsPerTile(options().tileSize().get());
+
+        if (options().noDataValue().isSet())
+           ts->setNoDataValue(options().noDataValue().get());
+
+        if (options().minValidValue().isSet())
+           ts->setMinValidValue(options().minValidValue().get());
+
+        if (options().maxValidValue().isSet())
+           ts->setMaxValidValue(options().maxValidValue().get());
+
         // report on a manual override profile:
         if ( ts->getProfile() )
         {
@@ -764,20 +777,8 @@ TerrainLayer::createAndOpenTileSource()
         // properties to and fro.
         if ( tileSourceStatus.isOK() )
         {
-            if (options().tileSize().isSet())
-                ts->setPixelsPerTile(options().tileSize().get());
-
             if (!ts->getDataExtents().empty())
                 _dataExtents = ts->getDataExtents();
-
-            if (options().noDataValue().isSet())
-                ts->setNoDataValue(options().noDataValue().get());
-
-            if (options().minValidValue().isSet())
-                ts->setMinValidValue(options().minValidValue().get());
-
-            if (options().maxValidValue().isSet())
-                ts->setMaxValidValue(options().maxValidValue().get());
         }
         else
         {
@@ -806,9 +807,10 @@ TerrainLayer::createAndOpenTileSource()
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
-    else if (!tileSourceStatus.isError() && getCacheSettings()->isCacheEnabled())
+    else if (getCacheSettings()->isCacheEnabled() && options().cacheId().isSet())
     {
-        OE_NOTICE << LC << "Failed to create \"" << options().driver()->getDriver() << "\" driver, but a cache may exist, so falling back on cache-only mode." << std::endl;
+        OE_WARN << LC << tileSourceStatus.message() << std::endl;
+		OE_WARN << LC << "will attempt to use the cache as a fallback data source" << std::endl;
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
     }
 

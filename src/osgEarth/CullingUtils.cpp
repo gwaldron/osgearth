@@ -33,6 +33,10 @@
 
 using namespace osgEarth;
 
+namespace osgEarth {
+   OcclusionQueryNodeFactory* OcclusionQueryNodeFactory::_occlusionFactory = NULL;
+}
+
 namespace
 {
     struct ComputeMaxNormalLength

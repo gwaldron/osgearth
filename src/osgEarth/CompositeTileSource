@@ -100,6 +100,15 @@ namespace osgEarth
          */
         bool add( ElevationLayer* layer );
 
+        /**
+         * Return contained elevation layers.
+         */
+        const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
+
+        /**
+        * Return contained imagery layers.
+        */
+        const ImageLayerVector& getImageLayers() const { return _imageLayers; }
 
     public: // TileSource overrides
         

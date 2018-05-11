@@ -62,7 +62,7 @@ struct osg_LightSourceParameters
 
    bool enabled;
 };  
-uniform osg_LightSourceParameters osg_LightSource[1];
+uniform osg_LightSourceParameters osg_LightSource[OE_NUM_LIGHTS];
 
 
 

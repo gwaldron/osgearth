@@ -151,6 +151,11 @@ namespace osgEarth
         //! Binding location for "next" vertex attribute (default = 10)
         static int NextVertexAttrLocation;
 
+    protected:
+
+        //! destructor
+        virtual ~LineDrawable();
+
     private:
         GLenum _mode;
         bool _gpu;
@@ -218,7 +223,7 @@ namespace osgEarth
 
     protected:
         //! destructor
-        virtual ~LineGroup() { }
+        virtual ~LineGroup();
     };
 
     

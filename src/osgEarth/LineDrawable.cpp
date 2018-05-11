@@ -84,6 +84,11 @@ osg::Geode(rhs, copy)
     //nop
 }
 
+LineGroup::~LineGroup()
+{
+    //nop
+}
+
 namespace
 {
     struct ImportLinesOperator
@@ -393,6 +398,11 @@ _count(rhs._count)
         _previous = static_cast<osg::Vec3Array*>(getVertexAttribArray(PreviousVertexAttrLocation));
         _next = static_cast<osg::Vec3Array*>(getVertexAttribArray(NextVertexAttrLocation));
     }
+}
+
+LineDrawable::~LineDrawable()
+{
+    //nop
 }
 
 void

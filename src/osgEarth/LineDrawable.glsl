@@ -30,13 +30,16 @@ void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
 #pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
 #pragma vp_location vertex_clip
-#pragma import_defines(OE_LINES_STIPPLE_PATTERN)
-#pragma import_defines(OE_LINES_WIDTH)
+//#pragma import_defines(OE_LINES_STIPPLE_PATTERN)
+//#pragma import_defines(OE_LINES_WIDTH)
 #pragma import_defines(OE_LINES_USE_LIMITS)
 #pragma import_defines(OE_GPU_CLAMPING)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 
 uniform vec2 oe_ViewportSize;
+
+uniform float oe_GL_LineWidth = 1.0;
+uniform int oe_GL_LineStipplePattern = 0xffff;
 
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
@@ -45,9 +48,9 @@ in vec3 oe_GPULines_next;
 flat out int oe_GPULines_draw;
 #endif
 
-#ifdef OE_LINES_STIPPLE_PATTERN
+//#ifdef OE_LINES_STIPPLE_PATTERN
 flat out vec2 oe_GPULines_rv;
-#endif
+//#endif
 
 #ifdef OE_GPU_CLAMPING
 // see GPUClamping.vert.glsl
@@ -86,11 +89,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
-#ifdef OE_LINES_WIDTH
-    float thickness = OE_LINES_WIDTH;
-#else
-    float thickness = 1.0;
-#endif
+    float thickness = oe_GL_LineWidth;
 
 #ifdef OE_LINES_ANTIALIAS
     thickness += 2.0;
@@ -168,32 +167,33 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 offset = extrudeUnit*oe_GPULines_lateral*currClip.w;
     currClip.xy += offset;
 
-#ifdef OE_LINES_STIPPLE_PATTERN
-    // Line creation is done. Now, calculate a rotation angle
-    // for use by out fragment shader to do GPU stippling. 
-    // This "rotates" the fragment coordinate onto the X axis so that
-    // we can apply stippling along the direction of the line.
-    // Note: this depends on the GLSL "provoking vertex" being at the 
-    // beginning of the line segment!
+    if (oe_GL_LineStipplePattern != 0xffff)
+    {
+        // Line creation is done. Now, calculate a rotation angle
+        // for use by out fragment shader to do GPU stippling. 
+        // This "rotates" the fragment coordinate onto the X axis so that
+        // we can apply stippling along the direction of the line.
+        // Note: this depends on the GLSL "provoking vertex" being at the 
+        // beginning of the line segment!
 
-    // flip the vector so stippling always proceedes from left to right
-    // regardless of the direction of the segment
-    stippleDir = normalize(stippleDir.x < 0? -stippleDir : stippleDir);
+        // flip the vector so stippling always proceedes from left to right
+        // regardless of the direction of the segment
+        stippleDir = normalize(stippleDir.x < 0? -stippleDir : stippleDir);
 
-    // calculate the rotation angle that will project the
-    // fragment coord onto the X-axis for stipple pattern sampling.
-    float way = sign(cross(vec3(1, 0, 0), vec3(stippleDir, 0)).z);
-    float angle = acos(dot(vec2(1, 0), stippleDir)) * way;
+        // calculate the rotation angle that will project the
+        // fragment coord onto the X-axis for stipple pattern sampling.
+        float way = sign(cross(vec3(1, 0, 0), vec3(stippleDir, 0)).z);
+        float angle = acos(dot(vec2(1, 0), stippleDir)) * way;
 
-    // quantize the rotation angle to mitigate precision problems
-    // when connecting segments with slightly different vectors
-    const float pi = 3.14159265359;
-    const float q = pi/8.0;
-    angle = floor(angle/q) * q;
+        // quantize the rotation angle to mitigate precision problems
+        // when connecting segments with slightly different vectors
+        const float pi = 3.14159265359;
+        const float q = pi/8.0;
+        angle = floor(angle/q) * q;
 
-    // send it to the fragment shader.
-    oe_GPULines_rv = vec2(cos(angle), sin(angle));
-#endif
+        // send it to the fragment shader.
+        oe_GPULines_rv = vec2(cos(angle), sin(angle));
+    }
 }
 
 
@@ -204,14 +204,15 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_GPULinesProj_Stippler_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines(OE_LINES_STIPPLE_PATTERN
-#pragma import_defines(OE_LINES_STIPPLE_FACTOR)
+//#pragma import_defines(OE_LINES_STIPPLE_PATTERN)
+//#pragma import_defines(OE_LINES_STIPPLE_FACTOR)
 #pragma import_defines(OE_LINES_USE_LIMITS)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 
-#ifdef OE_LINES_STIPPLE_PATTERN
+uniform int oe_GL_LineStippleFactor = 1;
+uniform int oe_GL_LineStipplePattern = 0xffff;
+
 flat in vec2 oe_GPULines_rv;
-#endif
 
 #ifdef OE_LINES_USE_LIMITS
 flat in int oe_GPULines_draw;
@@ -228,37 +229,28 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
         discard;
 #endif
 
-#ifdef OE_LINES_STIPPLE_PATTERN
+    if (oe_GL_LineStipplePattern != 0xffff)
+    {
+        // coordinate of the fragment, shifted to 0:
+        vec2 coord = (gl_FragCoord.xy - 0.5);
 
-    // we could make these unfiorms if necessary
-    const int pattern = OE_LINES_STIPPLE_PATTERN;
+        // rotate the frag coord onto the X-axis so we can sample the 
+        // stipple pattern:
+        vec2 coordProj =
+            mat2(oe_GPULines_rv.x, -oe_GPULines_rv.y,
+                 oe_GPULines_rv.y,  oe_GPULines_rv.x)
+            * coord;
 
-#ifdef OE_LINES_STIPPLE_FACTOR
-    const int factor = OE_LINES_STIPPLE_FACTOR;
-#else
-    const int factor = 1;
-#endif
+        // sample the stippling pattern (16-bits repeating)
+        int ci = int(mod(coordProj.x, 16 * oe_GL_LineStippleFactor)) / oe_GL_LineStippleFactor;
+        if ((oe_GL_LineStipplePattern & (1 << ci)) == 0)
+            discard; 
 
-    // coordinate of the fragment, shifted to 0:
-    vec2 coord = (gl_FragCoord.xy - 0.5);
-
-    // rotate the frag coord onto the X-axis so we can sample the 
-    // stipple pattern:
-    vec2 coordProj =
-        mat2(oe_GPULines_rv.x, -oe_GPULines_rv.y,
-             oe_GPULines_rv.y,  oe_GPULines_rv.x)
-        * coord;
-
-    // sample the stippling pattern (16-bits repeating)
-    int ci = int(mod(coordProj.x, 16 * factor)) / factor;
-    if ((pattern & (1 << ci)) == 0)
-        discard; 
-
-    // uncomment to debug stipple direction vectors
-    //color.b = 0;
-    //color.r = oe_GPULines_rv.x;
-    //color.g = oe_GPULines_rv.y;
-#endif
+        // uncomment to debug stipple direction vectors
+        //color.b = 0;
+        //color.r = oe_GPULines_rv.x;
+        //color.g = oe_GPULines_rv.y;
+    }
 
 #ifdef OE_LINES_ANTIALIAS
     // anti-aliasing

@@ -26,6 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/GeometryClamper>
 #include <osgEarth/IntersectionPicker>
+#include <osgEarth/GLUtils>
 
 #include <osg/AutoTransform>
 #include <osgViewer/View>
@@ -371,7 +372,7 @@ _size( 5.0 )
     geode->addDrawable( _shapeDrawable );          
 
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(geode->getOrCreateStateSet(), osg::StateAttribute::OFF);
 
     getPositionAttitudeTransform()->addChild( geode );
 

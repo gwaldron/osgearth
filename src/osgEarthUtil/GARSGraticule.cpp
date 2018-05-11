@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
 #include <osgEarth/Registry>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -328,8 +329,9 @@ GARSGraticule::init()
 
     osg::StateSet* ss = this->getOrCreateStateSet();
     ss->setMode( GL_DEPTH_TEST, 0 );
-    ss->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(ss, 0);
     ss->setMode( GL_BLEND, 1 );
+
 
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");

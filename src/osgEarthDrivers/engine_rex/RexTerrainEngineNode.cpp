@@ -808,7 +808,6 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     osg::Vec4ubArray* colors = new osg::Vec4ubArray();
     colors->push_back(osg::Vec4ub(255,0,0,255));
     geometry->setColorArray(colors, osg::Array::BIND_OVERALL);
-    mt->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     mt->getOrCreateStateSet()->setRenderBinDetails(99, "RenderBin");        
 
     return mt;

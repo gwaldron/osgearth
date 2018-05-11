@@ -26,6 +26,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/GLUtils>
 
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -289,7 +290,7 @@ UTMGraticule::rebuild()
 
     //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
-    set->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(set, 0);
     set->setMode( GL_BLEND, 1 );
     set->setMode( GL_CLIP_DISTANCE0, 1 );
 

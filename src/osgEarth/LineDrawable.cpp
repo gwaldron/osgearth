@@ -24,6 +24,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/LineFunctor>
+#include <osgEarth/GLUtils>
 
 #include <osg/Depth>
 #include <osg/CullFace>
@@ -458,18 +459,19 @@ LineDrawable::setLineWidth(float value)
     if (_width != value)
     {
         _width = value;
-        setLineWidth(getOrCreateStateSet(), value);
+        GLUtils::setLineWidth(getOrCreateStateSet(), value, 1);
     }
 }
 
 void
 LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags)
 {
-    bool gpu = Registry::capabilities().supportsGLSL();
-    if (gpu)
-        stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
-    else
-        stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
+    GLUtils::setLineWidth(stateSet, value, overrideFlags);
+    //bool gpu = Registry::capabilities().supportsGLSL();
+    //if (gpu)
+    //    stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
+    //else
+    //    stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
 }
 
 void
@@ -478,10 +480,11 @@ LineDrawable::setStipplePattern(GLushort pattern)
     if (_pattern != pattern)
     {
         _pattern = pattern;
-        if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
-        else
-            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+        GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+        //if (_gpu)
+        //    getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
+        //else
+        //    getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
 }
 
@@ -491,10 +494,11 @@ LineDrawable::setStippleFactor(GLint factor)
     if (_factor != factor)
     {
         _factor = factor;
-        if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
-        else
-            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+        GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+        //if (_gpu)
+        //    getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
+        //else
+        //    getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
 }
 

@@ -39,8 +39,9 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/Lighting>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 #include <osgEarth/URI>
 #include <osgEarth/HorizonClipPlane>
 #include <osg/ArgumentParser>
@@ -331,10 +332,8 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
-
-        _terrainEngineContainer->getOrCreateStateSet()->setMode(
-            GL_LIGHTING,
+        GLUtils::setLighting(
+            _terrainEngineContainer->getOrCreateStateSet(),
             terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
@@ -390,10 +389,8 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        stateset->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
-
-        stateset->setMode(
-            GL_LIGHTING,
+        GLUtils::setLighting(
+            stateset,
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 

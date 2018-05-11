@@ -21,6 +21,7 @@
 */
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GLUtils>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
@@ -338,7 +339,7 @@ LinearLineOfSightNode::draw(bool backgroundThread)
         mt->setMatrix(osg::Matrixd::translate(_startWorld));
         mt->addChild(geode);  
 
-        getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
     }
 
 

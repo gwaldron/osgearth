@@ -31,6 +31,7 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Horizon>
 #include <osgEarth/TraversalData>
+#include <osgEarth/Lighting>
 
 #include <osgEarthAnnotation/PlaceNode>
 
@@ -152,7 +153,8 @@ makeFrustumFromCamera( osg::Camera* camera )
     osg::Geode* geode = new osg::Geode;
     geode->addDrawable( geom );
 
-    geode->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    Lighting::set(geode->getOrCreateStateSet(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
     geode->getOrCreateStateSet()->setAttributeAndModes(new osg::LineWidth(2.0f), 1);
 
 

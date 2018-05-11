@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Utils>
+#include <osgEarth/GLUtils>
 
 #include <osgDB/WriteFile>
 #include <osg/BlendFunc>
@@ -255,7 +256,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     osg::StateAttribute::GLModeValue disable = 
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
-    rttSS->setMode(GL_LIGHTING,  disable );
+    GLUtils::setLighting(rttSS, disable);
     rttSS->setMode(GL_CULL_FACE, disable );
     rttSS->setMode(GL_ALPHA_TEST, disable );
 

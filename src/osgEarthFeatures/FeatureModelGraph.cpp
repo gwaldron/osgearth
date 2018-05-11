@@ -32,6 +32,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/GLUtils>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -456,7 +457,7 @@ FeatureModelGraph::ctor()
 
     // Set up lighting, only if the option is set
     if ( _options.enableLighting().isSet() )
-        stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
+        GLUtils::setLighting(stateSet, *_options.enableLighting() ? 1 : 0 );
 
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.

@@ -31,6 +31,7 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/GLUtils>
 
 #define LC "[drawables] "
 

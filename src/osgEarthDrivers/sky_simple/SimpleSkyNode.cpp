@@ -36,6 +36,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/Shaders>
+#include <osgEarth/GLUtils>
 #include <osgEarth/Lighting>
 
 #include <osg/MatrixTransform>
@@ -258,10 +259,6 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
         _lightPosUniform->set( lightPos / lightPos.length() );
         stateset->addUniform( _lightPosUniform.get() );
-
-        // default GL_LIGHTING uniform setting
-        //stateset->addUniform(
-        //    Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
 
         stateset->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::ON);
 
@@ -517,7 +514,7 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
     
     // configure the state set:
     osg::StateSet* atmosSet = drawable->getOrCreateStateSet();
-    atmosSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+    GLUtils::setLighting(atmosSet, osg::StateAttribute::OFF);
     atmosSet->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON );
     atmosSet->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     atmosSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
@@ -639,7 +636,7 @@ SimpleSkyNode::makeMoon()
     (*colors)[0] = osg::Vec4(1, 1, 1, 1 );
 
     // configure the stateset
-    stateSet->setMode( GL_LIGHTING, osg::StateAttribute::ON );
+    GLUtils::setLighting(stateSet, osg::StateAttribute::ON );
     stateSet->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);
     stateSet->setRenderBinDetails( BIN_MOON, "RenderBin" );
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );

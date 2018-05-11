@@ -21,7 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
-#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] Layer \"" << getName() << "\" "
@@ -345,14 +345,10 @@ ModelLayer::setLightingEnabledNoLock(bool value)
         {
             osg::StateSet* stateset = i->second->getOrCreateStateSet();
 
-            stateset->setMode( 
-                GL_LIGHTING, value ? osg::StateAttribute::ON : 
+            GLUtils::setLighting(
+                stateset,
+                value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                stateset->setDefine(OE_LIGHTING_DEFINE, value);
-            }
         }
     }
 }

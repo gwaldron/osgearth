@@ -27,6 +27,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/GLUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
@@ -181,7 +182,7 @@ createFramebufferPass(App& app)
     stateset->addUniform(new osg::Uniform("gnormal", 1));
     stateset->setTextureAttributeAndModes(2, app.gdepth, 1);
     stateset->addUniform(new osg::Uniform("gdepth", 2));
-    stateset->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLineWidth(stateset, 2.0f, 1);
 
     float w = app.gcolor->getTextureWidth();
     float h = app.gcolor->getTextureHeight();

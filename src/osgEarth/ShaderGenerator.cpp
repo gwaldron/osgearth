@@ -25,9 +25,10 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/URI>
-#include <osgEarth/Lighting>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/GLUtils>
+#include <osgEarth/Lighting>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -886,7 +887,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     {
         needNewStateSet = true;
         osg::StateAttribute::GLModeValue value = current->getMode(GL_LIGHTING);
-        newStateSet->setDefine(OE_LIGHTING_DEFINE, value);
+        GLUtils::setLighting(newStateSet.get(), value);
     }
 
     // start generating the shader source.

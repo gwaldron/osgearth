@@ -36,6 +36,15 @@
 
 namespace osgEarth
 {
+    struct OSGEARTH_EXPORT Lighting
+    {
+        //! Sets the lighting mode on a stateset
+        static void set(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue value);
+
+        //! Removed the lighting mode from a stateset
+        static void remove(osg::StateSet* stateSet);
+    };
+
     /**
      * Traverses a graph, looking for Lights and Materials, and generates either static
      * uniforms or dynamic cull callbacks for them so they will work with core profile

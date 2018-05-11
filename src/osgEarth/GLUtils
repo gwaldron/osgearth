@@ -25,6 +25,7 @@
 
 #include <osgEarth/Common>
 #include <osg/StateSet>
+#include <osg/OperationThread>
 
 namespace osgEarth
 {
@@ -39,6 +40,11 @@ namespace osgEarth
         static void setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute::OverrideValue ov);
 
         static void remove(osg::StateSet* stateSet, GLenum which);
+    };
+
+    struct OSGEARTH_EXPORT GL3RealizeOperation : public osg::Operation
+    {
+        void operator()(osg::Object*);
     };
 }
 

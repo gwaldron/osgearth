@@ -193,6 +193,10 @@ main(int argc, char** argv)
         }
     }
 
+#ifdef OSG_GL3_AVAILABLE
+    viewer.setRealizeOperation(new GL3RealizeOperation());
+#endif
+
     viewer.setSceneData(node.get());
     
     viewer.addEventHandler(new osgViewer::StatsHandler());

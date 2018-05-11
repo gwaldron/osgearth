@@ -25,6 +25,7 @@
 #include <osg/LineWidth>
 #include <osg/LineStipple>
 #include <osg/Point>
+#include <osg/GraphicsContext>
 
 using namespace osgEarth;
 
@@ -109,4 +110,19 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum which)
         stateSet->removeUniform("oe_GL_LineStipplePattern");
         break;
     }
+}
+
+
+void
+GL3RealizeOperation::operator()(osg::Object* object)
+{
+#ifdef OSG_GL3_AVAILABLE
+    osg::GraphicsContext* gc = dynamic_cast<osg::GraphicsContext*>(object);
+    if (gc)
+    {
+        osg::State* state = gc->getState();
+        state->setUseModelViewAndProjectionUniforms(true);
+        state->setUseVertexAttributeAliasing(true);
+    }
+#endif
 }

@@ -702,6 +702,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
 void
 MapNodeHelper::configureView( osgViewer::View* view ) const
 {
+    // default uniform values:
+    GLUtils::setGlobalDefaults(view->getCamera()->getOrCreateStateSet());
+
     // add some stock OSG handlers:
     view->addEventHandler(new osgViewer::StatsHandler());
     view->addEventHandler(new osgViewer::WindowSizeHandler());

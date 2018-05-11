@@ -38,8 +38,8 @@ void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
 
 uniform vec2 oe_ViewportSize;
 
-uniform float oe_GL_LineWidth = 1.0;
-uniform int oe_GL_LineStipplePattern = 0xffff;
+uniform float oe_GL_LineWidth;
+uniform int oe_GL_LineStipplePattern;
 
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
@@ -209,8 +209,8 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 #pragma import_defines(OE_LINES_USE_LIMITS)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 
-uniform int oe_GL_LineStippleFactor = 1;
-uniform int oe_GL_LineStipplePattern = 0xffff;
+uniform int oe_GL_LineStippleFactor;
+uniform int oe_GL_LineStipplePattern;
 
 flat in vec2 oe_GPULines_rv;
 
@@ -243,7 +243,8 @@ void oe_GPULinesProj_Stippler_FS(inout vec4 color)
 
         // sample the stippling pattern (16-bits repeating)
         int ci = int(mod(coordProj.x, 16 * oe_GL_LineStippleFactor)) / oe_GL_LineStippleFactor;
-        if ((oe_GL_LineStipplePattern & (1 << ci)) == 0)
+        int pattern16 = 0xffff & (oe_GL_LineStipplePattern & (1 << ci));
+        if (pattern16 == 0)
             discard; 
 
         // uncomment to debug stipple direction vectors

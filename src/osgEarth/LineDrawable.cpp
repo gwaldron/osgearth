@@ -487,7 +487,7 @@ LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFla
 void
 LineDrawable::setStipplePattern(GLushort pattern)
 {
-    if (_pattern != pattern)
+    //if (_pattern != pattern)
     {
         _pattern = pattern;
         GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);

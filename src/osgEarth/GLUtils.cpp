@@ -32,6 +32,15 @@ using namespace osgEarth;
 #define LC "[GLUtils] "
 
 void
+GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
+{
+    // anything that uses a uniform.
+    setLineWidth(stateSet, 1.0f, 1);
+    setLineStipple(stateSet, 1, 0xffff, 1);
+    setPointSize(stateSet, 1, 1);
+}
+
+void
 GLUtils::setLighting(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue ov)
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
@@ -63,6 +72,16 @@ GLUtils::setLineStipple(osg::StateSet* stateSet, int factor, unsigned short patt
 }
 
 void
+GLUtils::setLineSmooth(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue ov)
+{
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+    stateSet->setMode(GL_LINE_SMOOTH, ov);
+#endif
+
+    stateSet->setDefine("OE_LINES_ANTIALIAS", ov);
+}
+
+void
 GLUtils::setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute::OverrideValue ov)
 {
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
@@ -73,13 +92,13 @@ GLUtils::setPointSize(osg::StateSet* stateSet, float value, osg::StateAttribute:
 }
 
 void
-GLUtils::remove(osg::StateSet* stateSet, GLenum which)
+GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
 {
     if (!stateSet)
         return;
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
-    switch(which)
+    switch(cap)
     {
     case GL_LIGHTING:
         stateSet->removeMode(GL_LIGHTING);
@@ -92,10 +111,22 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum which)
     case GL_LINE_STIPPLE:
         stateSet->removeAttribute(osg::StateAttribute::LINESTIPPLE);
         break;
+
+    case GL_LINE_SMOOTH:
+        stateSet->removeMode(GL_LINE_SMOOTH);
+        break;
+
+    case GL_POINT_SIZE:
+        stateSet->removeAttribute(osg::StateAttribute::POINT);
+        break;
+
+    default:
+        stateSet->removeMode(cap);
+        break;
     }
 #endif
 
-    switch(which)
+    switch(cap)
     {   
     case GL_LIGHTING:
         stateSet->removeDefine(OE_LIGHTING_DEFINE);
@@ -108,6 +139,14 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum which)
     case GL_LINE_STIPPLE:
         stateSet->removeUniform("oe_GL_LineStippleFactor");
         stateSet->removeUniform("oe_GL_LineStipplePattern");
+        break;
+
+    case GL_LINE_SMOOTH:
+        stateSet->removeDefine("OE_LINES_ANTIALIAS");
+        break;
+
+    case GL_POINT_SIZE:
+        stateSet->removeUniform("oe_GL_PointSize");
         break;
     }
 }

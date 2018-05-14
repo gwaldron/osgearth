@@ -44,7 +44,6 @@ namespace osgEarth
     extern OSGEARTH_EXPORT std::ostream& notify(const osg::NotifySeverity severity);
 
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
-}
 
 #define OE_NOTIFY( X,Y ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X ) << Y
 #define OE_FATAL OE_NOTIFY(osg::FATAL,"[osgEarth]* ")
@@ -60,5 +59,12 @@ namespace osgEarth
 #define OE_GET_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_oe_timer, osg::Timer::instance()->tick() )
 
 #define OE_DEPRECATED(A, B) OE_WARN << #A << " is deprecated; please use " << #B << std::endl
+
+extern OSGEARTH_EXPORT void setNotifyHandler(osg::NotifyHandler *handler);
+
+/** Get currrent notification handler. */
+extern OSGEARTH_EXPORT osg::NotifyHandler *getNotifyHandler();
+
+}
 
 #endif // OSGEARTH_NOTIFY_H

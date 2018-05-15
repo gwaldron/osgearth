@@ -338,7 +338,11 @@ ShaderPreProcessor::run(osg::Shader* shader)
         GLSLChunker::Chunks chunks;
         chunker.read( source, chunks );
 
-        applySupportForNoFFPImpl(chunks);
+
+        if (shader->getType() != osg::Shader::FRAGMENT)
+        {
+            applySupportForNoFFPImpl(chunks);
+        }
 
         // Replace varyings with directives that the ShaderFactory can interpret
         // when creating interface blocks.

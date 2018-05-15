@@ -96,6 +96,7 @@ TerrainLayerOptions::getConfig() const
     conf.set("min_valid_value", _minValidValue);
     conf.set("max_valid_value", _maxValidValue);
     conf.set( "tile_size", _tileSize);
+    conf.set("attribution", _attribution);
 
     return conf;
 }
@@ -118,6 +119,7 @@ TerrainLayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("min_valid_value", _minValidValue);
     conf.getIfSet("max_valid_value", _maxValidValue);
     conf.getIfSet( "tile_size", _tileSize);
+    conf.getIfSet("attribution", _attribution);
 
     if (conf.hasValue("driver"))
         driver() = TileSourceOptions(conf);
@@ -491,6 +493,13 @@ TerrainLayer::isDynamic() const
 const std::string&
 TerrainLayer::getAttribution() const
 {
+    // Get the attribution from the layer if it's set.
+    if (_options->attribution().isSet())
+    {
+        return *_options->attribution();
+    }
+
+    // Get it from the tilesource if it's not set on the layer.
     TileSource* ts = getTileSource();
     if (ts)
     {

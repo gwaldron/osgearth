@@ -109,7 +109,7 @@ TileBlacklist::read(const std::string &filename)
 
 void
 TileBlacklist::write(const std::string &filename) const
-{ 
+{
     std::string path = osgDB::getFilePath(filename);
     if (!path.empty() && !osgDB::fileExists(path) && !osgDB::makeDirectory(path))
     {
@@ -146,12 +146,12 @@ DriverConfigOptions   ( options ),
 _L2CacheSize          ( 16 ),
 _bilinearReprojection ( true ),
 _coverage             ( false )
-{ 
+{
     fromConfig( _conf );
 }
 
 
-Config 
+Config
 TileSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
@@ -160,6 +160,7 @@ TileSourceOptions::getConfig() const
     conf.set( "bilinear_reprojection", _bilinearReprojection );
     conf.set( "coverage", _coverage );
     conf.set( "osg_option_string", _osgOptionString );
+    conf.set( "attribution", _attribution);
     conf.setObj( "profile", _profileOptions );
     return conf;
 }
@@ -181,6 +182,7 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getIfSet( "coverage", _coverage );
     conf.getIfSet( "osg_option_string", _osgOptionString );
+    conf.getIfSet( "attribution", _attribution);
     conf.getObjIfSet( "profile", _profileOptions );
 }
 
@@ -211,7 +213,7 @@ _maxValidValue(  32000.0f )
         _blacklistFilename = _options.blacklistFilename().value();
     }
 
-    
+
     if (!_blacklistFilename.empty() && osgDB::fileExists(_blacklistFilename))
     {
         _blacklist = TileBlacklist::read(_blacklistFilename);
@@ -225,6 +227,12 @@ _maxValidValue(  32000.0f )
     {
         //Initialize the blacklist if we couldn't read it.
         _blacklist = new TileBlacklist();
+    }
+
+    // Set the attribution if it was specified in the options
+    if (_options.attribution().isSet())
+    {
+        _attribution = *_options.attribution();
     }
 }
 
@@ -287,7 +295,7 @@ TileSource::open(const Mode&           openMode,
             {
                 _status = status;
             }
-            else 
+            else
             {
                 _status = Status::Error("No profile available");
             }
@@ -317,7 +325,7 @@ TileSource::setPixelsPerTile(unsigned size)
 
 osg::Image*
 TileSource::createImage(const TileKey&        key,
-                        ImageOperation*       prepOp, 
+                        ImageOperation*       prepOp,
                         ProgressCallback*     progress )
 {
     if (getStatus().isError())
@@ -334,7 +342,7 @@ TileSource::createImage(const TileKey&        key,
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
     // Check for cancelation. The TileSource implementation should do this
-    // internally but we check here once last time just in case the 
+    // internally but we check here once last time just in case the
     // implementation does not.
     if (progress && progress->isCanceled())
     {
@@ -356,7 +364,7 @@ TileSource::createImage(const TileKey&        key,
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-                              HeightFieldOperation* prepOp, 
+                              HeightFieldOperation* prepOp,
                               ProgressCallback*     progress )
 {
     if (getStatus().isError())
@@ -373,9 +381,9 @@ TileSource::createHeightField(const TileKey&        key,
     }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
-    
+
     // Check for cancelation. The TileSource implementation should do this
-    // internally but we check here once last time just in case the 
+    // internally but we check here once last time just in case the
     // implementation does not.
     if (progress && progress->isCanceled())
     {
@@ -413,7 +421,7 @@ TileSource::createHeightField(const TileKey&        key,
     {
         ImageToHeightFieldConverter conv;
         hf = conv.convert( image.get() );
-    }      
+    }
     return hf;
 }
 
@@ -435,7 +443,7 @@ TileSource::storeHeightField(const TileKey&     key,
 }
 
 bool
-TileSource::isOK() const 
+TileSource::isOK() const
 {
     return _status.isOK();
 }

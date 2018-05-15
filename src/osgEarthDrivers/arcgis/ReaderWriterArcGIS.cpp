@@ -129,7 +129,7 @@ public:
 			OE_DEBUG << LC << "Layer options not set" << std::endl;
 		}
 
-		OE_DEBUG << LC << "_map_service URL: " << url.full() << std::endl;
+        OE_DEBUG << LC << "_map_service URL: " << url.full() << std::endl;
 
         // read map service metadata from the server
         if ( !_map_service.init(url, dbOptions) )
@@ -142,7 +142,9 @@ public:
                     << _map_service.getError() );
         }
 
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );        
+        setAttribution(_map_service.getCopyright());
+
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
 
         // establish a profile if we don't already have one:
         if ( !getProfile() )
@@ -198,7 +200,7 @@ public:
             buf << std::setprecision(16)
                 << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
-                << "&format=" << _format 
+                << "&format=" << _format
                 << "&size=256,256"
                 << "&transparent=true"
                 << "&f=image";
@@ -245,7 +247,7 @@ public:
     }
 
     // override
-    virtual std::string getExtension() const 
+    virtual std::string getExtension() const
     {
         return _format;
     }

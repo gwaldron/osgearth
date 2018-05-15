@@ -54,7 +54,7 @@ flat out vec2 oe_GPULines_rv;
 
 #ifdef OE_GPU_CLAMPING
 // see GPUClamping.vert.glsl
-in vec3 oe_clamp_viewSpaceClampingVector;
+vec3 oe_clamp_viewSpaceClampingVector;
 #endif
 
 

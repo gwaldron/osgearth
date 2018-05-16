@@ -144,11 +144,6 @@ namespace osgEarth
         optional<float>& maxValidValue() { return _maxValidValue; }
         const optional<float>& maxValidValue() const { return _maxValidValue; }
 
-        //! The attribution for this layer
-        optional<std::string>& attribution() { return _attribution; }
-        const optional<std::string>& attribution() const { return _attribution; }
-
-
     public:
         virtual Config getConfig() const; // { return getConfig(false); }
         //virtual Config getConfig( bool isolate ) const;
@@ -173,7 +168,6 @@ namespace osgEarth
         optional<float>             _noDataValue;
         optional<float>             _minValidValue;
         optional<float>             _maxValidValue;
-        optional<std::string>       _attribution;
     };
 
 

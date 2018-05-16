@@ -267,17 +267,21 @@ Map::setCache(Cache* cache)
 void
 Map::getAttributions(StringSet& attributions) const
 {
-    TerrainLayerVector layers;
+    LayerVector layers;
     getLayers(layers);
 
-    for (TerrainLayerVector::const_iterator itr = layers.begin(); itr != layers.end(); ++itr)
+    for (LayerVector::const_iterator itr = layers.begin(); itr != layers.end(); ++itr)
     {
-        if (itr->get()->getEnabled() && itr->get()->getVisible())
+        if (itr->get()->getEnabled())
         {
-            std::string attribution = itr->get()->getAttribution();
-            if (!attribution.empty())
+            VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(itr->get());
+            if (!visibleLayer || visibleLayer->getVisible())
             {
-                attributions.insert(attribution);
+                std::string attribution = itr->get()->getAttribution();
+                if (!attribution.empty())
+                {
+                    attributions.insert(attribution);
+                }
             }
         }
     }

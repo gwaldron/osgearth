@@ -28,7 +28,7 @@
 #include <osgEarth/MaskLayer>
 
 namespace osgEarth
-{    
+{
     /**
      * Conveys atomic change actions to the map data model.
      */
@@ -41,7 +41,7 @@ namespace osgEarth
             ADD_LAYER,
             REMOVE_LAYER,
             MOVE_LAYER,
-            TOGGLE_ELEVATION_LAYER,     // visibilty toggle on elevation is a model change.
+            TOGGLE_LAYER,     // visibilty toggle on elevation is a model change.
             ENABLE_LAYER,
             DISABLE_LAYER,
             UNSPECIFIED
@@ -49,7 +49,7 @@ namespace osgEarth
 
         MapModelChange() : _action(UNSPECIFIED) { }
 
-        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 ) 
+        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 )
             : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
 
         const ActionType& getAction() const { return _action; }

@@ -34,12 +34,12 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-Map::ElevationLayerCB::ElevationLayerCB(Map* map) : _map(map) { }
+Map::VisibleLayerCB::VisibleLayerCB(Map* map) : _map(map) { }
 
-void Map::ElevationLayerCB::onVisibleChanged(VisibleLayer* layer) {
+void Map::VisibleLayerCB::onVisibleChanged(VisibleLayer* layer) {
     osg::ref_ptr<Map> map;
     if ( _map.lock(map) )
-        _map->notifyElevationLayerVisibleChanged(layer);
+        _map->notifyLayerVisibleChanged(layer);
 }
 
 Map::LayerCB::LayerCB(Map* map) : _map(map) { }
@@ -122,9 +122,8 @@ Map::ctor()
     // encode this map in the read options.
     OptionsData<const Map>::set(_readOptions.get(), "osgEarth.Map", this);
 
-    // set up a callback that the Map will use to detect Elevation Layer
-    // visibility changes
-    _elevationLayerCB = new ElevationLayerCB(this);
+    // set up a callback that the Map will use to detect Layer visibility changes
+    _visibleLayerCB = new VisibleLayerCB(this);
 
     // create a callback that the Map will use to detect setEnabled calls
     _layerCB = new LayerCB(this);
@@ -146,7 +145,7 @@ Map::getElevationPool() const
 }
 
 void
-Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
+Map::notifyLayerVisibleChanged(VisibleLayer* layer)
 {
     // bump the revision safely:
     Revision newRevision;
@@ -155,11 +154,15 @@ Map::notifyElevationLayerVisibleChanged(VisibleLayer* layer)
         newRevision = ++_dataModelRevision;
     }
 
-    // reinitialize the elevation pool:
-    _elevationPool->clear();
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    if (elevationLayer)
+    {
+        // reinitialize the elevation pool:
+        _elevationPool->clear();
+    }
 
     MapModelChange change(
-        MapModelChange::TOGGLE_ELEVATION_LAYER,
+        MapModelChange::TOGGLE_LAYER,
         newRevision,
         layer);
 
@@ -259,6 +262,29 @@ Map::setCache(Cache* cache)
     CacheSettings* cacheSettings = CacheSettings::get(_readOptions.get());
     if (cacheSettings && cacheSettings->getCache() != cache)
         cacheSettings->setCache(cache);
+}
+
+void
+Map::getAttributions(StringSet& attributions) const
+{
+    LayerVector layers;
+    getLayers(layers);
+
+    for (LayerVector::const_iterator itr = layers.begin(); itr != layers.end(); ++itr)
+    {
+        if (itr->get()->getEnabled())
+        {
+            VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(itr->get());
+            if (!visibleLayer || visibleLayer->getVisible())
+            {
+                std::string attribution = itr->get()->getAttribution();
+                if (!attribution.empty())
+                {
+                    attributions.insert(attribution);
+                }
+            }
+        }
+    }
 }
 
 MapCallback*
@@ -482,13 +508,17 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
+    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+    if (visibleLayer)
+    {
+        visibleLayer->addCallback(_visibleLayerCB.get());
+    }
+
     // If this is an elevation layer, install a callback so we know when
     // it's visibility changes:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
-        elevationLayer->addCallback(_elevationLayerCB.get());
-
         // invalidate the elevation pool
         getElevationPool()->clear();
     }
@@ -500,12 +530,16 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
+    VisibleLayer* visibleLayer = dynamic_cast<VisibleLayer*>(layer);
+    if (visibleLayer)
+    {
+        visibleLayer->removeCallback(_visibleLayerCB.get());
+    }
+
     // undo the things we did in prepareLayer:
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
     if (elevationLayer)
     {
-        elevationLayer->removeCallback(_elevationLayerCB.get());
-
         // invalidate the pool
         getElevationPool()->clear();
     }
@@ -709,13 +743,13 @@ Map::calculateProfile()
 
         // Finally, if there is still no profile, default to global geodetic.
         if (!profile.valid())
-        {            
+        {
             profile = Registry::instance()->getGlobalGeodeticProfile();
         }
 
 
         // Set the map's profile!
-        _profile = profile.release();        
+        _profile = profile.release();
 
         // create a "proxy" profile to use when querying elevation layers with a vertical datum
         if ( _profile->getSRS()->getVerticalDatum() != 0L )

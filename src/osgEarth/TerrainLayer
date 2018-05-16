@@ -144,7 +144,6 @@ namespace osgEarth
         optional<float>& maxValidValue() { return _maxValidValue; }
         const optional<float>& maxValidValue() const { return _maxValidValue; }
 
-
     public:
         virtual Config getConfig() const; // { return getConfig(false); }
         //virtual Config getConfig( bool isolate ) const;
@@ -153,7 +152,7 @@ namespace osgEarth
     private:
         void setDefaults();
         void fromConfig( const Config& conf );
-       
+
         optional<std::string>       _vertDatum;
         optional<TileSourceOptions> _driver;
         optional<unsigned>          _minLevel;
@@ -225,20 +224,23 @@ namespace osgEarth
          * data for this layer.
          */
         virtual unsigned getTileSize() const;
-        
+
         /**
          * Whether the layer represents dynamic data, i.e. it generates data that requires
          * an update traversal.
          */
         virtual bool isDynamic() const;
 
-        /** 
+        /** Attribution to be displayed by the application */
+        virtual std::string getAttribution() const;
+
+        /**
          * Whether the data for the specified tile key is in the cache.
          */
         virtual bool isCached(const TileKey& key) const;
-        
+
         /**
-         * Gives the terrain layer a hint as to what the target profile of 
+         * Gives the terrain layer a hint as to what the target profile of
          * images will be. This is optional, but it may allow the layer to enable
          * certain optimizations since it has more information as to how the
          * data will be used.
@@ -319,7 +321,7 @@ namespace osgEarth
         virtual SequenceControl* getSequenceControl();
 
     public:
-        
+
         /**
          * Metadata about the terrain layer that is stored in the cache, and read
          * when the cache is opened.
@@ -339,7 +341,7 @@ namespace osgEarth
             bool                     _valid;
             optional<std::string>    _cacheBinId;
             optional<std::string>    _sourceName;
-            optional<std::string>    _sourceDriver;   
+            optional<std::string>    _sourceDriver;
             optional<int>            _sourceTileSize;
             optional<ProfileOptions> _sourceProfile;
             optional<ProfileOptions> _cacheProfile;
@@ -348,7 +350,7 @@ namespace osgEarth
         };
 
         /**
-         * Access to information about the cache 
+         * Access to information about the cache
          */
         CacheBinMetadata* getCacheBinMetadata(const Profile* profile);
 
@@ -386,7 +388,7 @@ namespace osgEarth
     protected:
 
         osg::ref_ptr<const Profile>    _targetProfileHint;
-        unsigned                       _tileSize;  
+        unsigned                       _tileSize;
         osg::ref_ptr<MemCache>         _memCache;
         bool _openCalled;
 
@@ -419,8 +421,8 @@ namespace osgEarth
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TerrainLayerOptions, or a dynamic cacheID generated at runtime.
         std::string _runtimeCacheId;
-        
-        // cache policy that may be automatically set by the layer and will 
+
+        // cache policy that may be automatically set by the layer and will
         // override the runtime options policy if set.
         optional<CachePolicy> _runtimeCachePolicy;
 
@@ -431,11 +433,8 @@ namespace osgEarth
 
         mutable osg::ref_ptr<CacheSettings> _cacheSettings;
 
-        void fireCallback(TerrainLayerCallback::MethodPtr method);
-
         // methods accesible by Map:
         friend class Map;
-        void initializeCachePolicy( const osgDB::Options* );
         void storeProxySettings( osgDB::Options* );
 
         // read the tile source's cache policy hint and apply as necessary

@@ -176,8 +176,8 @@ namespace osgEarth
         typedef unsigned Mode;
 
         /** Open for reading only */
-        static const Mode MODE_READ;  
-        
+        static const Mode MODE_READ;
+
         /** Open for writing */
         static const Mode MODE_WRITE;
 
@@ -230,6 +230,9 @@ namespace osgEarth
         float getMaxValidValue() const { return _maxValidValue; }
         void setMaxValidValue(float value) { _maxValidValue = value; }
 
+        //! The attribution string to be displayed for this TileSource
+        virtual std::string getAttribution() const { return ""; }
+
         /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
@@ -277,7 +280,7 @@ namespace osgEarth
 
         /**
          * TimeStamp indicating the last time the data at this source changed
-         * Default is 0, i.e. the beginning of time itself (1970). It is up to 
+         * Default is 0, i.e. the beginning of time itself (1970). It is up to
          * the TileSource implementation whether to populate this field. The
          * Map engine can use it for per-session caching purposes.
          */
@@ -306,7 +309,7 @@ namespace osgEarth
          * cache if one is configured. But a TileSource can report that caching should
          * not be used (for whatever reason) by returning CachePolicy::NO_CACHE.
          */
-        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const 
+        virtual CachePolicy getCachePolicyHint(const Profile* targetProfile) const
             { return CachePolicy::DEFAULT; }
 
         /**
@@ -320,7 +323,7 @@ namespace osgEarth
         const TileSourceOptions& getOptions() const { return _options; }
 
         /**
-         * Set the L2 cache size default (if the size was not set in 
+         * Set the L2 cache size default (if the size was not set in
          * the options or environment). Must call this before open().
          */
         void setDefaultL2CacheSize(int size);
@@ -366,11 +369,11 @@ namespace osgEarth
             ProgressCallback*     progress );
 
     protected:
-        
+
         virtual ~TileSource();
 
         /**
-         * Subclass can call this to set a Profile after opening the 
+         * Subclass can call this to set a Profile after opening the
          * data store.
          */
         void setProfile( const Profile* profile );
@@ -403,7 +406,7 @@ namespace osgEarth
         DataExtentList  _dataExtents;
         Status          _status;
         Mode            _mode;
-        unsigned        _tileSize;     
+        unsigned        _tileSize;
         float           _noDataValue;
         float           _minValidValue;
         float           _maxValidValue;

@@ -145,7 +145,7 @@ MPTerrainEngineNode::registerEngine(MPTerrainEngineNode* engineNode)
 }
 
 // since this method is called in a database pager thread, we use a ref_ptr output
-// parameter to avoid the engine node being destructed between the time we 
+// parameter to avoid the engine node being destructed between the time we
 // return it and the time it's accessed; this could happen if the user removed the
 // MapNode from the scene during paging.
 void
@@ -312,7 +312,7 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
         osg::Shader* VS = new osg::Shader(osg::Shader::VERTEX, libVS);
         VS->setName( "oe_terrain_SDK_mp_VS" );
         vp->setShader( VS );
-        
+
         osg::Shader* FS = new osg::Shader(osg::Shader::FRAGMENT, libFS);
         FS->setName( "oe_terrain_SDK_mp_FS" );
         vp->setShader( FS );
@@ -362,7 +362,7 @@ MPTerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     {
         getResources()->reserveTextureImageUnit( _secondaryUnit, "MP Engine Secondary" );
     }
-    
+
     // initialize the model factory:
     _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions, this);
 
@@ -437,7 +437,7 @@ MPTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
         {
             extent.transform(this->getMap()->getSRS(), extentLocal);
         }
-        
+
         _liveTiles->setDirty(extentLocal, minLevel, maxLevel);
     }
 }
@@ -548,7 +548,7 @@ MPTerrainEngineNode::dirtyTerrain()
     {
         // Factory to create the root keys:
         KeyNodeFactory* factory = getKeyNodeFactory();
-    
+
         std::vector< TileKey > keys;
         _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
@@ -556,7 +556,7 @@ MPTerrainEngineNode::dirtyTerrain()
         OE_DEBUG << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
         osg::Group* root = new osg::Group;
-        _terrain->addChild( root );        
+        _terrain->addChild( root );
 
 
         osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
@@ -637,7 +637,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
     if ( !knf.valid() )
     {
         // create a compiler for compiling tile models into geometry
-        bool optimizeTriangleOrientation = 
+        bool optimizeTriangleOrientation =
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
         MaskLayerVector maskLayers;
@@ -717,7 +717,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
-    int tileSize = _terrainOptions.tileSize().get();    
+    int tileSize = _terrainOptions.tileSize().get();
     osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize, 0u );
 
     TileKey sampleKey = key;
@@ -736,7 +736,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
                     return 0;
                 }
             }
-        }       
+        }
     }
 
     if (!populated)
@@ -750,7 +750,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     model->_elevationData = TileModel::ElevationData(
         hf.get(),
         GeoLocator::createForKey( sampleKey, mapInfo ),
-        false );        
+        false );
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
@@ -827,11 +827,17 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                     moveElevationLayer(change.getElevationLayer());
                 break;
 
-            case MapModelChange::TOGGLE_ELEVATION_LAYER:
-                toggleElevationLayer( change.getElevationLayer() );
+            case MapModelChange::TOGGLE_LAYER:
+            {
+                ElevationLayer* elevationLayer = change.getElevationLayer();
+                if (elevationLayer)
+                {
+                    toggleElevationLayer(elevationLayer);
+                }
                 break;
+            }
 
-            default: 
+            default:
                 break;
             }
         }
@@ -938,7 +944,7 @@ MPTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 
 void
 MPTerrainEngineNode::moveElevationLayer(ElevationLayer* layer)
-{    
+{
     // only need to refresh the terrain if the layer is visible
     if (layer->getVisible())
     {
@@ -971,13 +977,13 @@ MPTerrainEngineNode::updateState()
         osg::StateSet* terrainStateSet = getTerrainStateSet();
         if ( !terrainStateSet )
             return;
-        
+
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
 
         // activate standard mix blending.
-        terrainStateSet->setAttributeAndModes( 
+        terrainStateSet->setAttributeAndModes(
             new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON );
 
@@ -992,13 +998,13 @@ MPTerrainEngineNode::updateState()
 
             package.replace( "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
             package.replace( "$MP_SECONDARY_UNIT", Stringify() << (_secondaryUnit>=0?_secondaryUnit:0) );
-                
+
             package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
 
             package.load( vp, package.EngineVertexModel );
             package.load( vp, package.EngineVertexView );
             package.load( vp, package.EngineFragment );
-            
+
             if ( this->normalTexturesRequired() )
             {
                 package.load( vp, package.NormalMapVertex );
@@ -1088,7 +1094,7 @@ MPTerrainEngineNode::updateState()
             }
 
             // binding for the terrain texture
-            terrainStateSet->getOrCreateUniform( 
+            terrainStateSet->getOrCreateUniform(
                 "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _primaryUnit );
 
             // binding for the secondary texture (for LOD blending)
@@ -1130,7 +1136,7 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attenuationDistance().get()) );
-            
+
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
@@ -1154,7 +1160,7 @@ MPTerrainEngineNode::updateState()
                         terrainStateSet->addUniform( new osg::Uniform(
                             layer->shareTexUniformName()->c_str(),
                             layer->shareImageUnit().get() ) );
-                        
+
                     }
                 }
             }

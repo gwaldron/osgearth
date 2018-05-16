@@ -10,7 +10,7 @@ using namespace osgEarth;
 #define LC "[MapService] "
 
 
-MapServiceLayer::MapServiceLayer(int in_id, 
+MapServiceLayer::MapServiceLayer(int in_id,
                                  const std::string& in_name) :
 id( in_id ),
 name( in_name )
@@ -49,7 +49,7 @@ max_level( _max_level ),
 is_valid( true ),
 num_tiles_wide(_num_tiles_wide),
 num_tiles_high(_num_tiles_high)
-{ 
+{
     //NOP
 }
 
@@ -99,7 +99,7 @@ int
 TileInfo::getNumTilesHigh() const {
     return num_tiles_high;
 }
-                                 
+
 
 //===========================================================================
 
@@ -111,7 +111,7 @@ tiled( false )
     //NOP
 }
 
-bool 
+bool
 MapService::isValid() const {
     return is_valid;
 }
@@ -129,6 +129,11 @@ MapService::getProfile() const {
 const TileInfo&
 MapService::getTileInfo() const {
     return tile_info;
+}
+
+const std::string& MapService::getCopyright() const
+{
+    return _copyright;
 }
 
 bool
@@ -152,7 +157,7 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 
     // Read the profile. We are using "fullExtent"; perhaps an option to use "initialExtent" instead?
 	double xmin = 0.0;
-	double ymin = 0.0; 
+	double ymin = 0.0;
 	double xmax = 0.0;
 	double ymax = 0.0;
 	int srs = 0;
@@ -160,7 +165,7 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
     Json::Value fullExtentValue = doc["fullExtent"];
 	Json::Value extentValue = doc["extent"];
 	std::string srsValue;
-	
+
 	// added a case for "extent" which can be removed if we want to fall back on initialExtent if fullExtent fails
     if ( !fullExtentValue.empty() )
 	{
@@ -172,7 +177,7 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 		srs = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
 
 		srsValue = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkt", "null").asString();
-	
+
 		OE_DEBUG << LC << "fullExtent discovered: xmin: " << xmin << ", ymin: " << ymin << ", xmax: " << xmax << ", ymax: " << ymax << ", srs: " << srs << std::endl;
 	}
 	else if( !extentValue.empty() )
@@ -201,11 +206,11 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 
 		OE_DEBUG << LC << "initialExtent discovered: xmin: " << xmin << ", ymin: " << ymin << ", xmax: " << xmax << ", ymax: " << ymax << ", srs: " << srs << std::endl;
 	}
-    
+
     //Assumes the SRS is going to be an EPSG code
     std::stringstream ss;
     ss << "epsg:" << srs;
-    
+
 	// we can create a valid spatial reference from the WKT/proj4 string .. here just check if x/y/min/max values are set & correct
     if ( ! (xmax > xmin && ymax > ymin /*&& srs != 0*/ ) )
     {
@@ -268,7 +273,7 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 		{
             return setError( "Map service tile schema contains no LODs" );
 		}
-        
+
         min_level = INT_MAX;
         max_level = 0;
         for( unsigned int i=0; i<j_levels.size(); i++ )
@@ -355,6 +360,8 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 	{
 		return setError( "Map service could not create a valid profile" );
 	}
+
+    _copyright = trim(doc["copyrightText"].asString());
 
     // now we're good.
     tile_info = TileInfo( tile_rows, format, min_level, max_level, num_tiles_wide, num_tiles_high);

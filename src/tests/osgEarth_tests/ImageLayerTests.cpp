@@ -61,10 +61,14 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
 TEST_CASE("Attribution works") {
 
     std::string attribution = "Attribution test";
-    GDALOptions opt;
-    opt.url() = "../data/world.tif";
-    opt.attribution() = attribution;
-    osg::ref_ptr< ImageLayer > layer = new ImageLayer(ImageLayerOptions("world", opt));
+    GDALOptions gdalOpt;
+    gdalOpt.url() = "../data/world.tif";
+
+    ImageLayerOptions imageOpts;
+    imageOpts.driver() = gdalOpt;
+    imageOpts.attribution() = attribution;
+
+    osg::ref_ptr< ImageLayer > layer = new ImageLayer(imageOpts);
     Status status = layer->open();
     REQUIRE(status.isOK());
     REQUIRE(layer->getAttribution() == attribution);

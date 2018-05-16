@@ -490,7 +490,7 @@ TerrainLayer::isDynamic() const
     return ts ? ts->isDynamic() : false;
 }
 
-const std::string&
+std::string
 TerrainLayer::getAttribution() const
 {
     // Get the attribution from the layer if it's set.

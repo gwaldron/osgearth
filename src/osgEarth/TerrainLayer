@@ -238,7 +238,7 @@ namespace osgEarth
         virtual bool isDynamic() const;
 
         /** Attribution to be displayed by the application */
-        const std::string& getAttribution() const;
+        virtual std::string getAttribution() const;
 
         /**
          * Whether the data for the specified tile key is in the cache.

@@ -142,7 +142,7 @@ public:
                     << _map_service.getError() );
         }
 
-        setAttribution(_map_service.getCopyright());
+        _copyright = _map_service.getCopyright();
 
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
 
@@ -246,6 +246,11 @@ public:
         return NULL;
     }
 
+    virtual std::string getAttribution() const
+    {
+        return _copyright;
+    }
+
     // override
     virtual std::string getExtension() const
     {
@@ -258,6 +263,7 @@ private:
     std::string _map;
     std::string _layer;
     std::string _format, _dot_format;
+    std::string _copyright;
     MapService _map_service;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

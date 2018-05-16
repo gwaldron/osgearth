@@ -160,7 +160,6 @@ TileSourceOptions::getConfig() const
     conf.set( "bilinear_reprojection", _bilinearReprojection );
     conf.set( "coverage", _coverage );
     conf.set( "osg_option_string", _osgOptionString );
-    conf.set( "attribution", _attribution);
     conf.setObj( "profile", _profileOptions );
     return conf;
 }
@@ -182,7 +181,6 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getIfSet( "coverage", _coverage );
     conf.getIfSet( "osg_option_string", _osgOptionString );
-    conf.getIfSet( "attribution", _attribution);
     conf.getObjIfSet( "profile", _profileOptions );
 }
 
@@ -227,12 +225,6 @@ _maxValidValue(  32000.0f )
     {
         //Initialize the blacklist if we couldn't read it.
         _blacklist = new TileBlacklist();
-    }
-
-    // Set the attribution if it was specified in the options
-    if (_options.attribution().isSet())
-    {
-        _attribution = *_options.attribution();
     }
 }
 

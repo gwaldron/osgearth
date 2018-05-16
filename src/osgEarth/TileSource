@@ -82,10 +82,6 @@ namespace osgEarth
         optional<std::string>& osgOptionString() { return _osgOptionString; }
         const optional<std::string>& osgOptionString() const { return _osgOptionString; }
 
-        /** Attribution to be displayed by the application  */
-        optional<std::string>& attribution() { return _attribution; }
-        const optional<std::string>& attribution() const { return _attribution; }
-
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
@@ -107,7 +103,6 @@ namespace osgEarth
         optional<bool>           _bilinearReprojection;
         optional<bool>           _coverage;
         optional<std::string>    _osgOptionString;
-        optional<std::string>    _attribution;
     };
 
 
@@ -236,8 +231,7 @@ namespace osgEarth
         void setMaxValidValue(float value) { _maxValidValue = value; }
 
         //! The attribution string to be displayed for this TileSource
-        const std::string& getAttribution() const { return _attribution; }
-        void setAttribution(const std::string& value) { _attribution = value; }
+        virtual std::string getAttribution() const { return ""; }
 
         /**
          * Creates an image for the given TileKey. The TileKey's profile must match
@@ -416,7 +410,6 @@ namespace osgEarth
         float           _noDataValue;
         float           _minValidValue;
         float           _maxValidValue;
-        std::string     _attribution;
 
         bool _openCalled;
 

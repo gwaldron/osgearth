@@ -61,7 +61,8 @@ XmlElement::XmlElement( const Config& conf )
 
         if ( !conf.value().empty() )
         {
-            children.push_back( new XmlText(conf.value()) );
+            XmlText* xt = new XmlText(conf.value());
+            children.push_back( xt );
         }
 
         for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
@@ -513,7 +514,22 @@ storeNode( const XmlNode* node, TiXmlNode* parent)
     else if (node->isText())
     {
         XmlText* t = (XmlText*)node;
-        parent->LinkEndChild( new TiXmlText( t->getValue().c_str() ) );
+        std::string value = t->getValue();
+
+        std::string encodedValue;
+		TiXmlBase::EncodeString(value, &encodedValue);
+        bool needCDATA = !encodedValue.empty() && encodedValue != value;
+
+        TiXmlText* tNode = new TiXmlText(value.c_str());
+        if (needCDATA)
+        {
+            // XML should be normalized to LF (no CRLF)
+            value = osgEarth::replaceIn(value, "\r\n", "\n");
+            tNode->SetValue(value.c_str());
+            tNode->SetCDATA(true);
+        }
+
+        parent->LinkEndChild(tNode);
     }
 }
 

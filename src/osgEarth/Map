@@ -52,7 +52,7 @@ namespace osgEarth
 
     public:
         /**
-         * Gets this Map's unique ID 
+         * Gets this Map's unique ID
          */
         UID getUID() const { return _uid; }
 
@@ -82,7 +82,7 @@ namespace osgEarth
         const SpatialReference* getWorldSRS() const;
 
         /**
-         * Adds a Layer to the map. 
+         * Adds a Layer to the map.
          */
         void addLayer(Layer* layer);
 
@@ -150,7 +150,7 @@ namespace osgEarth
         Revision getLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const;
 
         /**
-         * Gets the first layer of the specified type. This is useful when you 
+         * Gets the first layer of the specified type. This is useful when you
          * know there in only one layer of the type you are looking for.
          */
         template<typename T> T* getLayer() const;
@@ -203,11 +203,11 @@ namespace osgEarth
          */
         void setMapName( const std::string& name );
 
-        /** 
+        /**
          * Gets the readable name of this map.
          */
         const std::string& getMapName() const { return _name; }
-              
+
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.
          */
@@ -252,6 +252,11 @@ namespace osgEarth
          */
         bool isFast(const TileKey& key, const LayerVector& layers) const;
 
+        /**
+         * List of attribution strings to be displayed by the application
+         */
+        void getAttributions(StringSet& attributions) const;
+
     protected:
 
         virtual ~Map();
@@ -274,14 +279,14 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<ElevationPool> _elevationPool;
 
-        struct ElevationLayerCB : public VisibleLayerCallback {
+        struct VisibleLayerCB : public VisibleLayerCallback {
             osg::observer_ptr<Map> _map;
-            ElevationLayerCB(Map*);
+            VisibleLayerCB(Map*);
             void onVisibleChanged(VisibleLayer* layer);
         };
-        osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
-        friend struct ElevationLayerCB;
-        void notifyElevationLayerVisibleChanged(VisibleLayer*);
+        osg::ref_ptr<VisibleLayerCB> _visibleLayerCB;
+        friend struct VisibleLayerCB;
+        void notifyLayerVisibleChanged(VisibleLayer*);
 
         struct LayerCB : public LayerCallback {
             LayerCB(Map*);
@@ -304,7 +309,7 @@ namespace osgEarth
 
         friend class MapInfo;
     };
-    
+
 
 
 

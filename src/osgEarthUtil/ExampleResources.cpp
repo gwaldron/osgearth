@@ -89,7 +89,7 @@ namespace
     // flies to a viewpoint in response to control event (click)
     struct ClickViewpointHandler : public ControlEventHandler
     {
-        ClickViewpointHandler( const Viewpoint& vp, osgGA::CameraManipulator* manip ) 
+        ClickViewpointHandler( const Viewpoint& vp, osgGA::CameraManipulator* manip )
             : _vp(vp), _manip( dynamic_cast<EarthManipulator*>(manip) ) { }
 
         Viewpoint         _vp;
@@ -167,7 +167,7 @@ Control*
 MouseCoordsControlFactory::create(MapNode*         mapNode,
                                   osgViewer::View* view     ) const
 {
-    // readout for coordinates under the mouse   
+    // readout for coordinates under the mouse
     LabelControl* readout = new LabelControl();
     readout->setHorizAlign( Control::ALIGN_RIGHT );
     readout->setVertAlign( Control::ALIGN_BOTTOM );
@@ -246,6 +246,57 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 
 //------------------------------------------------------------------------
 
+std::string getAttributionString(Map* map)
+{
+    StringSet attributions;
+    map->getAttributions(attributions);
+    std::stringstream buf;
+    for (StringSet::iterator itr = attributions.begin(); itr != attributions.end(); ++itr)
+    {
+        buf << *itr << std::endl;
+    }
+
+    return buf.str();
+}
+
+class AttributeCallback : public osgEarth::MapCallback
+{
+public:
+    AttributeCallback(LabelControl* label, MapNode* mapNode) :
+        _label(label),
+        _mapNode(mapNode)
+    {
+    }
+
+    virtual void onMapModelChanged(const MapModelChange& change)
+    {
+        osg::ref_ptr< LabelControl > label;
+        osg::ref_ptr< MapNode > mapNode;
+
+        StringVector attributions;
+        if (_mapNode.lock(mapNode) && _label.lock(label))
+        {
+            label->setText(getAttributionString(_mapNode->getMap()));
+        }
+    }
+
+    osg::observer_ptr< LabelControl > _label;
+    osg::observer_ptr< MapNode > _mapNode;
+};
+
+Control* AttributionControlFactory::create(MapNode* mapNode) const
+{
+    // readout for coordinates under the mouse
+    LabelControl* credits = new LabelControl();
+    credits->setHorizAlign(Control::ALIGN_CENTER);
+    credits->setVertAlign(Control::ALIGN_BOTTOM);
+    credits->setText(getAttributionString(mapNode->getMap()));
+    mapNode->getMap()->addMapCallback(new AttributeCallback(credits, mapNode));
+    return credits;
+}
+
+//------------------------------------------------------------------------
+
 #undef  LC
 #define LC "[MapNodeHelper] "
 
@@ -260,7 +311,7 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     args.read( "--out-earth", outEarth );
 
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
-    
+
     Config c;
     c.add("elevation_smoothing", false);
     TerrainOptions to(c);
@@ -315,7 +366,7 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
-    
+
     root->addChild( node );
 
     // parses common cmdline arguments and apply to the first view:
@@ -398,7 +449,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     std::string imageExtensions;
     args.read("--image-extensions", imageExtensions);
-    
+
     // animation path:
     std::string animpath;
     if ( args.read("--path", animpath) )
@@ -480,13 +531,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     // Configure the mouse coordinate readout:
     if ( useCoords )
-    { 
+    {
         LabelControl* readout = new LabelControl();
         readout->setBackColor( Color(Color::Black, 0.8) );
         readout->setHorizAlign( Control::ALIGN_RIGHT );
         readout->setVertAlign( Control::ALIGN_BOTTOM );
 
-        Formatter* formatter = 
+        Formatter* formatter =
             useMGRS ? (Formatter*)new MGRSFormatter(MGRSFormatter::PRECISION_1M, 0L, MGRSFormatter::USE_SPACES) :
             useDMS  ? (Formatter*)new LatLongFormatter(LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS) :
             useDD   ? (Formatter*)new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES) :
@@ -498,6 +549,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
         canvas->addControl( readout );
     }
+
+
+    // Add the credits display
+    canvas->addControl(AttributionControlFactory().create(mapNode));
 
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
@@ -650,7 +705,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         if (ext)
             mapNode->addExtension(ext);
     }
-    
+
 
     // Hook up the extensions!
     for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
@@ -756,7 +811,7 @@ namespace
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
         }
     };
-    
+
     static std::string s_month[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
     struct SkyMonthSlider : public ui::ControlEventHandler
@@ -767,7 +822,7 @@ namespace
         void onValueChanged(ui::Control* control, float value )
         {
             int m = std::min((int)value, 11);
-            DateTime d = _sky->getDateTime();            
+            DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), m, d.day(), d.hours()));
             _label->setText(s_month[m]);
         }
@@ -780,7 +835,7 @@ namespace
         ui::LabelControl* _label;
         void onValueChanged(ui::Control* control, float value )
         {
-            DateTime d = _sky->getDateTime();            
+            DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime((int)value, d.month(), d.day(), d.hours()));
             _label->setText(Stringify() << (int)value);
         }
@@ -817,14 +872,14 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         skyHoursSlider->setHorizFill( true, 250 );
         skyHoursSlider->addEventHandler( new SkyHoursSlider(sky) );
         grid->setControl(2, r, new ui::LabelControl(skyHoursSlider) );
-    
+
         ++r;
         grid->setControl( 0, r, new ui::LabelControl("Month: ", 16) );
         ui::HSliderControl* skyMonthSlider = grid->setControl(1, r, new ui::HSliderControl( 0.0f, 12.0f, dt.month() ));
         skyMonthSlider->setHorizFill( true, 250 );
         ui::LabelControl* monthLabel = grid->setControl(2, r, new ui::LabelControl(s_month[dt.month()-1]));
         skyMonthSlider->addEventHandler( new SkyMonthSlider(sky, monthLabel) );
-    
+
         ++r;
         grid->setControl( 0, r, new ui::LabelControl("Year: ", 16) );
         ui::HSliderControl* skyYearSlider = grid->setControl(1, r, new ui::HSliderControl( 1970.0f, 2061.0f, dt.year() ));

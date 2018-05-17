@@ -96,6 +96,12 @@ namespace osgEarth
         optional<bool>& terrainPatch() { return _terrainPatch; }
         const optional<bool>& terrainPatch() const { return _terrainPatch; }
 
+        /**
+         * The attribution to be displayed for this layer
+         */
+        optional<std::string>& attribution() { return _attribution; }
+        const optional<std::string>& attribution() const { return _attribution; }
+
     public:
         LayerOptions();
         LayerOptions(const ConfigOptions& configOptions);
@@ -114,6 +120,7 @@ namespace osgEarth
         optional<std::string> _shaderDefine;
         optional<std::string> _shader;
         optional<bool> _terrainPatch;
+        optional<std::string>       _attribution;
     };
 
 
@@ -141,7 +148,7 @@ namespace osgEarth
 
 
     /**
-     * Base class for all Map layers. 
+     * Base class for all Map layers.
      */
     class OSGEARTH_EXPORT Layer : public osg::Object
     {
@@ -154,7 +161,7 @@ namespace osgEarth
         Layer();
 
         /**
-         * Constructs a map layer by deserializing options. 
+         * Constructs a map layer by deserializing options.
          */
         Layer(LayerOptions* options);
 
@@ -204,7 +211,7 @@ namespace osgEarth
         virtual void setEnabled(bool value);
 
         /**
-         * Whether the layer is used in the map. 
+         * Whether the layer is used in the map.
          * This will return false if the layer is set to disabled OR if getStatus returns an error.
          */
         virtual bool getEnabled() const;
@@ -218,7 +225,7 @@ namespace osgEarth
         virtual osg::Node* getOrCreateNode() { return 0L; }
 
         /**
-         * Extent of this layer's data. 
+         * Extent of this layer's data.
          * This method may return GeoExtent::INVALID which just means that the
          * information is unavailable.
          */
@@ -303,6 +310,8 @@ namespace osgEarth
         //! MapNode will call this function when terrain resources are available.
         virtual void setTerrainResources(TerrainResources*) { }
 
+        /** Attribution to be displayed by the application */
+        virtual std::string getAttribution() const;
 
     public: // Experimental
 
@@ -316,7 +325,7 @@ namespace osgEarth
 
 
     public: // Loading a layer from a plugin
-        
+
         static Layer* create(const ConfigOptions& options);
         static Layer* create(const std::string& driver, const ConfigOptions& options);
 
@@ -354,11 +363,11 @@ namespace osgEarth
 
     typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
 
-    
+
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
     extern "C" void osgdb_##NAME(void) {} \
     static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
-    
+
 #define USE_OSGEARTH_LAYER(NAME) \
     extern "C" void osgdb_##NAME(void); \
     static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_##NAME);

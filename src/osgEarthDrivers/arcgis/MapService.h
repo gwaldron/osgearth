@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-class MapServiceLayer 
+class MapServiceLayer
 {
 public:
     MapServiceLayer( int id, const std::string& name );
@@ -102,7 +102,7 @@ public:
 
     bool isTiled() const;
 
-    /** 
+    /**
      * If isValid() returns false, this method will return the error message.
      */
     const std::string& getError() const;
@@ -117,6 +117,11 @@ public:
      */
     const TileInfo& getTileInfo() const;
 
+    /**
+     * Gets the copyright text for the layer
+     */
+    const std::string& getCopyright() const;
+
 private:
     bool is_valid;
     URI uri;
@@ -125,6 +130,7 @@ private:
     MapServiceLayerList layers;
     bool tiled;
     TileInfo tile_info;
+    std::string _copyright;
 
     bool setError( const std::string& );
 };

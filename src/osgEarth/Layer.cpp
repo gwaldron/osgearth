@@ -44,7 +44,7 @@ ConfigOptions(co)
 
 void
 LayerOptions::setDefaults()
-{    
+{
     _enabled.init(true);
     _terrainPatch.init(false);
 }
@@ -59,7 +59,7 @@ Config LayerOptions::getConfig() const
         conf.setObj("cache_policy", _cachePolicy);
     conf.set("shader_define", _shaderDefine);
     conf.set("shader", _shader);
-
+    conf.set("attribution", _attribution);
     conf.set("terrain", _terrainPatch);
     return conf;
 }
@@ -72,6 +72,7 @@ void LayerOptions::fromConfig(const Config& conf)
     conf.getIfSet("enabled", _enabled);
     conf.getIfSet("cache_id", _cacheId); // compat
     conf.getIfSet("cacheid", _cacheId);
+    conf.getIfSet("attribution", _attribution);
     conf.getObjIfSet("cache_policy", _cachePolicy);
 
     // legacy support:
@@ -222,7 +223,7 @@ Layer::open()
     {
         osg::Object::setName(options().name().get());
     }
-    
+
     // Install any shader #defines
     if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
@@ -332,7 +333,7 @@ void
 Layer::removeCallback(LayerCallback* cb)
 {
     CallbackVector::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
-    if ( i != _callbacks.end() ) 
+    if ( i != _callbacks.end() )
         _callbacks.erase( i );
 }
 
@@ -370,4 +371,15 @@ Layer::fireCallback(LayerCallback::MethodPtr method)
         LayerCallback* cb = dynamic_cast<LayerCallback*>(i->get());
         if (cb) (cb->*method)(this);
     }
+}
+
+std::string
+Layer::getAttribution() const
+{
+    // Get the attribution from the layer if it's set.
+    if (_options->attribution().isSet())
+    {
+        return *_options->attribution();
+    }
+    return "";
 }

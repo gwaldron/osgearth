@@ -104,11 +104,11 @@ void
 TerrainLayerOptions::fromConfig(const Config& conf)
 {
     conf.getIfSet( "min_level", _minLevel );
-    conf.getIfSet( "max_level", _maxLevel );        
+    conf.getIfSet( "max_level", _maxLevel );
     conf.getIfSet( "min_resolution", _minResolution );
     conf.getIfSet( "max_resolution", _maxResolution );
     conf.getIfSet( "max_data_level", _maxDataLevel );
-    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
+    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
     conf.getIfSet( "vdatum", _vertDatum );
     conf.getIfSet( "vsrs", _vertDatum );    // back compat
@@ -145,7 +145,7 @@ _sourceName     ( rhs._sourceName ),
 _sourceDriver   ( rhs._sourceDriver ),
 _sourceTileSize ( rhs._sourceTileSize ),
 _sourceProfile  ( rhs._sourceProfile ),
-_cacheProfile   ( rhs._cacheProfile ),   
+_cacheProfile   ( rhs._cacheProfile ),
 _cacheCreateTime( rhs._cacheCreateTime )
 {
     //nop
@@ -173,7 +173,7 @@ TerrainLayer::CacheBinMetadata::CacheBinMetadata(const Config& conf)
             std::string srsString;
             double xmin, ymin, xmax, ymax;
             optional<unsigned> minLevel, maxLevel;
-        
+
             srsString = i->value("srs");
             xmin = i->value("xmin", 0.0f);
             ymin = i->value("ymin", 0.0f);
@@ -206,7 +206,7 @@ TerrainLayer::CacheBinMetadata::CacheBinMetadata(const Config& conf)
     }
 }
 
-Config 
+Config
 TerrainLayer::CacheBinMetadata::getConfig() const
 {
     Config conf("osgearth_terrainlayer_cachebin");
@@ -267,7 +267,7 @@ TerrainLayer::~TerrainLayer()
 
 void
 TerrainLayer::init()
-{    
+{
     Layer::init();
 
     // intiailize our read-options, which store caching and IO information.
@@ -291,7 +291,7 @@ TerrainLayer::open()
         // Create an L2 mem cache that sits atop the main cache, if necessary.
         // For now: use the same L2 cache size at the driver.
         int l2CacheSize = options().driver()->L2CacheSize().get();
-    
+
         // See if it was overridden with an env var.
         char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
         if ( l2env )
@@ -400,7 +400,7 @@ TerrainLayer::open()
 
         // Done!
         _openCalled = true;
-                        
+
     }
 
     return getStatus();
@@ -489,6 +489,27 @@ TerrainLayer::isDynamic() const
 }
 
 std::string
+TerrainLayer::getAttribution() const
+{
+    // Get the attribution from the layer if it's set.
+    if (_options->attribution().isSet())
+    {
+        return *_options->attribution();
+    }
+
+    // Get it from the tilesource if it's not set on the layer.
+    TileSource* ts = getTileSource();
+    if (ts)
+    {
+        return ts->getAttribution();
+    }
+    else
+    {
+        return "";
+    }
+}
+
+std::string
 TerrainLayer::getMetadataKey(const Profile* profile) const
 {
     if (profile)
@@ -529,7 +550,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
 
         // read the metadata record from the cache bin:
         ReadResult rr = bin->readString(metaKey, _readOptions.get());
-            
+
         osg::ref_ptr<CacheBinMetadata> meta;
         bool metadataOK = false;
 
@@ -549,8 +570,8 @@ TerrainLayer::getCacheBin(const Profile* profile)
                 {
                     //todo: check the profile too
                     if ( meta->_sourceDriver.get() != getTileSource()->getOptions().getDriver() )
-                    {                     
-                        OE_WARN << LC 
+                    {
+                        OE_WARN << LC
                             << "Layer \"" << getName() << "\" is requesting a \""
                             << getTileSource()->getOptions().getDriver() << "\" cache, but a \""
                             << meta->_sourceDriver.get() << "\" cache exists at the specified location. "
@@ -559,7 +580,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
                         cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
                         return 0L;
                     }
-                }   
+                }
 
                 // if not, see if we're in cache-only mode and still need a profile:
                 else if (cacheSettings->cachePolicy()->isCacheOnly() && !_profile.valid())
@@ -602,7 +623,7 @@ TerrainLayer::getCacheBin(const Profile* profile)
                 // store it in the cache bin.
                 std::string data = meta->getConfig().toJSON(false);
                 osg::ref_ptr<StringObject> temp = new StringObject(data);
-                bin->write(metaKey, temp.get(), _readOptions.get());                   
+                bin->write(metaKey, temp.get(), _readOptions.get());
 
                 bin->setMetadata(meta.get());
             }
@@ -662,7 +683,7 @@ TerrainLayer::getCacheBinMetadata(const Profile* profile)
 
 TileSource*
 TerrainLayer::createTileSource()
-{    
+{
     if (options().driver().isSet())
     {
         OE_INFO << LC << "Creating \"" << options().driver()->getDriver() << "\" driver\n";
@@ -737,7 +758,7 @@ TerrainLayer::createAndOpenTileSource()
         // Now that the tile source exists, set up the cache.
         if (_cacheSettings->isCacheEnabled())
         {
-            // read the cache policy hint from the tile source unless user expressly set 
+            // read the cache policy hint from the tile source unless user expressly set
             // a policy in the initialization options. In other words, the hint takes
             // ultimate priority (even over the Registry override) unless expressly
             // overridden in the layer options!
@@ -754,7 +775,7 @@ TerrainLayer::createAndOpenTileSource()
                 _cacheSettings->cachePolicy()->minTime() = ts->getLastModifiedTime();
                 OE_INFO << LC << "driver says min valid timestamp = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
             }
-            
+
             CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
             if (bin)
             {
@@ -802,7 +823,7 @@ TerrainLayer::createAndOpenTileSource()
         }
     }
 
-    // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
+    // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to
     // establish a profile from the metadata in the cache instead.
     else if (getCacheSettings()->isCacheEnabled() && options().cacheId().isSet())
     {
@@ -811,7 +832,7 @@ TerrainLayer::createAndOpenTileSource()
         getCacheSettings()->cachePolicy() = CachePolicy::CACHE_ONLY;
     }
 
-    // Finally: if we could not open a TileSource, and there's no cache available, 
+    // Finally: if we could not open a TileSource, and there's no cache available,
     // just disable the layer.
     else
     {
@@ -854,7 +875,7 @@ TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
         // bad extent; no data
         return false;
     }
-    
+
     const DataExtentList& de = getDataExtents();
     if (de.empty())
     {
@@ -892,7 +913,7 @@ TerrainLayer::mayHaveDataInExtent(const GeoExtent& ex) const
 
 bool
 TerrainLayer::isKeyInLegalRange(const TileKey& key) const
-{    
+{
     if ( !key.valid() )
     {
         return false;
@@ -959,7 +980,7 @@ TerrainLayer::isCached(const TileKey& key) const
     CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
     if ( !bin )
         return false;
-    
+
     return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
 }
 
@@ -972,7 +993,7 @@ TerrainLayer::setReadOptions(const osgDB::Options* readOptions)
 
     // store HTTP proxy settings in the options:
     storeProxySettings( _readOptions.get() );
-    
+
     // store the referrer for relative-path resolution
     URIContext( options().referrer() ).store( _readOptions.get() );
 
@@ -997,7 +1018,7 @@ TerrainLayer::getDataExtents() const
 
     else if (!_cacheBinMetadata.empty())
     {
-        // There are extents in the cache bin, so use those. 
+        // There are extents in the cache bin, so use those.
         // The DE's are the same regardless of profile so just use the first one in there.
         return _cacheBinMetadata.begin()->second->_dataExtents;
     }
@@ -1049,7 +1070,7 @@ TerrainLayer::storeProxySettings(osgDB::Options* readOptions)
 {
     //Store the proxy settings in the options structure.
     if (options().proxySettings().isSet())
-    {        
+    {
         options().proxySettings()->apply( readOptions );
     }
 }
@@ -1122,7 +1143,7 @@ TerrainLayer::getBestAvailableTileKey(const TileKey& key) const
 
     bool     intersects = false;
     unsigned highestLOD = 0;
-    
+
     // Check each data extent in turn:
     for (DataExtentList::const_iterator itr = de.begin(); itr != de.end(); ++itr)
     {

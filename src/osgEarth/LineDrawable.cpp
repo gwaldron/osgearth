@@ -924,9 +924,20 @@ LineDrawable::allocate(unsigned numVerts)
     initialize();
 
     unsigned num = getNumVerts();
-    for (unsigned i = num; i < numVerts; ++i)
+    if (numVerts >= num)
     {
-        pushVertex(osg::Vec3(0,0,0));
+        for (unsigned i = num; i < numVerts; ++i)
+        {
+            pushVertex(osg::Vec3(0,0,0));
+        }
+    }
+    else
+    {
+        clear();
+        for (unsigned i = 0; i < numVerts; ++i)
+        {
+            pushVertex(osg::Vec3(0,0,0));
+        }
     }
 
     dirty();

@@ -8,6 +8,7 @@
 SET(POCO_DIR "" CACHE PATH "Set to base Poco install path")
 
 FIND_PATH(POCO_INCLUDE_DIR Poco/Poco.h
+  PATHS
     ${POCO_DIR}/include
     $ENV{POCO_DIR}/include
     $ENV{POCO_DIR}/Source/lib #Windows Binary Installer

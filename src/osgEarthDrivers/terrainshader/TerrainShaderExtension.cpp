@@ -156,14 +156,7 @@ namespace
 
         void onUninstall(TerrainEngineNode* engine)
         {
-            if ( engine )
-            {
-                if ( _options.landCoverGroup().isSet() )
-                {
-                    //TODO
-                    //engine->removeLandCoverGroup( _options.landCoverGroup().get() );
-                }
-            }
+            //nop
         }
 
         const TerrainShaderOptions              _options;

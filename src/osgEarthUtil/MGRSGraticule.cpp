@@ -33,7 +33,9 @@
 #include <osgEarth/PagedNode>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Endian>
-#include <osgEarth/Lighting>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/GLUtils>
+#include <osgEarth/Shaders>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -41,6 +43,7 @@
 #include <osg/LogicOp>
 #include <osg/MatrixTransform>
 #include <osg/ClipNode>
+#include <osg/Version>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 //#include <osgDB/WriteFile>
@@ -63,6 +66,13 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 #ifndef GL_CLIP_DISTANCE0
 #define GL_CLIP_DISTANCE0 0x3000
 #endif
+
+// OSG3.6+ current exhibits artifacts when using SCREEN_COORDS when the text is
+// not aligned to the camera.
+#if OSG_VERSION_LESS_OR_EQUAL(3,4,1)
+#define USE_SCREEN_COORDS
+#endif
+
 
 //#define DEBUG_MODE
 
@@ -367,7 +377,7 @@ MGRSGraticule::getOrCreateNode()
     {
         _root = new LocalRoot();
 
-        _root->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF);
+        GLUtils::setLighting(_root->getOrCreateStateSet(), osg::StateAttribute::OFF);
 
         // install the range callback for clip plane activation
         _root->addCullCallback( new RangeUniformCullCallback() );
@@ -789,6 +799,9 @@ namespace
             // make sure we get sufficient tessellation:
             compiler.options().maxGranularity() = 1.0;
 
+            // line shaders are at the root of the geometry tree, so don't install any
+            compiler.options().shaderPolicy() = SHADERPOLICY_INHERIT;
+
             FeatureList features;
 
             // longitudinal line:
@@ -831,8 +844,6 @@ namespace
             osg::Vec3d centerECEF;
             extent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
 
-            Registry::shaderGenerator().run(group, Registry::stateSetCache());
-    
             return ClusterCullingFactory::createAndInstall(group, centerECEF);
         }
         
@@ -875,7 +886,12 @@ namespace
                 const Feature* feature = f->get();
                 std::string sqid = feature->getString("sqid");
                 osgText::Text* drawable = symbolizer.create(sqid);
-                drawable->setCharacterSizeMode(drawable->SCREEN_COORDS);
+#ifdef USE_SCREEN_COORDS
+                drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+#else
+                drawable->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
+                drawable->setCharacterSize(13000);
+#endif
                 drawable->getOrCreateStateSet()->setRenderBinToInherit();
             
                 GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
@@ -899,7 +915,7 @@ namespace
 
             OE_DEBUG << LC << "Created " << features.size() << " text elements for " << getName() << std::endl;
             
-            Registry::shaderGenerator().run(this, Registry::stateSetCache());
+            //Registry::shaderGenerator().run(this, Registry::stateSetCache());
         }
         
 #ifdef DEBUG_MODE
@@ -968,7 +984,12 @@ namespace
         
             TextSymbolizer symbolizer( textSym.get() );
             osgText::Text* drawable = symbolizer.create(getName());
+#ifdef USE_SCREEN_COORDS
             drawable->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+#else
+            drawable->setCharacterSizeMode(osgText::Text::OBJECT_COORDS);
+            drawable->setCharacterSize(130000);
+#endif
             drawable->getOrCreateStateSet()->setRenderBinToInherit();
 
             const SpatialReference* ecef = f->getSRS()->getGeocentricSRS();
@@ -979,8 +1000,6 @@ namespace
             ecef->createLocalToWorld( positionECEF, L2W );
             osg::MatrixTransform* mt = new osg::MatrixTransform(L2W);
             mt->addChild(drawable); 
-
-            Registry::shaderGenerator().run(drawable, Registry::stateSetCache());
 
             return ClusterCullingFactory::createAndInstall(mt, positionECEF);
         }
@@ -1055,10 +1074,21 @@ MGRSGraticule::rebuild()
             table[i->get()->getString("gzd")].push_back(i->get());
         }
 
-        osg::Group* geomTop = new osg::Group();
+        // Root of the geometry tree
+        osg::Group* geomTop = new LineGroup(); //osg::Group();
         top->addChild(geomTop);
 
+        // Root of the text tree
         osg::Group* textTop = new osg::Group();
+        osg::StateSet* textSS = textTop->getOrCreateStateSet();
+        VirtualProgram* textVP = VirtualProgram::getOrCreate(textSS);
+        osgEarth::Shaders coreShaders;
+        coreShaders.load(textVP, "Text.vert.glsl");
+        coreShaders.load(textVP, "Text.frag.glsl");
+    #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
+        textSS->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
+    #endif
+
         top->addChild(textTop);
 
         // build the GZD feature set

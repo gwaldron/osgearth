@@ -829,12 +829,11 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 #else
     Shaders shaders;
-    shaders.load(vp.get(), "Text.vert.glsl");
-    shaders.load(vp.get(), "Text.frag.glsl");
-
-#if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
-    replacement->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
-#endif
+    shaders.load(vp.get(), shaders.TextVertex);
+    shaders.load(vp.get(), shaders.TextFragment);
+    #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
+        replacement->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
+    #endif
 
 #endif
 

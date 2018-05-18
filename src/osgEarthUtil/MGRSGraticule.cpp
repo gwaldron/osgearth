@@ -1081,14 +1081,7 @@ MGRSGraticule::rebuild()
         // Root of the text tree
         osg::Group* textTop = new osg::Group();
         osg::StateSet* textSS = textTop->getOrCreateStateSet();
-        VirtualProgram* textVP = VirtualProgram::getOrCreate(textSS);
-        osgEarth::Shaders coreShaders;
-        coreShaders.load(textVP, "Text.vert.glsl");
-        coreShaders.load(textVP, "Text.frag.glsl");
-    #if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
-        textSS->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
-    #endif
-
+        TextSymbolizer::installShaders(textSS);
         top->addChild(textTop);
 
         // build the GZD feature set

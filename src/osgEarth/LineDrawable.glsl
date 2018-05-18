@@ -30,17 +30,18 @@ void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
 #pragma vp_name GPU Lines Screen Projected Clip
 #pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
 #pragma vp_location vertex_clip
-//#pragma import_defines(OE_LINES_STIPPLE_PATTERN)
-//#pragma import_defines(OE_LINES_WIDTH)
 #pragma import_defines(OE_LINES_USE_LIMITS)
 #pragma import_defines(OE_GPU_CLAMPING)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 
+// Set by the InstallViewportUniform callback
 uniform vec2 oe_ViewportSize;
 
+// Set by GLUtils methods
 uniform float oe_GL_LineWidth;
 uniform int oe_GL_LineStipplePattern;
 
+// Input attributes for adjacent points
 in vec3 oe_GPULines_prev;
 in vec3 oe_GPULines_next;
 
@@ -48,9 +49,7 @@ in vec3 oe_GPULines_next;
 flat out int oe_GPULines_draw;
 #endif
 
-//#ifdef OE_LINES_STIPPLE_PATTERN
 flat out vec2 oe_GPULines_rv;
-//#endif
 
 #ifdef OE_GPU_CLAMPING
 // see GPUClamping.vert.glsl
@@ -89,16 +88,19 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     vec2 prevPixel = ((prevClip.xy/prevClip.w)+1.0) * 0.5*oe_ViewportSize;
     vec2 nextPixel = ((nextClip.xy/nextClip.w)+1.0) * 0.5*oe_ViewportSize;
 
-    float thickness = oe_GL_LineWidth;
-
 #ifdef OE_LINES_ANTIALIAS
-    thickness += 2.0;
+    float thickness = oe_GL_LineWidth + 1.25;
+#else
+    float thickness = oe_GL_LineWidth + 0.5;
 #endif
 
     float len = thickness;
 
-    // even-indexed verts are negative, odd-indexed are positive
-    oe_GPULines_lateral = (gl_VertexID & 0x01) == 0? -1.0 : 1.0;
+    int code = gl_VertexID & 3; // gl_VertexID % 4
+    bool isStart = code <= 1;
+    bool isRight = code==0 || code==2;
+
+    oe_GPULines_lateral = isRight? -1.0 : 1.0;
 
     vec2 dir = vec2(0.0);
 
@@ -111,7 +113,6 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     // starting point uses (next - current)
     if (gl_Vertex.xyz == oe_GPULines_prev)
     {
-        //dir = normalize(nextUnit - currUnit);
         dir = normalize(nextPixel - currPixel);
         stippleDir = dir;
     }
@@ -119,41 +120,30 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
     // ending point uses (current - previous)
     else if (gl_Vertex.xyz == oe_GPULines_next)
     {
-        //dir = normalize(currUnit - prevUnit);
         dir = normalize(currPixel - prevPixel);
         stippleDir = dir;
     }
 
-    // middle? join
     else
     {
-        vec2 dirA = normalize(currPixel - prevPixel);
-        vec2 dirB = normalize(nextPixel - currPixel);
+        vec2 dirIn  = normalize(currPixel - prevPixel);
+        vec2 dirOut = normalize(nextPixel - currPixel);
 
-        // Edge case: segment that doubles back on itself:
-        if (dot(dirA,dirB) < -0.99)
+        vec2 tangent = normalize(dirIn+dirOut);
+        vec2 perp = vec2(-dirIn.y, dirIn.x);
+        vec2 miter = vec2(-tangent.y, tangent.x);
+        dir = tangent;
+        len = thickness / dot(miter, perp);
+
+        // limit the length of a mitered corner, to prevent unsightly spikes
+        const float limit = 2.0;
+        if (len > thickness*limit)
         {
-            dir = dirA;
+            len = thickness;
+            dir = isStart? dirOut : dirIn;
         }
 
-        // Normal case - create a mitered corner:
-        else
-        {
-            vec2 tangent = normalize(dirA+dirB);
-            vec2 perp = vec2(-dirA.y, dirA.x);
-            vec2 miter = vec2(-tangent.y, tangent.x);
-            dir = tangent;
-            len = thickness / dot(miter, perp);
-
-            // limit the length of a mitered corner, to prevent unsightly spikes
-            const float limit = 2.0;
-            if (len > thickness*limit)
-            {
-                len = thickness;
-                dir = dirB;
-            }
-        }
-        stippleDir = dirB;
+        stippleDir = dirOut;
     }
 
     // calculate the extrusion vector in pixels
@@ -204,8 +194,6 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 #pragma vp_name GPU Lines Screen Projected FS
 #pragma vp_entryPoint oe_GPULinesProj_Stippler_FS
 #pragma vp_location fragment_coloring
-//#pragma import_defines(OE_LINES_STIPPLE_PATTERN)
-//#pragma import_defines(OE_LINES_STIPPLE_FACTOR)
 #pragma import_defines(OE_LINES_USE_LIMITS)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 

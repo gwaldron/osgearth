@@ -78,6 +78,16 @@ LineGroup::LineGroup()
 #endif
 }
 
+LineGroup::LineGroup(bool installShader)
+{
+#ifdef USE_GPU
+    if (installShader && Registry::capabilities().supportsGLSL())
+    {
+        LineDrawable::installShader(getOrCreateStateSet());
+    }
+#endif
+}
+
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
 osg::Geode(rhs, copy)
 {

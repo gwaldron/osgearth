@@ -98,7 +98,8 @@ _maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
 _maxPolyTilingAngle_deg( 45.0f ),
 _optimizeVertexOrdering( false ),
-_maximumCreaseAngle( 0.0f )
+_maximumCreaseAngle( 0.0f ),
+_shaderPolicy(SHADERPOLICY_GENERATE)
 {
     //nop
 }
@@ -444,7 +445,8 @@ osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     // Group to contain all the lines we create here
-    LineGroup* drawables = new LineGroup();
+    bool installShaders = shaderPolicy() == SHADERPOLICY_GENERATE;
+    LineGroup* drawables = new LineGroup(installShaders);
 
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;

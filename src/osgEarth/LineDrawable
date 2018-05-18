@@ -197,6 +197,10 @@ namespace osgEarth
         //! Construct a new line group and install line shaders
         LineGroup();
 
+        //! Construct a new line group, controlling whether to install the shaders.
+        //! You can pass false here if you intend to put shaders at a higher level.
+        LineGroup(bool installShader);
+
         //! Copy constructor
         LineGroup(const LineGroup& rhs, const osg::CopyOp& copy);
 

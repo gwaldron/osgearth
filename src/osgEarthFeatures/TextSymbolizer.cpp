@@ -122,6 +122,10 @@ TextSymbolizer::create(Feature*             feature,
     // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
     t->setStateSet(0L);
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+    t->setShaderTechnique(osgText::ALL_FEATURES);
+#endif
+
     return t;
 }
 

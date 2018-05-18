@@ -230,6 +230,10 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
     t->setStateSet(0L);
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+    t->setShaderTechnique(osgText::ALL_FEATURES);
+#endif
+
     float resFactor = 2.0f;
     int res = nextPowerOf2((int)(size*resFactor));
     t->setFontResolution(res, res);

@@ -129,18 +129,25 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         vec2 dirIn  = normalize(currPixel - prevPixel);
         vec2 dirOut = normalize(nextPixel - currPixel);
 
-        vec2 tangent = normalize(dirIn+dirOut);
-        vec2 perp = vec2(-dirIn.y, dirIn.x);
-        vec2 miter = vec2(-tangent.y, tangent.x);
-        dir = tangent;
-        len = thickness / dot(miter, perp);
-
-        // limit the length of a mitered corner, to prevent unsightly spikes
-        const float limit = 2.0;
-        if (len > thickness*limit)
+        if (dot(dirIn,dirOut) < -0.999999)
         {
-            len = thickness;
             dir = isStart? dirOut : dirIn;
+        }
+        else
+        {
+            vec2 tangent = normalize(dirIn+dirOut);
+            vec2 perp = vec2(-dirIn.y, dirIn.x);
+            vec2 miter = vec2(-tangent.y, tangent.x);
+            dir = tangent;
+            len = thickness / dot(miter, perp);
+
+            // limit the length of a mitered corner, to prevent unsightly spikes
+            const float limit = 2.0;
+            if (len > thickness*limit)
+            {
+                len = thickness;
+                dir = isStart? dirOut : dirIn;
+            }
         }
 
         stippleDir = dirOut;

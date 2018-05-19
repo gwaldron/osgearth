@@ -541,7 +541,7 @@ Map::getIndexOfLayer(const Layer* layer) const
 
 
 void
-Map::clear()
+Map::clear(bool invokeCallbacks)
 {
     LayerVector layersRemoved;
     Revision newRevision;
@@ -554,20 +554,23 @@ Map::clear()
         newRevision = ++_dataModelRevision;
     }
     
+    if(invokeCallbacks)
+	{
         // a separate block b/c we don't need the mutex
-    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-    {
-        i->get()->onBeginUpdate();
-          
-        for(LayerVector::iterator layer = layersRemoved.begin();
-            layer != layersRemoved.end();
-            ++layer)
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapModelChanged(MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, layer->get()));
-        }
+           i->get()->onBeginUpdate();
+          
+           for(LayerVector::iterator layer = layersRemoved.begin();
+               layer != layersRemoved.end();
+               ++layer)
+           {
+               i->get()->onMapModelChanged(MapModelChange(MapModelChange::REMOVE_LAYER, newRevision, layer->get()));
+           }
         
-        i->get()->onEndUpdate();
-     }
+           i->get()->onEndUpdate();
+        }
+    }
 
     // Invalidate the elevation pool.
     getElevationPool()->clear();

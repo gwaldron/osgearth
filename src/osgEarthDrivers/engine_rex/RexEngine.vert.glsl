@@ -18,7 +18,6 @@ out vec4 oe_layer_tilec;
 out vec3 oe_UpVectorView;
 
 out float oe_rex_morphFactor;
-
 flat out int oe_terrain_vertexMarker;
 
 void oe_rexEngine_vert(inout vec4 vertexModel)
@@ -36,6 +35,6 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
    // initialize:
    oe_rex_morphFactor = 0.0;
 
-   // send the vertex marker to the fragment shader
+   // Extract the ertex type marker
    oe_terrain_vertexMarker = int(oe_layer_tilec.z);
 }

@@ -76,18 +76,18 @@ namespace osgEarth
          * single shared attribute. Skips any attribute (or stateset)
          * with dynamic data variance
          */
-        void consolidateStateAttributes(osg::Node* node);
+        void consolidateStateAttributes(osg::Node* node, bool traverseProxies = true);
 
         /**
          * Scans a graph and combines equivalent statesets into a single
          * shared stateset. Skips any stateset with dynamic data variance.
          */
-        void consolidateStateSets(osg::Node* node);
+        void consolidateStateSets(osg::Node* node, bool traverseProxies = true);
 
         /**
          * Calls consolidateStateAttributes followed by consolidateStateSets.
          */
-        void optimize(osg::Node* node);
+        void optimize(osg::Node* node, bool traverseProxies = true);
 
         /**
          * Looks in the cache for a stateset matching the input. If found,

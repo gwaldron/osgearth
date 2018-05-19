@@ -46,7 +46,11 @@ namespace
     struct MyProgress : public ProgressCallback {
         LoadTileData* _req;
         MyProgress(LoadTileData* req) : _req(req) {}
-        bool isCanceled() { return _req->isIdle(); }
+        bool isCanceled() {
+           if (_canceled == false && _req->isIdle())
+              _canceled = true;
+           return ProgressCallback::isCanceled();
+        }
     };
 }
 
@@ -82,13 +86,13 @@ LoadTileData::invoke()
         tilenode->getKey(),           
         _filter,
         progress.get() );
-}
 
-
-bool
-LoadTileData::isCanceled()
-{
-    return isIdle();
+    // if the operation was canceled, set the request to idle and delete any existing data.
+    if (progress && (progress->isCanceled() || progress->needsRetry()))
+    {
+       _dataModel = 0L;
+       setState(Request::IDLE);
+    }
 }
 
 

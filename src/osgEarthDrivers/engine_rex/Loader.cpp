@@ -72,11 +72,18 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
         // take a reference, which will cause an unref after load.
         osg::ref_ptr<Request> r = request;
 
+        r->setState(Request::RUNNING);
+
         //OE_INFO << LC << "Request invoke : UID = " << request->getUID() << "\n";
         request->invoke();
         
         //OE_INFO << LC << "Request apply : UID = " << request->getUID() << "\n";
-        request->apply( nv.getFrameStamp() );
+        if (r->isRunning())
+        {
+           request->apply(nv.getFrameStamp());
+        }
+
+        r->setState(Request::IDLE);
     }
     return request != 0L;
 }
@@ -393,8 +400,10 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req )
         {
-            if ( req->_lastTick >= _checkpoint )
-            {
+           // Make sure the request is both current (newer than the last checkpoint)
+           // and running (i.e. has not been canceled along the way)
+           if (req->_lastTick >= _checkpoint && req->isRunning())
+           {
                 if ( _mergesPerFrame > 0 )
                 {
                     _mergeQueue.insert( req );
@@ -411,6 +420,7 @@ PagerLoader::addChild(osg::Node* node)
 
             else
             {
+                OE_DEBUG << LC << "Request " << req->getName() << " canceled" << std::endl;
                 req->setState( Request::FINISHED );
                 if ( REPORT_ACTIVITY )
                     Registry::instance()->endActivity( req->getName() );
@@ -506,8 +516,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 osg::ref_ptr<PagerLoader> loader;
                 if (OptionsData<PagerLoader>::lock(dboptions, "osgEarth.PagerLoader", loader))
                 {
-                    Loader::Request* req = loader->invokeAndRelease( requestUID );
-                    return new RequestResultNode(req);
+                   osg::ref_ptr<Loader::Request> req = loader->invokeAndRelease(requestUID);
+
+                   // make sure the request is still running (not canceled)
+                   if (req.valid() && req->isRunning())
+                      return new RequestResultNode(req.release());
+                   else
+                      return ReadResult::FILE_NOT_FOUND;
                 }
                 return ReadResult::FILE_NOT_FOUND;
             }

@@ -44,11 +44,6 @@ namespace osgEarth
         /** is it supported by the h/w? */
         bool supported() const { return _supported; }
 
-        /** whether to create its own lighting mode uniform (default = true).
-          * Set this to false if you are creating the lighting uniform elsewhere.
-          * The lighting uniform is returned by ShaderFactory::createUniformForGLMode(GL_LIGHTING). */
-        //void setCreateLightingUniform(bool value);
-
     public:
         /** attach this effect to a stateset. */
         void attach(osg::StateSet* stateset);

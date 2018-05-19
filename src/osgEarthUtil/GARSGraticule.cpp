@@ -22,12 +22,17 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/PagedNode>
 #include <osgEarth/Registry>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
 
 namespace
 {
@@ -222,7 +227,7 @@ namespace
 
        _attachPoint->addChild(mt);
 
-       Registry::shaderGenerator().run(this, Registry::stateSetCache());
+       //Registry::shaderGenerator().run(this, Registry::stateSetCache());
     }
 
     osg::BoundingSphere GridNode::getChildBound() const
@@ -324,8 +329,9 @@ GARSGraticule::init()
 
     osg::StateSet* ss = this->getOrCreateStateSet();
     ss->setMode( GL_DEPTH_TEST, 0 );
-    ss->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(ss, 0);
     ss->setMode( GL_BLEND, 1 );
+
 
     // force it to render after the terrain.
     ss->setRenderBinDetails(1, "RenderBin");
@@ -333,9 +339,11 @@ GARSGraticule::init()
     if (options().style().isSet() == false)
     {
         options().style()->getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Blue;
-        options().style()->getOrCreateSymbol<LineSymbol>()->tessellation() = 20;
+        options().style()->getOrCreateSymbol<LineSymbol>()->tessellation() = 10;
     }
 
+    // Always use draping.
+    // Note: since we use draping we do NOT need to activate a horizon clip plane!
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 }
@@ -355,7 +363,7 @@ GARSGraticule::removedFromMap(const Map* map)
 osg::Node*
 GARSGraticule::getOrCreateNode()
 {
-    if (_root.valid() == false)
+    if (_root.valid() == false && getEnabled() == true)
     {
         _root = new osg::Group();
         _root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);

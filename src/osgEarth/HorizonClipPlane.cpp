@@ -19,15 +19,22 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/HorizonClipPlane>
+#include <osgEarth/HorizonClipPlane>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Shaders>
 #include <osgUtil/CullVisitor>
 #include <cassert>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 HorizonClipPlane::HorizonClipPlane() :
+_num(0u)
+{
+    //nop
+}
+
+HorizonClipPlane::HorizonClipPlane(const osg::EllipsoidModel* em) :
+_ellipsoid(em ? *em : osg::EllipsoidModel()),
 _num(0u)
 {
     //nop
@@ -40,57 +47,35 @@ HorizonClipPlane::setClipPlaneNumber(unsigned num)
 }
 
 void
-HorizonClipPlane::installShaders(osg::StateSet* stateSet)
-{
-    assert(stateSet != 0L);
-
-    const char* shader =
-        "#version " GLSL_VERSION_STR "\n"
-        "#pragma import_defines(OE_CLIPPLANE_NUM) \n"
-        "uniform mat4 osg_ViewMatrixInverse; \n"
-        "uniform vec4 oe_clipping_plane; // world space \n"
-        "void oe_clipplane_apply(inout vec4 vertex_view)\n"
-        "{\n"
-        "    gl_ClipDistance[OE_CLIPPLANE_NUM] = dot(osg_ViewMatrixInverse * vertex_view, oe_clipping_plane); \n"
-        "}\n";
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    vp->setFunction("oe_clipplane_apply", shader, ShaderComp::LOCATION_VERTEX_VIEW, 0.99f);
-
-    stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
-}
-
-void
 HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
     PerCameraData& d = data.get(cv->getCurrentCamera());
-    
-    osg::Plane horizonPlane;
 
-    // is there a Horizon object in the visitor? If so use it
-    Horizon* horizon = Horizon::get(*nv);
-    if (horizon)
+    if (!d.horizon.valid())
     {
-        horizon->setEye(nv->getViewPoint());
-        horizon->getPlane(horizonPlane);
-    }
-
-    // otherwise use a local one
-    else
-    {
-        if (!d.horizon.valid())
-            d.horizon = new Horizon();
-
-        d.horizon->setEye(nv->getViewPoint());
-        d.horizon->getPlane(horizonPlane);
-    }
-    
-    if (!d.stateSet.valid())
+        d.horizon = new Horizon(_ellipsoid);
         d.stateSet = new osg::StateSet();
+        d.uniform = new osg::Uniform("oe_ClipPlane_plane", osg::Vec4f());
+        d.stateSet->addUniform(d.uniform.get());
 
-    osg::Uniform* u = d.stateSet->getOrCreateUniform("oe_clipping_plane", osg::Uniform::FLOAT_VEC4);
-    u->set(osg::Vec4f(horizonPlane.asVec4()));
+        VirtualProgram* vp = VirtualProgram::getOrCreate(d.stateSet.get());
+        Shaders shaders;
+        shaders.load(vp, shaders.ClipPlane);
+        d.stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
+    }
+
+    // push this horizon on to the nodevisitor so modules can access it
+    d.horizon->put(*nv);
+
+    // update with current eyepoint
+    if (d.horizon->setEye(nv->getViewPoint()))
+    {
+        // compute the horizon plane and update the clipping uniform
+        osg::Plane horizonPlane;
+        d.horizon->getPlane(horizonPlane);
+        d.uniform->set(osg::Vec4f(horizonPlane.asVec4()));
+    }
     
     cv->pushStateSet(d.stateSet.get());
     traverse(node, nv);

@@ -129,7 +129,7 @@ public:
 			OE_DEBUG << LC << "Layer options not set" << std::endl;
 		}
 
-		OE_DEBUG << LC << "_map_service URL: " << url.full() << std::endl;
+        OE_DEBUG << LC << "_map_service URL: " << url.full() << std::endl;
 
         // read map service metadata from the server
         if ( !_map_service.init(url, dbOptions) )
@@ -142,7 +142,9 @@ public:
                     << _map_service.getError() );
         }
 
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );        
+        _copyright = _map_service.getCopyright();
+
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
 
         // establish a profile if we don't already have one:
         if ( !getProfile() )
@@ -198,7 +200,7 @@ public:
             buf << std::setprecision(16)
                 << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
-                << "&format=" << _format 
+                << "&format=" << _format
                 << "&size=256,256"
                 << "&transparent=true"
                 << "&f=image";
@@ -244,8 +246,13 @@ public:
         return NULL;
     }
 
+    virtual std::string getAttribution() const
+    {
+        return _copyright;
+    }
+
     // override
-    virtual std::string getExtension() const 
+    virtual std::string getExtension() const
     {
         return _format;
     }
@@ -256,6 +263,7 @@ private:
     std::string _map;
     std::string _layer;
     std::string _format, _dot_format;
+    std::string _copyright;
     MapService _map_service;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

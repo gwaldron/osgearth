@@ -26,6 +26,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/GLUtils>
 
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -43,6 +44,11 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
+
+
 REGISTER_OSGEARTH_LAYER(utm_graticule, UTMGraticule);
 
 //---------------------------------------------------------------------------
@@ -55,7 +61,6 @@ UTMData::rebuild(const Profile* profile)
     static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );
     const SpatialReference* geosrs = profile->getSRS()->getGeographicSRS();
 
-    // build the lateral zones:
     for( unsigned zone = 0; zone < 60; ++zone )
     {
         for( unsigned row = 0; row < s_gzdRows.size(); ++row )
@@ -238,7 +243,7 @@ UTMGraticule::removedFromMap(const Map* map)
 osg::Node*
 UTMGraticule::getOrCreateNode()
 {
-    if (_root.valid() == false)
+    if (_root.valid() == false && getEnabled() == true)
     {
         _root = new osg::Group();
 
@@ -285,8 +290,9 @@ UTMGraticule::rebuild()
 
     //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
-    set->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(set, 0);
     set->setMode( GL_BLEND, 1 );
+    set->setMode( GL_CLIP_DISTANCE0, 1 );
 
     // set up default options if the caller did not supply them
     if ( !options().gzdStyle().isSet() )
@@ -303,22 +309,6 @@ UTMGraticule::rebuild()
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
-    
-    // rebuild the graph:
-    osg::Group* top = _root.get();
-
-    // Horizon clipping plane.
-    osg::ClipPlane* cp = _clipPlane.get();
-    if ( cp == 0L )
-    {
-        osg::ClipNode* clipNode = new osg::ClipNode();
-        osgEarth::Registry::shaderGenerator().run( clipNode );
-        cp = new osg::ClipPlane( 0 );
-        clipNode->addClipPlane( cp );
-        _root->addChild(clipNode);
-        top = clipNode;
-    }
-    top->addCullCallback( new ClipToGeocentricHorizon(_profile->getSRS(), cp) );
     
     // initialize the UTM sector tables for this profile.
     _utmData.rebuild(_profile.get());

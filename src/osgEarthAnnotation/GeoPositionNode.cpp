@@ -28,6 +28,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GLUtils>
 
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
@@ -99,7 +100,7 @@ GeoPositionNode::init()
     _paxform = new osg::PositionAttitudeTransform();
     _geoxform->addChild( _paxform );
     
-    this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+    GLUtils::setLighting(getOrCreateStateSet(), 0);
 }
 
 void

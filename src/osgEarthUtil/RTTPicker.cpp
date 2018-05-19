@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/Utils>
+#include <osgEarth/GLUtils>
 
 #include <osgDB/WriteFile>
 #include <osg/BlendFunc>
@@ -135,7 +136,7 @@ RTTPicker::RTTPicker(int cameraSize)
     _buffer = 2;
     
     // Cull mask for RTT cameras
-    _cullMask = ~0;
+    _cullMask = ~0u;
 }
 
 RTTPicker::~RTTPicker()
@@ -226,6 +227,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
 
     c._image = new osg::Image();
     c._image->allocateImage(_rttSize, _rttSize, 1, GL_RGBA, GL_UNSIGNED_BYTE);    
+    memset(c._image->data(), 0, _rttSize * _rttSize * 4);
     
     // Make an RTT camera and bind it to our image.
     // Note: don't use RF_INHERIT_VIEWPOINT because it's unnecessary and
@@ -254,7 +256,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     osg::StateAttribute::GLModeValue disable = 
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
-    rttSS->setMode(GL_LIGHTING,  disable );
+    GLUtils::setLighting(rttSS, disable);
     rttSS->setMode(GL_CULL_FACE, disable );
     rttSS->setMode(GL_ALPHA_TEST, disable );
 
@@ -376,7 +378,7 @@ RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
     pick._context->_numPicks++;
     if (pick._context->_numPicks == 1)
     {
-        pick._context->_pickCamera->setNodeMask(~0);
+        pick._context->_pickCamera->setNodeMask(~0u);
     }
     
     return true;
@@ -443,16 +445,24 @@ namespace
         bool next()
         {
             // first time, just use the start point
-            if ( _count++ == 0 )
-                return true;
+            if (_count == 0)
+            {
+                if (_offsetX < 0 || _offsetX >= _w || _offsetY < 0 || _offsetY >= _h)
+                    return false;
+                else
+                {
+                    _count++;
+                    return true;
+                }
+            }
 
             // spiral until we get to the next valid in-bounds pixel:
             do {
                 switch(_leg) {
-                case 0: ++_x; if (  _x == _ring ) ++_leg; break;
-                case 1: ++_y; if (  _y == _ring ) ++_leg; break;
-                case 2: --_x; if ( -_x == _ring ) ++_leg; break;
-                case 3: --_y; if ( -_y == _ring ) { _leg = 0; ++_ring; } break;
+                case 0: ++_x; if (  _x == (int)_ring ) ++_leg; break;
+                case 1: ++_y; if (  _y == (int)_ring ) ++_leg; break;
+                case 2: --_x; if ( -_x == (int)_ring ) ++_leg; break;
+                case 3: --_y; if ( -_y == (int)_ring ) { _leg = 0; ++_ring; } break;
                 }
             }
             while(_ring <= _maxRing && (_x+_offsetX < 0 || _x+_offsetX >= _w || _y+_offsetY < 0 || _y+_offsetY >= _h));

@@ -68,6 +68,35 @@ osg::Vec3 Environment::GetAmbientLightColor() const {
 void Environment::SimulateSeaState(double bscale, double winddir) {
     HANDLE->SimulateSeaState(bscale, winddir);
 }
+void Environment::SetAboveWaterVisibility(double visibility, osg::Vec3 fog_color) {
+   HANDLE->SetAboveWaterVisibility(visibility, TOVEC3(fog_color));
+}
+void Environment::GetAboveWaterVisibility(double &visibility, osg::Vec3 &fog_color) const {
+    ::Triton::Vector3 triton_fog_col;
+    HANDLE->GetAboveWaterVisibility(visibility, triton_fog_col);
+    fog_color = FROMVEC3(triton_fog_col);
+}
+void Environment::SetEnvironmentMap(GLuint cubeMap, const osg::Matrixd &textureMatrix) {
+    ::Triton::Matrix3 triton_tex_mat(
+        textureMatrix(0, 0), textureMatrix(0, 1), textureMatrix(0, 2),
+        textureMatrix(1, 0), textureMatrix(1, 1), textureMatrix(1, 2),
+        textureMatrix(2, 0), textureMatrix(2, 1), textureMatrix(2, 2));
+    ::Triton::TextureHandle tex_handle = (::Triton::TextureHandle)(static_cast<size_t>(cubeMap));
+    HANDLE->SetEnvironmentMap(tex_handle, triton_tex_mat);
+}
+GLuint Environment::GetEnvironmentMap() const {
+    ::Triton::TextureHandle tex_handle = HANDLE->GetEnvironmentMap();
+    return static_cast<GLuint>((size_t)tex_handle);
+}
+osg::Matrixd Environment::GetEnvironmentMapMatrix() const {
+    ::Triton::Matrix3 m = HANDLE->GetEnvironmentMapMatrix();
+    osg::Matrixd env_map_matrix(
+        m.elem[0][0], m.elem[0][1], m.elem[0][2], 0,
+        m.elem[1][0], m.elem[1][1], m.elem[1][2], 0,
+        m.elem[2][0], m.elem[2][1], m.elem[2][2], 0,
+        0, 0, 0, 1);
+    return env_map_matrix;
+}
 SETGET(Environment, SunIntensity, float);
 
 //................................

@@ -96,6 +96,12 @@ namespace osgEarth { namespace Features
         optional<Angle>& maxCreaseAngle() { return _maximumCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maximumCreaseAngle; }
 
+        /**
+         * Shader policy to use when appropriate
+         */
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
     protected:
         Style                      _style;
 
@@ -105,6 +111,7 @@ namespace osgEarth { namespace Features
         optional<float>            _maxPolyTilingAngle_deg;
         optional<bool>             _optimizeVertexOrdering;
         optional<Angle>            _maximumCreaseAngle;
+        optional<ShaderPolicy>     _shaderPolicy;
         
         void tileAndBuildPolygon(
             Geometry*               input,

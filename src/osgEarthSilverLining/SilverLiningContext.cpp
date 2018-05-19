@@ -142,8 +142,12 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 resourcePath = osgDB::concatPaths(::getenv("SILVERLINING_PATH"), "Resources");
             }
 
+            int renderer = ::SilverLining::Atmosphere::OPENGL;
+#ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
+            renderer = ::SilverLining::Atmosphere::OPENGL32CORE;
+#endif
             int result = _atmosphere->Initialize(
-                ::SilverLining::Atmosphere::OPENGL,
+                renderer,
                 resourcePath.c_str(),
                 true,
                 0 );

@@ -30,6 +30,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/ClampableNode>
+#include <osgEarth/GLUtils>
 
 #include <osgText/Text>
 #include <osg/Depth>
@@ -229,6 +230,10 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
     t->setStateSet(0L);
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+    t->setShaderTechnique(osgText::ALL_FEATURES);
+#endif
+
     float resFactor = 2.0f;
     int res = nextPowerOf2((int)(size*resFactor));
     t->setFontResolution(res, res);
@@ -294,7 +299,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     // set up the decoration.
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
-    dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
+    GLUtils::setLighting(dstate, osg::StateAttribute::OFF);
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);
 
     // set up the geoset.
@@ -631,8 +636,7 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
     geode->addDrawable( geom );
 
     osg::StateSet* s = geom->getOrCreateStateSet();
-    s->setMode(GL_LIGHTING,0);
-    //s->setMode(GL_BLEND,1); // redundant. AnnotationNode sets blend.
+    GLUtils::setLighting(s, 0);
     s->setMode(GL_DEPTH_TEST,0);
     s->setMode(GL_CULL_FACE,0);
     s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );

@@ -21,6 +21,7 @@
 */
 #include <osgEarthUtil/RadialLineOfSight>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GLUtils>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
@@ -370,7 +371,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate(_centerWorld));
@@ -560,7 +561,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geometry );
 
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    GLUtils::setLighting(getOrCreateStateSet(), osg::StateAttribute::OFF);
     getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;

@@ -24,6 +24,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/LineFunctor>
+#include <osgEarth/GLUtils>
 
 #include <osg/Depth>
 #include <osg/CullFace>
@@ -77,8 +78,23 @@ LineGroup::LineGroup()
 #endif
 }
 
+LineGroup::LineGroup(bool installShader)
+{
+#ifdef USE_GPU
+    if (installShader && Registry::capabilities().supportsGLSL())
+    {
+        LineDrawable::installShader(getOrCreateStateSet());
+    }
+#endif
+}
+
 LineGroup::LineGroup(const LineGroup& rhs, const osg::CopyOp& copy) :
 osg::Geode(rhs, copy)
+{
+    //nop
+}
+
+LineGroup::~LineGroup()
 {
     //nop
 }
@@ -394,6 +410,11 @@ _count(rhs._count)
     }
 }
 
+LineDrawable::~LineDrawable()
+{
+    //nop
+}
+
 void
 LineDrawable::initialize()
 {
@@ -458,30 +479,32 @@ LineDrawable::setLineWidth(float value)
     if (_width != value)
     {
         _width = value;
-        setLineWidth(getOrCreateStateSet(), value);
+        GLUtils::setLineWidth(getOrCreateStateSet(), value, 1);
     }
 }
 
 void
 LineDrawable::setLineWidth(osg::StateSet* stateSet, float value, int overrideFlags)
 {
-    bool gpu = Registry::capabilities().supportsGLSL();
-    if (gpu)
-        stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
-    else
-        stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
+    GLUtils::setLineWidth(stateSet, value, overrideFlags);
+    //bool gpu = Registry::capabilities().supportsGLSL();
+    //if (gpu)
+    //    stateSet->setDefine("OE_LINES_WIDTH", Stringify() << value, overrideFlags);
+    //else
+    //    stateSet->setAttributeAndModes(new osg::LineWidth(value), overrideFlags);
 }
 
 void
 LineDrawable::setStipplePattern(GLushort pattern)
 {
-    if (_pattern != pattern)
+    //if (_pattern != pattern)
     {
         _pattern = pattern;
-        if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
-        else
-            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+        GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+        //if (_gpu)
+        //    getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_PATTERN", Stringify() << _pattern);
+        //else
+        //    getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
 }
 
@@ -491,10 +514,11 @@ LineDrawable::setStippleFactor(GLint factor)
     if (_factor != factor)
     {
         _factor = factor;
-        if (_gpu)
-            getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
-        else
-            getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
+        GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+        //if (_gpu)
+        //    getOrCreateStateSet()->setDefine("OE_LINES_STIPPLE_FACTOR", Stringify() << _factor );
+        //else
+        //    getOrCreateStateSet()->setAttributeAndModes(new osg::LineStipple(_factor, _pattern));
     }
 }
 
@@ -910,9 +934,20 @@ LineDrawable::allocate(unsigned numVerts)
     initialize();
 
     unsigned num = getNumVerts();
-    for (unsigned i = num; i < numVerts; ++i)
+    if (numVerts >= num)
     {
-        pushVertex(osg::Vec3(0,0,0));
+        for (unsigned i = num; i < numVerts; ++i)
+        {
+            pushVertex(osg::Vec3(0,0,0));
+        }
+    }
+    else
+    {
+        clear();
+        for (unsigned i = 0; i < numVerts; ++i)
+        {
+            pushVertex(osg::Vec3(0,0,0));
+        }
     }
 
     dirty();

@@ -31,6 +31,7 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/GLUtils>
 
 #define LC "[drawables] "
 
@@ -191,6 +192,14 @@ main(int argc, char** argv)
             return -1;
         }
     }
+
+#ifdef OSG_GL3_AVAILABLE
+    // Sets up the State for GL3 mode
+    viewer.setRealizeOperation(new GL3RealizeOperation());
+#endif
+
+    // Sets up global default uniform values needed by osgEarth
+    GLUtils::setGlobalDefaults(viewer.getCamera()->getOrCreateStateSet());
 
     viewer.setSceneData(node.get());
     

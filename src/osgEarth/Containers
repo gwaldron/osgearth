@@ -718,6 +718,12 @@ namespace osgEarth
             return _data.size();
         }
 
+        void clear()
+        {
+            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            _data.clear();
+        }
+
     private:
         osgEarth::fast_map<KEY,DATA> _data;
         mutable osgEarth::Threading::Mutex _mutex;

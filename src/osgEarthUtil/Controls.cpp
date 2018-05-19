@@ -37,6 +37,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -2753,7 +2754,7 @@ ControlCanvas::init()
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
-    ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+    GLUtils::setLighting(ss, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinDetails( 0, "TraversalOrderBin" );

@@ -70,7 +70,7 @@ namespace osgEarth { namespace Util
         }
 
         osg::Group* load(
-            osg::ArgumentParser&   args, 
+            osg::ArgumentParser&   args,
             osgViewer::ViewerBase* viewer,
             Container*             userContainer,
             const osgDB::Options*  readOptions) const;
@@ -113,7 +113,7 @@ namespace osgEarth { namespace Util
     {
     public:
         Control* create(
-            const std::vector<Viewpoint>& list, 
+            const std::vector<Viewpoint>& list,
             osgViewer::View*              view) const;
     };
 
@@ -124,8 +124,8 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MouseCoordsControlFactory
     {
     public:
-        Control* create( 
-            MapNode*         mapNode, 
+        Control* create(
+            MapNode*         mapNode,
             osgViewer::View* view ) const;
     };
 
@@ -137,7 +137,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT AnnotationGraphControlFactory
     {
     public:
-        Control* create( 
+        Control* create(
             osg::Node*       node,
             osgViewer::View* view) const;
     };
@@ -159,8 +159,18 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT OceanControlFactory
     {
     public:
-        Control* create( 
+        Control* create(
             OceanNode* ocean ) const;
+    };
+
+
+    /**
+    * Creates UI controls displaying the map attribution
+    */
+    class OSGEARTHUTIL_EXPORT AttributionControlFactory
+    {
+    public:
+        Control* create(MapNode* mapNode) const;
     };
 
 } } // namespace osgEarth::Util

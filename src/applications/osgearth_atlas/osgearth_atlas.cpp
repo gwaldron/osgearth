@@ -27,6 +27,7 @@
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/Utils>
+#include <osgEarth/Lighting>
 
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
@@ -275,7 +276,7 @@ show(osg::ArgumentParser& arguments)
     root->addChild( geode );
     root->addChild( geode2 );
 
-    root->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+    Lighting::set(root->getOrCreateStateSet(), 0);
     root->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
 
     osgViewer::Viewer viewer;

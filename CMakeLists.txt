@@ -53,6 +53,12 @@ SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 # Good place to look for the OSG 3rd party libs
 SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 
+IF(THIRD_PARTY_DIR)
+    LIST(APPEND CMAKE_INCLUDE_PATH ${THIRD_PARTY_DIR}/include)
+    LIST(APPEND CMAKE_LIBRARY_PATH ${THIRD_PARTY_DIR}/lib)
+    MESSAGE(STATUS "CMAKE_INCLUDE_PATH=${CMAKE_INCLUDE_PATH}")
+ENDIF(THIRD_PARTY_DIR)
+
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
@@ -125,13 +131,20 @@ FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(Poco)
 
 FIND_PACKAGE(LevelDB)
+
+SET (WITH_STATIC_ROCKSDB FALSE CACHE BOOL "Use static library of RocksDB")
+
 IF(MINGW)
     FIND_PACKAGE(RocksDB CONFIG)
     IF(RocksDB_FOUND)
         MESSAGE(STATUS "Found RocksDB " ${RocksDB_VERSION})
     ENDIF()
 ELSE(MINGW)
-    FIND_PACKAGE(RocksDB)
+    IF (WITH_STATIC_ROCKSDB)
+      FIND_PACKAGE(RocksDB REQUIRED COMPONENTS STATIC)
+    ELSE()
+      FIND_PACKAGE(RocksDB)
+    ENDIF()
 ENDIF(MINGW)
 
 FIND_PACKAGE(SilverLining QUIET)

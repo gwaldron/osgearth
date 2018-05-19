@@ -37,7 +37,7 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
     osg::ref_ptr< ImageLayer > layer = new ImageLayer( ImageLayerOptions("world", opt) );
 
     Status status = layer->open();
-    REQUIRE( status.isOK() ); 
+    REQUIRE( status.isOK() );
 
     SECTION("Profiles are correct") {
         const Profile* profile = layer->getProfile();
@@ -56,4 +56,20 @@ TEST_CASE( "ImageLayers can be created from TileSourceOptions" ) {
         REQUIRE(image.getImage()->t() == 256);
         REQUIRE(image.getExtent() == key.getExtent());
     }
+}
+
+TEST_CASE("Attribution works") {
+
+    std::string attribution = "Attribution test";
+    GDALOptions gdalOpt;
+    gdalOpt.url() = "../data/world.tif";
+
+    ImageLayerOptions imageOpts;
+    imageOpts.driver() = gdalOpt;
+    imageOpts.attribution() = attribution;
+
+    osg::ref_ptr< ImageLayer > layer = new ImageLayer(imageOpts);
+    Status status = layer->open();
+    REQUIRE(status.isOK());
+    REQUIRE(layer->getAttribution() == attribution);
 }

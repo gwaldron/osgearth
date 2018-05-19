@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
+#include <osgEarth/GLUtils>
 #include <osg/MatrixTransform>
 #include <osg/FrameBufferObject>
 #include <osgDB/ReadFile>
@@ -82,11 +83,10 @@ osg::Camera()
     setViewMatrix(osg::Matrix::identity());
 
     osg::StateSet* ss = getOrCreateStateSet();
-    //ss->setAttribute(new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
 
     ss->setMode(GL_BLEND, 1);
-    ss->setMode(GL_LIGHTING, 0);
     ss->setMode(GL_CULL_FACE, 0);
+    GLUtils::setLighting(ss, 0);
     
     this->setPreDrawCallback(new PreDrawRouter<TileRasterizer>(this));
     this->setPostDrawCallback(new PostDrawRouter<TileRasterizer>(this));

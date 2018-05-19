@@ -34,7 +34,6 @@ SET(HEADERS_ROOT
     GeodeticGraticule
     GeodeticLabelingEngine
     GraticuleLabelingEngine
-    HorizonClipPlane
     HTM
     LatLongFormatter
     LineOfSight
@@ -126,7 +125,6 @@ SET(SOURCES_ROOT
     GeodeticGraticule.cpp
     GeodeticLabelingEngine.cpp
     GraticuleLabelingEngine.cpp
-    HorizonClipPlane.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp

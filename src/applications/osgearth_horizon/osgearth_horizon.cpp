@@ -64,18 +64,6 @@ struct MyComputeBoundCallback : public osg::Node::ComputeBoundingSphereCallback
     }
 };
 
-struct SetHorizonCallback : public osg::NodeCallback
-{
-    osg::ref_ptr<Horizon> _horizonProto;
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        osg::ref_ptr<Horizon> horizon = osg::clone(_horizonProto.get(), osg::CopyOp::DEEP_COPY_ALL);
-        horizon->setEye( nv->getViewPoint() );
-        horizon->put( *nv );        
-        traverse(node, nv);
-    }
-};
-
 osg::Node*
 installGeometry1(const SpatialReference* srs)
 {
@@ -132,21 +120,22 @@ main(int argc, char** argv)
         viewer.setSceneData( root );
         root->addChild( node );
 
-        const SpatialReference* srs = MapNode::get(node)->getMapSRS();
-        SetHorizonCallback* set = new SetHorizonCallback();
-        set->_horizonProto = new Horizon(srs);
-        root->addCullCallback( set );
+        MapNode* mapNode = MapNode::get(node);
+        const SpatialReference* srs = mapNode->getMapSRS();
 
         osg::Node* item1 = installGeometry1(srs);
-        root->addChild( item1 );
+        mapNode->addChild( item1 );
 
         osg::Node* item2 = installGeometry2(srs);
-        root->addChild( item2 );
+        mapNode->addChild( item2 );
 
-        osg::ref_ptr<Horizon> horizon = new Horizon(srs);
-
+        // Culls the second item based on its horizon visibility
         HorizonCullCallback* callback = new HorizonCullCallback();
         item2->addCullCallback( callback );
+        
+        // This horizon object we are just using to print out the results;
+        // it's not actually part of the culling cullback!
+        osg::ref_ptr<Horizon> horizon = new Horizon(srs);        
 
         while (!viewer.done())
         {

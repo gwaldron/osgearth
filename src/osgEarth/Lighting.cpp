@@ -26,6 +26,7 @@
 #include <osgDB/InputStream>
 #include <osgDB/OutputStream>
 #include <osgEarth/StringUtils>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 
@@ -33,6 +34,21 @@ using namespace osgEarth;
 
 // prefix to use for uniforms.
 #define UPREFIX "osg_"
+
+
+//............................................................................
+
+void
+Lighting::set(osg::StateSet* stateSet, osg::StateAttribute::OverrideValue value)
+{
+    GLUtils::setLighting(stateSet, value);
+}
+
+void
+Lighting::remove(osg::StateSet* stateSet)
+{
+    GLUtils::remove(stateSet, GL_LIGHTING);
+}
 
 //............................................................................
 

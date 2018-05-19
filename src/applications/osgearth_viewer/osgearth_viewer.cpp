@@ -1,47 +1,51 @@
-/* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2016 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-* IN THE SOFTWARE.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
 
 #include <osgViewer/Viewer>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarth/MapNode>
-#include <osgEarth/ThreadingUtils>
-#include <osgEarth/Metrics>
-#include <iostream>
+#include <osgEarth/LineDrawable>
+#include <osgEarth/GLUtils>
+#include <osgEarth/CullingUtils>
 
-#define LC "[viewer] "
-
-using namespace osgEarth;
-using namespace osgEarth::Util;
-
-int
-usage(const char* name)
+osg::Node* genTacAid()
 {
-    OE_NOTICE 
-        << "\nUsage: " << name << " file.earth" << std::endl
-        << MapNodeHelper().usage() << std::endl;
+  osg::Group* group = new osg::Group;
 
-    return 0;
+  const float cacheLeft = -1.7046576866548355f;
+  const float ringWidth = 0.1f;
+  float x = cacheLeft + 0.005f;
+  float y = -1.f + ringWidth * 0.5f;
+  float deltay = ringWidth;
+
+  // I know I can use LineGroup, but it's not being used here as I was debugging
+  osgEarth::LineDrawable* line = new osgEarth::LineDrawable(GL_LINE_STRIP);
+  line->installShader(group->getOrCreateStateSet());
+  line->setColor(osg::Vec4f(1.f, 0.f, 0.f, 1.f));
+
+#if 0
+  line->setLineWidth(3.f);
+#else
+  // TODO: This fails to show lines
+  line->setLineWidth(1.f);
+#endif
+
+#if 1
+  // Use antialiasing to further demonstrate the problem
+  osgEarth::GLUtils::setLineSmooth(line->getOrCreateStateSet(), osg::StateAttribute::ON);
+#endif
+
+  // Make sure it's not a blending or cull face problem
+  line->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+  line->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
+
+  for (int k = 0; k < 6; ++k)
+  {
+    line->pushVertex(osg::Vec3f(x, y, 0.f));
+    line->pushVertex(osg::Vec3f(0.f, y, 0.f));
+    y += deltay;
+  }
+
+  line->dirty();
+  group->addChild(line);
+
+  return group;
 }
 
 
@@ -50,42 +54,34 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    // help?
-    if ( arguments.read("--help") )
-        return usage(argv[0]);
-
-    // create a viewer:
     osgViewer::Viewer viewer(arguments);
+    const float width = 1040;
+    const float height = 730;
+    const float ar = width / height;
+    viewer.setUpViewInWindow(100, 100, width, height);
+    viewer.setRealizeOperation(new osgEarth::GL3RealizeOperation);
+    viewer.getCamera()->addCullCallback(new osgEarth::InstallViewportSizeUniform);
+    viewer.getCamera()->setClearColor(osg::Vec4f(0,0,0,1));
 
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
+    osg::Group* scene = new osg::Group;
+    scene->getOrCreateStateSet()->setRenderBinDetails(0, "TraversalOrderBin");
+    viewer.setSceneData(scene);
 
-    // thread-safe initialization of the OSG wrapper manager. Calling this here
-    // prevents the "unsupported wrapper" messages from OSG
-    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
+    osg::Camera* hud = new osg::Camera;
+    hud->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+    const float maxExtent = 1.2;
+    hud->setProjectionMatrixAsOrtho2D(-maxExtent*ar, maxExtent*ar, -maxExtent, maxExtent);
+    hud->setProjectionResizePolicy(osg::Camera::HORIZONTAL);
+    hud->setViewMatrixAsLookAt(
+      osg::Vec3d(0, 0, 100),
+      osg::Vec3d(0, 0, 0),
+      osg::Vec3d(0, 1, 0));
+    hud->setClearMask(GL_DEPTH_BUFFER_BIT);
+    hud->addChild(genTacAid());
+    scene->addChild(hud);
 
-    // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+    osgEarth::GLUtils::setGlobalDefaults(hud->getOrCreateStateSet());
+    viewer.realize();
 
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    // set a near/far ratio that is smaller than the default. This allows us to get
-    // closer to the ground without near clipping. If you need more, use --logdepth
-    viewer.getCamera()->setNearFarRatio(0.0001);
-
-    // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( node )
-    {
-        viewer.setSceneData( node );
-        Metrics::run(viewer);
-    }
-    else
-    {
-        return usage(argv[0]);
-    }
-
-    return 0;
+    return viewer.run();
 }

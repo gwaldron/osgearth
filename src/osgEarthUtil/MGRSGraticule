@@ -135,8 +135,6 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<FeatureProfile> _featureProfile;
 
-        osg::ref_ptr<osg::ClipPlane> _clipPlane;
-
         osg::ref_ptr<osg::Group> _root;
 
         osg::observer_ptr<const Map> _map;

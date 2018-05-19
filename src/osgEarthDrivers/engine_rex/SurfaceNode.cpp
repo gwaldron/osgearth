@@ -111,7 +111,7 @@ namespace
         geode->addChild(textDrawable);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
-        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0); // ok; ffp debugging code
         geode->getOrCreateStateSet()->setRenderBinDetails(INT_MAX, "DepthSortedBin");
 
         return geode;

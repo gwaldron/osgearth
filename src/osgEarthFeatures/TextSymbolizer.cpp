@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/TextSymbolizer>
 #include <osgEarth/Registry>
+#include <osgEarth/Shaders>
 #include <osgText/Text>
 
 
@@ -122,6 +123,24 @@ TextSymbolizer::create(Feature*             feature,
     // OSG 3.4.1+ adds a program, so we remove it since we're using VPs.
     t->setStateSet(0L);
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
+    t->setShaderTechnique(osgText::ALL_FEATURES);
+#endif
+
     return t;
 }
 
+void
+TextSymbolizer::installShaders(osg::StateSet* ss)
+{
+    if (ss)
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+        osgEarth::Shaders coreShaders;
+        coreShaders.load(vp, coreShaders.TextVertex);
+        coreShaders.load(vp, coreShaders.TextFragment);    
+#if defined(OSG_GL3_AVAILABLE) && !defined(OSG_GL2_AVAILABLE) && !defined(OSG_GL1_AVAILABLE)
+        ss->setDefine("OSGTEXT_GLYPH_ALPHA_FORMAT_IS_RED");
+#endif
+    }
+}

@@ -53,6 +53,8 @@ namespace osgEarth { namespace Features
             return create(0L, 0L, text);
         }
 
+        static void installShaders(osg::StateSet*);
+
     protected:
         osg::ref_ptr<const TextSymbol> _symbol;
     };

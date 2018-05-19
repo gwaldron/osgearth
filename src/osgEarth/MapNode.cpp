@@ -39,9 +39,11 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/MapModelChange>
-#include <osgEarth/Lighting>
 #include <osgEarth/ResourceReleaser>
+#include <osgEarth/Lighting>
+#include <osgEarth/GLUtils>
 #include <osgEarth/URI>
+#include <osgEarth/HorizonClipPlane>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
 #include <osgUtil/Optimizer>
@@ -103,6 +105,28 @@ namespace
     };
 
     typedef std::vector< osg::ref_ptr<Extension> > Extensions;
+
+    // Cull callback that installs (and updates) a Horizon object in the NodeVisitor.
+    struct InstallHorizonCallback : public osg::NodeCallback
+    {
+        osg::EllipsoidModel _ellipsoid;
+        PerObjectFastMap<osg::Camera*, osg::ref_ptr<Horizon> > _horizons;
+
+        InstallHorizonCallback(const osg::EllipsoidModel& ellipsoid) :
+            _ellipsoid(ellipsoid) { }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+            osg::ref_ptr<Horizon> horizon = _horizons.get(cv->getCurrentCamera());
+            if (!horizon.valid())
+                horizon = new Horizon(_ellipsoid);
+
+            horizon->setEye(nv->getViewPoint());
+            horizon->put(*nv);
+            traverse(node, nv);
+        }
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -308,10 +332,8 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
-
-        _terrainEngineContainer->getOrCreateStateSet()->setMode(
-            GL_LIGHTING,
+        GLUtils::setLighting(
+            _terrainEngineContainer->getOrCreateStateSet(),
             terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
@@ -367,10 +389,8 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        stateset->setDefine(OE_LIGHTING_DEFINE, terrainOptions.enableLighting().get());
-
-        stateset->setMode(
-            GL_LIGHTING,
+        GLUtils::setLighting(
+            stateset,
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 
@@ -410,6 +430,12 @@ MapNode::init()
 
     // install a callback that sets the viewport size uniform:
     this->addCullCallback(new InstallViewportSizeUniform());
+
+    // install a callback that updates a horizon object and installs a clipping plane
+    if (getMapSRS()->isGeographic())
+    {
+        this->addCullCallback(new HorizonClipPlane(getMapSRS()->getEllipsoid()));
+    }
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );

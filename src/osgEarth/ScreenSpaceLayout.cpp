@@ -106,7 +106,11 @@ namespace
                     return diff < 0.0f;
 
                 // then fallback on traversal order.
+#if OSG_VERSION_GREATER_THAN(3,6,0)
+                diff = float(lhs->_traversalOrderNumber) - float(rhs->_traversalOrderNumber);
+#else
                 diff = float(lhs->_traversalNumber) - float(rhs->_traversalNumber);
+#endif
                 return diff < 0.0f;
             }
         }

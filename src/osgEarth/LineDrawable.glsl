@@ -96,7 +96,7 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
 
     float len = thickness;
 
-    int code = gl_VertexID & 3; // gl_VertexID % 4
+    int code = (gl_VertexID+2) & 3; // gl_VertexID % 4
     bool isStart = code <= 1;
     bool isRight = code==0 || code==2;
 

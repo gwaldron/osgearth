@@ -109,7 +109,7 @@ osg::Node* createLineDrawables()
 
     float x = 10;
     LineDrawable* strip = new LineDrawable(GL_LINE_STRIP);
-    strip->setLineWidth(3);
+    strip->setLineWidth(8);
     strip->setColor(osg::Vec4(1,1,1,1));
     addVerts(strip, x, 10);
     group->addChild(strip);

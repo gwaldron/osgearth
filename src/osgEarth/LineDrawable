@@ -176,6 +176,7 @@ namespace osgEarth
 
         unsigned actualVertsPerVirtualVert(unsigned) const;
         unsigned numVirtualVerts(const osg::Array*) const;
+        void updateFirstCount();
     };
 
 

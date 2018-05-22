@@ -67,11 +67,8 @@ REGISTER_OSGEARTH_LAYER(mgrs_graticule, MGRSGraticule);
 #define GL_CLIP_DISTANCE0 0x3000
 #endif
 
-// OSG3.6+ current exhibits artifacts when using SCREEN_COORDS when the text is
-// not aligned to the camera.
-#if OSG_VERSION_LESS_OR_EQUAL(3,4,1)
+// whether to use SCREEN_COORDS to auto-size the text
 #define USE_SCREEN_COORDS
-#endif
 
 
 //#define DEBUG_MODE

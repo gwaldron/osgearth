@@ -228,7 +228,7 @@ namespace
         
 #if defined(OSG_GLES3_AVAILABLE)
         // just force gles 3 to use correct version number as shaders in earth files might include a version
-        version = 300;
+        version = 310;
         subversion = "es";
 #endif
     }
@@ -392,6 +392,11 @@ namespace
                 vertShaderBuf << "\n";
             }
 
+#if defined(OSG_GLES3_AVAILABLE)
+            vertShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
+            //vertShaderBuf << "#extension GL_EXT_clip_cull_distance : require\n";
+#endif
+
             if(vertPrecisions.size() > 0) {
                 for(HeaderMap::iterator pitr = vertPrecisions.begin(); pitr != vertPrecisions.end(); ++pitr) {
                     vertShaderBuf << "precision " << pitr->second << " " << pitr->first << "\n";
@@ -416,6 +421,9 @@ namespace
             }
 
 #if defined(OSG_GLES3_AVAILABLE)
+            fragShaderBuf << "#extension GL_EXT_shader_io_blocks : require\n";
+            //fragShaderBuf << "#extension GL_EXT_clip_cull_distance : require\n";
+
             // ensure there's a default for floats in the frag shader
             std::string& defaultFragFloat = fragPrecisions["float;"];
             if(defaultFragFloat.size() == 0) defaultFragFloat = "highp";

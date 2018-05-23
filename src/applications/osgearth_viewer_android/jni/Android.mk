@@ -45,7 +45,7 @@ LOCAL_CPPFLAGS  := -DOSG_LIBRARY_STATIC -DOSGEARTH_LIBRARY_STATIC
 
 LOCAL_LDLIBS    := -llog -lGLESv3 -lz -ldl -lgnustl_static -lsupc++
 
-LOCAL_SRC_FILES := osgNativeLib.cpp OsgMainApp.cpp DemoScene.cpp OsgAndroidNotifyHandler.cpp osgEarthDemo.cpp
+LOCAL_SRC_FILES := osgNativeLib.cpp OsgMainApp.cpp OsgAndroidNotifyHandler.cpp
 
 
 #-losgdb_osgearth_agglite \

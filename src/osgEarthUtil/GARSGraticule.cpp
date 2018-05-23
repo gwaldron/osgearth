@@ -346,6 +346,14 @@ GARSGraticule::init()
     // Note: since we use draping we do NOT need to activate a horizon clip plane!
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
     options().style()->getOrCreateSymbol<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
+    _root = new osg::Group();
+    _root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
+
+    if (getEnabled() == true)
+    {
+        rebuild();
+    }
 }
 
 void
@@ -361,15 +369,8 @@ GARSGraticule::removedFromMap(const Map* map)
 }
 
 osg::Node*
-GARSGraticule::getOrCreateNode()
+GARSGraticule::getNode() const
 {
-    if (_root.valid() == false && getEnabled() == true)
-    {
-        _root = new osg::Group();
-        _root->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::OFF);
-        rebuild();
-    }
-
     return _root.get();
 }
 

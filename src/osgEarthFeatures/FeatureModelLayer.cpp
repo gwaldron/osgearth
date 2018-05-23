@@ -167,7 +167,7 @@ FeatureModelLayer::getCreateFeatureNodeFactoryCallback() const
 }
 
 osg::Node*
-FeatureModelLayer::getOrCreateNode()
+FeatureModelLayer::getNode() const
 {
     return _root.get();
 }

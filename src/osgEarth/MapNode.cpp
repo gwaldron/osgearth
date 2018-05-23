@@ -633,7 +633,7 @@ MapNode::getLayerNodeGroup() const
 osg::Node*
 MapNode::getLayerNode(Layer* layer) const
 {
-    return layer ? layer->getOrCreateNode() : 0L;
+    return layer ? layer->getNode() : 0L;
 }
 
 
@@ -668,7 +668,7 @@ namespace
             Layer* layer = i->get();
             if (layer->getEnabled())
             {
-                osg::Node* node = layer->getOrCreateNode();
+                osg::Node* node = layer->getNode();
                 if (node)
                 {
                     osg::Group* container = new osg::Group();
@@ -695,7 +695,7 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     layer->getSceneGraphCallbacks()->add(new MapNodeObserverInstaller(this));
 
     // Create the layer's node, if it has one:
-    osg::Node* node = layer->getOrCreateNode();
+    osg::Node* node = layer->getNode();
     if (node)
     {
         OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
@@ -716,7 +716,7 @@ MapNode::onLayerRemoved(Layer* layer, unsigned index)
 {
     if (layer)
     {
-        osg::Node* node = layer->getOrCreateNode();
+        osg::Node* node = layer->getNode();
         if (node)
         {
             layer->getSceneGraphCallbacks()->fireRemoveNode(node);
@@ -728,7 +728,7 @@ MapNode::onLayerRemoved(Layer* layer, unsigned index)
 void
 MapNode::onLayerMoved(Layer* layer, unsigned oldIndex, unsigned newIndex)
 {
-    if (layer && layer->getOrCreateNode())
+    if (layer && layer->getNode())
     {
         rebuildLayerNodes(_map.get(), _layerNodes);
     }

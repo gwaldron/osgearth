@@ -114,7 +114,7 @@ namespace osgEarth { namespace Features
         virtual const Status& open();
 
         // The Node representing this layer.
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         //! Extent of the feature layer, if available (INVALID if not)
         virtual const GeoExtent& getExtent() const;

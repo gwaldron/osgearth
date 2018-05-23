@@ -138,7 +138,7 @@ namespace osgEarth { namespace Triton
 
     public: // Layer
 
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
     protected: // Layer
 

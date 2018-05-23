@@ -322,7 +322,7 @@ ModelLayer::addedToMap(const Map* map)
 }
 
 osg::Node*
-ModelLayer::getOrCreateNode()
+ModelLayer::getNode() const
 {
     return _root.get();
 }

@@ -204,7 +204,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         {
             // find the scene graph for this layer:
             Layer* layer = i->get();
-            osg::Node* node = layer->getOrCreateNode();
+            osg::Node* node = layer->getNode();
             if ( node )
             {
                 // configure for intersection:

@@ -63,7 +63,7 @@ TritonLayer::init()
 }
 
 osg::Node*
-TritonLayer::getOrCreateNode()
+TritonLayer::getNode() const
 {
     return _tritonNode.get();
 }

@@ -109,7 +109,7 @@ VisibleLayer::setVisible(bool value)
     options().visible() = value;
 
     // if this layer has a scene graph node, toggle its node mask
-    osg::Node* node = getOrCreateNode();
+    osg::Node* node = getNode();
     if (node)
         node->setNodeMask(value? ~0 : 0);
 

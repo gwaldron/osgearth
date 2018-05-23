@@ -141,7 +141,7 @@ namespace osgEarth { namespace Splat
         virtual void init();
 
         // A node to add to the scene graph for this layer.
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
     protected:
 

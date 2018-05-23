@@ -59,7 +59,7 @@ namespace osgEarth { namespace Annotation
      * Layer that holds annotation nodes.
      *
      * Use with the options structure is intended for loading from an earth file.
-     * To use from the API, you can just call getOrCreateNode(), cast to a Group,
+     * To use from the API, you can just call getNode(), cast to a Group,
      * and add your annotations there.
      */
     class OSGEARTHANNO_EXPORT AnnotationLayer : public VisibleLayer
@@ -78,7 +78,7 @@ namespace osgEarth { namespace Annotation
 
     public: // Layer
         
-        virtual osg::Node* getOrCreateNode();
+        virtual osg::Node* getNode() const;
 
         virtual void init();
 

@@ -166,13 +166,13 @@ IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
 
-IF(UNIX)
+IF(UNIX AND NOT ANDROID)
     # Not sure what this will do on Cygwin and Msys
     # Also, remember OS X X11 is a user installed option so it may not exist.
     FIND_PACKAGE(X11)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
-ENDIF(UNIX)
+ENDIF(UNIX AND NOT ANDROID)
 
 
 OPTION(OSGEARTH_QT_BUILD "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
@@ -219,7 +219,7 @@ ENDIF ()
 # Platform specific definitions
 
 
-IF(WIN32)
+IF(WIN32 AND NOT ANDROID)
   FIND_PACKAGE(GLCORE)
   IF(GLCORE_FOUND)
       INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
@@ -242,7 +242,7 @@ IF(WIN32)
         ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
         ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
     ENDIF(MSVC)
-ENDIF(WIN32)
+ENDIF(WIN32 AND NOT ANDROID)
 
 # Common to all platforms:
 
@@ -282,12 +282,12 @@ ENDIF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 # Installation stuff
 
 
-IF(UNIX AND NOT WIN32 AND NOT APPLE)
+IF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
   IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
       SET(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
       MARK_AS_ADVANCED(LIB_POSTFIX)
   ENDIF(CMAKE_SIZEOF_VOID_P MATCHES "8")
-ENDIF(UNIX AND NOT WIN32 AND NOT APPLE)
+ENDIF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
 IF(NOT DEFINED LIB_POSTFIX)
     SET(LIB_POSTFIX "")
 ENDIF(NOT DEFINED LIB_POSTFIX)
@@ -360,7 +360,7 @@ ADD_SUBDIRECTORY(src)
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.
-IF(APPLE)
+IF(APPLE AND NOT ANDROID)
 
     # These are just defaults/recommendations, but how we want to build
     # out of the box. But the user needs to be able to change these options.
@@ -393,7 +393,7 @@ IF(APPLE)
     OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
     SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
-ENDIF(APPLE)
+ENDIF(APPLE AND NOT ANDROID)
 
 
 # This needs to be run very last so other parts of the scripts can take

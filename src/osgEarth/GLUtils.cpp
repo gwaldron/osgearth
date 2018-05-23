@@ -31,6 +31,11 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
+#if defined(OSG_GLES3_AVAILABLE)
+    #define GL_LINE_SMOOTH                    0x0B20
+    #define GL_POINT_SIZE                     0x0B11
+#endif
+
 void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
 {
@@ -155,7 +160,7 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
 void
 GL3RealizeOperation::operator()(osg::Object* object)
 {
-#ifdef OSG_GL3_AVAILABLE
+#if defined(OSG_GL3_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
     osg::GraphicsContext* gc = dynamic_cast<osg::GraphicsContext*>(object);
     if (gc)
     {

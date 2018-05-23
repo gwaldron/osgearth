@@ -164,10 +164,19 @@ _isCoreProfile          ( true )
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
 
+#ifdef __ANDROID__
+    if (true)
+#else
     if ( mgc.valid() )
+#endif
     {
+#ifdef __ANDROID__
+        osg::GraphicsContext* gc = NULL;
+        unsigned int id = 0;
+#else
         osg::GraphicsContext* gc = mgc._gc.get();
         unsigned int id = gc->getState()->getContextID();
+#endif
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
 
         OE_INFO << LC << "osgEarth Version: " << osgEarthGetVersion() << std::endl;

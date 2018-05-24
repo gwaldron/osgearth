@@ -236,6 +236,13 @@ void
 FeatureModelLayer::removedFromMap(const Map* map)
 {
     _featureSourceLayerListener.clear();
+    
+    if (_root.valid())
+    {
+        _root->removeChildren(0, _root->getNumChildren());
+    }
+
+    _session = 0L;
 }
 
 void
@@ -269,13 +276,13 @@ FeatureModelLayer::create()
             setStatus(Status::OK());
         }
 
-        else if (getStatus().isOK())
-        {
-            if (!_featureSource.valid())
-                setStatus(Status(Status::ConfigurationError, "No feature source"));
-            else if (!_session.valid())
-                setStatus(Status(Status::ConfigurationError, "No Session"));
-        }
+        //else if (getStatus().isOK())
+        //{
+        //    if (!_featureSource.valid())
+        //        setStatus(Status(Status::ConfigurationError, "No feature source"));
+        //    else if (!_session.valid())
+        //        setStatus(Status(Status::ConfigurationError, "No Session"));
+        //}
     }
 }
 

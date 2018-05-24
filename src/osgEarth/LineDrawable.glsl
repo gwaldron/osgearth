@@ -1,7 +1,8 @@
 #version $GLSL_VERSION_STR
 #pragma vp_name GPU Lines Screen Projected Model
-#pragma vp_entryPoint oe_GPULinesProj_VS_MODEL
-#pragma vp_location vertex_model
+#pragma vp_entryPoint oe_GPULinesProj_VS_VIEW
+#pragma vp_location vertex_view
+#pragma vp_order last
 #pragma import_defines(OE_LINES_USE_LIMITS)
 
 #ifdef OE_LINES_USE_LIMITS
@@ -9,7 +10,10 @@ uniform vec2 oe_GPULines_limits;
 flat out int oe_GPULines_draw;
 #endif
 
-void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
+// change in view vertex over the course of the shader pipeline
+vec4 oe_LineDrawable_viewDelta;
+
+void oe_GPULinesProj_VS_VIEW(inout vec4 vertexView)
 {
 #ifdef OE_LINES_USE_LIMITS
     oe_GPULines_draw = 1;
@@ -20,6 +24,11 @@ void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
         oe_GPULines_draw = 0;
     }
 #endif
+
+    // record the change in the view vertex so that we can apply the same
+    // delta to the prev and next vectors.
+    vec4 originalView = gl_ModelViewMatrix * gl_Vertex;
+    oe_LineDrawable_viewDelta = vertexView - originalView;
 }
 
 
@@ -31,7 +40,6 @@ void oe_GPULinesProj_VS_MODEL(inout vec4 unused)
 #pragma vp_entryPoint oe_GPULinesProj_VS_CLIP
 #pragma vp_location vertex_clip
 #pragma import_defines(OE_LINES_USE_LIMITS)
-#pragma import_defines(OE_GPU_CLAMPING)
 #pragma import_defines(OE_LINES_ANTIALIAS)
 
 // Set by the InstallViewportUniform callback
@@ -51,11 +59,8 @@ flat out int oe_GPULines_draw;
 
 flat out vec2 oe_GPULines_rv;
 
-#ifdef OE_GPU_CLAMPING
-// see GPUClamping.vert.glsl
-vec3 oe_clamp_viewSpaceClampingVector;
-#endif
-
+// Change in main vertex (calculated in oe_GPULinesProj_VS_VIEW)
+vec4 oe_LineDrawable_viewDelta;
 
 #ifdef OE_LINES_ANTIALIAS
 out float oe_GPULines_lateral;
@@ -70,18 +75,16 @@ void oe_GPULinesProj_VS_CLIP(inout vec4 currClip)
         return;
 #endif
 
-#ifdef OE_GPU_CLAMPING
+    // compute the prev and next points in clip space.
+    // we apply the "view detla" to account for any other shaders that 
+    // might have altered the main vertex up to this point.
     vec4 prevView = gl_ModelViewMatrix * vec4(oe_GPULines_prev, 1.0);
-    prevView.xyz += oe_clamp_viewSpaceClampingVector;
+    prevView += oe_LineDrawable_viewDelta;
     vec4 prevClip = gl_ProjectionMatrix * prevView;
 
     vec4 nextView = gl_ModelViewMatrix * vec4(oe_GPULines_next, 1.0);
-    nextView.xyz += oe_clamp_viewSpaceClampingVector;
+    nextView += oe_LineDrawable_viewDelta;
     vec4 nextClip = gl_ProjectionMatrix * nextView;
-#else
-    vec4 prevClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_prev, 1.0);
-    vec4 nextClip = gl_ModelViewProjectionMatrix * vec4(oe_GPULines_next, 1.0);
-#endif
 
     // transform into pixel space
     vec2 currPixel = ((currClip.xy/currClip.w)+1.0) * 0.5*oe_ViewportSize;

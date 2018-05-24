@@ -395,9 +395,11 @@ MapNode::init()
     }
 
     // Add in some global uniforms
-    stateset->addUniform( new osg::Uniform("oe_isGeocentric", _map->isGeocentric()) );
     if ( _map->isGeocentric() )
     {
+        stateset->setDefine("OE_IS_GEOCENTRIC");
+
+#if 0 // remove since they are currently unused
         OE_INFO << LC << "Adding ellipsoid uniforms.\n";
 
         // for a geocentric map, use an ellipsoid unit-frame transform and its inverse:
@@ -417,6 +419,7 @@ MapNode::init()
             stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f()) );
             stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f()) );
         }
+#endif
     }
 
     // install a default material for everything in the map

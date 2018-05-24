@@ -5,6 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 #pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES)
+#pragma import_defines(OE_IS_GEOCENTRIC);
 #pragma include GPUClamping.vert.lib.glsl
 
 #ifdef OE_CLAMP_HAS_ATTRIBUTES
@@ -14,10 +15,6 @@ in float oe_clamp_height;   // vertex attribute
 
 out float oe_clamp_alpha;
 
-// send the clamping vector along so other module can use it
-out vec3 oe_clamp_viewSpaceClampingVector;
-
-uniform bool oe_isGeocentric;
 uniform float oe_clamp_altitudeOffset;
 uniform float oe_clamp_horizonDistance2;
 
@@ -67,10 +64,7 @@ void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
     // calculate the up vector along which clamping will occur (in either direction)
     vec3 up;
     oe_getClampingUpVector(up);
-    
-    oe_clamp_viewSpaceClampingVector = up*dh;
-
-    vertexView.xyz += oe_clamp_viewSpaceClampingVector;
+    vertexView.xyz += up*dh;
 
     // if the clamped depth value is near the far plane, suppress drawing
     // to avoid rendering anomalies.
@@ -80,9 +74,11 @@ void oe_clamp_clampViewSpaceVertex(inout vec4 vertexView)
 void oe_clamp_vertex(inout vec4 vertexView)
 {
     // check distance; alpha out if its beyone the horizon distance.
-    oe_clamp_alpha = oe_isGeocentric ? 
-        clamp(oe_clamp_horizonDistance2 - (vertexView.z*vertexView.z), 0.0, 1.0) :
-        1.0;
+#ifdef OE_IS_GEOCENTRIC
+    oe_clamp_alpha = clamp(oe_clamp_horizonDistance2 - (vertexView.z*vertexView.z), 0.0, 1.0);
+#else
+    oe_clamp_alpha = 1.0;
+#endif
 
     // if visible, calculate clamping.
     // note: no branch divergence in the vertex shader

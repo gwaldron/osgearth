@@ -356,7 +356,7 @@ Map::addLayer(Layer* layer)
         }
 
         // tell the layer it was just added.
-        layer->addedToMap(this);
+        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -396,7 +396,7 @@ Map::insertLayer(Layer* layer, unsigned index)
         }
 
         // tell the layer it was just added.
-        layer->addedToMap(this);
+        //layer->addedToMap(this);
 
         // a separate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -436,7 +436,7 @@ Map::removeLayer(Layer* layer)
         }
 
         // tell the layer it was just removed.
-        layerToRemove->removedFromMap(this);
+        //layerToRemove->removedFromMap(this);
     }
 
     uninstallLayerCallbacks(layerToRemove.get());
@@ -561,13 +561,19 @@ Map::openLayer(Layer* layer)
     }
 
     // Attempt to open the layer. Don't check the status here.
-    layer->open();
+    if (layer->open().isOK())
+    {
+        layer->addedToMap(this);
+    }
 }
 
 void
 Map::closeLayer(Layer* layer)
 {
-    //NOP
+    if (layer)
+    {
+        layer->removedFromMap(this);
+    }
 }
 
 Revision

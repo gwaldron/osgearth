@@ -38,6 +38,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Shaders>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -98,6 +99,64 @@ namespace
         geom->setUseDisplayList( false );
         geom->setDataVariance( osg::Object::DYNAMIC );
         return geom;
+    }
+
+    osg::StateSet* geomStateSet()
+    {
+        static osg::ref_ptr<osg::StateSet> ss;
+        if (!ss.valid())
+        {
+            ss = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
+            vp->setInheritShaders(false);
+        }
+        return ss.get();
+    }
+
+    osg::StateSet* textStateSet()
+    {
+        static osg::ref_ptr<osg::StateSet> ss;
+        if (!ss.valid())
+        {
+            ss = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
+            vp->setInheritShaders(false);
+            osgEarth::Shaders shaders;
+            shaders.load(vp, shaders.TextVertex);
+            shaders.load(vp, shaders.TextFragment);
+        }
+        return ss.get();
+    }
+
+    osg::StateSet* imageStateSet()
+    {
+        static osg::ref_ptr<osg::StateSet> ss;
+
+        const char* vert =
+            "#version " GLSL_VERSION_STR "\n"
+            "out vec2 oe_Controls_texCoord; \n"
+            "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
+            "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
+            "}\n";
+
+        const char* frag =
+            "#version " GLSL_VERSION_STR "\n"
+            "in vec2 oe_Controls_texCoord; \n"
+            "uniform sampler2D oe_Controls_tex; \n"
+            "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
+            "    vec4 texel = texture(oe_Controls_tex, oe_Controls_texCoord); \n"
+            "    color.rgb = mix(color.rgb, texel.rgb, texel.a); \n"
+            "}\n";
+
+        if (!ss.valid())
+        {
+            ss = new osg::StateSet();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
+            vp->setInheritShaders(false);
+            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+        }
+        return ss.get();
     }
 }
 
@@ -169,6 +228,8 @@ Control::Control( const Alignment& halign, const Alignment& valign, const Gutter
 void
 Control::init()
 {
+    setStateSet(geomStateSet());
+
     _x.init(0);
     _y.init(0);
     _width.init(1);
@@ -705,7 +766,11 @@ namespace
     // override osg Text to get at some of the internal properties
     struct LabelText : public osgText::Text
     {
-        LabelText() : osgText::Text() { setDataVariance(osg::Object::DYNAMIC); }
+        LabelText() : osgText::Text()
+        { 
+            setStateSet(textStateSet());
+            setDataVariance(osg::Object::DYNAMIC); 
+        }
         const osg::BoundingBox& getTextBB() const { return _textBB; }
         const osg::Matrix& getATMatrix(int contextID) const { 
         #if OSG_MIN_VERSION_REQUIRED(3,5,6)
@@ -751,7 +816,8 @@ _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
 _backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
-{    
+{ 
+    setStateSet(textStateSet());
     setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -1011,6 +1077,7 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
+    setStateSet(imageStateSet());
     setImage( image );
 }
 
@@ -1019,6 +1086,7 @@ _rotation     ( 0.0, Units::RADIANS ),
 _fixSizeForRot( false ),
 _opacity      ( 1.0f )
 {
+    setStateSet(imageStateSet());
     setTexture( texture );
 }
 
@@ -1196,11 +1264,11 @@ ImageControl::draw( const ControlContext& cx )
 
     g->setTexCoordArray( 0, t );
 
-    g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, _texture.get(), osg::StateAttribute::ON );
+    osg::StateSet* ss = g->getOrCreateStateSet();
 
-    /*osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
-    g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-     */
+    ss->setTextureAttributeAndModes( 0, _texture.get(), osg::StateAttribute::ON );
+    ss->addUniform(new osg::Uniform("oe_Controls_tex", (int)0));
+
     getGeode()->addDrawable( g );
 
     _dirty = false;
@@ -2894,10 +2962,6 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
     {
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
-
-    // we don't really need to rebuild shaders on every dirty; we could probably
-    // just do it on add/remove controls; but that's an optimization for later
-    Registry::shaderGenerator().run( this, "osgEarth.ControlCanvas" );
 
     _contextDirty = false;
 }

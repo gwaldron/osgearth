@@ -119,11 +119,17 @@ namespace
         if (!ss.valid())
         {
             ss = new osg::StateSet();
+#if OSG_MIN_VERSION_REQUIRED(3,5,0)
+            // Load the SDF-compatible text shader program
             VirtualProgram* vp = VirtualProgram::getOrCreate(ss.get());
             vp->setInheritShaders(false);
             osgEarth::Shaders shaders;
             shaders.load(vp, shaders.TextVertex);
             shaders.load(vp, shaders.TextFragment);
+#else
+            // Fall back on no program
+            ss->setAttributeAndModes(new osg::Program, 0);
+#endif
         }
         return ss.get();
     }
@@ -145,7 +151,7 @@ namespace
             "uniform sampler2D oe_Controls_tex; \n"
             "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
             "    vec4 texel = texture(oe_Controls_tex, oe_Controls_texCoord); \n"
-            "    color.rgb = mix(color.rgb, texel.rgb, texel.a); \n"
+            "    color = color * texel; \n"
             "}\n";
 
         if (!ss.valid())

@@ -309,7 +309,7 @@ StyleSheet::mergeConfig( const Config& conf )
                 Config blockConf( styleConf );
                 blockConf.value() = *i;
                 //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
-                Style style( blockConf );
+                Style style( blockConf, this );
                 _styles[ style.getName() ] = style;
             }
         }

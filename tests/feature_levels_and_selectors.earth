@@ -4,12 +4,10 @@ Shows how to use Levels and Selectors together when rendering feature data.
 -->
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
-        
-    <image name="world" driver="gdal">
-        <url>../data/world.tif</url>
-    </image>
+
+    <xi:include href="readymap_imagery.xml"/>
     
-    <image name="boundaries" driver="agglite" max_data_level="7">
+    <feature_model name="boundaries">
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
         </features>
@@ -18,17 +16,17 @@ Shows how to use Levels and Selectors together when rendering feature data.
                 world {
                    stroke:       #9f9f7f;
                    stroke-width: 2px;
+                   render-clip-plane: 0;
+                   render-depth-test: false;
                 }            
             </style>
         </styles>        
-    </image>
+    </feature_model>    
     
-    
-    <model name="cities" driver="feature_geom">
+    <feature_model name="cities">
 
         <features name="cities" driver="ogr">
             <url>../data/cities.shp</url>
-            <build_spatial_index>true</build_spatial_index>
         </features>
         
         <layout>
@@ -56,34 +54,28 @@ Shows how to use Levels and Selectors together when rendering feature data.
                 </query>
             </selector>
             
-            <style type="text/css">              
-                label-large {
+            <style type="text/css">   
+                label {
                     text-declutter: true;
                     text-content:   [name];
+                    text-align:     center_center;
+                    text-priority:  10-[scalerank];
+                    text-halo:      #2f2f2f;
+                }                
+                label-large : label {
                     text-size:      26.0;
-                    text-align:     center_center;
-                    text-priority:  10-[scalerank];
+                    text-color: #ffff00;
                 }           
-                label-medium {
-                    text-declutter: true;
-                    text-content:   [name];
+                label-medium : label {
                     text-size:      20.0;
-                    text-align:     center_center;
-                    text-priority:  10-[scalerank];
                 }           
-                label-small {
-                    text-declutter: true;
-                    text-content:   [name];
-                    text-size:      14.0;
-                    text-align:     center_center;
-                    text-priority:  10-[scalerank];
+                label-small : label {
+                    text-size:      16.0;
                 }     
             </style>
         </styles>
         
-    </model>
-    
-    <options lighting="false"/>
+    </feature_model>
     
     <screen_space_layout>
         <sort_by_priority>true</sort_by_priority>

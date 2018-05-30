@@ -63,7 +63,7 @@ void SymbolRegistry::parseSLD(const Config& c, class Style& style) const
 {
     for (SymbolFactoryList::const_iterator itr = _factories.begin(); itr != _factories.end(); itr++)
     {
-        itr->get()->parseSLD( c, style );        
+        itr->get()->parseSLD( c, style );     
     }
 }
 

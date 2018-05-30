@@ -58,7 +58,8 @@ AnnotationNode(),
 _options           ( options ),
 _needsRebuild      ( true ),
 _styleSheet        ( styleSheet ),
-_clampDirty        (false)
+_clampDirty        (false),
+_index             ( 0 )
 {
     _features.push_back( feature );
 
@@ -79,7 +80,8 @@ AnnotationNode(),
 _options        ( options ),
 _needsRebuild   ( true ),
 _styleSheet     ( styleSheet ),
-_clampDirty     ( false )
+_clampDirty     ( false ),
+_index          ( 0 )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
     setStyle( style );
@@ -94,7 +96,8 @@ AnnotationNode(),
 _options           ( options ),
 _needsRebuild      ( true ),
 _styleSheet        ( styleSheet ),
-_clampDirty        (false)
+_clampDirty        (false),
+_index             ( 0 )
 {
     _features.push_back( feature );
 
@@ -118,7 +121,8 @@ AnnotationNode(),
 _options        ( options ),
 _needsRebuild   ( true ),
 _styleSheet     ( styleSheet ),
-_clampDirty     ( false )
+_clampDirty     ( false ),
+_index          ( 0 )
 {
     _features.insert( _features.end(), features.begin(), features.end() );
     FeatureNode::setMapNode( mapNode );
@@ -187,7 +191,7 @@ FeatureNode::build()
         GeometryCompiler compiler( options );
         Session* session = new Session( getMapNode()->getMap(), _styleSheet.get() );
 
-        FilterContext context( session, new FeatureProfile( _extent ), _extent );
+        FilterContext context( session, new FeatureProfile( _extent ), _extent, _index);
 
         _compiled = compiler.compile( clone, style, context );
         node = _compiled.get();
@@ -301,6 +305,21 @@ void FeatureNode::setStyleSheet(StyleSheet* styleSheet)
     _styleSheet = styleSheet;
 }
 
+FeatureIndexBuilder* FeatureNode::getIndex()
+{
+    return _index;
+}
+
+void FeatureNode::setIndex(FeatureIndexBuilder* index)
+{
+    if (_index != index)
+    {
+        _index = index;
+        _needsRebuild = true;
+        build();
+    }
+}
+
 Feature* FeatureNode::getFeature()
 {
     if (_features.size() == 1)
@@ -409,7 +428,8 @@ FeatureNode::FeatureNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions ) :
 AnnotationNode(conf),
-_clampDirty(false)
+_clampDirty(false),
+_index(0)
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )

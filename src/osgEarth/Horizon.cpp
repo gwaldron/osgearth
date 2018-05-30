@@ -143,6 +143,12 @@ Horizon::setEye(const osg::Vec3d& eye)
     return true;
 }
 
+double
+Horizon::getRadius() const
+{
+    return osg::componentMultiply(_eyeUnit, _scaleInv).length();
+}
+
 bool
 Horizon::isVisible(const osg::Vec3d& target,
                    double            radius) const

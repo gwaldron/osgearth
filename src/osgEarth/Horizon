@@ -110,6 +110,11 @@ namespace osgEarth
          * normal pointing at the eye. 
          */
         bool getPlane(osg::Plane& out_plane) const;
+
+        /**
+         * Gets the radius of the ellipsoid under the eye
+         */
+        double getRadius() const;
         
     protected:
 

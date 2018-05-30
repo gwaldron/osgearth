@@ -49,7 +49,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Construct a new FeatureNode from a single Feature.
          */
-        FeatureNode( 
+        FeatureNode(
             Feature* feature,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(),
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Annotation
         FeatureNode(
             const FeatureList& features,
             const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
             StyleSheet* styleSheet = 0);
 
          /**
@@ -90,6 +90,16 @@ namespace osgEarth { namespace Annotation
         void setStyleSheet(StyleSheet* styleSheet);
 
         /**
+         * Gets the FeatureIndexBuilder
+         */
+        FeatureIndexBuilder* getIndex();
+
+        /**
+        * Sets the FeatureIndexBuilder
+        */
+        void setIndex(FeatureIndexBuilder* index);
+
+        /**
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
@@ -104,8 +114,8 @@ namespace osgEarth { namespace Annotation
          * descendant of the MapNode.
          * NOTE: candidate for deprecation
          */
-        FeatureNode( 
-            MapNode* mapNode, 
+        FeatureNode(
+            MapNode* mapNode,
             Feature* feature,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(),
@@ -117,11 +127,11 @@ namespace osgEarth { namespace Annotation
          * descendant of the MapNode.
          * NOTE: candidate for deprecation
          */
-        FeatureNode( 
-            MapNode* mapNode, 
+        FeatureNode(
+            MapNode* mapNode,
             const FeatureList& features,
             const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
             StyleSheet* styleSheet = 0);
 
     public: // AnnotationNode
@@ -132,7 +142,7 @@ namespace osgEarth { namespace Annotation
         virtual const Style& getStyle() const;
 
         /**
-         * Sets the style for this FeatureNode.  
+         * Sets the style for this FeatureNode.
          * Note:  Do NOT use embedded feature styles if you need to change the style of the FeatureNode at runtime using this method.
          *        You will need to set the style of the features themselves and call init on this FeatureNode if you use embedded styles.
          */
@@ -171,9 +181,11 @@ namespace osgEarth { namespace Annotation
 
         osg::ref_ptr< StyleSheet >   _styleSheet;
 
+        FeatureIndexBuilder* _index;
+
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
-        
+
         void clamp(osg::Node* graph, const Terrain* terrain);
 
         void build();
@@ -181,8 +193,8 @@ namespace osgEarth { namespace Annotation
     public:
 
         void onTileAdded(
-            const TileKey&          key, 
-            osg::Node*              graph, 
+            const TileKey&          key,
+            osg::Node*              graph,
             TerrainCallbackContext& context);
     };
 

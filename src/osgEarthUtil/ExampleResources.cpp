@@ -158,6 +158,17 @@ namespace
             _u->set( float(value) );
         }
     };
+
+    struct ToggleDefine : public ControlEventHandler
+    {
+        osg::ref_ptr<osg::StateSet> _ss;
+        std::string _name;
+        ToggleDefine(osg::StateSet* ss, const std::string& name) : _ss(ss), _name(name) { }
+        void onValueChanged(Control* c, bool value) {
+            if (value) _ss->setDefine(_name);
+            else _ss->removeDefine(_name);
+        }
+    };
 }
 
 
@@ -668,7 +679,18 @@ MapNodeHelper::parse(MapNode*             mapNode,
         std::string name;
         if (args.read("--define", name))
         {
-            mapNode->getOrCreateStateSet()->setDefine(name);
+            if ( uniformBox == 0L )
+            {
+                uniformBox = new VBox();
+                uniformBox->setBackColor(0,0,0,0.5);
+                uniformBox->setAbsorbEvents( true );
+                canvas->addControl( uniformBox );
+            }
+            
+            HBox* box = new HBox();
+            box->addControl(new CheckBoxControl(false, new ToggleDefine(mapNode->getOrCreateStateSet(), name)));
+            box->addControl(new LabelControl(name));
+            uniformBox->addControl(box);
         }
     }
 

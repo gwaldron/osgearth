@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 #pragma import_defines(OE_CLAMP_HAS_ATTRIBUTES)
-#pragma import_defines(OE_IS_GEOCENTRIC);
+#pragma import_defines(OE_IS_GEOCENTRIC)
 #pragma include GPUClamping.vert.lib.glsl
 
 #ifdef OE_CLAMP_HAS_ATTRIBUTES

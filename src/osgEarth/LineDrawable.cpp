@@ -327,7 +327,6 @@ LineGroup::getLineDrawable(unsigned i)
 #undef  LC
 #define LC "[LineDrawable] "
 
-//#define USE_GPU 1
 
 namespace osgEarth { namespace Serializers { namespace LineDrawable
 {

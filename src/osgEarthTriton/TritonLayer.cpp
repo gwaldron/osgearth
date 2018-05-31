@@ -195,6 +195,13 @@ TritonLayer::init()
 
     osgEarth::VisibleLayer::init();
 
+    // Trick to force the VisibleLayer to install its opacity shader, 
+    // which a modified Triton user-functions.glsl shader needs in order to control
+    // sea surface opacity.
+    float opacity = getOpacity();
+    setOpacity(0.0f);
+    setOpacity(opacity);
+
     this->setName("Triton");
     setRenderType(RENDERTYPE_CUSTOM);
 

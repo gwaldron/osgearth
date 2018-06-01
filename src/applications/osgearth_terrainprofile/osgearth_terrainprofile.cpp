@@ -33,6 +33,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/GLUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgText/Text>
@@ -56,9 +57,10 @@ osg::Camera* createHud(double width, double height)
     hud->setClearMask(GL_DEPTH_BUFFER_BIT);
     hud->setRenderOrder(osg::Camera::POST_RENDER);    
     hud->setAllowEventFocus(false);
-    hud->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-    hud->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    hud->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON);
+    osg::StateSet* hudSS = hud->getOrCreateStateSet();
+    GLUtils::setLighting(hudSS, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    hudSS->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    hudSS->setMode( GL_BLEND, osg::StateAttribute::ON);
 
     return hud;
 }

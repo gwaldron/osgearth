@@ -54,7 +54,13 @@ osg::Geometry()
     if ( bboxSymbol.fill().isSet() )
     {
         c->push_back( bboxSymbol.fill()->color() );
-        addPrimitiveSet( new osg::DrawArrays(GL_POLYGON, 0, v->getNumElements()) );
+        osg::DrawElements* de = new osg::DrawElementsUByte(GL_TRIANGLE_STRIP);
+        de->addElement(0);
+        de->addElement(1);
+        de->addElement(3);
+        de->addElement(2);
+        addPrimitiveSet(de);
+        //addPrimitiveSet( new osg::DrawArrays(GL_POLYGON, 0, v->getNumElements()) );
     }
 
     if ( bboxSymbol.border().isSet() )

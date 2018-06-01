@@ -18,31 +18,27 @@ Group {
         rendering_hint DEFAULT_BIN
         renderBinMode INHERIT
         GL_CULL_FACE ON
-        GL_LIGHTING ON
-        Material {
-          ColorMode OFF
-          ambientColor 1 1 1 1
-          diffuseColor 1 1 1 1
-          specularColor 0 0 0 1
-          emissionColor 0 0 0 1
-          shininess 0
-        }
         CullFace {
-          UniqueID CullFace_0
           mode BACK
         }
       }
       num_drawables 1
       Geometry {
         DataVariance STATIC
+        supportsDisplayList FALSE
         useDisplayList FALSE
         useVertexBufferObjects TRUE
-        PrimitiveSets 2
+        PrimitiveSets 1
         {
-          DrawArrays QUADS 0 32
-          DrawElementsUByte TRIANGLE_FAN 8
+          DrawElementsUShort TRIANGLES 66
           {
-            32 33 34 35 36 37 38 39 
+            0 1 2 0 2 3 4 5 6 4
+            6 7 8 9 10 8 10 11 12 13
+            14 12 14 15 16 17 18 16 18 19
+            20 21 22 20 22 23 24 25 26 24
+            26 27 28 29 30 28 30 31 32 33
+            34 32 34 35 32 35 36 32 36 37
+            32 37 38 32 38 39 
           }
         }
         VertexArray Vec3Array 40
@@ -145,29 +141,23 @@ Group {
       nodeMask 0xffffffff
       cullingActive TRUE
       StateSet {
-        UniqueID StateSet_1
         DataVariance STATIC
         rendering_hint DEFAULT_BIN
         renderBinMode INHERIT
         GL_CULL_FACE OFF
-        GL_LIGHTING ON
-        Material {
-          ColorMode OFF
-          ambientColor 1 0 0 1
-          diffuseColor 1 0 0 1
-          specularColor 0 0 0 1
-          emissionColor 0 0 0 1
-          shininess 0
-        }
       }
       num_drawables 1
       Geometry {
         DataVariance STATIC
+        supportsDisplayList FALSE
         useDisplayList FALSE
         useVertexBufferObjects TRUE
         PrimitiveSets 1
         {
-          DrawArrays TRIANGLES 0 3
+          DrawElementsUShort TRIANGLES 3
+          {
+            0 1 2 
+          }
         }
         VertexArray Vec3Array 3
         {

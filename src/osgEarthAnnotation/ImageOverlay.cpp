@@ -298,6 +298,9 @@ ImageOverlay::init()
         }
 
         _dirty = false;
+
+        // image overlay is unlit by default.
+        setDefaultLighting(false);
         
         // Set the annotation up for auto-clamping. We always need to auto-clamp a draped image
         // so that the mesh roughly conforms with the surface, otherwise the draping routine
@@ -305,7 +308,6 @@ ImageOverlay::init()
         Style style;
         style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         applyStyle( style );
-        setLightingIfNotSet( false );
 
         getMapNode()->getTerrain()->addTerrainCallback( _clampCallback.get() );
         clamp( getMapNode()->getTerrain()->getGraph(), getMapNode()->getTerrain() );

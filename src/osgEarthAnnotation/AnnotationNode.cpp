@@ -113,17 +113,12 @@ AnnotationNode::traverse(osg::NodeVisitor& nv)
 }
 
 void
-AnnotationNode::setLightingIfNotSet( bool lighting )
+AnnotationNode::setDefaultLighting( bool lighting )
 {
-    osg::StateSet* ss = this->getOrCreateStateSet();
-
-    if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
-    {
-        GLUtils::setLighting(
-            getOrCreateStateSet(),
-            lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-                       osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    }
+    GLUtils::setLighting(
+        getOrCreateStateSet(),
+        lighting ? osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                   osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 }
 
 void

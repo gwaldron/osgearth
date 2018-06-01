@@ -103,8 +103,10 @@ struct TestFirstCount : public osg::NodeCallback
 
 osg::Node* createLineDrawables()
 {
-    LineGroup* group = new LineGroup();
-
+    // You need a viewport uniform for the lines to work.
+    // MapNode installs one automatically, but we're not using MapNode
+    // in this example.
+    osg::Group* group = new osg::Group();
     group->addCullCallback(new InstallViewportSizeUniform());
 
     float x = 10;
@@ -146,7 +148,9 @@ osg::Node* createLineDrawables()
     
     x += 20;
     osg::ref_ptr<osg::Node> node = makeGeometryForImport(x, 10);
-    group->import(node.get());
+    LineGroup* lines = new LineGroup();
+    lines->import(node.get());
+    group->addChild(lines);
 
     return group;
 }
@@ -167,9 +171,9 @@ main(int argc, char** argv)
         viewer.getCamera()->setProjectionMatrixAsOrtho(-r, +r, -r/ar, +r/ar, -r*2.0, +r*2.0);
     }
 
-    if (arguments.read("--antialias"))
+    if (arguments.read("--antialias") || arguments.read("--smooth"))
     {
-        node->getOrCreateStateSet()->setDefine("OE_LINES_ANTIALIAS");
+        GLUtils::setLineSmooth(node->getOrCreateStateSet(), 1);
         node->getOrCreateStateSet()->setMode(GL_BLEND, 1);
     }
 

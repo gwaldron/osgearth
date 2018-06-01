@@ -445,8 +445,7 @@ osg::Group*
 BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     // Group to contain all the lines we create here
-    bool installShaders = shaderPolicy() == SHADERPOLICY_GENERATE;
-    LineGroup* drawables = new LineGroup(installShaders);
+    LineGroup* drawables = new LineGroup();
 
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;

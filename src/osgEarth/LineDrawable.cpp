@@ -332,7 +332,6 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
     }
 } } }
 
-
 // static attribute binding locations. Changable by the user.
 int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
@@ -372,7 +371,10 @@ _previous(NULL),
 _next(NULL)
 {
 #ifdef USE_GPU
-    _gpu = Registry::capabilities().supportsGLSL();
+    _gpu = 
+        Registry::capabilities().supportsGLSL() &&
+        (_mode == GL_LINES || _mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP);
+
     setupShaders();
 #endif
 }
@@ -410,14 +412,6 @@ LineDrawable::initialize()
     // Already initialized?
     if (_current)
         return;
-
-    if (_mode != GL_LINE_STRIP &&
-        _mode != GL_LINE_LOOP &&
-        _mode != GL_LINES)
-    {
-        OE_WARN << LC << "Illegal mode (" << _mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
-        _mode = GL_LINE_STRIP;
-    }
 
     // See if the arrays already exist:
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
@@ -459,7 +453,9 @@ void
 LineDrawable::setMode(GLenum mode)
 {
     if (_mode != mode)
+    {
         _mode = mode;
+    }
 }
 
 void
@@ -739,7 +735,7 @@ LineDrawable::setVertex(unsigned vi, const osg::Vec3& vert)
             if (_mode == GL_LINE_STRIP)
             {
                 unsigned ri = vi*4u;
-                unsigned rnum = 4u; //actualVertsPerVirtualVert(vi); // number of real verts to set
+                unsigned rnum = 4u; // number of real verts to set
 
                 // update the main verts:
                 for (unsigned n = ri; n < ri+rnum; ++n)
@@ -1144,9 +1140,13 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
-        osgUtil::CullVisitor* cv = nv.getVisitorType() == nv.CULL_VISITOR && _gpuStateSet.valid()?
-            Culling::asCullVisitor(nv) :
-            0L;
+        // only push the shader if necessary:
+        bool shade =
+            _gpu &&
+            nv.getVisitorType() == nv.CULL_VISITOR &&
+            _gpuStateSet.valid();
+
+        osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
 
         nv.pushOntoNodePath(this);
 

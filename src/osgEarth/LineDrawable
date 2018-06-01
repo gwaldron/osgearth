@@ -70,10 +70,6 @@ namespace osgEarth
         //! Sets the overall color of the line
         void setColor(const osg::Vec4& color);
         const osg::Vec4& getColor() const { return _color; }
-
-        //! GL mode (for serializer only; do not use)
-        void setMode(GLenum mode);
-        GLenum getMode() const { return _mode; }
         
         //! Append a vertex to the line
         void pushVertex(const osg::Vec3& vert);
@@ -151,6 +147,12 @@ namespace osgEarth
 
         //! Override Node::accept to include the singleton GPU statset
         virtual void accept(osg::NodeVisitor& nv);
+
+    public:
+            
+        //! GL mode (for serializer only; do not use)
+        void setMode(GLenum mode);
+        GLenum getMode() const { return _mode; }
 
     protected:
 

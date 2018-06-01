@@ -677,7 +677,7 @@ namespace
                     osg::Group* container = new osg::Group();
                     container->setName(layer->getName());
                     container->addChild(node);
-                    container->setStateSet(layer->getStateSet());
+                    container->setStateSet(layer->getOrCreateStateSet());
                     layerNodes->addChild(container);
                 }
             }

@@ -1140,7 +1140,10 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
-        // only push the shader if necessary:
+        // Only push the shader if necessary.
+        // The reason for this approach is go we can inject the singleton 
+        // LineDrawable shader yet still allow the user to customize 
+        // the node's StateSet.
         bool shade =
             _gpu &&
             nv.getVisitorType() == nv.CULL_VISITOR &&

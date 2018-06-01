@@ -529,7 +529,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                 if ( c )
                 {
                     c->setVertAlign( Control::ALIGN_TOP );
-                    canvas->addControl( c );
+                    mainContainer->addControl( c );
                 }
             }
             mapNode->addChild( kml );
@@ -558,12 +558,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
         mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
         view->addEventHandler( mcTool );
 
-        canvas->addControl( readout );
+        mainContainer->addControl( readout );
     }
 
 
     // Add the credits display
-    canvas->addControl(AttributionControlFactory().create(mapNode));
+    mainContainer->addControl(AttributionControlFactory().create(mapNode));
 
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
@@ -587,7 +587,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         vbox->setHorizAlign( Control::ALIGN_RIGHT );
         vbox->setVertAlign( Control::ALIGN_BOTTOM );
         view->addEventHandler( new ActivityMonitorTool(vbox) );
-        canvas->addControl( vbox );
+        mainContainer->addControl( vbox );
     }
 
     // Install an auto clip plane clamper
@@ -659,7 +659,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                 uniformBox = new VBox();
                 uniformBox->setBackColor(0,0,0,0.5);
                 uniformBox->setAbsorbEvents( true );
-                canvas->addControl( uniformBox );
+                mainContainer->addControl( uniformBox );
             }
             osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
             uniform->set( minval );
@@ -684,7 +684,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                 uniformBox = new VBox();
                 uniformBox->setBackColor(0,0,0,0.5);
                 uniformBox->setAbsorbEvents( true );
-                canvas->addControl( uniformBox );
+                mainContainer->addControl( uniformBox );
             }
             
             HBox* box = new HBox();

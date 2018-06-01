@@ -36,11 +36,10 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-void createControlPanel( osgViewer::View* );
+void createControlPanel(Container*);
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
-static Grid* s_masterGrid;
 static Grid* s_activeBox;
 static Grid* s_inactiveBox;
 static bool s_updateRequired = true;
@@ -144,7 +143,10 @@ main( int argc, char** argv )
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // Load an earth file 
-    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
+    Container* uiRoot = new VBox();
+    createControlPanel(uiRoot);
+
+    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
     osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);
     if ( !mapNode ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
@@ -155,16 +157,13 @@ main( int argc, char** argv )
     s_activeMap = mapNode->getMap();
     s_activeMap->addMapCallback( new MyMapListener() );
 
-    osg::Group* root = new osg::Group();
-
-    // install the control panel
-    createControlPanel( &viewer );
-    root->addChild( loaded );
+    //osg::Group* root = new osg::Group();
+    //root->addChild( loaded );
 
     // update the control panel with the two Maps:
     updateControlPanel();
 
-    viewer.setSceneData( root );
+    viewer.setSceneData( loaded );
 
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
@@ -273,41 +272,25 @@ struct ZoomLayerHandler : public ControlEventHandler
 
 
 void
-createControlPanel( osgViewer::View* view )
+createControlPanel(Container* container)
 {
-    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
-
-    s_masterGrid = new Grid();
-    s_masterGrid->setMargin( 5 );
-    s_masterGrid->setPadding( 5 );
-    s_masterGrid->setChildSpacing( 10 );
-    s_masterGrid->setChildVertAlign( Control::ALIGN_CENTER );
-    s_masterGrid->setAbsorbEvents( true );
-    s_masterGrid->setVertAlign( Control::ALIGN_TOP );
-
     //The Map layers
     s_activeBox = new Grid();
     s_activeBox->setBackColor(0,0,0,0.5);
-    s_activeBox->setMargin( 10 );
     s_activeBox->setPadding( 10 );
     s_activeBox->setChildSpacing( 10 );
     s_activeBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_activeBox->setAbsorbEvents( true );
-    s_activeBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 0, 0, s_activeBox );
+    container->addControl(s_activeBox);
 
     //the removed layers
     s_inactiveBox = new Grid();
     s_inactiveBox->setBackColor(0,0,0,0.5);
-    s_inactiveBox->setMargin( 10 );
     s_inactiveBox->setPadding( 10 );
     s_inactiveBox->setChildSpacing( 10 );
     s_inactiveBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_inactiveBox->setAbsorbEvents( true );
-    s_inactiveBox->setVertAlign( Control::ALIGN_TOP );
-    s_masterGrid->setControl( 0, 1, s_inactiveBox );
-
-    canvas->addControl( s_masterGrid );
+    container->addControl(s_inactiveBox);
 }
 
 void
@@ -456,7 +439,8 @@ updateControlPanel()
 
     int row = 0;
 
-    LabelControl* activeLabel = new LabelControl( "Map Layers", 20, osg::Vec4f(1,1,0,1) );
+    LabelControl* activeLabel = new LabelControl( "Map Layers" );
+    activeLabel->setForeColor(osg::Vec4f(1,1,0,1));
     s_activeBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:

@@ -152,6 +152,11 @@ osg::Node* createLineDrawables()
     lines->import(node.get());
     group->addChild(lines);
 
+    x += 20;
+    LineDrawable* points = new LineDrawable(GL_POINTS);
+    addVerts(points, x, 10);
+    group->addChild(points);
+
     return group;
 }
 

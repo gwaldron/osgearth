@@ -415,8 +415,11 @@ LineDrawable::initialize()
         _mode != GL_LINE_LOOP &&
         _mode != GL_LINES)
     {
-        OE_WARN << LC << "Illegal mode (" << _mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
-        _mode = GL_LINE_STRIP;
+        //OE_WARN << LC << "Illegal mode (" << _mode << "). Use GL_LINE_STRIP, GL_LINE_LOOP, or GL_LINES" << std::endl;
+        //_mode = GL_LINE_STRIP;
+
+        // for non-lines (i.e. points) turn off the shader.
+        _gpu = false;
     }
 
     // See if the arrays already exist:
@@ -1144,9 +1147,13 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
     { 
-        osgUtil::CullVisitor* cv = nv.getVisitorType() == nv.CULL_VISITOR && _gpuStateSet.valid()?
-            Culling::asCullVisitor(nv) :
-            0L;
+        // only push the shader if necessary:
+        bool shade =
+            nv.getVisitorType() == nv.CULL_VISITOR &&
+            _gpuStateSet.valid() &&
+            (_mode == GL_LINES || _mode == GL_LINE_STRIP || _mode == GL_LINE_LOOP);
+
+        osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
 
         nv.pushOntoNodePath(this);
 

@@ -5,7 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_ocean_vertex
 #pragma vp_location   vertex_view
 
-#pragma import_defines(OE_SIMPLE_OCEAN_USE_TEXTURE, OE_SIMPLE_OCEAN_USE_MASK)
+#pragma import_defines(OE_SIMPLE_OCEAN_USE_TEXTURE)
+#pragma import_defines(OE_SIMPLE_OCEAN_USE_MASK)
 
 // uniforms
 uniform mat4 osg_ViewMatrixInverse;  

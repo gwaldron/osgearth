@@ -7,7 +7,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma include BumpMap.frag.common.glsl
 
-#pragma import_defines(OE_IS_DEPTH_CAMERA, OE_IS_PICK_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_IS_PICK_CAMERA)
 
 #if defined(OE_IS_DEPTH_CAMERA) || defined(OE_IS_PICK_CAMERA)
 

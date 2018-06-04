@@ -5,7 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_entryPoint oe_phong_fragment
 #pragma vp_location   fragment_lighting
 
-#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
+#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_NUM_LIGHTS)
 
 #ifdef OE_LIGHTING
 

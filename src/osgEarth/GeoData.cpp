@@ -603,6 +603,7 @@ GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
 GeoExtent::GeoExtent():
+_srs(0L),
 _west(0.0),
 _width(-1.0),
 _south(0.0),
@@ -623,14 +624,22 @@ _height(-1.0)
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
                      double west, double south, double east, double north ) :
-_srs( srs )
+_srs( srs ),
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     set(west, south, east, north);
 }
 
 
 GeoExtent::GeoExtent(const SpatialReference* srs, const Bounds& bounds) :
-_srs( srs )
+_srs(srs),
+_west(0.0),
+_width(-1.0),
+_south(0.0),
+_height(-1.0)
 {
     set(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax());
 }

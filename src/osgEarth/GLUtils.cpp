@@ -31,6 +31,11 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
+#ifndef GL_NORMALIZE
+#define GL_NORMALIZE 0x0BA1
+#endif
+
+
 void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
 {
@@ -155,13 +160,22 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
 void
 GL3RealizeOperation::operator()(osg::Object* object)
 {
-#ifdef OSG_GL3_AVAILABLE
     osg::GraphicsContext* gc = dynamic_cast<osg::GraphicsContext*>(object);
     if (gc)
     {
         osg::State* state = gc->getState();
+
+#ifdef OSG_GL3_AVAILABLE
         state->setUseModelViewAndProjectionUniforms(true);
         state->setUseVertexAttributeAliasing(true);
-    }
 #endif
+
+#ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
+        state->setModeValidity(GL_LIGHTING, false);
+        state->setModeValidity(GL_NORMALIZE, false);
+        state->setModeValidity(GL_RESCALE_NORMAL, false);
+        state->setModeValidity(GL_LINE_STIPPLE, false);
+        state->setModeValidity(GL_LINE_SMOOTH, false);
+#endif
+    }
 }

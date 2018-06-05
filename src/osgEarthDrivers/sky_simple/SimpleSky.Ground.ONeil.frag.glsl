@@ -5,7 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.8
 
-#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
+#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_NUM_LIGHTS)
 
 uniform float oe_sky_exposure;           // HDR scene exposure (ground level)
 uniform float oe_sky_ambientBoostFactor; // ambient sunlight booster for daytime

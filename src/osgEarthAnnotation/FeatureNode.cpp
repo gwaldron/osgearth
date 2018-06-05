@@ -242,9 +242,7 @@ FeatureNode::build()
             this->addChild( _attachPoint );
 
             // set default lighting based on whether we are extruding:
-            setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-
-            //applyRenderSymbology( style );
+            setDefaultLighting( style.has<ExtrusionSymbol>() );
         }
 
         applyRenderSymbology(style);

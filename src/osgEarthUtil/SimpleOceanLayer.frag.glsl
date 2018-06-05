@@ -3,7 +3,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint ocean_FS
 #pragma vp_location fragment_coloring
-#pragma import_defines(OE_OCEAN_MASK, OE_OCEAN_BATHYMETRY)
+
+#pragma import_defines(OE_OCEAN_MASK)
+#pragma import_defines(OE_OCEAN_BATHYMETRY)
 
 float oe_terrain_getElevation();
 

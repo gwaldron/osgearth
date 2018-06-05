@@ -195,7 +195,7 @@ ModelLayer::init()
 const Status&
 ModelLayer::open()
 {
-    if ( !_modelSource.valid() && options().driver().isSet() )
+    if ( VisibleLayer::open().isOK() && !_modelSource.valid() && options().driver().isSet() )
     {
         std::string driverName = options().driver()->getDriver();
 

@@ -12,7 +12,11 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma include Splat.types.glsl
 
 // statset defines
-#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER, OE_SPLAT_EDIT_MODE, OE_SPLAT_GPU_NOISE, OE_TERRAIN_RENDER_NORMAL_MAP, OE_TERRAIN_BLEND_IMAGERY)
+#pragma import_defines(OE_SPLAT_HAVE_NOISE_SAMPLER)
+#pragma import_defines(OE_SPLAT_EDIT_MODE)
+#pragma import_defines(OE_SPLAT_GPU_NOISE)
+#pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
+#pragma import_defines(OE_TERRAIN_BLEND_IMAGERY)
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);

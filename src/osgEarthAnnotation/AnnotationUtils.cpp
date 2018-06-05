@@ -727,10 +727,12 @@ AnnotationUtils::installTwoPassAlpha(osg::Node* node)
   g1->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
   g1->getOrCreateStateSet()->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
 
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
   // for semi-transpareny items, we want the lighting to "shine through"
   osg::LightModel* lm = new osg::LightModel();
   lm->setTwoSided( true );
   g1->getOrCreateStateSet()->setAttributeAndModes( lm );
+#endif
 
   // next start a traversal order bin so we draw in the proper order:
   osg::Group* g2 = new osg::Group();

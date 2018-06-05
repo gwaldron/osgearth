@@ -142,9 +142,9 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    applyStyle( _style );
+    setDefaultLighting( false );
 
-    setLightingIfNotSet( false );
+    applyStyle( _style );
 
     getPositionAttitudeTransform()->addChild( _geode );
     

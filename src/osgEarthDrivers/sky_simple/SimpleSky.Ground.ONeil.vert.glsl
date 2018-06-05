@@ -5,7 +5,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
+#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_NUM_LIGHTS)
 
 uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz 
 uniform mat4 osg_ViewMatrix;          // GL view matrix 

@@ -47,6 +47,7 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 
 #include <osgEarthDrivers/kml/KML>
 
@@ -154,8 +155,11 @@ namespace
     {
         osg::ref_ptr<osg::Uniform> _u;
         ApplyValueUniform(osg::Uniform* u) :_u(u) { }
-        void onValueChanged(Control* c, double value) {
+        void onValueChanged(Control* c, double value)
+        {
             _u->set( float(value) );
+            osgEarth::Registry::instance()->dataStore().store(
+                osgEarth::Registry::instance(), _u->getName(), _u.get());
         }
     };
 
@@ -558,7 +562,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
         view->addEventHandler( mcTool );
 
-        mainContainer->addControl( readout );
+        canvas->addControl( readout );
     }
 
 

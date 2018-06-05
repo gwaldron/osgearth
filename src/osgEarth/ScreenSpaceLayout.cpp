@@ -49,7 +49,7 @@ namespace
     {
         SortContainer( DeclutterSortFunctor& f ) : _f(f) { }
         const DeclutterSortFunctor& _f;
-        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const 
+        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
         {
             return _f(lhs, rhs);
         }
@@ -88,10 +88,10 @@ namespace
             }
 
             else
-            {            
+            {
                 const ScreenSpaceLayoutData* lhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(lhs->getDrawable()->getUserData());
                 float lhsPriority = lhsdata ? lhsdata->_priority : 0.0f;
-    
+
                 const ScreenSpaceLayoutData* rhsdata = dynamic_cast<const ScreenSpaceLayoutData*>(rhs->getDrawable()->getUserData());
                 float rhsPriority = rhsdata ? rhsdata->_priority : 0.0f;
 
@@ -132,7 +132,7 @@ namespace
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
-    
+
     typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
 
     // Data structure stored one-per-View.
@@ -142,7 +142,7 @@ namespace
 
         // remembers the state of each drawable from the previous pass
         DrawableMemory _memory;
-        
+
         // re-usable structures (to avoid unnecessary re-allocation)
         osgUtil::RenderBin::RenderLeafList _passed;
         osgUtil::RenderBin::RenderLeafList _failed;
@@ -212,7 +212,7 @@ struct LCGIterator
         _a = _n+1;
         _c = 15487457u; // a very large prime
     }
-    bool hasMore() const { 
+    bool hasMore() const {
         return _index < _n;
     }
     const typename T::value_type& next() {
@@ -248,7 +248,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
     /**
      * Constructs the new sorter.
-     * @param f Custom declutter sorting predicate. Pass NULL to use the 
+     * @param f Custom declutter sorting predicate. Pass NULL to use the
      *          default sorter (sort by distance-to-camera).
      */
     DeclutterSort( ScreenSpaceLayoutContext* context, DeclutterSortFunctor* f = 0L )
@@ -264,7 +264,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         const ScreenSpaceLayoutOptions& options = _context->_options;
 
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
-        
+
         bin->copyLeavesFromStateGraphListToRenderLeafList();
 
         // first, sort the leaves:
@@ -288,20 +288,22 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
         // bail out if this camera is a master camera with no GC
         // (e.g., in a multi-screen layout)
-        if (cam == NULL || cam->getGraphicsContext() == NULL)
+        if (cam == NULL || (cam->getGraphicsContext() == NULL && !cam->isRenderToTextureCamera()))
+        {
             return;
+        }
 
         PerCamInfo& local = _perCam.get( cam );
 
         osg::Timer_t now = osg::Timer::instance()->tick();
         if (local._firstFrame)
-        {            
+        {
             local._firstFrame = false;
             local._lastTimeStamp = now;
         }
 
         // calculate the elapsed time since the previous pass; we'll use this for
-        // the animations                
+        // the animations
         float elapsedSeconds = osg::Timer::instance()->delta_s(local._lastTimeStamp, now);
         local._lastTimeStamp = now;
 
@@ -356,8 +358,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
         // Go through each leaf and test for visibility.
         // Enforce the "max objects" limit along the way.
-        for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); 
-            i != leaves.end() && local._passed.size() < limit; 
+        for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
+            i != leaves.end() && local._passed.size() < limit;
             ++i )
         //LCGIterator<osgUtil::RenderBin::RenderLeafList> i(leaves);
         //while (i.hasMore() && local._passed.size() < limit)
@@ -386,7 +388,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 osg::Vec3d loc = layoutData->getAnchorPoint() * camVPW;
                 osg::Vec3d proj = layoutData->getProjPoint() * camVPW;
                 proj -= loc;
-                
+
                 float angle = atan2(proj.y(), proj.x());
 
                 if ( isText && (angle < - osg::PI / 2. || angle > osg::PI / 2.) )
@@ -432,9 +434,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::Matrix MVP = (*leaf->_modelview.get()) * (*leaf->_projection.get());
             osg::Vec4d clip = s_zero_w * MVP;
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
-            
+
             // if we are using a reference camera (like for picking), we do the decluttering in
-            // its viewport so that they match. 
+            // its viewport so that they match.
             osg::Vec3f winPos    = clip_ndc * windowMatrix;
             osg::Vec3f refWinPos = clip_ndc * refWindowMatrix;
 
@@ -468,7 +470,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 {
                     visible = true;
                 }
-                
+
                 // if this leaf is already in a culled group, skip it.
                 else if ( culledParents.find(drawableParent) != culledParents.end() )
                 {
@@ -531,8 +533,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
                 newModelView.preMultRotate( rot );
             }
-            
-            // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
+
+            // Leaf modelview matrixes are shared (by objects in the traversal stack) so we
             // cannot just replace it unfortunately. Have to make a new one. Perhaps a nice
             // allocation pool is in order here
             leaf->_modelview = new osg::RefMatrix( newModelView );
@@ -541,7 +543,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
         if ( s_declutteringEnabledGlobally )
-        { 
+        {
             leaves.clear();
             for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
             {
@@ -565,7 +567,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                     if ( info._lastScale != 1.0f )
                         leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
-                    
+
                     // fade in until at full alpha:
                     if ( info._lastAlpha != 1.0f )
                     {
@@ -670,7 +672,7 @@ namespace
         /**
          * Draws a bin. Most of this code is copied from osgUtil::RenderBin::drawImplementation.
          * The modifications are (a) skipping code to render child bins, (b) setting a bin-global
-         * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method 
+         * projection matrix in orthographic space, and (c) calling our custom "renderLeaf()" method
          * instead of RenderLeaf::render()
          */
         void drawImplementation( osgUtil::RenderBin* bin, osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous )
@@ -769,9 +771,9 @@ namespace
 
             // if we are using osg::Program which requires OSG's generated uniforms to track
             // modelview and projection matrices then apply them now.
-            if (state.getUseModelViewAndProjectionUniforms()) 
+            if (state.getUseModelViewAndProjectionUniforms())
                 state.applyModelViewAndProjectionUniformsIfRequired();
-        
+
             // apply the fading uniform
             const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
             if ( pcp )
@@ -780,10 +782,10 @@ namespace
                 _fade->set( s_declutteringEnabledGlobally ? leaf->_depth : 1.0f );
                 pcp->apply( *_fade.get() );
             }
-    
+
             // draw the drawable
             leaf->_drawable->draw(renderInfo);
-        
+
             if (leaf->_dynamic)
             {
                 state.decrementDynamicObjectCount();
@@ -823,8 +825,8 @@ public:
         : osgUtil::RenderBin(rhs, copy),
         _f(rhs._f.get()),
         _context(rhs._context.get())
-    {        
-        // Set up a VP to do fading. Do it here so it doesn't happen until the first time 
+    {
+        // Set up a VP to do fading. Do it here so it doesn't happen until the first time
         // we clone the render bin. This play nicely with static initialization.
         if (!_vpInstalled)
         {
@@ -838,7 +840,7 @@ public:
             }
         }
     }
-    
+
     virtual osg::Object* clone(const osg::CopyOp& copyop) const
     {
         return new osgEarthScreenSpaceLayoutRenderBin(*this, copyop);
@@ -941,7 +943,7 @@ ScreenSpaceLayout::setOptions( const ScreenSpaceLayoutOptions& options )
         {
             ScreenSpaceLayout::setSortFunctor(new SortByPriorityPreservingGeodeTraversalOrder());
         }
-        
+
         // communicate the new options on the shared context.
         bin->_context->_options = options;
     }
@@ -994,4 +996,4 @@ namespace osgEarth
     REGISTER_OSGEARTH_EXTENSION(osgearth_screen_space_layout, ScreenSpaceLayoutExtension);
     REGISTER_OSGEARTH_EXTENSION(osgearth_decluttering,        ScreenSpaceLayoutExtension);
 }
-                                       
+

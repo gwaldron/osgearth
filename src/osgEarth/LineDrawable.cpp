@@ -709,6 +709,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
             _colors->push_back(_color);
             _colors->push_back(_color);
         }
+
+        _previous->dirty();
+        _next->dirty();
     }
 
     else
@@ -716,6 +719,9 @@ LineDrawable::pushVertex(const osg::Vec3& vert)
         _current->push_back(vert);
         _colors->push_back(_color);
     }
+
+    _current->dirty();
+    _colors->dirty();
 }
 
 void

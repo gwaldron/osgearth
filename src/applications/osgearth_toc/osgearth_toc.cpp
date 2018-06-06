@@ -276,7 +276,7 @@ createControlPanel(Container* container)
 {
     //The Map layers
     s_activeBox = new Grid();
-    s_activeBox->setBackColor(0,0,0,0.5);
+    s_activeBox->setBackColor(0,0,0,0.1);
     s_activeBox->setPadding( 10 );
     s_activeBox->setChildSpacing( 10 );
     s_activeBox->setChildVertAlign( Control::ALIGN_CENTER );
@@ -285,7 +285,7 @@ createControlPanel(Container* container)
 
     //the removed layers
     s_inactiveBox = new Grid();
-    s_inactiveBox->setBackColor(0,0,0,0.5);
+    s_inactiveBox->setBackColor(0,0,0,0.1);
     s_inactiveBox->setPadding( 10 );
     s_inactiveBox->setChildSpacing( 10 );
     s_inactiveBox->setChildVertAlign( Control::ALIGN_CENTER );

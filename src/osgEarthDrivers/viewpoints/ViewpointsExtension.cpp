@@ -130,6 +130,7 @@ namespace
         {
             // the viewpoint container:
             grid = new Grid();
+            grid->setBackColor(osg::Vec4(0,0,0,0.1));
             grid->setChildSpacing( 0 );
             grid->setChildVertAlign( Control::ALIGN_CENTER );
 

@@ -884,9 +884,9 @@ namespace
 ui::Control* SkyControlFactory::create(SkyNode* sky)
 {
     ui::Grid* grid = new ui::Grid();
+    grid->setBackColor(0,0,0,.1);
     grid->setChildVertAlign( ui::Control::ALIGN_CENTER );
     grid->setChildSpacing( 10 );
-    grid->setHorizFill( true );
 
     if (sky)
     {

@@ -233,7 +233,7 @@ main(int argc, char** argv)
         }
 
         OE_NOTICE << "Reading from " << fileName << " ..." << std::endl;
-        node = osgDB::readNodeFile(fileName);
+        node = osgDB::readRefNodeFile(fileName);
         if (!node.valid())
         {
             OE_WARN << "deserialize failed!\n";

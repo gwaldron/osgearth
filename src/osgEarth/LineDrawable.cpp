@@ -348,7 +348,8 @@ _first(0u),
 _count(0u),
 _current(NULL),
 _previous(NULL),
-_next(NULL)
+_next(NULL),
+_colors(NULL)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
@@ -368,7 +369,8 @@ _first(0u),
 _count(0u),
 _current(NULL),
 _previous(NULL),
-_next(NULL)
+_next(NULL),
+_colors(NULL)
 {
 #ifdef USE_GPU
     _gpu = 
@@ -388,7 +390,11 @@ _factor(rhs._factor),
 _pattern(rhs._pattern),
 _width(rhs._width),
 _first(rhs._first),
-_count(rhs._count)
+_count(rhs._count),
+_current(NULL),
+_previous(NULL),
+_next(NULL),
+_colors(NULL)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
 
